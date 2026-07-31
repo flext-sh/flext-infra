@@ -85,6 +85,10 @@ class FlextInfraTypesBase:
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."
+    type LayoutRule = Literal["move", "archive", "gitignore", "review"]
+    "Closed layout decision kinds produced by the layout engine."
+    type LayoutStatus = Literal["planned", "applied", "skipped", "noop"]
+    "Closed layout finding execution statuses."
     type ReleaseArtifactKind = Literal["sdist", "wheel"]
     "Closed artifact kind emitted by a release build."
     type ReleaseAbsolutePath = Annotated[

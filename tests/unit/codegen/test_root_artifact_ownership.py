@@ -9,7 +9,6 @@ import pytest
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
 from tests import u
 
@@ -96,8 +95,8 @@ class TestsRootArtifactOwnership:
 
         with pytest.raises(ValueError, match="must be full-managed"):
             codegen_type.model_validate(payload)
-
-    def test_legacy_sync_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
+ 
+    def test_conform_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -139,8 +138,12 @@ class TestsRootArtifactOwnership:
             )
         )
 
-        checked = FlextInfraSyncService(workspace_root=root).execute()
-        first = FlextInfraSyncService(workspace_root=root, apply_changes=True).execute()
+        checked = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+        )
+        first = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY})
+        )
 
         tm.ok(checked)
         tm.ok(first)
@@ -153,8 +156,8 @@ class TestsRootArtifactOwnership:
         for file in governed:
             relative = file.path.relative_to(root).as_posix()
             tm.that(file.policy, eq=configured_policies[relative])
-        tm.that(checked.value.files_changed, eq=0)
-        tm.that(first.value.files_changed, eq=0)
+        tm.that(checked.value.written_files, eq=())
+        tm.that(first.value.written_files, eq=())
         after = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())

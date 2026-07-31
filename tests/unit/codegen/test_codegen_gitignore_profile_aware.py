@@ -18,6 +18,7 @@ from tests import u as test_u
 
 _ROOT = Path(__file__).resolve().parents[3]
 _WORKSPACE_ONLY_MARKERS = ("!flext-*/", "!/config/workspace.yaml", "!flext-*/**")
+_BEADS_CONFIG = "!.beads/config.yaml"
 
 
 class TestsCodegenGitignoreProfileAware:
@@ -26,6 +27,8 @@ class TestsCodegenGitignoreProfileAware:
         rendered = _render_gitignore(_ROOT)
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker not in rendered, eq=True, msg=f"phantom {marker} in member")
+        tm.that(rendered, has=".beads/")
+        tm.that(rendered, has=_BEADS_CONFIG)
 
     def test_workspace_root_gitignore_keeps_member_allowlist(
         self, tmp_path: Path
@@ -60,9 +63,78 @@ class TestsCodegenGitignoreProfileAware:
             )
         )
         test_u.Tests.initialize_git_repo(root)
+        member_source = tmp_path / "member-source"
+        member_source.mkdir()
+        (member_source / "README.md").write_text(
+            "fixture member\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        test_u.Tests.initialize_git_repo(member_source)
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    "-q",
+                    str(member_source),
+                    member.path.as_posix(),
+                ],
+                cwd=root,
+            )
+        )
+        provider = next(
+            p for p in config.Infra.codegen.providers if p.name == member.provider
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "-f",
+                    ".gitmodules",
+                    f"submodule.{member.path.as_posix()}.branch",
+                    str(provider.branch),
+                ],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "-f",
+                    ".gitmodules",
+                    f"submodule.{member.path.as_posix()}.url",
+                    str(member.url),
+                ],
+                cwd=root,
+            )
+        )
         rendered = _render_gitignore(root)
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker in rendered, eq=True, msg=f"missing {marker} at root")
+        tm.that(rendered, has=_BEADS_CONFIG)
+
+    def test_independent_overlay_generates_canonical_beads_environment(
+        self, tmp_path: Path
+    ) -> None:
+        """Derive bd tool and project identity from typed production owners."""
+        repository, plan = _plan_independent_overlay(tmp_path)
+        by_path = {
+            file.path.relative_to(tmp_path / repository.name).as_posix(): file.rendered
+            for file in plan.files
+        }
+        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
+        tm.that(
+            by_path[".mise.toml"],
+            has=(
+                '"github:gastownhall/beads" = '
+                f'"{config.Infra.codegen.toolchain.beads.version}"'
+            ),
+        )
 
 
 def _render_gitignore(root: Path) -> str:
@@ -84,6 +156,63 @@ def _render_gitignore(root: Path) -> str:
     tm.that(gitignore_plans, len=1)
     rendered: str = gitignore_plans[0].rendered
     return rendered
+
+
+def _plan_independent_overlay(
+    tmp_path: Path,
+) -> tuple[m.Infra.RepositoryRef, m.Infra.CodegenPlan]:
+    provider = config.Infra.codegen.providers[0]
+    name = "sample-project"
+    repository = m.Infra.RepositoryRef(
+        name=name,
+        distribution=name,
+        provider=provider.name,
+        url=f"{provider.base_url}/{name}.git",
+        path=Path(),
+        role=c.Infra.RepositoryRole.STANDALONE,
+        state=c.Infra.RepositoryState.ACTIVE,
+        checkout=c.Infra.CheckoutKind.INDEPENDENT,
+        codegen=c.Infra.CodegenKind.CONFORM,
+        package=True,
+        editable=False,
+        read_only=False,
+    )
+    workspace = m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name=name,
+        repository=repository,
+        project=m.Infra.ProjectSpec(
+            package_name=name.replace("-", "_"),
+            class_stem="SampleProject",
+            namespace="SampleProject",
+            constant_name=name,
+            namespace_attribute=name.replace("-", "_"),
+            alias=name.replace("-", "_"),
+            environment_prefix="SAMPLE_PROJECT_",
+            description="Independent project fixture",
+            version="0.1.0",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            homepage=f"{provider.base_url}/{name}",
+            documentation=f"{provider.base_url}/{name}",
+            workspace_root_rel=".",
+            year=2026,
+        ),
+    )
+    root = tmp_path / name
+    request = m.Infra.CodegenConformRequest(
+        root=root,
+        scope=c.Infra.CodegenConformScope.SELF,
+        mode=c.Infra.CodegenConformMode.CHECK,
+    )
+    plan = tm.ok(
+        FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        ).plan(request)
+    )
+    return repository, plan
 
 
 __all__: tuple[str, ...] = ()

@@ -134,6 +134,8 @@ class FlextInfraConstantsSharedInfra:
     "Heading of the trailing .gitignore section holding derived artifacts."
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
     "Heading of the trailing .gitignore section that re-allows managed files."
+    GITIGNORE_LAYOUT_SECTION_NAME: Final[str] = "Project layout exceptions"
+    "Heading of the trailing .gitignore section holding layout-SSOT additions."
     MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
     MANAGED_FILE_POLICY_FULL: Final[str] = "full"
     "Managed-file policy whose artifact is generated per checkout, not committed."

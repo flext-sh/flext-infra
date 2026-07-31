@@ -30,8 +30,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         )
         tm.that(makefile_fields.get("@flext-managed"), eq="continuous")
         tm.that(
-            makefile_fields.get("@flext-regenerate"),
-            eq="make conform WHAT=apply APPLY=Y",
+            makefile_fields.get("@flext-regenerate"), eq="make gen WHAT=apply APPLY=Y"
         )
         tm.that(makefile_fields.get("@flext-ssot", ""), has="flext-infra/")
         tm.that(makefile_fields.get("@flext-maintenance", ""), has="do not edit")

@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
-from flext_infra import c, m
+import pytest
+
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
+from tests import u
 
 
 def _repository(
@@ -16,38 +22,201 @@ def _repository(
     role: c.Infra.RepositoryRole,
     state: c.Infra.RepositoryState = c.Infra.RepositoryState.ACTIVE,
 ) -> m.Infra.RepositoryRef:
-    profile = (
-        c.Infra.MakeProfile.WORKSPACE_ROOT
-        if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-        else c.Infra.MakeProfile.WORKSPACE_MEMBER
-    )
+    provider = config.Infra.codegen.providers[0]
     return m.Infra.RepositoryRef(
         name=name,
         distribution=name,
-        provider="acme-hosting",
-        url=f"https://github.com/acme-hosting/{name}.git",
-        branch="development",
+        provider=provider.name,
+        url=f"{provider.base_url}/{name}.git",
         path=Path(path),
         role=role,
         state=state,
-        profile=profile,
         checkout=(
             c.Infra.CheckoutKind.ROOT
             if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
             else c.Infra.CheckoutKind.SUBMODULE
         ),
-        codegen=(
-            c.Infra.CodegenKind.NONE
-            if role is c.Infra.RepositoryRole.CONTENT_ONLY
-            else c.Infra.CodegenKind.CONFORM
-        ),
+        codegen=c.Infra.CodegenKind.CONFORM,
         package=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
         editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        read_only=role is c.Infra.RepositoryRole.CONTENT_ONLY,
+        read_only=False,
     )
 
 
 class TestsCodegenCatalogExtensions:
+    def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
+        selector = config.Infra.codegen.toolchain.beads.version
+
+        version_parts = selector.split(".")
+        is_semver = len(version_parts) == 3 and all(
+            part.isdecimal() for part in version_parts
+        )
+        is_commit = len(selector) == 40 and all(
+            char in "0123456789abcdef" for char in selector
+        )
+        tm.that(is_semver or is_commit, eq=True)
+
+    def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
+        toolchain = config.Infra.codegen.toolchain
+
+        # uv is supplied by the caller environment and is deliberately not pinned;
+        # only the mise binary and the Beads CLI installed through mise declare
+        # immutable selectors: a semver release for mise, and either a semver
+        # release or a full commit for the Beads go-module pin.
+        mise_parts = toolchain.mise_version.split(".")
+        tm.that(len(mise_parts), eq=3)
+        tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
+        beads_version = toolchain.beads.version
+        beads_parts = beads_version.split(".")
+        beads_is_semver = len(beads_parts) == 3 and all(
+            part.isdecimal() for part in beads_parts
+        )
+        beads_is_commit = len(beads_version) == 40 and all(
+            char in "0123456789abcdef" for char in beads_version
+        )
+        tm.that(beads_is_semver or beads_is_commit, eq=True)
+
+    def test_beads_gate_compares_the_binary_reported_version(self) -> None:
+        """The conform preflight gate uses the binary's self-reported version.
+
+        The pinned Beads build is a go-module commit (schema v61-capable) whose
+        ``bd version`` output does NOT echo the pin. The toolchain therefore
+        declares ``reported_version`` — what the binary actually prints — and
+        the gate consumes it via ``gate_version`` so preflight compares like
+        with like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
+        """
+        beads = config.Infra.codegen.toolchain.beads
+        tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
+        is_commit = len(beads.version) == 40 and all(
+            char in "0123456789abcdef" for char in beads.version
+        )
+        tm.that(is_commit, eq=True)
+        tm.that(beads.reported_version, eq="1.1.0")
+        tm.that(beads.gate_version, eq="1.1.0")
+
+    def test_beads_prefix_honours_the_committed_tracker_declaration(
+        self, tmp_path: Path
+    ) -> None:
+        """The declared .beads/config.yaml prefix outranks the derived name.
+
+        mro-o0cc: conform derived the tracker namespace from the repository
+        distribution and rejected (or re-initialized) repositories whose
+        committed ``.beads/config.yaml`` declares a shared ledger prefix
+        (e.g. ``mro`` on the machine-wide Dolt server). The committed tracker
+        config IS the declaration; the derived name is only the fallback for
+        repositories without one.
+        """
+        root = tmp_path / "flext-demo"
+        beads_dir = root / ".beads"
+        beads_dir.mkdir(parents=True)
+        (beads_dir / "config.yaml").write_text(
+            'issue-prefix: "mro"\ndolt:\n  database: mro\n', encoding="utf-8"
+        )
+        declared = FlextInfraCodegenConform.declared_beads_prefix(
+            root, fallback="flext-demo"
+        )
+        tm.that(declared, eq="mro")
+        bare = tmp_path / "bare-demo"
+        bare.mkdir()
+        tm.that(
+            FlextInfraCodegenConform.declared_beads_prefix(bare, fallback="bare-demo"),
+            eq="bare-demo",
+        )
+
+    def test_gitmodules_render_reaches_a_merge_fixed_point(self) -> None:
+        """The gitmodules projection must not grow on every merge pass.
+
+        The template's leading Jinja comment emitted a bare newline, and
+        ``_merge_gitmodules`` prepends a separator when the preserved prefix is
+        non-empty — so each apply added one more blank line and conform never
+        reached its post-apply fixed point on the workspace root.
+        """
+        template = (
+            Path(__file__).parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / "gitmodules.j2"
+        )
+        import jinja2
+
+        rendered = jinja2.Template(template.read_text(encoding="utf-8")).render(
+            workspace_gitlinks=[
+                {
+                    "repository": {
+                        "name": "demo-member",
+                        "path": "demo-member",
+                        "url": "https://github.com/flext-sh/demo-member.git",
+                    },
+                    "branch": "0.12.0-dev",
+                }
+            ]
+        )
+        tm.that(rendered.startswith("\n"), eq=False)
+        tm.that(rendered.startswith("[submodule"), eq=True)
+        managed = frozenset({"demo-member"})
+        merge = FlextInfraCodegenConform._merge_gitmodules  # ruff: ignore[private-member-access]
+        once = merge(rendered, rendered, managed_paths=managed)
+        twice = merge(once, rendered, managed_paths=managed)
+        tm.that(once, eq=twice)
+
+    def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
+        """``make setup`` provisions tooling; ``make gen`` owns conformance.
+
+        Operator contract (mro-e9j0.6 C7 final): setup installs mise, the
+        venv, and dependencies — it never generates, conforms, or mutates
+        project code. gen/gen APPLY=Y is the single public conformance and
+        generation surface, and no public ``conform`` verb exists.
+        """
+        template = (
+            Path(__file__).parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / "Makefile.j2"
+        )
+        content = template.read_text(encoding="utf-8")
+        tm.that("_builtin_setup_conform" in content, eq=False)
+        setup_env = content.split("_builtin_setup_environment:", 1)[1]
+        tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
+        tm.that("_builtin_gen_check:" in content, eq=True)
+        tm.that("_builtin_gen_apply:" in content, eq=True)
+        verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
+        tm.that("conform" in verb_names, eq=False)
+
+    def test_transaction_worktrees_skip_the_beads_lifecycle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Inside a worktree transaction the Beads lifecycle is fully skipped.
+
+        The transaction checkout legitimately carries the repository's .beads
+        tree. Disabling beads there while keeping the disabled-but-present
+        guard made every transactional conform fail with 'Beads is disabled
+        but tracker state exists'. Ephemeral transaction worktrees are not
+        tracker owners: verification is skipped, not failed.
+        """
+        root = tmp_path / "tx-checkout"
+        (root / ".beads").mkdir(parents=True)
+        (root / ".beads" / "config.yaml").write_text(
+            'issue-prefix: "mro"\n', encoding="utf-8"
+        )
+        plan = m.Infra.BeadsPlan(
+            repository_root=root,
+            enabled=False,
+            canonical_prefix="mro",
+            expected_version="1.1.0",
+        )
+        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
+        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        tm.ok(verify(plan, allow_missing=False))
+        # Outside a transaction the disabled-but-present guard still fails.
+        monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV)
+        tm.fail(verify(plan, allow_missing=False))
+
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
@@ -68,29 +237,30 @@ class TestsCodegenCatalogExtensions:
                 ),
             }
         )
+        project = m.Infra.ProjectSpec(
+            package_name="acme_platform",
+            class_stem="AcmePlatform",
+            namespace="AcmePlatform",
+            constant_name="acme-platform",
+            namespace_attribute="acme_platform",
+            alias="acme",
+            environment_prefix="ACME_PLATFORM_",
+            description="Product-neutral platform fixture",
+            version="0.1.0",
+            license="MIT",
+            author_name="Acme Team",
+            author_email="engineering@example.com",
+            upstream="flext_core",
+            homepage="https://example.com/acme-platform",
+            documentation="https://example.com/acme-platform/docs",
+            workspace_root_rel=".",
+            year=2026,
+        )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=root.name,
             repository=root,
-            project=m.Infra.ProjectSpec(
-                package_name="acme_platform",
-                class_stem="AcmePlatform",
-                namespace="AcmePlatform",
-                constant_name="acme-platform",
-                namespace_attribute="acme_platform",
-                alias="acme",
-                environment_prefix="ACME_PLATFORM_",
-                description="Product-neutral platform fixture",
-                version="0.1.0",
-                license="MIT",
-                author_name="Acme Team",
-                author_email="engineering@example.com",
-                upstream="flext_core",
-                homepage="https://example.com/acme-platform",
-                documentation="https://example.com/acme-platform/docs",
-                workspace_root_rel=".",
-                year=2026,
-            ),
+            project=project,
             members=(
                 _repository(
                     "acme-charts",
@@ -98,27 +268,120 @@ class TestsCodegenCatalogExtensions:
                     role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
                 ),
             ),
-            content_only=(
-                _repository(
-                    "acme-content",
-                    path="acme-content",
-                    role=c.Infra.RepositoryRole.CONTENT_ONLY,
-                    state=c.Infra.RepositoryState.CONTENT_ONLY,
-                ),
-            ),
         )
+        member_root = tmp_path / "acme-charts"
+        member_root.mkdir()
+        (member_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "acme-charts"\nversion = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
+            encoding="utf-8",
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "init", "-q", "-b", "development"], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.email", "infra@example.com"], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.name", "Infra Tests"], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "add", c.Infra.PYPROJECT_FILENAME], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Initial fixture"], cwd=member_root
+            )
+        )
+        analysis_exclusions = tuple(
+            path.as_posix()
+            for path in FlextInfraWorkspaceDetector.workspace_analysis_exclusion_paths(
+                workspace
+            )
+        )
+
+        tooling = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=root.distribution,
+                package_name=project.package_name,
+                path=tmp_path / c.Infra.PYPROJECT_FILENAME,
+                declared_python_dirs=(
+                    config.Infra.tooling.tools.pyright.path_rules.env_dirs
+                ),
+                analysis_exclusions=analysis_exclusions,
+            )
+        )
+        tm.that(tooling.ruff_exclude, has="acme-content")
+        tm.that(tooling.pyright_exclude, has="acme-content")
 
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=tmp_path,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
+                what=c.Infra.CodegenConformSurface.ALL,
+                scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
 
         plan = tm.ok(result)
-        tm.that(tuple(item.name for item in plan.repositories), eq=(root.name,))
+        tm.that(
+            tuple(item.name for item in plan.repositories),
+            eq=(root.name, "acme-charts"),
+        )
+        external_root = (tmp_path / "acme-content").resolve()
+        tm.that(
+            any(
+                external_root == file.path or external_root in file.path.parents
+                for file in plan.files
+            ),
+            eq=False,
+        )
+        tm.that(external_root.exists(), eq=False)
+        root_makefile = next(
+            file
+            for file in plan.files
+            if file.path == tmp_path.resolve() / c.Infra.MAKEFILE_FILENAME
+        )
+        tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
+        tm.that("acme-content" in root_makefile.rendered, eq=False)
+        workflows = tuple(
+            file for file in plan.files if ".github/workflows" in file.path.as_posix()
+        )
+        tm.that(workflows, len=4)
+        for workflow in workflows:
+            tm.that("acme-content" in workflow.rendered, eq=False)
+        gitmodules = next(
+            file.rendered for file in plan.files if file.path.name == ".gitmodules"
+        )
+        tm.that(gitmodules, has="flext-managed = true")
+        tm.that(gitmodules, has="flext-managed = false")
+        mise = tomllib.loads(
+            next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
+        )
+        tm.that(
+            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+            eq=config.Infra.codegen.toolchain.beads.version,
+        )
+        pyproject = tomllib.loads(
+            next(
+                file.rendered
+                for file in plan.files
+                if file.path.name == c.Infra.PYPROJECT_FILENAME
+            )
+        )
+        tools = pyproject["tool"]
+        tm.that(tools["ruff"]["exclude"], has="acme-content")
+        tm.that(tools["pyright"]["exclude"], has="acme-content")
 
 
 __all__: tuple[str, ...] = ()

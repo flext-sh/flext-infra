@@ -10,7 +10,7 @@
 #   * a release-line branch literal (N.N.N-dev / -rc / -alpha / -beta)
 #   * a Git clone URL literal (https://<host>/<org>/<repo>.git)
 # Both are always derivable from the repository contract a generator already
-# receives (RepositoryRef.branch / .url) or from the provider catalog.
+# receives (RepositoryRef.url) or from the provider catalog (ProviderSpec.branch).
 #
 # The declaration sites are NOT violations and are excluded by construction:
 #   * `_constants/**` and `constants.py` DECLARE the canonical value;
@@ -40,7 +40,7 @@ ignores:
 message: >-
   Hardcoded value owned by a configuration SSOT. A release-line branch or a Git
   clone URL must be read from the repository contract the caller already has
-  (RepositoryRef.branch / RepositoryRef.url) or from the provider catalog
+  (RepositoryRef.url / ProviderSpec.branch) or from the provider catalog
   (config.<Ns>.codegen.providers), never repeated as a literal. Fix: replace the
   literal with the SSOT read that owns it.
 rule:

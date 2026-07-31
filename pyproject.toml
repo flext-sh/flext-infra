@@ -6,6 +6,93 @@
 # Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
 # Sections with [CUSTOM] are project-specific extension points.
 
+# [MANAGED] build system
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[dependency-groups]
+dev = [
+  "actionlint-py>=1.7.12.24",
+  "autoflake>=2.3.1",
+  "bandit>=1.8",
+  "black>=25.1",
+  "blacken-docs>=1.19",
+  "codespell>=2.3",
+  "deptry>=0.23",
+  "django-stubs>=5.2.2",
+  "factory-boy>=3.3.1",
+  "faker>=37.4",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+  "hypothesis>=6.125",
+  "isort>=6.0.1",
+  "matplotlib-stubs>=0.3",
+  "mkdocs>=1.6",
+  "mkdocs-awesome-pages-plugin>=2.9",
+  "mkdocs-encryptcontent-plugin>=2",
+  "mkdocs-exclude>=1.0.2",
+  "mkdocs-get-deps>=0.2",
+  "mkdocs-git-revision-date-localized-plugin>=1.2",
+  "mkdocs-literate-nav>=0.6",
+  "mkdocs-macros-plugin>=1",
+  "mkdocs-material>=9.5",
+  "mkdocs-material-extensions>=1.3.1",
+  "mkdocs-mermaid2-plugin>=1.1",
+  "mkdocs-minify-plugin>=0.7",
+  "mkdocs-print-site-plugin>=0.8",
+  "mkdocs-redirects>=1.2",
+  "mkdocs-section-index>=0.3.12",
+  "mkdocs-versioning>=0.2",
+  "mkdocstrings>=0.24",
+  "mkdocstrings-python>=1.7",
+  "mypy>=2.3.0",
+  "pip-audit>=2.7.3",
+  "pre-commit>=4.6.0",
+  "pylint>=3.3",
+  "pyrefly>=1.1.1",
+  "pyright>=1.1.411",
+  "pytest>=8.4",
+  "pytest-benchmark>=5.1",
+  "pytest-clarity>=1.0.1",
+  "pytest-codeblocks>=0.17.0",
+  "pytest-cov>=6.2",
+  "pytest-deadfixtures>=2.2.1",
+  "pytest-env>=1.1.5",
+  "pytest-markdown-docs>=0.9.2",
+  "pytest-mock>=3.14",
+  "pytest-randomly>=3.16",
+  "pytest-sugar>=1",
+  "pytest-timeout>=2.4",
+  "pytest-xdist>=3.8",
+  "pyupgrade>=3.19",
+  "radon>=6.0.1",
+  "ruff>=0.12.3",
+  "rumdl>=0.2.46",
+  "types-cachetools>=6.2",
+  "types-cffi>=2.0",
+  "types-click>=7.1",
+  "types-defusedxml>=0.7",
+  "types-docker>=7.1",
+  "types-flask>=1.1.6",
+  "types-jsonschema>=4.26",
+  "types-ldap3>=2.9.13.20250622",
+  "types-paramiko>=4.0",
+  "types-protobuf>=6.30.2.20250703",
+  "types-psutil>=7",
+  "types-psycopg2>=2.9.21.20250718",
+  "types-pyasn1>=0.6",
+  "types-pyopenssl>=24.1",
+  "types-python-dateutil>=2.9",
+  "types-pyyaml>=6.0.12.20260518",
+  "types-redis>=4.6",
+  "types-requests>=2.32.4",
+  "types-setuptools>=80.9",
+  "types-tabulate>=0.10",
+  "types-toml>=0.10.8.20240310",
+  "vulture>=2.13",
+  "yamlfix>=1.19.1",
+]
+
 # [CUSTOM] project metadata
 [project]
 classifiers = [
@@ -22,20 +109,20 @@ classifiers = [
 ]
 dependencies = [
   "defusedxml>=0.7.1",
-  "filelock>=3.32.0",
+  "filelock>=3.16",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-  "gitpython>=3.1.57",
+  "gitpython>=3.1.49",
   "libcst>=1.8.6",
   "mkdocs>=1.6.1",
   "mkdocs-exclude>=1.0.2",
-  "mkdocs-material>=9.7.7",
+  "mkdocs-material>=9.7.6",
   "mkdocs-section-index>=0.3.12",
-  "mkdocstrings>=1.0.6",
-  "mkdocstrings-python>=2.0.5",
+  "mkdocstrings>=1.0.4",
+  "mkdocstrings-python>=2.0.3",
   "pyrefly>=1.1.1",
   "rope>=1.14.0",
-  "ruff>=0.16.0",
+  "ruff>=0.15.12",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
@@ -64,11 +151,6 @@ flext-infra = "flext_infra.cli:main"
 Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
 Homepage = "https://github.com/flext-sh/flext-infra"
 Repository = "https://github.com/flext-sh/flext-infra"
-
-# [MANAGED] build system
-[build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling"]
 
 [tool.bandit]
 severity = "MEDIUM"
@@ -198,13 +280,7 @@ project-excludes = [
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
-search-path = [
-  ".",
-  "../flext-cli/src",
-  "../flext-core/src",
-  "../flext-tests/src",
-  "src",
-]
+search-path = [".", "src"]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -355,7 +431,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = ".."
+venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -453,8 +529,10 @@ mi_min = "B"
 # [MANAGED] ruff
 [tool.ruff]
 exclude = [
+  "**/.archive/**",
   "**/__pyrefly_virtual__/**",
   ".archive",
+  ".archive/**",
   ".git",
   ".mypy_cache",
   ".pytest_cache",
@@ -616,7 +694,8 @@ split-on-trailing-comma = false
   "undocumented-public-function",
   "undocumented-public-method",
 ]
-"scripts/cmd/**/*.py" = ["invalid-module-name"]
+"scripts/cmd/**/*.py" = ["invalid-module-name", "shebang-not-executable"]
+"**/examples/**/*.py" = ["invalid-module-name", "shebang-not-executable"]
 
 # [MANAGED] tomlsort
 [tool.tomlsort]
@@ -626,6 +705,12 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-tests"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]
@@ -640,85 +725,3 @@ line_length = 88
 preserve_quotes = true
 section_whitelines = 1
 whitelines = 1
-
-[dependency-groups]
-dev = [
-  "actionlint-py>=1.7.12.24",
-  "autoflake>=2.3.3",
-  "bandit>=1.9.4",
-  "black>=26.5.1",
-  "blacken-docs>=1.20.0",
-  "codespell>=2.4.3",
-  "deptry>=0.25.1",
-  "django-stubs>=6.0.7",
-  "factory-boy>=3.3.3",
-  "faker>=40.36.0",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
-  "hypothesis>=6.163.0",
-  "isort>=8.0.1",
-  "matplotlib-stubs>=0.3.11",
-  "mkdocs>=1.6.1",
-  "mkdocs-awesome-pages-plugin>=2.10.1",
-  "mkdocs-encryptcontent-plugin>=3.1.0",
-  "mkdocs-exclude>=1.0.2",
-  "mkdocs-get-deps>=0.2.2",
-  "mkdocs-git-revision-date-localized-plugin>=1.5.3",
-  "mkdocs-literate-nav>=0.6.3",
-  "mkdocs-macros-plugin>=1.5.0",
-  "mkdocs-material>=9.7.7",
-  "mkdocs-material-extensions>=1.3.1",
-  "mkdocs-mermaid2-plugin>=1.2.3",
-  "mkdocs-minify-plugin>=0.8.0",
-  "mkdocs-print-site-plugin>=2.8",
-  "mkdocs-redirects>=1.2.3",
-  "mkdocs-section-index>=0.3.12",
-  "mkdocs-versioning>=0.4.0",
-  "mkdocstrings>=1.0.6",
-  "mkdocstrings-python>=2.0.5",
-  "mypy>=2.3.0",
-  "pip-audit>=2.10.1",
-  "pre-commit>=4.6.1",
-  "pylint>=4.0.6",
-  "pyrefly>=1.1.1",
-  "pyright>=1.1.411",
-  "pytest>=9.1.1",
-  "pytest-benchmark>=5.2.3",
-  "pytest-clarity>=1.0.1",
-  "pytest-codeblocks>=0.18.0",
-  "pytest-cov>=7.1.0",
-  "pytest-deadfixtures>=3.1.0",
-  "pytest-env>=1.7.0",
-  "pytest-markdown-docs>=0.9.2",
-  "pytest-mock>=3.15.1",
-  "pytest-randomly>=4.1.0",
-  "pytest-sugar>=1.1.1",
-  "pytest-timeout>=2.4.0",
-  "pytest-xdist>=3.8.0",
-  "pyupgrade>=3.21.2",
-  "radon>=6.0.1",
-  "ruff>=0.16.0",
-  "rumdl>=0.2.45",
-  "types-cachetools>=7.0.0.20260713",
-  "types-cffi>=2.0.0.20260518",
-  "types-click>=7.1.8",
-  "types-defusedxml>=0.7.0.20260504",
-  "types-docker>=7.2.0.20260728",
-  "types-flask>=1.1.6",
-  "types-jsonschema>=4.26.0.20260518",
-  "types-ldap3>=2.9.13.20260518",
-  "types-paramiko>=5.0.0.20260724",
-  "types-protobuf>=7.34.1.20260518",
-  "types-psutil>=7.2.2.20260518",
-  "types-psycopg2>=2.9.21.20260724",
-  "types-pyasn1>=0.6.0.20260724",
-  "types-pyopenssl>=24.1.0.20240722",
-  "types-python-dateutil>=2.9.0.20260716",
-  "types-pyyaml>=6.0.12.20260724",
-  "types-redis>=4.6.0.20241004",
-  "types-requests>=2.33.0.20260712",
-  "types-setuptools>=83.0.0.20260724",
-  "types-tabulate>=0.10.0.20260508",
-  "types-toml>=0.10.8.20260518",
-  "vulture>=2.16",
-  "yamlfix>=1.19.1",
-]

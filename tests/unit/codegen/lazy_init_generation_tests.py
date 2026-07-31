@@ -10,7 +10,6 @@ from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_tests import tm
 
 
-# mro-pulj (Codex): tests assert the lazy-root/empty-child contract.
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
 
@@ -65,10 +64,8 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="from .__version__ import __version__ as __version__")
         tm.that(
-            content,
-            contains='_PUBLIC_EXPORTS: tuple[str, ...] = ("Demo", "__version__", "r")',
+            content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
         )
-        tm.that(content, contains="__all__: tuple[str, ...] = tuple(_PUBLIC_EXPORTS)")
         tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
@@ -103,7 +100,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, lacks="from ._utilities.conversion import DemoConversion")
         tm.that(content, lacks="DemoConversion")
-        tm.that(content, contains='_PUBLIC_EXPORTS: tuple[str, ...] = ("Demo",)')
+        tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
 
     def test_root_type_checking_uses_compact_relative_local_imports(self) -> None:
         """Emit relative declarations as explicit public re-exports."""
@@ -119,18 +116,12 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(
-            content,
-            contains=(
-                "from ._settings import FlextCliSettings as FlextCliSettings\n"
-                "    from ._settings import settings as settings"
-            ),
-        )
+        tm.that(content, contains="from ._settings import FlextCliSettings, settings")
         tm.that(content, lacks="from flext_cli._settings import")
         tm.that(content, lacks="    _ = (")
 
-    def test_non_root_package_uses_empty_initializer(self) -> None:
-        """Subpackages never publish implementation classes or import siblings."""
+    def test_non_root_package_uses_lazy_package_facade(self) -> None:
+        """Subpackages expose their owned symbols lazily through one facade."""
         plan = self._plan(
             "demo_pkg.services",
             ("Demo", "Nested"),
@@ -143,23 +134,12 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, lacks="from .demo import Demo")
-        tm.that(
-            init_content,
-            contains=(
-                "from __future__ import annotations\n\n__all__: tuple[str, ...] = ()"
-            ),
-        )
-        tm.that(
-            init_content,
-            lacks=(
-                "from __future__ import annotations\n\n\n__all__: tuple[str, ...] = ()"
-            ),
-        )
-        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="Demo")
-        tm.that(init_content, lacks="Nested")
-        tm.that(init_content, lacks="install_lazy_exports")
+        tm.that(init_content, contains="from .demo import Demo")
+        tm.that(init_content, contains='".demo": ("Demo",)')
+        tm.that(init_content, contains='".nested.item": ("Nested",)')
+        tm.that(init_content, contains='"Demo"')
+        tm.that(init_content, contains='"Nested"')
+        tm.that(init_content, contains="install_lazy_exports")
 
     def test_private_fixture_package_initializer_is_side_effect_free(self) -> None:
         """Keep pytest plugin siblings unloaded until pytest registers them."""
@@ -220,7 +200,7 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from flext_tests import tm as tm")
+        tm.that(init_content, contains="from flext_tests import tm")
         tm.that(init_content, contains='".constants": ("TestsDemoConstants", "c"),')
         tm.that(init_content, contains='".utilities": ("TestsDemoUtilities", "u"),')
         type_checking_block = init_content.split("if TYPE_CHECKING:", maxsplit=1)[1]
@@ -237,7 +217,7 @@ class TestsFlextInfraCodegenGeneration:
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
-        tm.that(type_checking_block, contains="from flext_tests import tm as tm\n\n")
+        tm.that(type_checking_block, contains="from flext_tests import tm\n\n")
         tm.that(
             init_content,
             contains=(
@@ -266,9 +246,9 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains="from .protocols import FlextDemoProtocols as FlextDemoProtocols",
+            contains="from .protocols import FlextDemoProtocols, FlextDemoProtocols as p",
         )
-        tm.that(content, contains="p: type[FlextDemoProtocols]")
+        tm.that(content, contains="FlextDemoProtocols as p")
 
     def test_root_service_alias_uses_typed_service_base(self) -> None:
         """Bind ``s`` to the concrete project service base for static analysis."""
@@ -286,9 +266,9 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains="from .base import FlextDemoServiceBase as FlextDemoServiceBase",
+            contains="from .base import FlextDemoServiceBase, FlextDemoServiceBase as s",
         )
-        tm.that(content, contains="s: type[FlextDemoServiceBase]")
+        tm.that(content, contains="FlextDemoServiceBase as s")
 
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
         """Static imports bind aliases to their facade types explicitly."""
@@ -299,10 +279,9 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             "\n".join(lines),
             contains=(
-                "from module import FlextConstants as _FlextConstants, "
-                "FlextModels as _FlextModels\n"
-                "    c: type[_FlextConstants]\n"
-                "    m: type[_FlextModels]"
+                "if TYPE_CHECKING:\n"
+                "    from flext_core import FlextTypes\n"
+                "    from module import FlextConstants as c, FlextModels as m"
             ),
         )
 

@@ -125,7 +125,13 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         scan_dirs: frozenset[str] | None = None,
         include_attached: bool = False,
     ) -> t.SequenceOf[Path]:
-        """Return all canonical project candidates before consumer-specific filtering."""
+        """Return all canonical project candidates before consumer-specific filtering.
+
+        Selection contract: declared workspace members isolate discovery to the
+        configured set (git-tracked in live repositories); without a member
+        declaration, discovery scans top-level directories structurally so
+        standalone checkouts and untracked projects are still found.
+        """
         roots: t.MutableSequenceOf[Path] = []
         effective_scan_dirs = scan_dirs or frozenset()
         configured_members = FlextInfraUtilitiesPyproject.workspace_member_names(
@@ -146,11 +152,6 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
                 if entry.is_dir()
                 and entry.resolve().is_relative_to(resolved_workspace_root)
             )
-        tracked_child_dirs = (
-            FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(
-                resolved_workspace_root
-            )
-        )
         attached_child_dirs = (
             cls._attached_top_level_dir_names(resolved_workspace_root)
             if include_attached
@@ -172,40 +173,56 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             resolved_workspace_root, resolved_workspace_root
         ):
             roots.append(resolved_workspace_root)
-        if tracked_child_dirs is None and not attached_child_dirs:
+        if configured_members:
             candidate_entries: t.SequenceOf[Path] = sorted(
-                {*workspace_root.iterdir(), *configured_entries},
-                key=lambda item: item.as_posix(),
-            )
-        else:
-            candidate_entries = sorted(
                 {
                     *configured_entries,
                     *(
                         resolved_workspace_root / dir_name
-                        for dir_name in frozenset(tracked_child_dirs or ())
-                        | attached_child_dirs
+                        for dir_name in attached_child_dirs
                     ),
                 },
                 key=lambda item: item.as_posix(),
             )
-        roots.extend([
-            entry.resolve()
-            for entry in candidate_entries
-            if entry.is_dir()
-            and not entry.name.startswith(".")
-            and (
-                entry.name in attached_child_dirs
-                or FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
-                    resolved_workspace_root, entry.resolve()
+            roots.extend([
+                entry.resolve()
+                for entry in candidate_entries
+                if entry.is_dir()
+                and not entry.name.startswith(".")
+                and (
+                    entry.name in attached_child_dirs
+                    or FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
+                        resolved_workspace_root, entry.resolve()
+                    )
                 )
+                and cls._looks_like_project(
+                    entry.resolve(),
+                    effective_scan_dirs=effective_scan_dirs,
+                    configured_member_set=configured_member_set,
+                )
+            ])
+        else:
+            structural_entries: t.SequenceOf[Path] = sorted(
+                {
+                    *workspace_root.iterdir(),
+                    *(
+                        resolved_workspace_root / dir_name
+                        for dir_name in attached_child_dirs
+                    ),
+                },
+                key=lambda item: item.as_posix(),
             )
-            and cls._looks_like_project(
-                entry.resolve(),
-                effective_scan_dirs=effective_scan_dirs,
-                configured_member_set=configured_member_set,
-            )
-        ])
+            roots.extend([
+                entry.resolve()
+                for entry in structural_entries
+                if entry.is_dir()
+                and not entry.name.startswith(".")
+                and cls._looks_like_project(
+                    entry.resolve(),
+                    effective_scan_dirs=effective_scan_dirs,
+                    configured_member_set=configured_member_set,
+                )
+            ])
         roots.extend(external_workspace_roots)
         if not roots and (resolved_workspace_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
             return [resolved_workspace_root]

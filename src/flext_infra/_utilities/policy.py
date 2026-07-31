@@ -11,11 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import r, u
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_cli import u
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesRefactorPolicy:
@@ -98,10 +95,10 @@ class FlextInfraUtilitiesRefactorPolicy:
         if raw is None:
             return None
         try:
-            validated: m.Infra.ClassNestingPolicy = (
+            policy: m.Infra.ClassNestingPolicy = (
                 m.Infra.ClassNestingPolicy.model_validate(raw)
             )
-            return validated
+            return policy
         except c.ValidationError:
             return None
 

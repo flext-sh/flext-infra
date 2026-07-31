@@ -1,4 +1,16 @@
-"""Canonical workspace environment file generation."""
+"""Workspace environment sync owner for the public ``infra`` facade.
+
+This is the single canonical in-process surface for keeping one workspace's
+direnv/mise files (``.envrc``, ``.mise.toml``) aligned with the codegen SSOT.
+It renders the same ``templates/project/base`` Jinja templates that
+``codegen conform`` owns, from the same ``config.Infra.codegen.toolchain``
+spec, so both paths produce identical governed content. Custom (non-generated)
+files are preserved unless forced; custom ``.mise.toml`` documents are merged
+tool-by-tool with the canonical pins and pruned of forbidden tools.
+
+Consumers must reach this through ``from flext_infra import infra`` — the
+module itself stays private service composition.
+"""
 
 from __future__ import annotations
 
@@ -12,102 +24,106 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraWorkspaceEnvironment:
+class FlextInfraWorkspaceEnvironmentMixin:
     """Generate and sync canonical direnv/mise workspace files."""
 
     @classmethod
     def sync_environment_files(
         cls, workspace_root: Path, *, apply: bool = True, force: bool = False
     ) -> p.Result[int]:
-        """Sync generated workspace environment files."""
-        if not cls.has_pyproject(workspace_root):
-            return cls.remove_generated_environment_files(workspace_root, apply=apply)
-        envrc_result = cls.sync_envrc(workspace_root, apply=apply, force=force)
+        """Sync generated workspace environment files; return changed count."""
+        if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
+            return cls._remove_generated_environment_files(workspace_root, apply=apply)
+        envrc_result = cls._sync_envrc(workspace_root, apply=apply, force=force)
         if envrc_result.failure:
             return r[int].fail(envrc_result.error or ".envrc sync failed")
-        mise_result = cls.sync_mise_toml(workspace_root, apply=apply)
+        mise_result = cls._sync_mise_toml(workspace_root, apply=apply, force=force)
         if mise_result.failure:
             return r[int].fail(mise_result.error or ".mise.toml sync failed")
         changed = int(envrc_result.value) + int(mise_result.value)
         return r[int].ok(changed)
 
     @classmethod
-    def sync_envrc(
-        cls, workspace_root: Path, *, apply: bool = True, force: bool = False
+    def _sync_envrc(
+        cls, workspace_root: Path, *, apply: bool, force: bool
     ) -> p.Result[bool]:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
-        target_path = workspace_root / c.Infra.ENVRC_FILENAME
-        rendered = cls._render_environment_template(
-            c.Infra.WORKSPACE_ENVRC_TEMPLATE_NAME
-        )
+        rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
         if rendered.failure:
             return r[bool].fail(rendered.error or ".envrc template render failed")
-        return cls.write_generated_text(
-            target_path, rendered.value, apply=apply, force=force
+        return cls._write_generated_text(
+            workspace_root / c.Infra.ENVRC_FILENAME,
+            rendered.value,
+            apply=apply,
+            force=force,
         )
 
     @classmethod
-    def sync_mise_toml(
-        cls, workspace_root: Path, *, apply: bool = True
+    def _sync_mise_toml(
+        cls, workspace_root: Path, *, apply: bool, force: bool
     ) -> p.Result[bool]:
-        """Render or merge canonical tool selectors into ``.mise.toml``."""
+        """Render or merge canonical tool pins into ``.mise.toml``."""
         target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
-        rendered = cls.render_mise_toml(workspace_root)
+        rendered = cls._render_mise_toml(workspace_root)
         if rendered.failure:
             return r[bool].fail(rendered.error or ".mise.toml render failed")
-        if not target_path.is_file():
-            return cls.write_text_if_different(target_path, rendered.value, apply=apply)
+        if not target_path.is_file() or force:
+            return cls._write_generated_text(
+                target_path, rendered.value, apply=apply, force=force
+            )
         read = u.Cli.files_read_text(target_path)
         if read.failure:
             return r[bool].fail(read.error or ".mise.toml read failed")
         current = read.value
-        if cls.is_generated_environment_text(current):
-            return cls.write_text_if_different(target_path, rendered.value, apply=apply)
-        return cls.merge_custom_mise_toml(
+        if cls._is_generated_environment_text(current):
+            return cls._write_text_if_different(
+                target_path, rendered.value, apply=apply
+            )
+        return cls._merge_custom_mise_toml(
             target_path, current, workspace_root, apply=apply
         )
 
     @classmethod
-    def render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
+    def _render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
         """Render canonical ``.mise.toml`` content for one workspace."""
-        del workspace_root
-        rendered = cls._render_environment_template(
-            c.Infra.WORKSPACE_MISE_TOML_TEMPLATE_NAME
-        )
+        rendered = cls._render_environment_template(c.Infra.MISE_TOML_FILENAME)
         if rendered.failure:
             return r[str].fail(rendered.error or ".mise.toml template render failed")
         doc = u.Cli.toml_parse_text(rendered.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
+        python_version = cls._workspace_python_version(workspace_root)
+        if python_version is not None:
+            tools = u.Cli.toml_ensure_table(doc, "tools")
+            tools["python"] = python_version
         return r[str].ok(u.Cli.toml_dumps(doc))
 
     @staticmethod
-    def _render_environment_template(template_name: str) -> p.Result[str]:
-        """Render one workspace environment template from validated toolchain data."""
-        # mro-sltx (backport 0.20): config-driven Jinja render replaces inline
-        # content constants; template dir resolved package-relative (0.12 pattern).
-        template_path = Path(__file__).resolve().parent / "templates" / template_name
+    def _render_environment_template(destination: str) -> p.Result[str]:
+        """Render one SSOT environment template from the toolchain spec."""
+        template_path = (
+            Path(__file__).resolve().parents[2]
+            / "templates"
+            / config.Infra.codegen.templates.root
+            / "base"
+            / f"{destination}.j2"
+        )
         return u.Cli.template_render(template_path, config.Infra.codegen.toolchain)
 
     @classmethod
-    def merge_custom_mise_toml(
-        cls,
-        target_path: Path,
-        current: str,
-        workspace_root: Path,
-        *,
-        apply: bool = True,
+    def _merge_custom_mise_toml(
+        cls, target_path: Path, current: str, workspace_root: Path, *, apply: bool
     ) -> p.Result[bool]:
-        """Merge canonical tool selectors into a custom ``.mise.toml``."""
+        """Merge canonical tool pins into a custom ``.mise.toml``."""
         doc = u.Cli.toml_read(target_path)
         if doc is None:
             return r[bool].fail(f"{target_path}: invalid TOML")
-        selectors_result = cls.mise_tool_selectors(workspace_root)
-        if selectors_result.failure:
-            return r[bool].fail(selectors_result.error or ".mise.toml selectors failed")
+        tool_pins_result = cls._mise_tool_pins(workspace_root)
+        if tool_pins_result.failure:
+            return r[bool].fail(tool_pins_result.error or ".mise.toml pins failed")
         tools = u.Cli.toml_ensure_table(doc, "tools")
         changed = False
-        for name, value in selectors_result.value.items():
+        for name, value in tool_pins_result.value.items():
             if u.Cli.toml_value(tools, name) == value:
                 continue
             tools[name] = value
@@ -130,9 +146,9 @@ class FlextInfraWorkspaceEnvironment:
         return r[bool].ok(True)
 
     @classmethod
-    def mise_tool_selectors(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
-        """Return canonical mise tool selectors for one workspace."""
-        rendered = cls.render_mise_toml(workspace_root)
+    def _mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
+        """Return canonical mise tool pins for one workspace."""
+        rendered = cls._render_mise_toml(workspace_root)
         if rendered.failure:
             return r[dict[str, str]].fail(
                 rendered.error or "canonical .mise.toml render failed"
@@ -143,38 +159,44 @@ class FlextInfraWorkspaceEnvironment:
         tools = u.Cli.toml_mapping_child(mapping, "tools")
         if tools is None:
             return r[dict[str, str]].fail("canonical .mise.toml template lacks [tools]")
-        selectors: dict[str, str] = {}
+        pins: dict[str, str] = {}
         for name, value in tools.items():
             if not isinstance(value, str):
                 return r[dict[str, str]].fail(
                     f"canonical .mise.toml [tools].{name} must be a string"
                 )
-            selectors[name] = value
-        return r[dict[str, str]].ok(selectors)
+            pins[name] = value
+        return r[dict[str, str]].ok(pins)
 
     @staticmethod
-    def has_pyproject(workspace_root: Path) -> bool:
-        """Return whether the workspace declares Python project metadata."""
-        pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
-        return (workspace_root / pyproject_filename).is_file()
+    def _workspace_python_version(workspace_root: Path) -> str | None:
+        """Return the Python minor version declared by ``pyproject.toml``."""
+        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        if not pyproject.is_file():
+            return None
+        read = u.Cli.files_read_text(pyproject)
+        if read.failure:
+            return None
+        match = c.Infra.REQUIRES_PYTHON_RE.search(read.value)
+        return f"{match.group(1)}.{match.group(2)}" if match else None
 
     @classmethod
-    def remove_generated_environment_files(
-        cls, workspace_root: Path, *, apply: bool = True
+    def _remove_generated_environment_files(
+        cls, workspace_root: Path, *, apply: bool
     ) -> p.Result[int]:
         """Remove generated environment files from non-Python workspaces."""
         changed = 0
         for filename in c.Infra.WORKSPACE_ENV_FILES:
             target_path = workspace_root / filename
-            result = cls.remove_generated_environment_file(target_path, apply=apply)
+            result = cls._remove_generated_environment_file(target_path, apply=apply)
             if result.failure:
                 return r[int].fail(result.error or f"{filename} removal failed")
             changed += int(result.value)
         return r[int].ok(changed)
 
     @classmethod
-    def remove_generated_environment_file(
-        cls, target_path: Path, *, apply: bool = True
+    def _remove_generated_environment_file(
+        cls, target_path: Path, *, apply: bool
     ) -> p.Result[bool]:
         """Remove one generated environment file without touching custom files."""
         if not target_path.exists():
@@ -182,7 +204,7 @@ class FlextInfraWorkspaceEnvironment:
         read = u.Cli.files_read_text(target_path)
         if read.failure:
             return r[bool].fail(read.error or f"{target_path.name} read failed")
-        if not cls.is_generated_environment_text(read.value):
+        if not cls._is_generated_environment_text(read.value):
             return r[bool].ok(False)
         if not apply:
             return r[bool].ok(True)
@@ -194,8 +216,8 @@ class FlextInfraWorkspaceEnvironment:
         return r[bool].ok(True)
 
     @classmethod
-    def write_generated_text(
-        cls, target_path: Path, content: str, *, apply: bool = True, force: bool = False
+    def _write_generated_text(
+        cls, target_path: Path, content: str, *, apply: bool, force: bool
     ) -> p.Result[bool]:
         """Write generated content without clobbering custom files."""
         if target_path.exists():
@@ -205,13 +227,13 @@ class FlextInfraWorkspaceEnvironment:
             existing = read.value
             if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
                 return r[bool].ok(False)
-            if not force and not cls.is_generated_environment_text(existing):
+            if not force and not cls._is_generated_environment_text(existing):
                 return r[bool].ok(False)
-        return cls.write_text_if_different(target_path, content, apply=apply)
+        return cls._write_text_if_different(target_path, content, apply=apply)
 
     @staticmethod
-    def write_text_if_different(
-        target_path: Path, content: str, *, apply: bool = True
+    def _write_text_if_different(
+        target_path: Path, content: str, *, apply: bool
     ) -> p.Result[bool]:
         """Write text when content differs."""
         if target_path.is_file():
@@ -225,9 +247,11 @@ class FlextInfraWorkspaceEnvironment:
         return u.Cli.atomic_write_text_file(target_path, content)
 
     @staticmethod
-    def is_generated_environment_text(content: str) -> bool:
-        """Return True when content carries the canonical generated marker."""
-        return c.Infra.WORKSPACE_ENV_GENERATED_MARKER in content
+    def _is_generated_environment_text(content: str) -> bool:
+        """Return True when content carries a canonical generated marker."""
+        return any(
+            marker in content for marker in c.Infra.WORKSPACE_ENV_GENERATED_MARKERS
+        )
 
 
-__all__: list[str] = ["FlextInfraWorkspaceEnvironment"]
+__all__: list[str] = ["FlextInfraWorkspaceEnvironmentMixin"]

@@ -23,9 +23,19 @@ Infra:
           - .venv
           # Historical evidence is never a live lint surface.
           - .archive
+          - .archive/**
+          - '**/.archive/**'
           - __pycache__
           - "**/__pyrefly_virtual__/**"
           - archive
+          - backup
+          - build
+          - dist
+          - htmlcov
+          - temp-backup
+          - typings
+          - vendor
+          - venv
           - backup
           - build
           - dist
@@ -135,7 +145,10 @@ Infra:
             # spelling rather than an invalid module name. Scoped to the
             # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
             # justified per rule, never a blanket mask).
-            "scripts/cmd/**/*.py": [invalid-module-name]
+            "scripts/cmd/**/*.py": [invalid-module-name, shebang-not-executable]
+            # Examples are executable documentation loaded by path, not
+            # importable modules, so module-name and shebang rules do not apply.
+            "**/examples/**/*.py": [invalid-module-name, shebang-not-executable]
             # Test suites: pytest idioms that are correct-by-design
             # are exempted GLOBALLY at the codegen SSOT (operator P0, per-rule
             # justified per UNIVERSAL_CORE r19 — never a blanket mask):
@@ -568,7 +581,6 @@ Infra:
         - docker.py
         - domains.py
         - exceptions.py
-        - environment.py
         - files.py
         - handlers.py
         - helpers.py
