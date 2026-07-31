@@ -275,7 +275,11 @@ _fmt_impl:
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --no-cache --deny-config-warnings --color never $$md_config; \
+		if [ "$(CHECK_ONLY)" = "1" ]; then \
+			echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" fmt --check --no-cache --deny-config-warnings --color never $$md_config; \
+		else \
+			echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" fmt --no-cache --deny-config-warnings --color never $$md_config; \
+		fi; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 

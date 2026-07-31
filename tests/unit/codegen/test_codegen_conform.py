@@ -287,7 +287,9 @@ class TestCodegenConform:
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
         root_repository = test_u.Tests.repository_ref("flext")
-        member = test_u.Tests.repository_ref("flext-core")
+        member = test_u.Tests.repository_ref(
+            "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="flext",
@@ -441,8 +443,17 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
-        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
-        tm.that(rendered.infra_repository, eq=infra_repository)
+        # A standalone consumer declares no flext-infra member, so the
+        # reference is derived from the provider contract. The generated
+        # Makefile consumes exactly the distribution and the URL (the
+        # bootstrap requirement), which is what this asserts; the topology
+        # role of a derived reference is not part of that contract.
+        tm.that(rendered.infra_repository.distribution, eq=config.Infra.name)
+        tm.that(
+            rendered.infra_repository.url,
+            eq=f"{config.Infra.codegen.providers[0].base_url.rstrip('/')}"
+            f"/{config.Infra.name}.git",
+        )
         tm.that(rendered.infra_source_root_rel, eq=None)
 
     def test_make_context_resolves_attached_infra_member_from_workspace(

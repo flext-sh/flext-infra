@@ -13,7 +13,9 @@ from tests import u as test_u
 
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
-    member = test_u.Tests.repository_ref("flext-core")
+    member = test_u.Tests.repository_ref(
+        "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+    )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name="flext",
