@@ -59,7 +59,7 @@ class FlextInfraOrchestratorService(
             return r[bool].fail("no projects discovered")
 
         workspace_root = self.root
-        prepare_result = self._prepare_projects(projects, workspace_root=workspace_root)
+        prepare_result = self._prepare_projects(projects)
         if prepare_result.failure:
             return prepare_result
 

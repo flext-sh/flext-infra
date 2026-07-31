@@ -1,10 +1,10 @@
+# flext_infra.base
+
 <!-- TOC START -->
 - No sections found
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext_infra.base
 
 ::: flext_infra.base
     options:

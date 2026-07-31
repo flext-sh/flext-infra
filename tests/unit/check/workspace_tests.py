@@ -9,9 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
-from flext_infra import main
+from flext_infra import main, r
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra import r
 from flext_tests import tm
 from tests import u as test_u
 

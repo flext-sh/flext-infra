@@ -135,7 +135,7 @@ class FlextInfraPyprojectModernizerPayloadMixin:
             table[key] = item_value
 
     def _reorder_document_inplace(
-        self, doc: t.Cli.TomlDocument, *, preferred_first: t.StrSequence
+        self, doc: t.Cli.TomlDocument, *, preferred_first: t.StrSequence | None = None
     ) -> None:
         """Apply deterministic ordering for top-level groups and nested tables."""
         root_keys = [str(key) for key in doc]

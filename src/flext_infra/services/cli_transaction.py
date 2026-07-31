@@ -209,7 +209,11 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         if (
             report.breakage_detected
             or check_failed
-            or (apply_requested and not report.applied)
+            or (
+                apply_requested
+                and not report.applied
+                and any(repository.patch for repository in report.repositories)
+            )
         ):
             return 1
         return 0

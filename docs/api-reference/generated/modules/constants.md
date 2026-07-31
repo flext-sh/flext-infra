@@ -1,10 +1,10 @@
+# flext_infra.constants
+
 <!-- TOC START -->
 - No sections found
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext_infra.constants
 
 ::: flext_infra.constants
     options:

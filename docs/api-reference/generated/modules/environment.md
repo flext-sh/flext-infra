@@ -1,10 +1,10 @@
+# flext_infra.environment
+
 <!-- TOC START -->
 - No sections found
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext_infra.environment
 
 ::: flext_infra.environment
     options:

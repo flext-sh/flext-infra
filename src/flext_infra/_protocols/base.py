@@ -79,6 +79,25 @@ class FlextInfraProtocolsBase(Protocol):
     # NOTE (multi-agent, mro-wkii.17.16 / agent: codex): these declaration-only
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
+    class MiseToolSpec(Protocol):
+        """One exact mise backend selector and immutable version."""
+
+        @property
+        def selector(self) -> str:
+            """Canonical mise backend selector."""
+            ...
+
+        @property
+        def version(self) -> str:
+            """Exact tool version installed by mise."""
+            ...
+
+        @property
+        def reported_version(self) -> str:
+            """Version string the pinned binary self-reports."""
+            ...
+
+    @runtime_checkable
     class RepositoryRef(Protocol):
         """Repository fields consumed by codegen path and profile selection."""
 
@@ -98,18 +117,23 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def branch(self) -> str:
-            """Canonical Git branch."""
-            ...
-
-        @property
         def path(self) -> Path:
             """Repository path relative to its workspace root."""
             ...
 
         @property
-        def profile(self) -> str | None:
-            """Generated Make profile when the repository is active."""
+        def role(self) -> str:
+            """Repository role in the declared topology."""
+            ...
+
+        @property
+        def state(self) -> str:
+            """Repository lifecycle state."""
+            ...
+
+        @property
+        def provider(self) -> str:
+            """Provider catalog key owning Git policy for this repository."""
             ...
 
         @property
@@ -152,8 +176,97 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def content_only(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
-            """Declared content-only repositories."""
+        def external_dependency_paths(self) -> t.SequenceOf[Path]:
+            """Observed external or fork Git submodule paths."""
+            ...
+
+    @runtime_checkable
+    class ProviderSpec(Protocol):
+        """Provider-owned repository and baseline contract."""
+
+        @property
+        def name(self) -> str:
+            """Provider key."""
+            ...
+
+        @property
+        def organization(self) -> str:
+            """Canonical GitHub organization."""
+            ...
+
+        @property
+        def base_url(self) -> str:
+            """Canonical provider HTTPS base URL."""
+            ...
+
+        @property
+        def branch(self) -> str:
+            """Provider-owned integration baseline."""
+            ...
+
+    @runtime_checkable
+    class ResultOperation[TValue](Protocol):
+        """One typed operation executed while serialization locks are held."""
+
+        def __call__(self) -> p.Result[TValue]:
+            """Run the operation and return its typed result."""
+            ...
+
+    @runtime_checkable
+    class LockTimeoutFailure[TValue](Protocol):
+        """Typed timeout mapping for the public serialization lock facade."""
+
+        def __call__(
+            self, lock_path: Path, timeout_seconds: int, /
+        ) -> p.Result[TValue]:
+            """Map one lock timeout to the caller's result domain."""
+            ...
+
+    @runtime_checkable
+    class LockAcquisitionFailure[TValue](Protocol):
+        """Typed acquisition-error mapping for the serialization lock facade."""
+
+        def __call__(self, detail: str, /) -> p.Result[TValue]:
+            """Map one lock acquisition failure to the caller's result domain."""
+            ...
+
+    @runtime_checkable
+    class RepositoryTopology(Protocol):
+        """Atomic repository-local runtime topology inspection."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Current Git repository root."""
+            ...
+
+        @property
+        def mode(self) -> c.Infra.WorkspaceMode:
+            """Effective workspace execution mode."""
+            ...
+
+        @property
+        def attached(self) -> bool:
+            """Whether this checkout is a parent-owned gitlink."""
+            ...
+
+        @property
+        def managed_gitlinks(self) -> t.StrSequence:
+            """Manifest-owned mutable repository gitlinks."""
+            ...
+
+        @property
+        def external_gitlinks(self) -> t.StrSequence:
+            """Manifest-declared read-only content gitlinks."""
+            ...
+
+        @property
+        def beads_enabled(self) -> bool:
+            """Whether canonical Beads provisioning is enabled."""
+            ...
+
+        @property
+        def repository(self) -> FlextInfraProtocolsBase.RepositoryRef | None:
+            """Effective repository identity when a declaration was supplied."""
             ...
 
     @runtime_checkable
@@ -201,23 +314,78 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class ToolchainSpec(Protocol):
-        """Toolchain fields consumed by pyproject conformance."""
+        """Toolchain fields consumed by pyproject conformance and templates."""
 
         # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
         # complete with the validated config model used by codegen consumers.
-        @property
-        def python_required_version(self) -> str:
-            """PEP 440 requirement for the compatible Python line."""
-            ...
-
         @property
         def python_version(self) -> str:
             """Compatible Python major.minor line."""
             ...
 
         @property
+        def python_selector(self) -> str:
+            """Mise/pyenv-style selector for the Python minor line."""
+            ...
+
+        @property
+        def python_required_version(self) -> str:
+            """PEP 440 requirement for the compatible Python line."""
+            ...
+
+        @property
         def uv_link_mode(self) -> str:
             """Portable uv installation link mode."""
+            ...
+
+        @property
+        def kubectl_version(self) -> str:
+            """Exact kubectl version."""
+            ...
+
+        @property
+        def helm_version(self) -> str:
+            """Exact Helm version."""
+            ...
+
+        @property
+        def kind_version(self) -> str:
+            """Exact kind version."""
+            ...
+
+        @property
+        def environment_path_prepends(self) -> t.SequenceOf[str]:
+            """Extra directories prepended to PATH by shell activation."""
+            ...
+
+        @property
+        def taplo_version(self) -> str:
+            """Exact Taplo formatter version."""
+            ...
+
+        @property
+        def ast_grep_version(self) -> str:
+            """Exact ast-grep analyzer version."""
+            ...
+
+        @property
+        def gitleaks_version(self) -> str:
+            """Exact Gitleaks scanner version."""
+            ...
+
+        @property
+        def tokei_version(self) -> str:
+            """Exact Tokei analyzer version."""
+            ...
+
+        @property
+        def mise_version(self) -> str:
+            """Exact mise binary version."""
+            ...
+
+        @property
+        def beads(self) -> FlextInfraProtocolsBase.MiseToolSpec:
+            """Official Beads CLI installed through mise."""
             ...
 
     @runtime_checkable
@@ -270,22 +438,6 @@ class FlextInfraProtocolsBase(Protocol):
             self, project: str, gates: t.StrSequence
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
             """Run quality gates for one project."""
-            ...
-
-    @runtime_checkable
-    class Syncer(Protocol):
-        """Contract for synchronization services."""
-
-        def sync(
-            self,
-            _source: str | None = None,
-            _target: str | None = None,
-            *,
-            workspace_root: Path | None = None,
-            settings: m.Infra.BaseMkConfig | None = None,
-            canonical_root: Path | None = None,
-        ) -> p.Result[m.Infra.SyncResult]:
-            """Synchronize generated workspace or project artifacts."""
             ...
 
     @runtime_checkable

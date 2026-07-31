@@ -6,10 +6,10 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,9 +30,9 @@ class FlextInfraUtilitiesDocsContract:
             insert_at = 1
             while insert_at < len(lines) and (not lines[insert_at].strip()):
                 insert_at += 1
-            lines.insert(insert_at, "")
-            lines.insert(insert_at + 1, toc)
-            lines.insert(insert_at + 2, "")
+            lines[1:insert_at] = [""]
+            lines.insert(2, toc)
+            lines.insert(3, "")
             updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
             return (updated, 1)
         return (toc + "\n\n" + content, 1)

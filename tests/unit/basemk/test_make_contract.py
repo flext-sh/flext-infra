@@ -572,6 +572,20 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(output, has="invalid pytest diagnostic counts contract")
         tm.that(marker.exists(), eq=False)
 
+    def test_make_test_watchdog_terminates_running_pytest(self, tmp_path: Path) -> None:
+        _write_project(tmp_path)
+        _write_executable(
+            tmp_path / ".venv" / "bin" / "python",
+            "#!/usr/bin/env bash\n"
+            'if [[ "$*" == *"-m pytest"* ]]; then sleep 5; fi\n'
+            "exit 0\n",
+        )
+
+        result = _run_make(tmp_path, "test", "PYTEST_PROCESS_TIMEOUT_SECONDS=1")
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(result.stdout + result.stderr, has="Error 124")
+
     def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
         """Verify changed-only discovery includes live tracked and untracked files."""
         rendered = _render_base_mk()
