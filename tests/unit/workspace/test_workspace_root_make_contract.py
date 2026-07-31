@@ -27,11 +27,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     root_repository = test_u.Tests.repository_ref("fixture-workspace")
     members = tuple(
         test_u.Tests.repository_ref(
-            name,
-            path=Path(name),
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            editable=True,
+            name, path=Path(name), role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
         )
         for name in ("fixture-member-one", "fixture-member-two")
     )

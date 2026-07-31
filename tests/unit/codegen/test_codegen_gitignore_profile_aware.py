@@ -55,8 +55,6 @@ class TestsCodegenGitignoreProfileAware:
             "probe-member",
             path=Path("probe-member"),
             role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            editable=True,
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,

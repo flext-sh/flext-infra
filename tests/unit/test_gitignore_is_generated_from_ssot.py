@@ -77,8 +77,6 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
                     Path(item).name,
                     path=Path(item),
                     role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-                    checkout=c.Infra.CheckoutKind.SUBMODULE,
-                    editable=True,
                 )
                 for item in members
             ),

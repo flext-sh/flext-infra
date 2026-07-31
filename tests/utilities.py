@@ -329,10 +329,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def repository_ref(
             name: str,
             *,
-            path: Path | None = None,
             role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.ROOT,
-            editable: bool = False,
+            path: Path | None = None,
         ) -> m.Infra.RepositoryRef:
             """Build a repository reference from the provider contract.
 
@@ -340,19 +338,30 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             repository declares the one it means instead of borrowing a row
             from a registry. Only the provider contract (generic policy) is
             read from config, which keeps the fixture valid for any provider.
+
+            The role decides the rest: a workspace root is its own checkout at
+            ``.`` and is never editable, while a member is a submodule at its
+            own directory and is overlaid editable. Letting callers set those
+            independently is how fixtures ended up declaring members at ``.``,
+            which is not a valid submodule pathspec.
             """
             provider = config.Infra.codegen.providers[0]
+            is_member = role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
             return m.Infra.RepositoryRef(
                 name=name,
                 distribution=name,
                 url=f"{provider.base_url.rstrip('/')}/{name}.git",
-                path=path if path is not None else Path(),
+                path=path if path is not None else Path(name) if is_member else Path(),
                 role=role,
                 provider=provider.name,
-                checkout=checkout,
+                checkout=(
+                    c.Infra.CheckoutKind.SUBMODULE
+                    if is_member
+                    else c.Infra.CheckoutKind.ROOT
+                ),
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=True,
-                editable=editable,
+                editable=is_member,
                 read_only=False,
             )
 
