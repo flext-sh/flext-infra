@@ -501,10 +501,7 @@ class TestCodegenConform:
             )
         )
 
-        tm.that(
-            rendered.infra_source_root_rel,
-            eq=infra_repository.path.as_posix(),
-        )
+        tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path

@@ -305,15 +305,13 @@ class TestsCodegenCatalogExtensions:
         # disabled by default in current releases.
         bare_repo = tmp_path.parent / "acme-charts-bare.git"
         tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "clone",
-                    "--bare",
-                    member_root.as_posix(),
-                    bare_repo.as_posix(),
-                ]
-            )
+            u.Cli.run_checked([
+                "git",
+                "clone",
+                "--bare",
+                member_root.as_posix(),
+                bare_repo.as_posix(),
+            ])
         )
         tm.ok(u.Cli.run_checked(["rm", "-rf", member_root.as_posix()]))
         tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=tmp_path))
@@ -385,8 +383,7 @@ class TestsCodegenCatalogExtensions:
         manifest_path.parent.mkdir(parents=True)
         tm.ok(
             u.Cli.yaml_dump(
-                manifest_path,
-                workspace.model_dump(mode="json", exclude_none=True),
+                manifest_path, workspace.model_dump(mode="json", exclude_none=True)
             )
         )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
