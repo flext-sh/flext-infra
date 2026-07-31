@@ -186,6 +186,31 @@ class TestsWorkspaceRootMakeContract:
         tm.that(make_entries, len=1)
         tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
+    def test_generated_setup_runs_its_lifecycle_hooks(self, tmp_path: Path) -> None:
+        """``setup`` must fire pre-/post-setup like every other public verb.
+
+        The generated ``setup`` short-circuited straight to
+        ``_builtin_setup_environment``, bypassing ``_dispatch`` — so a project
+        declaring ``post-setup`` in ``custom.mk`` (the only sanctioned extension
+        surface) had that hook silently never execute.
+        """
+        workspace_root, _project_names = _write_workspace(tmp_path)
+        (workspace_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            ".PHONY: post-setup\npost-setup:\n\t@echo POST_SETUP_HOOK_RAN\n",
+            encoding="utf-8",
+        )
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "setup"],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="post-setup", msg=output)
+
     def test_generated_make_selects_manifest_projects_and_forwards_gates(
         self, tmp_path: Path
     ) -> None:

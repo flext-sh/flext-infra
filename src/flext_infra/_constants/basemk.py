@@ -12,6 +12,11 @@ class FlextInfraConstantsBasemk:
     """Basemk infrastructure constants."""
 
     MAKEFILE_BOOTSTRAP_TEMPLATE: Final[str] = "makefile_bootstrap.mk.j2"
+    # Git refnames legitimately allow characters the shell parses ($ ; ` space),
+    # so the generated bootstrap must validate SETUP_BRANCH against a strict
+    # allowlist before any recipe interpolates it into a command.
+    SETUP_BRANCH_GUARD: Final[str] = "_setup_require_safe_branch"
+    SETUP_BRANCH_PATTERN: Final[str] = "*[!a-zA-Z0-9._/-]*"
     TEMPLATE_ORDER: Final[t.StrSequence] = (
         "base_header.mk.j2",
         "base_detection.mk.j2",
