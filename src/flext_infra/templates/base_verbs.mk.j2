@@ -307,9 +307,7 @@ _docs_impl:
 {%- endfor %}
 			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs.actions | join('|') }})"; exit 2 ;; \
 		esac; \
-		cmd="$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }}"; \
-		if [ -n "$$extra" ]; then cmd="$$cmd $$extra"; fi; \
-		eval $$cmd || exit $$?; \
+		$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }} $$extra || exit $$?; \
 	done
 
 # kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs

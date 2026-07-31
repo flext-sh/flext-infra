@@ -128,6 +128,21 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that([index for index in continued if not lines[index + 1].strip()], eq=[])
 
     @pytest.mark.integration
+    def test_basemk_invokes_infra_entrypoints_without_eval(self) -> None:
+        """Infra entrypoints run directly, never rebuilt as an eval string.
+
+        The entrypoint macros carry an executable guard, so they contain ``;``
+        and ``||``. Captured into a shell variable, only the fragment before
+        the first ``;`` survives and the guard leaks into the recipe:
+        ``FLEXT_INFRA_PYTHON: command not found`` followed by
+        ``eval: --: invalid option``.
+        """
+        generated = FlextInfraBaseMkGenerator().execute()
+
+        tm.ok(generated)
+        tm.that("eval $$cmd" in generated.value, eq=False)
+
+    @pytest.mark.integration
     def test_output_singleton_has_expected_methods(self) -> None:
         """Test that reporting/output methods are exposed through u.Infra.
 
