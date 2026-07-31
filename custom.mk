@@ -5,8 +5,7 @@
 # FLEXT verbs in base.mk own those. Add project-specific actions as
 # `_custom_<verb>_<what>` (e.g. run WHAT=<what>) or wrap a verb with a hook.
 
-.PHONY: _custom_basemk_generate _custom_run_cprofile-report _custom_run_cprofile-test \
-        _custom_build_layout _custom_check_layout
+.PHONY: _custom_basemk_generate _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
 _custom_basemk_generate:
 	@set -eu; \
 	output="$(strip $(OUTPUT))"; \
