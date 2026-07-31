@@ -477,15 +477,25 @@ class FlextInfraWorkspaceDetector(
             ),
             c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
         }[mode_result.value]
-        # Precedence law: an attached member can never be promoted into Beads
-        # ownership by a repository policy overlay. The workspace root owns the
-        # ledger; only an independent standalone keeps its overlay opt-in.
+        # Ephemeral transaction worktrees share storage with the primary checkout.
+        # Detect them from Git's canonical topology rather than from a test-only
+        # environment flag, so the same code path works for real worktrees and for
+        # unit fixtures that simulate CLI transaction scope.
+        primary_root_result = u.Infra.git_primary_worktree_root(resolved_root)
+        if primary_root_result.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                primary_root_result.error or "unable to resolve primary worktree"
+            )
+        is_transaction_worktree = primary_root_result.value != resolved_root
+        # Beads participation: workspace root owns; independent standalone opts in;
+        # ephemeral transaction worktrees route to the principal ledger; members and
+        # attached standalones do not own tracker state.
         beads_enabled = (
-            True
-            if make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-            else overlay.beads_enabled
-            if make_profile is c.Infra.MakeProfile.STANDALONE
-            else False
+            is_transaction_worktree
+            or make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            or (
+                make_profile is c.Infra.MakeProfile.STANDALONE and overlay.beads_enabled
+            )
         )
         # A marker-attached standalone resolves to itself (no Git superproject
         # link); a manifest member always resolves to its governing root.
@@ -493,6 +503,7 @@ class FlextInfraWorkspaceDetector(
             mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
             and resolved_root == governing_root
         )
+        routing_only = is_transaction_worktree or attached_standalone
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
@@ -500,6 +511,7 @@ class FlextInfraWorkspaceDetector(
                 make_profile=make_profile,
                 beads_enabled=beads_enabled,
                 attached_standalone=attached_standalone,
+                routing_only=routing_only,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=provider.branch,
                 ci_enabled=overlay.ci_enabled,

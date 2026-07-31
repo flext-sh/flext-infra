@@ -925,6 +925,14 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = False
+        routing_only: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Routing-only Beads config; never initializes local tracker state"
+                )
+            ),
+        ] = False
         canonical_project_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical PEP 621 project name and Beads namespace"),

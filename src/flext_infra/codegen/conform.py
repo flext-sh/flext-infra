@@ -288,6 +288,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 beads_enabled=(
                     current_make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 ),
+                routing_only=False,
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=provider.branch,
                 ci_enabled=True,
@@ -779,7 +780,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if not contract.delegates:
                 continue
             if entry.destination == c.Infra.BEADS_CONFIG_RELPATH and not (
-                target.beads_enabled or target.attached_standalone
+                target.beads_enabled or target.routing_only
             ):
                 continue
             # mro-i6nq.10: One formatted path governs validation and planning.
@@ -1333,7 +1334,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     issue_prefix=ledger_identity,
                     database=ledger_identity,
                     server=server,
-                    routing=target.attached_standalone,
+                    routing=target.routing_only,
                 )
             )
         if destination in {
@@ -1942,7 +1943,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _verify_beads_plan(
         cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
     ) -> p.Result[bool]:
-        """Validate the principal ledger route and fail closed on disagreement."""
+        """Validate the principal ledger route and fail closed on disagreement.
+
+        Worktrees that route to a principal ledger never own the tracker
+        lifecycle: verification is skipped there and re-run at the real tree on
+        apply.
+        """
+        if plan.ledger_root is not None and plan.ledger_root != plan.repository_root:
+            return r[bool].ok(True)
         if not plan.enabled:
             beads_dir = plan.repository_root / ".beads"
             if beads_dir.exists():
