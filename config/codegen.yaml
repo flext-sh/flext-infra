@@ -81,11 +81,11 @@ Infra:
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
       # External consumer organization: standalone repositories governed by
-      # conform through their own config/workspace.yaml (main-based line).
+      # conform through their own config/workspace.yaml (develop-based integration line per cosmos ADR-134).
       - name: datacosmos-br
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
-        branch: main
+        branch: develop
     branch_policy:
       technical_branch_patterns:
         - __dolt_remote_info__
