@@ -563,6 +563,42 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(target.beads_enabled, eq=True)
 
+    def test_conform_target_member_is_not_attached_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep a manifest-declared member outside the routing-config class."""
+        member_root = self._attached_member(tmp_path)
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.attached_standalone, eq=False)
+        tm.that(target.beads_enabled, eq=False)
+
+    def test_conform_target_marker_repo_is_attached_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Classify a marker-attached standalone into the routing-config class."""
+        project_root = tmp_path / "attached-standalone"
+        self._initialize_repository(project_root)
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "attached-standalone"\nversion = "0.1.0"\n'
+            "\n[tool.flext.workspace]\nattached = true\n",
+            encoding="utf-8",
+        )
+        self._write_manifest(
+            project_root,
+            self._repository(
+                name="attached-standalone",
+                path=".",
+                role=c.Infra.RepositoryRole.STANDALONE,
+            ),
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.attached_standalone, eq=True)
+        tm.that(target.beads_enabled, eq=False)
+
     def test_persistent_state_artifacts_follow_make_profile(self) -> None:
         """Own persistent-state directories only at the workspace-root profile."""
         detector = FlextInfraWorkspaceDetector()

@@ -35,6 +35,17 @@ Infra:
         reported_version: "1.1.0"
         checksum: "452efe298061b448e87f6b09d56a1733a9e23134e103793e742ff90737f66df7"
         expected_schema: 61
+        # Machine-wide shared Dolt server facts: every FLEXT ledger on this
+        # host routes through this server; a repository-local server is never
+        # used. Rendered into .beads/config.yaml by codegen for ledger owners
+        # (workspace-root) and attached standalones (routing only).
+        server:
+          mode: server
+          shared_server: true
+          host: 127.0.0.1
+          port: 3308
+          user: root
+          auto_commit: "on"
 
     github_actions:
       checkout:
@@ -565,6 +576,9 @@ Infra:
       - path: .github/workflows/ci.yml
         owner: codegen
         policy: full
+      - path: .beads/config.yaml
+        owner: codegen
+        policy: full
       - path: .env.example
         owner: codegen
         policy: create-only
@@ -1049,6 +1063,14 @@ Infra:
         - source: base/.mise.toml.j2
           destination: .mise.toml
           profiles: [workspace-root, standalone]
+          delegate: render
+          overwrite: false
+        # Ledger routing config: rendered only for the workspace root (owned
+        # ledger) and marker-attached standalones (routing-only); the engine
+        # planner skips every other profile/class (mro-z89e governance).
+        - source: base/beads-config.yaml.j2
+          destination: .beads/config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.envrc.j2

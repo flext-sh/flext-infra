@@ -487,12 +487,19 @@ class FlextInfraWorkspaceDetector(
             if make_profile is c.Infra.MakeProfile.STANDALONE
             else False
         )
+        # A marker-attached standalone resolves to itself (no Git superproject
+        # link); a manifest member always resolves to its governing root.
+        attached_standalone = (
+            mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
+            and resolved_root == governing_root
+        )
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
                 root=resolved_root,
                 make_profile=make_profile,
                 beads_enabled=beads_enabled,
+                attached_standalone=attached_standalone,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=provider.branch,
                 ci_enabled=overlay.ci_enabled,

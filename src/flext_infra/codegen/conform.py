@@ -400,12 +400,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
-                    canonical_prefix=(
-                        workspace.ledger_id
-                        or self.declared_beads_prefix(
-                            repository_root, fallback=target.canonical_project_name
-                        )
-                    ),
+                    canonical_prefix=self._beads_ledger_identity(workspace, target),
                     expected_version=config_spec.toolchain.beads.gate_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
@@ -783,6 +778,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if not contract.delegates:
                 continue
+            if entry.destination == c.Infra.BEADS_CONFIG_RELPATH and not (
+                target.beads_enabled or target.attached_standalone
+            ):
+                continue
             # mro-i6nq.10: One formatted path governs validation and planning.
             destination = entry.destination.format(
                 package_name=context.package_name, ns=context.ns
@@ -1116,6 +1115,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             entry = entries[0]
             if profile not in entry.profiles:
                 continue
+            if managed.path.as_posix() == c.Infra.BEADS_CONFIG_RELPATH and not (
+                target.beads_enabled or target.attached_standalone
+            ):
+                continue
             path = root / entry.destination
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
@@ -1316,6 +1319,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
+        if destination == c.Infra.BEADS_CONFIG_RELPATH:
+            server = codegen.toolchain.beads.server
+            if server is None:
+                return r[p.Model].fail(
+                    "Beads ledger server is not declared in the toolchain SSOT"
+                )
+            ledger_identity = FlextInfraCodegenConform._beads_ledger_identity(
+                workspace, target
+            )
+            return r[p.Model].ok(
+                m.Infra.BeadsConfigRenderSpec(
+                    issue_prefix=ledger_identity,
+                    database=ledger_identity,
+                    server=server,
+                    routing=target.attached_standalone,
+                )
+            )
         if destination in {
             ".github/workflows/ci.yml",
             ".github/workflows/ci-matrix.yml",
@@ -1849,6 +1869,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     else ""
                 ),
             )
+        )
+
+    @classmethod
+    def _beads_ledger_identity(
+        cls, workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
+    ) -> str:
+        """Derive the ledger namespace from the declared SSOT identity."""
+        return workspace.ledger_id or cls.declared_beads_prefix(
+            target.root, fallback=target.canonical_project_name
         )
 
     @staticmethod
