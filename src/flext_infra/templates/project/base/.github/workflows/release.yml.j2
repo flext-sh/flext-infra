@@ -187,7 +187,9 @@ jobs:
           if gh pr view "$BRANCH" >/dev/null 2>&1; then
             PR_URL="$(gh pr view "$BRANCH" --json url --jq .url)"
           else
-            PR_URL="$(gh pr create --base main --head "$BRANCH" --title "release: ${RELEASE_TAG}" --body "Automated release merge for ${RELEASE_TAG}.\n\n- release: ${RELEASE_TAG}\n- version: ${RELEASE_VERSION}\n- status: alpha, non-production")"
+            PR_BODY="$(printf 'Automated release merge for %s.\n\n- release: %s\n- version: %s\n- status: alpha, non-production\n' \
+              "$RELEASE_TAG" "$RELEASE_TAG" "$RELEASE_VERSION")"
+            PR_URL="$(gh pr create --base main --head "$BRANCH" --title "release: ${RELEASE_TAG}" --body "$PR_BODY")"
           fi
 
           echo "release PR ready for operator review: $PR_URL"
