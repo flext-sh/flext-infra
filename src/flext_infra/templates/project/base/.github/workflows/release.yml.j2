@@ -347,7 +347,7 @@ jobs:
             fi
             ARTIFACTS+=("$RESOLVED_PATH")
           done
-          {% raw %}if [ "${#ARTIFACTS[@]}" -ne 2 ]; then{% endraw %}
+          if [ "${#ARTIFACTS[@]}" -ne 2 ]; then
             echo "expected exactly one verified flext-core wheel and one sdist" >&2
             exit 1
           fi

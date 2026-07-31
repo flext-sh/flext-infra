@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import tomlkit
-from tomlkit import TOMLDocument
 
 from flext_infra import config
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
@@ -11,7 +9,7 @@ from flext_tests import tm
 from tests import t, u
 
 
-def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
+def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
         u.normalize_to_json_value(doc.unwrap())
     )
@@ -32,7 +30,7 @@ class TestsFlextInfraDepsModernizerPytest:
     def test_tooling_policy_enforces_configured_case_timeout(self) -> None:
         policy = config.Infra.tooling.tools.pytest
         phase = FlextInfraEnsurePytestConfigPhase(config.Infra.tooling)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc)
 
@@ -47,7 +45,7 @@ class TestsFlextInfraDepsModernizerPytest:
     def test_apply_sets_expected_ini_options(self) -> None:
         """Populate every canonical pytest option in an empty document."""
         tool_config = config.Infra.tooling
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
@@ -75,7 +73,7 @@ class TestsFlextInfraDepsModernizerPytest:
     def test_apply_replaces_policy_and_merges_extension_entries(self) -> None:
         """Replace policy flags while retaining declared discovery extensions."""
         tool_config = config.Infra.tooling
-        doc = tomlkit.parse(
+        doc = u.Tests.toml_doc(
             """
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -117,7 +115,7 @@ markers = ["custom: custom marker"]
         """Leave a document unchanged after the canonical policy is present."""
         tool_config = config.Infra.tooling
         phase = FlextInfraEnsurePytestConfigPhase(tool_config)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)

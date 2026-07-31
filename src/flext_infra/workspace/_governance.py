@@ -32,18 +32,18 @@ class FlextInfraWorkspaceGovernanceMixin:
 
     @staticmethod
     def _declares_workspace_toolchain(workspace_root: Path) -> bool:
-        """Require the infra checkout ``base.mk``; ``.gitmodules`` never suffices."""
-        infra_repository = next(
-            (
-                item
-                for item in config.Infra.codegen.repositories
-                if item.distribution == config.Infra.name
-            ),
-            None,
+        """Require a live infra checkout shipping ``base.mk``.
+
+        The checkout is located on disk, not looked up in a project catalog:
+        flext-infra owns generic policy, never the map of where each project
+        lives. A workspace root either has the toolchain checked out beside it
+        (or at its own root) or it does not.
+        """
+        candidates = (
+            workspace_root / c.Infra.BASE_MK,
+            workspace_root / config.Infra.name / c.Infra.BASE_MK,
         )
-        if infra_repository is None:
-            return False
-        return (workspace_root / infra_repository.path / c.Infra.BASE_MK).is_file()
+        return any(candidate.is_file() for candidate in candidates)
 
     @staticmethod
     def persistent_state_artifacts(

@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, u
+from tests import u as test_u
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -208,11 +209,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == "flext-infra"
-        )
+        repository = test_u.Tests.repository_ref(config.Infra.name)
         local_repository = repository.model_copy(update={"path": Path()})
         dist = repository.distribution
         create_only = {
@@ -289,14 +286,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
-        root_repository = next(
-            item for item in config.Infra.codegen.repositories if item.name == "flext"
-        )
-        member = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.name == "flext-core"
-        )
+        root_repository = test_u.Tests.repository_ref("flext")
+        member = test_u.Tests.repository_ref("flext-core")
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="flext",
@@ -346,7 +337,7 @@ class TestCodegenConform:
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
         provider = config.Infra.codegen.providers[0]
-        repository = config.Infra.codegen.repositories[0].model_copy(
+        repository = test_u.Tests.repository_ref("arbitrary-root").model_copy(
             update={
                 "name": "arbitrary-root",
                 "distribution": "arbitrary-root",
@@ -420,7 +411,7 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Build Make context from repository-owned data alone."""
-        repository = config.Infra.codegen.repositories[0]
+        repository = test_u.Tests.repository_ref("consumer")
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
@@ -450,11 +441,7 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
-        infra_repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
+        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(rendered.infra_repository, eq=infra_repository)
         tm.that(rendered.infra_source_root_rel, eq=None)
 
@@ -462,16 +449,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """An attached member bootstraps from its declared local checkout."""
-        workspace_repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-        )
-        infra_repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
+        workspace_repository = test_u.Tests.repository_ref("workspace-root-fixture")
+        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=workspace_repository.name,

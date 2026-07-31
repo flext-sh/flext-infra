@@ -49,12 +49,7 @@ class TestsCodegenMakeEnvironment:
         )
         project_root = tmp_path / profile.value / "fixture-project"
         workspace_root = project_root.parent if attached else project_root
-        infra_repositories = tuple(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
-        tm.that(len(infra_repositories), eq=1)
+        infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
         local_members = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra

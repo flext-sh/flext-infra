@@ -370,7 +370,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         # mro-4gbp: the engine catalog declares only repositories it owns, so the
         # fixture is derived from whatever this engine publishes - never a
         # hardcoded name and never a downstream consumer.
-        declared = config.Infra.codegen.repositories[0]
+        declared = u.Tests.repository_ref(config.Infra.name)
         (tmp_path / "pyproject.toml").write_text(
             f'[project]\nname = "{declared.name}"\nversion = "0.0.0"\n',
             encoding="utf-8",
@@ -490,11 +490,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             '[project]\nname = "foreign-aggregator"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
-        infra_repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
+        infra_repository = u.Tests.repository_ref(config.Infra.name)
         toolchain_marker = project_root / infra_repository.path / c.Infra.BASE_MK
         toolchain_marker.parent.mkdir()
         toolchain_marker.write_text("# toolchain marker\n", encoding="utf-8")

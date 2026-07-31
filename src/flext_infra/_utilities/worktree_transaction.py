@@ -330,19 +330,22 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools to the transaction interpreter before cwd mutation."""
-        executable_root = Path(sys.executable).parent
+        """Bind lint tools from the managed process environment before mutation."""
+        managed_path = u.Cli.process_env().get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            executable_path = shutil.which(command[0])
-            if executable_path is None:
-                executable = executable_root / command[0]
-                if not executable.is_file():
-                    return r[t.StrSequencePairTuple].fail(
-                        f"required transaction lint executable not found: {executable}"
-                    )
-                executable_path = str(executable)
-            bound_command: t.StrSequence = (executable_path, *command[1:])
+            resolved = shutil.which(command[0], path=managed_path)
+            if resolved is None:
+                return r[t.StrSequencePairTuple].fail(
+                    "required transaction lint executable not found on managed PATH: "
+                    f"{command[0]}"
+                )
+            executable = Path(resolved).resolve()
+            if not executable.is_file():
+                return r[t.StrSequencePairTuple].fail(
+                    f"resolved transaction lint executable is not a file: {executable}"
+                )
+            bound_command: t.StrSequence = (str(executable), *command[1:])
             if tool == c.Infra.PYREFLY:
                 bound_command = (
                     *bound_command,
@@ -434,14 +437,39 @@ class FlextInfraUtilitiesWorktreeTransaction:
             for before_item, after_item in zip(before, after, strict=True)
         )
 
-    @staticmethod
+    @classmethod
     def _repository_deltas(
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
+        cls, repositories: t.SequenceOf[m.Infra.RepositoryWorktree]
     ) -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:
-        """Capture operation-only deltas from every isolated repository."""
+        """Capture operation-only deltas from every isolated repository.
+
+        The sandbox seeds each nested gitlink with the member's ISOLATED
+        checkpoint so the isolated tree is self-consistent. That SHA exists
+        only inside the sandbox, so the root patch must carry the SOURCE head
+        instead; otherwise applying the transaction would point the real
+        superproject at a commit no source checkout has.
+        """
+        source_gitlinks = {
+            repository.relative_path: repository.source_root
+            for repository in repositories
+            if repository.relative_path != "."
+        }
+        resolved_gitlinks: dict[str, str] = {}
+        for path, source_root in source_gitlinks.items():
+            head_result = FlextInfraUtilitiesGitScope.git_repository_head(source_root)
+            if head_result.failure:
+                return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
+                    head_result.error or f"failed to resolve source head for {path}"
+                )
+            resolved_gitlinks[path] = head_result.value
         deltas: t.MutableSequenceOf[m.Infra.RepositoryDelta] = []
         for repository in repositories:
-            result = FlextInfraUtilitiesGitScope.git_repository_delta(repository)
+            result = FlextInfraUtilitiesGitScope.git_repository_delta(
+                repository,
+                source_gitlinks=resolved_gitlinks
+                if repository.relative_path == "."
+                else None,
+            )
             if result.failure:
                 return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
                     result.error
@@ -568,6 +596,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
             lambda: cls._apply_transaction_patches_locked(deltas),
             timeout_failure=timeout_failure,
             acquisition_failure=acquisition_failure,
+            # The transaction owns its sandbox for exactly one operation, so its
+            # lock is ephemeral: leaving the artifact behind would mutate the
+            # source checkout the transaction promised to leave untouched.
+            ephemeral=True,
         )
 
     @classmethod

@@ -257,11 +257,7 @@ class TestsMakeTestSelector:
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
         """Gen (conform) and base.mk generation remain distinct operations."""
         template = _makefile_template().read_text(encoding="utf-8")
-        repository = next(
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.name == "flext-infra"
-        )
+        repository = test_u.Tests.repository_ref("flext-infra")
         extra_verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
 
         tm.that(template, has="_builtin_gen_apply")

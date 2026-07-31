@@ -17,7 +17,10 @@ from flext_tests import tm
 from tests import u as test_u
 
 _ROOT = Path(__file__).resolve().parents[3]
-_WORKSPACE_ONLY_MARKERS = ("!flext-*/", "!/config/workspace.yaml", "!flext-*/**")
+# Member allowlist patterns are DERIVED from the workspace manifest, so the
+# expectation is built from the fixture's own members instead of freezing the
+# glob the generator happens to emit today.
+_WORKSPACE_ONLY_MARKERS = ("!/config/workspace.yaml",)
 _BEADS_CONFIG = "!.beads/config.yaml"
 
 
@@ -36,16 +39,8 @@ class TestsCodegenGitignoreProfileAware:
         """The workspace-root .gitignore keeps the member-directory allowlist."""
         root = tmp_path / "flext"
         root.mkdir()
-        root_repository = next(
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.name == "flext"
-        )
-        member = next(
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.name == "flext-core"
-        )
+        root_repository = test_u.Tests.repository_ref("flext")
+        member = test_u.Tests.repository_ref("flext-core")
         (root / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'flext'\nversion = '0.12.0.dev0'\n",
             encoding=c.Cli.ENCODING_DEFAULT,
@@ -116,6 +111,13 @@ class TestsCodegenGitignoreProfileAware:
         rendered = _render_gitignore(root)
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker in rendered, eq=True, msg=f"missing {marker} at root")
+        # The allowlist is derived from THIS fixture's declared member, so the
+        # assertion follows any manifest instead of a frozen glob.
+        member_path = member.path.as_posix()
+        for marker in (f"!/{member_path}/", f"!/{member_path}/**"):
+            tm.that(
+                marker in rendered, eq=True, msg=f"missing derived {marker} at root"
+            )
         tm.that(rendered, has=_BEADS_CONFIG)
 
     def test_independent_overlay_generates_canonical_beads_environment(

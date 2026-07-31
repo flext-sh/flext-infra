@@ -22,18 +22,19 @@ if TYPE_CHECKING:
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
-    root_repository = next(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-        and repository.provider == config.Infra.codegen.providers[0].name
-    )
+    # The fixture declares the synthetic topology it needs; flext-infra owns
+    # no catalog of real projects to borrow rows from.
+    root_repository = test_u.Tests.repository_ref("fixture-workspace")
     members = tuple(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
-        and repository.provider == root_repository.provider
-    )[:2]
+        test_u.Tests.repository_ref(
+            name,
+            path=Path(name),
+            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            editable=True,
+        )
+        for name in ("fixture-member-one", "fixture-member-two")
+    )
     project_names = tuple(member.path.as_posix() for member in members)
     (workspace_root / "pyproject.toml").write_text(
         f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n",

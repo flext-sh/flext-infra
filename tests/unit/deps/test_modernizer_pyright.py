@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-import tomlkit
 
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_tests import tm
@@ -64,7 +63,7 @@ class TestsFlextInfraDepsModernizerPyright:
         (flext_api / "src" / "flext_api" / "__init__.py").write_text(
             "VALUE = 1\n", encoding="utf-8"
         )
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
             doc, is_root=True, workspace_root=tmp_path
@@ -134,7 +133,7 @@ class TestsFlextInfraDepsModernizerPyright:
         """Render every configured standalone analyzer environment."""
         pyright_rules = tool_config_document.tools.pyright
         rules = pyright_rules.path_rules
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
             doc, is_root=False
@@ -202,7 +201,7 @@ class TestsFlextInfraDepsModernizerPyright:
             "def test_smoke() -> None:\n    assert True\n", encoding="utf-8"
         )
         (project_dir / "tests" / "fixtures").mkdir(parents=True, exist_ok=True)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
             doc, is_root=False, project_dir=project_dir
@@ -242,7 +241,7 @@ class TestsFlextInfraDepsModernizerPyright:
         project_dir = tmp_path / "flext-sample"
         (project_dir / "src").mkdir(parents=True, exist_ok=True)
         phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc, is_root=False, project_dir=project_dir)
         second_changes = phase.apply(doc, is_root=False, project_dir=project_dir)

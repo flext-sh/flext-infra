@@ -19,8 +19,6 @@ from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
 if TYPE_CHECKING:
-    from tomlkit import TOMLDocument
-
     from flext_infra.gates.base_gate import FlextInfraGate
 
 
@@ -175,8 +173,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                live: bool = False,
+                deadline: p.Cli.ProcessDeadline | None = None,
             ) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
+                del input_data, live, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -323,6 +326,37 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def repository_ref(
+            name: str,
+            *,
+            path: Path | None = None,
+            role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.ROOT,
+            editable: bool = False,
+        ) -> m.Infra.RepositoryRef:
+            """Build a repository reference from the provider contract.
+
+            flext-infra owns no catalog of projects, so a test that needs a
+            repository declares the one it means instead of borrowing a row
+            from a registry. Only the provider contract (generic policy) is
+            read from config, which keeps the fixture valid for any provider.
+            """
+            provider = config.Infra.codegen.providers[0]
+            return m.Infra.RepositoryRef(
+                name=name,
+                distribution=name,
+                url=f"{provider.base_url.rstrip('/')}/{name}.git",
+                path=path if path is not None else Path(),
+                role=role,
+                provider=provider.name,
+                checkout=checkout,
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=True,
+                editable=editable,
+                read_only=False,
+            )
+
+        @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
             # mro-wkii.17 (codex): tests consume the validated config singleton;
             # the removed utility loader must not survive as a hidden test path.
@@ -330,7 +364,23 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return config.Infra.tooling
 
         @staticmethod
-        def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
+        def toml_doc(text: str) -> t.Cli.TomlDocument:
+            """Parse fixture TOML text into a document, failing closed.
+
+            ``u.Cli.toml_parse_text`` is fail-soft because production parses
+            untrusted files. A fixture literal is authored valid, so a ``None``
+            here means the fixture itself is broken and the test must fail with
+            that reason instead of propagating an optional into every call.
+            """
+            document = u.Cli.toml_parse_text(text)
+            tm.that(document, none=False, msg="fixture TOML failed to parse")
+            if document is None:
+                msg = "fixture TOML failed to parse"
+                raise TypeError(msg)
+            return document
+
+        @staticmethod
+        def toml_doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
             """Provide the typed test helper `toml_doc_mapping`."""
             normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
             tm.that(normalized, is_=Mapping)

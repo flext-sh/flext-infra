@@ -503,6 +503,21 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+    class MakeBootstrapSpec(_ConfigContract):
+        """Hermetic project dependency surface used before conform."""
+
+        environment: Annotated[
+            Literal["isolated"], m.Field(description="uv environment isolation policy")
+        ]
+        dependency_groups: Annotated[
+            Literal["all"],
+            m.Field(description="Project dependency-group selection policy"),
+        ]
+        extras: Annotated[
+            Literal["all"],
+            m.Field(description="Project optional-dependency selection policy"),
+        ]
+
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
@@ -559,6 +574,10 @@ class FlextInfraConfigModels:
         ]
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
+        ]
+        bootstrap: Annotated[
+            FlextInfraConfigModels.MakeBootstrapSpec,
+            m.Field(description="Pre-conform project environment contract"),
         ]
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
@@ -1780,10 +1799,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.TemplatesSpec,
             m.Field(description="New-project-only scaffold template manifest"),
         ]
-        repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered repository catalog"),
-        ]
+        # Operator law: flext-infra owns generic conform policy only. The set
+        # of projects it serves is NOT its knowledge — each repository declares
+        # its own topology in config/workspace.yaml, and standalone checkouts
+        # are derived from their own metadata plus live Git.
 
         @u.model_validator(mode="after")
         def _validate_github_artifact_ownership(self) -> Self:
