@@ -226,23 +226,34 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
         )
 
-    @staticmethod
-    def _source_roots(worktree_root: Path) -> t.SequenceOf[Path]:
-        """Resolve productive source roots inside the isolated workspace."""
+    @classmethod
+    def _source_roots(
+        cls, worktree_root: Path, scoped_paths: t.SequenceOf[Path] = ()
+    ) -> t.SequenceOf[Path]:
+        """Resolve the productive source roots the transaction actually owns.
+
+        A member outside the requested scope is never a source root: importing
+        it would assert a dependency the scoped project does not declare and
+        would fail closed on any sibling that is merely present on disk.
+        """
         roots: t.MutableSequenceOf[Path] = []
         root_source = worktree_root / c.Infra.DEFAULT_SRC_DIR
         if root_source.is_dir():
             roots.append(root_source)
         for child in sorted(worktree_root.iterdir()):
             source_root = child / c.Infra.DEFAULT_SRC_DIR
-            if child.is_dir() and source_root.is_dir():
+            if not (child.is_dir() and source_root.is_dir()):
+                continue
+            if cls._submodule_in_scope(child.relative_to(worktree_root), scoped_paths):
                 roots.append(source_root)
         return tuple(roots)
 
     @classmethod
-    def _transaction_environment(cls, worktree_root: Path) -> t.StrMapping:
+    def _transaction_environment(
+        cls, worktree_root: Path, scoped_paths: t.SequenceOf[Path] = ()
+    ) -> t.StrMapping:
         """Build the isolated source and recursion-guard environment."""
-        source_roots = cls._source_roots(worktree_root)
+        source_roots = cls._source_roots(worktree_root, scoped_paths)
         python_path = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
             str(path) for path in source_roots
         )
@@ -378,13 +389,17 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _import_probe(
-        cls, worktree_root: Path, environment: t.StrMapping, timeout_seconds: int
+        cls,
+        worktree_root: Path,
+        environment: t.StrMapping,
+        timeout_seconds: int,
+        scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root in one isolated process."""
+        """Fresh-import every productive package root the scope owns."""
         packages = tuple(
             sorted({
                 package_dir.name
-                for source_root in cls._source_roots(worktree_root)
+                for source_root in cls._source_roots(worktree_root, scoped_paths)
                 for package_dir in source_root.iterdir()
                 if package_dir.is_dir()
                 and package_dir.name.isidentifier()
@@ -701,7 +716,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 or "failed to resolve transaction lint executables"
             )
         lint_commands = lint_commands_result.value
-        environment = cls._transaction_environment(worktree_root)
+        environment = cls._transaction_environment(worktree_root, request.scoped_paths)
         lint_before = cls._lint_snapshots(
             worktree_root, environment, request.timeout_seconds, lint_commands
         )
@@ -727,7 +742,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
         def _run_import_probe() -> p.Cli.CommandOutput:
             return cls._import_probe(
-                worktree_root, environment, request.timeout_seconds
+                worktree_root,
+                environment,
+                request.timeout_seconds,
+                request.scoped_paths,
             )
 
         def _run_deltas() -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:

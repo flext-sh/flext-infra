@@ -1296,6 +1296,74 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
+        def repository_profile(root: Path) -> c.Infra.MakeProfile:
+            """Return the Make profile *root* declares in its own manifest.
+
+            Only that manifest is read. The full detector also walks the parent
+            superproject on the live filesystem, which breaks the isolation law
+            and races other tests' temp fixtures under xdist.
+
+            Returns:
+                ``WORKSPACE_ROOT`` when the manifest declares members, else
+                ``WORKSPACE_MEMBER``.
+
+            """
+            from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+            workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+            return (
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+                if workspace.members
+                else c.Infra.MakeProfile.WORKSPACE_MEMBER
+            )
+
+        @staticmethod
+        def ignore_patterns_for(root: Path) -> tuple[str, ...]:
+            """Return the ignore patterns that apply to *root*'s declared profile.
+
+            Returns:
+                Every SSOT pattern whose section targets that profile.
+
+            """
+            profile = TestsFlextInfraUtilities.Tests.repository_profile(root)
+            return tuple(
+                pattern
+                for section in config.Infra.codegen.gitignore_sections
+                if not section.profiles or profile in section.profiles
+                for pattern in section.patterns
+            )
+
+        @staticmethod
+        def is_tracked_under(rendered: str, relative_path: str) -> bool:
+            """Return whether git tracks *relative_path* under *rendered*.
+
+            Ignore semantics are subtle (ordering, negation, directory
+            prefixes), so the question is delegated to git itself against a
+            throwaway repository, never reimplemented here.
+
+            Returns:
+                ``True`` when git would track the path.
+
+            """
+            import tempfile
+
+            with tempfile.TemporaryDirectory() as raw_root:
+                probe_root = Path(raw_root)
+                tm.ok(u.Cli.run_checked(["git", "init", "-q", str(probe_root)]))
+                (probe_root / ".gitignore").write_text(rendered, encoding="utf-8")
+                target = probe_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("", encoding="utf-8")
+                # `git check-ignore` exits 0 when the path IS ignored, so a
+                # failed run is the success case for a tracked artifact.
+                probe = tm.ok(
+                    u.Cli.run_raw(
+                        ["git", "check-ignore", "-q", relative_path], cwd=probe_root
+                    )
+                )
+            return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+
+        @staticmethod
         def create_checker_project(
             tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
         ) -> tuple[FlextInfraWorkspaceChecker, Path]:

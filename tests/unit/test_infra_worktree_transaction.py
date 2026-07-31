@@ -732,3 +732,41 @@ class TestsFlextInfraWorktreeTransactionLint:
         tm.that(lint_regressed(clean, warnings), eq=True)
         tm.that(lint_regressed(clean, nonzero), eq=True)
         tm.that(lint_regressed(errors, errors), eq=False)
+
+
+class TestsFlextInfraWorktreeTransactionScope:
+    """Contract for the productive source roots one transaction owns."""
+
+    @staticmethod
+    def _workspace(root: Path, *members: str) -> Path:
+        """Materialize a workspace whose members each expose a source root."""
+        for member in members:
+            package = root / member / c.Infra.DEFAULT_SRC_DIR / member.replace("-", "_")
+            package.mkdir(parents=True)
+            (package / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        return root
+
+    def test_scoped_request_excludes_unrelated_sibling_members(
+        self, tmp_path: Path
+    ) -> None:
+        """A scoped transaction never adopts a sibling it does not declare."""
+        # Presence on disk is not a declared dependency: importing an unscoped
+        # sibling fails closed on any member that is merely checked out.
+        root = self._workspace(tmp_path, "alpha-package", "beta-package")
+        source_roots = u.Infra._source_roots  # ruff:ignore[private-member-access]
+
+        scoped = source_roots(root, (Path("alpha-package"),))
+
+        tm.that({path.parent.parent.name for path in scoped}, eq={"alpha-package"})
+
+    def test_unscoped_request_keeps_every_member(self, tmp_path: Path) -> None:
+        """An empty scope still isolates the whole workspace, as documented."""
+        root = self._workspace(tmp_path, "alpha-package", "beta-package")
+        source_roots = u.Infra._source_roots  # ruff:ignore[private-member-access]
+
+        every = source_roots(root)
+
+        tm.that(
+            {path.parent.parent.name for path in every},
+            eq={"alpha-package", "beta-package"},
+        )

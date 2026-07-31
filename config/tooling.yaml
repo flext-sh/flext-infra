@@ -195,7 +195,7 @@ Infra:
               - runtime-import-in-type-checking-block
 
       mypy:
-        plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
+        plugins: [pydantic.mypy]
         # mro-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         disabled-error-codes:
