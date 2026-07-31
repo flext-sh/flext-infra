@@ -338,7 +338,26 @@ class FlextInfraWorkspaceDetector(
     def analysis_exclusion_paths(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
-        """Load workspace spec and return all paths excluded from analysis."""
+        """Load workspace spec and return all paths excluded from analysis.
+
+        Projects that are neither manifest owners nor catalog-declared FLEXT
+        repositories are treated as unmanaged: they carry no workspace-scoped
+        exclusions. This keeps Ruff/Pyright discovery phases usable for
+        ad-hoc or third-party trees without weakening validation for declared
+        FLEXT roots.
+        """
+        manifest_path = cls._manifest_path(repository_root)
+        if not manifest_path.is_file():
+            metadata = u.read_project_metadata(repository_root)
+            if metadata.failure:
+                # Not a Python project at all: no workspace exclusions apply.
+                return r[tuple[Path, ...]].ok(())
+            catalog_names = {
+                item.name for item in config.Infra.codegen.repositories
+            }
+            if metadata.value.project.name not in catalog_names:
+                # A Python project, but not a catalogued FLEXT workspace.
+                return r[tuple[Path, ...]].ok(())
         spec = cls.load_workspace_spec(repository_root)
         if spec.failure:
             return r[tuple[Path, ...]].fail(
