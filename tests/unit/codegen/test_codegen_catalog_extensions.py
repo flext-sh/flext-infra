@@ -517,7 +517,25 @@ class TestsCodegenCatalogExtensions:
         workflows = tuple(
             file for file in plan.files if ".github/workflows" in file.path.as_posix()
         )
-        tm.that(workflows, len=4)
+        # How many workflows exist is config-owned: freezing the count makes a
+        # legitimate template addition fail here. The contract is that every
+        # planned workflow is one the config declares, and that none leaks the
+        # content-only repository.
+        declared_workflows = frozenset(
+            entry.destination
+            for entry in config.Infra.codegen.templates.entries
+            if ".github/workflows" in entry.destination
+        )
+        tm.that(workflows, empty=False)
+        for workflow in workflows:
+            tm.that(
+                any(
+                    workflow.path.as_posix().endswith(destination)
+                    for destination in declared_workflows
+                ),
+                eq=True,
+                msg=f"undeclared workflow planned: {workflow.path}",
+            )
         for workflow in workflows:
             tm.that("acme-content" in workflow.rendered, eq=False)
         gitmodules = next(
