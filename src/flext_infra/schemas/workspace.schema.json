@@ -9,9 +9,7 @@
     "version",
     "name",
     "repository",
-    "members",
-    "exclusions",
-    "repository_policy_overlays"
+    "members"
   ],
   "properties": {
     "version": {
@@ -19,6 +17,10 @@
     },
     "name": {
       "$ref": "#/$defs/name"
+    },
+    "ledger_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
     },
     "repository": {
       "$ref": "#/$defs/repository"
@@ -38,6 +40,13 @@
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/exclusion"
+      }
+    },
+    "external_dependency_paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/relativePath"
       }
     },
     "repository_policy_overlays": {

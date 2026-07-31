@@ -134,6 +134,14 @@ class FlextInfraModelsDepsToolSettings(
                 description="Maximum cProfile rows rendered.",
             ),
         ]
+        process_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="process-timeout-seconds",
+                gt=0,
+                description="Hard timeout for the complete pytest process.",
+            ),
+        ]
 
     class TomlsortConfig(m.ArbitraryTypesModel):
         """tomlsort baseline settings loaded from YAML."""

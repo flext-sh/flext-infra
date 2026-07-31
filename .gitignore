@@ -191,7 +191,7 @@ secrets.yml
 .devcontainer/.env
 .github/*.rej
 
-# --- workspace-migrate: required ignores (auto-managed) ---
+# --- codegen conform: tracked owner inputs ---
 !base.mk
 
 # FINAL LOCAL STATE POLICY
@@ -204,10 +204,12 @@ legado/
 # codegen module-standardizer reject artifacts (ADR-005 §9)
 *.tpl.rej
 
-# --- workspace-sync: required ignores (auto-managed) ---
+# --- codegen conform: generated runtime ignores ---
 .direnv/
 .reports/
 .venv/
+.bin/
+.tools/
 __pycache__/
 base.mk
 !.pre-commit-config.yaml
@@ -216,7 +218,7 @@ base.mk
 __pyrefly_virtual__/
 .archive/
 .benchmarks/
-.bin/
+.bkp/
 .cache/
 .codegraph/
 .dolt_dropped_databases/
@@ -233,7 +235,6 @@ __pyrefly_virtual__/
 .sisyphus/
 .state/
 .superpowers/
-.tools/
 .trash/
 .turbo/
 .venv.*/

@@ -38,6 +38,14 @@ Infra:
           - typings
           - vendor
           - venv
+          - backup
+          - build
+          - dist
+          - htmlcov
+          - temp-backup
+          - typings
+          - vendor
+          - venv
         # tests, examples, and scripts are dev/tooling source roots (see `src`
         # below), not installed packages: they hold namespace/command modules
         # loaded by path (e.g. the scripts/<verb>/<what> dispatch pattern), so
@@ -527,6 +535,10 @@ Infra:
           - --session-timeout=300
         profile-sort: cumulative
         profile-limit: 50
+        # mro-99ae: hard process boundary independent of pytest hook progress.
+        # The pytest timeouts above bound a hanging TEST; this bounds a hanging
+        # PROCESS, which no in-process hook can observe.
+        process-timeout-seconds: 60
       tomlsort:
         all: true
         in_place: true

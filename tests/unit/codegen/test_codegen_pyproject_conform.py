@@ -239,3 +239,36 @@ python-interpreter-path = "../.venv/bin/python"
                 f"git+{workspace.members[0].url}@{_PROVIDER_SPEC.branch}"
             ),
         )
+
+    def test_tool_flext_workspace_marker_is_preserved(self) -> None:
+        """Preserve [tool.flext] policy while removing legacy tool.poetry."""
+        workspace = _workspace()
+        repositories = (
+            workspace.repository,
+            *workspace.members,
+            *config.Infra.codegen.repositories,
+        )
+        source = """[project]
+name = "external-consumer"
+dependencies = []
+
+[tool.flext.workspace]
+attached = true
+
+[tool.poetry]
+name = "legacy-packaging"
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                repositories=repositories,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+            )
+        )
+        document = tomllib.loads(conformed)
+        tm.that(document["tool"]["flext"]["workspace"]["attached"], eq=True)
+        tm.that("poetry" not in document["tool"], eq=True)

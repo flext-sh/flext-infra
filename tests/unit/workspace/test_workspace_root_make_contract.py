@@ -61,6 +61,45 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n", encoding="utf-8"
         )
     test_u.Tests.initialize_git_repo(workspace_root)
+    # Seed a fake origin baseline so branch ancestry validation passes in
+    # detached fixture repositories; real ancestry is exercised elsewhere.
+    tm.ok(
+        u.Cli.run_checked(
+            ["git", "remote", "add", "origin", root_repository.url], cwd=workspace_root
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            [
+                "git",
+                "update-ref",
+                f"refs/remotes/origin/{config.Infra.codegen.providers[0].branch}",
+                "HEAD",
+            ],
+            cwd=workspace_root,
+        )
+    )
+    # mro-z89e.2.2: seed a minimal .gitmodules so the conform detector sees the
+    # declared members as governed submodules; the real setup/Gitlink lifecycle is
+    # covered by tests/unit/codegen/test_workspace_root_setup_submodules.py.
+    gitmodules_path = workspace_root / ".gitmodules"
+    provider = config.Infra.codegen.providers[0]
+    gitmodules_lines = []
+    for member in members:
+        section_name = member.name.replace("-", "_")
+        gitmodules_lines.extend([
+            f'[submodule "{section_name}"]\n',
+            f"\tpath = {member.path.as_posix()}\n",
+            f"\turl = {member.url}\n",
+            f"\tbranch = {provider.branch}\n",
+        ])
+    gitmodules_path.write_text("".join(gitmodules_lines), encoding="utf-8")
+    tm.ok(u.Cli.run_checked(["git", "add", ".gitmodules"], cwd=workspace_root))
+    tm.ok(
+        u.Cli.run_checked(
+            ["git", "commit", "-m", "seed fixture gitmodules"], cwd=workspace_root
+        )
+    )
     tm.ok(
         FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
@@ -146,6 +185,31 @@ class TestsWorkspaceRootMakeContract:
 
         tm.that(make_entries, len=1)
         tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+
+    def test_generated_setup_runs_its_lifecycle_hooks(self, tmp_path: Path) -> None:
+        """``setup`` must fire pre-/post-setup like every other public verb.
+
+        The generated ``setup`` short-circuited straight to
+        ``_builtin_setup_environment``, bypassing ``_dispatch`` — so a project
+        declaring ``post-setup`` in ``custom.mk`` (the only sanctioned extension
+        surface) had that hook silently never execute.
+        """
+        workspace_root, _project_names = _write_workspace(tmp_path)
+        (workspace_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            ".PHONY: post-setup\npost-setup:\n\t@echo POST_SETUP_HOOK_RAN\n",
+            encoding="utf-8",
+        )
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "setup"],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="post-setup", msg=output)
 
     def test_generated_make_selects_manifest_projects_and_forwards_gates(
         self, tmp_path: Path

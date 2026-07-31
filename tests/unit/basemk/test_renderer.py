@@ -40,12 +40,12 @@ class TestsFlextInfraBasemkRenderer:
             "SETUP_UV := $(MISE_DATA_DIR)/shims/uv",
             "github.com/jdx/mise/releases/download",
             "$(SETUP_MISE) install --yes",
-            "$(SETUP_UV) sync --project",
-            'submodule update --init -- "$$child_path"',
-            'if [ -n "$$(git -C "$$checkout" status --porcelain)" ]',
-            'merge-base --is-ancestor "$$sha1" HEAD',
-            "refs/heads/$$branch",
-            'checkout --quiet -b "$$branch"',
+            "$(SETUP_UV_ENV) uv sync --project",
+            "git submodule update --init --recursive",
+            'test -z "$$(git status --porcelain)"',
+            'test "$$(git rev-parse HEAD)" = "$$sha1"',
+            "refs/heads/$(SETUP_BRANCH)",
+            'git checkout --quiet -b "$(SETUP_BRANCH)"',
             "$(SETUP_PYTHON) -m flext_infra",
         ):
             tm.that(rendered, has=required)

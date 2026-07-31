@@ -444,18 +444,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             manifest_path = config_dir / "workspace.yaml"
             manifest_path.write_text(
                 (
-                    "version: 2\n"
+                    "version: 3\n"
                     f"name: {name}\n"
                     "repository:\n"
                     f"  name: {name}\n"
                     f"  distribution: {name}\n"
                     "  provider: flext-sh\n"
                     f"  url: https://github.com/flext-sh/{name}.git\n"
-                    "  branch: main\n"
                     "  path: .\n"
                     "  role: standalone\n"
                     "  state: active\n"
-                    "  profile: standalone\n"
                     "  checkout: independent\n"
                     "  codegen: conform\n"
                     "  package: true\n"
@@ -802,6 +800,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             The initial commit allows an empty tree so fixtures that seed
             hooks or config before any file still get a resolvable HEAD.
+            A fake remote baseline ref is created so workspace discovery
+            matches a real clone.
             """
             commands: t.SequenceOf[t.StrSequence] = (
                 (c.Infra.GIT, "init", "-b", "main"),
@@ -809,6 +809,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
                 (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
+                (c.Infra.GIT, "update-ref", "refs/remotes/origin/0.12.0-dev", "HEAD"),
             )
             for command in commands:
                 _ = cli_facade.run_checked(list(command), cwd=repo_root)
@@ -990,7 +991,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "check:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
             )
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
-                (f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
+                (
+                    f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
+                    "[tool.ruff.lint.per-file-ignores]\n"
+                    "# PEP 562 lazy facades import typing-only names that are "
+                    "published as strings in __all__.\n"
+                    '"**/__init__.py" = ["TC004"]\n'
+                ),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
             (package_root / c.Infra.INIT_PY).write_text(

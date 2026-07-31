@@ -92,6 +92,11 @@ class FlextInfraProtocolsBase(Protocol):
             """Exact tool version installed by mise."""
             ...
 
+        @property
+        def reported_version(self) -> str:
+            """Version string the pinned binary self-reports."""
+            ...
+
     @runtime_checkable
     class RepositoryRef(Protocol):
         """Repository fields consumed by codegen path and profile selection."""

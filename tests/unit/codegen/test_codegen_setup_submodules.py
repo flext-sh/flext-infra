@@ -105,6 +105,8 @@ class TestsCodegenSetupSubmodules:
             f"submodule.{path}.flext-managed",
             str(managed).lower(),
         )
+        cls._git(superproject / path, "config", "user.email", "tests@flext.local")
+        cls._git(superproject / path, "config", "user.name", "FLEXT Tests")
         cls._git(superproject, "add", "-f", ".gitmodules", path)
         cls._git(superproject, "commit", "-q", "-m", f"Add {path}")
 

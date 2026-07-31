@@ -13,12 +13,15 @@ from urllib.parse import urlparse
 from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base import s
+from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
+class FlextInfraWorkspaceDetector(
+    FlextInfraWorkspaceGovernanceMixin, s[c.Infra.WorkspaceMode]
+):
     """Classify only declared roots and real, declared Git submodules."""
 
     # NOTE (multi-agent, mro-wkii.17.10 / agent: implement_topology_detector):
@@ -320,6 +323,13 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec | None
     ) -> p.Result[c.Infra.WorkspaceMode]:
         """Infer root from actual first-party governed submodule declarations."""
+        attached_marker = cls._declares_attached_standalone(repository_root)
+        if attached_marker.failure:
+            return r[c.Infra.WorkspaceMode].fail(
+                attached_marker.error or "unable to read workspace attachment marker"
+            )
+        if attached_marker.value:
+            return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
         declared = u.Infra.git_declared_submodule_paths(repository_root)
         if declared.failure:
             return r[c.Infra.WorkspaceMode].fail(
@@ -329,6 +339,10 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
         resolved_workspace = workspace_spec
         if resolved_workspace is None:
+            # mro-5qfa: an aggregator declares submodules without owning the FLEXT
+            # toolchain; .gitmodules alone never promotes it to a workspace root.
+            if not cls._declares_workspace_toolchain(repository_root):
+                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             workspace_result = cls.load_workspace_spec(repository_root)
             if workspace_result.failure:
                 return r[c.Infra.WorkspaceMode].fail(
@@ -456,23 +470,48 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[m.Infra.RepositoryConformTarget].fail(
                 mode_result.error or "unable to infer repository topology"
             )
-        attached = resolved_root != governing_root
-        make_profile = (
-            c.Infra.MakeProfile.WORKSPACE_ROOT
-            if mode_result.value is c.Infra.WorkspaceMode.WORKSPACE
-            else c.Infra.MakeProfile.STANDALONE
+        make_profile = {
+            c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE_ROOT,
+            c.Infra.WorkspaceMode.WORKSPACE_MEMBER: (
+                c.Infra.MakeProfile.WORKSPACE_MEMBER
+            ),
+            c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
+        }[mode_result.value]
+        # Ephemeral transaction worktrees share storage with the primary checkout.
+        # Detect them from Git's canonical topology rather than from a test-only
+        # environment flag, so the same code path works for real worktrees and for
+        # unit fixtures that simulate CLI transaction scope.
+        primary_root_result = u.Infra.git_primary_worktree_root(resolved_root)
+        if primary_root_result.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                primary_root_result.error or "unable to resolve primary worktree"
+            )
+        is_transaction_worktree = primary_root_result.value != resolved_root
+        # Beads participation: workspace root owns; independent standalone opts in;
+        # ephemeral transaction worktrees route to the principal ledger; members and
+        # attached standalones do not own tracker state.
+        beads_enabled = (
+            is_transaction_worktree
+            or make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            or (
+                make_profile is c.Infra.MakeProfile.STANDALONE and overlay.beads_enabled
+            )
         )
+        # A marker-attached standalone resolves to itself (no Git superproject
+        # link); a manifest member always resolves to its governing root.
+        attached_standalone = (
+            mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
+            and resolved_root == governing_root
+        )
+        routing_only = is_transaction_worktree or attached_standalone
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
                 root=resolved_root,
                 make_profile=make_profile,
-                beads_enabled=(
-                    False
-                    if attached
-                    else make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-                    or overlay.beads_enabled
-                ),
+                beads_enabled=beads_enabled,
+                attached_standalone=attached_standalone,
+                routing_only=routing_only,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=provider.branch,
                 ci_enabled=overlay.ci_enabled,
@@ -481,6 +520,9 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 ),
                 technical_branch_patterns=(
                     config.Infra.codegen.branch_policy.technical_branch_patterns
+                ),
+                governed_branch_patterns=(
+                    config.Infra.codegen.branch_policy.governed_branch_patterns
                 ),
             )
         )
@@ -565,7 +607,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         superproject_root: Path,
         workspace_spec: m.Infra.WorkspaceSpec | None,
     ) -> p.Result[c.Infra.WorkspaceMode]:
-        """Validate a real submodule against the parent and local manifests."""
+        """Validate a real submodule against both manifests and classify membership."""
         member_root_result = u.Cli.capture(
             [c.Infra.GIT, "rev-parse", "--show-toplevel"], cwd=project_root
         )
@@ -724,7 +766,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 "workspace member gitlink mismatch: "
                 f"{member_path} expected {gitlink_head} got {member_head.value}"
             )
-        return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
+        return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
 
     def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
         """Detect workspace mode from typed manifests and real Git metadata."""

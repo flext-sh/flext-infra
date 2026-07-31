@@ -247,7 +247,7 @@ class TestsMakeTestSelector:
         tm.that(template, has='"$(PYTEST_TARGETS)"')
 
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
-        """Codegen and base.mk generation remain explicit canonical operations."""
+        """Gen (conform) and base.mk generation remain distinct operations."""
         template = _makefile_template().read_text(encoding="utf-8")
         repository = next(
             repository
@@ -256,6 +256,6 @@ class TestsMakeTestSelector:
         )
         extra_verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
 
-        tm.that(template, has="_builtin_codegen_apply")
+        tm.that(template, has="_builtin_gen_apply")
         tm.that(extra_verbs, eq={"basemk": "generate"})
         tm.that(template, lacks="_builtin_build_gen")

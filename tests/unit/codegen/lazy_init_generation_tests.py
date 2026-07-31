@@ -66,7 +66,8 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
         )
-        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="from .api import Demo")
+        tm.that(content, lacks="if TYPE_CHECKING:")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
@@ -116,13 +117,7 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(
-            content,
-            contains=(
-                "from ._settings import FlextCliSettings as FlextCliSettings\n"
-                "    from ._settings import settings as settings"
-            ),
-        )
+        tm.that(content, contains="from ._settings import FlextCliSettings, settings")
         tm.that(content, lacks="from flext_cli._settings import")
         tm.that(content, lacks="    _ = (")
 
@@ -206,12 +201,17 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from flext_tests import tm as tm")
+        tm.that(init_content, contains="from flext_tests import tm")
         tm.that(init_content, contains='".constants": ("TestsDemoConstants", "c"),')
         tm.that(init_content, contains='".utilities": ("TestsDemoUtilities", "u"),')
-        type_checking_block = init_content.split("if TYPE_CHECKING:", maxsplit=1)[1]
+        import_block = init_content.split(
+            "from flext_core.lazy import build_lazy_import_map, "
+            "install_lazy_exports\n\n",
+            maxsplit=1,
+        )[1]
+        import_block = import_block.split("_LAZY_MODULES:", maxsplit=1)[0]
         module_offsets = tuple(
-            type_checking_block.index(module)
+            import_block.index(module)
             for module in (
                 "from .base import",
                 "from .constants import",
@@ -220,19 +220,15 @@ class TestsFlextInfraCodegenGeneration:
                 "from .settings import",
                 "from .typings import",
                 "from .utilities import",
+                "from flext_tests import tm",
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
-        tm.that(type_checking_block, contains="from flext_tests import tm as tm\n\n")
-        tm.that(
-            init_content,
-            contains=(
-                "from flext_core.lazy import build_lazy_import_map, "
-                "install_lazy_exports\n\nif TYPE_CHECKING:"
-            ),
-        )
-        tm.that(init_content, lacks="install_lazy_exports\n\n\nif TYPE_CHECKING:")
+        tm.that(import_block, contains="from flext_tests import tm\n")
+        tm.that(init_content, lacks="if TYPE_CHECKING:")
         tm.that(init_content, contains="install_lazy_exports")
+        tm.that(init_content, lacks="TestsDemoCase")
+        tm.that(init_content, lacks=".unit.test_demo")
         tm.that(init_content, lacks="TestsDemoCase")
         tm.that(init_content, lacks=".unit.test_demo")
 
@@ -252,7 +248,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains="from .protocols import FlextDemoProtocols as FlextDemoProtocols",
+            contains="from .protocols import FlextDemoProtocols, FlextDemoProtocols as p",
         )
         tm.that(content, contains="FlextDemoProtocols as p")
 
@@ -272,7 +268,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains="from .base import FlextDemoServiceBase as FlextDemoServiceBase",
+            contains="from .base import FlextDemoServiceBase, FlextDemoServiceBase as s",
         )
         tm.that(content, contains="FlextDemoServiceBase as s")
 
@@ -285,9 +281,9 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             "\n".join(lines),
             contains=(
-                "from module import FlextConstants as _FlextConstants, "
-                "FlextModels as _FlextModels\n"
-                "    from flext_core import FlextConstants as c, FlextModels as m"
+                "if TYPE_CHECKING:\n"
+                "    from flext_core import FlextTypes\n"
+                "    from module import FlextConstants as c, FlextModels as m"
             ),
         )
 

@@ -1,23 +1,38 @@
 {% from "base_test_report_recipe.j2" import test_report_recipe -%}
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
 # @flext-managed: continuous
-# @flext-regenerate: make codegen WHAT=apply APPLY=Y
+# @flext-regenerate: make gen WHAT=apply APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # {{ dist }} — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
+# === SECTION: header (managed) ===
+# Source: template (base/Makefile.j2)
+# Free: no
+# End SECTION: header
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
+# === SECTION: project identity (managed) ===
+# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := {{ dist }}
 MAKE_PROFILE := {{ make_profile }}
 WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
+# === SECTION: workspace members (managed) ===
+# Source: config:workspace_members (list), config:workspace_repositories (list)
+# Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
+# governance; standalone projects discover managed submodules at runtime from
+# .gitmodules (flext-managed=true).
 WORKSPACE_MEMBERS :={% for member in workspace_members %} {{ member }}{% endfor %}
-MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)
+MANAGED_GITLINKS :={% if make_profile == "workspace-root" %}$(WORKSPACE_MEMBERS){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
+# End SECTION: project identity
 
+# === SECTION: user overrides (managed) ===
+# Source: template (canonical public knobs documented by base.mk)
+# Free: no — values are caller-supplied each invocation, not preserved in the file.
 APPLY ?= N
 ARGS ?=
 CHECK_GATES ?=
@@ -29,34 +44,58 @@ PROJECT ?=
 PROJECTS ?=
 BASE ?=
 BRANCH ?=
-# Public selector documented by base.mk. Forwarded to the test recipe so a
-# focused run stays inside the canonical Make surface instead of forcing a
-# loose pytest invocation.
 PYTEST_ARGS ?=
 PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
 PYTEST_REPORTS_DIR ?= .reports/tests
 WHAT ?=
+# End SECTION: user overrides
 
+# === SECTION: derived paths (managed) ===
+# Source: computed (git rev-parse, pwd, abspath)
 PROJECT_ROOT := $(shell pwd -P)
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 WORKSPACE ?= $(PROJECT_ROOT)
+# === SECTION: WORKSPACE_ROOT isolation (managed) ===
+# Source: computed (rule: derive from current checkout unless caller overrides)
+# Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
+# caller passed it on the command line or via an override origin. An inherited
+# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
+# must never redirect verbs to another working tree.
+ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
+WORKSPACE_ROOT := $(shell root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || pwd -P; fi)
+endif
+# End SECTION: WORKSPACE_ROOT isolation
+
+# === SECTION: verb dispatch (managed) ===
+# Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
+#        config:make.docs.actions, config:make.serialization.verbs
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
-DOCS_PHASES :={% for phase in make.docs_phases %} {{ phase }}{% endfor %}
+DOCS_ACTIONS :={% for action in make.docs.actions if action != make.docs.default_action %} {{ action }}{% endfor %}
 SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
 SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
+# End SECTION: verb dispatch
+
+# === SECTION: lint/type paths (managed) ===
+# Source: template + computed (script_dispatch conditional)
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+# End SECTION: lint/type paths
+
+# === SECTION: infra bootstrap (managed) ===
+# Source: config:infra_repository.*, config:infra_source_root_rel, template (UV default)
 UV ?= uv
 UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@{{ infra_repository_branch }}
 FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
+# End SECTION: infra bootstrap
 
 {% include "base_mypy_limit.mk.j2" %}
 
@@ -67,11 +106,21 @@ _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor %}
 
-ifneq ($(filter $(MAKE_PROFILE),workspace-root standalone),$(MAKE_PROFILE))
+# === SECTION: profile routing (managed) ===
+# Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
+# Rule: workspace-member delegates runtime to the principal (RUNTIME_ROOT is
+# the governing workspace root); workspace-root and standalone own their
+# runtime locally. An attached member is never promoted to a local runtime.
+ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
+ifeq ($(MAKE_PROFILE),workspace-member)
+RUNTIME_ROOT := $(WORKSPACE_ROOT)
+else
 RUNTIME_ROOT := $(PROJECT_ROOT)
+endif
+# End SECTION: profile routing
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
@@ -176,15 +225,14 @@ _BUILTIN_HANDLERS := \
 	_builtin_fmt_apply \
 	_builtin_run_default \
 	_builtin_status_diagnostics \
-	_builtin_docs_check \
 	_builtin_docs_all \
-{% for phase in make.docs_phases -%}
-	_builtin_docs_{{ phase }} \
+{% for action in make.docs.actions if action != make.docs.default_action -%}
+	_builtin_docs_{{ action }} \
 {% endfor -%}
 	_builtin_clean_generated \
 	_builtin_release_status \
-	_builtin_codegen_check \
-	_builtin_codegen_apply \
+	_builtin_gen_check \
+	_builtin_gen_apply \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
 	_builtin_worktree_update \
@@ -273,14 +321,27 @@ _serialized_{{ verb }}:
 
 {% endfor %}
 
+# `setup` keeps its own recipe (it must not require the environment it is about
+# to build), but it still runs the pre-/post-setup lifecycle hooks so a project
+# declaring them in the custom handler surface is actually honoured.
 setup:
+	@for hook in "pre-setup"; do \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+	done
 	@$(SELF_MAKE) _builtin_setup_environment
+	@for hook in "post-setup"; do \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+	done
 
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
 {% for verb in make.verbs %}
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';
+{% elif verb.name == "docs" %}
+	@printf '  %-10s WHAT=%s\n' 'docs' '{{ make.docs.actions | join('|') }}';
 {% else %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endif %}
@@ -305,7 +366,7 @@ _builtin_help_usage:
 # reconciler validates every initialized checkout before mutation, initializes
 # only missing modules, and preserves declared branches that fix forward beyond
 # the recorded gitlink.
-{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)", "$(MANAGED_GITLINKS)") }}
+{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
 
 _builtin_require_environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
@@ -313,19 +374,28 @@ _builtin_require_environment:
 		exit 2; \
 	fi
 
-_builtin_setup_conform: _builtin_setup_submodules
-	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-
-ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment: _builtin_setup_conform
+# === SECTION: setup environment (managed) ===
+# Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
+# Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
+# It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
+# is the single public conformance/generation surface.
+# Profile routing: workspace-member delegates the environment to the
+# principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
+# standalone build their own environment locally.
+ifeq ($(MAKE_PROFILE),workspace-member)
+_builtin_setup_environment: _builtin_setup_submodules
+	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
+else ifeq ($(MAKE_PROFILE),workspace-root)
+_builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else
-_builtin_setup_environment: _builtin_setup_conform
+_builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
+# End SECTION: setup environment
 
 _builtin_deps_check: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
@@ -380,6 +450,8 @@ _builtin_test_all: _builtin_require_environment
     "$(PROJECT_FLEXT_INFRA) validate",
     "$(PYTEST_TARGETS)",
     "$(PROJECT_ROOT)/tests",
+    make.TIMEOUT_COMMAND,
+    make.TIMEOUT_KILL_AFTER_SECONDS,
 ) }}
 {% endif %}
 
@@ -405,37 +477,18 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_check:
-	@set -eu; \
-	for phase in $(DOCS_PHASES); do \
-		case "$$phase" in generate|fix) mode=--check ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$phase" --workspace "$(PROJECT_ROOT)" $$mode $(DOCS_PROJECT_ARGS); \
-	done
-
 _builtin_docs_all:
-	$(call _require_apply)
 	@set -eu; \
-	for phase in $(DOCS_PHASES); do \
-		case "$$phase" in generate|fix) mode=--apply ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$phase" --workspace "$(PROJECT_ROOT)" $$mode $(DOCS_PROJECT_ARGS); \
+	for action in $(DOCS_ACTIONS); do \
+		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check) ;; *) mode= ;; esac; \
+		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
-_builtin_docs_generate:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --apply $(DOCS_PROJECT_ARGS)
+{% for action in make.docs.actions if action != make.docs.default_action %}
+_builtin_docs_{{ action }}:
+	@$(PROJECT_FLEXT_INFRA) docs {{ action }} --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}"{% if action in make.docs.mutable_actions %} $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check){% endif %} $(DOCS_PROJECT_ARGS)
 
-_builtin_docs_fix:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) docs fix --workspace "$(PROJECT_ROOT)" --apply $(DOCS_PROJECT_ARGS)
-
-_builtin_docs_audit:
-	@$(PROJECT_FLEXT_INFRA) docs audit --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
-
-_builtin_docs_build:
-	@$(PROJECT_FLEXT_INFRA) docs build --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
-
-_builtin_docs_validate:
-	@$(PROJECT_FLEXT_INFRA) docs validate --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
+{% endfor %}
 
 _builtin_clean_generated:
 	$(call _require_apply)
@@ -450,10 +503,10 @@ _builtin_release_status: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
-_builtin_codegen_check: _builtin_require_environment
+_builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
-_builtin_codegen_apply: _builtin_require_environment
+_builtin_gen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
