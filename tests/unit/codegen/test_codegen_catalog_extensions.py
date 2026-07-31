@@ -215,6 +215,31 @@ class TestsCodegenCatalogExtensions:
         monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV)
         tm.fail(verify(plan, allow_missing=False))
 
+    def test_github_actions_ci_skips_the_beads_lifecycle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Inside GitHub Actions CI the Beads lifecycle is fully skipped.
+
+        CI runners are ephemeral and do not carry a live Dolt tracker; the
+        committed ``.beads`` tree is present but the tracker database is not.
+        Attempting to verify a missing tracker in CI used to fail with
+        'Beads tracker inspection failed'. CI is not a tracker owner.
+        """
+        root = tmp_path / "ci-checkout"
+        (root / ".beads").mkdir(parents=True)
+        (root / ".beads" / "config.yaml").write_text(
+            'issue-prefix: "mro"\n', encoding="utf-8"
+        )
+        plan = m.Infra.BeadsPlan(
+            repository_root=root,
+            enabled=False,
+            canonical_prefix="mro",
+            expected_version="1.1.0",
+        )
+        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
+        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
+        tm.ok(verify(plan, allow_missing=False))
+
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
@@ -305,15 +330,13 @@ class TestsCodegenCatalogExtensions:
         # disabled by default in current releases.
         bare_repo = tmp_path.parent / "acme-charts-bare.git"
         tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "clone",
-                    "--bare",
-                    member_root.as_posix(),
-                    bare_repo.as_posix(),
-                ]
-            )
+            u.Cli.run_checked([
+                "git",
+                "clone",
+                "--bare",
+                member_root.as_posix(),
+                bare_repo.as_posix(),
+            ])
         )
         tm.ok(u.Cli.run_checked(["rm", "-rf", member_root.as_posix()]))
         tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=tmp_path))
@@ -385,8 +408,7 @@ class TestsCodegenCatalogExtensions:
         manifest_path.parent.mkdir(parents=True)
         tm.ok(
             u.Cli.yaml_dump(
-                manifest_path,
-                workspace.model_dump(mode="json", exclude_none=True),
+                manifest_path, workspace.model_dump(mode="json", exclude_none=True)
             )
         )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(

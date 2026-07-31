@@ -469,6 +469,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             )
         attached = resolved_root != governing_root
         in_transaction = os.environ.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1"
+        in_ci = os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true"
         make_profile = (
             c.Infra.MakeProfile.WORKSPACE_ROOT
             if mode_result.value is c.Infra.WorkspaceMode.WORKSPACE
@@ -481,7 +482,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 make_profile=make_profile,
                 beads_enabled=(
                     False
-                    if attached or in_transaction
+                    if attached or in_transaction or in_ci
                     else make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                     or overlay.beads_enabled
                 ),
