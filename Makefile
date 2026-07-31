@@ -22,7 +22,7 @@ WORKSPACE_ROOT_REL := .
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
 # governance; standalone projects discover managed submodules at runtime from
 # .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS :=
+WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -524,16 +524,16 @@ _builtin_require_environment:
 		exit 2; \
 	fi
 
-_builtin_setup_conform: _builtin_setup_submodules
-	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-
+# Operator contract (mro-e9j0.6 C7): setup PROVISIONS tooling only — mise,
+	# venv, dependencies. It never generates, conforms, or mutates project code;
+# `make gen` (APPLY=Y) is the single public conformance/generation surface.
 ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment: _builtin_setup_conform
+_builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else
-_builtin_setup_environment: _builtin_setup_conform
+_builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
