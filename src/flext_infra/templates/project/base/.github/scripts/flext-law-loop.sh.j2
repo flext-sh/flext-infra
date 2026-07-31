@@ -172,8 +172,12 @@ run_cycle() {
     fi
     git apply --index --3way "${REPORT_DIR}/${stamp}-APPLIED.patch"
     if ! validate_worktree "${WORKSPACE_ROOT}"; then
-      log "apply RED: reverting only the vetted patch; workspace left unchanged"
-      git apply --index --reverse --3way "${REPORT_DIR}/${stamp}-APPLIED.patch"
+      log "apply RED: reverting the vetted patch"
+      if git apply --index --reverse --3way "${REPORT_DIR}/${stamp}-APPLIED.patch"; then
+        log "apply RED: revert succeeded; workspace left unchanged"
+      else
+        log "apply RED: revert FAILED; workspace still holds ${REPORT_DIR}/${stamp}-APPLIED.patch — manual cleanup required"
+      fi
       return 1
     fi
     git commit -m "fix: apply validated flext-law sweep"
