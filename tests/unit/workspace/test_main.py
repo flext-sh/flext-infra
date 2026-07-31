@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -157,9 +158,14 @@ def _write_orchestratable_workspace(
     u.Tests.commit_git_changes(member_root, "fixture: base.mk and Makefile")
 
     # Stub a managed Python so the generated Makefile can invoke flext_infra.
+    # It must delegate to the interpreter running these tests: flext_infra reads
+    # its own distribution metadata at import time, so a bare `python3` that only
+    # sees the source tree on PYTHONPATH raises PackageNotFoundError.
     venv_python = member_root / ".venv" / "bin" / "python"
     venv_python.parent.mkdir(parents=True, exist_ok=True)
-    venv_python.write_text('#!/bin/sh\nexec python3 "$@"\n', encoding="utf-8")
+    venv_python.write_text(
+        f'#!/bin/sh\nexec "{sys.executable}" "$@"\n', encoding="utf-8"
+    )
     venv_python.chmod(0o755)
 
     # Capture the propagated FAIL_FAST value after the generated check runs.
