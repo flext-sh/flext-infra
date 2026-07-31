@@ -794,7 +794,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
-            """Attach and seed a local bare origin for push behavior tests."""
+            """Attach and seed a local bare origin for push behavior tests.
+
+            ``initialize_git_repo`` already seeds a placeholder origin, so the
+            remote is re-pointed rather than added: a second ``remote add``
+            fails with "remote origin already exists".
+            """
             bare_remote = remote_root / "origin.git"
             tm.ok(
                 cli_facade.run_checked([
@@ -809,7 +814,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     [
                         c.Infra.GIT,
                         "remote",
-                        "add",
+                        "set-url",
                         c.Infra.GIT_ORIGIN,
                         str(bare_remote),
                     ],
