@@ -1874,6 +1874,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Ephemeral transaction worktrees carry the repository's .beads
             # tree but never own the tracker lifecycle: skip, don't fail.
             return r[bool].ok(True)
+        if os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true":
+            # CI runners are ephemeral and do not carry a live Dolt tracker;
+            # the Beads lifecycle is owned by development machines, not CI.
+            return r[bool].ok(True)
         beads_dir = plan.repository_root / ".beads"
         if not plan.enabled:
             if beads_dir.exists():
