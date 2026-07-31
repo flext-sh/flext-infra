@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import c, config, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -29,40 +29,52 @@ class FlextInfraWorkspaceEnvironmentMixin:
 
     @classmethod
     def sync_environment_files(
-        cls, workspace_root: Path, *, apply: bool = True, force: bool = False
-    ) -> p.Result[int]:
-        """Sync generated workspace environment files; return changed count."""
+        cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
+    ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
+        """Sync one workspace's generated environment files."""
+        result_type = m.Infra.WorkspaceEnvironmentSyncResult
+        workspace_root = request.workspace_root
         if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
-            return cls._remove_generated_environment_files(workspace_root, apply=apply)
-        envrc_result = cls._sync_envrc(workspace_root, apply=apply, force=force)
+            return cls._remove_generated_environment_files(request)
+        envrc_result = cls._sync_envrc(request)
         if envrc_result.failure:
-            return r[int].fail(envrc_result.error or ".envrc sync failed")
-        mise_result = cls._sync_mise_toml(workspace_root, apply=apply, force=force)
+            return r[result_type].fail(envrc_result.error or ".envrc sync failed")
+        mise_result = cls._sync_mise_toml(request)
         if mise_result.failure:
-            return r[int].fail(mise_result.error or ".mise.toml sync failed")
-        changed = int(envrc_result.value) + int(mise_result.value)
-        return r[int].ok(changed)
+            return r[result_type].fail(mise_result.error or ".mise.toml sync failed")
+        changed = (
+            *((workspace_root / c.Infra.ENVRC_FILENAME,) if envrc_result.value else ()),
+            *(
+                (workspace_root / c.Infra.MISE_TOML_FILENAME,)
+                if mise_result.value
+                else ()
+            ),
+        )
+        return r[result_type].ok(result_type(changed_files=changed))
 
     @classmethod
     def _sync_envrc(
-        cls, workspace_root: Path, *, apply: bool, force: bool
+        cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
     ) -> p.Result[bool]:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
         rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
         if rendered.failure:
             return r[bool].fail(rendered.error or ".envrc template render failed")
         return cls._write_generated_text(
-            workspace_root / c.Infra.ENVRC_FILENAME,
+            request.workspace_root / c.Infra.ENVRC_FILENAME,
             rendered.value,
-            apply=apply,
-            force=force,
+            apply=request.apply,
+            force=request.force,
         )
 
     @classmethod
     def _sync_mise_toml(
-        cls, workspace_root: Path, *, apply: bool, force: bool
+        cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
     ) -> p.Result[bool]:
         """Render or merge canonical tool pins into ``.mise.toml``."""
+        workspace_root = request.workspace_root
+        apply = request.apply
+        force = request.force
         target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
         rendered = cls._render_mise_toml(workspace_root)
         if rendered.failure:
@@ -182,17 +194,21 @@ class FlextInfraWorkspaceEnvironmentMixin:
 
     @classmethod
     def _remove_generated_environment_files(
-        cls, workspace_root: Path, *, apply: bool
-    ) -> p.Result[int]:
+        cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
+    ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
         """Remove generated environment files from non-Python workspaces."""
-        changed = 0
+        result_type = m.Infra.WorkspaceEnvironmentSyncResult
+        removed: list[Path] = []
         for filename in c.Infra.WORKSPACE_ENV_FILES:
-            target_path = workspace_root / filename
-            result = cls._remove_generated_environment_file(target_path, apply=apply)
+            target_path = request.workspace_root / filename
+            result = cls._remove_generated_environment_file(
+                target_path, apply=request.apply
+            )
             if result.failure:
-                return r[int].fail(result.error or f"{filename} removal failed")
-            changed += int(result.value)
-        return r[int].ok(changed)
+                return r[result_type].fail(result.error or f"{filename} removal failed")
+            if result.value:
+                removed.append(target_path)
+        return r[result_type].ok(result_type(changed_files=tuple(removed)))
 
     @classmethod
     def _remove_generated_environment_file(
