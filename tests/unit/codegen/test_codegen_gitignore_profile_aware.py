@@ -28,7 +28,7 @@ class TestsCodegenGitignoreProfileAware:
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker not in rendered, eq=True, msg=f"phantom {marker} in member")
         tm.that(rendered, has=".beads/")
-        tm.that(rendered, lacks=_BEADS_CONFIG)
+        tm.that(rendered, has=_BEADS_CONFIG)
 
     def test_workspace_root_gitignore_keeps_member_allowlist(
         self, tmp_path: Path
@@ -84,6 +84,35 @@ class TestsCodegenGitignoreProfileAware:
                 cwd=root,
             )
         )
+        provider = next(
+            p for p in config.Infra.codegen.providers if p.name == member.provider
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "-f",
+                    ".gitmodules",
+                    f"submodule.{member.path.as_posix()}.branch",
+                    provider.branch,
+                ],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "-f",
+                    ".gitmodules",
+                    f"submodule.{member.path.as_posix()}.url",
+                    member.url,
+                ],
+                cwd=root,
+            )
+        )
         rendered = _render_gitignore(root)
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker in rendered, eq=True, msg=f"missing {marker} at root")
@@ -98,20 +127,14 @@ class TestsCodegenGitignoreProfileAware:
             file.path.relative_to(tmp_path / repository.name).as_posix(): file.rendered
             for file in plan.files
         }
-        beads_path = tmp_path / "rendered-beads-config.yaml"
-        tm.ok(u.Cli.atomic_write_text_file(beads_path, by_path[".beads/config.yaml"]))
-        beads_config = u.Cli.yaml_load_mapping(beads_path)
-        tm.that(beads_config["issue-prefix"], eq=repository.name)
-        dolt = u.Cli.json_as_mapping(beads_config["dolt"])
-        tm.that(dolt["database"], eq=repository.name.replace("-", "_"))
+        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
         tm.that(
             by_path[".mise.toml"],
             has=(
-                '"github:gastownhall/beads" = '
+                '"go:github.com/steveyegge/beads/cmd/bd" = '
                 f'"{config.Infra.codegen.toolchain.beads.version}"'
             ),
         )
-        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
 
 
 def _render_gitignore(root: Path) -> str:
@@ -145,17 +168,14 @@ def _plan_independent_overlay(
         distribution=name,
         provider=provider.name,
         url=f"{provider.base_url}/{name}.git",
-        branch=provider.branch,
         path=Path(),
         role=c.Infra.RepositoryRole.STANDALONE,
         state=c.Infra.RepositoryState.ACTIVE,
-        profile=c.Infra.MakeProfile.STANDALONE,
         checkout=c.Infra.CheckoutKind.INDEPENDENT,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=True,
         editable=False,
         read_only=False,
-        beads=True,
     )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,

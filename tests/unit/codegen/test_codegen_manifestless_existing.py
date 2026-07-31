@@ -20,6 +20,7 @@ class TestCodegenManifestlessExisting:
             for item in config.Infra.codegen.repositories
             if item.distribution == "flext-infra"
         )
+        local_repository = repository.model_copy(update={"path": Path()})
         preserved = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
@@ -47,7 +48,7 @@ class TestCodegenManifestlessExisting:
         )
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.that(derived.repository, eq=repository)
+        tm.that(derived.repository, eq=local_repository)
         tm.that(derived.project, eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,

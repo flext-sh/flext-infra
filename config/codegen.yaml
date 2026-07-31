@@ -21,9 +21,16 @@ Infra:
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
       mise_version: "2026.7.16"
+      # The shared mro Dolt ledger is at schema v61; the newest official
+      # gastownhall release (1.1.2) only knows v53 and fails preflight with
+      # "schema version mismatch". Pin the go-module commit that migrated the
+      # ledger. Its `bd version` self-reports the module version (1.1.0), so
+      # reported_version feeds the conform gate (gate_version) while the
+      # immutable commit stays the installed selector version.
       beads:
-        selector: github:gastownhall/beads
-        version: "1.1.2"
+        selector: go:github.com/steveyegge/beads/cmd/bd
+        version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
+        reported_version: "1.1.0"
 
     github_actions:
       checkout:
@@ -58,6 +65,12 @@ Infra:
         organization: flext-sh
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
+      # External consumer organization: standalone repositories governed by
+      # conform through their own config/workspace.yaml (main-based line).
+      - name: datacosmos-br
+        organization: datacosmos-br
+        base_url: https://github.com/datacosmos-br
+        branch: main
     branch_policy:
       technical_branch_patterns:
         - __dolt_remote_info__
@@ -97,7 +110,7 @@ Infra:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
         mutation_fixed_points:
-          codegen:
+          gen:
             apply: check
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
@@ -106,7 +119,7 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, codegen]
+        verbs: [check, test, gen]
       verbs:
         - name: help
           default_what: usage
@@ -144,7 +157,7 @@ Infra:
         - name: release
           default_what: status
           apply_guarded: false
-        - name: codegen
+        - name: gen
           default_what: check
           apply_guarded: true
         - name: worktree
@@ -152,7 +165,7 @@ Infra:
           apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|codegen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|codegen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
+        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:

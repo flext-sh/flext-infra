@@ -11,6 +11,7 @@ from types import ModuleType
 import pytest
 
 import flext_infra as infra_pkg
+from flext_infra import config
 from flext_tests import tm
 from tests import c, t, u
 
@@ -160,6 +161,24 @@ def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
     tm.ok(
         infra_subprocess.run_checked(
             ["git", "config", "user.name", "Infra Fixtures"], cwd=repo
+        )
+    )
+    # mro-j47u (codex): existing-repository conformance inventories refs against the
+    # provider baseline. Seed a commit and a fake remote ref so tests exercise the
+    # same topology a real clone would have.
+    baseline_file = repo / ".infra-baseline"
+    baseline_file.write_text("baseline\n", encoding="utf-8")
+    tm.ok(infra_subprocess.run_checked(["git", "add", str(baseline_file)], cwd=repo))
+    tm.ok(
+        infra_subprocess.run_checked(
+            ["git", "commit", "-q", "-m", "infra fixture baseline"], cwd=repo
+        )
+    )
+    baseline_branch = config.Infra.codegen.providers[0].branch
+    tm.ok(
+        infra_subprocess.run_checked(
+            ["git", "update-ref", f"refs/remotes/origin/{baseline_branch}", "HEAD"],
+            cwd=repo,
         )
     )
     return repo

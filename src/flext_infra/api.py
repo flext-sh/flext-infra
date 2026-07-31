@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_core import r
 from flext_infra import t
 from flext_infra.base import s
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra.services._workspace.environment import (
+    FlextInfraWorkspaceEnvironmentMixin,
+)
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
@@ -15,7 +20,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfra(s[t.JsonDict]):
+class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
     """Thin public MRO facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
@@ -30,6 +35,18 @@ class FlextInfra(s[t.JsonDict]):
             self.workspace_root if workspace_root is None else workspace_root
         )
         return FlextInfraRopeWorkspace.open_workspace(resolved_root)
+
+    def generate_basemk(self, *, project_name: str | None = None) -> p.Result[str]:
+        """Render canonical base.mk content directly from the facade."""
+        generator = FlextInfraBaseMkGenerator(project_name=project_name)
+        settings = (
+            FlextInfraBaseMkTemplateRenderer.default_config().model_copy(
+                update={"project_name": project_name}
+            )
+            if project_name
+            else None
+        )
+        return generator.generate_basemk(settings)
 
     @override
     def execute(self) -> p.Result[t.JsonDict]:

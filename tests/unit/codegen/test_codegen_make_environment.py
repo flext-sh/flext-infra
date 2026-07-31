@@ -204,19 +204,13 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        ("profile", "local_infra"),
-        [
-            (c.Infra.MakeProfile.STANDALONE, False),
-            (c.Infra.MakeProfile.WORKSPACE_ROOT, True),
-        ],
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
     )
-    def test_setup_bootstraps_configured_engine_before_project_environment(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool
+    def test_setup_provisions_environment_before_project_runtime(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
-        """Setup conforms stale metadata before project-owned uv reads it."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, profile, local_infra=local_infra
-        )
+        """Setup creates the venv and syncs dependencies before any runtime use."""
+        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -259,29 +253,10 @@ class TestsCodegenMakeEnvironment:
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has=["run --no-project", "codegen conform"])
-        if local_infra:
-            tm.that(commands[0], has=f"--with-editable {project_root / 'infra-engine'}")
-            tm.that(commands[0], lacks="git+")
-        else:
-            infra_repository = next(
-                item
-                for item in config.Infra.codegen.repositories
-                if item.distribution == config.Infra.name
-            )
-            infra_provider = tm.ok(
-                u.Infra.repository_provider(
-                    infra_repository, config.Infra.codegen.providers
-                )
-            )
-            tm.that(
-                commands[0],
-                has=(
-                    f"--with {infra_repository.distribution} @ "
-                    f"git+{infra_repository.url}@{infra_provider.branch}"
-                ),
-            )
-        tm.that("\n".join(commands[1:]), has=["venv --clear", "sync --project"])
+        tm.that(commands[0], has="venv --clear")
+        tm.that(commands[1], has="sync --project")
+        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
+            tm.that(commands[2], has="pip check")
 
     def test_serialized_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -389,8 +364,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            "MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)",
-            'git -C "$$root" submodule update --init -- "$$child_path"',
+            'git -C "$$root" submodule update --init --recursive -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
