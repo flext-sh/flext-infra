@@ -121,17 +121,17 @@ class TestsCodegenCatalogExtensions:
                 reported_version="",
             )
 
-    def test_beads_prefix_honours_the_committed_tracker_declaration(
+    def test_beads_tracker_declaration_is_a_validated_model(
         self, tmp_path: Path
     ) -> None:
-        """The declared .beads/config.yaml prefix outranks the derived name.
+        """The committed tracker config parses once into a typed model.
 
-        mro-o0cc: conform derived the tracker namespace from the repository
-        distribution and rejected (or re-initialized) repositories whose
-        committed ``.beads/config.yaml`` declares a shared ledger prefix
-        (e.g. ``mro`` on the machine-wide Dolt server). The committed tracker
-        config IS the declaration; the derived name is only the fallback for
-        repositories without one.
+        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
+        ledger) is the tracker declaration for that repository. Reading it
+        returned a bare ``str`` chosen by runtime isinstance checks against an
+        untyped mapping, with a ``fallback`` argument deciding the outcome.
+        Parsing happens once, at the boundary, into ``BeadsTrackerDeclaration``;
+        absence is the model's absence, never a substituted string.
         """
         root = tmp_path / "flext-demo"
         beads_dir = root / ".beads"
@@ -139,16 +139,21 @@ class TestsCodegenCatalogExtensions:
         (beads_dir / "config.yaml").write_text(
             'issue-prefix: "mro"\ndolt:\n  database: mro\n', encoding="utf-8"
         )
-        declared = FlextInfraCodegenConform.declared_beads_prefix(
-            root, fallback="flext-demo"
-        )
-        tm.that(declared, eq="mro")
+        declared = tm.ok(FlextInfraCodegenConform.beads_declaration(root))
+        tm.that(isinstance(declared, m.Infra.BeadsTrackerDeclaration), eq=True)
+        tm.that(declared.issue_prefix, eq="mro")
+        # A repository without a committed tracker declares nothing; the
+        # caller — not the reader — decides what that means.
         bare = tmp_path / "bare-demo"
         bare.mkdir()
-        tm.that(
-            FlextInfraCodegenConform.declared_beads_prefix(bare, fallback="bare-demo"),
-            eq="bare-demo",
+        tm.fail(FlextInfraCodegenConform.beads_declaration(bare))
+        # An empty prefix is rejected by the model, not silently replaced.
+        broken = tmp_path / "broken-demo"
+        (broken / ".beads").mkdir(parents=True)
+        (broken / ".beads" / "config.yaml").write_text(
+            'issue-prefix: ""\n', encoding="utf-8"
         )
+        tm.fail(FlextInfraCodegenConform.beads_declaration(broken))
 
     def test_gitmodules_render_reaches_a_merge_fixed_point(self) -> None:
         """The gitmodules projection must not grow on every merge pass.

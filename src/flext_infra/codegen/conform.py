@@ -10,7 +10,6 @@ import os
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
-from collections.abc import Mapping
 from typing import Annotated, override
 
 from flext_core import r
@@ -389,13 +388,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
+            # The committed tracker declaration owns the namespace; a
+            # repository that declares none is governed by its project name.
+            declaration = self.beads_declaration(repository_root)
+            canonical_prefix = (
+                target.canonical_project_name
+                if declaration.failure
+                else declaration.value.issue_prefix
+            )
             beads_plans.append(
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
-                    canonical_prefix=self.declared_beads_prefix(
-                        repository_root, fallback=target.canonical_project_name
-                    ),
+                    canonical_prefix=canonical_prefix,
                     expected_version=config_spec.toolchain.beads.reported_version,
                 )
             )
@@ -1847,23 +1852,33 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def declared_beads_prefix(repository_root: Path, *, fallback: str) -> str:
-        """Return the committed tracker prefix, falling back to the derived name.
+    def beads_declaration(
+        repository_root: Path,
+    ) -> p.Result[m.Infra.BeadsTrackerDeclaration]:
+        """Parse the repository's committed tracker declaration, once.
 
         mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
         ledger on the machine-wide Dolt server) is the tracker declaration for
-        that repository. Deriving the namespace from the repository name and
-        rejecting the declared one inverted the SSOT; the derived name is only
-        the default for repositories without a committed tracker config.
+        that repository; deriving the namespace from the repository name and
+        rejecting the declared one inverted the SSOT. The file is parsed at
+        this boundary into a validated model — absence and an invalid payload
+        are failures the caller decides about, never a substituted string.
         """
         config_path = repository_root / ".beads" / "config.yaml"
         if not config_path.is_file():
-            return fallback
+            return r[m.Infra.BeadsTrackerDeclaration].fail(
+                f"repository declares no Beads tracker: {config_path}"
+            )
         loaded = u.Cli.yaml_load_mapping(config_path)
-        prefix = loaded.get("issue-prefix") if isinstance(loaded, Mapping) else None
-        if isinstance(prefix, str) and prefix.strip():
-            return prefix.strip()
-        return fallback
+        try:
+            declaration = m.Infra.BeadsTrackerDeclaration.model_validate({
+                "issue_prefix": loaded.get("issue-prefix")
+            })
+        except c.ValidationError as exc:
+            return r[m.Infra.BeadsTrackerDeclaration].fail_op(
+                f"Beads tracker declaration is invalid: {config_path}", exc
+            )
+        return r[m.Infra.BeadsTrackerDeclaration].ok(declaration)
 
     @classmethod
     def _verify_beads_plan(

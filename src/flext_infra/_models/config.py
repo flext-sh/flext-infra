@@ -1817,6 +1817,20 @@ class FlextInfraConfigModels:
             m.Field(description="Local repositories overlaid after locked sync"),
         ] = ()
 
+    class BeadsTrackerDeclaration(_ConfigContract):
+        """The tracker identity a repository commits in ``.beads/config.yaml``.
+
+        mro-o0cc: the committed file IS the declaration (e.g. the shared
+        ``mro`` ledger on the machine-wide Dolt server). It is parsed once at
+        the boundary into this model, so consumers read a validated prefix
+        instead of probing an untyped mapping at runtime.
+        """
+
+        issue_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Tracker namespace declared by the repository"),
+        ]
+
     class BeadsPlan(_ConfigContract):
         """One repository-local Beads lifecycle owned by conform."""
 
