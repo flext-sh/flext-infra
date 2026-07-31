@@ -50,13 +50,65 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Version string the pinned binary self-reports, which "
-                    "runtime gates compare against. It differs from the mise "
-                    "selector version whenever the pin is a go-module commit "
-                    "whose --version output is the module version."
+                    "Version string the pinned binary self-reports; runtime "
+                    "gates compare exactly against this value. It differs from "
+                    "the mise selector version whenever the pin is a go-module "
+                    "commit whose --version output is the module version."
                 )
             ),
         ]
+        checksum: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description=(
+                    "SHA-256 of the pinned artifact; runtime verification fails "
+                    "closed when the resolved binary digest diverges"
+                ),
+            ),
+        ] = None
+        expected_schema: Annotated[
+            int | None,
+            m.Field(
+                gt=0,
+                description=(
+                    "Schema version the pinned tool must report for its managed "
+                    "data store (e.g. the Beads Dolt ledger schema)"
+                ),
+            ),
+        ] = None
+
+    class BeadsServerSpec(_ConfigContract):
+        """Machine-wide shared Dolt server connection for Beads ledgers."""
+
+        mode: Annotated[
+            Literal["server"],
+            m.Field(description="Dolt connection mode; ledgers never embed locally"),
+        ]
+        shared_server: Annotated[
+            bool,
+            m.Field(description="Route through the machine-wide shared Dolt server"),
+        ]
+        host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
+        port: Annotated[int, m.Field(gt=0, le=65535, description="Dolt server port")]
+        user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
+        auto_commit: Annotated[
+            Literal["off", "on", "batch"],
+            m.Field(description="Dolt auto-commit policy for ledger writes"),
+        ]
+
+    class BeadsToolSpec(MiseToolSpec):
+        """Beads tool pin plus the shared Dolt ledger connection."""
+
+        server: Annotated[
+            FlextInfraConfigModels.BeadsServerSpec | None,
+            m.Field(
+                description=(
+                    "Shared Dolt server connection rendered into ledger routing "
+                    "configs; None keeps repository-local embedded state"
+                )
+            ),
+        ] = None
 
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
@@ -118,7 +170,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Exact mise binary version")
         ]
         beads: Annotated[
-            FlextInfraConfigModels.MiseToolSpec,
+            FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
         ]
 
@@ -859,6 +911,23 @@ class FlextInfraConfigModels:
         beads_enabled: Annotated[
             bool, m.Field(description="Whether this repository owns a Beads tracker")
         ]
+        attached_standalone: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Marker-attached standalone routed to the workspace ledger; "
+                    "receives a routing-only Beads config, never tracker state"
+                )
+            ),
+        ] = False
+        routing_only: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Routing-only Beads config; never initializes local tracker state"
+                )
+            ),
+        ] = False
         canonical_project_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical PEP 621 project name and Beads namespace"),
@@ -1006,6 +1075,33 @@ class FlextInfraConfigModels:
         ]
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
+
+    class BeadsConfigRenderSpec(_ConfigContract):
+        """Field-only render input for the generated Beads ledger config."""
+
+        issue_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Ledger issue prefix from the declared ledger_id"),
+        ]
+        database: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Ledger Dolt database from the declared ledger_id"),
+        ]
+        server: Annotated[
+            FlextInfraConfigModels.BeadsServerSpec,
+            m.Field(
+                description="Shared Dolt server connection from the toolchain SSOT"
+            ),
+        ]
+        routing: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Routing-only client config for an attached standalone; "
+                    "False marks the workspace-root owned ledger"
+                )
+            ),
         ]
 
     class GitignoreRenderSpec(_ConfigContract):
@@ -1351,6 +1447,15 @@ class FlextInfraConfigModels:
             ),
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
+        ledger_id: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Beads ledger identity declared by the workspace root; None "
+                    "falls back to the standalone canonical project name"
+                )
+            ),
+        ] = None
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
             m.Field(description="Root repository Git contract"),
@@ -1848,22 +1953,44 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Exact official Beads version pinned by mise"),
         ]
-
-    class BeadsRuntimeContext(_ConfigContract):
-        """Observed runtime environment that determines Beads tracker ownership."""
-
-        in_transaction: Annotated[
-            bool,
+        expected_checksum: Annotated[
+            t.NonEmptyStr | None,
             m.Field(
-                description="Whether the process is running inside an isolated worktree transaction"
+                pattern=r"^[0-9a-f]{64}$",
+                description=(
+                    "SHA-256 the resolved Beads binary must match; declared by "
+                    "the toolchain SSOT, verified fail-closed"
+                ),
             ),
-        ]
-        in_ci: Annotated[
-            bool,
+        ] = None
+        expected_schema: Annotated[
+            int | None,
             m.Field(
-                description="Whether the process is running inside a GitHub Actions CI runner"
+                gt=0,
+                description=(
+                    "Ledger schema the pinned binary must know; content identity "
+                    "of the artifact is the enforcement surface"
+                ),
             ),
-        ]
+        ] = None
+        ledger_root: Annotated[
+            Path | None,
+            m.Field(
+                description=(
+                    "Principal checkout root owning the ledger; None keeps the "
+                    "tracker at repository_root"
+                )
+            ),
+        ] = None
+        ledger_id: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Ledger identity declared by the workspace manifest SSOT; "
+                    "never derived from the repository name"
+                )
+            ),
+        ] = None
 
     class BranchAncestryRef(_ConfigContract):
         """One exact branch or registered worktree ancestry observation."""

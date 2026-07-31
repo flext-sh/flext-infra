@@ -80,8 +80,8 @@ class TestsCodegenCatalogExtensions:
         The pinned Beads build is a go-module commit (schema v61-capable) whose
         ``bd version`` output does NOT echo the pin. The toolchain therefore
         declares ``reported_version`` — what the binary actually prints — and
-        the gate consumes it via ``gate_version`` so preflight compares like
-        with like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
+        the gate consumes that value directly so preflight compares like with
+        like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
         """
         beads = config.Infra.codegen.toolchain.beads
         tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
@@ -97,11 +97,9 @@ class TestsCodegenCatalogExtensions:
     def test_mise_tool_spec_requires_the_reported_version(self) -> None:
         """``reported_version`` is a required field validated by Pydantic.
 
-        It was declared ``str | None`` with a ``gate_version`` computed field
-        that silently fell back to ``version`` — a polymorphic runtime
-        decision hidden inside the model. Every mise tool knows what its
-        binary prints, so the value is declared, required, and validated at
-        construction instead.
+        It was previously declared ``str | None`` with a fallback inside the
+        model. Every mise tool knows what its binary prints, so the value is
+        declared, required, and validated at construction instead.
         """
         spec = m.Infra.MiseToolSpec(
             selector="go:example.com/tool/cmd/x",
@@ -225,41 +223,38 @@ class TestsCodegenCatalogExtensions:
     ) -> None:
         """Inside a worktree transaction the Beads lifecycle is fully skipped.
 
-        The transaction checkout legitimately carries the repository's .beads
-        tree. Disabling beads there while keeping the disabled-but-present
-        guard made every transactional conform fail with 'Beads is disabled
-        but tracker state exists'. Ephemeral transaction worktrees are not
-        tracker owners: verification is skipped, not failed.
+        A transaction checkout routes its ledger to the principal worktree, so
+        the repository_root never owns the tracker lifecycle.  The principal
+        ledger is verified separately at the real tree on apply.
         """
-        root = tmp_path / "tx-checkout"
-        (root / ".beads").mkdir(parents=True)
-        (root / ".beads" / "config.yaml").write_text(
+        principal = tmp_path / "principal"
+        principal.mkdir()
+        tx = tmp_path / "tx-checkout"
+        (tx / ".beads").mkdir(parents=True)
+        (tx / ".beads" / "config.yaml").write_text(
             'issue-prefix: "mro"\n', encoding="utf-8"
         )
         plan = m.Infra.BeadsPlan(
-            repository_root=root,
+            repository_root=tx,
+            ledger_root=principal,
             enabled=False,
             canonical_prefix="mro",
             expected_version="1.1.0",
         )
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(
-            verify(
-                plan,
-                m.Infra.BeadsRuntimeContext(in_transaction=True, in_ci=False),
-                allow_missing=False,
-            )
-        )
+        tm.ok(verify(plan, allow_missing=False))
         # Outside a transaction the disabled-but-present guard still fails.
-        tm.fail(
-            verify(
-                plan,
-                m.Infra.BeadsRuntimeContext(in_transaction=False, in_ci=False),
-                allow_missing=False,
-            )
+        plan_at_root = m.Infra.BeadsPlan(
+            repository_root=tx,
+            enabled=False,
+            canonical_prefix="mro",
+            expected_version="1.1.0",
         )
+        tm.fail(verify(plan_at_root, allow_missing=False))
 
-    def test_github_actions_ci_skips_the_beads_lifecycle(self, tmp_path: Path) -> None:
+    def test_github_actions_ci_skips_the_beads_lifecycle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Inside GitHub Actions CI the Beads lifecycle is fully skipped.
 
         CI runners are ephemeral and do not carry a live Dolt tracker; the
@@ -278,14 +273,9 @@ class TestsCodegenCatalogExtensions:
             canonical_prefix="mro",
             expected_version="1.1.0",
         )
+        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(
-            verify(
-                plan,
-                m.Infra.BeadsRuntimeContext(in_transaction=False, in_ci=True),
-                allow_missing=False,
-            )
-        )
+        tm.ok(verify(plan, allow_missing=False))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
