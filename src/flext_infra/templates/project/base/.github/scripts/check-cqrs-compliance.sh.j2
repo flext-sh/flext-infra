@@ -49,7 +49,7 @@ _check() {
 
 	# Filter out excluded paths
 	for excl in "${exclude_patterns[@]}"; do
-		matches=$(echo "${matches}" | grep -v "^${excl}/" || true)
+		matches=$(echo "${matches}" | grep -v "^\./${excl}/" || true)
 	done
 
 	if [[ -n "${matches}" ]]; then
