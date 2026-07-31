@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, infra
+from flext_infra import c, infra, m
 from flext_tests import tm
 
 
@@ -37,10 +37,12 @@ class TestsFlextInfraFacadeEnvironmentSync:
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
 
-        result = infra.sync_environment_files(workspace, apply=True)
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
 
         tm.ok(result)
-        tm.that(result.value > 0, eq=True)
+        tm.that(result.value.changed, eq=True)
         envrc = (workspace / ".envrc").read_text(encoding="utf-8")
         mise = (workspace / ".mise.toml").read_text(encoding="utf-8")
         tm.that("strict_env" in envrc, eq=True)
@@ -53,7 +55,9 @@ class TestsFlextInfraFacadeEnvironmentSync:
         custom = workspace / ".envrc"
         _ = custom.write_text("PATH_add bin\n", encoding="utf-8")
 
-        result = infra.sync_environment_files(workspace, apply=True)
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
 
         tm.ok(result)
         tm.that(custom.read_text(encoding="utf-8"), eq="PATH_add bin\n")
@@ -67,7 +71,11 @@ class TestsFlextInfraFacadeEnvironmentSync:
         custom = workspace / ".envrc"
         _ = custom.write_text("PATH_add bin\n", encoding="utf-8")
 
-        result = infra.sync_environment_files(workspace, apply=True, force=True)
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(
+                workspace_root=workspace, force=True
+            )
+        )
 
         tm.ok(result)
         content = custom.read_text(encoding="utf-8")
@@ -92,7 +100,9 @@ class TestsFlextInfraFacadeEnvironmentSync:
             encoding="utf-8",
         )
 
-        result = infra.sync_environment_files(workspace, apply=True)
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
 
         tm.ok(result)
         merged = mise.read_text(encoding="utf-8")
@@ -106,7 +116,9 @@ class TestsFlextInfraFacadeEnvironmentSync:
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace, requires_python=">=3.14")
 
-        result = infra.sync_environment_files(workspace, apply=True)
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
 
         tm.ok(result)
         rendered = (workspace / ".mise.toml").read_text(encoding="utf-8")
@@ -118,11 +130,15 @@ class TestsFlextInfraFacadeEnvironmentSync:
         """Non-Python workspaces lose generated environment files."""
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
-        setup = infra.sync_environment_files(workspace, apply=True)
+        setup = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
         tm.ok(setup)
         (workspace / "pyproject.toml").unlink()
 
-        result = infra.sync_environment_files(workspace, apply=True)
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
 
         tm.ok(result)
         tm.that((workspace / ".envrc").exists(), eq=False)
@@ -134,8 +150,10 @@ class TestsFlextInfraFacadeBaseMk:
 
     def test_generate_basemk_returns_rendered_content(self) -> None:
         """The facade renders base.mk content for a named project."""
-        result = infra.generate_basemk(project_name="sample-project")
+        result = infra.generate_basemk(
+            m.Infra.BaseMkRenderRequest(project_name="sample-project")
+        )
 
         tm.ok(result)
-        tm.that("sample-project" in result.value, eq=True)
-        tm.that(".PHONY" in result.value, eq=True)
+        tm.that("sample-project" in result.value.content, eq=True)
+        tm.that(".PHONY" in result.value.content, eq=True)

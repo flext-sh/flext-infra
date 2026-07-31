@@ -47,21 +47,16 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Exact tool version installed by mise")
         ]
         reported_version: Annotated[
-            t.NonEmptyStr | None,
+            t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Version string the pinned binary self-reports when it "
-                    "differs from the mise selector version (e.g. a go-module "
-                    "commit pin whose --version output is the module version)"
+                    "Version string the pinned binary self-reports, which "
+                    "runtime gates compare against. It differs from the mise "
+                    "selector version whenever the pin is a go-module commit "
+                    "whose --version output is the module version."
                 )
             ),
-        ] = None
-
-        @m.computed_field()
-        @property
-        def gate_version(self) -> str:
-            """Version string runtime gates must compare against."""
-            return self.reported_version or self.version
+        ]
 
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
@@ -1872,6 +1867,47 @@ class FlextInfraConfigModels:
         references: Annotated[
             tuple[FlextInfraConfigModels.BranchAncestryRef, ...],
             m.Field(description="Local, remote, and worktree ancestry inventory"),
+        ]
+
+    class WorkspaceEnvironmentSyncRequest(_ConfigContract):
+        """Validated public request for one workspace environment sync."""
+
+        workspace_root: Annotated[
+            Path, m.Field(description="Workspace root receiving the sync")
+        ]
+        apply: Annotated[
+            bool, m.Field(description="Write changes instead of reporting them")
+        ] = True
+        force: Annotated[
+            bool, m.Field(description="Replace custom files with generated content")
+        ] = False
+
+    class WorkspaceEnvironmentSyncResult(_ConfigContract):
+        """Outcome of one workspace environment sync."""
+
+        changed_files: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Environment files created, updated, or removed"),
+        ] = ()
+
+        @m.computed_field()
+        @property
+        def changed(self) -> bool:
+            """Whether the sync altered any environment file."""
+            return bool(self.changed_files)
+
+    class BaseMkRenderRequest(_ConfigContract):
+        """Validated public request for one base.mk render."""
+
+        project_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
+        ]
+
+    class BaseMkRenderResult(_ConfigContract):
+        """Rendered base.mk content for one project."""
+
+        content: Annotated[
+            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
         ]
 
     class CodegenConformRequest(_ConfigContract):
