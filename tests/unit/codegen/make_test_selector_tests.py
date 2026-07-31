@@ -193,7 +193,12 @@ class TestsMakeTestSelector:
         invocation_log = tmp_path / "uv-args.log"
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(
-            uv, f'#!/bin/sh\nprintf "%s\\n" "$@" > "{invocation_log}"\n'
+            uv,
+            (
+                "#!/bin/sh\n"
+                f'printf "file=%s\\nargs=%s\\n" "$FLEXT_PYTEST_FILE_RAW" "$*" '
+                f'> "{invocation_log}"\n'
+            ),
         )
         selected = "tests/unit/selected_test.py"
         selected_path = tmp_path / selected
@@ -207,12 +212,7 @@ class TestsMakeTestSelector:
 
         executed = tm.ok(
             test_u.Tests.run_isolated_make(
-                [
-                    "--no-print-directory",
-                    "test",
-                    f"PYTEST_TARGETS={selected}",
-                    f"UV={uv}",
-                ],
+                ["--no-print-directory", "test", f"FILE={selected}", f"UV={uv}"],
                 cwd=tmp_path,
             )
         )
@@ -223,11 +223,11 @@ class TestsMakeTestSelector:
             msg=f"stdout:\n{executed.stdout}\nstderr:\n{executed.stderr}",
         )
         arguments = invocation_log.read_text(encoding="utf-8")
-        tm.that(arguments, has=selected)
-        tm.that(str(tmp_path / "tests") not in arguments, where=bool)
+        tm.that(arguments, has=f"file={selected}")
+        tm.that(arguments, has="args=run --offline python -m flext_infra._pytest_entry")
 
-    def test_generated_test_recipe_forwards_pytest_args(self) -> None:
-        """Forward both supported pytest selectors through the local recipe.
+    def test_generated_test_recipe_uses_one_typed_runner_boundary(self) -> None:
+        """Forward supported selectors without reconstructing pytest in shell.
 
         Without this, a targeted run is impossible through `make`, and the only
         way to filter is to call pytest directly -- exactly the loose command the
@@ -240,11 +240,19 @@ class TestsMakeTestSelector:
         )
 
         tm.that(template, has="test_report_recipe(")
-        tm.that(reporter, has='_all_pytest_args="$(PYTEST_ARGS)"')
-        tm.that(reporter, has='if [ -n "$(MATCH)" ]')
-        tm.that(reporter, has='if [ -n "$(FILE)" ]')
-        tm.that(reporter, has='if [ "$(FAIL_FAST)" = "1" ]')
-        tm.that(template, has='"$(PYTEST_TARGETS)"')
+        tm.that(template, has="python -m flext_infra._pytest_entry")
+        tm.that(
+            template,
+            has=[
+                "FLEXT_PYTEST_FILE_RAW",
+                "FLEXT_PYTEST_MATCH_RAW",
+                "FLEXT_PYTEST_WHAT_RAW",
+                "FLEXT_PYTEST_FAIL_FAST_RAW",
+            ],
+            lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
+        )
+        tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
+        tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
 
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
         """Gen (conform) and base.mk generation remain distinct operations."""

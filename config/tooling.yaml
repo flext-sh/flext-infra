@@ -493,6 +493,20 @@ Infra:
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
+        # mro-wkii.17.37.1 (1bc6379b): budgets are MEASURED, not aspirational —
+        # they retain the observed coverage-run slack. The typed runner owns
+        # them; never narrow them back to the pre-measurement 10s/60s.
+        case-timeout-seconds: 30
+        run-timeout-seconds: 300
+        termination-grace-seconds: 2
+        enforcement-plugin: flext_tests_enforcement
+        progress-args: [--verbose]
+        report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
+        diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
+        parallel-workers: 4
+        parallel-distribution: worksteal
+        profile-sort: cumulative
+        profile-limit: 50
         min-version: "8.0"
         python-classes: ["Test*"]
         python-files: ["*_test.py", "*_tests.py", "test_*.py"]
@@ -525,18 +539,6 @@ Infra:
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          - -n=4
-          - --dist=worksteal
-          # mro-wkii.17.37.1: one typed suite budget replaces test-local
-          # timeout overrides and retains measured coverage-run slack.
-          - --timeout=30
-          - --session-timeout=300
-        profile-sort: cumulative
-        profile-limit: 50
-        # mro-99ae: hard process boundary independent of pytest hook progress.
-        # The pytest timeouts above bound a hanging TEST; this bounds a hanging
-        # PROCESS, which no in-process hook can observe.
-        process-timeout-seconds: 60
       tomlsort:
         all: true
         in_place: true

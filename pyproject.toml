@@ -488,13 +488,9 @@ root = "tests"
 [tool.pytest.ini_options]
 addopts = [
   "--benchmark-disable",
-  "--dist=worksteal",
   "--durations=10",
   "--markdown-docs",
-  "--session-timeout=300",
   "--strict-markers",
-  "--timeout=30",
-  "-n=4",
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [

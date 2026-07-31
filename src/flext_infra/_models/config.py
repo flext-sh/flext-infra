@@ -976,6 +976,10 @@ class FlextInfraConfigModels:
         infra_cli: Annotated[
             t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
         ]
+        pytest: Annotated[
+            FlextInfraModelsDepsToolSettings.PytestConfig,
+            m.Field(description="Typed pytest execution policy"),
+        ]
 
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""

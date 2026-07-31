@@ -202,8 +202,7 @@ class TestsWorkspaceRootMakeContract:
 
         process: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "setup"],
-                cwd=workspace_root,
+                ["-C", str(workspace_root), "--dry-run", "setup"], cwd=workspace_root
             )
         )
         output = process.stdout + process.stderr

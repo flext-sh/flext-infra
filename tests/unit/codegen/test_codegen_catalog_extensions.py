@@ -145,13 +145,13 @@ class TestsCodegenCatalogExtensions:
         tm.that(routed.routes_to_principal_ledger, eq=True)
         # The field is required: "no ledger root" is not a representable state.
         with pytest.raises(c.ValidationError):
-            m.Infra.BeadsPlan(
-                repository_root=repo,
-                enabled=True,
-                canonical_prefix="mro",
-                expected_version="1.1.0",
-                ledger_id="mro",
-            )
+            m.Infra.BeadsPlan.model_validate({
+                "repository_root": repo,
+                "enabled": True,
+                "canonical_prefix": "mro",
+                "expected_version": "1.1.0",
+                "ledger_id": "mro",
+            })
 
     def test_beads_tracker_declaration_is_a_validated_model(
         self, tmp_path: Path

@@ -324,12 +324,7 @@ test: ## Run pytest only
 
 _test_impl:
 {{ test_report_recipe(
-    "$(VENV_PYTHON) -m pytest",
-    "$(PROJECT_INFRA_VALIDATE)",
-    "$(PYTEST_TARGETS)",
-    "$(TESTS_DIR)",
-    make.TIMEOUT_COMMAND,
-    make.TIMEOUT_KILL_AFTER_SECONDS,
+    "$(VENV_PYTHON) -m flext_infra._pytest_entry",
     "$(Q)",
 ) }}
 

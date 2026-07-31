@@ -16,6 +16,7 @@ class FlextInfraEnsurePytestConfigPhase:
     def _phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pytest phase definition."""
         pytest = self._tool_config.tools.pytest
+        addopts = (*pytest.standard_addopts, f"--timeout={pytest.case_timeout_seconds}")
         return (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("pytest")
@@ -38,7 +39,7 @@ class FlextInfraEnsurePytestConfigPhase:
             )
             .list(
                 c.Infra.ADDOPTS,
-                pytest.standard_addopts,
+                addopts,
                 # mro-pulj (codex): replace stale coverage, collection, and bypass flags.
                 strategy=c.Infra.TomlMergeMode.REPLACE,
             )

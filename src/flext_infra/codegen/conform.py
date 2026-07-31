@@ -1390,6 +1390,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
+                    pytest=config.Infra.tooling.tools.pytest,
                     dist=dist,
                     infra_cli=config.Infra.name,
                     infra_repository=infra_repository.value,
@@ -1474,6 +1475,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
+                pytest=config.Infra.tooling.tools.pytest,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1603,6 +1605,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
+                pytest=config.Infra.tooling.tools.pytest,
                 scaffold=codegen.scaffold,
                 gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,
@@ -1775,11 +1778,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     pending_line += " " + trimmed
                 continue
             if pending_line is not None:
-                raw_line = pending_line + " " + raw_line.rstrip()
+                joined = pending_line + " " + raw_line.strip()
+                if joined.rstrip().endswith("\\"):
+                    pending_line = joined.rstrip()[:-1].rstrip()
+                    continue
+                raw_line = joined
                 line_number = pending_number
                 pending_line = None
             logical_lines.append((line_number, raw_line))
         if pending_line is not None:
+            if pending_line.startswith(".PHONY:"):
+                return r[bool].fail(
+                    f"{policy.filename} has an unterminated .PHONY continuation"
+                )
             logical_lines.append((pending_number, pending_line))
         for line_number, raw_line in logical_lines:
             if in_define:
@@ -1800,7 +1811,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if _CONDITIONAL_RE.match(raw_line):
                 continue
             if raw_line.startswith(".PHONY:"):
-                names = raw_line.partition(":")[2].split()
+                declaration = raw_line.partition(":")[2].strip()
+                names = declaration.split()
                 if names and all(target_re.fullmatch(name) for name in names):
                     continue
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
