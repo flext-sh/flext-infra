@@ -47,16 +47,16 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Exact tool version installed by mise")
         ]
         reported_version: Annotated[
-            t.NonEmptyStr | None,
+            t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Version string the pinned binary self-reports, which "
-                    "runtime gates compare against. It differs from the mise "
-                    "selector version whenever the pin is a go-module commit "
-                    "whose --version output is the module version."
+                    "Version string the pinned binary self-reports; runtime "
+                    "gates compare exactly against this value. It differs from "
+                    "the mise selector version whenever the pin is a go-module "
+                    "commit whose --version output is the module version."
                 )
             ),
-        ] = None
+        ]
         checksum: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -77,12 +77,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = None
-
-        @m.computed_field()
-        @property
-        def gate_version(self) -> str:
-            """Version string runtime gates must compare against."""
-            return self.reported_version or self.version
 
     class BeadsServerSpec(_ConfigContract):
         """Machine-wide shared Dolt server connection for Beads ledgers."""

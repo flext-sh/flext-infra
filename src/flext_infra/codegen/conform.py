@@ -403,7 +403,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
                     canonical_prefix=self._beads_ledger_identity(workspace, target),
-                    expected_version=config_spec.toolchain.beads.gate_version,
+                    expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
                     ledger_root=ledger_root,

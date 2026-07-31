@@ -25,10 +25,10 @@ Infra:
       # gastownhall release (1.1.2) only knows v53 and fails preflight with
       # "schema version mismatch". Pin the go-module commit that migrated the
       # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform gate (gate_version) while the
-      # immutable commit stays the installed selector version. The artifact
-      # identity is content-proven: checksum is the SHA-256 of the pinned
-      # binary, and expected_schema is the ledger schema the binary must know.
+      # reported_version feeds the conform preflight gate; the immutable commit
+      # stays the installed selector version. The artifact identity is
+      # content-proven: checksum is the SHA-256 of the pinned binary, and
+      # expected_schema is the ledger schema the binary must know.
       beads:
         selector: go:github.com/steveyegge/beads/cmd/bd
         version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"

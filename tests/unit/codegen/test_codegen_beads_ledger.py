@@ -248,6 +248,7 @@ class TestCodegenBeadsLedger:
             m.Infra.BeadsToolSpec(
                 selector="go:example.invalid/tool",
                 version="0.0.1",
+                reported_version="1.1.0",
                 checksum="not-a-digest",
             )
 
