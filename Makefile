@@ -11,8 +11,8 @@ SHELL := /bin/sh
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := standalone
 WORKSPACE_ROOT_REL := .
-WORKSPACE_MEMBERS :=
-MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)
+WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
+MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
 
@@ -50,7 +50,7 @@ WORKSPACE ?= $(PROJECT_ROOT)
 ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
 WORKSPACE_ROOT := $(shell git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || pwd -P)
 endif
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
@@ -88,7 +88,6 @@ _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
 _DEFAULT_worktree := list
-_DEFAULT_basemk := generate
 
 
 ifneq ($(filter $(MAKE_PROFILE),workspace-root standalone),$(MAKE_PROFILE))
@@ -343,8 +342,6 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
 
-
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
