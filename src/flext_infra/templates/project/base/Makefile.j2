@@ -320,8 +320,19 @@ _serialized_{{ verb }}:
 
 {% endfor %}
 
+# `setup` keeps its own recipe (it must not require the environment it is about
+# to build), but it still runs the pre-/post-setup lifecycle hooks so a project
+# declaring them in the custom handler surface is actually honoured.
 setup:
+	@for hook in "pre-setup"; do \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+	done
 	@$(SELF_MAKE) _builtin_setup_environment
+	@for hook in "post-setup"; do \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+	done
 
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
