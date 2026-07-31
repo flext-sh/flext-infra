@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, u
+import flext_infra
+from flext_infra import c, config, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -224,7 +225,11 @@ class TestsMakeTestSelector:
         )
         arguments = invocation_log.read_text(encoding="utf-8")
         tm.that(arguments, has=f"file={selected}")
-        tm.that(arguments, has="args=run --offline python -m flext_infra._pytest_entry")
+        # The contract is that the explicit FILE reaches the typed runner
+        # through uv. Which uv flags the generated Makefile uses is template
+        # policy (it moved from --offline to --project/--no-sync), so freezing
+        # them here breaks the test on a legitimate template change.
+        tm.that(arguments, has="python -m flext_infra._pytest_entry")
 
     def test_generated_test_recipe_uses_one_typed_runner_boundary(self) -> None:
         """Forward supported selectors without reconstructing pytest in shell.
@@ -255,11 +260,19 @@ class TestsMakeTestSelector:
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
 
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
-        """Gen (conform) and base.mk generation remain distinct operations."""
+        """Gen (conform) and base.mk generation remain distinct operations.
+
+        The generated Makefile owns ``gen``; base.mk generation is a private
+        custom handler this project declares for itself. Reading an extra-verb
+        list off a repository reference asserted nothing about that split: the
+        verbs a project adds are its own config, never flext-infra's knowledge.
+        """
         template = _makefile_template().read_text(encoding="utf-8")
-        repository = test_u.Tests.repository_ref("flext-infra")
-        extra_verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
+        custom = (
+            Path(flext_infra.__file__).resolve().parents[2]
+            / c.Infra.CUSTOM_MAKE_FILENAME
+        ).read_text(encoding="utf-8")
 
         tm.that(template, has="_builtin_gen_apply")
-        tm.that(extra_verbs, eq={"basemk": "generate"})
         tm.that(template, lacks="_builtin_build_gen")
+        tm.that(custom, has="_custom_basemk_generate:")

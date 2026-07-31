@@ -302,9 +302,9 @@ _docs_impl:
 	fi; \
 	for action in $$actions; do \
 		case "$$action" in \
-{% for action in docs.actions if action != docs.default_action %}
+{%- for action in docs.actions if action != docs.default_action %}
 			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
-{% endfor %}
+{%- endfor %}
 			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs.actions | join('|') }})"; exit 2 ;; \
 		esac; \
 		cmd="$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }}"; \

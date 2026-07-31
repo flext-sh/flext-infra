@@ -109,6 +109,25 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that('rumdl" check --fix' in generated.value, eq=False)
 
     @pytest.mark.integration
+    def test_basemk_renders_shell_continuations_without_blank_lines(self) -> None:
+        r"""Every rendered recipe line must keep its shell continuation intact.
+
+        A Jinja loop that emits a bare newline breaks the ``\\`` continuation of
+        the surrounding shell construct, so the generated recipe dies with
+        'syntax error: unexpected end of file' before running anything.
+        """
+        generated = FlextInfraBaseMkGenerator().execute()
+
+        tm.ok(generated)
+        continued = [
+            index
+            for index, line in enumerate(generated.value.splitlines())
+            if line.rstrip().endswith("\\")
+        ]
+        lines = generated.value.splitlines()
+        tm.that([index for index in continued if not lines[index + 1].strip()], eq=[])
+
+    @pytest.mark.integration
     def test_output_singleton_has_expected_methods(self) -> None:
         """Test that reporting/output methods are exposed through u.Infra.
 
