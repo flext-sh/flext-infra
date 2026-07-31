@@ -268,6 +268,16 @@ class FlextInfraConfigModels:
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
+        workspace_repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Governed member repositories consumed by workspace-scoped "
+                    "workflow templates (docs paths, dependabot directories)"
+                ),
+            ),
+        ]
 
     class DistroDockerRenderSpec(_ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
@@ -1774,6 +1784,52 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Ordered repository catalog"),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_github_artifact_ownership(self) -> Self:
+            """Require one full-managed conform owner for every GitHub template."""
+            github_templates = tuple(
+                Path(entry.destination)
+                for entry in self.templates.entries
+                if Path(entry.destination).parts[:1] == (".github",)
+            )
+            github_managed = tuple(
+                managed
+                for managed in self.managed_files
+                if managed.path.parts[:1] == (".github",)
+            )
+            template_paths = set(github_templates)
+            managed_paths = {managed.path for managed in github_managed}
+            duplicate_templates = len(github_templates) != len(template_paths)
+            duplicate_managed = len(github_managed) != len(managed_paths)
+            if duplicate_templates or duplicate_managed:
+                msg = (
+                    "GitHub artifacts must have exactly one template and managed owner"
+                )
+                raise ValueError(msg)
+            if template_paths != managed_paths:
+                missing_owners = sorted(
+                    path.as_posix() for path in template_paths - managed_paths
+                )
+                missing_templates = sorted(
+                    path.as_posix() for path in managed_paths - template_paths
+                )
+                msg = (
+                    "GitHub template/managed ownership mismatch: "
+                    f"missing owners={missing_owners}, "
+                    f"missing templates={missing_templates}"
+                )
+                raise ValueError(msg)
+            non_full = sorted(
+                managed.path.as_posix()
+                for managed in github_managed
+                if managed.policy
+                != FlextInfraConstantsSharedInfra.MANAGED_FILE_POLICY_FULL
+            )
+            if non_full:
+                msg = f"GitHub artifacts must be full-managed: {non_full}"
+                raise ValueError(msg)
+            return self
 
     # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source
     # selection is modeled once so iteration, Rope, and census share one SSOT.

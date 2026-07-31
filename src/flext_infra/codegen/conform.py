@@ -1337,21 +1337,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     routing=target.routing_only,
                 )
             )
-        if destination in {
-            ".github/workflows/ci.yml",
-            ".github/workflows/ci-matrix.yml",
-        }:
+        if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)
             if provider.failure:
                 return r[p.Model].fail(
                     provider.error or "workflow provider resolution failed"
                 )
+            workspace_repositories = (
+                tuple(workspace.members)
+                if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                else ()
+            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     repository_branch=provider.value.branch,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
+                    workspace_repositories=workspace_repositories,
                 )
             )
         destination_path = Path(destination)

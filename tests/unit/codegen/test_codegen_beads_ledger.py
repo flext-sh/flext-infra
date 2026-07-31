@@ -141,7 +141,8 @@ class TestCodegenBeadsLedger:
 
         tm.that(plan.enabled, eq=True)
         tm.that(plan.repository_root, eq=principal.resolve())
-        tm.that(plan.ledger_root, eq=None)
+        tm.that(plan.ledger_root, eq=principal.resolve())
+        tm.that(plan.routes_to_principal_ledger, eq=False)
 
     def test_manifest_ledger_id_owns_tracker_namespace(self, tmp_path: Path) -> None:
         """Derive the tracker identity from the declared ledger, never the repo name."""

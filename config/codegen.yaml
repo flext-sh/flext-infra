@@ -68,6 +68,22 @@ Infra:
         repository: helm/kind-action
         version: v1.14.0
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
+      upload-artifact:
+        repository: actions/upload-artifact
+        version: v4.6.2
+        sha: ea165f8d65b6e75b540449e92b4886f43607fa02
+      configure-pages:
+        repository: actions/configure-pages
+        version: v6.0.0
+        sha: 45bfe0192ca1faeb007ade9deae92b16b8254a0d
+      upload-pages-artifact:
+        repository: actions/upload-pages-artifact
+        version: v5.0.0
+        sha: fc324d3547104276b827a68afc52ff2a11cc49c9
+      deploy-pages:
+        repository: actions/deploy-pages
+        version: v5.0.0
+        sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
     uv_exclude_dependencies:
       - project: flext-infra
@@ -561,6 +577,33 @@ Infra:
             - models
 
     managed_files:
+      - path: .github/ci-template/ci.yml
+        owner: codegen
+        policy: full
+      - path: .github/copilot-instructions.md
+        owner: codegen
+        policy: full
+      - path: .github/dependabot.yml
+        owner: codegen
+        policy: full
+      - path: .github/prompts/flext-aggressive-scale-refactor.prompt.md
+        owner: codegen
+        policy: full
+      - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+        owner: codegen
+        policy: full
+      - path: .github/scripts/check-beads-policy.sh
+        owner: codegen
+        policy: full
+      - path: .github/scripts/check-cqrs-compliance.sh
+        owner: codegen
+        policy: full
+      - path: .github/scripts/flext-law-loop.sh
+        owner: codegen
+        policy: full
+      - path: .github/scripts/install-git-hooks.sh
+        owner: codegen
+        policy: full
       - path: ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
@@ -580,6 +623,12 @@ Infra:
         owner: codegen
         policy: full
       - path: .github/workflows/ci.yml
+        owner: codegen
+        policy: full
+      - path: .github/workflows/docs.yml
+        owner: codegen
+        policy: full
+      - path: .github/workflows/release.yml
         owner: codegen
         policy: full
       - path: .beads/config.yaml
@@ -1036,6 +1085,51 @@ Infra:
     templates:
       root: project
       entries:
+        - source: base/.github/ci-template/ci.yml.j2
+          destination: .github/ci-template/ci.yml
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/copilot-instructions.md.j2
+          destination: .github/copilot-instructions.md
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/dependabot.yml.j2
+          destination: .github/dependabot.yml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2
+          destination: .github/prompts/flext-aggressive-scale-refactor.prompt.md
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2
+          destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/scripts/check-beads-policy.sh.j2
+          destination: .github/scripts/check-beads-policy.sh
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/scripts/check-cqrs-compliance.sh.j2
+          destination: .github/scripts/check-cqrs-compliance.sh
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/scripts/flext-law-loop.sh.j2
+          destination: .github/scripts/flext-law-loop.sh
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/scripts/install-git-hooks.sh.j2
+          destination: .github/scripts/install-git-hooks.sh
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
         - source: base/.github/workflows/ci.yml.j2
           destination: .github/workflows/ci.yml
           profiles: [workspace-root, standalone]
@@ -1089,6 +1183,16 @@ Infra:
         - source: base/.github/workflows/ci-matrix.yml.j2
           destination: .github/workflows/ci-matrix.yml
           profiles: [workspace-root, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.github/workflows/docs.yml.j2
+          destination: .github/workflows/docs.yml
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        - source: base/.github/workflows/release.yml.j2
+          destination: .github/workflows/release.yml
+          profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/ci/docker/ubuntu.Dockerfile.j2
