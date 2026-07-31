@@ -22,7 +22,7 @@ WORKSPACE_ROOT_REL := .
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
 # governance; standalone projects discover managed submodules at runtime from
 # .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS :=
+WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -63,7 +63,7 @@ WORKSPACE ?= $(PROJECT_ROOT)
 # environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
 # must never redirect verbs to another working tree.
 ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
-WORKSPACE_ROOT := $(shell git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+WORKSPACE_ROOT := $(shell root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || pwd -P; fi)
 endif
 # End SECTION: WORKSPACE_ROOT isolation
 
@@ -534,24 +534,16 @@ _builtin_require_environment:
 		exit 2; \
 	fi
 
-_builtin_setup_conform: _builtin_setup_submodules
-	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-
-# === SECTION: setup environment (managed) ===
-# Source: computed (MAKE_PROFILE routing)
-# Rule: workspace-member delegates the environment to the principal (the uv
-# workspace venv lives at RUNTIME_ROOT); workspace-root and standalone build
-# their own environment locally.
-ifeq ($(MAKE_PROFILE),workspace-member)
-_builtin_setup_environment: _builtin_setup_conform
-	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
-else ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment: _builtin_setup_conform
+# Operator contract (mro-e9j0.6 C7): setup PROVISIONS tooling only — mise,
+# venv, dependencies. It never generates, conforms, or mutates project code;
+# `make gen` (APPLY=Y) is the single public conformance/generation surface.
+ifeq ($(MAKE_PROFILE),workspace-root)
+_builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else
-_builtin_setup_environment: _builtin_setup_conform
+_builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif

@@ -11,7 +11,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # === SECTION: base packages (managed) ===
 # Source: template (distro-specific package list)
 RUN dnf install -y \
-      bash ca-certificates curl git make gcc gcc-c++ libatomic \
+      bash ca-certificates curl git make gcc gcc-c++ libatomic libicu-devel \
     && dnf clean all
 # End SECTION: base packages
 

@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import os
 import hashlib
 from fnmatch import fnmatchcase
-from pathlib import Path
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
@@ -1921,12 +1922,41 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return u.Cli.run_raw([str(binary.value), *arguments], cwd=ledger_root)
 
     @staticmethod
+    def beads_declaration(
+        repository_root: Path,
+    ) -> p.Result[m.Infra.BeadsTrackerDeclaration]:
+        """Parse the repository's committed tracker declaration, once.
+
+        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
+        ledger on the machine-wide Dolt server) is the tracker declaration for
+        that repository; deriving the namespace from the repository name and
+        rejecting the declared one inverted the SSOT. The file is parsed at
+        this boundary into a validated model — absence and an invalid payload
+        are failures the caller decides about, never a substituted string.
+        """
+        config_path = repository_root / ".beads" / "config.yaml"
+        if not config_path.is_file():
+            return r[m.Infra.BeadsTrackerDeclaration].fail(
+                f"repository declares no Beads tracker: {config_path}"
+            )
+        loaded = u.Cli.yaml_load_mapping(config_path)
+        try:
+            declaration = m.Infra.BeadsTrackerDeclaration.model_validate({
+                "issue_prefix": loaded.get("issue-prefix")
+            })
+        except c.ValidationError as exc:
+            return r[m.Infra.BeadsTrackerDeclaration].fail_op(
+                f"Beads tracker declaration is invalid: {config_path}", exc
+            )
+        return r[m.Infra.BeadsTrackerDeclaration].ok(declaration)
+
+    @staticmethod
     def declared_beads_prefix(repository_root: Path, *, fallback: str) -> str:
         """Return the committed tracker prefix, falling back to the derived name.
 
         mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
         ledger on the machine-wide Dolt server) is the tracker declaration for
-        that repository. Deriving the namespace from the repository name and
+        that repository; deriving the namespace from the repository name and
         rejecting the declared one inverted the SSOT; the derived name is only
         the default for repositories without a committed tracker config.
         """
@@ -1950,6 +1980,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         apply.
         """
         if plan.ledger_root is not None and plan.ledger_root != plan.repository_root:
+            return r[bool].ok(True)
+        if os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true":
+            # CI runners are ephemeral and do not carry a live Dolt tracker;
+            # the Beads lifecycle is owned by development machines, not CI.
             return r[bool].ok(True)
         if not plan.enabled:
             beads_dir = plan.repository_root / ".beads"

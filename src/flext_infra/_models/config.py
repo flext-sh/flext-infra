@@ -50,9 +50,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Version string the pinned binary self-reports when it "
-                    "differs from the mise selector version (e.g. a go-module "
-                    "commit pin whose --version output is the module version)"
+                    "Version string the pinned binary self-reports, which "
+                    "runtime gates compare against. It differs from the mise "
+                    "selector version whenever the pin is a go-module commit "
+                    "whose --version output is the module version."
                 )
             ),
         ] = None
@@ -1927,6 +1928,20 @@ class FlextInfraConfigModels:
             m.Field(description="Local repositories overlaid after locked sync"),
         ] = ()
 
+    class BeadsTrackerDeclaration(_ConfigContract):
+        """The tracker identity a repository commits in ``.beads/config.yaml``.
+
+        mro-o0cc: the committed file IS the declaration (e.g. the shared
+        ``mro`` ledger on the machine-wide Dolt server). It is parsed once at
+        the boundary into this model, so consumers read a validated prefix
+        instead of probing an untyped mapping at runtime.
+        """
+
+        issue_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Tracker namespace declared by the repository"),
+        ]
+
     class BeadsPlan(_ConfigContract):
         """One repository-local Beads lifecycle owned by conform."""
 
@@ -2015,6 +2030,47 @@ class FlextInfraConfigModels:
         references: Annotated[
             tuple[FlextInfraConfigModels.BranchAncestryRef, ...],
             m.Field(description="Local, remote, and worktree ancestry inventory"),
+        ]
+
+    class WorkspaceEnvironmentSyncRequest(_ConfigContract):
+        """Validated public request for one workspace environment sync."""
+
+        workspace_root: Annotated[
+            Path, m.Field(description="Workspace root receiving the sync")
+        ]
+        apply: Annotated[
+            bool, m.Field(description="Write changes instead of reporting them")
+        ] = True
+        force: Annotated[
+            bool, m.Field(description="Replace custom files with generated content")
+        ] = False
+
+    class WorkspaceEnvironmentSyncResult(_ConfigContract):
+        """Outcome of one workspace environment sync."""
+
+        changed_files: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Environment files created, updated, or removed"),
+        ] = ()
+
+        @m.computed_field()
+        @property
+        def changed(self) -> bool:
+            """Whether the sync altered any environment file."""
+            return bool(self.changed_files)
+
+    class BaseMkRenderRequest(_ConfigContract):
+        """Validated public request for one base.mk render."""
+
+        project_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
+        ]
+
+    class BaseMkRenderResult(_ConfigContract):
+        """Rendered base.mk content for one project."""
+
+        content: Annotated[
+            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
         ]
 
     class CodegenConformRequest(_ConfigContract):
