@@ -22,18 +22,15 @@ if TYPE_CHECKING:
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
-    root_repository = next(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-        and repository.provider == config.Infra.codegen.providers[0].name
-    )
+    # The fixture declares the synthetic topology it needs; flext-infra owns
+    # no catalog of real projects to borrow rows from.
+    root_repository = test_u.Tests.repository_ref("fixture-workspace")
     members = tuple(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
-        and repository.provider == root_repository.provider
-    )[:2]
+        test_u.Tests.repository_ref(
+            name, path=Path(name), role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        )
+        for name in ("fixture-member-one", "fixture-member-two")
+    )
     project_names = tuple(member.path.as_posix() for member in members)
     (workspace_root / "pyproject.toml").write_text(
         f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n",
@@ -186,6 +183,51 @@ class TestsWorkspaceRootMakeContract:
         tm.that(make_entries, len=1)
         tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
+    def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
+        """Route the sole public conform verb to the preserved internal CLI."""
+        workspace_root, _ = _write_workspace(tmp_path)
+
+        conform: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "conform", "WHAT=check"],
+                cwd=workspace_root,
+            )
+        )
+        retired: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "codegen"], cwd=workspace_root
+            )
+        )
+        output = conform.stdout + conform.stderr
+
+        tm.that(conform.exit_code, eq=0, msg=output)
+        tm.that(output, has='--verb "conform"')
+        tm.that(retired.exit_code, ne=0)
+
+    def test_generated_setup_runs_its_lifecycle_hooks(self, tmp_path: Path) -> None:
+        """``setup`` must fire pre-/post-setup like every other public verb.
+
+        The generated ``setup`` short-circuited straight to
+        ``_builtin_setup_environment``, bypassing ``_dispatch`` — so a project
+        declaring ``post-setup`` in ``custom.mk`` (the only sanctioned extension
+        surface) had that hook silently never execute.
+        """
+        workspace_root, _project_names = _write_workspace(tmp_path)
+        (workspace_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            ".PHONY: post-setup\npost-setup:\n\t@echo POST_SETUP_HOOK_RAN\n",
+            encoding="utf-8",
+        )
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "setup"], cwd=workspace_root
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="post-setup", msg=output)
+
     def test_generated_make_selects_manifest_projects_and_forwards_gates(
         self, tmp_path: Path
     ) -> None:
@@ -210,6 +252,35 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has=f"--projects {project_names[0]}")
         tm.that(output, has='--make-arg "CHECK_GATES=lint,pyrefly"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
+
+    def test_generated_make_routes_fmt_apply_to_selected_project(
+        self, tmp_path: Path
+    ) -> None:
+        """Apply formatting only in the selected workspace member."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_fmt_apply",
+                    f"PROJECT={project_names[0]}",
+                    "APPLY=Y",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--verb fmt")
+        tm.that(output, has=f"--projects {project_names[0]}")
+        tm.that(output, has='--make-arg "WHAT=apply"')
+        tm.that(output, has='--make-arg "APPLY=Y"')
+        tm.that(output, lacks=f"--projects {project_names[1]}")
+        tm.that(output, lacks="ruff check --fix")
 
     def test_generated_make_routes_file_and_match_only_to_owning_project(
         self, tmp_path: Path

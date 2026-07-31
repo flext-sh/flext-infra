@@ -65,7 +65,6 @@ members = ["flext-core"]
 [tool.uv.sources.flext-core]
 workspace = true
 """,
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -79,7 +78,6 @@ workspace = true
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -102,7 +100,6 @@ constraint-dependencies = ["uv>=0", "requests<3"]
         first = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
-                repositories=(workspace.repository, *workspace.members),
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -111,7 +108,6 @@ constraint-dependencies = ["uv>=0", "requests<3"]
         second = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 first,
-                repositories=(workspace.repository, *workspace.members),
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -135,7 +131,6 @@ constraint-dependencies = ["uv>=0"]
         conformed = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
-                repositories=(workspace.repository, *workspace.members),
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -154,7 +149,6 @@ constraint-dependencies = ["uv>=0"]
         invalid_workspace = workspace.model_copy(update={"members": (member,)})
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
-            repositories=(invalid_workspace.repository, member),
             providers=config.Infra.codegen.providers,
             workspace=invalid_workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -173,7 +167,6 @@ constraint-dependencies = ["uv>=0"]
                 "\n[tool.uv.sources.flext-core]\n"
                 "workspace = true\n"
             ),
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -182,11 +175,6 @@ constraint-dependencies = ["uv>=0"]
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
-        repositories = (
-            workspace.repository,
-            *workspace.members,
-            *config.Infra.codegen.repositories,
-        )
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={"uv_link_mode": "copy"}
         )
@@ -207,7 +195,6 @@ python-interpreter-path = "../.venv/bin/python"
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                repositories=repositories,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -218,7 +205,6 @@ python-interpreter-path = "../.venv/bin/python"
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                repositories=repositories,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -239,3 +225,30 @@ python-interpreter-path = "../.venv/bin/python"
                 f"git+{workspace.members[0].url}@{_PROVIDER_SPEC.branch}"
             ),
         )
+
+    def test_tool_flext_workspace_marker_is_preserved(self) -> None:
+        """Preserve [tool.flext] policy while removing legacy tool.poetry."""
+        workspace = _workspace()
+        source = """[project]
+name = "external-consumer"
+dependencies = []
+
+[tool.flext.workspace]
+attached = true
+
+[tool.poetry]
+name = "legacy-packaging"
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+            )
+        )
+        document = tomllib.loads(conformed)
+        tm.that(document["tool"]["flext"]["workspace"]["attached"], eq=True)
+        tm.that("poetry" not in document["tool"], eq=True)

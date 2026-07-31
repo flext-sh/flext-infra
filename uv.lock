@@ -659,7 +659,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#1562483bc94711d3cb8d78f24d3e66cde64656b6" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#894043a6f7c1f8e8f16c0981c8b9a796b7a5f3ad" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -686,7 +686,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#ce02d54d578c54b1076f82b2e4b01da8b55a5334" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#da106900ea50f8fc530f7adbfef97ba461586347" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -918,7 +918,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#2de7a0204ef587716e076370d079c60e48da7945" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#ebf24f768e745b98ac7051b50a1666a3312e1dd8" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },

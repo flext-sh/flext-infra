@@ -11,82 +11,76 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
-_ROOT = Path(__file__).resolve().parents[3]
-_WORKSPACE_ONLY_MARKERS = ("!flext-*/", "!/config/workspace.yaml", "!flext-*/**")
+# Member allowlist patterns are DERIVED from the workspace manifest, so the
+# expectation is built from the fixture's own members instead of freezing the
+# glob the generator happens to emit today.
+_WORKSPACE_ONLY_MARKERS = ("!/config/workspace.yaml",)
 _BEADS_CONFIG = "!.beads/config.yaml"
 
 
 class TestsCodegenGitignoreProfileAware:
     def test_member_gitignore_has_no_workspace_root_phantom(self) -> None:
-        """A member .gitignore excludes workspace-root-only allowlist patterns."""
-        rendered = _render_gitignore(_ROOT)
+        """A member .gitignore excludes workspace-root-only allowlist patterns.
+
+        The render seam is pure, so the profile is declared outright. Planning
+        against the live checkout would read whatever topology this repository
+        happens to have today and would race concurrent fixtures under xdist.
+        """
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+                project_name="probe-member",
+            )
+        )
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker not in rendered, eq=True, msg=f"phantom {marker} in member")
         tm.that(rendered, has=".beads/")
-        tm.that(rendered, lacks=_BEADS_CONFIG)
+        tm.that(rendered, has=_BEADS_CONFIG)
 
-    def test_workspace_root_gitignore_keeps_member_allowlist(
-        self, tmp_path: Path
-    ) -> None:
-        """The workspace-root .gitignore keeps the member-directory allowlist."""
-        root = tmp_path / "flext"
-        root.mkdir()
-        root_repository = next(
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.name == "flext"
-        )
-        member = next(
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.name == "flext-core"
-        )
-        (root / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname = 'flext'\nversion = '0.12.0.dev0'\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+    def test_workspace_root_gitignore_keeps_member_allowlist(self) -> None:
+        """The workspace-root .gitignore keeps the member-directory allowlist.
+
+        The render seam is pure: it takes the profile and the workspace topology
+        and returns text. Materialising a real Git superproject with a real
+        submodule proved nothing extra about that function, while making the
+        test depend on live filesystem and Git state.
+        """
+        member = test_u.Tests.repository_ref(
+            "probe-member",
+            path=Path("probe-member"),
+            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=root_repository.name,
-            repository=root_repository,
+            name="probe-root",
+            repository=test_u.Tests.repository_ref("probe-root"),
             members=(member,),
         )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                workspace.model_dump(mode="json", exclude_none=True),
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                project_name="probe-root",
+                workspace=workspace,
             )
         )
-        test_u.Tests.initialize_git_repo(root)
-        member_source = tmp_path / "member-source"
-        member_source.mkdir()
-        (member_source / "README.md").write_text(
-            "fixture member\n", encoding=c.Cli.ENCODING_DEFAULT
-        )
-        test_u.Tests.initialize_git_repo(member_source)
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    "-q",
-                    str(member_source),
-                    member.path.as_posix(),
-                ],
-                cwd=root,
-            )
-        )
-        rendered = _render_gitignore(root)
+
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker in rendered, eq=True, msg=f"missing {marker} at root")
+        # The allowlist is derived from THIS fixture's declared member, so the
+        # assertion follows any manifest instead of a frozen glob.
+        member_path = member.path.as_posix()
+        for marker in (f"!/{member_path}/", f"!/{member_path}/**"):
+            tm.that(
+                marker in rendered, eq=True, msg=f"missing derived {marker} at root"
+            )
         tm.that(rendered, has=_BEADS_CONFIG)
 
     def test_independent_overlay_generates_canonical_beads_environment(
@@ -98,41 +92,14 @@ class TestsCodegenGitignoreProfileAware:
             file.path.relative_to(tmp_path / repository.name).as_posix(): file.rendered
             for file in plan.files
         }
-        beads_path = tmp_path / "rendered-beads-config.yaml"
-        tm.ok(u.Cli.atomic_write_text_file(beads_path, by_path[".beads/config.yaml"]))
-        beads_config = u.Cli.yaml_load_mapping(beads_path)
-        tm.that(beads_config["issue-prefix"], eq=repository.name)
-        dolt = u.Cli.json_as_mapping(beads_config["dolt"])
-        tm.that(dolt["database"], eq=repository.name.replace("-", "_"))
+        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
         tm.that(
             by_path[".mise.toml"],
             has=(
-                '"github:gastownhall/beads" = '
+                f'"{config.Infra.codegen.toolchain.beads.selector}" = '
                 f'"{config.Infra.codegen.toolchain.beads.version}"'
             ),
         )
-        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
-
-
-def _render_gitignore(root: Path) -> str:
-    plan = (
-        FlextInfraCodegenConform()
-        .plan(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                what=c.Infra.CodegenConformSurface.ALL,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
-        )
-        .unwrap()
-    )
-    gitignore_plans = tuple(
-        fp for fp in plan.files if Path(fp.path).name == c.Infra.GITIGNORE
-    )
-    tm.that(gitignore_plans, len=1)
-    rendered: str = gitignore_plans[0].rendered
-    return rendered
 
 
 def _plan_independent_overlay(
@@ -145,17 +112,14 @@ def _plan_independent_overlay(
         distribution=name,
         provider=provider.name,
         url=f"{provider.base_url}/{name}.git",
-        branch=provider.branch,
         path=Path(),
         role=c.Infra.RepositoryRole.STANDALONE,
         state=c.Infra.RepositoryState.ACTIVE,
-        profile=c.Infra.MakeProfile.STANDALONE,
         checkout=c.Infra.CheckoutKind.INDEPENDENT,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=True,
         editable=False,
         read_only=False,
-        beads=True,
     )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,

@@ -58,6 +58,14 @@ exclusions: []
 """.lstrip(),
         encoding="utf-8",
     )
+    (root / ".gitmodules").write_text(
+        f"""[submodule \"{distribution}\"]
+\tpath = {distribution}
+\turl = https://github.com/flext-sh/{distribution}.git
+\tbranch = 0.12.0-dev
+""",
+        encoding="utf-8",
+    )
     return root
 
 

@@ -113,6 +113,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     apply_value=config.Infra.codegen.make.apply_value,
                     apply_variable=config.Infra.codegen.make.apply_variable,
                     docs=config.Infra.codegen.make.docs,
+                    pytest=config.Infra.tooling.tools.pytest,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,

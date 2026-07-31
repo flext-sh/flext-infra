@@ -13,12 +13,15 @@ from urllib.parse import urlparse
 from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base import s
+from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
+class FlextInfraWorkspaceDetector(
+    FlextInfraWorkspaceGovernanceMixin, s[c.Infra.WorkspaceMode]
+):
     """Classify only declared roots and real, declared Git submodules."""
 
     # NOTE (multi-agent, mro-wkii.17.10 / agent: implement_topology_detector):
@@ -105,15 +108,14 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     def _derive_workspace_spec(
         cls, repository_root: Path
     ) -> p.Result[m.Infra.WorkspaceSpec]:
-        """Derive a generic minimal spec from the codegen catalog SSOT.
+        """Derive the spec from the repository itself, never from a registry.
 
-        Standalone projects (and their transaction worktrees) ship no
-        ``config/workspace.yaml``. Their topology is nonetheless declared in the
-        canonical ``config.Infra.codegen`` catalog. The project's own name is
-        read from its ``pyproject.toml`` via the flext-core project-metadata
-        SSOT, then matched against the catalog to retain the exact declared
-        repository contract. Nothing is fabricated; a project absent from both
-        the manifest and the catalog fails closed.
+        Operator law: flext-infra owns generic conform behaviour and must not
+        carry a catalog of the projects it serves. A repository that ships no
+        ``config/workspace.yaml`` is therefore derived from two sources it
+        owns outright: its ``pyproject.toml`` metadata for identity, and its
+        live Git submodule contract for members. Nothing is fabricated and
+        nothing is looked up in flext-infra.
         """
         metadata = u.read_project_metadata(repository_root)
         if metadata.failure:
@@ -122,19 +124,31 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 or f"cannot derive workspace spec without metadata: {repository_root}"
             )
         project_name = metadata.value.project.name
-        repository = next(
-            (
-                declared
-                for declared in config.Infra.codegen.repositories
-                if declared.name == project_name
-            ),
-            None,
-        )
-        if repository is None:
+        origin = cls._git_origin_url(repository_root)
+        if origin.failure:
             return r[m.Infra.WorkspaceSpec].fail(
-                f"project is absent from the codegen catalog: {project_name}"
+                origin.error or f"unable to read Git origin: {repository_root}"
             )
-        local_repository = repository.model_copy(update={"path": Path()})
+        provider = cls._provider_for_url(origin.value)
+        # A checkout with no declared origin (fresh scaffold, transaction
+        # worktree) still has a canonical identity: the provider contract plus
+        # its own project name. That is derived, not looked up in a registry.
+        repository_url = origin.value or (
+            f"{provider.base_url.rstrip('/')}/{project_name}.git"
+        )
+        local_repository = m.Infra.RepositoryRef(
+            name=project_name,
+            distribution=project_name,
+            url=repository_url,
+            path=Path(),
+            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            provider=provider.name,
+            checkout=c.Infra.CheckoutKind.ROOT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=False,
+            read_only=False,
+        )
         declared_paths = u.Infra.git_declared_submodule_paths(repository_root)
         if declared_paths.failure:
             return r[m.Infra.WorkspaceSpec].fail(
@@ -142,31 +156,36 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             )
         members: t.MutableSequenceOf[m.Infra.RepositoryRef] = []
         governed_paths: set[Path] = set()
-        providers = {item.name: item for item in config.Infra.codegen.providers}
         for path in declared_paths.value:
-            candidates = tuple(
-                item
-                for item in config.Infra.codegen.repositories
-                if item.path == path and not item.read_only
-            )
-            if len(candidates) > 1:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    f"repository catalog duplicates submodule path: {path.as_posix()}"
-                )
-            if not candidates:
-                continue
-            candidate = candidates[0]
-            provider = providers.get(candidate.provider)
-            if provider is None or not cls._repository_is_governed(candidate, provider):
-                continue
             contract = cls._gitmodule_contract(repository_root, path.as_posix())
             if contract.failure:
                 return r[m.Infra.WorkspaceSpec].fail(
                     contract.error or f"invalid Git submodule: {path.as_posix()}"
                 )
-            if contract.value != (candidate.url, provider.branch):
+            member_url, member_branch = contract.value
+            member_provider = cls._provider_for_url(member_url)
+            # A submodule is governed only when its declared origin matches a
+            # known provider on that provider's integration branch. Anything
+            # else is a vendored or third-party dependency the workspace
+            # observes but never mutates.
+            if member_provider.branch != member_branch:
                 continue
-            members.append(candidate)
+            member = m.Infra.RepositoryRef(
+                name=path.name,
+                distribution=path.name,
+                url=member_url,
+                path=path,
+                role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                provider=member_provider.name,
+                checkout=c.Infra.CheckoutKind.SUBMODULE,
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=True,
+                editable=True,
+                read_only=False,
+            )
+            if not cls._repository_is_governed(member, member_provider):
+                continue
+            members.append(member)
             governed_paths.add(path)
         external_dependency_paths = tuple(
             path for path in declared_paths.value if path not in governed_paths
@@ -180,6 +199,39 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 external_dependency_paths=external_dependency_paths,
             )
         )
+
+    @staticmethod
+    def _git_origin_url(repository_root: Path) -> p.Result[str]:
+        """Read the repository's own declared origin, or an empty remote."""
+        captured = u.Cli.capture(
+            [c.Infra.GIT, "remote", "get-url", "origin"], cwd=repository_root
+        )
+        if captured.failure:
+            # A repository with no origin is still a valid standalone checkout;
+            # it simply has no provider-governed identity to match.
+            return r[str].ok("")
+        return r[str].ok(captured.value.strip())
+
+    @staticmethod
+    def _provider_for_url(url: str) -> m.Infra.ProviderSpec:
+        """Resolve the declared provider owning ``url``, else the default one.
+
+        Providers are generic policy (host, organization, integration branch)
+        and remain flext-infra's to own. Which projects exist under them is
+        not, so the match is made against the URL the repository itself
+        declares.
+        """
+        providers = config.Infra.codegen.providers
+        parsed = urlparse(url)
+        for provider in providers:
+            provider_url = urlparse(provider.base_url)
+            if (
+                provider_url.scheme == parsed.scheme
+                and provider_url.netloc == parsed.netloc
+                and parsed.path.strip("/").startswith(f"{provider.organization}/")
+            ):
+                return provider
+        return providers[0]
 
     @classmethod
     def _validate_observed_dependencies(
@@ -205,10 +257,20 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                     f"external or fork dependency cannot be a governed member: {member.name}"
                 )
             if member.path not in declared_set:
-                return r[tuple[Path, ...]].fail(
-                    "governed workspace member is absent from .gitmodules: "
-                    f"{member.path.as_posix()}"
-                )
+                # The typed manifest is the topology SSOT: a governed member
+                # may already be an initialized checkout that Git has not yet
+                # recorded as a submodule (conform seeds .gitmodules later).
+                # Accept it only when the live directory is a real Git
+                # checkout; a manifest row with no checkout and no gitlink is
+                # still an invalid topology and fails closed below.
+                member_checkout = repository_root / member.path
+                if not (member_checkout / ".git").exists():
+                    return r[tuple[Path, ...]].fail(
+                        "governed workspace member is absent from .gitmodules "
+                        f"and has no live checkout: {member.path.as_posix()}"
+                    )
+                governed_paths.add(member.path)
+                continue
             contract = cls._gitmodule_contract(repository_root, member.path.as_posix())
             if contract.failure:
                 return r[tuple[Path, ...]].fail(
@@ -339,6 +401,13 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec | None
     ) -> p.Result[c.Infra.WorkspaceMode]:
         """Infer root from actual first-party governed submodule declarations."""
+        attached_marker = cls._declares_attached_standalone(repository_root)
+        if attached_marker.failure:
+            return r[c.Infra.WorkspaceMode].fail(
+                attached_marker.error or "unable to read workspace attachment marker"
+            )
+        if attached_marker.value:
+            return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
         declared = u.Infra.git_declared_submodule_paths(repository_root)
         if declared.failure:
             return r[c.Infra.WorkspaceMode].fail(
@@ -348,6 +417,10 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
         resolved_workspace = workspace_spec
         if resolved_workspace is None:
+            # mro-5qfa: an aggregator declares submodules without owning the FLEXT
+            # toolchain; .gitmodules alone never promotes it to a workspace root.
+            if not cls._declares_workspace_toolchain(repository_root):
+                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             workspace_result = cls.load_workspace_spec(repository_root)
             if workspace_result.failure:
                 return r[c.Infra.WorkspaceMode].fail(
@@ -452,6 +525,14 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 f"repository provider must resolve exactly once: {repository.provider}"
             )
         provider = providers[0]
+        baseline_branch_result = u.Infra.repository_baseline_branch(
+            resolved_root, fallback=provider.branch
+        )
+        if baseline_branch_result.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                baseline_branch_result.error
+                or f"integration baseline resolution failed: {resolved_root}"
+            )
         if not cls._repository_is_governed(repository, provider):
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external or fork URL: {repository.url}"
@@ -475,25 +556,50 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[m.Infra.RepositoryConformTarget].fail(
                 mode_result.error or "unable to infer repository topology"
             )
-        attached = resolved_root != governing_root
-        make_profile = (
-            c.Infra.MakeProfile.WORKSPACE_ROOT
-            if mode_result.value is c.Infra.WorkspaceMode.WORKSPACE
-            else c.Infra.MakeProfile.STANDALONE
+        make_profile = {
+            c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE_ROOT,
+            c.Infra.WorkspaceMode.WORKSPACE_MEMBER: (
+                c.Infra.MakeProfile.WORKSPACE_MEMBER
+            ),
+            c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
+        }[mode_result.value]
+        # Ephemeral transaction worktrees share storage with the primary checkout.
+        # Detect them from Git's canonical topology rather than from a test-only
+        # environment flag, so the same code path works for real worktrees and for
+        # unit fixtures that simulate CLI transaction scope.
+        primary_root_result = u.Infra.git_primary_worktree_root(resolved_root)
+        if primary_root_result.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                primary_root_result.error or "unable to resolve primary worktree"
+            )
+        is_transaction_worktree = primary_root_result.value != resolved_root
+        # Beads participation: workspace root owns; independent standalone opts in;
+        # ephemeral transaction worktrees route to the principal ledger; members and
+        # attached standalones do not own tracker state.
+        beads_enabled = (
+            is_transaction_worktree
+            or make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            or (
+                make_profile is c.Infra.MakeProfile.STANDALONE and overlay.beads_enabled
+            )
         )
+        # A marker-attached standalone resolves to itself (no Git superproject
+        # link); a manifest member always resolves to its governing root.
+        attached_standalone = (
+            mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
+            and resolved_root == governing_root
+        )
+        routing_only = is_transaction_worktree or attached_standalone
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
                 root=resolved_root,
                 make_profile=make_profile,
-                beads_enabled=(
-                    False
-                    if attached
-                    else make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-                    or overlay.beads_enabled
-                ),
+                beads_enabled=beads_enabled,
+                attached_standalone=attached_standalone,
+                routing_only=routing_only,
                 canonical_project_name=canonical_project_name,
-                baseline_branch=provider.branch,
+                baseline_branch=baseline_branch_result.value,
                 ci_enabled=overlay.ci_enabled,
                 external_dependency_paths=(
                     resolved_workspace.external_dependency_paths
@@ -587,7 +693,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         superproject_root: Path,
         workspace_spec: m.Infra.WorkspaceSpec | None,
     ) -> p.Result[c.Infra.WorkspaceMode]:
-        """Validate a real submodule against the parent and local manifests."""
+        """Validate a real submodule against both manifests and classify membership."""
         member_root_result = u.Cli.capture(
             [c.Infra.GIT, "rev-parse", "--show-toplevel"], cwd=project_root
         )
@@ -746,7 +852,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 "workspace member gitlink mismatch: "
                 f"{member_path} expected {gitlink_head} got {member_head.value}"
             )
-        return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
+        return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
 
     def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
         """Detect workspace mode from typed manifests and real Git metadata."""

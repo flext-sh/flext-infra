@@ -275,7 +275,11 @@ _fmt_impl:
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --no-cache --deny-config-warnings --color never $$md_config; \
+		if [ "$(CHECK_ONLY)" = "1" ]; then \
+			echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" fmt --check --no-cache --deny-config-warnings --color never $$md_config; \
+		else \
+			echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" fmt --no-cache --deny-config-warnings --color never $$md_config; \
+		fi; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
@@ -298,14 +302,12 @@ _docs_impl:
 	fi; \
 	for action in $$actions; do \
 		case "$$action" in \
-{% for action in docs.actions if action != docs.default_action %}
+{%- for action in docs.actions if action != docs.default_action %}
 			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
-{% endfor %}
+{%- endfor %}
 			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs.actions | join('|') }})"; exit 2 ;; \
 		esac; \
-		cmd="$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }}"; \
-		if [ -n "$$extra" ]; then cmd="$$cmd $$extra"; fi; \
-		eval $$cmd || exit $$?; \
+		$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }} $$extra || exit $$?; \
 	done
 
 # kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
@@ -324,10 +326,7 @@ test: ## Run pytest only
 
 _test_impl:
 {{ test_report_recipe(
-    "$(VENV_PYTHON) -m pytest",
-    "$(PROJECT_INFRA_VALIDATE)",
-    "$(PYTEST_TARGETS)",
-    "$(TESTS_DIR)",
+    "$(VENV_PYTHON) -m flext_infra._pytest_entry",
     "$(Q)",
 ) }}
 

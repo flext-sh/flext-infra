@@ -90,6 +90,7 @@ class FlextInfraConstantsMake:
         "check",
         "clean",
         "docs",
+        "fmt",
         "scan",
         "test",
         "val",
@@ -120,9 +121,24 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: Final[str] = "PYTHONDONTWRITEBYTECODE"
     ORCHESTRATOR_ENV_PATH_SEPARATOR: Final[str] = ":"
     ORCHESTRATOR_ENV_MISE_SHIMS: Final[str] = "MISE_SHIMS"
+    ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
+    PYTEST_ENV_ARGS: Final[str] = "FLEXT_PYTEST_ARGS_RAW"
+    PYTEST_ENV_DIAG: Final[str] = "FLEXT_PYTEST_DIAG_RAW"
+    PYTEST_ENV_FAIL_FAST: Final[str] = "FLEXT_PYTEST_FAIL_FAST_RAW"
+    PYTEST_ENV_FILE: Final[str] = "FLEXT_PYTEST_FILE_RAW"
+    PYTEST_ENV_FILES: Final[str] = "FLEXT_PYTEST_FILES_RAW"
+    PYTEST_ENV_MATCH: Final[str] = "FLEXT_PYTEST_MATCH_RAW"
+    PYTEST_ENV_REPORTS: Final[str] = "FLEXT_PYTEST_REPORTS_RAW"
+    PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
+    PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
+    PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
+        "PYTEST_ADDOPTS",
+        "PYTHONPATH",
+    )
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
-        ("PYTEST_TARGETS", "tests"),
+        ("DEPENDENCY", ""),
         ("DIAG", "0"),
         (CHECK_GATES_VARIABLE, ""),
         ("VALIDATE_GATES", ""),
@@ -152,7 +168,7 @@ class FlextInfraConstantsMake:
         ("PROJECTS", ""),
         ("WHAT", ""),
         ("PYTEST_ARGS", ""),
-        ("PYTEST_TARGETS", "tests"),
+        ("DEPENDENCY", ""),
         ("VALIDATE_SCOPE", "all"),
         ("FAIL_FAST", ""),
         ("JOBS", ""),
@@ -206,7 +222,7 @@ class FlextInfraConstantsMake:
         ("scan", "Run all security checks"),
         ("fmt", "Run all formatting"),
         ("docs", "Run docs (WHAT= to select)"),
-        ("test", "Run pytest (PYTEST_ARGS= for options)"),
+        ("test", "Run bounded pytest (FILE=/MATCH= selectors)"),
         ("val", "Run validate gates (FIX=1 to auto-fix)"),
         ("clean", "Clean build/test/type artifacts"),
     )
@@ -222,13 +238,13 @@ class FlextInfraConstantsMake:
         f"MYPY_TIMEOUT_SECONDS={MYPY_TIMEOUT_SECONDS_DEFAULT}  Mypy wall-time cap",
         f"VALIDATE_GATES={PROJECT_VALIDATE_GATES_ALLOWED}",
         "FILE=src/foo.py             Single file for check/fmt/test",
-        'FILES="a.py b.py"          Multiple files for check/fmt/test',
+        'FILES="a.py b.py"          Multiple files for check/fmt; test rejects it',
         "CHANGED_ONLY=1              Git-changed Python files for check",
         "CHECK_ONLY=1                Dry-run format/check (no writes)",
         'RUFF_ARGS="--select E501"   Extra args for ruff check',
         'PYRIGHT_ARGS="--level basic" Extra args for pyright',
-        'PYTEST_ARGS="-k expr"       Extra pytest args',
-        'PYTEST_TARGETS="tests/unit" Pytest collection targets',
+        "PYTEST_ARGS=<value>         Rejected; use FILE, MATCH, or WHAT",
+        "DEPENDENCY=<distribution>   Select one package for deps WHAT=upgrade",
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",
         "DIAG=1                      Emit extended pytest diagnostics",
@@ -311,9 +327,7 @@ class FlextInfraConstantsMake:
         ("CHECK_ONLY", FORWARD_MODE_ENABLED),
     )
     TEST_FORWARD_ARGS: Final[t.StrPairSequence] = (
-        ("PYTEST_ARGS", FORWARD_MODE_VALUE),
         ("FILE", FORWARD_MODE_VALUE),
-        ("FILES", FORWARD_MODE_VALUE),
         ("MATCH", FORWARD_MODE_VALUE),
         ("VERBOSE", FORWARD_MODE_ENABLED),
     )

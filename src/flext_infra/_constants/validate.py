@@ -124,12 +124,25 @@ class FlextInfraConstantsSharedInfra:
         "flext-infra/src/flext_infra/",
     )
 
+    # --- Integration baseline discovery ---
+    # Ordered preference used to derive one repository's integration baseline
+    # from live Git. A provider default is a fallback ordering, never the
+    # answer: repositories under the same provider legitimately integrate on
+    # different branches, so the published remote-tracking branch decides.
+    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = (
+        "0.12.0-dev",
+        "develop",
+        "dev",
+    )
+
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
     MAKEFILE_FILENAME: Final[str] = "Makefile"
     BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
     GITIGNORE: Final[str] = ".gitignore"
+    BEADS_DIRNAME: Final[str] = ".beads"
+    BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
@@ -137,6 +150,7 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE_LAYOUT_SECTION_NAME: Final[str] = "Project layout exceptions"
     "Heading of the trailing .gitignore section holding layout-SSOT additions."
     MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
+    MANAGED_FILE_POLICY_FULL: Final[str] = "full"
     "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"
     API_PY: Final[str] = "api.py"
