@@ -5,6 +5,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
@@ -108,10 +110,10 @@ class TestsCodegenCatalogExtensions:
         )
         tm.that(spec.reported_version, eq="1.2.3")
         with pytest.raises(c.ValidationError):
-            m.Infra.MiseToolSpec(
-                selector="go:example.com/tool/cmd/x",
-                version="0123456789abcdef0123456789abcdef01234567",
-            )
+            m.Infra.MiseToolSpec.model_validate({
+                "selector": "go:example.com/tool/cmd/x",
+                "version": "0123456789abcdef0123456789abcdef01234567",
+            })
         with pytest.raises(c.ValidationError):
             m.Infra.MiseToolSpec(
                 selector="go:example.com/tool/cmd/x",
