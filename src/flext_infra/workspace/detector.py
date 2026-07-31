@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 from urllib.parse import urlparse
@@ -14,6 +13,7 @@ from urllib.parse import urlparse
 from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base import s
+from flext_infra._utilities.beads_runtime import FlextInfraUtilitiesBeadsRuntime
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -468,8 +468,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 mode_result.error or "unable to infer repository topology"
             )
         attached = resolved_root != governing_root
-        in_transaction = os.environ.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1"
-        in_ci = os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true"
+        context = FlextInfraUtilitiesBeadsRuntime.context_from_environment()
         make_profile = (
             c.Infra.MakeProfile.WORKSPACE_ROOT
             if mode_result.value is c.Infra.WorkspaceMode.WORKSPACE
@@ -481,10 +480,13 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 root=resolved_root,
                 make_profile=make_profile,
                 beads_enabled=(
-                    False
-                    if attached or in_transaction or in_ci
-                    else make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-                    or overlay.beads_enabled
+                    not attached
+                    and not context.in_transaction
+                    and not context.in_ci
+                    and (
+                        make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                        or overlay.beads_enabled
+                    )
                 ),
                 canonical_project_name=canonical_project_name,
                 baseline_branch=provider.branch,

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -22,6 +21,7 @@ from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.utilities import u
+from flext_infra._utilities.beads_runtime import FlextInfraUtilitiesBeadsRuntime
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 # A GNU Make variable assignment: NAME followed by =, :=, ::=, ?= or +=.
@@ -173,7 +173,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         for beads_plan in plan.beads:
             beads_preflight = self._verify_beads_plan(
-                beads_plan, allow_missing=mode is c.Infra.CodegenConformMode.APPLY
+                beads_plan,
+                FlextInfraUtilitiesBeadsRuntime.context_from_environment(),
+                allow_missing=mode is c.Infra.CodegenConformMode.APPLY,
             )
             if beads_preflight.failure:
                 return r[m.Infra.CodegenResult].fail(
@@ -1867,14 +1869,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @classmethod
     def _verify_beads_plan(
-        cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
+        cls,
+        plan: m.Infra.BeadsPlan,
+        context: m.Infra.BeadsRuntimeContext,
+        *,
+        allow_missing: bool,
     ) -> p.Result[bool]:
         """Validate Beads ownership and fail closed on namespace disagreement."""
-        if os.environ.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1":
+        if context.in_transaction:
             # Ephemeral transaction worktrees carry the repository's .beads
             # tree but never own the tracker lifecycle: skip, don't fail.
             return r[bool].ok(True)
-        if os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true":
+        if context.in_ci:
             # CI runners are ephemeral and do not carry a live Dolt tracker;
             # the Beads lifecycle is owned by development machines, not CI.
             return r[bool].ok(True)
@@ -1944,7 +1950,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[bool].fail(
                     f"Beads tracker initialization failed: {plan.repository_root}"
                 )
-        verified = cls._verify_beads_plan(plan, allow_missing=False)
+        verified = cls._verify_beads_plan(
+            plan,
+            FlextInfraUtilitiesBeadsRuntime.context_from_environment(),
+            allow_missing=False,
+        )
         if verified.failure:
             return r[bool].fail(
                 verified.error or f"Beads tracker verification failed: {beads_dir}"

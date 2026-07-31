@@ -1840,6 +1840,22 @@ class FlextInfraConfigModels:
             m.Field(description="Exact official Beads version pinned by mise"),
         ]
 
+    class BeadsRuntimeContext(_ConfigContract):
+        """Observed runtime environment that determines Beads tracker ownership."""
+
+        in_transaction: Annotated[
+            bool,
+            m.Field(
+                description="Whether the process is running inside an isolated worktree transaction"
+            ),
+        ]
+        in_ci: Annotated[
+            bool,
+            m.Field(
+                description="Whether the process is running inside a GitHub Actions CI runner"
+            ),
+        ]
+
     class BranchAncestryRef(_ConfigContract):
         """One exact branch or registered worktree ancestry observation."""
 

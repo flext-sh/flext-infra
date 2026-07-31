@@ -5,8 +5,6 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-import pytest
-
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
@@ -187,7 +185,7 @@ class TestsCodegenCatalogExtensions:
         tm.that("conform" in verb_names, eq=False)
 
     def test_transaction_worktrees_skip_the_beads_lifecycle(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Inside a worktree transaction the Beads lifecycle is fully skipped.
 
@@ -209,15 +207,23 @@ class TestsCodegenCatalogExtensions:
             expected_version="1.1.0",
         )
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
-        tm.ok(verify(plan, allow_missing=False))
+        tm.ok(
+            verify(
+                plan,
+                m.Infra.BeadsRuntimeContext(in_transaction=True, in_ci=False),
+                allow_missing=False,
+            )
+        )
         # Outside a transaction the disabled-but-present guard still fails.
-        monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV)
-        tm.fail(verify(plan, allow_missing=False))
+        tm.fail(
+            verify(
+                plan,
+                m.Infra.BeadsRuntimeContext(in_transaction=False, in_ci=False),
+                allow_missing=False,
+            )
+        )
 
-    def test_github_actions_ci_skips_the_beads_lifecycle(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_github_actions_ci_skips_the_beads_lifecycle(self, tmp_path: Path) -> None:
         """Inside GitHub Actions CI the Beads lifecycle is fully skipped.
 
         CI runners are ephemeral and do not carry a live Dolt tracker; the
@@ -237,8 +243,13 @@ class TestsCodegenCatalogExtensions:
             expected_version="1.1.0",
         )
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
-        tm.ok(verify(plan, allow_missing=False))
+        tm.ok(
+            verify(
+                plan,
+                m.Infra.BeadsRuntimeContext(in_transaction=False, in_ci=True),
+                allow_missing=False,
+            )
+        )
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
