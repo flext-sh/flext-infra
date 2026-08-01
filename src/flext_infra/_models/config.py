@@ -390,6 +390,18 @@ class FlextInfraConfigModels:
         apply_guarded: Annotated[
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
+        apply_what: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="apply",
+                description=(
+                    "Selector an apply-guarded verb resolves to when APPLY is "
+                    "set and no explicit WHAT is given. Without it, "
+                    "`make gen APPLY=Y` would fall back to default_what "
+                    "('check') and silently mutate nothing"
+                ),
+            ),
+        ]
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
