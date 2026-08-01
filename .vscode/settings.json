@@ -56,7 +56,7 @@
     "**/.hypothesis": true,
     "**/.bin": true,
     "**/.tools": true,
-    "**/.archive": true
+    "**/.archive": true,
     "**/.bkp": true
   },
   "files.watcherExclude": {
