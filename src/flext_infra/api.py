@@ -9,6 +9,7 @@ from flext_infra import m, t
 from flext_infra.base import s
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra.release.managed_git_tool import FlextInfraManagedGitToolRelease
 from flext_infra.services._workspace.environment import (
     FlextInfraWorkspaceEnvironmentMixin,
 )
@@ -50,6 +51,12 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
         if rendered.failure:
             return r[result_type].fail(rendered.error or "base.mk render failed")
         return r[result_type].ok(result_type(content=rendered.value))
+
+    def release_managed_git_tool(
+        self, spec: m.Infra.ManagedGitToolRelease, *, apply: bool = False
+    ) -> p.Result[m.Infra.ManagedGitToolReleaseResult]:
+        """Run the sole generic exact-Git executable release owner."""
+        return FlextInfraManagedGitToolRelease.release(spec, apply=apply)
 
     @override
     def execute(self) -> p.Result[t.JsonDict]:

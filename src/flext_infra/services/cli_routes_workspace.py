@@ -6,6 +6,7 @@ from typing import ClassVar
 
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra.release.managed_git_tool import FlextInfraManagedGitToolRelease
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -22,6 +23,15 @@ class WorkspaceRoutes(RefactorRoutes):
     workspace_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_REFACTOR: RefactorRoutes.refactor_routes,
         c.Infra.CLI_GROUP_RELEASE: (
+            m.Cli.ResultCommandRoute(
+                name="managed-git-tool",
+                help_text="Build and atomically activate an exact Git executable",
+                model_cls=FlextInfraManagedGitToolRelease,
+                handler=lambda params: FlextInfraManagedGitToolRelease.execute_command(
+                    params
+                ).map(CliRouteBase.as_route_value),
+                success_message="Managed Git tool release completed",
+            ),
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,
                 help_text="Run release orchestration CLI flow",

@@ -4,33 +4,34 @@ PROJECT_ROOT := $(CURDIR)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
-ifeq ($(FLEXT_STANDALONE),1)
-FLEXT_MODE := standalone
-else
-# Caller may already know the workspace root (e.g., when including flext-infra/base.mk).
-ifdef FLEXT_WORKSPACE_ROOT
-FLEXT_MODE := workspace
-else
-# Pure Make detection: if base.mk lives in a parent dir, we are inside a workspace.
-# No Python dependency — shell/Make only until venv is ready.
-ifneq ($(BASE_MK_DIR),$(PROJECT_ROOT))
-FLEXT_MODE := workspace
-else
-FLEXT_MODE := standalone
+ifeq ($(strip $(MAKE_PROFILE)),)
+$(error MAKE_PROFILE is required; regenerate the project Makefile with `make gen WHAT=apply APPLY=Y`)
 endif
-endif
+ifeq ($(strip $(WORKSPACE_ROOT_REL)),)
+$(error WORKSPACE_ROOT_REL is required; regenerate the project Makefile with `make gen WHAT=apply APPLY=Y`)
 endif
 
-ifeq ($(FLEXT_MODE),workspace)
-# Prefer the caller-provided workspace root; fall back to the directory holding base.mk.
-WORKSPACE_ROOT := $(FLEXT_WORKSPACE_ROOT)
-ifndef WORKSPACE_ROOT
-WORKSPACE_ROOT := $(BASE_MK_DIR)
+ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
+$(error unsupported generated MAKE_PROFILE '$(MAKE_PROFILE)')
+endif
+
+ifeq ($(MAKE_PROFILE),standalone)
+FLEXT_MODE := standalone
+WORKSPACE_ROOT := $(abspath $(PROJECT_ROOT)/$(WORKSPACE_ROOT_REL))
+ifneq ($(WORKSPACE_ROOT),$(PROJECT_ROOT))
+$(error standalone WORKSPACE_ROOT_REL must resolve to PROJECT_ROOT)
+endif
+else
+FLEXT_MODE := workspace
+WORKSPACE_ROOT := $(abspath $(PROJECT_ROOT)/$(WORKSPACE_ROOT_REL))
+ifeq ($(wildcard $(WORKSPACE_ROOT)/config/workspace.yaml),)
+$(error generated workspace root lacks config/workspace.yaml: $(WORKSPACE_ROOT))
 endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
 ACTIVE_VENV := $(WORKSPACE_VENV)
-else
-WORKSPACE_ROOT := $(PROJECT_ROOT)
+endif
+
+ifeq ($(FLEXT_MODE),standalone)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
 endif
 

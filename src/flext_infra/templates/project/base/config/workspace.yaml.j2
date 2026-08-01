@@ -89,7 +89,6 @@ members:
 repository_policy_overlays:
 {% for overlay in workspace_policy_overlays %}
   - project: {{ overlay.project | tojson }}
-    beads_enabled: {{ overlay.beads_enabled | tojson }}
     ci_enabled: {{ overlay.ci_enabled | tojson }}
 {% else %}
   []

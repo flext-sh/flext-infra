@@ -7,7 +7,7 @@ project's ``pyproject.toml``.
 Runtime version checking is handled automatically by
 ``flext_core_guard`` (imported on ``from flext_core import …``).
 This service only manages the static ``.python-version`` files used by
-pyenv / asdf / mise for interpreter selection.
+runtime selectors.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -151,7 +151,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         """Write ``.python-version`` (``3.<minor>``) from the SSOT minor.
 
         In check-only mode a missing/stale file is a validation failure; in
-        apply mode the file is created/rewritten so pyenv/asdf/mise select the
+        apply mode the file is created/rewritten so runtime selectors use the
         interpreter that matches the workspace SSOT.
         """
         version_file = project / c.Infra.PYTHON_VERSION_FILENAME

@@ -20,7 +20,6 @@ from tests import u as test_u
 # expectation is built from the fixture's own members instead of freezing the
 # glob the generator happens to emit today.
 _WORKSPACE_ONLY_MARKERS = ("!/config/workspace.yaml",)
-_BEADS_CONFIG = "!.beads/config.yaml"
 
 
 class TestsCodegenGitignoreProfileAware:
@@ -40,8 +39,6 @@ class TestsCodegenGitignoreProfileAware:
         )
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker not in rendered, eq=True, msg=f"phantom {marker} in member")
-        tm.that(rendered, has=".beads/")
-        tm.that(rendered, has=_BEADS_CONFIG)
 
     def test_workspace_root_gitignore_keeps_member_allowlist(self) -> None:
         """The workspace-root .gitignore keeps the member-directory allowlist.
@@ -81,25 +78,19 @@ class TestsCodegenGitignoreProfileAware:
             tm.that(
                 marker in rendered, eq=True, msg=f"missing derived {marker} at root"
             )
-        tm.that(rendered, has=_BEADS_CONFIG)
 
-    def test_independent_overlay_generates_canonical_beads_environment(
+    def test_independent_overlay_generates_canonical_native_tool_environment(
         self, tmp_path: Path
     ) -> None:
-        """Derive bd tool and project identity from typed production owners."""
+        """Render generic native tools without a consumer-specific Go module."""
         repository, plan = _plan_independent_overlay(tmp_path)
         by_path = {
             file.path.relative_to(tmp_path / repository.name).as_posix(): file.rendered
             for file in plan.files
         }
-        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
-        tm.that(
-            by_path[".mise.toml"],
-            has=(
-                f'"{config.Infra.codegen.toolchain.beads.selector}" = '
-                f'"{config.Infra.codegen.toolchain.beads.version}"'
-            ),
-        )
+        tm.that(by_path[c.Infra.GITIGNORE], has=".venv/")
+        tm.that(by_path[".mise.toml"], has="python =")
+        tm.that('"go:' in by_path[".mise.toml"], eq=False)
 
 
 def _plan_independent_overlay(

@@ -484,65 +484,6 @@ class TestsFlextInfraInfraWorkspaceDetector:
             has="submodule.vendored.branch",
         )
 
-    def test_conform_target_member_overlay_never_promotes_beads(
-        self, tmp_path: Path
-    ) -> None:
-        """Keep an attached member beadless even with an enabling overlay."""
-        member_root = self._attached_member(tmp_path)
-        workspace_root = member_root.parents[1]
-        provider = config.Infra.codegen.providers[0]
-        canonical_url = f"{provider.base_url}/flext-member.git"
-        self._write_manifest(
-            workspace_root,
-            self._repository(
-                name="workspace-root",
-                path=".",
-                role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            ),
-            members=(
-                self._repository(
-                    name="flext-member",
-                    path="members/flext-member",
-                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-                    url=canonical_url,
-                ),
-            ),
-            overlays=(
-                m.Infra.RepositoryPolicyOverlaySpec(
-                    project="flext-member", beads_enabled=True
-                ),
-            ),
-        )
-
-        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
-        tm.that(target.beads_enabled, eq=False)
-
-    def test_conform_target_standalone_overlay_enables_beads(
-        self, tmp_path: Path
-    ) -> None:
-        """Keep the overlay opt-in for an independent standalone repository."""
-        project_root = tmp_path / "flext-alone"
-        self._initialize_repository(project_root)
-        (project_root / "pyproject.toml").write_text(
-            '[project]\nname = "flext-alone"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-        self._write_manifest(
-            project_root,
-            self._repository(
-                name="flext-alone", path=".", role=c.Infra.RepositoryRole.STANDALONE
-            ),
-            overlays=(
-                m.Infra.RepositoryPolicyOverlaySpec(
-                    project="flext-alone", beads_enabled=True
-                ),
-            ),
-        )
-
-        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
-        tm.that(target.beads_enabled, eq=True)
-
     def test_conform_target_member_is_not_attached_standalone(
         self, tmp_path: Path
     ) -> None:
@@ -552,7 +493,6 @@ class TestsFlextInfraInfraWorkspaceDetector:
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
         tm.that(target.attached_standalone, eq=False)
-        tm.that(target.beads_enabled, eq=False)
 
     def test_conform_target_marker_repo_is_attached_standalone(
         self, tmp_path: Path
@@ -577,7 +517,6 @@ class TestsFlextInfraInfraWorkspaceDetector:
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
         tm.that(target.attached_standalone, eq=True)
-        tm.that(target.beads_enabled, eq=False)
 
     def test_persistent_state_artifacts_follow_make_profile(self) -> None:
         """Own persistent-state directories only at the workspace-root profile."""

@@ -125,7 +125,8 @@ class FlextInfraBaseMkGenerator(s[str]):
         if base_write.failure:
             return r[bool].fail(base_write.error or "temp base.mk write failed")
         makefile_write = u.Cli.atomic_write_text_file(
-            temp_dir / c.Infra.MAKEFILE_FILENAME, "include base.mk\n"
+            temp_dir / c.Infra.MAKEFILE_FILENAME,
+            "MAKE_PROFILE := standalone\nWORKSPACE_ROOT_REL := .\ninclude base.mk\n",
         )
         if makefile_write.failure:
             return r[bool].fail(makefile_write.error or "temp Makefile write failed")

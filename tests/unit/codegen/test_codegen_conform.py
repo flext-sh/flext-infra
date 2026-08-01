@@ -37,7 +37,6 @@ def _conform_target(
         repository=repository,
         root=root,
         make_profile=make_profile,
-        beads_enabled=make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT,
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
         ci_enabled=True,

@@ -1,14 +1,24 @@
 {% from "project/base/tool_bootstrap_recipe.j2" import tool_bootstrap_recipe -%}
-# Detect a FLEXT workspace root by its manifest and canonical base.mk owner.
-FLEXT_WORKSPACE_ROOT := $(shell \
-	current="$(CURDIR)"; \
-	while [ "$$current" != "/" ]; do \
-		if [ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]; then echo "$$current"; break; fi; \
-		current="$$(dirname "$$current")"; \
-	done)
+# Consume only generated topology facts; directory walking is forbidden.
+ifeq ($(strip $(MAKE_PROFILE)),)
+$(error MAKE_PROFILE is required; regenerate this Makefile from the topology SSOT)
+endif
+ifeq ($(strip $(WORKSPACE_ROOT_REL)),)
+$(error WORKSPACE_ROOT_REL is required; regenerate this Makefile from the topology SSOT)
+endif
+ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
+$(error unsupported generated MAKE_PROFILE '$(MAKE_PROFILE)')
+endif
 
-ifneq ($(FLEXT_WORKSPACE_ROOT),)
+ifneq ($(MAKE_PROFILE),standalone)
+FLEXT_WORKSPACE_ROOT := $(abspath $(CURDIR)/$(WORKSPACE_ROOT_REL))
 FLEXT_INFRA_BASE_MK := $(FLEXT_WORKSPACE_ROOT)/flext-infra/base.mk
+ifeq ($(wildcard $(FLEXT_WORKSPACE_ROOT)/config/workspace.yaml),)
+$(error generated workspace root lacks config/workspace.yaml: $(FLEXT_WORKSPACE_ROOT))
+endif
+ifeq ($(wildcard $(FLEXT_INFRA_BASE_MK)),)
+$(error generated workspace root lacks flext-infra/base.mk: $(FLEXT_INFRA_BASE_MK))
+endif
 include $(FLEXT_INFRA_BASE_MK)
 else
 # =============================================================================
@@ -21,27 +31,24 @@ else
 SETUP_ROOT := $(shell git rev-parse --show-toplevel)
 SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 SETUP_VENV := $(SETUP_ROOT)/.venv
-SETUP_BIN := $(SETUP_ROOT)/.bin
 MISE_DATA_DIR := $(SETUP_ROOT)/.tools
 SETUP_MISE_VERSION := {{ mise_version }}
+SETUP_MISE ?= mise
 ifeq ($(OS),Windows_NT)
 SETUP_PYTHON := $(SETUP_VENV)/Scripts/python.exe
-SETUP_MISE ?= $(SETUP_BIN)/mise.exe
 else
 SETUP_PYTHON := $(SETUP_VENV)/bin/python
-SETUP_MISE ?= $(SETUP_BIN)/mise
 endif
-SETUP_UV := $(MISE_DATA_DIR)/shims/uv
+SETUP_UV ?= uv
 SETUP_UV_ENV := env -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT \
-	MISE_DATA_DIR="$(MISE_DATA_DIR)" UV_PROJECT="$(SETUP_ROOT)" \
-	UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"
+	UV_PROJECT="$(SETUP_ROOT)" UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"
 FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
 
 -include base.mk
 
 .PHONY: setup venv
 
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(SETUP_BIN)", "$(SETUP_MISE)", "$(MISE_DATA_DIR)", "$(SETUP_MISE_VERSION)") }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(SETUP_MISE)", "$(MISE_DATA_DIR)", "$(SETUP_MISE_VERSION)", "$(SETUP_UV)") }}
 
 .PHONY: _setup_require_safe_branch _bootstrap_setup_submodules
 
@@ -80,12 +87,11 @@ _bootstrap_setup_submodules: _setup_require_safe_branch
 		fi; \
 	done
 
-venv: ## Create the checkout-local virtual environment from the lock
-	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
+venv: _bootstrap_setup_tools ## Create the checkout-local virtual environment from the lock
+	@$(SETUP_UV_ENV) "$(SETUP_UV)" sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 
-setup: _setup_require_safe_branch _bootstrap_setup_tools _bootstrap_setup_submodules ## Create the complete local toolchain and environment
-	@MISE_DATA_DIR="$(MISE_DATA_DIR)" $(SETUP_MISE) install --yes
-	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
+setup: _setup_require_safe_branch _bootstrap_setup_tools _bootstrap_setup_submodules ## Create the complete locked environment
+	@$(SETUP_UV_ENV) "$(SETUP_UV)" sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 	@$(SETUP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
 		--project-name $(PROJECT_NAME) --output base.mk
 	@test -s base.mk || { echo "ERROR: base.mk generation failed"; exit 1; }

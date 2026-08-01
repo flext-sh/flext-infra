@@ -26,6 +26,180 @@ class FlextInfraModelsRelease:
             t.NonNegativeInt, m.Field(description="Source commit Unix epoch")
         ]
 
+    class ManagedGitToolEnvironmentVariable(m.StrictBoundaryModel):
+        """One explicit environment entry supplied to a managed build."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^[A-Z_][A-Z0-9_]*$", description="Environment key"),
+        ]
+        value: Annotated[str, m.Field(description="Environment value")]
+
+    class ManagedGitToolProbe(m.StrictBoundaryModel):
+        """One staged-artifact command and its required output fragments."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^[a-z0-9][a-z0-9._-]*$", description="Probe name"),
+        ]
+        command: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Argument-vector probe command"),
+        ]
+        expected_output_contains: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Required output fragments"),
+        ]
+
+    class ManagedGitToolArtifact(m.StrictBoundaryModel):
+        """One source-built executable and its immutable activation contract."""
+
+        build_path: Annotated[
+            Path, m.Field(description="Build-output path relative to the output root")
+        ]
+        install_path: Annotated[
+            Path, m.Field(description="Absolute executable activation path")
+        ]
+        sha256: Annotated[
+            t.Infra.ReleaseArtifactSha256,
+            m.Field(description="Expected executable SHA-256"),
+        ]
+
+    class ManagedGitToolRelease(m.StrictBoundaryModel):
+        """Exact Git source, deterministic build, probe, and activation contract."""
+
+        release_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[a-z0-9][a-z0-9._-]*$",
+                description="Consumer-owned release identifier",
+            ),
+        ]
+        source_url: Annotated[
+            t.NonEmptyStr, m.Field(description="Official HTTPS Git repository URL")
+        ]
+        commit_oid: Annotated[
+            t.Infra.ReleaseCommitOid, m.Field(description="Exact source commit OID")
+        ]
+        source_subdirectory: Annotated[
+            Path, m.Field(description="Build root relative to the repository root")
+        ] = Path()
+        build_command: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Argument-vector build command"),
+        ]
+        build_environment: Annotated[
+            tuple[FlextInfraModelsRelease.ManagedGitToolEnvironmentVariable, ...],
+            m.Field(description="Explicit deterministic build environment"),
+        ] = ()
+        artifact: Annotated[
+            FlextInfraModelsRelease.ManagedGitToolArtifact,
+            m.Field(description="Single atomically activated executable"),
+        ]
+        probes: Annotated[
+            tuple[FlextInfraModelsRelease.ManagedGitToolProbe, ...],
+            m.Field(min_length=1, description="Required staged-runtime probes"),
+        ]
+        artifact_store: Annotated[
+            Path, m.Field(description="Absolute immutable artifact-set root")
+        ]
+
+    class ManagedGitToolSourceStage(m.StrictBoundaryModel):
+        """Validated temporary paths and provenance for one exact Git source."""
+
+        checkout_root: Annotated[
+            Path, m.Field(description="Isolated detached Git checkout")
+        ]
+        source_root: Annotated[Path, m.Field(description="Configured build root")]
+        output_root: Annotated[Path, m.Field(description="Isolated build output root")]
+        artifact_path: Annotated[
+            Path, m.Field(description="Expected staged executable path")
+        ]
+        snapshot: Annotated[
+            FlextInfraModelsRelease.SourceSnapshot,
+            m.Field(description="Exact commit identity and epoch"),
+        ]
+        source_archive_sha256: Annotated[
+            t.Infra.ReleaseArtifactSha256,
+            m.Field(description="Validated Git archive SHA-256"),
+        ]
+
+    class ManagedGitToolProbeReceipt(m.StrictBoundaryModel):
+        """Observed output and digest for one successful runtime probe."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Probe name")]
+        command: Annotated[
+            tuple[t.NonEmptyStr, ...], m.Field(description="Executed argument vector")
+        ]
+        stdout: Annotated[str, m.Field(description="Probe standard output")]
+        stderr: Annotated[str, m.Field(description="Probe standard error")]
+        output_sha256: Annotated[
+            t.Infra.ReleaseArtifactSha256,
+            m.Field(description="SHA-256 of stdout and stderr"),
+        ]
+
+    class ManagedGitToolArtifactReceipt(m.StrictBoundaryModel):
+        """Content and path proof for one persisted executable."""
+
+        store_path: Annotated[
+            Path, m.Field(description="Immutable persisted executable path")
+        ]
+        install_path: Annotated[
+            Path, m.Field(description="Configured executable activation path")
+        ]
+        sha256: Annotated[
+            t.Infra.ReleaseArtifactSha256,
+            m.Field(description="Verified executable SHA-256"),
+        ]
+        size: Annotated[
+            t.NonNegativeInt, m.Field(description="Executable size in bytes")
+        ]
+
+    class ManagedGitToolReleaseReceipt(m.StrictBoundaryModel):
+        """Complete provenance and activation proof for a managed Git tool."""
+
+        release_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Consumer-owned release identifier")
+        ]
+        source_url: Annotated[
+            t.NonEmptyStr, m.Field(description="Verified official source URL")
+        ]
+        commit_oid: Annotated[
+            t.Infra.ReleaseCommitOid, m.Field(description="Verified source commit OID")
+        ]
+        source_date_epoch: Annotated[
+            t.NonNegativeInt, m.Field(description="Source commit Unix epoch")
+        ]
+        source_archive_sha256: Annotated[
+            t.Infra.ReleaseArtifactSha256,
+            m.Field(description="Validated source archive SHA-256"),
+        ]
+        artifact: Annotated[
+            FlextInfraModelsRelease.ManagedGitToolArtifactReceipt,
+            m.Field(description="Persisted executable proof"),
+        ]
+        probes: Annotated[
+            tuple[FlextInfraModelsRelease.ManagedGitToolProbeReceipt, ...],
+            m.Field(min_length=1, description="Staged-runtime probe evidence"),
+        ]
+        receipt_path: Annotated[
+            Path, m.Field(description="Configured immutable receipt path")
+        ]
+
+    class ManagedGitToolReleaseResult(m.StrictBoundaryModel):
+        """Observable persistence and activation outcome for one release."""
+
+        receipt: Annotated[
+            FlextInfraModelsRelease.ManagedGitToolReleaseReceipt,
+            m.Field(description="Validated provenance and runtime-probe receipt"),
+        ]
+        persisted: Annotated[
+            bool, m.Field(description="Whether the immutable artifact set is present")
+        ]
+        activated: Annotated[
+            bool, m.Field(description="Whether the configured executable is active")
+        ]
+
     class BuildPolicy(m.StrictBoundaryModel):
         """Immutable policy snapshot used by every build in one report."""
 

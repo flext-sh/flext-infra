@@ -73,26 +73,23 @@ class FlextInfraWorkspaceEnvironmentMixin:
     ) -> p.Result[bool]:
         """Render or merge canonical tool pins into ``.mise.toml``."""
         workspace_root = request.workspace_root
-        apply = request.apply
-        force = request.force
         target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
         rendered = cls._render_mise_toml(workspace_root)
         if rendered.failure:
             return r[bool].fail(rendered.error or ".mise.toml render failed")
-        if not target_path.is_file() or force:
+        if not target_path.is_file() or request.force:
             return cls._write_generated_text(
-                target_path, rendered.value, apply=apply, force=force
+                target_path, rendered.value, apply=request.apply, force=request.force
             )
         read = u.Cli.files_read_text(target_path)
         if read.failure:
             return r[bool].fail(read.error or ".mise.toml read failed")
-        current = read.value
-        if cls._is_generated_environment_text(current):
+        if cls._is_generated_environment_text(read.value):
             return cls._write_text_if_different(
-                target_path, rendered.value, apply=apply
+                target_path, rendered.value, apply=request.apply
             )
         return cls._merge_custom_mise_toml(
-            target_path, current, workspace_root, apply=apply
+            target_path, read.value, workspace_root, apply=request.apply
         )
 
     @classmethod

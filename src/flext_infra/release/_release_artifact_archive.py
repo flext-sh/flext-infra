@@ -21,6 +21,38 @@ class FlextInfraReleaseArtifactArchiveMixin:
     """Validate release archive boundaries before artifact persistence."""
 
     @staticmethod
+    def _git_source_member_path_error(name: str) -> str:
+        """Return a Git source archive path error, or an empty string."""
+        path = PurePosixPath(name)
+        if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
+            return f"unsafe Git source archive member: {name}"
+        return ""
+
+    @classmethod
+    def _validate_git_source_archive(cls, path: Path) -> p.Result[bool]:
+        """Reject empty, unsafe, linked, or special Git archive members."""
+        try:
+            with tarfile.open(path, "r") as archive:
+                members = tuple(archive.getmembers())
+        except (OSError, tarfile.TarError) as exc:
+            return r[bool].fail_op(f"validate Git source archive {path}", exc)
+        if not members:
+            return r[bool].fail("Git source archive is empty")
+        for member in members:
+            error = cls._git_source_member_path_error(member.name)
+            if error:
+                return r[bool].fail(error)
+            if member.issym() or member.islnk():
+                return r[bool].fail(
+                    f"Git source archive contains a link: {member.name}"
+                )
+            if not (member.isfile() or member.isdir()):
+                return r[bool].fail(
+                    f"Git source archive contains a special file: {member.name}"
+                )
+        return r[bool].ok(True)
+
+    @staticmethod
     def _staged_member_path_error(name: str) -> str:
         """Return a staged-source sensitivity error, or an empty string."""
         path = PurePosixPath(name)
@@ -60,7 +92,6 @@ class FlextInfraReleaseArtifactArchiveMixin:
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe archive member path: {name}"
         blocked_parts = frozenset({
-            ".beads",
             ".env",
             ".git",
             ".github",

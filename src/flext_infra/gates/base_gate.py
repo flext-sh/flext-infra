@@ -36,8 +36,8 @@ class FlextInfraGate(ABC):
 
         Every linter/type-checker runs through the workspace interpreter
         (``sys.executable -m <module>``) so tool resolution is bound to the
-        active ``.venv`` and never depends on ``PATH`` ordering or an external
-        mise/system shim. This is the single source for building a Python
+        active ``.venv`` and never depends on ``PATH`` ordering or a system
+        shim. This is the single source for building a Python
         module command shared by all gates.
         """
         return (sys.executable, "-m", module, *args)

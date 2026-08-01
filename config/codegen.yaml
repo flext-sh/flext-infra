@@ -21,31 +21,6 @@ Infra:
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
       mise_version: "2026.7.16"
-      # The shared mro Dolt ledger is at schema v61; the newest official
-      # gastownhall release (1.1.2) only knows v53 and fails preflight with
-      # "schema version mismatch". Pin the go-module commit that migrated the
-      # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform preflight gate; the immutable commit
-      # stays the installed selector version. The artifact identity is
-      # content-proven: checksum is the SHA-256 of the pinned binary, and
-      # expected_schema is the ledger schema the binary must know.
-      beads:
-        selector: go:github.com/steveyegge/beads/cmd/bd
-        version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
-        reported_version: "1.1.0"
-        checksum: "452efe298061b448e87f6b09d56a1733a9e23134e103793e742ff90737f66df7"
-        expected_schema: 61
-        # Machine-wide shared Dolt server facts: every FLEXT ledger on this
-        # host routes through this server; a repository-local server is never
-        # used. Rendered into .beads/config.yaml by codegen for ledger owners
-        # (workspace-root) and attached standalones (routing only).
-        server:
-          mode: server
-          shared_server: true
-          host: 127.0.0.1
-          port: 3308
-          user: root
-          auto_commit: "on"
 
     # Why (ai-hub-qwoc): the ast-grep project contract for every governed
     # repository. A provider manifest may declare sgconfig.yml as a required
@@ -231,7 +206,6 @@ Infra:
       - { name: __pycache__, source_scan_ignore: true }
       - { name: __pyrefly_virtual__ }
       - { name: .agents }
-      - { name: .beads }
       - { name: .benchmarks }
       # mro-0wuz: archive-not-delete target for the layout engine; the generated
       # .gitignore projection must never track archived loose files.
@@ -514,7 +488,6 @@ Infra:
         - PLUGIN-ARCHITECTURE.md
         - RULE_MODIFICATION.md
         - TESTING_WARNING_SYSTEM.md
-        - FLEXT_0_12_BEADS_LANE_REORGANIZATION_PLAN.md
       # Sample data files moved under <examples_target>/.
       move_example_files:
         - directory.ldif
@@ -610,9 +583,6 @@ Infra:
       - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
         owner: codegen
         policy: full
-      - path: .github/scripts/check-beads-policy.sh
-        owner: codegen
-        policy: full
       - path: .github/scripts/check-cqrs-compliance.sh
         owner: codegen
         policy: full
@@ -647,9 +617,6 @@ Infra:
         owner: codegen
         policy: full
       - path: .github/workflows/release.yml
-        owner: codegen
-        policy: full
-      - path: .beads/config.yaml
         owner: codegen
         policy: full
       - path: .env.example
@@ -814,12 +781,6 @@ Infra:
             - "scripts/maintenance/"
             - "!scripts/dispatch.py"
             - "!scripts/__init__.py"
-        - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
-          profiles: [workspace-root]
-          patterns:
-            - "!.beads/"
-            - ".beads/*"
-            - "!.beads/config.yaml"
         - name: "Python configuration"
           profiles: [workspace-root]
           patterns:
@@ -1084,16 +1045,10 @@ Infra:
         - name: "--- codegen conform: tracked owner inputs ---"
           patterns:
             - "!base.mk"
-        - name: "FINAL BEADS TRACKING POLICY"
+        - name: "Workspace-local runtime state"
           patterns:
-            - "!.beads/"
-            - ".beads/*"
-            - ".beads/.*"
-            - "!.beads/config.yaml"
-            - ".beads/proxieddb/"
             - ".dolt/"
             - "*.db"
-            - ".beads-credential-key"
             - ".worktrees/"
             - "legado/"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
@@ -1134,11 +1089,6 @@ Infra:
           overwrite: false
         - source: base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2
           destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/check-beads-policy.sh.j2
-          destination: .github/scripts/check-beads-policy.sh
           profiles: [workspace-root]
           delegate: render
           overwrite: false
@@ -1202,14 +1152,6 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        # Ledger routing config: rendered only for the workspace root (owned
-        # ledger) and marker-attached standalones (routing-only); the engine
-        # planner skips every other profile/class (mro-z89e governance).
-        - source: base/beads-config.yaml.j2
-          destination: .beads/config.yaml
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
           profiles: [workspace-root, workspace-member, standalone]
@@ -1257,8 +1199,8 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        # NOTE(mro-wkii.17.11, agent codex): workspace topology owns git submodules;
-        # environment activation is owned by mise + the generated Makefile.
+        # Workspace topology owns git submodules; environment activation is
+        # owned by mise + the generated Makefile.
         - source: base/gitmodules.j2
           destination: .gitmodules
           profiles: [workspace-root]

@@ -141,8 +141,6 @@ class FlextInfraConstantsSharedInfra:
     BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
     GITIGNORE: Final[str] = ".gitignore"
-    BEADS_DIRNAME: Final[str] = ".beads"
-    BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"

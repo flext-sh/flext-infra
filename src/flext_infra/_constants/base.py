@@ -102,7 +102,7 @@ class FlextInfraConstantsBase(
     PYTHON_VERSION_HYPHEN: Final[str] = "python-version"
     "Pyrefly/pyright python-version settings key (hyphenated)."
     PYTHON_VERSION_FILENAME: Final[str] = ".python-version"
-    "Interpreter-selection file consumed by pyenv/asdf/mise."
+    "Interpreter-selection file consumed by Python runtime selectors."
     TAPLO_CONFIG_FILENAME: Final[str] = ".taplo.toml"
     "Taplo workspace formatting configuration filename."
     PYTHON_VERSION_UNDERSCORE: Final[str] = "python_version"

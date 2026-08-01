@@ -287,12 +287,6 @@ class FlextInfraConstantsCheck:
 repos:
   - repo: local
     hooks:
-      - id: beads-issue-discipline
-        name: Beads issue tracking (bd hooks run pre-commit)
-        entry: bd hooks run pre-commit
-        language: system
-        pass_filenames: false
-        always_run: true
       - id: flext-abstraction-boundary
         name: Abstraction boundary (§2.7) — CLI-domain libs + concrete FlextCli imports
         entry: uv run --all-packages python scripts/hooks/check_changed_projects.py boundary

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -38,21 +39,39 @@ class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
+    def _taplo_executable(expected_version: str) -> p.Result[Path]:
+        """Resolve and verify the one required Taplo executable fail-closed."""
+        resolved = shutil.which("taplo")
+        if resolved is None:
+            return r[Path].fail("required Taplo executable is unavailable")
+        executable = Path(resolved)
+        if not executable.is_absolute():
+            return r[Path].fail(
+                f"resolved Taplo executable is not absolute: {executable}"
+            )
+        if not executable.is_file():
+            return r[Path].fail(
+                f"resolved Taplo executable is not a file: {executable}"
+            )
+        version = u.Cli.run_raw((str(executable), "--version"))
+        if version.failure or version.value.exit_code != 0:
+            return r[Path].fail(version.error or "Taplo version probe failed")
+        if version.value.stdout.strip() != f"taplo {expected_version}":
+            return r[Path].fail(
+                "Taplo version mismatch: "
+                f"{version.value.stdout.strip() or '<empty>'} != taplo {expected_version}"
+            )
+        return r[Path].ok(executable)
+
+    @staticmethod
     def format_toml_source(
         source: str, *, path: Path, toolchain_root: Path, taplo_version: str
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain."""
-        command = [
-            "mise",
-            "exec",
-            f"taplo@{taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
+        executable = FlextInfraUtilitiesPyproject._taplo_executable(taplo_version)
+        if executable.failure:
+            return r[str].fail(executable.error or "Taplo resolution failed")
+        command = [str(executable.value), "format", "-", "--stdin-filepath", str(path)]
         config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
         if config_path.is_file():
             command.extend(("--config", str(config_path)))
