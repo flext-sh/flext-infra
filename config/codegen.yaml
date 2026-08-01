@@ -227,6 +227,9 @@ Infra:
         - name: release
           default_what: status
           apply_guarded: false
+        - name: fix
+          default_what: check
+          apply_guarded: true
         - name: gen
           default_what: check
           apply_guarded: true
