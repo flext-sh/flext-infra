@@ -158,8 +158,6 @@ Infra:
         dependency_groups: all
         extras: all
       docs:
-        actions: [all, generate, fix, audit, build, validate]
-        default_action: all
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
@@ -177,56 +175,96 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen]
       verbs:
         - name: help
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: usage, usage: usage }
         - name: setup
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: all }
         - name: deps
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: check, check: check, lock: lock, upgrade: upgrade }
         - name: build
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: artifacts, artifacts: artifacts }
+          orchestrated: true
         - name: check
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: all }
+          orchestrated: true
+          serialized: true
         - name: test
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: all }
+          orchestrated: true
+          serialized: true
         - name: fmt
           default_what: all
           apply_guarded: true
           apply_what: all
+          dispatch: builtin
+          handlers: { all: all, check: check, apply: apply }
+          orchestrated: true
         - name: fix
           default_what: all
           apply_guarded: true
           apply_what: all
+          dispatch: builtin
+          handlers: { all: all }
+          orchestrated: true
         - name: run
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: default, default: default }
         - name: status
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: diagnostics, diagnostics: diagnostics }
         - name: docs
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: all, generate: generate, fix: fix, audit: audit, build: build, validate: validate }
+          orchestrated: true
         - name: clean
           default_what: all
-          apply_guarded: false
+          apply_guarded: true
+          apply_what: all
+          dispatch: builtin
+          handlers: { all: generated, generated: generated }
+          orchestrated: true
         - name: release
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: status, status: status }
         - name: gen
           default_what: all
           apply_guarded: true
           apply_what: all
+          dispatch: builtin
+          handlers: { all: all, check: check, apply: apply }
+          serialized: true
         - name: worktree
           default_what: all
           apply_guarded: false
+          dispatch: builtin
+          handlers: { all: list, list: list, add: add, update: update, remove: remove }
       custom_handler_policy:
         filename: custom.mk
         target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"

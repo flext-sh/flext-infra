@@ -350,7 +350,7 @@ class FlextInfraConfigModels:
         ]
 
     class MakeVerbSpec(_ConfigContract):
-        """One public Make verb and its single default selector."""
+        """One exhaustive public Make verb dispatch registry entry."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
         default_what: Annotated[
@@ -359,6 +359,23 @@ class FlextInfraConfigModels:
         apply_guarded: Annotated[
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
+        dispatch: Annotated[
+            Literal["builtin", "script"],
+            m.Field(description="Single implementation boundary for this verb"),
+        ]
+        handlers: Annotated[
+            Mapping[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Exhaustive WHAT selector to implementation handler map",
+            ),
+        ]
+        serialized: bool = m.Field(
+            default=False, description="Serialize this verb per checkout"
+        )
+        orchestrated: bool = m.Field(
+            default=False, description="Fan this verb out from a workspace root"
+        )
         apply_what: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -368,6 +385,29 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = None
+
+        @u.model_validator(mode="after")
+        def _validate_handler_registry(self) -> Self:
+            """Require selectors and mutation routing to resolve in one registry."""
+            if "all" not in self.handlers:
+                msg = f"Make verb {self.name} must declare the all selector"
+                raise ValueError(msg)
+            if self.default_what not in self.handlers:
+                msg = (
+                    f"Make verb {self.name} default_what is not a declared handler: "
+                    f"{self.default_what}"
+                )
+                raise ValueError(msg)
+            if self.apply_guarded and self.apply_what not in self.handlers:
+                msg = (
+                    f"Make verb {self.name} apply_what is not a declared handler: "
+                    f"{self.apply_what or '<missing>'}"
+                )
+                raise ValueError(msg)
+            if not self.apply_guarded and self.apply_what is not None:
+                msg = f"Read-only Make verb {self.name} cannot declare apply_what"
+                raise ValueError(msg)
+            return self
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -462,13 +502,6 @@ class FlextInfraConfigModels:
                 description="Maximum seconds to wait for the checkout validation lock",
             ),
         ]
-        verbs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1, description="Public Make verbs serialized per checkout"
-            ),
-        ]
-
         @m.field_validator("lock_path", "single_flight_lock_path")
         @classmethod
         def _validate_lock_path(cls, value: Path) -> Path:
@@ -507,13 +540,6 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
                 )
                 raise ValueError(msg)
-            invalid = set(self.mutation_fixed_points) - set(self.verbs)
-            if invalid:
-                msg = (
-                    "make serialization mutation verbs are not serialized: "
-                    f"{', '.join(sorted(invalid))}"
-                )
-                raise ValueError(msg)
             empty = [
                 verb
                 for verb, fixed_points in self.mutation_fixed_points.items()
@@ -545,13 +571,6 @@ class FlextInfraConfigModels:
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
-        actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Ordered public docs actions"),
-        ]
-        default_action: Annotated[
-            t.NonEmptyStr, m.Field(description="Default docs action")
-        ]
         mutable_actions: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
@@ -565,27 +584,6 @@ class FlextInfraConfigModels:
                 description="Regex rejecting cross-project relative Markdown links"
             ),
         ]
-
-        @u.model_validator(mode="after")
-        def _validate_docs_actions(self) -> Self:
-            """Require the default action and every mutable action to be declared."""
-            declared = set(self.actions)
-            if self.default_action not in declared:
-                msg = (
-                    f"docs default action must be one of {', '.join(sorted(declared))}"
-                )
-                raise ValueError(msg)
-            unknown = set(self.mutable_actions) - declared
-            if unknown:
-                msg = (
-                    "docs mutable actions must be declared actions: "
-                    f"{', '.join(sorted(unknown))}"
-                )
-                raise ValueError(msg)
-            if not any(action == "all" for action in self.actions):
-                msg = "docs actions must include the 'all' aggregate action"
-                raise ValueError(msg)
-            return self
 
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
@@ -631,17 +629,6 @@ class FlextInfraConfigModels:
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
             declared = {verb.name for verb in self.verbs}
-            missing_apply_what = tuple(
-                verb.name
-                for verb in self.verbs
-                if verb.apply_guarded and verb.apply_what is None
-            )
-            if missing_apply_what:
-                msg = (
-                    "apply-guarded Make verbs require config-owned apply_what: "
-                    f"{', '.join(missing_apply_what)}"
-                )
-                raise ValueError(msg)
             non_aggregate = tuple(
                 verb.name for verb in self.verbs if verb.default_what != "all"
             )
@@ -651,21 +638,20 @@ class FlextInfraConfigModels:
                     f"{', '.join(non_aggregate)}"
                 )
                 raise ValueError(msg)
-            serialized = set(self.serialization.verbs)
-            invalid = serialized - declared
-            if invalid:
-                msg = (
-                    "make serialization verbs are not declared public verbs: "
-                    f"{', '.join(sorted(invalid))}"
-                )
-                raise ValueError(msg)
+            serialized = set(self.serialized_verbs)
             if "setup" in serialized:
                 msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
-            docs_actions = set(self.docs.actions)
-            if self.docs.default_action not in docs_actions:
-                msg = "make docs default_action must be declared in actions"
+            invalid_fixed_points = (
+                set(self.serialization.mutation_fixed_points) - serialized
+            )
+            if invalid_fixed_points:
+                msg = (
+                    "make serialization mutation verbs are not serialized: "
+                    f"{', '.join(sorted(invalid_fixed_points))}"
+                )
                 raise ValueError(msg)
+            docs_actions = set(self.docs_actions)
             invalid_mutable = set(self.docs.mutable_actions) - docs_actions
             if invalid_mutable:
                 msg = "make docs mutable_actions must be declared in actions"
@@ -677,6 +663,25 @@ class FlextInfraConfigModels:
                 msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
+
+        @m.computed_field()
+        @property
+        def serialized_verbs(self) -> tuple[str, ...]:
+            """Public verbs whose registry entry requires serialization."""
+            return tuple(verb.name for verb in self.verbs if verb.serialized)
+
+        @m.computed_field()
+        @property
+        def orchestrated_verbs(self) -> tuple[str, ...]:
+            """Public verbs whose registry entry requires workspace fan-out."""
+            return tuple(verb.name for verb in self.verbs if verb.orchestrated)
+
+        @m.computed_field()
+        @property
+        def docs_actions(self) -> tuple[str, ...]:
+            """Documentation actions derived from the docs registry entry."""
+            docs_verb = next(verb for verb in self.verbs if verb.name == "docs")
+            return tuple(docs_verb.handlers)
 
         @m.computed_field()
         @property

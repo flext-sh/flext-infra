@@ -273,8 +273,8 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         """Single-flight the complete operation while retaining mutation locks."""
         serialization = config.Infra.codegen.make.serialization
         make_config = config.Infra.codegen.make
-        if self.verb not in serialization.verbs:
-            allowed = ", ".join(serialization.verbs)
+        if self.verb not in make_config.serialized_verbs:
+            allowed = ", ".join(make_config.serialized_verbs)
             return r[m.Infra.ProcessExit].fail(
                 f"Make verb '{self.verb}' is not serialized (allowed: {allowed})"
             )
