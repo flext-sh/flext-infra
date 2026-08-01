@@ -253,8 +253,9 @@ class TestCodegenBeadsLedger:
     def test_server_block_loads_from_typed_ssot(self) -> None:
         """Load the shared server block with typed fields from the toolchain SSOT."""
         server = self._toolchain_server()
-        tm.that(isinstance(server.port, int) and server.port > 0, eq=True)
-        tm.that(isinstance(server.shared_server, bool), eq=True)
+        # O modelo tipado ja garante os tipos; o teste valida o contrato de valor.
+        tm.that(server.port, gt=0)
+        tm.that(server.shared_server, eq=True)
         tm.that(bool(server.host), eq=True)
         tm.that(server.auto_commit in {"off", "on", "batch"}, eq=True)
 

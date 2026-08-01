@@ -120,8 +120,8 @@ class FlextInfraPytestRunner(s[int]):
     def _report_directory(self) -> Path:
         """Create one collision-resistant report directory under the project."""
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
-        report_root = self.root / self.reports
-        report_dir = report_root / run_id
+        report_root: Path = self.root / self.reports
+        report_dir: Path = report_root / run_id
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 

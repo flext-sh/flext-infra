@@ -53,8 +53,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        @property
-        def tomlsort_sort_first(self) -> t.StrSequence: ...
+        # Fornecido pela subclasse concreta como campo do modelo, entao o
+        # contrato e declarado como atributo — uma property aqui conflitaria
+        # com a declaracao real.
+        tomlsort_sort_first: t.StrSequence
 
         def _reorder_document_inplace(
             self,
