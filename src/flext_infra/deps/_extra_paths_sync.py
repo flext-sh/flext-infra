@@ -74,12 +74,17 @@ class FlextInfraExtraPathsSyncMixin:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
+            # Same import graph as Pyrefly: mypy needs the path dependencies
+            # that pyright_extra_paths omits (see sync_payload).
+            expected_mypy = self.pyrefly_search_paths(
+                project_dir=project_dir, is_root=is_root
+            )
             mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
             current_mypy = u.Cli.toml_as_string_list(
                 mypy_path_item if mypy_path_item is not None else []
             )
-            if current_mypy != expected:
-                mypy_table["mypy_path"] = expected
+            if current_mypy != expected_mypy:
+                mypy_table["mypy_path"] = expected_mypy
                 tool_table[c.Infra.MYPY] = mypy_table
                 changes.append("synchronized mypy mypy_path")
         if changes:
@@ -106,10 +111,13 @@ class FlextInfraExtraPathsSyncMixin:
             expected,
         ):
             changes.append("synchronized pyright extraPaths")
+        # Mypy resolves the same import graph as Pyrefly, so it needs the same
+        # roots. pyright_extra_paths omits path dependencies, which left sibling
+        # packages unresolvable and degraded every symbol they export to Any.
         if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
-            expected,
+            self.pyrefly_search_paths(project_dir=project_dir, is_root=is_root),
         ):
             changes.append("synchronized mypy mypy_path")
         return changes
