@@ -240,6 +240,7 @@ class TestsMakeTestSelector:
         """
         template_path = _makefile_template()
         template = template_path.read_text(encoding="utf-8")
+        generated = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
             encoding="utf-8"
         )
@@ -255,6 +256,12 @@ class TestsMakeTestSelector:
                 "FLEXT_PYTEST_FAIL_FAST_RAW",
             ],
             lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
+        )
+        tm.that(
+            generated,
+            has=(
+                f"PYTEST_REPORTS_DIR ?= {config.Infra.tooling.tools.pytest.reports_dir}"
+            ),
         )
         tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])

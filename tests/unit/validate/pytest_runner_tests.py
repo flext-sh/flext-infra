@@ -47,7 +47,7 @@ class TestsFlextInfraPytestRunner:
         *,
         file: str | None = None,
         match: str | None = None,
-        reports: Path = Path(".reports/tests"),
+        reports: Path = config.Infra.tooling.tools.pytest.reports_dir,
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -64,7 +64,7 @@ class TestsFlextInfraPytestRunner:
         """Keep the validated report boundary typed through directory creation."""
         runner = self._runner(tmp_path)
 
-        tm.that(runner.reports, eq=Path(".reports/tests"))
+        tm.that(runner.reports, eq=config.Infra.tooling.tools.pytest.reports_dir)
 
     def test_reports_reject_a_path_outside_the_workspace(self, tmp_path: Path) -> None:
         """Reject report output that could escape the active project."""
@@ -72,6 +72,25 @@ class TestsFlextInfraPytestRunner:
             ValueError, match="reports must be a normalized repository-relative path"
         ):
             self._runner(tmp_path, reports=Path("..") / "reports")
+
+    def test_reports_reject_symlink_escape_before_writing(self, tmp_path: Path) -> None:
+        """Resolve the report root before any artifact can escape the workspace."""
+        workspace = tmp_path / "workspace"
+        external = tmp_path / "external"
+        configured_reports = config.Infra.tooling.tools.pytest.reports_dir
+        escape_reports = configured_reports.with_name(
+            f"{configured_reports.name}-escape"
+        )
+        report_parent = workspace / escape_reports.parent
+        report_parent.mkdir(parents=True)
+        external.mkdir()
+        (workspace / escape_reports).symlink_to(external, target_is_directory=True)
+        runner = self._runner(workspace, reports=escape_reports)
+
+        with pytest.raises(ValueError, match="reports path escapes workspace"):
+            runner.execute()
+
+        tm.that(tuple(external.iterdir()), eq=())
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
         self, tmp_path: Path

@@ -503,6 +503,7 @@ Infra:
         # them; never narrow them back to the pre-measurement 10s/60s.
         case-timeout-seconds: 30
         run-timeout-seconds: 300
+        reports-dir: .reports/tests
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
