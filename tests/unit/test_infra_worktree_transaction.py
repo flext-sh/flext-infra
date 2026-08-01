@@ -176,7 +176,7 @@ class TestsFlextInfraWorktreeTransaction:
 
         request = m.Infra.WorktreeTransactionRequest(
             workspace_root=workspace_root.relative_to(tmp_path),
-            command=("codegen", "conform"),
+            command=(c.Infra.CLI_GROUP_CODEGEN, c.Infra.CodegenKind.CONFORM),
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
         )
 
@@ -425,6 +425,17 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(artifact.read_bytes(), eq=b"after\n")
         tm.that(_git_status(source_root), eq=applied_status)
 
+    def test_empty_transaction_patch_reports_no_application(
+        self, tmp_path: Path
+    ) -> None:
+        """Report a fixed-point transaction as a successful no-op."""
+        _source_root, _worktree_root, delta = _operation_delta(tmp_path)
+        empty_delta = delta.model_copy(update={"changed_files": (), "patch": b""})
+
+        applied = tm.ok(u.Infra.git_apply_transaction_patches((empty_delta,)))
+
+        tm.that(applied, eq=False)
+
     def test_transaction_apply_preflights_all_heads_before_any_patch(
         self, tmp_path: Path
     ) -> None:
@@ -663,7 +674,8 @@ class TestsFlextInfraWorktreeTransaction:
         """Generate in isolation without invoking check-owned static tools."""
         workspace_root = _workspace(tmp_path)
         before_status = _git_status(workspace_root)
-        before_pyproject = (workspace_root / "pyproject.toml").read_bytes()
+        pyproject_path = workspace_root / c.Infra.PYPROJECT_FILENAME
+        before_pyproject = pyproject_path.read_bytes()
         sentinel_bin = tmp_path / "sentinel-bin"
         sentinel_bin.mkdir()
         for tool in (c.Infra.RUFF, c.Infra.PYREFLY):
@@ -678,19 +690,24 @@ class TestsFlextInfraWorktreeTransaction:
             str(sentinel_bin),
             prepend=c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR,
         )
+        conform_request = m.Infra.CodegenConformRequest(
+            root=workspace_root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        conform_arguments = tuple(
+            argument
+            for field_name, value in conform_request.model_dump(mode="json").items()
+            for argument in (f"--{field_name.replace('_', '-')}", str(value))
+        )
 
         transaction_result = u.Infra.execute_worktree_transaction(
             m.Infra.WorktreeTransactionRequest(
                 workspace_root=workspace_root,
                 command=(
-                    "codegen",
-                    "conform",
-                    "--root",
-                    str(workspace_root),
-                    "--scope",
-                    "self",
-                    "--mode",
-                    "apply",
+                    c.Infra.CLI_GROUP_CODEGEN,
+                    c.Infra.CodegenKind.CONFORM,
+                    *conform_arguments,
                 ),
                 apply_patch=False,
                 timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
@@ -707,9 +724,9 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(output, has="applied=no")
         for tool in (c.Infra.RUFF, c.Infra.PYREFLY):
             tm.that((sentinel_bin / f"{tool}.called").exists(), eq=False)
-        tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
+        tm.that(pyproject_path.read_bytes(), eq=before_pyproject)
         tm.that(_git_status(workspace_root), eq=before_status)
-        tm.that((workspace_root / "Makefile").exists(), eq=False)
+        tm.that((workspace_root / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
 
 
 class TestsFlextInfraWorktreeTransactionScope:

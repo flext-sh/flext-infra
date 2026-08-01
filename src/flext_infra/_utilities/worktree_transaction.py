@@ -473,8 +473,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def git_apply_transaction_patches(
         cls, deltas: t.SequenceOf[m.Infra.RepositoryDelta]
     ) -> p.Result[bool]:
-        """Lock every workspace across source-HEAD preflight and patch apply."""
-        lock_paths_result = cls._transaction_lock_paths(deltas)
+        """Apply non-empty patches and report whether source bytes changed."""
+        patches = tuple(delta for delta in deltas if delta.patch)
+        if not patches:
+            return r[bool].ok(False)
+        lock_paths_result = cls._transaction_lock_paths(patches)
         if lock_paths_result.failure:
             return r[bool].fail(
                 lock_paths_result.error or "failed to resolve transaction locks"
@@ -493,7 +496,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
             lock_paths_result.value,
             serialization.timeout_seconds,
-            lambda: cls._apply_transaction_patches_locked(deltas),
+            lambda: cls._apply_transaction_patches_locked(patches),
             timeout_failure=timeout_failure,
             acquisition_failure=acquisition_failure,
             # The transaction owns its sandbox for exactly one operation, so its
@@ -643,9 +646,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
         apply_error = ""
         if request.apply_patch and not breakage:
             apply_result = cls.git_apply_transaction_patches(deltas)
-            applied = apply_result.success
-            apply_error = apply_result.error or "" if apply_result.failure else ""
-            breakage = apply_result.failure
+            if apply_result.failure:
+                apply_error = apply_result.error or ""
+                breakage = True
+            else:
+                applied = apply_result.value
         summary = (
             f"breakage={'yes' if breakage else 'no'}; "
             f"patch-check={'ok' if patch_check.success else patch_check.error}; "
