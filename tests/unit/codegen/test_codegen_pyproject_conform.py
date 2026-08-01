@@ -472,12 +472,23 @@ branch = "{infra.branch}"
         )
         tm.that(conflict.failure, eq=True)
         tm.that(conflict.error or "", has="catalog conflicts")
+        member = workspace.members[0]
         member_conflict = (
             *repositories,
-            _repository(
-                "flext-member",
-                url="https://other.example/flext-member.git",
-                branch="other",
-                path="other-member",
+            member.model_copy(
+                update={
+                    "url": "https://other.example/flext-member.git",
+                    "branch": "other",
+                    "path": Path("other-member"),
+                }
             ),
         )
+        member_result = u.Infra.pyproject_conform(
+            '[project]\nname = "fleet-root"\ndependencies = ["flext-member"]\n',
+            repositories=member_conflict,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            toolchain=toolchain,
+        )
+        tm.that(member_result.failure, eq=True)
+        tm.that(member_result.error or "", has="catalog conflicts")
