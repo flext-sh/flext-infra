@@ -411,7 +411,21 @@ class FlextInfraUtilitiesWorktreeTransaction:
         timeout_seconds: int,
         scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root the scope owns."""
+        """Fresh-import every productive package root the scope owns.
+
+        A package is importable only when its distribution metadata is present
+        in the running interpreter: FLEXT packages resolve their own version
+        through importlib.metadata at import time. A workspace-scoped route
+        legitimately spans every declared member, but the interpreter executing
+        it is one project's venv, which installs only that project's declared
+        dependencies. Importing an uninstalled sibling therefore raised
+        PackageNotFoundError and reported breakage for a healthy tree, which
+        blocked every governed apply route from writing its result.
+
+        Skipping packages with no installed distribution keeps the probe a
+        genuine breakage detector for the code the transaction can actually
+        exercise, instead of a false negative for the code it cannot.
+        """
         packages = tuple(
             sorted({
                 package_dir.name
@@ -424,10 +438,22 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
         script = (
             "import importlib\n"
+            "import importlib.metadata as _md\n"
             f"packages = {packages!r}\n"
+            "imported = 0\n"
+            "skipped = []\n"
             "for package in packages:\n"
+            "    dist = package.replace('_', '-')\n"
+            "    try:\n"
+            "        _md.distribution(dist)\n"
+            "    except _md.PackageNotFoundError:\n"
+            "        skipped.append(package)\n"
+            "        continue\n"
             "    importlib.import_module(package)\n"
-            "print(f'imported {len(packages)} packages')\n"
+            "    imported += 1\n"
+            "print(f'imported {imported} packages')\n"
+            "if skipped:\n"
+            "    print(f'skipped (not installed): {sorted(skipped)}')\n"
         )
         result = u.Cli.run_raw(
             (sys.executable, "-c", script),
