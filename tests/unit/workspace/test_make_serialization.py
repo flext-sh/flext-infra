@@ -17,10 +17,13 @@ from flext_infra.workspace.make_serialization import FlextInfraMakeSerialization
 from flext_tests import tm
 from tests import u as test_u
 
+# Derivado do mesmo SSOT que o runtime consome: um verbo serializado muta com
+# `apply_what` e verifica com `default_what`, entao os dois selectors saem da
+# declaracao do verbo em vez de um mapa paralelo.
 _MUTATION_CASES = tuple(
-    (verb, mutation_what, fixed_point_what)
-    for verb, fixed_points in config.Infra.codegen.make.serialization.mutation_fixed_points.items()
-    for mutation_what, fixed_point_what in fixed_points.items()
+    (verb.name, verb.apply_what, verb.default_what)
+    for verb in config.Infra.codegen.make.verbs
+    if verb.name in config.Infra.codegen.make.serialization.mutation_verbs
 )
 
 
@@ -39,12 +42,10 @@ class TestsFlextInfraMakeSerialization:
         tm.that(serialization.timeout_seconds, gt=0)
         tm.that(serialization.verbs, empty=False)
         tm.that(set(serialization.verbs).issubset(declared_verbs), where=bool)
-        for verb, fixed_points in serialization.mutation_fixed_points.items():
-            tm.that(verb in serialization.verbs, where=bool)
-            tm.that(fixed_points, empty=False)
-            for mutation_what, fixed_point_what in fixed_points.items():
-                tm.that(mutation_what, empty=False)
-                tm.that(fixed_point_what, empty=False)
+        for mutation_verb, mutation_what, fixed_point_what in _MUTATION_CASES:
+            tm.that(mutation_verb in serialization.verbs, where=bool)
+            tm.that(mutation_what, empty=False)
+            tm.that(fixed_point_what, empty=False)
         for lock_path in lock_paths:
             tm.that(not lock_path.is_absolute(), where=bool)
             tm.that(lock_path in serialization.snapshot_excludes, where=bool)
@@ -97,10 +98,7 @@ class TestsFlextInfraMakeSerialization:
         """Checks and mutations wait through both mutation phases."""
         make_config = config.Infra.codegen.make
         serialization = make_config.serialization
-        mutation_verb, fixed_points = next(
-            iter(serialization.mutation_fixed_points.items())
-        )
-        mutation_what, fixed_point_what = next(iter(fixed_points.items()))
+        mutation_verb, mutation_what, fixed_point_what = _MUTATION_CASES[0]
         check_verb = next(verb for verb in serialization.verbs if verb != mutation_verb)
         contender_verb = mutation_verb if contender_is_mutation else check_verb
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
@@ -258,17 +256,21 @@ class TestsFlextInfraMakeSerialization:
             )
         tm.that(acquisition_failures, eq=[])
 
-    def test_mutation_mapping_requires_a_fixed_point(self) -> None:
-        """Every declared mutating selector has a validation selector."""
-        serialization = config.Infra.codegen.make.serialization
-        payload = serialization.model_dump(mode="python")
-        empty_fixed_points: dict[str, str] = {}
-        payload["mutation_fixed_points"] = {serialization.verbs[0]: empty_fixed_points}
+    def test_every_mutation_verb_is_serialized(self) -> None:
+        """Cada verbo mutante declarado entra na serializacao do checkout."""
+        make_config = config.Infra.codegen.make
+        serialization = make_config.serialization
 
-        with pytest.raises(
-            ValueError, match="make serialization mutation verbs require fixed points"
-        ):
-            m.Infra.MakeSerializationSpec.model_validate(payload)
+        # A mutacao so e serializada se o verbo tambem estiver na lista de verbos
+        # serializados; caso contrario duas mutacoes disputariam a mesma arvore.
+        tm.that(serialization.mutation_verbs, empty=False)
+        for mutation_verb in serialization.mutation_verbs:
+            tm.that(mutation_verb in serialization.verbs, where=bool)
+
+        # Cada verbo mutante e guardado por APPLY e declara o selector que muta.
+        guarded = {verb.name for verb in make_config.verbs if verb.apply_guarded}
+        for mutation_verb in serialization.mutation_verbs:
+            tm.that(mutation_verb in guarded, where=bool)
 
     def test_process_exit_classifies_timeout_and_signal(self) -> None:
         """Process outcomes retain standard timeout and signal semantics."""
