@@ -37,7 +37,6 @@ CHECK_GATES ?=
 DEPENDENCY ?=
 FAIL_FAST ?= 0
 FILE ?=
-FIX ?= 0
 MATCH ?=
 PROJECT ?=
 PROJECTS ?=
@@ -97,7 +96,7 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
 #        config:make.docs.actions, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release gen worktree
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release fix gen worktree
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
@@ -138,15 +137,18 @@ _DEFAULT_build := artifacts
 _DEFAULT_check := all
 _DEFAULT_test := all
 _DEFAULT_fmt := check
-_APPLY_DEFAULT_fmt := apply
 _DEFAULT_run := default
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := all
 _DEFAULT_clean := generated
 _DEFAULT_release := status
+_DEFAULT_fix := check
 _DEFAULT_gen := check
-_APPLY_DEFAULT_gen := apply
 _DEFAULT_worktree := list
+
+_APPLY_WHAT_fmt := apply
+_APPLY_WHAT_fix := apply
+_APPLY_WHAT_gen := apply
 
 
 # === SECTION: profile routing (managed) ===
@@ -224,6 +226,8 @@ endif
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
+# A workspace root owns no local gate implementation: its verbs fan out to the
+# declared members. Selecting the root here would make it orchestrate itself.
 DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS) .
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
@@ -270,6 +274,11 @@ _builtin_clean_generated \
 	_builtin_release_status \
 	_builtin_gen_check \
 	_builtin_gen_apply \
+	_builtin_gen_all \
+	_builtin_fmt_all \
+	_builtin_fix_check \
+	_builtin_fix_apply \
+	_builtin_fix_all \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
 	_builtin_worktree_update \
@@ -279,8 +288,8 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -z "$$what" ] && [ "$(APPLY)" = "Y" ] && [ -n "$(_APPLY_DEFAULT_$(1))" ]; then \
-		what="$(_APPLY_DEFAULT_$(1))"; \
+	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
+		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
@@ -415,6 +424,10 @@ _builtin_help_usage:
 
 
 	@printf '  %-10s WHAT=%s\n' 'release' 'status';
+
+
+
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fix' 'check';
 
 
 
@@ -628,10 +641,14 @@ _builtin_deps_upgrade: _builtin_require_environment
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
+# `check` is read-only by contract: it never mutates the tree. Fixing is owned
+# by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
+# check. APPLY here made the same tools run twice with conflicting intents,
+# so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-	if [ "$(FIX)" = "1" ] && [ "$(APPLY)" != "Y" ]; then \
-		printf 'ERROR: FIX=1 requires APPLY=Y\n' >&2; exit 2; \
+	if [ -n "$(strip $(APPLY))" ]; then \
+		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
 	fi; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
@@ -641,20 +658,32 @@ _builtin_check_all: _builtin_require_environment
 			*) printf 'ERROR: unknown CHECK_GATES value: %s (allowed: %s)\n' "$$gate" "$(CHECK_GATES_ALLOWED)" >&2; exit 2 ;; \
 		esac; \
 	done; \
-	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects . $(if $(filter 1,$(FIX)),--fix)
+	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin_test_all: _builtin_require_environment
 
 	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
+# One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
+# `fix` owns the mutating lint pass. Running ruff twice per gate was the
+# duplication this split removes.
 _builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
 _builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
+
+_builtin_fmt_all: _builtin_fmt_apply
+
+_builtin_fix_check: _builtin_require_environment
+	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
+
+_builtin_fix_apply: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+
+_builtin_fix_all: _builtin_fix_apply
 
 
 _builtin_run_default: _builtin_require_environment
@@ -718,6 +747,9 @@ _builtin_gen_check: _builtin_require_environment
 _builtin_gen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+
+# `all` is the strict selector: every generated surface, no scope skipped.
+_builtin_gen_all: _builtin_gen_apply
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
