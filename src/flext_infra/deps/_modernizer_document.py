@@ -140,13 +140,22 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         pyright ``venvPath`` / pyrefly interpreter classification correct even
         when ``deps modernize`` is invoked from inside the child itself (so
         ``workspace_root`` defaults to the child dir). The committed
-        ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
+        ``Makefile`` ``MAKE_PROFILE`` assignment is the durable backstop when
         no virtualenv exists at modernize time.
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
         if (project_dir / venv_name).is_dir():
             return r[bool].ok(False)
+        superproject = u.Infra.git_capture(
+            project_dir, ("rev-parse", "--show-superproject-working-tree")
+        )
+        if superproject.success:
+            # Git topology is authoritative inside a work tree: a nested
+            # repository names its superproject, an independent checkout or
+            # linked worktree names nothing. A sibling .venv is only a
+            # coincidence of layout, so it must not outrank this answer.
+            return r[bool].ok(bool(superproject.value.strip()))
         if (project_dir.parent / venv_name).is_dir():
             return r[bool].ok(True)
         makefile = project_dir / "Makefile"
@@ -162,9 +171,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         for raw_line in read.value.splitlines():
             stripped = raw_line.strip()
             key, separator, value = stripped.partition(":=")
-            if separator != ":=" or key.strip() != "WORKSPACE_ROOT":
+            if separator != ":=" or key.strip() != "MAKE_PROFILE":
                 continue
-            return r[bool].ok(value.strip().startswith(".."))
+            return r[bool].ok(
+                value.strip() == c.Infra.MakeProfile.WORKSPACE_MEMBER.value
+            )
         return r[bool].ok(False)
 
     def _process_document_state(
