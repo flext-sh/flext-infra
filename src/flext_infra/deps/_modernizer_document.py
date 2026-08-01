@@ -298,7 +298,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             paths_manager.sync_payload(
-                payload, project_dir=path.parent, is_root=is_root
+                payload,
+                project_dir=path.parent,
+                is_root=is_root,
+                declared_python_dirs=declared_python_dirs,
             )
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)

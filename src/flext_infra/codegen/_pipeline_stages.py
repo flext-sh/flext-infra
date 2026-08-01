@@ -8,7 +8,6 @@ from flext_infra import c, m, t, u
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
@@ -214,22 +213,6 @@ class FlextInfraCodegenPipelineStagesMixin:
             }
 
         return self._run_stage(c.Infra.PipelineStage.AUTO_FIX, _action, _emit)
-
-    def _stage_lazy_init(
-        self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Run lazy-init __init__.py generation."""
-
-        def _action() -> int:
-            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            lazy_init = FlextInfraCodegenLazyInit(workspace_root=ctx.workspace_root)
-            return lazy_init.generate_inits(check_only=dry_run)
-
-        return self._run_stage(
-            c.Infra.PipelineStage.LAZY_INIT,
-            _action,
-            lambda count: {"unmapped_count": count},
-        )
 
     def _stage_census_after(
         self, ctx: m.Cli.PipelineStageContext

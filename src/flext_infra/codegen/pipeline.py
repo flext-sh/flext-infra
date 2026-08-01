@@ -63,7 +63,6 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
             c.Infra.PipelineStage.SCAFFOLD: self._stage_scaffold,
             c.Infra.PipelineStage.AUTO_FIX: self._stage_auto_fix,
             c.Infra.PipelineStage.DEPS: self._stage_deps,
-            c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }
         retry_by_stage: t.Cli.PipelineRetryMap = {c.Infra.PipelineStage.AUTO_FIX: 1}

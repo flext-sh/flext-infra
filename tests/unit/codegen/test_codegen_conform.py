@@ -19,6 +19,7 @@ from flext_infra import c, config, m, u
 from tests import u as test_u
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -145,6 +146,117 @@ class TestCodegenConform:
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
         tm.that(makefile, lacks="mise exec")
+
+    def test_all_conform_prunes_orphaned_generated_workflow(
+        self, infra_git_repo: Path
+    ) -> None:
+        """ALL detects, removes, and proves fixed point for retired projections."""
+        root = infra_git_repo
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        retired = root / ".github" / "workflows" / "retired.yml"
+        retired.write_text(
+            "# === SECTION: header (managed) ===\n# Free: no\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        check_request = m.Infra.CodegenConformRequest(
+            root=root, mode=c.Infra.CodegenConformMode.CHECK
+        )
+        check = FlextInfraCodegenConform.execute_request(check_request)
+        tm.fail(check, has=str(retired))
+        tm.that(retired.is_file(), eq=True)
+
+        partial = FlextInfraCodegenConform.execute_request(
+            check_request.model_copy(
+                update={"what": c.Infra.CodegenConformSurface.MAKEFILE}
+            )
+        )
+        tm.ok(partial)
+        tm.that(retired.is_file(), eq=True)
+
+        applied = tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                check_request.model_copy(
+                    update={"mode": c.Infra.CodegenConformMode.APPLY}
+                )
+            )
+        )
+        tm.that(retired in applied.written_files, eq=True)
+        tm.that(retired.exists(), eq=False)
+        tm.ok(FlextInfraCodegenConform.execute_request(check_request))
+
+    def test_all_conform_prunes_removed_lazy_subpackage_export(
+        self, infra_git_repo: Path
+    ) -> None:
+        """ALL rewrites a generated parent init after a child package is retired."""
+        root = infra_git_repo
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        package_root = root / "src" / "flext_demo" / "domain"
+        retired_package = package_root / "result_parts"
+        package_root.mkdir()
+        (package_root / c.Infra.INIT_PY).write_text(
+            "", encoding=c.Infra.ENCODING_DEFAULT
+        )
+        test_u.Tests.write_lazy_init_namespace_module(
+            package_root / "active.py", class_name="FlextDemoActive", alias="active"
+        )
+        retired_package.mkdir()
+        (retired_package / c.Infra.INIT_PY).write_text(
+            "", encoding=c.Infra.ENCODING_DEFAULT
+        )
+        test_u.Tests.write_lazy_init_namespace_module(
+            retired_package / "part.py",
+            class_name="FlextDemoResultPart",
+            alias="part",
+        )
+        tm.ok(
+            FlextInfraCodegenLazyInit(
+                workspace_root=root,
+                apply_changes=True,
+            ).execute()
+        )
+        parent_init = package_root / c.Infra.INIT_PY
+        before = parent_init.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        tm.that(before, has="result_parts")
+        tm.ok(u.Cli.files_remove_directory(retired_package))
+
+        apply_request = m.Infra.CodegenConformRequest(
+            root=root, mode=c.Infra.CodegenConformMode.APPLY
+        )
+        applied = tm.ok(FlextInfraCodegenConform.execute_request(apply_request))
+        after = parent_init.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        tm.that(parent_init in applied.written_files, eq=True)
+        tm.that(after, lacks="result_parts")
+        checked = FlextInfraCodegenConform.execute_request(
+            apply_request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+        )
+        tm.ok(checked)
+        tm.that(parent_init.read_text(encoding=c.Infra.ENCODING_DEFAULT), eq=after)
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path

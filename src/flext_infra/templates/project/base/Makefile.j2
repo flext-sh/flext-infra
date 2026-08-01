@@ -261,13 +261,6 @@ ifneq ($(strip $(PROJECTS)),)
 $(error {{ project_selection_conflict_error }})
 endif
 endif
-{% if script_dispatch %}
-# Script command framework: non-builtin verbs/WHATs route to scripts/<verb>/<what>.
-# A hyphenated WHAT (make check WHAT=no-fallbacks) maps to the underscore module
-# stem (scripts/check/no_fallbacks.py) so PEP 8 module names stay valid.
-_SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
-{% endif %}
-
 {{ makefile_custom_include }}
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
@@ -282,40 +275,15 @@ define _dispatch
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
 	builtin="_builtin_$(1)_$$what"; \
-	custom="_custom_$(1)_$$what"; \
+	case " $(_CANONICAL_HANDLERS_$(1)) " in \
+		*" $$what "*) ;; \
+		*) printf 'ERROR: unknown WHAT for %s: %s (allowed:%s)\n' "$(1)" "$$what" "$(_CANONICAL_HANDLERS_$(1))" >&2; exit 2 ;; \
+	esac; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
-{%- if script_dispatch %}
-	what_norm=$$(printf '%s' "$$what" | tr '-' '_'); \
-	script=''; script_what=''; \
-	for root in $(_SCRIPT_DISPATCH_ROOTS); do \
-		for cand in "$$what_norm" "$$what"; do \
-			for ext in py sh; do \
-				if [ -z "$$script" ] && [ -f "$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext" ]; then \
-					script="$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext"; script_what="$$cand"; \
-				fi; \
-			done; \
-		done; \
-	done; \
-	$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
-	if [ "$$custom_rc" -ne 2 ]; then \
-		$(SELF_MAKE) "$$custom" || exit $$?; \
-	elif [ -n "$$script" ]; then \
-		WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
-	else \
-		case " $(_CANONICAL_HANDLERS_$(1)) " in \
-			*" $$what "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-			*) WHAT="$$what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$? ;; \
-		esac; \
-	fi; \
-{%- else %}
-	case " $(_CANONICAL_HANDLERS_$(1)) " in \
-		*" $$what "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
-	esac; \
-{%- endif %}
+	$(SELF_MAKE) "$$builtin" || exit $$?; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -344,7 +312,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}{% for verb in extra_verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -398,14 +366,24 @@ _builtin_help_usage:
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
-	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
+	@printf '  %s\n' 'for all or some WHATs. Handlers are declared only by the typed verb SSOT.';
 	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
 			printf '  %s\n' 'Defined in this project:'; \
 			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
 		fi; \
 	fi
+
+{% if script_dispatch %}
+{% for verb in extra_verbs %}
+{% for what in verb.whats %}
+_builtin_{{ verb.name }}_{{ what }}: _builtin_require_environment
+	@WHAT="{{ what | replace('-', '_') }}" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "{{ verb.name }}"
+
+{% endfor %}
+{% endfor %}
+{% endif %}
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes

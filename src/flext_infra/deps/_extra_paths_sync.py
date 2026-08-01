@@ -96,7 +96,12 @@ class FlextInfraExtraPathsSyncMixin:
         return changes
 
     def sync_payload(
-        self, payload: t.MutableJsonMapping, *, project_dir: Path, is_root: bool
+        self,
+        payload: t.MutableJsonMapping,
+        *,
+        project_dir: Path,
+        is_root: bool,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply computed extra paths to one normalized TOML payload."""
         expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
@@ -121,7 +126,10 @@ class FlextInfraExtraPathsSyncMixin:
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
             self.pyrefly_search_paths_from_payload(
-                payload, project_dir=project_dir, is_root=is_root
+                payload,
+                project_dir=project_dir,
+                is_root=is_root,
+                declared_python_dirs=declared_python_dirs,
             ),
         ):
             changes.append("synchronized mypy mypy_path")

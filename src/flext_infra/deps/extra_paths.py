@@ -85,23 +85,29 @@ class FlextInfraExtraPathsManager(
 
     @override
     def pyrefly_search_paths_from_payload(
-        self, payload: t.JsonMapping, *, project_dir: Path, is_root: bool
+        self,
+        payload: t.JsonMapping,
+        *,
+        project_dir: Path,
+        is_root: bool,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Compute Pyrefly search paths from the canonical in-memory payload."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = rules.source_dir
+        declared = frozenset(declared_python_dirs)
         configured_typings = (
             rules.root_typings_paths if is_root else rules.project_typings_paths
         )
         typings_paths = [
             relative_path
             for relative_path in configured_typings
-            if (project_dir / relative_path).is_dir()
+            if relative_path in declared or (project_dir / relative_path).is_dir()
         ]
         shared_paths = [
             relative_path
             for relative_path in rules.project_shared_search_paths
-            if (project_dir / relative_path).is_dir()
+            if declared or (project_dir / relative_path).is_dir()
         ]
         # Why (ai-hub-qwoc, fleet-wide fix): pyrefly resolves the FIRST
         # matching search-path entry. "src" must precede "." or every module
@@ -116,7 +122,7 @@ class FlextInfraExtraPathsManager(
             paths.update(self._dep_paths(payload, project_dir=project_dir))
             paths.update(self._uv_source_paths(payload, project_dir=project_dir))
             paths.update(self._workspace_member_source_paths(project_dir=project_dir))
-        has_source_root = (project_dir / source_root).is_dir()
+        has_source_root = source_root in declared or (project_dir / source_root).is_dir()
         paths.discard(source_root)
         ordered = sorted(paths)
         if has_source_root:

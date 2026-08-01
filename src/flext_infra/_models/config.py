@@ -793,7 +793,13 @@ class FlextInfraConfigModels:
             m.Field(description="Profiles that consume the template"),
         ]
         delegate: Annotated[
-            t.NonEmptyStr, m.Field(description="Canonical rendering delegate")
+            Literal["manifest", "render", "seed"],
+            m.Field(
+                description=(
+                    "Canonical rendering delegate; seed initializes a contract "
+                    "once before its generated runtime owner takes over"
+                )
+            ),
         ]
         overwrite: Annotated[
             bool, m.Field(description="Whether the template owns existing content")
@@ -2377,6 +2383,10 @@ class FlextInfraConfigModels:
         """Expected content and current state for one managed file."""
 
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
+        operation: Annotated[
+            Literal["write", "remove"],
+            m.Field(description="Atomic operation required for this artifact"),
+        ] = "write"
         rendered: Annotated[str, m.Field(description="Fully rendered expected content")]
         expected_sha256: Annotated[
             t.NonEmptyStr, m.Field(description="SHA-256 of expected content")

@@ -71,7 +71,6 @@ class FlextInfraConstantsCodegen(
         SCAFFOLD = "scaffold"
         AUTO_FIX = "auto_fix"
         DEPS = "deps"
-        LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
     PIPELINE_STAGE_ORDER: Final[tuple[PipelineStage, ...]] = (
@@ -82,7 +81,6 @@ class FlextInfraConstantsCodegen(
         PipelineStage.SCAFFOLD,
         PipelineStage.AUTO_FIX,
         PipelineStage.DEPS,
-        PipelineStage.LAZY_INIT,
         PipelineStage.CENSUS_AFTER,
     )
     "Ordered sequence of pipeline stage identifiers."

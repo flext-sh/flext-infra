@@ -1369,7 +1369,7 @@ Infra:
         - source: base/src/__init__.py.j2
           destination: "src/{package_name}/__init__.py"
           profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
+          delegate: seed
           overwrite: false
         - source: base/src/api.py.j2
           destination: "src/{package_name}/api.py"

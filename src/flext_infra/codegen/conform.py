@@ -18,6 +18,7 @@ from typing import Annotated, override
 from flext_core import r
 from flext_infra import config, p
 from flext_infra.base import s
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
@@ -135,6 +136,31 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return service.execute()
 
+    @staticmethod
+    def _converge_lazy_initializers(
+        plan: m.Infra.CodegenPlan, *, check_only: bool
+    ) -> p.Result[tuple[Path, ...]]:
+        """Converge package initializers once for each selected package repository."""
+        modified: list[Path] = []
+        for repository, environment in zip(
+            plan.repositories, plan.uv_environments, strict=True
+        ):
+            if not repository.package:
+                continue
+            lazy_init = FlextInfraCodegenLazyInit(
+                workspace_root=environment.project_root,
+                check_only=check_only,
+                apply_changes=not check_only,
+            )
+            lazy_result = lazy_init.execute()
+            if lazy_result.failure:
+                mode = "check" if check_only else "apply"
+                return r[tuple[Path, ...]].fail(
+                    lazy_result.error or f"lazy initializer {mode} failed"
+                )
+            modified.extend(Path(path) for path in lazy_init.modified_files)
+        return r[tuple[Path, ...]].ok(tuple(modified))
+
     @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Run check or apply and require a verified fixed point."""
@@ -148,6 +174,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         plan = planned.value
         mode = c.Infra.CodegenConformMode(request.mode)
+        complete_generation = (
+            c.Infra.CodegenConformSurface(request.what)
+            is c.Infra.CodegenConformSurface.ALL
+        )
         blocked = tuple(file for file in plan.files if file.blocked)
         if blocked:
             details = "; ".join(
@@ -186,9 +216,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if changed:
                 paths = ", ".join(str(file.path) for file in changed)
                 return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
+            if complete_generation:
+                lazy_result = self._converge_lazy_initializers(plan, check_only=True)
+                if lazy_result.failure:
+                    return r[m.Infra.CodegenResult].fail(
+                        lazy_result.error or "lazy initializer check failed"
+                    )
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         written: list[Path] = []
         for file in changed:
+            if file.operation == "remove":
+                try:
+                    file.path.unlink()
+                except OSError as exc:
+                    return r[m.Infra.CodegenResult].fail_op(
+                        f"remove orphaned generated artifact {file.path}", exc
+                    )
+                written.append(file.path)
+                continue
             result = u.Cli.atomic_write_text_file(file.path, file.rendered)
             if result.failure:
                 return r[m.Infra.CodegenResult].fail(
@@ -201,6 +246,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(
                     beads_applied.error or "Beads lifecycle apply failed"
                 )
+        if complete_generation:
+            lazy_result = self._converge_lazy_initializers(plan, check_only=False)
+            if lazy_result.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    lazy_result.error or "lazy initializer apply failed"
+                )
+            written.extend(lazy_result.value)
         verified = self.plan(request)
         if verified.failure:
             return r[m.Infra.CodegenResult].fail(
@@ -230,8 +282,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 "codegen apply did not reach a fixed point:\n" + "\n".join(diagnostics)
             )
+        if complete_generation:
+            lazy_result = self._converge_lazy_initializers(
+                verified_plan, check_only=True
+            )
+            if lazy_result.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    lazy_result.error or "lazy initializer fixed-point check failed"
+                )
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
+            m.Infra.CodegenResult(
+                plan=verified_plan, written_files=tuple(dict.fromkeys(written))
+            )
         )
 
     def plan(
@@ -574,6 +636,43 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     changed=False,
                 )
             )
+        governed_paths = frozenset(governed_by_path)
+        governed_directories = tuple(sorted({
+            path.parent
+            for path in governed_paths
+            if path.parent != Path()
+        }))
+        for relative_directory in governed_directories:
+            directory = root / relative_directory
+            if not directory.is_dir():
+                continue
+            for path in sorted(item for item in directory.iterdir() if item.is_file()):
+                relative = path.relative_to(root)
+                if relative in governed_paths:
+                    continue
+                current = u.Cli.files_read_text(path)
+                if current.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        current.error or f"generated artifact read failed: {path}"
+                    )
+                content = current.value
+                if not (
+                    "# === SECTION: header (managed) ===" in content
+                    and "# Free: no" in content
+                ):
+                    continue
+                completed.append(
+                    m.Infra.CodegenFilePlan(
+                        path=path,
+                        operation="remove",
+                        owner="codegen",
+                        policy="full",
+                        rendered="",
+                        expected_sha256=u.Cli.sha256_content(""),
+                        current_sha256=u.Cli.sha256_content(content),
+                        changed=True,
+                    )
+                )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
 
     @staticmethod
@@ -876,9 +975,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 planned.append(manifest_plan.value)
                 continue
-            if entry.delegate != "render":
+            if entry.delegate not in {"render", "seed"}:
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
+                continue
+            path = root / destination
+            if entry.delegate == "seed" and path.is_file():
+                current = u.Cli.files_read_text(path)
+                if current.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        current.error or f"seed artifact read failed: {path}"
+                    )
+                seed_plan = self._file_plan(root, destination, current.value)
+                if seed_plan.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        seed_plan.error or f"seed artifact planning failed: {path}"
+                    )
+                planned.append(seed_plan.value)
                 continue
             artifact_context = self._artifact_render_context(
                 dist=context.dist,
@@ -1872,8 +1985,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Reject public targets, aliases, includes, and toolchain declarations."""
         verb_pattern = "|".join(re.escape(verb) for verb in allowed_verbs)
         target_re = re.compile(
-            rf"^(_custom_({verb_pattern})_[a-z0-9][a-z0-9-]*|"
-            rf"(pre|post)-({verb_pattern})(-[a-z0-9][a-z0-9-]*)?)$"
+            rf"^(pre|post)-({verb_pattern})(-[a-z0-9][a-z0-9-]*)?$"
         )
         in_define = False
         # Collapse backslash continuation lines before validating so that
