@@ -48,9 +48,12 @@ class FlextInfraConstantsMake:
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
+    MAKEFLAGS_ENV: Final[str] = "MAKEFLAGS"
+    "GNU Make's standard environment transport for command-line variables."
+    MAKEOVERRIDES_ENV: Final[str] = "MAKEOVERRIDES"
+    "GNU Make's standard recursive command-variable transport."
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -60,7 +63,6 @@ class FlextInfraConstantsMake:
     )
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -70,7 +72,6 @@ class FlextInfraConstantsMake:
     )
     PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -91,6 +92,7 @@ class FlextInfraConstantsMake:
         "clean",
         "docs",
         "fmt",
+        "fix",
         "scan",
         "test",
         "val",
