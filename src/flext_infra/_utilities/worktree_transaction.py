@@ -340,8 +340,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
 
     @staticmethod
-    def _pyrefly_interpreter(worktree_root: Path) -> str:
-        """Resolve the interpreter that owns the checked tree's dependencies.
+    def _project_interpreter(project_root: Path) -> str:
+        """Resolve the interpreter that owns one project's dependencies.
 
         ``sys.executable`` may point at the flext-infra bootstrap interpreter
         (from ``FLEXT_INFRA_BOOTSTRAP`` / ``uv run --project ...``); it resolves
@@ -350,7 +350,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         missing import. The project virtualenv is the only interpreter that can
         resolve the imports the project actually declares.
         """
-        candidate = worktree_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        candidate = project_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
         if candidate.is_file():
             return str(candidate.resolve())
         return sys.executable
@@ -379,7 +379,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     "--config",
                     c.Infra.PYPROJECT_FILENAME,
                     "--python-interpreter-path",
-                    cls._pyrefly_interpreter(worktree_root),
+                    cls._project_interpreter(worktree_root),
                 )
             commands.append((tool, bound_command))
         return r[t.StrSequencePairTuple].ok(tuple(commands))
@@ -407,11 +407,12 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def _import_probe(
         cls,
         worktree_root: Path,
+        runtime_root: Path,
         environment: t.StrMapping,
         timeout_seconds: int,
         scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root the scope owns."""
+        """Fresh-import scoped sources with their real runtime metadata."""
         packages = tuple(
             sorted({
                 package_dir.name
@@ -430,7 +431,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             "print(f'imported {len(packages)} packages')\n"
         )
         result = u.Cli.run_raw(
-            (sys.executable, "-c", script),
+            (cls._project_interpreter(runtime_root), "-c", script),
             cwd=worktree_root,
             env=environment,
             timeout=timeout_seconds,
@@ -759,6 +760,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         def _run_import_probe() -> p.Cli.CommandOutput:
             return cls._import_probe(
                 worktree_root,
+                request.workspace_root,
                 environment,
                 request.timeout_seconds,
                 request.scoped_paths,

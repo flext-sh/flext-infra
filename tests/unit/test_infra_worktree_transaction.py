@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import venv
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
@@ -122,6 +123,50 @@ def _workspace(tmp_path: Path) -> Path:
 
 class TestsFlextInfraWorktreeTransaction:
     """Exercise transaction invariants through real Git state."""
+
+    def test_import_probe_uses_requested_workspace_runtime_metadata(
+        self, tmp_path: Path
+    ) -> None:
+        """Import staged sources with distribution metadata from their runtime."""
+        workspace_root = _workspace(tmp_path)
+        runtime_root = workspace_root / ".venv"
+        venv.EnvBuilder(with_pip=False).create(runtime_root)
+        runtime_python = workspace_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        site_result = u.Cli.run_raw(
+            (
+                str(runtime_python),
+                "-c",
+                "import sysconfig; print(sysconfig.get_path('purelib'))",
+            ),
+            cwd=workspace_root,
+        )
+        site_output = tm.ok(site_result)
+        site_packages = Path(site_output.stdout.strip())
+        dist_info = site_packages / "transaction_fixture-0.1.0.dist-info"
+        dist_info.mkdir()
+        (dist_info / "METADATA").write_text(
+            "Metadata-Version: 2.1\nName: transaction-fixture\nVersion: 0.1.0\n",
+            encoding="utf-8",
+        )
+        (workspace_root / "src" / "transaction_fixture" / "__init__.py").write_text(
+            (
+                "from importlib.metadata import version\n"
+                "PACKAGE_VERSION = version('transaction-fixture')\n"
+            ),
+            encoding="utf-8",
+        )
+        transaction_environment = u.Infra._transaction_environment(  # ruff:ignore[private-member-access]
+            workspace_root
+        )
+        import_probe = u.Infra._import_probe(  # ruff:ignore[private-member-access]
+            workspace_root,
+            workspace_root,
+            transaction_environment,
+            c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
+        )
+
+        tm.that(import_probe.exit_code, eq=0)
+        tm.that(import_probe.stdout, has="imported 1 packages")
 
     def test_complete_worktree_includes_declared_existing_nested_repository(
         self, tmp_path: Path
