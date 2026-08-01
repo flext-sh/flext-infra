@@ -59,7 +59,8 @@ class TestCodegenCiMatrix:
         tm.that(len(used_actions), gt=0)
         for action in used_actions:
             tm.that(catalog, has=action)
-            tm.that(workflows, has=f"{action} # {catalog[action]}")
+            # yamllint requires two spaces before an inline comment.
+            tm.that(workflows, has=f"{action}  # {catalog[action]}")
 
         tm.that(workflows, lacks="continue-on-error")
         tm.that(workflows, lacks="set +e")
@@ -88,8 +89,10 @@ class TestCodegenCiMatrix:
         actions = config.Infra.codegen.github_actions
         for action in actions.values():
             if action.repository in workflow:
+                # yamllint requires two spaces before an inline comment.
                 tm.that(
-                    workflow, has=f"{action.repository}@{action.sha} # {action.version}"
+                    workflow,
+                    has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
