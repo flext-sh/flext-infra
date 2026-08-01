@@ -709,7 +709,7 @@ class FlextInfraConfigModels:
         @property
         def handler_whats(self) -> Mapping[str, tuple[str, ...]]:
             """Canonical public verb-to-handler matrix consumed by every renderer."""
-            return MappingProxyType({verb.name: verb.whats for verb in self.verbs})
+            return {verb.name: verb.whats for verb in self.verbs}
 
         @m.computed_field()
         @property

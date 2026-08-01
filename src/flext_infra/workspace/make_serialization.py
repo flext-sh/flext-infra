@@ -56,8 +56,14 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
     @staticmethod
     def _make_variables(make_config: m.Infra.MakeSpec) -> p.Result[t.StrMapping]:
         """Parse GNU Make's standard command-variable transport exactly once."""
+        raw_channels = (
+            os.environ.get(c.Infra.MAKEFLAGS_ENV, ""),
+            os.environ.get(c.Infra.MAKEOVERRIDES_ENV, ""),
+        )
         try:
-            tokens = shlex.split(os.environ.get(c.Infra.MAKEFLAGS_ENV, ""))
+            tokens = tuple(
+                token for raw in raw_channels for token in shlex.split(raw)
+            )
         except ValueError as exc:
             return r[t.StrMapping].fail(f"invalid GNU Make flags: {exc}")
         owned_names = frozenset({make_config.selector, make_config.apply_variable})
