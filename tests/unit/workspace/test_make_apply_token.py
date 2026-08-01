@@ -12,15 +12,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config, p, t
-from flext_infra.workspace.make_serialization import (  # ruff: ignore[import-private-name]
-    FlextInfraMakeSerializationService,
-)
+from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
 
 
 def _variables(apply_token: str) -> p.Result[t.StrMapping]:
     """Resolve the Make variables one read-only invocation would export."""
     service = FlextInfraMakeSerializationService(
-        workspace=Path.cwd(),
+        workspace_root=Path.cwd(),
         makefile=Path.cwd() / "Makefile",
         verb="test",
         selector_value="",
