@@ -33,9 +33,8 @@ def _dump_real_profile(path: Path) -> None:
     and the fixture would fail for a reason that has nothing to do with the
     behaviour under test.
     """
-    stats = {
-        ("tests/sample_test.py", 1, "test_ok"): (1, 1, 0.001, 0.001, {}),
-    }
+    callers: dict[tuple[str, int, str], tuple[int, int, float, float]] = {}
+    stats = {("tests/sample_test.py", 1, "test_ok"): (1, 1, 0.001, 0.001, callers)}
     path.write_bytes(marshal.dumps(stats))
 
 
@@ -185,7 +184,7 @@ class TestsFlextInfraPytestRunner:
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
 
-        exit_code = tm.ok(runner.execute())
+        exit_code: int = tm.ok(runner.execute())
 
         policy = config.Infra.tooling.tools.pytest
         deadline = captured["deadline"]
@@ -280,7 +279,7 @@ class TestsFlextInfraPytestRunner:
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
 
-        exit_code = tm.ok(runner.execute())
+        exit_code: int = tm.ok(runner.execute())
         latest = (
             (tmp_path / ".reports" / "tests" / "latest.txt")
             .read_text(encoding="utf-8")
@@ -319,7 +318,7 @@ class TestsFlextInfraPytestRunner:
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
 
-        exit_code = tm.ok(runner.execute())
+        exit_code: int = tm.ok(runner.execute())
         latest = (
             (tmp_path / ".reports" / "tests" / "latest.txt")
             .read_text(encoding="utf-8")

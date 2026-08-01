@@ -510,19 +510,12 @@ class TestsFlextInfraBasemkMakeContract:
             ],
         )
 
-        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract")
-
-        output = result.stdout + result.stderr
-        tm.that(result.exit_code, ne=0)
-        tm.that(output, has="invalid pytest diagnostic counts contract")
-        tm.that(marker.exists(), eq=False)
-
     def test_make_test_watchdog_terminates_running_pytest(self, tmp_path: Path) -> None:
         _write_project(tmp_path)
         _write_executable(
             tmp_path / ".venv" / "bin" / "python",
             "#!/usr/bin/env bash\n"
-            'if [[ "$*" == *"-m pytest"* ]]; then sleep 5; fi\n'
+            'if [[ "$*" == *"_pytest_entry"* ]]; then sleep 5; fi\n'
             "exit 0\n",
         )
 

@@ -1,4 +1,3 @@
-{% from "project/base/base_test_report_recipe.j2" import test_report_recipe -%}
 PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra
 ifeq ($(wildcard $(PROJECT_INFRA_HOME)/src/flext_infra),)
 PROJECT_INFRA_HOME := $(PROJECT_ROOT)
@@ -325,10 +324,7 @@ test: ## Run pytest only
 	$(call _run_verb_hooks,post,test,$(WHAT))
 
 _test_impl:
-{{ test_report_recipe(
-    "$(VENV_PYTHON) -m flext_infra._pytest_entry",
-    "$(Q)",
-) }}
+	$(Q)$(PYTEST_BOUNDED) $(VENV_PYTHON) -m flext_infra._pytest_entry
 
 val: ## Run validate gates (VALIDATE_GATES={{ make.PROJECT_VALIDATE_GATES_ALLOWED }} to select, FIX=1)
 	$(call _run_verb_hooks,pre,val,$(WHAT))

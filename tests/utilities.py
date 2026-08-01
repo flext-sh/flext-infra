@@ -1356,7 +1356,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """
             from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-            workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+            workspace: m.Infra.WorkspaceSpec = tm.ok(
+                FlextInfraWorkspaceDetector.load_workspace_spec(root)
+            )
             return (
                 c.Infra.MakeProfile.WORKSPACE_ROOT
                 if workspace.members
@@ -1402,7 +1404,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 target.write_text("", encoding="utf-8")
                 # `git check-ignore` exits 0 when the path IS ignored, so a
                 # failed run is the success case for a tracked artifact.
-                probe = tm.ok(
+                probe: p.Cli.CommandOutput = tm.ok(
                     u.Cli.run_raw(
                         ["git", "check-ignore", "-q", relative_path], cwd=probe_root
                     )
