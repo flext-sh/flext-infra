@@ -78,7 +78,10 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 c.Infra.IGNORE_ERRORS_IN_GENERATED,
                 pyrefly_rules.ignore_errors_in_generated_code,
             )
-            .list(c.Infra.SEARCH_PATH, expected_search)
+            # sort=False: search-path order is semantic (see comment above);
+            # the default sort=True would silently re-alphabetize "." before
+            # "src" here at TOML-emit time even after ordering it correctly.
+            .list(c.Infra.SEARCH_PATH, expected_search, sort=False)
             .list(c.Infra.PROJECT_INCLUDES, expected_includes)
             .value(
                 "disable-project-excludes-heuristics",
