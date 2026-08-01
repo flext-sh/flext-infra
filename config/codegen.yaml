@@ -170,8 +170,6 @@ Infra:
           gen:
             all: all
             apply: check
-          fix:
-            all: all
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -179,7 +177,7 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen, fix]
+        verbs: [check, test, gen]
       verbs:
         - name: help
           default_what: all
