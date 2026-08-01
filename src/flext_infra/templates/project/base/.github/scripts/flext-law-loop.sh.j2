@@ -60,8 +60,7 @@ export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 log() { printf '[flext-law %(%Y-%m-%dT%H:%M:%SZ)T] %s\n' -1 "$*"; }
 
 # Strict-rule fixers to sweep, in dependency-safe order. Each is applied inside
-# the worktree; flext-infra's own worktree_transaction validates every micro
-# edit (ruff+pyrefly) before it is materialised.
+# the isolated worktree; the complete validation below owns static analysis.
 FIXER_SPECS=(
   "check fix-enforcement --safe-only --check-after"
   "refactor modernize-patterns"
@@ -126,7 +125,7 @@ run_cycle() {
     cmd="${command_parts[1]}"
     flags=("${command_parts[@]:2}")
     log "fixer: ${group} ${cmd} ${flags[*]:-}"
-    # Apply inside the worktree; flext-infra validates each micro-transaction.
+    # Apply inside the isolated worktree; validation below is authoritative.
     if "${FLEXT_INFRA[@]}" "${group}" "${cmd}" --workspace "${worktree}" --apply "${flags[@]}" \
         >"${REPORT_DIR}/${stamp}-${group}-${cmd}.log" 2>&1; then
       :
