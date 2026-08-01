@@ -170,7 +170,9 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         if any(argument in self.help_flags for argument in args):
             return None
         process_environment = u.Cli.process_env()
-        if process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1":
+        if process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV) == (
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
+        ):
             return None
         route_key = self.transaction_route_key(group, args)
         if route_key is None:

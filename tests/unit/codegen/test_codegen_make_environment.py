@@ -97,7 +97,7 @@ class TestsCodegenMakeEnvironment:
         )
         if attached:
             member_source = tmp_path / "member-source"
-            member_source.mkdir()
+            member_source.mkdir(parents=True)
             (member_source / "README.md").write_text(
                 "fixture member\n", encoding="utf-8"
             )
@@ -124,6 +124,7 @@ class TestsCodegenMakeEnvironment:
             )
         else:
             project_root.mkdir(parents=True)
+            test_u.Tests.initialize_git_repo(project_root)
         tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
@@ -144,21 +145,24 @@ class TestsCodegenMakeEnvironment:
         project_root, _workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = project_root
-        runtime_bin = runtime_root / ".venv" / "bin"
+        runtime_root = _workspace_root if attached else project_root
+        runtime_bin = runtime_root / c.Infra.VENV_BIN_REL
         runtime_bin.mkdir(parents=True)
-        runtime_python = runtime_bin / "python"
+        runtime_python = runtime_bin / c.Infra.PYTHON
         runtime_python.write_text("#!/bin/sh\nexit 0\n")
         runtime_python.chmod(0o755)
-        hostile_venv = tmp_path / "hostile" / ".venv"
-        hostile_bin = hostile_venv / "bin"
+        hostile_bin = tmp_path / "hostile" / c.Infra.VENV_BIN_REL
+        hostile_venv = hostile_bin.parent
         hostile_bin.mkdir(parents=True)
-        hostile_python = hostile_bin / "python"
+        hostile_python = hostile_bin / c.Infra.PYTHON
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
         (project_root / "custom.mk").write_text(
-            ".PHONY: _custom_status_probe\n"
-            "_custom_status_probe:\n"
+            ".PHONY: pre-status-diagnostics\n"
+            "pre-status-diagnostics:\n"
+            "\t@printf '%s\\n' "
+            "'MAKE_PROFILE=$(MAKE_PROFILE)' "
+            "'RUNTIME_ROOT=$(RUNTIME_ROOT)'\n"
             "\t@printf '%s\\n' "
             "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
@@ -171,6 +175,7 @@ class TestsCodegenMakeEnvironment:
             "FLEXT_INFRA_PYTHON": str(hostile_python),
             "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
             "VIRTUAL_ENV": str(hostile_venv),
+            "WORKSPACE_ROOT": str(tmp_path / "hostile-workspace"),
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
         }
         process = tm.ok(
@@ -179,7 +184,6 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "status",
-                    f"{config.Infra.codegen.make.selector}=probe",
                 ],
                 cwd=project_root,
                 env=active_env,
@@ -192,11 +196,34 @@ class TestsCodegenMakeEnvironment:
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
-        tm.that(output[0], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
-        tm.that(output[1], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
-        tm.that(output[2], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
-        tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
-        tm.that(output[4], eq=str(runtime_python))
+        expected_profile = (
+            c.Infra.MakeProfile.WORKSPACE_MEMBER if attached else profile
+        )
+        tm.that(output[0], eq=f"MAKE_PROFILE={expected_profile.value}")
+        tm.that(output[1], eq=f"RUNTIME_ROOT={runtime_root}")
+        tm.that(output[2], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
+        tm.that(output[3], eq=f"UV_PROJECT_ENVIRONMENT={runtime_bin.parent}")
+        tm.that(output[4], eq=f"VIRTUAL_ENV={runtime_bin.parent}")
+        tm.that(output[5], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
+        tm.that(output[6], eq=str(runtime_python))
+
+    def test_non_root_make_projection_is_topology_independent(
+        self, tmp_path: Path
+    ) -> None:
+        """Render one byte-identical Make owner for attached and detached use."""
+        detached_root, _ = self._render_makefile(
+            tmp_path / "detached", c.Infra.MakeProfile.STANDALONE
+        )
+        attached_root, _ = self._render_makefile(
+            tmp_path / "attached",
+            c.Infra.MakeProfile.STANDALONE,
+            attached=True,
+        )
+
+        tm.that(
+            (attached_root / c.Infra.MAKEFILE_FILENAME).read_bytes(),
+            eq=(detached_root / c.Infra.MAKEFILE_FILENAME).read_bytes(),
+        )
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
@@ -247,11 +274,68 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        progress = (
+            f"setup profile={profile.value} runtime={project_root} action=provision"
+        )
+        tm.that((process.stdout + process.stderr).count(progress), eq=1)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv --clear")
-        tm.that(commands[1], has="sync --project")
+        bootstrap = config.Infra.codegen.make.bootstrap
+        expected_sync_flags = " ".join(
+            (
+                *(
+                    ("--all-packages",)
+                    if profile == c.Infra.MakeProfile.WORKSPACE_ROOT
+                    else ()
+                ),
+                f"--{bootstrap.lock_mode}",
+                f"--{bootstrap.extras}-extras",
+                f"--{bootstrap.dependency_groups}-groups",
+            )
+        )
+        tm.that(
+            commands[1], has=f"sync --project {project_root} {expected_sync_flags}"
+        )
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
+
+    def test_attached_setup_delegates_once_to_distinct_runtime_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """An attached member reaches one distinct owner without self-recursion."""
+        project_root, workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE, attached=True
+        )
+        owner_progress = (
+            f"setup profile={c.Infra.MakeProfile.WORKSPACE_ROOT.value} "
+            f"runtime={workspace_root} action=provision"
+        )
+        (workspace_root / c.Infra.MAKEFILE_FILENAME).write_text(
+            (
+                ".PHONY: _builtin_setup_environment\n"
+                "_builtin_setup_environment:\n"
+                f"\t@printf '%s\\n' '{owner_progress}'\n"
+            ),
+            encoding="utf-8",
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "setup"],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+        output = process.stdout + process.stderr
+        delegate_progress = (
+            f"setup profile={c.Infra.MakeProfile.WORKSPACE_MEMBER.value} "
+            f"runtime={workspace_root} action=delegate"
+        )
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output.count(delegate_progress), eq=1)
+        tm.that(output.count(owner_progress), eq=1)
+        tm.that(f"runtime={project_root} action=delegate" in output, eq=False)
 
     def test_serialized_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path

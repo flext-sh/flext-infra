@@ -1387,13 +1387,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            ledger_identity = FlextInfraCodegenConform._beads_ledger_identity(
-                workspace, target
+            # Why (ai-hub-qwoc): issue-prefix and the Dolt database name are
+            # DISTINCT identifiers that happened to collide when neither the
+            # committed config nor workspace.ledger_id declared an override --
+            # issue-prefix is the human-facing tracker namespace (matches real
+            # issue IDs like "ai-hub-1234", hyphenated), while database is the
+            # Dolt-safe identifier (underscore-only, e.g. "ai_hub"). Collapsing
+            # both onto one ledger_identity silently renamed issue-prefix to
+            # the database form whenever ledger_id was declared explicitly.
+            issue_prefix = FlextInfraCodegenConform.declared_beads_prefix(
+                target.root, fallback=target.canonical_project_name
             )
+            database = workspace.ledger_id or issue_prefix
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
-                    issue_prefix=ledger_identity,
-                    database=ledger_identity,
+                    issue_prefix=issue_prefix,
+                    database=database,
                     server=server,
                     routing=target.routing_only,
                 )
@@ -1468,11 +1477,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
-                        workspace
-                    ),
                     workspace_members=tuple(
-                        item.path.as_posix() for item in workspace.members
+                        item.path.as_posix() for item in members
                     ),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
@@ -1577,7 +1583,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
-                    item.path.as_posix() for item in workspace.members
+                    item.path.as_posix() for item in members
                 ),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,
@@ -1710,7 +1716,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
-                    item.path.as_posix() for item in workspace.members
+                    item.path.as_posix() for item in members
                 ),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,

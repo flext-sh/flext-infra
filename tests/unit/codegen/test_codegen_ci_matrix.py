@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, t, u
+import pytest
+
+from flext_infra import c, config, m, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -17,10 +19,10 @@ class TestCodegenCiMatrix:
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
 
     @staticmethod
-    def _render_project(root: Path) -> Path:
+    def _render_project(root: Path, *, name: str = "flext-demo") -> Path:
         """Render a fresh EXTERNAL project into root and return the root."""
         service = FlextInfraCodegenProjectNew(
-            name="flext-demo",
+            name=name,
             kind=c.Infra.ProjectKind.EXTERNAL,
             output_root=root,
             provider="flext-sh",
@@ -34,6 +36,54 @@ class TestCodegenCiMatrix:
         result = service.execute()
         tm.ok(result)
         return root
+
+    def test_checkout_submodule_policy_is_typed_and_project_routed(
+        self,
+    ) -> None:
+        """Reject unknown modes and render override/default values from one SSOT."""
+        codegen = config.Infra.codegen
+        project, override = next(
+            (name, value)
+            for name, value in codegen.checkout_submodules_overrides.items()
+            if value != codegen.checkout_submodules
+        )
+        payload = codegen.model_dump(mode="python")
+        payload["checkout_submodules_overrides"] = {project: "invalid-mode"}
+        with pytest.raises(c.ValidationError):
+            m.Infra.CodegenConfigSpec.model_validate(payload)
+
+        template = (
+            Path(__file__).resolve().parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / ".github"
+            / "workflows"
+            / "ci.yml.j2"
+        )
+        provider = codegen.providers[0]
+
+        def render(project_name: str) -> str:
+            mode = codegen.checkout_submodules_overrides.get(
+                project_name, codegen.checkout_submodules
+            )
+            context = m.Infra.GithubWorkflowRenderSpec(
+                dist=project_name,
+                repository_branch=provider.branch,
+                python_version=codegen.toolchain.python_version,
+                github_actions=codegen.github_actions,
+                make=codegen.make,
+                checkout_submodules=mode,
+            )
+            return tm.ok(u.Cli.template_render(template, context))
+
+        overridden = render(project)
+        default = render(f"{project}-default")
+
+        tm.that(overridden, has=f"submodules: {override}")
+        tm.that(default, has=f"submodules: {codegen.checkout_submodules}")
 
     def test_ci_matrix_workflow_emitted(self, tmp_path: Path) -> None:
         """Generated project carries .github/workflows/ci-matrix.yml."""

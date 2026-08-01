@@ -79,6 +79,7 @@ class FlextInfraConstantsCli:
     })
     # mro-wkii.17.26 (codex): write routes share one isolated transaction seam.
     WORKTREE_TRANSACTION_ENV: Final[str] = "FLEXT_INFRA_WORKTREE_TRANSACTION"
+    WORKTREE_TRANSACTION_ACTIVE_VALUE: Final[str] = "1"
     WORKTREE_TRANSACTION_NAME_TEMPLATE: Final[str] = (
         "{repository}-transaction-{transaction_id}"
     )

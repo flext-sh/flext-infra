@@ -481,15 +481,6 @@ class FlextInfraUtilitiesPyprojectConform:
         )
 
     @staticmethod
-    def _owns_uv_root_policy(
-        *, project_name: str, workspace: p.Infra.WorkspaceSpec
-    ) -> bool:
-        """Identify autonomous and multi-project roots that own uv root policy."""
-        return not workspace.members or (
-            project_name == workspace.repository.distribution
-        )
-
-    @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
         """Delete legacy packaging owners superseded by canonical conformance.
 
@@ -566,9 +557,6 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        owns_uv_root_policy = cls._owns_uv_root_policy(
-            project_name=project_name, workspace=workspace
-        )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             if not workspace_root and link_mode is None and not exclude_dependencies:
@@ -607,7 +595,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 for item in exclude_dependencies
             ])
         )
-        if owns_uv_root_policy and exclude_payload:
+        if exclude_payload:
             u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")

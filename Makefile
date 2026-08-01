@@ -13,16 +13,15 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
-WORKSPACE_ROOT_REL := .
+MAKE_PROFILE := $(if $(strip $(shell git rev-parse --show-superproject-working-tree 2>/dev/null)),workspace-member,standalone)
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
 # governance; standalone projects discover managed submodules at runtime from
 # .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
+WORKSPACE_MEMBERS :=
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -99,9 +98,9 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree basemk
+PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
 BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
-SCRIPT_VERBS := basemk
+SCRIPT_VERBS :=
 _ALLOWED_WHATS_help := usage
 _ALLOWED_WHATS_setup := environment
 _ALLOWED_WHATS_deps := check lock upgrade
@@ -117,7 +116,6 @@ _ALLOWED_WHATS_clean := generated
 _ALLOWED_WHATS_release := status
 _ALLOWED_WHATS_gen := check all
 _ALLOWED_WHATS_worktree := list add update remove
-_ALLOWED_WHATS_basemk := generate
 
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
@@ -171,7 +169,6 @@ _DEFAULT_worktree := list
 _APPLY_WHAT_fmt := all
 _APPLY_WHAT_fix := all
 _APPLY_WHAT_gen := all
-_DEFAULT_basemk := generate
 
 
 # === SECTION: profile routing (managed) ===
@@ -264,7 +261,7 @@ PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
-UV_SYNC_FLAGS := --all-extras --all-groups
+UV_SYNC_FLAGS := --frozen --all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(strip $(PROJECTS)),)
@@ -387,7 +384,7 @@ setup:
 	done
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' '';
+	@printf '%s\n' 'flext-infra [$(MAKE_PROFILE)]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
@@ -448,8 +445,6 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s\n' 'worktree' 'list|add|update|remove';
 
-
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
@@ -604,19 +599,22 @@ _builtin_require_environment:
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
 # It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
 # is the single public conformance/generation surface.
-# Profile routing: workspace-member delegates the environment to the
-# principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
-# standalone build their own environment locally.
+# Runtime routing: a live attached member delegates once to its distinct
+# workspace owner; detached non-root and workspace-root checkouts provision
+# their own environment locally.
 ifeq ($(MAKE_PROFILE),workspace-member)
 _builtin_setup_environment: _builtin_setup_submodules
+	@printf 'setup profile=%s runtime=%s action=delegate\n' '$(MAKE_PROFILE)' '$(RUNTIME_ROOT)'
 	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
+	@printf 'setup profile=%s runtime=%s action=provision\n' '$(MAKE_PROFILE)' '$(RUNTIME_ROOT)'
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else
 _builtin_setup_environment: _builtin_setup_submodules
+	@printf 'setup profile=%s runtime=%s action=provision\n' '$(MAKE_PROFILE)' '$(RUNTIME_ROOT)'
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
