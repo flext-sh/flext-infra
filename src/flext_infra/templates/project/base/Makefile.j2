@@ -96,12 +96,17 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 
 # === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
-#        config:make.docs.actions, config:make.serialization.verbs
+# Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
+#        config:make.check_gates_default, config:make.serialization.verbs
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
+BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
+SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
+{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %}
+{% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %}
+{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
-DOCS_ACTIONS :={% for action in make.docs.actions if action != make.docs.default_action %} {{ action }}{% endfor %}
+DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
 SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
 SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
 # End SECTION: verb dispatch
@@ -245,33 +250,6 @@ _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% en
 
 {{ makefile_custom_include }}
 
-_BUILTIN_HANDLERS := \
-	_builtin_help_usage \
-	_builtin_deps_check \
-	_builtin_deps_lock \
-	_builtin_deps_upgrade \
-	_builtin_build_artifacts \
-	_builtin_check_all \
-	_builtin_test_all \
-	_builtin_fmt_check \
-	_builtin_fmt_all \
-	_builtin_fix_check \
-	_builtin_fix_all \
-	_builtin_run_default \
-	_builtin_status_diagnostics \
-	_builtin_docs_all \
-{% for action in make.docs.actions if action != make.docs.default_action -%}
-	_builtin_docs_{{ action }} \
-{% endfor -%}
-	_builtin_clean_generated \
-	_builtin_release_status \
-	_builtin_gen_check \
-	_builtin_gen_all \
-	_builtin_worktree_list \
-	_builtin_worktree_add \
-	_builtin_worktree_update \
-	_builtin_worktree_remove
-
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
@@ -289,8 +267,11 @@ define _dispatch
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
+	case " $(_ALLOWED_WHATS_$(1)) " in \
+		*" $$what "*) ;; \
+		*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
+	esac; \
 	builtin="_builtin_$(1)_$$what"; \
-	custom="_custom_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -307,22 +288,14 @@ define _dispatch
 			done; \
 		done; \
 	done; \
-	$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
-	if [ "$$custom_rc" -ne 2 ]; then \
-		$(SELF_MAKE) "$$custom" || exit $$?; \
-	elif [ -n "$$script" ]; then \
+	case " $(BUILTIN_VERBS) " in \
+	*" $(1) "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+	*) if [ -n "$$script" ]; then \
 		WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
-	else \
-		case " $(_BUILTIN_HANDLERS) " in \
-			*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-			*) WHAT="$$what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$? ;; \
-		esac; \
-	fi; \
-{%- else %}
-	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
+	else printf 'ERROR: declared handler script is missing for %s WHAT=%s\n' "$(1)" "$$what" >&2; exit 2; fi ;; \
 	esac; \
+{%- else %}
+	$(SELF_MAKE) "$$builtin" || exit $$?; \
 {%- endif %}
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
@@ -352,7 +325,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -385,10 +358,8 @@ _builtin_help_usage:
 {% for verb in make.verbs %}
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';
-{% elif verb.name == "docs" %}
-	@printf '  %-10s WHAT=%s\n' 'docs' '{{ make.docs.actions | join('|') }}';
 {% else %}
-	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
+	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.whats | join('|') }}';
 {% endif %}
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
@@ -397,10 +368,9 @@ _builtin_help_usage:
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
-	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
-	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
+	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
 	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
 			printf '  %s\n' 'Defined in this project:'; \
 			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
@@ -555,7 +525,7 @@ _builtin_docs_all:
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
-{% for action in make.docs.actions if action != make.docs.default_action %}
+{% for action in make.handler_whats["docs"] if action != "all" %}
 _builtin_docs_{{ action }}:
 	@$(PROJECT_FLEXT_INFRA) docs {{ action }} --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}"{% if action in make.docs.mutable_actions %} $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check){% endif %} $(DOCS_PROJECT_ARGS)
 

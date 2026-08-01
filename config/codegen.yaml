@@ -168,8 +168,6 @@ Infra:
         dependency_groups: all
         extras: all
       docs:
-        actions: [all, generate, fix, audit, build, validate]
-        default_action: all
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
@@ -188,58 +186,70 @@ Infra:
       verbs:
         - name: help
           default_what: usage
+          whats: [usage]
           apply_guarded: false
         - name: setup
           default_what: environment
+          whats: [environment]
           apply_guarded: false
         - name: deps
           default_what: check
+          whats: [check, lock, upgrade]
           apply_guarded: false
         - name: build
           default_what: artifacts
+          whats: [artifacts]
           apply_guarded: false
         - name: check
           default_what: all
+          whats: [all]
           apply_guarded: false
         - name: test
           default_what: all
+          whats: [all]
           apply_guarded: false
         - name: fmt
           default_what: check
+          whats: [check, all]
           apply_guarded: true
           apply_what: all
         - name: fix
           default_what: check
+          whats: [check, all]
           apply_guarded: true
           apply_what: all
         - name: run
           default_what: default
+          whats: [default]
           apply_guarded: false
         - name: status
           default_what: diagnostics
+          whats: [diagnostics]
           apply_guarded: false
         - name: docs
           default_what: all
+          whats: [all, generate, fix, audit, build, validate]
           apply_guarded: false
         - name: clean
           default_what: generated
+          whats: [generated]
           apply_guarded: false
         - name: release
           default_what: status
+          whats: [status]
           apply_guarded: false
-        - name: fix
-          default_what: check
-          apply_guarded: true
         - name: gen
           default_what: check
+          whats: [check, all]
           apply_guarded: true
           apply_what: all
         - name: worktree
           default_what: list
+          whats: [list, add, update, remove]
           apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
+        target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
