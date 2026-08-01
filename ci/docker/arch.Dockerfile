@@ -31,10 +31,6 @@ RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local
 ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 # End SECTION: managed tool bootstrap
 
-# mise installs the supported Python 3.13 family.
-# uv is supplied by the managed environment without a project patch pin.
-RUN curl -fsSL https://mise.run | sh
-ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 WORKDIR /workspace
 COPY . .
 
