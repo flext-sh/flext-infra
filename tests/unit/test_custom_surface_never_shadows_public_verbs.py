@@ -71,18 +71,10 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
 
         tm.that(offenders, eq={})
 
-    def test_basemk_generation_has_a_declared_make_selector(self) -> None:
-        """The infra-only base.mk owner remains callable through Make."""
+    def test_custom_surface_contains_no_private_handler_fallback(self) -> None:
+        """The handwritten surface can only add lifecycle hooks."""
         custom = (_workspace_root() / c.Infra.CUSTOM_MAKE_FILENAME).read_text(
             encoding="utf-8"
         )
 
-        tm.that(custom, has="_custom_basemk_generate:")
-        tm.that(
-            custom,
-            has=(
-                "basemk generate \\\n"
-                '\t\t--project-name "$(PROJECT_NAME)" --output "$$output"'
-            ),
-            lacks="basemk generate --output",
-        )
+        tm.that(custom, lacks="_custom_")

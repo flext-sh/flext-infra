@@ -659,10 +659,10 @@ class TestCodegenConform:
                 custom,
                 (
                     ".PHONY: \\\n"
-                    "\t_custom_check_demo \\\n"
-                    "\t_custom_run_demo\n"
-                    "_custom_check_demo:\n\t@true\n"
-                    "_custom_run_demo:\n\t@true\n"
+                    "\tpre-check-demo \\\n"
+                    "\tpost-run-demo\n"
+                    "pre-check-demo:\n\t@true\n"
+                    "post-run-demo:\n\t@true\n"
                 ),
             )
         )
@@ -684,7 +684,11 @@ class TestCodegenConform:
         ]
 
         result = FlextInfraCodegenConform.validate_custom_make(
-            ".PHONY: \\\n\t_custom_check_demo \\", policy
+            ".PHONY: \\\n\tpre-check-demo \\",
+            policy,
+            allowed_verbs=tuple(
+                verb.name for verb in config.Infra.codegen.make.verbs
+            ),
         )
 
         tm.fail(result, has="unterminated .PHONY continuation")
@@ -1022,7 +1026,7 @@ class TestScriptDispatchMakefile:
         tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
         # The handwritten surface only wraps registry-owned handlers.
         for policy in config.Infra.codegen.make.custom_handler_policies.values():
-            tm.that("_custom_" in policy.target_pattern, eq=False)
+            tm.that(policy.allow_public_targets, eq=False)
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

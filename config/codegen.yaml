@@ -276,13 +276,8 @@ Infra:
           handlers: { all: all, list: list, add: add, update: update, remove: remove }
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"
         allow_public_targets: false
         allow_toolchain_declarations: false
-      custom_handler_profile_overrides:
-        workspace-root:
-          allow_public_targets: true
-          allow_toolchain_declarations: true
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),

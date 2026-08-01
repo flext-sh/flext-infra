@@ -1805,7 +1805,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 read.error or f"custom Make read failed: {path}"
             )
-        validation = self.validate_custom_make(read.value, policy)
+        validation = self.validate_custom_make(
+            read.value,
+            policy,
+            allowed_verbs=tuple(verb.name for verb in config.make.verbs),
+        )
         if validation.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 validation.error or f"invalid custom Make handlers: {path}"
@@ -1823,10 +1827,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def validate_custom_make(
-        content: str, policy: m.Infra.CustomHandlerPolicy
+        content: str,
+        policy: m.Infra.CustomHandlerPolicy,
+        *,
+        allowed_verbs: t.StrSequence,
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
-        target_re = re.compile(policy.target_pattern)
+        target_re = re.compile(
+            r"^(?P<phase>pre|post)-(?P<verb>[a-z][a-z0-9-]*)"
+            r"(?:-[a-z0-9][a-z0-9-]*)?$"
+        )
+        declared_verbs = frozenset(allowed_verbs)
+
+        def is_declared_hook(target: str) -> bool:
+            match = target_re.fullmatch(target)
+            return match is not None and match.group("verb") in declared_verbs
         in_define = False
         # Collapse backslash continuation lines before validating so that
         # directives like `.PHONY` can span multiple physical lines. Only
@@ -1884,10 +1899,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if raw_line.startswith(".PHONY:"):
                 declaration = raw_line.partition(":")[2].strip()
                 names = declaration.split()
-                if names and all(target_re.fullmatch(name) for name in names):
+                if names and all(is_declared_hook(name) for name in names):
                     continue
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
-            if target and target_re.fullmatch(target):
+            if target and is_declared_hook(target):
                 continue
             if _ASSIGNMENT_RE.match(raw_line) or _DIRECTIVE_RE.match(raw_line):
                 if policy.allow_toolchain_declarations:

@@ -40,13 +40,13 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
 
         tm.that(declared - covered, eq=frozenset())
 
-    def test_workspace_root_may_own_public_orchestration_targets(self) -> None:
-        """The root profile permits the public targets it actually ships."""
+    def test_workspace_root_uses_the_same_hook_only_contract(self) -> None:
+        """The root profile cannot create a second public command surface."""
         policy = config.Infra.codegen.make.custom_handler_policies[
             c.Infra.MakeProfile.WORKSPACE_ROOT
         ]
 
-        tm.that(policy.allow_public_targets, eq=True)
+        tm.that(policy.allow_public_targets, eq=False)
 
     def test_standalone_stays_private_only(self) -> None:
         """A standalone custom surface may only define private handlers."""
@@ -57,23 +57,23 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         tm.that(policy.allow_public_targets, eq=False)
 
     def test_validator_honours_the_permissions_it_is_given(self) -> None:
-        """A permissive policy accepts what a strict one rejects.
-
-        The ``allow_*`` flags were declarative only: the validator read just
-        ``target_pattern``, so a workspace root's own public targets and
-        variables were rejected no matter what the config permitted.
-        """
-        content = "WORKSPACE_BASE ?= 0.12.0-dev\ndone-check:\n\t@echo hi\n"
-        strict = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.STANDALONE
-        ]
-        permissive = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.WORKSPACE_ROOT
-        ]
+        """Only hooks for verbs declared by the typed registry are accepted."""
+        declared = "pre-check-demo:\n\t@echo hi\n"
+        public = "check:\n\t@echo hi\n"
+        unknown = "pre-unknown-demo:\n\t@echo hi\n"
+        policy = config.Infra.codegen.make.custom_handler_policy
+        allowed_verbs = tuple(
+            verb.name for verb in config.Infra.codegen.make.verbs
+        )
         validate = FlextInfraCodegenConform.validate_custom_make
 
-        tm.that(validate(content, strict).failure, eq=True)
-        tm.that(validate(content, permissive).success, eq=True)
+        tm.that(
+            validate(declared, policy, allowed_verbs=allowed_verbs).success, eq=True
+        )
+        tm.that(validate(public, policy, allowed_verbs=allowed_verbs).failure, eq=True)
+        tm.that(
+            validate(unknown, policy, allowed_verbs=allowed_verbs).failure, eq=True
+        )
 
     def test_policy_keys_are_normalised_to_profile_values(self) -> None:
         """Lookup succeeds for both a raw string and its StrEnum member.

@@ -466,28 +466,9 @@ class FlextInfraConfigModels:
         filename: Annotated[
             t.NonEmptyStr, m.Field(description="Versioned custom handler filename")
         ]
-        target_pattern: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Required private target regular expression"),
-        ]
         allow_public_targets: bool = m.Field(description="Permit public targets")
         allow_toolchain_declarations: bool = m.Field(
             description="Permit toolchain declarations"
-        )
-
-    class CustomHandlerPolicyOverride(_ConfigContract):
-        """Per-profile relaxation of the strict custom-handler contract.
-
-        Every field is optional: a profile declares ONLY what it relaxes, so a
-        new permission added to the base policy propagates automatically
-        instead of having to be repeated in each profile.
-        """
-
-        allow_public_targets: bool | None = m.Field(
-            default=None, description="Permit public targets"
-        )
-        allow_toolchain_declarations: bool | None = m.Field(
-            default=None, description="Permit toolchain declarations"
         )
 
     class MakeSerializationSpec(_ConfigContract):
@@ -633,14 +614,6 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
         ]
-        custom_handler_profile_overrides: Annotated[
-            Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
-            m.Field(
-                default_factory=lambda: MappingProxyType({}),
-                description="Per-profile overrides of the custom handler policy",
-            ),
-        ]
-
         @u.model_validator(mode="after")
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
@@ -765,21 +738,9 @@ class FlextInfraConfigModels:
             it is conforming.
             """
             base = self.custom_handler_policy
-            overrides = self.custom_handler_profile_overrides
-            # Keys are normalised to the profile's string value: MakeProfile is a
-            # StrEnum, so a raw YAML key and its enum member must land on the SAME
-            # entry. Mixing both would make a lookup silently miss and fall back to
-            # the strict base policy.
             return {
-                str(profile): (
-                    base.model_copy(update=override.model_dump(exclude_none=True))
-                    if (override := overrides.get(str(profile)))
-                    else base
-                )
-                for profile in (
-                    *overrides,
-                    *FlextInfraConstantsCodegenProject.MakeProfile,
-                )
+                str(profile): base
+                for profile in FlextInfraConstantsCodegenProject.MakeProfile
             }
 
     class ManagedFileSpec(_ConfigContract):
