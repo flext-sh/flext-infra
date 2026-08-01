@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from flext_core import r
-from flext_infra import c, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -45,25 +43,5 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
             return str(project_path.relative_to(resolved_workspace_root))
         except ValueError:
             return str(project_path)
-
-    @staticmethod
-    def _prepare_projects(
-        projects: t.SequenceOf[m.Infra.ProjectInfo],
-    ) -> p.Result[bool]:
-        """Conform each selected project through the sole project writer."""
-        for project in projects:
-            project_root = project.path.resolve()
-            conform_result = FlextInfraCodegenConform.execute_request(
-                m.Infra.CodegenConformRequest(
-                    root=project_root,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                )
-            )
-            if conform_result.failure:
-                conform_error = conform_result.error or "project conform failed"
-                return r[bool].fail(f"{project.name}: {conform_error}")
-        return r[bool].ok(True)
-
 
 __all__: list[str] = ["FlextInfraWorkspaceOrchestratorDiscoveryMixin"]
