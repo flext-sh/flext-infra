@@ -56,7 +56,6 @@ class FlextInfraConstantsMake:
     "Make variable carrying the gate selection."
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -75,7 +74,6 @@ class FlextInfraConstantsMake:
     )
     PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
