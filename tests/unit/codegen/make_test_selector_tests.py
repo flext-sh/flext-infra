@@ -240,7 +240,7 @@ class TestsMakeTestSelector:
         """
         template_path = _makefile_template()
         template = template_path.read_text(encoding="utf-8")
-        generated = tm.ok(u.Cli.files_read_text(Path("Makefile")))
+        generated: str = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
             encoding="utf-8"
         )

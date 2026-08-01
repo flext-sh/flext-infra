@@ -124,17 +124,18 @@ class FlextInfraPytestRunner(s[int]):
             raise ValueError(target_result.error or "invalid pytest target")
         return self
 
-    def _report_directory(self) -> Path:
+    def _report_directory(self) -> p.Result[Path]:
         """Create one collision-resistant report directory under the project."""
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
-        workspace_root = Path(self.workspace_root).resolve()
-        report_root = (workspace_root / self.reports).resolve()
+        try:
+            workspace_root = Path(self.workspace_root).resolve()
+            report_root = (workspace_root / self.reports).resolve()
+        except (OSError, RuntimeError) as exc:
+            return r[Path].fail_op("resolve pytest report directory", exc)
         if not report_root.is_relative_to(workspace_root):
-            msg = f"reports path escapes workspace: {self.reports}"
-            raise ValueError(msg)
+            return r[Path].fail(f"reports path escapes workspace: {self.reports}")
         report_dir = report_root / run_id
-        u.Cli.ensure_dir(report_dir).unwrap()
-        return report_dir
+        return u.Cli.ensure_dir(report_dir)
 
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
@@ -221,7 +222,12 @@ class FlextInfraPytestRunner(s[int]):
     def execute(self) -> p.Result[int]:
         """Execute pytest, profile it, and preserve reports under one deadline."""
         pytest = config.Infra.tooling.tools.pytest
-        report_dir = self._report_directory()
+        report_dir_result = self._report_directory()
+        if report_dir_result.failure:
+            return r[int].fail(
+                report_dir_result.error or "pytest report directory validation failed"
+            )
+        report_dir = report_dir_result.value
         command = self.build_command(report_dir)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"

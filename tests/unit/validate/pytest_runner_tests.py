@@ -87,9 +87,13 @@ class TestsFlextInfraPytestRunner:
         (workspace / escape_reports).symlink_to(external, target_is_directory=True)
         runner = self._runner(workspace, reports=escape_reports)
 
-        with pytest.raises(ValueError, match="reports path escapes workspace"):
-            runner.execute()
+        result = runner.execute()
 
+        error: str | None = result.error
+        tm.that(result.failure, eq=True)
+        tm.that(error is not None, eq=True)
+        if error is not None:
+            tm.that(error, has="reports path escapes workspace")
         tm.that(tuple(external.iterdir()), eq=())
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
