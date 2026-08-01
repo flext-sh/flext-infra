@@ -366,7 +366,7 @@ class FlextInfraConfigModels:
         """One selector-owned implementation and mutation contract."""
 
         target: Annotated[
-            t.NonEmptyStr, m.Field(description="Private implementation target")
+            t.Infra.MakeAtom, m.Field(description="Private implementation target")
         ]
         mutating: bool = m.Field(
             default=False,
@@ -376,16 +376,16 @@ class FlextInfraConfigModels:
     class MakeVerbSpec(_ConfigContract):
         """One exhaustive public Make verb dispatch registry entry."""
 
-        name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
+        name: Annotated[t.Infra.MakeAtom, m.Field(description="Public Make verb")]
         default_what: Annotated[
-            t.NonEmptyStr, m.Field(description="Default WHAT selector")
+            t.Infra.MakeAtom, m.Field(description="Default WHAT selector")
         ]
         dispatch: Annotated[
             Literal["builtin", "script"],
             m.Field(description="Single implementation boundary for this verb"),
         ]
         handlers: Annotated[
-            Mapping[t.NonEmptyStr, FlextInfraConfigModels.MakeHandlerSpec],
+            Mapping[t.Infra.MakeAtom, FlextInfraConfigModels.MakeHandlerSpec],
             m.Field(
                 min_length=1,
                 description="Exhaustive WHAT selector to implementation handler map",
@@ -397,6 +397,11 @@ class FlextInfraConfigModels:
         orchestrated: bool = m.Field(
             default=False, description="Fan this verb out from a workspace root"
         )
+        automation_hooks: bool = m.Field(
+            default=True,
+            description="Run project custom hooks in CI and pre-commit automation",
+        )
+
         @u.model_validator(mode="after")
         def _validate_handler_registry(self) -> Self:
             """Require selectors and mutation routing to resolve in one registry."""
@@ -414,7 +419,7 @@ class FlextInfraConfigModels:
     class MakeWorkflowStepSpec(_ConfigContract):
         """One canonical workflow step and its explicit mutation intent."""
 
-        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
+        verb: Annotated[t.Infra.MakeAtom, m.Field(description="Declared public verb")]
         apply: Annotated[
             bool,
             m.Field(description="Whether the step supplies the configured apply token"),
@@ -441,8 +446,10 @@ class FlextInfraConfigModels:
     class MakeCiSpec(_ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
-        variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
-        value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
+        variable: Annotated[
+            t.Infra.MakeVariable, m.Field(description="CI environment key")
+        ]
+        value: Annotated[t.Infra.MakeToken, m.Field(description="CI environment value")]
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -573,7 +580,7 @@ class FlextInfraConfigModels:
 
         mutable_actions: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
+            m.Field(min_length=1, description="Write-enabled docs actions"),
         ]
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
@@ -589,16 +596,16 @@ class FlextInfraConfigModels:
         """Complete generated Makefile public and extension contract."""
 
         selector: Annotated[
-            t.NonEmptyStr, m.Field(description="Single selector variable name")
+            t.Infra.MakeVariable, m.Field(description="Single selector variable name")
         ]
         apply_variable: Annotated[
-            t.NonEmptyStr, m.Field(description="Write-enable variable name")
+            t.Infra.MakeVariable, m.Field(description="Write-enable variable name")
         ]
         apply_value: Annotated[
-            t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
+            t.Infra.MakeToken, m.Field(description="Only accepted write-enable value")
         ]
         apply_absent_value: Annotated[
-            t.NonEmptyStr,
+            t.Infra.MakeToken,
             m.Field(
                 default="N",
                 description=(
@@ -639,9 +646,22 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
+            if self.apply_value == self.apply_absent_value:
+                msg = "make apply and absent tokens must be distinct"
+                raise ValueError(msg)
+            variables = (self.selector, self.apply_variable, self.ci.variable)
+            if len(set(variables)) != len(variables):
+                msg = "make selector, apply, and CI variables must be distinct"
+                raise ValueError(msg)
+            if self.ci.value in {"0", "false"}:
+                msg = "make CI value must represent an enabled automation state"
+                raise ValueError(msg)
             declared = {verb.name for verb in self.verbs}
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
+                raise ValueError(msg)
+            if "docs" not in declared:
+                msg = "make docs verb must be declared"
                 raise ValueError(msg)
             non_aggregate = tuple(
                 verb.name for verb in self.verbs if verb.default_what != "all"
@@ -692,6 +712,18 @@ class FlextInfraConfigModels:
                 if "setup" not in verbs or "gen" in verbs:
                     msg = f"make {context} workflow requires setup and forbids gen"
                     raise ValueError(msg)
+            automation_hooks = [
+                step.verb
+                for step in self.workflow
+                if set(step.contexts) & {"ci", "pre_commit"}
+                and verb_specs[step.verb].automation_hooks
+            ]
+            if automation_hooks:
+                msg = (
+                    "make automated workflow verbs must disable custom hooks: "
+                    f"{', '.join(sorted(automation_hooks))}"
+                )
+                raise ValueError(msg)
             guarded_verbs = {
                 verb.name
                 for verb in self.verbs
@@ -1015,6 +1047,33 @@ class FlextInfraConfigModels:
             ),
         ] = None
 
+        @u.model_validator(mode="after")
+        def _validate_extra_make_verbs(self) -> Self:
+            """Restrict repository extensions to the implemented script boundary."""
+            names = tuple(verb.name for verb in self.extra_verbs)
+            if len(set(names)) != len(names):
+                msg = "repository extra Make verb names must be unique"
+                raise ValueError(msg)
+            if self.extra_verbs and self.script_dispatch is None:
+                msg = "repository extra Make verbs require script_dispatch"
+                raise ValueError(msg)
+            unsupported = [
+                verb.name
+                for verb in self.extra_verbs
+                if verb.dispatch != "script"
+                or verb.serialized
+                or verb.orchestrated
+                or any(handler.mutating for handler in verb.handlers.values())
+            ]
+            if unsupported:
+                msg = (
+                    "repository extra Make verbs support only read-only, "
+                    "non-serialized script dispatch: "
+                    f"{', '.join(sorted(unsupported))}"
+                )
+                raise ValueError(msg)
+            return self
+
     class RepositoryPolicyOverlaySpec(_ConfigContract):
         """Bounded per-project exceptions to inferred repository policy."""
 
@@ -1180,12 +1239,6 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Generated custom Make policy include directive"),
         ]
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
-            ),
-        ] = ()
         workspace_cli_group: Annotated[
             t.NonEmptyStr,
             m.Field(description="CLI group used for workspace orchestration"),
@@ -1221,6 +1274,20 @@ class FlextInfraConfigModels:
         pytest_process_timeout_seconds: Annotated[
             int, m.Field(gt=0, description="Pytest process wall-time boundary")
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_extra_verbs_disjoint_from_canonical(self) -> Self:
+            """Keep repository extensions disjoint from canonical public verbs."""
+            overlap = {verb.name for verb in self.make.verbs} & {
+                verb.name for verb in self.extra_verbs
+            }
+            if overlap:
+                msg = (
+                    "repository extra Make verbs collide with canonical verbs: "
+                    f"{', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            return self
 
     class BeadsConfigRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
@@ -1431,15 +1498,6 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Opt-in script command-framework routing contract"),
         ] = None
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description=(
-                    "Gate verbs a workspace-root Makefile fans out across members "
-                    "through the generic workspace orchestrate primitive"
-                )
-            ),
-        ] = ()
         workspace_cli_group: Annotated[
             str,
             m.Field(
@@ -1452,6 +1510,20 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Mutually exclusive project selector error"),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_extra_verbs_disjoint_from_canonical(self) -> Self:
+            """Keep repository extensions disjoint from canonical public verbs."""
+            overlap = {verb.name for verb in self.make.verbs} & {
+                verb.name for verb in self.extra_verbs
+            }
+            if overlap:
+                msg = (
+                    "repository extra Make verbs collide with canonical verbs: "
+                    f"{', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            return self
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""

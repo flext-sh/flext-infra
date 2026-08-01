@@ -141,11 +141,11 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = project_root
-        runtime_bin = runtime_root / ".venv" / "bin"
+        runtime_root = workspace_root if attached else project_root
+        runtime_bin = runtime_root / c.Infra.VENV_BIN_REL
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
         runtime_python.write_text("#!/bin/sh\nexit 0\n")
@@ -197,6 +197,51 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[2], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
         tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
         tm.that(output[4], eq=str(runtime_python))
+
+    def test_non_root_projection_is_identical_and_runtime_selects_attachment(
+        self, tmp_path: Path
+    ) -> None:
+        """One non-root Makefile adapts only to its live Git attachment."""
+        standalone_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        member_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.WORKSPACE_MEMBER, attached=True
+        )
+
+        standalone = (standalone_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        member = (member_root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+
+        tm.that(member, eq=standalone)
+        tm.that(standalone, has="git rev-parse --show-superproject-working-tree")
+        tm.that(standalone, has="workspace-member,standalone")
+
+    def test_configured_absent_apply_token_remains_read_only_at_dispatch(
+        self, tmp_path: Path
+    ) -> None:
+        """The generated nested dispatcher treats the seeded token as absent."""
+        project_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        process = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "help",
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_absent_value}"
+                    ),
+                ],
+                cwd=project_root,
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stderr or process.stdout)
+        tm.that(process.stdout, has=f"{project_root.name} [standalone]")
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
@@ -349,7 +394,10 @@ class TestsCodegenMakeEnvironment:
                     "deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli",
-                    "APPLY=Y",
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                    ),
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
@@ -387,7 +435,10 @@ class TestsCodegenMakeEnvironment:
                     "deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli --all",
-                    "APPLY=Y",
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                    ),
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},

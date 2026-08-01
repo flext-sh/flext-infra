@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
-
 from flext_infra import c, m, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-
-if TYPE_CHECKING:
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 
 class FlextInfraEnsurePyreflyConfigPhase:
@@ -43,16 +39,15 @@ class FlextInfraEnsurePyreflyConfigPhase:
         # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
         if declared_python_dirs:
-            declared_import_roots = (
-                (pyrefly_rules.path_rules.source_dir,)
-                if pyrefly_rules.path_rules.source_dir in declared_python_dirs
-                else ()
+            source_root = pyrefly_rules.path_rules.source_dir
+            expected_search = FlextInfraExtraPathsManager.source_first_search_paths(
+                (
+                    *expected_search,
+                    *pyrefly_rules.path_rules.project_shared_search_paths,
+                ),
+                source_root=source_root,
+                include_source_root=source_root in declared_python_dirs,
             )
-            expected_search = sorted({
-                *expected_search,
-                *pyrefly_rules.path_rules.project_shared_search_paths,
-                *declared_import_roots,
-            })
             # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
             # project-includes; only import roots belong in search-path.
             expected_includes = tuple(

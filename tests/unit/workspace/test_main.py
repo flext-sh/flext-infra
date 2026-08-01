@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main as infra_main
+from flext_infra import config, main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
@@ -255,6 +255,37 @@ class TestsFlextInfraWorkspaceMain:
         tm.ok(result)
         captured = capture_path.read_text(encoding="utf-8")
         tm.that(captured, has="FAIL_FAST=1")
+
+    def test_workspace_main_orchestrate_forwards_what_to_test_make(
+        self, tmp_path: Path
+    ) -> None:
+        """The public workspace route retains its typed test selector."""
+        workspace_root = tmp_path / "workspace"
+        member_root = _write_orchestratable_workspace(workspace_root)
+        capture_path = tmp_path / "what.txt"
+        (member_root / "Makefile").write_text(
+            (
+                "test:\n\t@printf '%s\\n' "
+                f"'$({config.Infra.codegen.make.selector})' > '{capture_path}'\n"
+            ),
+            encoding="utf-8",
+        )
+        u.Tests.commit_git_changes(member_root, "fixture: capture test selector")
+
+        exit_code = workspace_main([
+            "orchestrate",
+            "--verb",
+            "test",
+            "--projects",
+            "demo",
+            "--workspace",
+            str(workspace_root),
+            "--what",
+            "unit",
+        ])
+
+        tm.that(exit_code, eq=0)
+        tm.that(capture_path.read_text(encoding="utf-8"), eq="unit\n")
 
     def test_workspace_main_detect_accepts_explicit_workspace_root(
         self, tmp_path: Path

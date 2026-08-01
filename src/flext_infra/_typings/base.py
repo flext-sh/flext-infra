@@ -50,6 +50,18 @@ class FlextInfraTypesBase:
     "Mutable string set (supports .update/.intersection/etc)."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
+    type MakeAtom = Annotated[
+        str, t.StringConstraints(min_length=1, pattern=r"^[a-z][a-z0-9_-]*$")
+    ]
+    "Lowercase selector or target atom safe for Make variables and shell dispatch."
+    type MakeVariable = Annotated[
+        str, t.StringConstraints(min_length=1, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    ]
+    "Portable Make variable identifier."
+    type MakeToken = Annotated[
+        str, t.StringConstraints(min_length=1, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+    ]
+    "Make and shell-safe nonempty token value."
 
     type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."

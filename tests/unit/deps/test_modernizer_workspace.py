@@ -139,8 +139,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         package_init.parent.mkdir(parents=True)
         package_init.write_text("", encoding="utf-8")
         (source_repository / "Makefile").write_text(
-            "MAKE_PROFILE := workspace-member\nWORKSPACE_ROOT_REL := ..\n",
-            encoding="utf-8",
+            "MAKE_PROFILE := workspace-member\n", encoding="utf-8"
         )
         u.Tests.initialize_git_repo(source_repository)
         standalone = tm.ok(

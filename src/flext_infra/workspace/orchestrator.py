@@ -86,7 +86,11 @@ class FlextInfraOrchestratorService(
         selectors = (
             *((f"FILE={file}",) if file is not None else ()),
             *((f"MATCH={self.match}",) if self.match is not None else ()),
-            *((f"WHAT={self.what}",) if self.what is not None else ()),
+            *(
+                (f"{config.Infra.codegen.make.selector}={self.what}",)
+                if self.what is not None
+                else ()
+            ),
         )
         return (*normalized, *selectors)
 

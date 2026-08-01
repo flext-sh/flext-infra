@@ -99,7 +99,7 @@ class TestsMakeTestSelector:
                     "-f",
                     str(selected_makefile),
                     "worktree",
-                    "WHAT=list",
+                    f"{config.Infra.codegen.make.selector}=list",
                     f"WORKSPACE={target_root}",
                     f"UV={uv}",
                 ],

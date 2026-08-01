@@ -232,27 +232,28 @@ class FlextInfraPyprojectModernizer(
             runtime = m.Infra.ToolingRuntimeContext.model_validate({
                 "project_kind": resolved_project_kind,
                 "coverage_fail_under": coverage.get("fail_under"),
-                "first_party": ruff_isort.get("known-first-party"),
-                "mypy_path": mypy.get("mypy_path"),
-                "pyrefly_search_path": pyrefly.get(c.Infra.SEARCH_PATH),
+                "first_party": ruff_isort.get("known-first-party", ()),
+                "mypy_path": mypy.get("mypy_path", ()),
+                "pyrefly_search_path": pyrefly.get(c.Infra.SEARCH_PATH, ()),
                 "pyrefly_project_includes": (
-                    declared_pyrefly_includes or pyrefly.get(c.Infra.PROJECT_INCLUDES)
+                    declared_pyrefly_includes
+                    or pyrefly.get(c.Infra.PROJECT_INCLUDES, ())
                 ),
-                "pyright_exclude": pyright.get(c.Infra.EXCLUDE),
+                "pyright_exclude": pyright.get(c.Infra.EXCLUDE, ()),
                 "pyright_ignore": pyright.get(c.Infra.IGNORE, ()),
                 "pyright_include": (
-                    declared_python_dirs or pyright.get(c.Infra.INCLUDE)
+                    declared_python_dirs or pyright.get(c.Infra.INCLUDE, ())
                 ),
-                "pyright_extra_paths": pyright.get(c.Infra.EXTRA_PATHS),
+                "pyright_extra_paths": pyright.get(c.Infra.EXTRA_PATHS, ()),
                 "pyright_settings": [
                     {"name": key, "value": value}
                     for key, value in sorted(pyright.items())
                     if key not in scalar_keys
                 ],
                 "pyright_execution_environments": environments,
-                "ruff_src": ruff.get("src"),
-                "ruff_exclude": ruff.get(c.Infra.EXCLUDE),
-                "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
+                "ruff_src": ruff.get("src", ()),
+                "ruff_exclude": ruff.get(c.Infra.EXCLUDE, ()),
+                "ruff_ignore": ruff_lint.get(c.Infra.IGNORE, ()),
             })
         except c.ValidationError as exc:
             return r[m.Infra.ToolingRuntimeContext].fail_op(

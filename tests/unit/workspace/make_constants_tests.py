@@ -1,63 +1,25 @@
-"""Tests for the canonical workspace WHAT phase map.
-
-Asserts the public ``c.Infra`` helper map used by legacy CLI helpers. Public
-Make routing is owned by the registry discovered from ``scripts/cmd``.
-"""
+"""Tests for registry-owned Make selectors and variables."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import config
 from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import t
 
-_PHASED_VERBS = frozenset({"boot", "build", "check", "test", "val", "ship"})
-_RETIRED_VERBS = frozenset({
-    "scan",
-    "fmt",
-    "types",
-    "pol",
-    "cqrs",
-    "pyre",
-    "stubs",
-    "gen",
-    "mod",
-    "up",
-    "constraints",
-    "sync",
-    "docs",
-    "save",
-    "tag",
-    "push",
-    "pr",
-    "rel",
-    "stat",
-    "imp",
-})
-
 
 class TestMakeConstants:
-    def test_what_phase_verbs_are_canonical_subset(self) -> None:
-        verbs = frozenset(c.Infra.WHAT_PHASES)
-        tm.that(verbs == _PHASED_VERBS, eq=True)
+    def test_handler_registry_owns_every_selector(self) -> None:
+        """Every selector is owned by exactly one typed public verb record."""
+        verbs = config.Infra.codegen.make.verbs
 
-    def test_retired_verbs_absent_from_surface(self) -> None:
-        tm.that(_RETIRED_VERBS.isdisjoint(c.Infra.WHAT_PHASES), eq=True)
-
-    def test_what_phases_absorb_retired_verbs(self) -> None:
-        phases = c.Infra.WHAT_PHASES
-        tm.that("format" in phases["check"], eq=True)
-        tm.that("pol" in phases["check"], eq=True)
-        tm.that("scan" in phases["check"], eq=True)
-        tm.that("gen" in phases["build"], eq=True)
-        tm.that("save" in phases["ship"], eq=True)
-
-    def test_what_variable_default_declared(self) -> None:
-        names = {name for name, _ in c.Infra.WORKSPACE_VARIABLE_DEFAULTS}
-        tm.that("WHAT" in names, eq=True)
+        tm.that({verb.name for verb in verbs}, len=len(verbs))
+        for verb in verbs:
+            tm.that(verb.handlers, empty=False)
+            tm.that(verb.default_what in verb.handlers, eq=True)
 
 
 __all__: t.StrSequence = []

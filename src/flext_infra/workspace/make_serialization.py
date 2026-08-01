@@ -61,11 +61,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         )
         if verb_spec is None:
             return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
-        applying = self.apply_token not in {
-            None,
-            "",
-            make_config.apply_absent_value,
-        }
+        applying = self.apply_token not in {None, "", make_config.apply_absent_value}
         if applying and self.apply_token != make_config.apply_value:
             return r[t.StrMapping].fail(
                 f"{make_config.apply_variable} must be "
@@ -117,16 +113,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         cls, checkout: Path, command: t.StrSequence, *, failure_context: str
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one private Make phase and retain its process semantics."""
-        # The enclosing serialization already holds the checkout's mutation lock.
-        # Without this marker the child Make re-enters run_worktree_transaction,
-        # which waits for that very lock and deadlocks: parent in do_wait, child
-        # sleeping on a lock only the parent can release.
-        result = u.Cli.run_raw(
-            list(command),
-            cwd=checkout,
-            env={c.Infra.WORKTREE_TRANSACTION_ENV: "1"},
-            capture=False,
-        )
+        result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
         if result.failure:
             return cls._process_failure(
                 int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main, t
+from flext_infra import c, config, main, t
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_tests import tf, tm
 from tests import u
@@ -100,6 +100,48 @@ class TestsFlextInfraDepsExtraPathsSync:
             _manager(tmp_path).sync_extra_paths(project_dirs=[project]),
             has="pyproject not found",
         )
+
+    def test_sync_mypy_path_includes_declared_path_dependency(
+        self, tmp_path: Path
+    ) -> None:
+        """The persisted Mypy roots match the dependency-aware import graph."""
+        source_dir = config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+        dependency = tmp_path / "dependency"
+        (dependency / source_dir / "dependency").mkdir(parents=True)
+        (dependency / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'dependency'\n", encoding="utf-8"
+        )
+        consumer = tmp_path / "consumer"
+        consumer.mkdir()
+        pyproject = consumer / c.Infra.PYPROJECT_FILENAME
+        pyproject.write_text(
+            (
+                "[project]\nname = 'consumer'\ndependencies = ['dependency']\n"
+                "[tool.uv.sources]\n"
+                "dependency = { path = '../dependency', editable = true }\n"
+                "[tool.pyright]\nextraPaths = []\n"
+                "[tool.mypy]\nmypy_path = []\n"
+            ),
+            encoding="utf-8",
+        )
+        tm.that(
+            main([
+                c.Infra.CLI_GROUP_DEPS,
+                "extra-paths",
+                "--workspace",
+                str(tmp_path),
+                "--projects",
+                str(consumer),
+                "--apply",
+            ]),
+            eq=0,
+        )
+
+        payload = u.Cli.toml_mapping_from_text(pyproject.read_text(encoding="utf-8"))
+        tool = u.Cli.json_as_mapping(payload[c.Infra.TOOL])
+        mypy = u.Cli.json_as_mapping(tool[c.Infra.MYPY])
+        tm.that(mypy["mypy_path"][0], eq=source_dir)
+        tm.that(mypy["mypy_path"], has=f"../dependency/{source_dir}")
 
     @pytest.mark.parametrize(
         ("mode", "argv", "expected_exit"),

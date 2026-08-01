@@ -92,10 +92,10 @@ class CliDispatchService(CliTransactionService):
     def translate_what(self, group: str, args: t.StrSequence) -> p.Result[list[str]]:
         """Map ``--what <phase>`` onto the canonical command selector.
 
-        Only the groups below translate ``--what`` into a selector. Every other
-        group forwards it untouched, because its subcommands declare ``--what``
-        as their own parameter; stripping it here left them without the value
-        and failed the call before the subcommand ever ran.
+        Only the groups below translate ``--what`` into a selector. Other groups
+        receive their argv unchanged so routes that own the option, such as
+        ``workspace orchestrate``, can parse it. ``serialize-make`` has the
+        distinct ``--selector-value`` boundary.
         """
         if group not in c.Infra.CLI_GROUPS_TRANSLATING_WHAT:
             return r[list[str]].ok(list(args))

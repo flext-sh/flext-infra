@@ -89,7 +89,10 @@ class TestCodegenConform:
         )
         tm.that(
             makefile_plan.rendered,
-            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}",
+            has=(
+                f"{c.Infra.MakeProfile.WORKSPACE_MEMBER.value},"
+                f"{c.Infra.MakeProfile.STANDALONE.value})"
+            ),
         )
         tm.that(first.value.plan.request.root, eq=root.resolve())
         tm.that((root / "config" / "workspace.yaml").is_file(), eq=True)
@@ -497,6 +500,163 @@ class TestCodegenConform:
 
         tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
 
+    def test_make_context_round_trips_mutated_dispatch_environment(
+        self, tmp_path: Path
+    ) -> None:
+        """Rendering and Make execution consume arbitrary valid registry tokens."""
+        make_payload = config.Infra.codegen.make.model_dump(
+            mode="python", exclude_computed_fields=True
+        )
+        make_payload.update({
+            "selector": "ACTION",
+            "apply_variable": "WRITE",
+            "apply_value": "ENABLE",
+            "apply_absent_value": "DISABLED",
+            "ci": {"variable": "AUTOMATION", "value": "ON"},
+        })
+        make = m.Infra.MakeSpec.model_validate(make_payload)
+        codegen = config.Infra.codegen.model_copy(update={"make": make})
+        root = tmp_path / "workspace"
+        root.mkdir()
+        repository = test_u.Tests.repository_ref(
+            "fixture-workspace", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+        )
+        member = test_u.Tests.repository_ref(
+            "fixture-member",
+            path=Path("fixture-member"),
+            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=repository.name,
+            repository=repository,
+            members=(member,),
+        )
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=root, skip_check=True
+            ).resolve_tooling_context(
+                project_name=repository.distribution,
+                package_name=repository.distribution.replace("-", "_"),
+                path=root / c.Infra.PYPROJECT_FILENAME,
+                declared_python_dirs=(
+                    config.Infra.tooling.tools.pyrefly.path_rules.source_dir,
+                ),
+            )
+        )
+        context = tm.ok(
+            FlextInfraCodegenConform.make_render_context(
+                repository,
+                _conform_target(
+                    root, repository, make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT
+                ),
+                workspace,
+                codegen,
+                tooling_runtime=tooling_runtime,
+            )
+        )
+        render_context = m.Infra.MakefileRenderSpec(
+            pytest=context.pytest,
+            dist=context.dist,
+            infra_cli=context.infra_cli,
+            infra_repository=context.infra_repository,
+            infra_repository_branch=context.infra_repository_branch,
+            infra_source_root_rel=context.infra_source_root_rel,
+            make_profile=context.make_profile,
+            workspace_root_rel=context.workspace_root_rel,
+            workspace_members=context.workspace_members,
+            workspace_repositories=context.workspace_repositories,
+            workspace_gitlinks=context.workspace_gitlinks,
+            uv_link_mode=context.uv_link_mode,
+            make=context.make,
+            extra_verbs=context.extra_verbs,
+            script_dispatch=context.script_dispatch,
+            makefile_custom_include=context.makefile_custom_include,
+            workspace_cli_group=context.workspace_cli_group,
+            project_selection_conflict_error=context.project_selection_conflict_error,
+            mypy_memory_limit_mb=context.mypy_memory_limit_mb,
+            mypy_timeout_seconds=context.mypy_timeout_seconds,
+            mypy_timeout_exit_code=context.mypy_timeout_exit_code,
+            mypy_signal_exit_offset=context.mypy_signal_exit_offset,
+            prlimit_command=context.prlimit_command,
+            prlimit_address_space_option=context.prlimit_address_space_option,
+            timeout_command=context.timeout_command,
+            timeout_kill_after_seconds=context.timeout_kill_after_seconds,
+            pytest_process_timeout_seconds=(
+                config.Infra.tooling.tools.pytest.process_timeout_seconds
+            ),
+        )
+        templates = (
+            Path(__file__).parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(templates / "Makefile.j2", render_context)
+        )
+        (root / c.Infra.MAKEFILE_FILENAME).write_text(rendered, encoding="utf-8")
+
+        help_process = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["help", "WRITE=DISABLED", "AUTOMATION=0"], cwd=root
+            )
+        )
+        tm.that(
+            help_process.exit_code, eq=0, msg=help_process.stdout + help_process.stderr
+        )
+        tm.that(help_process.stdout, has="WRITE=ENABLE")
+        tm.that(help_process.stdout, lacks="APPLY=Y")
+
+        fanout = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--dry-run",
+                    "_builtin_fmt_apply",
+                    f"PROJECT={member.path.as_posix()}",
+                    "ACTION=apply",
+                    "WRITE=ENABLE",
+                    "AUTOMATION=ON",
+                ],
+                cwd=root,
+            )
+        )
+        tm.that(fanout.exit_code, eq=0, msg=fanout.stdout + fanout.stderr)
+        tm.that(
+            fanout.stdout,
+            has=['--make-arg "ACTION=apply"', '--make-arg "WRITE=ENABLE"'],
+        )
+
+        pre_commit = tm.ok(
+            u.Cli.template_render(
+                templates / ".pre-commit-config.yaml.j2", render_context
+            )
+        )
+        tm.that(pre_commit, has="make setup AUTOMATION=ON")
+        tm.that(pre_commit, has="make fmt AUTOMATION=ON WRITE=ENABLE")
+        tm.that(pre_commit, lacks=[" CI=Y", " APPLY=Y"])
+
+        context_payload = render_context.model_dump(
+            mode="python", exclude_computed_fields=True
+        )
+        context_payload["pytest"] = render_context.pytest.model_dump(
+            mode="python", by_alias=True
+        )
+        context_payload["extra_verbs"] = (
+            make
+            .verbs[0]
+            .model_copy(update={"dispatch": "script"})
+            .model_dump(mode="python"),
+        )
+        context_payload["script_dispatch"] = {
+            "dispatcher": "scripts/dispatch.py",
+            "roots": ("scripts",),
+        }
+        with pytest.raises(ValueError, match="collide with canonical verbs"):
+            m.Infra.MakefileRenderSpec.model_validate(context_payload)
+
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
     ) -> None:
@@ -769,7 +929,7 @@ class TestCodegenConform:
             "-C",
             str(root),
             "_serialized_check",
-            "WHAT=probe",
+            f"{config.Infra.codegen.make.selector}=probe",
         ])
         output: m.Cli.CommandOutput = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
@@ -1023,7 +1183,12 @@ class TestScriptDispatchMakefile:
         tm.that("--mode apply" in gen_apply_body, eq=True)
         tm.that("_require_apply" in gen_apply_body, eq=True)
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
+        make = config.Infra.codegen.make
+        tm.that(
+            (f"# @flext-regenerate: make gen {make.apply_variable}={make.apply_value}")
+            in rendered,
+            eq=True,
+        )
         # The handwritten surface only wraps registry-owned handlers.
         for policy in config.Infra.codegen.make.custom_handler_policies.values():
             tm.that(policy.allow_public_targets, eq=False)

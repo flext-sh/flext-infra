@@ -17,10 +17,10 @@ if TYPE_CHECKING:
     from flext_cli import p as cli_p
     from flext_infra import p
 
-_MAKEFILE_TEMPLATE = (
-    Path(__file__).resolve().parents[3]
-    / "src/flext_infra/templates/project/base/Makefile.j2"
-)
+
+_MAKE_CONFIG = config.Infra.codegen.make
+_APPLY_ASSIGNMENT = f"{_MAKE_CONFIG.apply_variable}={_MAKE_CONFIG.apply_value}"
+_CI_ASSIGNMENT = f"{_MAKE_CONFIG.ci.variable}={_MAKE_CONFIG.ci.value}"
 
 
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
@@ -129,14 +129,16 @@ def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
         "\t@printf 'project=%s verb=%s gates=%s uv_project=%s uv_env=%s "
         "venv=%s fail_fast=%s ci=%s\\n' '$(notdir $(CURDIR))' '$@' "
         "'$(CHECK_GATES)' '$(UV_PROJECT)' '$(UV_PROJECT_ENVIRONMENT)' "
-        "'$(VIRTUAL_ENV)' '$(FAIL_FAST)' '$(CI)'\n"
+        f"'$(VIRTUAL_ENV)' '$(FAIL_FAST)' '$({_MAKE_CONFIG.ci.variable})'\n"
         f"\t@exit {exit_code}\n",
         encoding="utf-8",
     )
 
 
 class TestsWorkspaceRootMakeContract:
-    def test_workspace_root_make_template_is_owned_by_typed_config(self) -> None:
+    def test_workspace_root_make_template_is_owned_by_typed_config(
+        self, tmp_path: Path
+    ) -> None:
         make_entries = tuple(
             entry
             for entry in config.Infra.codegen.templates.entries
@@ -157,10 +159,13 @@ class TestsWorkspaceRootMakeContract:
         tm.that({verb.name for verb in config.Infra.codegen.make.verbs}, has="fix")
         for verb in config.Infra.codegen.make.verbs:
             tm.that(verb.default_what in verb.handlers, eq=True)
-        template = _MAKEFILE_TEMPLATE.read_text(encoding="utf-8")
+        workspace_root, _ = _write_workspace(tmp_path)
+        rendered = (workspace_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8"
+        )
         tm.that(
             f"UV_SYNC_FLAGS := --{config.Infra.codegen.make.bootstrap.lock_mode}"
-            in template,
+            in rendered,
             eq=True,
         )
 
@@ -216,6 +221,32 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="post-setup", msg=output)
 
+    def test_automated_setup_skips_repository_custom_hooks(
+        self, tmp_path: Path
+    ) -> None:
+        """Automation runs only the typed workflow, without custom side effects."""
+        workspace_root, _project_names = _write_workspace(tmp_path)
+        hook_log = workspace_root / "hook.log"
+        (workspace_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            (
+                ".PHONY: pre-setup post-setup\n"
+                f"pre-setup post-setup:\n\t@printf '%s\\n' '$@' >> '{hook_log}'\n"
+            ),
+            encoding="utf-8",
+        )
+        fake_uv = workspace_root / "bin" / "uv"
+        test_u.Tests.write_executable(fake_uv, "#!/bin/sh\nexit 0\n")
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "setup", _CI_ASSIGNMENT, f"UV={fake_uv}"],
+                cwd=workspace_root,
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(hook_log.exists(), eq=False)
+
     def test_generated_make_selects_manifest_projects_and_forwards_gates(
         self, tmp_path: Path
     ) -> None:
@@ -255,7 +286,7 @@ class TestsWorkspaceRootMakeContract:
                     "--dry-run",
                     "_builtin_fmt_apply",
                     f"PROJECT={project_names[0]}",
-                    "APPLY=Y",
+                    _APPLY_ASSIGNMENT,
                 ],
                 cwd=workspace_root,
             )
@@ -265,8 +296,8 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--verb fmt")
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, lacks='--make-arg "WHAT=apply"')
-        tm.that(output, has='--make-arg "APPLY=Y"')
+        tm.that(output, has=f'--make-arg "{_MAKE_CONFIG.selector}=apply"')
+        tm.that(output, has=f'--make-arg "{_APPLY_ASSIGNMENT}"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")
 
@@ -284,8 +315,8 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has=["gen", "fmt", "fix", "APPLY=Y"])
-        tm.that(output, lacks="WHAT=")
+        tm.that(output, has=["gen", "fmt", "fix", _APPLY_ASSIGNMENT])
+        tm.that(output, lacks=f"{_MAKE_CONFIG.selector}=")
 
     def test_generated_make_strict_pipeline_invokes_each_tool_once(
         self, tmp_path: Path
@@ -293,12 +324,12 @@ class TestsWorkspaceRootMakeContract:
         """Each strict phase owns one tool and never repeats another phase."""
         workspace_root, _ = _write_workspace(tmp_path)
         handlers = {
-            "setup": ("_builtin_setup_environment", "CI=Y"),
-            "gen": ("_builtin_gen_all", "CI=Y", "APPLY=Y"),
-            "fmt": ("_builtin_fmt_all", "CI=Y", "APPLY=Y"),
-            "fix": ("_builtin_fix_all", "CI=Y", "APPLY=Y"),
-            "check": ("_builtin_check_all", "CI=Y", "CHECK_GATES=lint"),
-            "test": ("_builtin_test_all", "CI=Y"),
+            "setup": ("_builtin_setup_environment", _CI_ASSIGNMENT),
+            "gen": ("_builtin_gen_all", _CI_ASSIGNMENT, _APPLY_ASSIGNMENT),
+            "fmt": ("_builtin_fmt_all", _CI_ASSIGNMENT, _APPLY_ASSIGNMENT),
+            "fix": ("_builtin_fix_all", _CI_ASSIGNMENT, _APPLY_ASSIGNMENT),
+            "check": ("_builtin_check_all", _CI_ASSIGNMENT, "CHECK_GATES=lint"),
+            "test": ("_builtin_test_all", _CI_ASSIGNMENT),
         }
         outputs: dict[str, str] = {}
         for phase, arguments in handlers.items():
@@ -323,7 +354,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(outputs["check"], lacks=["--fix", "ruff format"])
         tm.that(outputs["test"].count("flext_infra._pytest_entry"), eq=1)
 
-    @pytest.mark.parametrize("mutation", ["APPLY=Y", "FIX=1", "CHECK_ONLY=1"])
+    @pytest.mark.parametrize("mutation", [_APPLY_ASSIGNMENT, "FIX=1", "CHECK_ONLY=1"])
     def test_generated_make_check_rejects_mutation_controls(
         self, tmp_path: Path, mutation: str
     ) -> None:
@@ -353,7 +384,10 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, ne=0)
         tm.that(
             process.stdout + process.stderr,
-            has="check is read-only; APPLY, FIX, and CHECK_ONLY are forbidden",
+            has=(
+                "check is read-only; "
+                f"{_MAKE_CONFIG.apply_variable}, FIX, and CHECK_ONLY are forbidden"
+            ),
         )
         tm.that(invocation_log.exists(), eq=False)
 
@@ -525,12 +559,18 @@ class TestsWorkspaceRootMakeContract:
     def test_generated_make_ci_default_validates_only_workspace_root(
         self, tmp_path: Path
     ) -> None:
-        """CI=Y narrows a workspace-root default to its own checkout."""
+        """The configured automation marker narrows the default to the root."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "_builtin_test_all", "CI=Y"],
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_test_all",
+                    _CI_ASSIGNMENT,
+                ],
                 cwd=workspace_root,
             )
         )
@@ -604,7 +644,7 @@ class TestsWorkspaceRootMakeContract:
                         "-C",
                         str(workspace_root),
                         "docs",
-                        f"WHAT={action}",
+                        f"{_MAKE_CONFIG.selector}={action}",
                         f"PROJECTS={project_names[0]}",
                         f"UV={uv}",
                     ],
@@ -633,8 +673,8 @@ class TestsWorkspaceRootMakeContract:
                             "-C",
                             str(workspace_root),
                             "docs",
-                            f"WHAT={action}",
-                            "APPLY=Y",
+                            f"{_MAKE_CONFIG.selector}={action}",
+                            _APPLY_ASSIGNMENT,
                             f"PROJECTS={project_names[0]}",
                             f"UV={uv}",
                         ],
@@ -651,7 +691,12 @@ class TestsWorkspaceRootMakeContract:
 
         invalid: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "docs", "WHAT=not-a-docs-action"],
+                [
+                    "-C",
+                    str(workspace_root),
+                    "docs",
+                    f"{_MAKE_CONFIG.selector}=not-a-docs-action",
+                ],
                 cwd=workspace_root,
             )
         )

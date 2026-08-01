@@ -192,6 +192,7 @@ Infra:
           default_what: all
           dispatch: builtin
           handlers: { all: { target: all } }
+          automation_hooks: false
         - name: deps
           default_what: all
           dispatch: builtin
@@ -212,12 +213,14 @@ Infra:
           handlers: { all: { target: all } }
           orchestrated: true
           serialized: true
+          automation_hooks: false
         - name: test
           default_what: all
           dispatch: builtin
           handlers: { all: { target: all } }
           orchestrated: true
           serialized: true
+          automation_hooks: false
         - name: fmt
           default_what: all
           dispatch: builtin
@@ -227,12 +230,14 @@ Infra:
             apply: { target: apply, mutating: true }
           orchestrated: true
           serialized: true
+          automation_hooks: false
         - name: fix
           default_what: all
           dispatch: builtin
           handlers: { all: { target: all, mutating: true } }
           orchestrated: true
           serialized: true
+          automation_hooks: false
         - name: run
           default_what: all
           dispatch: builtin

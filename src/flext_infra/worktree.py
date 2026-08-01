@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -200,7 +200,12 @@ class FlextInfraWorktreeService(s[str]):
                 metadata.error or "invalid lane project metadata",
             )
         setup = u.Cli.run_live(
-            (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
+            (
+                c.Infra.MAKE,
+                "setup",
+                f"{config.Infra.codegen.make.selector}=",
+                f"WORKSPACE={lane}",
+            ),
             cwd=lane,
             remove_env_keys=(
                 "MAKEFLAGS",

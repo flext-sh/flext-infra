@@ -16,6 +16,7 @@ _TEMPLATE = (
     / "base"
     / "Makefile.j2"
 )
+_GENERATED_MAKEFILE = Path(__file__).resolve().parents[3] / "Makefile"
 
 
 def _template_text() -> str:
@@ -33,8 +34,9 @@ def _registry_handlers() -> set[str]:
 
 
 def _defined_handlers() -> set[str]:
-    """Return every concrete private handler defined by the template."""
-    return set(re.findall(r"^(_builtin_[a-z_]+):", _template_text(), re.MULTILINE))
+    """Return every concrete handler from the generated consumer projection."""
+    generated = _GENERATED_MAKEFILE.read_text(encoding="utf-8")
+    return set(re.findall(r"^(_builtin_[a-z_]+):", generated, re.MULTILINE))
 
 
 def _invoked_handlers() -> set[str]:

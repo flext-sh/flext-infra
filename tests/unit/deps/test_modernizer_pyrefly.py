@@ -193,6 +193,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the default Pyrefly search path is written."""
+        rules = tool_config_document.tools.pyrefly.path_rules
         doc = u.Cli.toml_document()
         doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
@@ -203,12 +204,13 @@ class TestsFlextInfraModernizerPyrefly:
         )
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=["src"])
+        tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=[rules.source_dir])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify project context contributes existing source directories."""
+        rules = tool_config_document.tools.pyrefly.path_rules
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
         for directory in ("src", "tests", "examples", "scripts"):
@@ -236,12 +238,14 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        tm.that(search_path, eq=[".", "src"])
+        tm.that(search_path, eq=[rules.source_dir, rules.project_root])
 
     def test_ensure_pyrefly_config_uses_declared_future_source_root(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Keep pre-write import roots identical to post-write discovery."""
+        rules = tool_config_document.tools.pyrefly.path_rules
+        declared_dirs = tuple(rules.env_dirs)
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
         doc = u.Cli.toml_document()
@@ -251,17 +255,20 @@ class TestsFlextInfraModernizerPyrefly:
             is_root=False,
             project_dir=project_dir,
             paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
-            declared_python_dirs=("src", "tests"),
+            declared_python_dirs=declared_dirs,
         )
 
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=[".", "src"])
+        tm.that(
+            u.Cli.toml_unwrap_item(pyrefly["search-path"]),
+            eq=[rules.source_dir, rules.project_root],
+        )
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]),
-            eq=["src/**/*.py*", "tests/**/*.py*"],
+            eq=[f"{directory}/**/*.py*" for directory in declared_dirs],
         )
 
     def test_ensure_pyrefly_config_uses_pyright_include_when_available(
@@ -298,6 +305,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify root context includes workspace dependency source paths."""
+        rules = tool_config_document.tools.pyrefly.path_rules
         for directory in ("src", "tests"):
             (tmp_path / directory).mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
@@ -339,7 +347,10 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        tm.that(search_path, eq=[".", "flext-core/src", "src"])
+        tm.that(
+            search_path,
+            eq=[rules.source_dir, rules.project_root, f"flext-core/{rules.source_dir}"],
+        )
 
     def test_ensure_pyrefly_config_phase_apply_errors(
         self, tool_config_document: m.Infra.ToolConfigDocument

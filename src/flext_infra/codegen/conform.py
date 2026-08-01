@@ -1471,16 +1471,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                         workspace
                     ),
-                    workspace_members=tuple(
-                        item.path.as_posix() for item in workspace.members
-                    ),
+                    workspace_members=tuple(item.path.as_posix() for item in members),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
-                    orchestrated_verbs=config.Infra.codegen.make.orchestrated_verbs,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                     project_selection_conflict_error=(
                         c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1567,7 +1564,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
-                orchestrated_verbs=config.Infra.codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1576,9 +1572,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_members=tuple(
-                    item.path.as_posix() for item in workspace.members
-                ),
+                workspace_members=tuple(item.path.as_posix() for item in members),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
@@ -1700,7 +1694,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
-                orchestrated_verbs=config.Infra.codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR

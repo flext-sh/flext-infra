@@ -43,6 +43,38 @@ class TestsCodegenGitignoreProfileAware:
         tm.that(rendered, has=".beads/")
         tm.that(rendered, has=_BEADS_CONFIG)
 
+    def test_standalone_gitignore_excludes_workspace_member_allowlist(self) -> None:
+        """A standalone render ignores topology that only a root may own."""
+        member = test_u.Tests.repository_ref(
+            "probe-member",
+            path=Path("probe-member"),
+            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="probe-root",
+            repository=test_u.Tests.repository_ref("probe-root"),
+            members=(member,),
+        )
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name="probe-standalone",
+                workspace=workspace,
+            )
+        )
+
+        member_path = member.path.as_posix()
+        for marker in (
+            *_WORKSPACE_ONLY_MARKERS,
+            f"!/{member_path}/",
+            f"!/{member_path}/**",
+        ):
+            tm.that(marker not in rendered, eq=True, msg=f"phantom {marker}")
+        tm.that(rendered, has=_BEADS_CONFIG)
+
     def test_workspace_root_gitignore_keeps_member_allowlist(self) -> None:
         """The workspace-root .gitignore keeps the member-directory allowlist.
 

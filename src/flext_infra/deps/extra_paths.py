@@ -26,6 +26,16 @@ class FlextInfraExtraPathsManager(
 
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
+    @staticmethod
+    def source_first_search_paths(
+        paths: t.StrSequence, *, source_root: str, include_source_root: bool
+    ) -> t.StrSequence:
+        """Order one search-path set with its productive source root first."""
+        remaining = set(paths)
+        remaining.discard(source_root)
+        ordered = sorted(remaining)
+        return [source_root, *ordered] if include_source_root else ordered
+
     @override
     def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
         """Initialize workspace metadata after validation."""
@@ -110,7 +120,7 @@ class FlextInfraExtraPathsManager(
         # bad-argument-type errors. A naive sorted({...}) puts "." before
         # "src" (ASCII '.' < 's'), silently breaking every consumer with a
         # "." shared search path (e.g. tests.* resolution). Sort everything
-        # else, then place the declared source root LAST so it always wins.
+        # else, then place the declared source root FIRST so it always wins.
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
         if rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
@@ -120,11 +130,9 @@ class FlextInfraExtraPathsManager(
                 paths.update(self._uv_source_paths(payload, project_dir=project_dir))
             paths.update(self._workspace_member_source_paths(project_dir=project_dir))
         has_source_root = (project_dir / source_root).is_dir()
-        paths.discard(source_root)
-        ordered = sorted(paths)
-        if has_source_root:
-            ordered = [source_root, *ordered]
-        return ordered
+        return self.source_first_search_paths(
+            tuple(paths), source_root=source_root, include_source_root=has_source_root
+        )
 
     def _workspace_member_source_paths(self, *, project_dir: Path) -> t.StrSequence:
         """Return `<member>/<source_dir>` search paths for uv workspace members.
