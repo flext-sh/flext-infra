@@ -1645,9 +1645,7 @@ class FlextInfraConfigModels:
         ]
         sgconfig: Annotated[
             FlextInfraConfigModels.SgconfigRenderSpec,
-            m.Field(
-                description="Canonical ast-grep project contract for every repo"
-            ),
+            m.Field(description="Canonical ast-grep project contract for every repo"),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
