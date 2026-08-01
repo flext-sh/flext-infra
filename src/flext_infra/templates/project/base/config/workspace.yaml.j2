@@ -22,8 +22,12 @@ repository:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
       default_what: {{ verb.default_what | tojson }}
-      whats: {{ verb.whats | tojson }}
+      dispatch: {{ verb.dispatch | tojson }}
+      handlers: {{ verb.handlers | tojson }}
       apply_guarded: {{ verb.apply_guarded | tojson }}
+      apply_what: {{ verb.apply_what | tojson }}
+      serialized: {{ verb.serialized | tojson }}
+      orchestrated: {{ verb.orchestrated | tojson }}
 {%- endfor %}
 {%- endif %}
 {%- if workspace_repository.script_dispatch %}
@@ -73,8 +77,12 @@ members:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
         default_what: {{ verb.default_what | tojson }}
-        whats: {{ verb.whats | tojson }}
+        dispatch: {{ verb.dispatch | tojson }}
+        handlers: {{ verb.handlers | tojson }}
         apply_guarded: {{ verb.apply_guarded | tojson }}
+        apply_what: {{ verb.apply_what | tojson }}
+        serialized: {{ verb.serialized | tojson }}
+        orchestrated: {{ verb.orchestrated | tojson }}
 {%- endfor %}
 {%- endif %}
 {%- if repository.script_dispatch %}

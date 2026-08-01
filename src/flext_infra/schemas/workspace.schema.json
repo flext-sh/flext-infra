@@ -206,7 +206,8 @@
       "required": [
         "name",
         "default_what",
-        "whats"
+        "dispatch",
+        "handlers"
       ],
       "properties": {
         "name": {
@@ -216,16 +217,37 @@
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]*$"
         },
-        "whats": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
+        "dispatch": {
+          "enum": [
+            "builtin",
+            "script"
+          ]
+        },
+        "handlers": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "additionalProperties": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$"
           }
         },
         "apply_guarded": {
+          "type": "boolean"
+        },
+        "apply_what": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "serialized": {
+          "type": "boolean"
+        },
+        "orchestrated": {
           "type": "boolean"
         }
       }
