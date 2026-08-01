@@ -18,6 +18,10 @@ def _workspace(root: Path, distribution: str = "sample-member") -> Path:
     root.mkdir()
     member = root / distribution
     (member / "src").mkdir(parents=True)
+    (root / ".gitmodules").write_text(
+        f'[submodule "{distribution}"]\n\tpath = {distribution}\n\turl = https://github.com/flext-sh/{distribution}.git\n\tbranch = 0.12.0-dev\n',
+        encoding="utf-8",
+    )
     config_dir = root / "config"
     config_dir.mkdir()
     (config_dir / "workspace.yaml").write_text(

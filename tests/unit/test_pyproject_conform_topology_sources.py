@@ -100,7 +100,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -123,7 +122,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             external,
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -150,7 +148,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             publishable_member,
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -181,7 +178,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             attached_root,
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -198,7 +194,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 f"git+{member.url}@{_PROVIDER_SPEC.branch}",
                 "file:///home/marlonsc/flext/flext-core",
             ),
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -221,7 +216,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 'dependencies = ["flext-unmapped @ '
                 'git+https://github.com/flext-sh/flext-unmapped.git@main"]\n'
             ),
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -260,7 +254,6 @@ workspace = true
         root_rendered: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 root_source,
-                repositories=(workspace.repository, *workspace.members),
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -273,7 +266,6 @@ workspace = true
                     'version = "0.1.0"\n'
                     f'dependencies = ["{provider.distribution}"]\n'
                 ),
-                repositories=(workspace.repository, *workspace.members),
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -323,7 +315,6 @@ workspace = true
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
-            repositories=(workspace.repository, *workspace.members),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,

@@ -145,13 +145,13 @@ class TestsCodegenCatalogExtensions:
         tm.that(routed.routes_to_principal_ledger, eq=True)
         # The field is required: "no ledger root" is not a representable state.
         with pytest.raises(c.ValidationError):
-            m.Infra.BeadsPlan(
-                repository_root=repo,
-                enabled=True,
-                canonical_prefix="mro",
-                expected_version="1.1.0",
-                ledger_id="mro",
-            )
+            m.Infra.BeadsPlan.model_validate({
+                "repository_root": repo,
+                "enabled": True,
+                "canonical_prefix": "mro",
+                "expected_version": "1.1.0",
+                "ledger_id": "mro",
+            })
 
     def test_beads_tracker_declaration_is_a_validated_model(
         self, tmp_path: Path
@@ -517,7 +517,25 @@ class TestsCodegenCatalogExtensions:
         workflows = tuple(
             file for file in plan.files if ".github/workflows" in file.path.as_posix()
         )
-        tm.that(workflows, len=4)
+        # How many workflows exist is config-owned: freezing the count makes a
+        # legitimate template addition fail here. The contract is that every
+        # planned workflow is one the config declares, and that none leaks the
+        # content-only repository.
+        declared_workflows = frozenset(
+            entry.destination
+            for entry in config.Infra.codegen.templates.entries
+            if ".github/workflows" in entry.destination
+        )
+        tm.that(workflows, empty=False)
+        for workflow in workflows:
+            tm.that(
+                any(
+                    workflow.path.as_posix().endswith(destination)
+                    for destination in declared_workflows
+                ),
+                eq=True,
+                msg=f"undeclared workflow planned: {workflow.path}",
+            )
         for workflow in workflows:
             tm.that("acme-content" in workflow.rendered, eq=False)
         gitmodules = next(

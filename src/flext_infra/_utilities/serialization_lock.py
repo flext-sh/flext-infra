@@ -20,6 +20,7 @@ class FlextInfraUtilitiesSerializationLock:
         *,
         timeout_failure: p.Infra.LockTimeoutFailure[TValue],
         acquisition_failure: p.Infra.LockAcquisitionFailure[TValue],
+        ephemeral: bool = False,
     ) -> p.Result[TValue]:
         """Delegate one typed operation to the sole native lock engine."""
         return FlextInfraSerializationLockOwner.execute(
@@ -28,6 +29,7 @@ class FlextInfraUtilitiesSerializationLock:
             operation,
             timeout_failure=timeout_failure,
             acquisition_failure=acquisition_failure,
+            ephemeral=ephemeral,
         )
 
 

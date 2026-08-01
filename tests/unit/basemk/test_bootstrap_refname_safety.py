@@ -20,8 +20,7 @@ from flext_tests import tm
 
 # Lines that interpolate the branch into a command the shell parses.
 _BRANCH_COMMAND = re.compile(
-    r"^\s*(?!#).*\bgit\s+(checkout|switch|branch)\b.*\$\(SETUP_BRANCH\)",
-    re.MULTILINE,
+    r"^\s*(?!#).*\bgit\s+(checkout|switch|branch)\b.*\$\(SETUP_BRANCH\)", re.MULTILINE
 )
 
 

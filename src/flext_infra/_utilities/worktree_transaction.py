@@ -226,23 +226,34 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
         )
 
-    @staticmethod
-    def _source_roots(worktree_root: Path) -> t.SequenceOf[Path]:
-        """Resolve productive source roots inside the isolated workspace."""
+    @classmethod
+    def _source_roots(
+        cls, worktree_root: Path, scoped_paths: t.SequenceOf[Path] = ()
+    ) -> t.SequenceOf[Path]:
+        """Resolve the productive source roots the transaction actually owns.
+
+        A member outside the requested scope is never a source root: importing
+        it would assert a dependency the scoped project does not declare and
+        would fail closed on any sibling that is merely present on disk.
+        """
         roots: t.MutableSequenceOf[Path] = []
         root_source = worktree_root / c.Infra.DEFAULT_SRC_DIR
         if root_source.is_dir():
             roots.append(root_source)
         for child in sorted(worktree_root.iterdir()):
             source_root = child / c.Infra.DEFAULT_SRC_DIR
-            if child.is_dir() and source_root.is_dir():
+            if not (child.is_dir() and source_root.is_dir()):
+                continue
+            if cls._submodule_in_scope(child.relative_to(worktree_root), scoped_paths):
                 roots.append(source_root)
         return tuple(roots)
 
     @classmethod
-    def _transaction_environment(cls, worktree_root: Path) -> t.StrMapping:
+    def _transaction_environment(
+        cls, worktree_root: Path, scoped_paths: t.SequenceOf[Path] = ()
+    ) -> t.StrMapping:
         """Build the isolated source and recursion-guard environment."""
-        source_roots = cls._source_roots(worktree_root)
+        source_roots = cls._source_roots(worktree_root, scoped_paths)
         python_path = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
             str(path) for path in source_roots
         )
@@ -328,28 +339,47 @@ class FlextInfraUtilitiesWorktreeTransaction:
             output=combined_output,
         )
 
+    @staticmethod
+    def _pyrefly_interpreter(worktree_root: Path) -> str:
+        """Resolve the interpreter that owns the checked tree's dependencies.
+
+        ``sys.executable`` may point at the flext-infra bootstrap interpreter
+        (from ``FLEXT_INFRA_BOOTSTRAP`` / ``uv run --project ...``); it resolves
+        flext-infra's dependencies and may not include the checked project's dev
+        dependencies (pytest, PyYAML, ...). Type checking against it reports each as a
+        missing import. The project virtualenv is the only interpreter that can
+        resolve the imports the project actually declares.
+        """
+        candidate = worktree_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        if candidate.is_file():
+            return str(candidate.resolve())
+        return sys.executable
+
     @classmethod
-    def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools to the transaction interpreter before cwd mutation."""
-        executable_root = Path(sys.executable).parent
+    def _lint_commands(cls, worktree_root: Path) -> p.Result[t.StrSequencePairTuple]:
+        """Bind lint tools from the managed process environment before mutation."""
+        managed_path = u.Cli.process_env().get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            executable_path = shutil.which(command[0])
-            if executable_path is None:
-                executable = executable_root / command[0]
-                if not executable.is_file():
-                    return r[t.StrSequencePairTuple].fail(
-                        f"required transaction lint executable not found: {executable}"
-                    )
-                executable_path = str(executable)
-            bound_command: t.StrSequence = (executable_path, *command[1:])
+            resolved = shutil.which(command[0], path=managed_path)
+            if resolved is None:
+                return r[t.StrSequencePairTuple].fail(
+                    "required transaction lint executable not found on managed PATH: "
+                    f"{command[0]}"
+                )
+            executable = Path(resolved).resolve()
+            if not executable.is_file():
+                return r[t.StrSequencePairTuple].fail(
+                    f"resolved transaction lint executable is not a file: {executable}"
+                )
+            bound_command: t.StrSequence = (str(executable), *command[1:])
             if tool == c.Infra.PYREFLY:
                 bound_command = (
                     *bound_command,
                     "--config",
                     c.Infra.PYPROJECT_FILENAME,
                     "--python-interpreter-path",
-                    sys.executable,
+                    cls._pyrefly_interpreter(worktree_root),
                 )
             commands.append((tool, bound_command))
         return r[t.StrSequencePairTuple].ok(tuple(commands))
@@ -375,13 +405,17 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _import_probe(
-        cls, worktree_root: Path, environment: t.StrMapping, timeout_seconds: int
+        cls,
+        worktree_root: Path,
+        environment: t.StrMapping,
+        timeout_seconds: int,
+        scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root in one isolated process."""
+        """Fresh-import every productive package root the scope owns."""
         packages = tuple(
             sorted({
                 package_dir.name
-                for source_root in cls._source_roots(worktree_root)
+                for source_root in cls._source_roots(worktree_root, scoped_paths)
                 for package_dir in source_root.iterdir()
                 if package_dir.is_dir()
                 and package_dir.name.isidentifier()
@@ -434,14 +468,39 @@ class FlextInfraUtilitiesWorktreeTransaction:
             for before_item, after_item in zip(before, after, strict=True)
         )
 
-    @staticmethod
+    @classmethod
     def _repository_deltas(
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
+        cls, repositories: t.SequenceOf[m.Infra.RepositoryWorktree]
     ) -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:
-        """Capture operation-only deltas from every isolated repository."""
+        """Capture operation-only deltas from every isolated repository.
+
+        The sandbox seeds each nested gitlink with the member's ISOLATED
+        checkpoint so the isolated tree is self-consistent. That SHA exists
+        only inside the sandbox, so the root patch must carry the SOURCE head
+        instead; otherwise applying the transaction would point the real
+        superproject at a commit no source checkout has.
+        """
+        source_gitlinks = {
+            repository.relative_path: repository.source_root
+            for repository in repositories
+            if repository.relative_path != "."
+        }
+        resolved_gitlinks: dict[str, str] = {}
+        for path, source_root in source_gitlinks.items():
+            head_result = FlextInfraUtilitiesGitScope.git_repository_head(source_root)
+            if head_result.failure:
+                return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
+                    head_result.error or f"failed to resolve source head for {path}"
+                )
+            resolved_gitlinks[path] = head_result.value
         deltas: t.MutableSequenceOf[m.Infra.RepositoryDelta] = []
         for repository in repositories:
-            result = FlextInfraUtilitiesGitScope.git_repository_delta(repository)
+            result = FlextInfraUtilitiesGitScope.git_repository_delta(
+                repository,
+                source_gitlinks=resolved_gitlinks
+                if repository.relative_path == "."
+                else None,
+            )
             if result.failure:
                 return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
                     result.error
@@ -568,6 +627,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
             lambda: cls._apply_transaction_patches_locked(deltas),
             timeout_failure=timeout_failure,
             acquisition_failure=acquisition_failure,
+            # The transaction owns its sandbox for exactly one operation, so its
+            # lock is ephemeral: leaving the artifact behind would mutate the
+            # source checkout the transaction promised to leave untouched.
+            ephemeral=True,
         )
 
     @classmethod
@@ -662,14 +725,14 @@ class FlextInfraUtilitiesWorktreeTransaction:
         repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
     ) -> p.Result[m.Infra.WorktreeTransactionReport]:
         """Run and evaluate the command inside an already checkpointed worktree."""
-        lint_commands_result = cls._lint_commands()
+        lint_commands_result = cls._lint_commands(worktree_root)
         if lint_commands_result.failure:
             return r[m.Infra.WorktreeTransactionReport].fail(
                 lint_commands_result.error
                 or "failed to resolve transaction lint executables"
             )
         lint_commands = lint_commands_result.value
-        environment = cls._transaction_environment(worktree_root)
+        environment = cls._transaction_environment(worktree_root, request.scoped_paths)
         lint_before = cls._lint_snapshots(
             worktree_root, environment, request.timeout_seconds, lint_commands
         )
@@ -695,7 +758,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
         def _run_import_probe() -> p.Cli.CommandOutput:
             return cls._import_probe(
-                worktree_root, environment, request.timeout_seconds
+                worktree_root,
+                environment,
+                request.timeout_seconds,
+                request.scoped_paths,
             )
 
         def _run_deltas() -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:

@@ -83,17 +83,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
                 ["git", "init", "-q", "-b", baseline], cwd=repository_root
             )
         )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.email", "infra@example.com"],
-                cwd=repository_root,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.name", "Infra Tests"], cwd=repository_root
-            )
-        )
+        u.Tests.configure_git_identity(repository_root)
         (repository_root / "README.md").write_text("# Repository\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked(["git", "add", "README.md"], cwd=repository_root))
         tm.ok(
@@ -138,16 +128,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
         member_root = workspace_root / member_path
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.email", "infra@example.com"], cwd=member_root
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.name", "Infra Tests"], cwd=member_root
-            )
-        )
+        u.Tests.configure_git_identity(member_root)
         provider = config.Infra.codegen.providers[0]
         canonical_url = f"{provider.base_url}/flext-member.git"
         section = "submodule.members/flext-member"
@@ -285,12 +266,12 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_unknown_submodule_path_fails_closed(self, tmp_path: Path) -> None:
-        """Reject an attached submodule absent from the parent manifest."""
+        """An attached submodule absent from the parent manifest is standalone."""
         member_root = self._attached_member(tmp_path, declare_member=False)
 
-        tm.fail(
+        tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            has="not one active workspace member",
+            eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
     def test_gitmodule_url_mismatch_fails_closed(self, tmp_path: Path) -> None:
@@ -311,7 +292,10 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
 
-        tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="URL mismatch")
+        tm.fail(
+            FlextInfraWorkspaceDetector().detect(member_root),
+            has="governed workspace member contract differs",
+        )
 
     def test_gitmodule_branch_mismatch_fails_closed(self, tmp_path: Path) -> None:
         """Reject a Git submodule whose configured branch differs from the manifest."""
@@ -332,7 +316,8 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
         tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root), has="branch mismatch"
+            FlextInfraWorkspaceDetector().detect(member_root),
+            has="governed workspace member contract differs",
         )
 
     def test_malformed_parent_manifest_fails(self, tmp_path: Path) -> None:
@@ -370,7 +355,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         # mro-4gbp: the engine catalog declares only repositories it owns, so the
         # fixture is derived from whatever this engine publishes - never a
         # hardcoded name and never a downstream consumer.
-        declared = config.Infra.codegen.repositories[0]
+        declared = u.Tests.repository_ref(config.Infra.name)
         (tmp_path / "pyproject.toml").write_text(
             f'[project]\nname = "{declared.name}"\nversion = "0.0.0"\n',
             encoding="utf-8",
@@ -490,11 +475,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             '[project]\nname = "foreign-aggregator"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
-        infra_repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
+        infra_repository = u.Tests.repository_ref(config.Infra.name)
         toolchain_marker = project_root / infra_repository.path / c.Infra.BASE_MK
         toolchain_marker.parent.mkdir()
         toolchain_marker.write_text("# toolchain marker\n", encoding="utf-8")

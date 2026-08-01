@@ -361,7 +361,18 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_guides_index(scope: m.Infra.DocScope) -> str:
-        """Return a minimal guides index for projects missing one."""
+        """Return a guides index that lists the guides the project really has.
+
+        The index is generated, so every link it renders must resolve. Naming a
+        curated guide the generator never writes produced a broken relative
+        link in every project that had no such file.
+        """
+        guides_dir = scope.path / "docs/guides"
+        entries = [
+            f"- [{path.stem.replace('-', ' ').capitalize()}]({path.name})"
+            for path in sorted(guides_dir.glob("*.md"))
+            if path.name != "README.md"
+        ]
         return FlextInfraUtilitiesDocsRender._render_markdown([
             f"# {scope.name} Guides",
             "",
@@ -369,7 +380,7 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "Curated operational guides live here. Keep API behavior in generated reference pages sourced from code and docstrings.",
             "",
-            "- [Topology and conform contract](topology-conform.md)",
+            *entries,
             "- [Back to project docs](../index.md)",
             "- [API Reference](../api-reference/README.md)",
             "",

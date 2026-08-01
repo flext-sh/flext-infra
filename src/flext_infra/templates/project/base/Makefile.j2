@@ -36,6 +36,7 @@ UV_LINK_MODE := {{ uv_link_mode }}
 APPLY ?= N
 ARGS ?=
 CHECK_GATES ?=
+DEPENDENCY ?=
 FAIL_FAST ?= 0
 FILE ?=
 FIX ?= 0
@@ -45,17 +46,36 @@ PROJECTS ?=
 BASE ?=
 BRANCH ?=
 PYTEST_ARGS ?=
-PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
-PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
-PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
 PYTEST_REPORTS_DIR ?= .reports/tests
+override PYTEST_CASE_TIMEOUT_SECONDS := {{ pytest.case_timeout_seconds }}
+override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}
+override PYTEST_TERMINATION_GRACE_SECONDS := {{ pytest.termination_grace_seconds }}
+override PYTEST_TIMEOUT_EXIT_CODE := {{ mypy_timeout_exit_code }}
+override PYTEST_ENFORCEMENT_PLUGIN := {{ pytest.enforcement_plugin }}
+override PYTEST_PROGRESS_ARGS :={% for item in pytest.progress_args %} {{ item }}{% endfor %}
+override PYTEST_REPORT_ARGS :={% for item in pytest.report_args %} {{ item }}{% endfor %}
+override PYTEST_DIAG_ARGS :={% for item in pytest.diagnostic_args %} {{ item }}{% endfor %}
+override PYTEST_PARALLEL_WORKERS := {{ pytest.parallel_workers }}
+override PYTEST_PARALLEL_DISTRIBUTION := {{ pytest.parallel_distribution }}
+override PYTEST_PROFILE_SORT := {{ pytest.profile_sort }}
+override PYTEST_PROFILE_LIMIT := {{ pytest.profile_limit }}
+override PROCESS_TIMEOUT_COMMAND := {{ timeout_command }}
+override export FLEXT_PYTEST_ARGS_RAW := $(value PYTEST_ARGS)
+override export FLEXT_PYTEST_FILE_RAW := $(value FILE)
+override export FLEXT_PYTEST_FILES_RAW := $(value FILES)
+override export FLEXT_PYTEST_MATCH_RAW := $(value MATCH)
+override export FLEXT_PYTEST_DIAG_RAW := $(value DIAG)
+override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
+override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
+override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
+override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 WHAT ?=
 # End SECTION: user overrides
 
 # === SECTION: derived paths (managed) ===
 # Source: computed (git rev-parse, pwd, abspath)
 PROJECT_ROOT := $(shell pwd -P)
+override export FLEXT_PYTEST_TARGET_RAW := tests
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 WORKSPACE ?= $(PROJECT_ROOT)
@@ -95,6 +115,7 @@ CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@{{ infra_repository_branch }}
 FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
+UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dependency_groups }}-groups --{{ make.bootstrap.extras }}-extras
 # End SECTION: infra bootstrap
 
 {% include "base_mypy_limit.mk.j2" %}
@@ -161,10 +182,10 @@ export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
 FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
 else
 FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
 endif
 
 ifeq ($(MAKE_PROFILE),workspace-root)
@@ -181,14 +202,11 @@ endif
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-FILE_MEMBER := $(firstword $(foreach member,$(WORKSPACE_MEMBERS),$(if $(filter $(member)/%,$(FILE)),$(member))))
-FILE_PROJECT := $(if $(strip $(FILE_MEMBER)),$(FILE_MEMBER),.)
-FILE_RELATIVE := $(if $(filter .,$(FILE_PROJECT)),$(FILE),$(patsubst $(FILE_PROJECT)/%,%,$(FILE)))
 DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS) .
-SELECTED_PROJECTS := $(if $(strip $(FILE)),$(FILE_PROJECT),$(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS)))
+SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FILE)),--make-arg "FILE=$(FILE_RELATIVE)") $(if $(strip $(MATCH)),--make-arg "MATCH=$(MATCH)") $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
+WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
@@ -303,7 +321,9 @@ define _run_for_selected_projects
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		if [ "$$project" = "." ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		$(UV) lock --project "$$project_root" $(1); \
 	done
 endef
 
@@ -406,7 +426,15 @@ _builtin_deps_lock:
 
 _builtin_deps_upgrade: _builtin_require_environment
 	$(call _require_apply)
-	$(call _run_for_selected_projects,--upgrade)
+	@dependency="$(strip $(DEPENDENCY))"; \
+	if [ -n "$$dependency" ]; then \
+		case "$$dependency" in \
+			[-._]*|*[!A-Za-z0-9._-]*) \
+				printf 'ERROR: DEPENDENCY must be one normalized distribution name\n' >&2; \
+				exit 2 ;; \
+		esac; \
+	fi
+	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade))
 	@set -eu; \
 	selected="$(strip $(PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
@@ -425,6 +453,13 @@ _builtin_check_all: _builtin_require_environment
 
 _builtin_test_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+
+_builtin_fmt_check: _builtin_require_environment
+	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+
+_builtin_fmt_apply: _builtin_require_environment
+	$(call _require_apply)
+	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=apply" --make-arg "APPLY=Y" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -446,14 +481,8 @@ _builtin_check_all: _builtin_require_environment
 
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(
-    "$(UV_RUN) python -m pytest",
-    "$(PROJECT_FLEXT_INFRA) validate",
-    "$(PYTEST_TARGETS)",
-    "$(PROJECT_ROOT)/tests",
-    make.TIMEOUT_COMMAND,
-    make.TIMEOUT_KILL_AFTER_SECONDS,
+    "$(UV_RUN) python -m flext_infra._pytest_entry",
 ) }}
-{% endif %}
 
 _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -463,6 +492,7 @@ _builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
+{% endif %}
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)

@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, u
+from tests import u as test_u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 
@@ -34,11 +35,7 @@ class TestCodegenBeadsLedger:
     ) -> Path:
         """Create a manifested standalone repository with a real Git origin."""
         provider = config.Infra.codegen.providers[0]
-        repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
+        repository = test_u.Tests.repository_ref(config.Infra.name)
         root.mkdir(parents=True)
         cls._git(root, "init", "-q", "-b", provider.branch)
         cls._git(root, "config", "user.email", "infra@example.com")
@@ -126,11 +123,7 @@ class TestCodegenBeadsLedger:
         tm.that(plan.repository_root, eq=transaction.resolve())
         tm.that(plan.ledger_root, eq=principal.resolve())
         tm.that(plan.ledger_id, eq=None)
-        repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
+        repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.canonical_prefix, eq=repository.distribution)
 
     def test_principal_keeps_ledger_at_repository_root(self, tmp_path: Path) -> None:
@@ -141,7 +134,8 @@ class TestCodegenBeadsLedger:
 
         tm.that(plan.enabled, eq=True)
         tm.that(plan.repository_root, eq=principal.resolve())
-        tm.that(plan.ledger_root, eq=None)
+        tm.that(plan.ledger_root, eq=principal.resolve())
+        tm.that(plan.routes_to_principal_ledger, eq=False)
 
     def test_manifest_ledger_id_owns_tracker_namespace(self, tmp_path: Path) -> None:
         """Derive the tracker identity from the declared ledger, never the repo name."""

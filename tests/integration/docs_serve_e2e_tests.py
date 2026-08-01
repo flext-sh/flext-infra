@@ -2,8 +2,8 @@
 
 No mocks: starts the real ``FlextInfraDocServer`` flow against a synthetic
 single-scope workspace, then polls the bound address until the dev server
-answers an actual HTTP request. The blocking server runs on a daemon thread
-that the pytest process reaps at teardown.
+answers an actual HTTP request. The blocking server runs in a managed child
+process that the test terminates and joins at teardown.
 """
 
 from __future__ import annotations
@@ -20,7 +20,9 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-_DEADLINE_SECONDS = 6.0
+_DEADLINE_SECONDS = 9.0
+_POLL_INTERVAL_SECONDS = 0.05
+_PROCESS_STOP_TIMEOUT_SECONDS = 1.0
 _HTTP_OK = 200
 
 
@@ -33,23 +35,19 @@ def _free_local_port() -> int:
 
 def _http_get_body(host: str, port: int) -> str | None:
     """Return the response body when the dev server answers HTTP 200, else None."""
+    connection = http.client.HTTPConnection(host, port, timeout=0.25)
     try:
-        connection = http.client.HTTPConnection(host, port, timeout=0.25)
         connection.request("GET", "/")
         response = connection.getresponse()
-        body = (
+        return (
             response.read().decode("utf-8", errors="replace")
             if response.status == _HTTP_OK
             else None
         )
-        connection.close()
-    except OSError:
+    except (OSError, http.client.HTTPException):
         return None
-    return body
-
-
-def _serve_docs(root: Path, dev_addr: str) -> None:
-    FlextInfraDocServer(dev_addr=dev_addr, livereload=False, strict=False).serve(root)
+    finally:
+        connection.close()
 
 
 class TestsFlextInfraIntegrationDocsServeE2e:
@@ -65,22 +63,33 @@ class TestsFlextInfraIntegrationDocsServeE2e:
         )
         port = _free_local_port()
         dev_addr = f"127.0.0.1:{port}"
-        process = multiprocessing.get_context("fork").Process(
-            target=_serve_docs, args=(tmp_path, dev_addr)
-        )
-        process.start()
+        context = multiprocessing.get_context("spawn")
+        server = FlextInfraDocServer(dev_addr=dev_addr, livereload=False, strict=False)
+        process = context.Process(target=server.serve, args=(tmp_path,))
         try:
+            process.start()
             deadline = time.monotonic() + _DEADLINE_SECONDS
             body: str | None = None
-            while body is None and time.monotonic() < deadline:
+            while body is None and process.is_alive() and time.monotonic() < deadline:
                 body = _http_get_body("127.0.0.1", port)
+                if body is None:
+                    time.sleep(_POLL_INTERVAL_SECONDS)
 
-            tm.that(body, none=False)
+            tm.that(body, none=False, msg=f"child exit code: {process.exitcode}")
             tm.that(body, has="Flext Demo Docs")
             tm.that(body, has="Hello from the real dev server.")
         finally:
-            process.terminate()
-            process.join(timeout=2)
-            if process.is_alive():
-                process.kill()
-                process.join()
+            stopped = process.pid is None
+            if not stopped:
+                if process.is_alive():
+                    process.terminate()
+                process.join(timeout=_PROCESS_STOP_TIMEOUT_SECONDS)
+                if process.is_alive():
+                    process.kill()
+                    process.join(timeout=_PROCESS_STOP_TIMEOUT_SECONDS)
+                stopped = not process.is_alive()
+            try:
+                tm.that(stopped, where=bool)
+            finally:
+                if stopped:
+                    process.close()

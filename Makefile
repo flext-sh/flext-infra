@@ -43,16 +43,36 @@ PROJECTS ?=
 BASE ?=
 BRANCH ?=
 PYTEST_ARGS ?=
-PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
-PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
-PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
+override PYTEST_CASE_TIMEOUT_SECONDS := 10
+override PYTEST_RUN_TIMEOUT_SECONDS := 60
+override PYTEST_TERMINATION_GRACE_SECONDS := 2
+override PYTEST_TIMEOUT_EXIT_CODE := 124
+override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
+override PYTEST_PROGRESS_ARGS := --verbose
+override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
+override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
+override PYTEST_PARALLEL_WORKERS := 4
+override PYTEST_PARALLEL_DISTRIBUTION := worksteal
+override PYTEST_PROFILE_SORT := cumulative
+override PYTEST_PROFILE_LIMIT := 50
+override PROCESS_TIMEOUT_COMMAND := timeout
+override export FLEXT_PYTEST_ARGS_RAW := $(value PYTEST_ARGS)
+override export FLEXT_PYTEST_FILE_RAW := $(value FILE)
+override export FLEXT_PYTEST_FILES_RAW := $(value FILES)
+override export FLEXT_PYTEST_MATCH_RAW := $(value MATCH)
+override export FLEXT_PYTEST_DIAG_RAW := $(value DIAG)
+override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
+override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
+override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
+override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 WHAT ?=
 # End SECTION: user overrides
 
 # === SECTION: derived paths (managed) ===
 # Source: computed (git rev-parse, pwd, abspath)
 PROJECT_ROOT := $(shell pwd -P)
+override export FLEXT_PYTEST_TARGET_RAW := tests
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 WORKSPACE ?= $(PROJECT_ROOT)
@@ -91,8 +111,8 @@ UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
-FLEXT_INFRA_SOURCE_ROOT_REL := 
-# End SECTION: infra bootstrap
+FLEXT_INFRA_SOURCE_ROOT_REL := .
+UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -175,10 +195,10 @@ export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
 FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
 else
 FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
 endif
 
 ifeq ($(MAKE_PROFILE),workspace-root)
@@ -195,14 +215,11 @@ endif
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-FILE_MEMBER := $(firstword $(foreach member,$(WORKSPACE_MEMBERS),$(if $(filter $(member)/%,$(FILE)),$(member))))
-FILE_PROJECT := $(if $(strip $(FILE_MEMBER)),$(FILE_MEMBER),.)
-FILE_RELATIVE := $(if $(filter .,$(FILE_PROJECT)),$(FILE),$(patsubst $(FILE_PROJECT)/%,%,$(FILE)))
 DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS) .
-SELECTED_PROJECTS := $(if $(strip $(FILE)),$(FILE_PROJECT),$(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS)))
+SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FILE)),--make-arg "FILE=$(FILE_RELATIVE)") $(if $(strip $(MATCH)),--make-arg "MATCH=$(MATCH)") $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
+WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS := build check clean docs scan test val
 
@@ -289,7 +306,9 @@ define _run_for_selected_projects
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		if [ "$$project" = "." ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		$(UV) lock --project "$$project_root" $(1); \
 	done
 endef
 
@@ -558,7 +577,15 @@ _builtin_deps_lock:
 
 _builtin_deps_upgrade: _builtin_require_environment
 	$(call _require_apply)
-	$(call _run_for_selected_projects,--upgrade)
+	@dependency="$(strip $(DEPENDENCY))"; \
+	if [ -n "$$dependency" ]; then \
+		case "$$dependency" in \
+			[-._]*|*[!A-Za-z0-9._-]*) \
+				printf 'ERROR: DEPENDENCY must be one normalized distribution name\n' >&2; \
+				exit 2 ;; \
+		esac; \
+	fi
+	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade))
 	@set -eu; \
 	selected="$(strip $(PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
@@ -589,120 +616,7 @@ _builtin_check_all: _builtin_require_environment
 
 _builtin_test_all: _builtin_require_environment
 
-	@_files="$(strip $(FILES))"; \
-	if [ -n "$(FILE)" ]; then \
-		case "$(FILE)" in /*|..|../*|*/../*|*/..) \
-			printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
-		esac; \
-		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
-	fi; \
-	_pytest_run="$(PYTEST_TARGETS)"; \
-	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
-	for target in $$_pytest_run; do \
-		if [ ! -e "$$target" ]; then \
-			printf 'ERROR: test target does not exist: %s\n' "$$target" >&2; exit 2; \
-		fi; \
-	done; \
-	_all_pytest_args="$(PYTEST_ARGS)"; \
-	if [ -n "$(MATCH)" ]; then _all_pytest_args="$$_all_pytest_args -k $(MATCH)"; fi; \
-	if [ "$(FAIL_FAST)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -x"; fi; \
-	if [ "$(VERBOSE)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -vv -s"; fi; \
-	run_id=$$(date -u +%Y%m%dT%H%M%SZ)-$$$$; \
-	report_dir="$(PYTEST_REPORTS_DIR)/$$run_id"; \
-	mkdir -p "$$report_dir"; \
-	log_file="$$report_dir/pytest.log"; \
-	junit_file="$$report_dir/junit.xml"; \
-	coverage_file="$$report_dir/coverage.xml"; \
-	summary_file="$$report_dir/summary.txt"; \
-	failed_file="$$report_dir/failed-tests.txt"; \
-	errors_file="$$report_dir/errors.txt"; \
-	warnings_file="$$report_dir/warnings.txt"; \
-	slowest_file="$$report_dir/slowest-tests.txt"; \
-	skips_file="$$report_dir/skipped-tests.txt"; \
-	command_file="$$report_dir/command.txt"; \
-	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
-	_coverage_required=1; \
-	_coverage_value="$$coverage_file"; \
-	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
-		[ "$$_pytest_run" != "$(PROJECT_ROOT)/tests" ]; then \
-		_coverage_args="--no-cov"; \
-		_coverage_required=0; \
-		_coverage_value="not-generated"; \
-	fi; \
-	printf '%s\n' '$(UV_RUN) python -m pytest' \
-		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
-		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
-	$(UV_RUN) python -m pytest $$_pytest_run \
-		$(PYTEST_REPORT_ARGS) \
-		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
-		-p no:metadata \
-		--junitxml="$$junit_file" \
-		$$_coverage_args \
-		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
-	rc=$$?; \
-	cat "$$log_file"; \
-	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
-		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
-			"$$coverage_file" >&2; \
-		if [ "$$rc" -eq 0 ]; then rc=2; fi; \
-	fi; \
-	if [ -f "$$junit_file" ]; then \
-		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
-		failures=$$(grep -Eo 'failures="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
-		errors=$$(grep -Eo 'errors="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
-		skipped=$$(grep -Eo 'skipped="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
-		duration=$$(grep -Eo 'time="[0-9.]+"' "$$junit_file" | head -n 1 | sed -E 's/time="([0-9.]+)"/\1/'); \
-		tests=$${tests:-0}; failures=$${failures:-0}; errors=$${errors:-0}; \
-		skipped=$${skipped:-0}; duration=$${duration:-0}; \
-		passed=$$((tests - failures - errors - skipped)); \
-		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
-		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
-			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
-			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
-	else \
-		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
-			"$$_coverage_value" > "$$summary_file"; \
-	fi; \
-	counts_file="$$report_dir/counts.env"; \
-	if $(PROJECT_FLEXT_INFRA) validate pytest-diag \
-		--junit "$$junit_file" --log "$$log_file" \
-		--failed "$$failed_file" --errors "$$errors_file" \
-		--warnings "$$warnings_file" --slowest "$$slowest_file" \
-		--skips "$$skips_file" > "$$counts_file"; then \
-		:; \
-	else \
-		counts_status=$$?; \
-		printf 'ERROR: pytest diagnostic extraction failed (exit=%s)\n' \
-			"$$counts_status" >&2; \
-		cat "$$counts_file" >&2; \
-		exit "$$counts_status"; \
-	fi; \
-	if ! awk ' \
-		BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
-		$$0 !~ /^(failed_count|error_count|warning_count|skipped_count)=[0-9]+$$/ { invalid=1; next } \
-		{ split($$0, fields, "="); if (seen[fields[1]]++) invalid=1 } \
-		END { if (NR != 4) invalid=1; for (key in required) if (seen[key] != 1) invalid=1; exit invalid } \
-	' "$$counts_file"; then \
-		echo "ERROR: invalid pytest diagnostic counts contract" >&2; \
-		cat "$$counts_file" >&2; \
-		exit 2; \
-	fi; \
-	. "$$counts_file"; \
-	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
-		[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
-		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
-	fi; \
-	if [ "$(DIAG)" = "1" ]; then \
-		run_state=COMPLETED; \
-		if [ "$$rc" -eq 130 ]; then run_state=INTERRUPTED; fi; \
-		printf 'DIAG %s | failed=%s errors=%s warnings=%s skipped=%s\n' \
-			"$$run_state" "$$failed_count" "$$error_count" \
-			"$$warning_count" "$$skipped_count" >&2; \
-	fi; \
-	ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
-	printf 'Reports: %s (latest: %s/latest)\n' \
-		"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
-	exit "$$rc"
+	@$(UV_RUN) python -m flext_infra._pytest_entry
 
 
 _builtin_fmt_check: _builtin_require_environment

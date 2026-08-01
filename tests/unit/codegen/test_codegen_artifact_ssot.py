@@ -99,12 +99,8 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(entries, len=1)
         declared_profiles = {
-            (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if repository.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-                else c.Infra.MakeProfile.STANDALONE
-            )
-            for repository in codegen.repositories
+            c.Infra.MakeProfile.WORKSPACE_ROOT,
+            c.Infra.MakeProfile.STANDALONE,
         }
         tm.that(set(entries[0].profiles), eq=declared_profiles)
 
