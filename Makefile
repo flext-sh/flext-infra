@@ -34,7 +34,6 @@ UV_LINK_MODE := copy
 APPLY ?= N
 ARGS ?=
 CHECK_GATES ?=
-DEPENDENCY ?=
 FAIL_FAST ?= 0
 FILE ?=
 FIX ?= 0
@@ -44,15 +43,9 @@ PROJECTS ?=
 BASE ?=
 BRANCH ?=
 PYTEST_ARGS ?=
-PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
-PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 60
-# mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
-# MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
-PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
-override PYTEST_CASE_TIMEOUT_SECONDS := 30
-override PYTEST_RUN_TIMEOUT_SECONDS := 300
+override PYTEST_CASE_TIMEOUT_SECONDS := 10
+override PYTEST_RUN_TIMEOUT_SECONDS := 60
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
@@ -97,7 +90,7 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
 #        config:make.docs.actions, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release gen worktree
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release gen worktree basemk
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
@@ -118,9 +111,8 @@ UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
-FLEXT_INFRA_SOURCE_ROOT_REL := 
+FLEXT_INFRA_SOURCE_ROOT_REL := .
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
-# End SECTION: infra bootstrap
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -145,6 +137,7 @@ _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_gen := check
 _DEFAULT_worktree := list
+_DEFAULT_basemk := generate
 
 
 # === SECTION: profile routing (managed) ===
@@ -228,7 +221,7 @@ WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(pr
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS := build check clean docs fmt scan test val
+ORCHESTRATED_VERBS := build check clean docs scan test val
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
@@ -347,19 +340,8 @@ _serialized_gen:
 
 
 
-# `setup` keeps its own recipe (it must not require the environment it is about
-# to build), but it still runs the pre-/post-setup lifecycle hooks so a project
-# declaring them in the custom handler surface is actually honoured.
 setup:
-	@for hook in "pre-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
 	@$(SELF_MAKE) _builtin_setup_environment
-	@for hook in "post-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
 
 _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [standalone]' '';
@@ -419,6 +401,8 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
 
+
+	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
@@ -569,18 +553,10 @@ _builtin_require_environment:
 		exit 2; \
 	fi
 
-# === SECTION: setup environment (managed) ===
-# Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
-# Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
-# It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
-# is the single public conformance/generation surface.
-# Profile routing: workspace-member delegates the environment to the
-# principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
-# standalone build their own environment locally.
-ifeq ($(MAKE_PROFILE),workspace-member)
-_builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
-else ifeq ($(MAKE_PROFILE),workspace-root)
+# Operator contract (mro-e9j0.6 C7): setup PROVISIONS tooling only — mise,
+# venv, dependencies. It never generates, conforms, or mutates project code;
+# `make gen` (APPLY=Y) is the single public conformance/generation surface.
+ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
@@ -640,7 +616,8 @@ _builtin_check_all: _builtin_require_environment
 
 _builtin_test_all: _builtin_require_environment
 
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+	@$(UV_RUN) python -m flext_infra._pytest_entry
+
 
 _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -650,7 +627,6 @@ _builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
-
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)

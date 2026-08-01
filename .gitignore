@@ -247,6 +247,7 @@ site/
 target/
 .pyrefly_cache/
 .tox/
+.flext-deps/
 .flext-sync.lock
 .sync.lock
 .planning/
@@ -256,18 +257,6 @@ skill-create-output/
 CLAUDE.local.md
 
 # Tracked managed artifacts
-!.github/ci-template/
-!.github/ci-template/ci.yml
-!.github/copilot-instructions.md
-!.github/dependabot.yml
-!.github/prompts/
-!.github/prompts/flext-aggressive-scale-refactor.prompt.md
-!.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-!.github/scripts/
-!.github/scripts/check-beads-policy.sh
-!.github/scripts/check-cqrs-compliance.sh
-!.github/scripts/flext-law-loop.sh
-!.github/scripts/install-git-hooks.sh
 !ci/
 !ci/docker/
 !ci/docker/alpine.Dockerfile
@@ -278,9 +267,6 @@ CLAUDE.local.md
 !.github/workflows/
 !.github/workflows/ci-matrix.yml
 !.github/workflows/ci.yml
-!.github/workflows/docs.yml
-!.github/workflows/release.yml
-!sgconfig.yml
 !.vscode/settings.json
 !LICENSE
 !config/
