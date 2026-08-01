@@ -68,7 +68,6 @@ class FlextInfraConstantsCodegenProject:
         WORKSPACE_ROOT = "workspace-root"
         WORKSPACE_MEMBER = "workspace-member"
         STANDALONE = "standalone"
-        CONTENT_ONLY = "content-only"
         EXCLUDED = "excluded"
 
     @unique
@@ -76,7 +75,6 @@ class FlextInfraConstantsCodegenProject:
         """Lifecycle state used by repository selection."""
 
         ACTIVE = "active"
-        CONTENT_ONLY = "content-only"
         EXCLUDED = "excluded"
 
     @unique
@@ -112,7 +110,7 @@ class FlextInfraConstantsCodegenProject:
 
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_SCHEMA_FILENAME: Final[str] = "workspace.schema.json"
-    WORKSPACE_MANIFEST_VERSION: Final[int] = 2
+    WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"

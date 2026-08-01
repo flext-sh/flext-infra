@@ -14,9 +14,9 @@ from flext_cli import u
 from flext_core import r
 from flext_infra import c, config, m, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
-from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
+from flext_infra._utilities.serialization_lock import (
+    FlextInfraUtilitiesSerializationLock,
+)
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -57,7 +57,15 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def _declared_nested_repository_paths(
         cls, workspace_root: Path
     ) -> p.Result[t.SequenceOf[Path]]:
-        """Resolve existing manifest-declared nested Git repositories."""
+        """Resolve existing manifest-declared nested Git repositories.
+
+        The typed workspace manifest is the topology SSOT: a declared member
+        may already be an initialized checkout without yet being recorded in
+        ``.gitmodules``, so discovery reads the manifest rather than Git's
+        submodule index alone.
+        """
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
         workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
             workspace_root
         )
@@ -65,13 +73,9 @@ class FlextInfraUtilitiesWorktreeTransaction:
             return r[t.SequenceOf[Path]].fail(
                 workspace_result.error or "failed to load workspace topology"
             )
-        repositories = (
-            *workspace_result.value.members,
-            *workspace_result.value.content_only,
-        )
         paths = tuple(
             repository.path
-            for repository in repositories
+            for repository in workspace_result.value.members
             if repository.checkout is c.Infra.CheckoutKind.SUBMODULE
             and (workspace_root / repository.path / c.Infra.GIT_DIR).exists()
         )
@@ -104,18 +108,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
             return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                 declared_result.error or "failed to discover declared repositories"
             )
+        discovered = (*submodules_result.value, *declared_result.value)
         submodule_paths = tuple(
-            sorted(
-                {
-                    *(
-                        submodule
-                        for submodule in submodules_result.value
-                        if cls._submodule_in_scope(submodule, scoped_paths)
-                    ),
-                    *declared_result.value,
-                },
-                key=Path.as_posix,
-            )
+            submodule
+            for submodule in dict.fromkeys(discovered)
+            if cls._submodule_in_scope(submodule, scoped_paths)
         )
         repository_paths = (Path(), *submodule_paths)
         created: t.MutableSequenceOf[m.Infra.RepositoryWorktree] = []
@@ -161,17 +158,22 @@ class FlextInfraUtilitiesWorktreeTransaction:
             created, key=lambda item: len(Path(item.relative_path).parts), reverse=True
         ):
             if repository.relative_path == ".":
+                # The isolated root must describe the member commits this
+                # transaction actually contains: members are checkpointed
+                # first (deepest-first ordering), so seed the root index from
+                # those checkpoints instead of the pre-transaction source HEAD.
+                checkpoints = {
+                    nested.relative_path: nested.checkpoint_sha
+                    for nested in checkpointed
+                }
                 for nested in created:
                     if nested.relative_path == ".":
                         continue
-                    source_head = FlextInfraUtilitiesGitScope.git_repository_head(
-                        nested.source_root
-                    )
-                    if source_head.failure:
+                    nested_head = checkpoints.get(nested.relative_path)
+                    if nested_head is None:
                         cls._cleanup_worktrees(created, worktree_root)
                         return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
-                            source_head.error
-                            or f"failed to resolve source HEAD for {nested.relative_path}"
+                            f"missing isolated checkpoint for {nested.relative_path}"
                         )
                     update_result = FlextInfraUtilitiesGitScope.git_capture(
                         repository.worktree_root,
@@ -180,7 +182,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                             "--add",
                             "--cacheinfo",
                             "160000",
-                            source_head.value.strip(),
+                            nested_head,
                             nested.relative_path,
                         ),
                     )
@@ -188,7 +190,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
                         cls._cleanup_worktrees(created, worktree_root)
                         return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                             update_result.error
-                            or f"failed to seed source gitlink for {nested.relative_path}"
+                            or "failed to seed isolated gitlink for "
+                            f"{nested.relative_path}"
                         )
             checkpoint_result = FlextInfraUtilitiesGitScope.git_checkpoint_worktree(
                 repository.worktree_root,
@@ -196,7 +199,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     "chore: isolated checkpoint "
                     f"{transaction_id} {repository.relative_path}"
                 ),
-                excluded=submodule_paths if repository.relative_path == "." else (),
             )
             if checkpoint_result.failure:
                 cls._cleanup_worktrees(created, worktree_root)
@@ -224,23 +226,34 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
         )
 
-    @staticmethod
-    def _source_roots(worktree_root: Path) -> t.SequenceOf[Path]:
-        """Resolve productive source roots inside the isolated workspace."""
+    @classmethod
+    def _source_roots(
+        cls, worktree_root: Path, scoped_paths: t.SequenceOf[Path] = ()
+    ) -> t.SequenceOf[Path]:
+        """Resolve the productive source roots the transaction actually owns.
+
+        A member outside the requested scope is never a source root: importing
+        it would assert a dependency the scoped project does not declare and
+        would fail closed on any sibling that is merely present on disk.
+        """
         roots: t.MutableSequenceOf[Path] = []
         root_source = worktree_root / c.Infra.DEFAULT_SRC_DIR
         if root_source.is_dir():
             roots.append(root_source)
         for child in sorted(worktree_root.iterdir()):
             source_root = child / c.Infra.DEFAULT_SRC_DIR
-            if child.is_dir() and source_root.is_dir():
+            if not (child.is_dir() and source_root.is_dir()):
+                continue
+            if cls._submodule_in_scope(child.relative_to(worktree_root), scoped_paths):
                 roots.append(source_root)
         return tuple(roots)
 
     @classmethod
-    def _transaction_environment(cls, worktree_root: Path) -> t.StrMapping:
+    def _transaction_environment(
+        cls, worktree_root: Path, scoped_paths: t.SequenceOf[Path] = ()
+    ) -> t.StrMapping:
         """Build the isolated source and recursion-guard environment."""
-        source_roots = cls._source_roots(worktree_root)
+        source_roots = cls._source_roots(worktree_root, scoped_paths)
         python_path = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
             str(path) for path in source_roots
         )
@@ -328,16 +341,22 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools from the active runtime PATH before cwd mutation."""
+        """Bind lint tools from the managed process environment before mutation."""
+        managed_path = u.Cli.process_env().get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            executable = shutil.which(command[0])
-            if executable is None:
+            resolved = shutil.which(command[0], path=managed_path)
+            if resolved is None:
                 return r[t.StrSequencePairTuple].fail(
-                    "required transaction lint executable not found on runtime PATH: "
+                    "required transaction lint executable not found on managed PATH: "
                     f"{command[0]}"
                 )
-            bound_command: t.StrSequence = (executable, *command[1:])
+            executable = Path(resolved).resolve()
+            if not executable.is_file():
+                return r[t.StrSequencePairTuple].fail(
+                    f"resolved transaction lint executable is not a file: {executable}"
+                )
+            bound_command: t.StrSequence = (str(executable), *command[1:])
             if tool == c.Infra.PYREFLY:
                 bound_command = (
                     *bound_command,
@@ -370,13 +389,17 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _import_probe(
-        cls, worktree_root: Path, environment: t.StrMapping, timeout_seconds: int
+        cls,
+        worktree_root: Path,
+        environment: t.StrMapping,
+        timeout_seconds: int,
+        scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root in one isolated process."""
+        """Fresh-import every productive package root the scope owns."""
         packages = tuple(
             sorted({
                 package_dir.name
-                for source_root in cls._source_roots(worktree_root)
+                for source_root in cls._source_roots(worktree_root, scoped_paths)
                 for package_dir in source_root.iterdir()
                 if package_dir.is_dir()
                 and package_dir.name.isidentifier()
@@ -429,31 +452,38 @@ class FlextInfraUtilitiesWorktreeTransaction:
             for before_item, after_item in zip(before, after, strict=True)
         )
 
-    @staticmethod
+    @classmethod
     def _repository_deltas(
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
+        cls, repositories: t.SequenceOf[m.Infra.RepositoryWorktree]
     ) -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:
-        """Capture operation-only deltas from every isolated repository."""
-        deltas: t.MutableSequenceOf[m.Infra.RepositoryDelta] = []
-        source_gitlinks: dict[str, str] = {}
-        for repository in repositories:
-            if repository.relative_path == ".":
-                continue
-            source_head = FlextInfraUtilitiesGitScope.git_repository_head(
-                repository.source_root
-            )
-            if source_head.failure:
+        """Capture operation-only deltas from every isolated repository.
+
+        The sandbox seeds each nested gitlink with the member's ISOLATED
+        checkpoint so the isolated tree is self-consistent. That SHA exists
+        only inside the sandbox, so the root patch must carry the SOURCE head
+        instead; otherwise applying the transaction would point the real
+        superproject at a commit no source checkout has.
+        """
+        source_gitlinks = {
+            repository.relative_path: repository.source_root
+            for repository in repositories
+            if repository.relative_path != "."
+        }
+        resolved_gitlinks: dict[str, str] = {}
+        for path, source_root in source_gitlinks.items():
+            head_result = FlextInfraUtilitiesGitScope.git_repository_head(source_root)
+            if head_result.failure:
                 return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
-                    source_head.error
-                    or f"failed to resolve source HEAD for {repository.relative_path}"
+                    head_result.error or f"failed to resolve source head for {path}"
                 )
-            source_gitlinks[repository.relative_path] = source_head.value.strip()
+            resolved_gitlinks[path] = head_result.value
+        deltas: t.MutableSequenceOf[m.Infra.RepositoryDelta] = []
         for repository in repositories:
             result = FlextInfraUtilitiesGitScope.git_repository_delta(
                 repository,
-                source_gitlinks=(
-                    source_gitlinks if repository.relative_path == "." else None
-                ),
+                source_gitlinks=resolved_gitlinks
+                if repository.relative_path == "."
+                else None,
             )
             if result.failure:
                 return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
@@ -462,50 +492,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 )
             deltas.append(result.value)
         return r[t.SequenceOf[m.Infra.RepositoryDelta]].ok(tuple(deltas))
-
-    @staticmethod
-    def _recover_managed_conflicts(
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
-    ) -> p.Result[bool]:
-        """Recover configured owner sections before canonical regeneration."""
-        recoverable = tuple(
-            managed
-            for managed in config.Infra.codegen.managed_files
-            if managed.conflict_sections
-        )
-        for repository in repositories:
-            for managed in recoverable:
-                path = repository.worktree_root / managed.path
-                if not path.is_file():
-                    continue
-                if path.suffix != ".toml":
-                    return r[bool].fail(
-                        "owner-declared conflict sections require a TOML document: "
-                        f"{managed.path}"
-                    )
-                read_result = u.Cli.files_read_text(path)
-                if read_result.failure:
-                    return r[bool].fail(
-                        read_result.error
-                        or f"failed to read owner-managed document: {path}"
-                    )
-                recover_result = FlextInfraCodegenManagedConflicts.recover_toml(
-                    read_result.value, conflict_sections=managed.conflict_sections
-                )
-                if recover_result.failure:
-                    return r[bool].fail(
-                        f"{repository.relative_path}/{managed.path}: "
-                        f"{recover_result.error or 'managed conflict recovery failed'}"
-                    )
-                if recover_result.value == read_result.value:
-                    continue
-                write_result = u.Cli.files_write_text(path, recover_result.value)
-                if write_result.failure:
-                    return r[bool].fail(
-                        write_result.error
-                        or f"failed to recover owner-managed document: {path}"
-                    )
-        return r[bool].ok(True)
 
     @staticmethod
     def _check_patches(deltas: t.SequenceOf[m.Infra.RepositoryDelta]) -> p.Result[bool]:
@@ -558,7 +544,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
         lock_paths: set[Path] = set()
         for delta in deltas:
             for repository_root in (delta.source_root, delta.worktree_root):
-                lock_paths.add((repository_root / relative_lock_path).resolve())
                 workspace_result = FlextInfraUtilitiesGitScope.git_workspace_root(
                     repository_root
                 )
@@ -620,30 +605,17 @@ class FlextInfraUtilitiesWorktreeTransaction:
         def acquisition_failure(error: str) -> p.Result[bool]:
             return r[bool].fail(f"transaction lock acquisition failed: {error}")
 
-        lock_paths = lock_paths_result.value
-        try:
-            return FlextInfraSerializationLockOwner.execute(
-                lock_paths,
-                serialization.timeout_seconds,
-                lambda: cls._apply_transaction_patches_locked(deltas),
-                timeout_failure=timeout_failure,
-                acquisition_failure=acquisition_failure,
-            )
-        finally:
-            cls._cleanup_transaction_locks(lock_paths)
-
-    @staticmethod
-    def _cleanup_transaction_locks(lock_paths: t.SequenceOf[Path]) -> None:
-        """Remove released transaction locks and empty transaction state directories."""
-        for lock_path in lock_paths:
-            lock_path.unlink(missing_ok=True)
-            parent = lock_path.parent
-            while parent.name in {"flext-infra", ".state"}:
-                try:
-                    parent.rmdir()
-                except OSError:
-                    break
-                parent = parent.parent
+        return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
+            lock_paths_result.value,
+            serialization.timeout_seconds,
+            lambda: cls._apply_transaction_patches_locked(deltas),
+            timeout_failure=timeout_failure,
+            acquisition_failure=acquisition_failure,
+            # The transaction owns its sandbox for exactly one operation, so its
+            # lock is ephemeral: leaving the artifact behind would mutate the
+            # source checkout the transaction promised to leave untouched.
+            ephemeral=True,
+        )
 
     @classmethod
     def _cleanup_worktrees(
@@ -737,13 +709,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
         repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
     ) -> p.Result[m.Infra.WorktreeTransactionReport]:
         """Run and evaluate the command inside an already checkpointed worktree."""
-        if request.command[:1] == (c.Infra.CLI_GROUP_CODEGEN,):
-            recovery_result = cls._recover_managed_conflicts(repositories)
-            if recovery_result.failure:
-                return r[m.Infra.WorktreeTransactionReport].fail(
-                    recovery_result.error
-                    or "failed to recover owner-managed document conflicts"
-                )
         lint_commands_result = cls._lint_commands()
         if lint_commands_result.failure:
             return r[m.Infra.WorktreeTransactionReport].fail(
@@ -751,7 +716,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 or "failed to resolve transaction lint executables"
             )
         lint_commands = lint_commands_result.value
-        environment = cls._transaction_environment(worktree_root)
+        environment = cls._transaction_environment(worktree_root, request.scoped_paths)
         lint_before = cls._lint_snapshots(
             worktree_root, environment, request.timeout_seconds, lint_commands
         )
@@ -777,7 +742,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
         def _run_import_probe() -> p.Cli.CommandOutput:
             return cls._import_probe(
-                worktree_root, environment, request.timeout_seconds
+                worktree_root,
+                environment,
+                request.timeout_seconds,
+                request.scoped_paths,
             )
 
         def _run_deltas() -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:
@@ -806,12 +774,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
         applied = False
         apply_error = ""
         if request.apply_patch and not breakage:
-            changed_deltas = tuple(delta for delta in deltas if delta.patch)
-            if changed_deltas:
-                apply_result = cls.git_apply_transaction_patches(changed_deltas)
-                applied = apply_result.success
-                apply_error = apply_result.error or "" if apply_result.failure else ""
-                breakage = apply_result.failure
+            apply_result = cls.git_apply_transaction_patches(deltas)
+            applied = apply_result.success
+            apply_error = apply_result.error or "" if apply_result.failure else ""
+            breakage = apply_result.failure
         summary = (
             f"breakage={'yes' if breakage else 'no'}; "
             f"patch-check={'ok' if patch_check.success else patch_check.error}; "

@@ -1,3 +1,5 @@
+# flext-infra Documentation
+
 <!-- TOC START -->
 - [Start Here](#start-here)
 - [Public Surface Summary](#public-surface-summary)
@@ -7,8 +9,6 @@
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext-infra Documentation
 
 - Version: `0.12.0rc0`
 - Project class: `infra`

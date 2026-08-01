@@ -42,20 +42,16 @@ class TestsWorkspaceManifestV2Contract:
         read_only: bool,
         role: str = "workspace-member",
         state: str = "active",
-        profile: str | None = "workspace-member",
     ) -> dict[str, object]:
-        """Build one complete v2 repository payload."""
+        """Build one complete repository payload for the current manifest version."""
         return {
             "name": name,
             "distribution": name,
             "provider": "flext-sh",
             "url": f"https://github.com/flext-sh/{name}.git",
-            "branch": "0.12.0-dev",
             "path": path,
             "role": role,
             "state": state,
-            "profile": profile,
-            "classification": "managed",
             "checkout": checkout,
             "codegen": codegen,
             "package": package,
@@ -75,7 +71,6 @@ class TestsWorkspaceManifestV2Contract:
             editable=False,
             read_only=False,
             role="workspace-root",
-            profile="workspace-root",
         )
         member = cls._v2_repository(
             "flext-core",
@@ -91,7 +86,6 @@ class TestsWorkspaceManifestV2Contract:
             "name": "flext",
             "repository": root,
             "members": [member],
-            "content_only": [],
             "exclusions": [],
         }
 
@@ -140,7 +134,6 @@ class TestsWorkspaceManifestV2Contract:
             )
         )
         tm.that(ref.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
-        tm.that(ref.classification, eq=c.Infra.RepositoryClassification.MANAGED)
         tm.that(ref.codegen, eq=c.Infra.CodegenKind.PYTHON)
         tm.that(ref.package, eq=True)
         tm.that(ref.editable, eq=True)

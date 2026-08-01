@@ -19,6 +19,8 @@ class FlextInfraEnsureRuffConfigPhase:
     @staticmethod
     def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
         """Discover child project packages when generating workspace root settings."""
+        if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
+            return ()
         discovered = u.Infra.discover_projects(project_dir)
         if discovered.failure:
             return ()
@@ -43,6 +45,8 @@ class FlextInfraEnsureRuffConfigPhase:
         never enter Ruff. Explicit ``exclusions`` extend that same typed scope
         for non-repository paths without duplicating repository declarations.
         """
+        if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
+            return ()
         paths = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
         if paths.failure:
             raise ValueError(paths.error or "workspace analysis scope is unavailable")

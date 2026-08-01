@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
+import shutil
 from concurrent.futures import ThreadPoolExecutor
-from importlib import metadata
 from pathlib import Path
 from threading import Event
 
 import pytest
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, config, p, t
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
 from tests import m, u
 
@@ -81,18 +78,16 @@ def _workspace(tmp_path: Path) -> Path:
     config_root.mkdir()
     (config_root / "workspace.yaml").write_text(
         (
-            "version: 2\n"
+            "version: 3\n"
             "name: transaction-fixture\n"
             "repository:\n"
             "  name: transaction-fixture\n"
             "  distribution: transaction-fixture\n"
             "  provider: flext-sh\n"
             "  url: https://github.com/flext-sh/transaction-fixture.git\n"
-            "  branch: main\n"
             "  path: .\n"
             "  role: workspace-root\n"
             "  state: active\n"
-            "  profile: workspace-root\n"
             "  checkout: root\n"
             "  codegen: conform\n"
             "  package: false\n"
@@ -117,7 +112,6 @@ def _workspace(tmp_path: Path) -> Path:
             "  workspace_root_rel: .\n"
             "  year: 2026\n"
             "members: []\n"
-            "content_only: []\n"
             "exclusions: []\n"
         ),
         encoding="utf-8",
@@ -148,12 +142,9 @@ class TestsFlextInfraWorktreeTransaction:
                 "    distribution: nested-repository\n"
                 "    provider: flext-sh\n"
                 "    url: https://github.com/flext-sh/nested-repository.git\n"
-                "    branch: main\n"
                 "    path: nested-repository\n"
                 "    role: workspace-member\n"
                 "    state: active\n"
-                "    profile: workspace-member\n"
-                "    classification: managed\n"
                 "    checkout: submodule\n"
                 "    codegen: conform\n"
                 "    package: true\n"
@@ -192,6 +183,32 @@ class TestsFlextInfraWorktreeTransaction:
         (nested_root / "marker.txt").write_text("source\n", encoding="utf-8")
         u.Tests.initialize_git_repo(nested_root)
         source_head = tm.ok(u.Infra.git_repository_head(nested_root))
+        # The contract under test is gitlink TRANSPORT: the isolated worktree
+        # must not leak its own checkpoint SHA back into the superproject's
+        # recorded pointer. That pointer only exists when the superproject
+        # actually tracks the nested repository as a gitlink, so the fixture
+        # records it exactly as Git does for an initialized submodule.
+        (workspace_root / ".gitmodules").write_text(
+            '[submodule "nested-repository"]\n'
+            "\tpath = nested-repository\n"
+            "\turl = https://github.com/flext-sh/nested-repository.git\n"
+            "\tbranch = 0.12.0-dev\n"
+            "\tflext-managed = true\n",
+            encoding="utf-8",
+        )
+        tm.ok(
+            u.Infra.git_capture(
+                workspace_root,
+                (
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    "160000",
+                    source_head,
+                    "nested-repository",
+                ),
+            )
+        )
         manifest = workspace_root / "config" / "workspace.yaml"
         manifest.write_text(
             manifest.read_text(encoding="utf-8").replace(
@@ -201,12 +218,9 @@ class TestsFlextInfraWorktreeTransaction:
                 "    distribution: nested-repository\n"
                 "    provider: flext-sh\n"
                 "    url: https://github.com/flext-sh/nested-repository.git\n"
-                "    branch: main\n"
                 "    path: nested-repository\n"
                 "    role: workspace-member\n"
                 "    state: active\n"
-                "    profile: workspace-member\n"
-                "    classification: managed\n"
                 "    checkout: submodule\n"
                 "    codegen: conform\n"
                 "    package: true\n"
@@ -243,8 +257,9 @@ class TestsFlextInfraWorktreeTransaction:
         deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
 
-        tm.that(root_delta.patch.decode(), has=f"Subproject commit {source_head}")
-        tm.that(root_delta.patch.decode(), hasnt=nested.checkpoint_sha)
+        patch_text = root_delta.patch.decode()
+        tm.that(patch_text, has=f"+Subproject commit {source_head}")
+        tm.that(patch_text, lacks=f"+Subproject commit {nested.checkpoint_sha}")
         tm.ok(u.Infra.git_apply_patch(root_delta))
         staged = tm.ok(
             u.Infra.git_capture(
@@ -399,7 +414,7 @@ class TestsFlextInfraWorktreeTransaction:
             second_worktree,
         ):
             tm.ok(
-                FlextInfraSerializationLockOwner.execute(
+                u.Infra.serialization_lock_execute(
                     (repository_root / serialization.lock_path,),
                     0,
                     available,
@@ -481,7 +496,7 @@ class TestsFlextInfraWorktreeTransaction:
 
         def attempt_head_advance() -> bool:
             tm.that(preflight_complete.wait(timeout=10), where=bool)
-            immediate = FlextInfraSerializationLockOwner.execute(
+            immediate: p.Result[bool] = u.Infra.serialization_lock_execute(
                 (lock_path,),
                 0,
                 advance_source_head,
@@ -492,7 +507,7 @@ class TestsFlextInfraWorktreeTransaction:
             contention_observed.set()
             if lock_contended:
                 tm.ok(
-                    FlextInfraSerializationLockOwner.execute(
+                    u.Infra.serialization_lock_execute(
                         (lock_path,),
                         10,
                         advance_source_head,
@@ -595,11 +610,14 @@ class TestsFlextInfraWorktreeTransaction:
             m.Infra.WorktreeTransactionRequest(
                 workspace_root=workspace_root,
                 command=(
-                    "workspace",
-                    "sync",
-                    "--workspace",
+                    "codegen",
+                    "conform",
+                    "--root",
                     str(workspace_root),
-                    "--apply",
+                    "--scope",
+                    "self",
+                    "--mode",
+                    "apply",
                 ),
                 apply_patch=False,
                 timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
@@ -615,6 +633,60 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
         tm.that(_git_status(workspace_root), eq=before_status)
         tm.that((workspace_root / "Makefile").exists(), eq=False)
+
+    def test_public_transaction_fails_before_command_when_managed_tool_is_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Reject a managed PATH that cannot resolve every declared lint tool."""
+        workspace_root = _workspace(tmp_path)
+        before_status = _git_status(workspace_root)
+        before_pyproject = (workspace_root / "pyproject.toml").read_bytes()
+        # Fixture isolation must hold on any host layout. Pointing the managed
+        # PATH at git's own bin directory is not isolation: on hosts where git
+        # and the lint tools share a directory (e.g. /usr/sbin) the tools stay
+        # resolvable and the contract is never exercised. Build a bin holding
+        # only git and the shell utilities git's own porcelain scripts call, so
+        # exactly the managed lint tools are the ones that cannot resolve.
+        managed_bin = tmp_path / "host-bin-without-managed-tools"
+        managed_bin.mkdir()
+        required_host_tools = (c.Infra.GIT, "basename", "sed", "uname", "sh")
+        for tool in required_host_tools:
+            resolved_tool = shutil.which(tool)
+            if resolved_tool is None:
+                pytest.fail(f"host tool required by the transaction test: {tool}")
+            (managed_bin / tool).symlink_to(resolved_tool)
+        missing_tool = c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS[0][1][0]
+        tm.that(shutil.which(missing_tool, path=str(managed_bin)), eq=None)
+        tm.that(shutil.which(c.Infra.GIT, path=str(managed_bin)), none=False)
+        monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PATH, str(managed_bin))
+
+        transaction_result = u.Infra.execute_worktree_transaction(
+            m.Infra.WorktreeTransactionRequest(
+                workspace_root=workspace_root,
+                command=(
+                    "codegen",
+                    "conform",
+                    "--root",
+                    str(workspace_root),
+                    "--scope",
+                    "self",
+                    "--mode",
+                    "apply",
+                ),
+                apply_patch=False,
+                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
+            )
+        )
+
+        tm.fail(
+            transaction_result,
+            has=(
+                "required transaction lint executable not found on managed PATH: "
+                f"{missing_tool}"
+            ),
+        )
+        tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
+        tm.that(_git_status(workspace_root), eq=before_status)
 
 
 class TestsFlextInfraWorktreeTransactionLint:
@@ -647,20 +719,6 @@ class TestsFlextInfraWorktreeTransactionLint:
         tm.that(commands["ruff"], has="--statistics")
         tm.that(commands["ruff-details"], has="concise")
 
-    def test_runtime_metadata_declares_transaction_lint_tools(self) -> None:
-        """Installed artifacts carry every executable required by transactions."""
-        runtime_requirements = metadata.requires("flext-infra") or ()
-        runtime_names = {
-            canonicalize_name(Requirement(requirement).name)
-            for requirement in runtime_requirements
-        }
-        required_names = {
-            canonicalize_name(command[0])
-            for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
-        }
-
-        tm.that(required_names <= runtime_names, eq=True)
-
     def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
         """Stable debt is reported; every introduced diagnostic is rejected."""
         clean = (m.Infra.LintSnapshot(tool="ruff", exit_code=0),)
@@ -674,3 +732,41 @@ class TestsFlextInfraWorktreeTransactionLint:
         tm.that(lint_regressed(clean, warnings), eq=True)
         tm.that(lint_regressed(clean, nonzero), eq=True)
         tm.that(lint_regressed(errors, errors), eq=False)
+
+
+class TestsFlextInfraWorktreeTransactionScope:
+    """Contract for the productive source roots one transaction owns."""
+
+    @staticmethod
+    def _workspace(root: Path, *members: str) -> Path:
+        """Materialize a workspace whose members each expose a source root."""
+        for member in members:
+            package = root / member / c.Infra.DEFAULT_SRC_DIR / member.replace("-", "_")
+            package.mkdir(parents=True)
+            (package / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        return root
+
+    def test_scoped_request_excludes_unrelated_sibling_members(
+        self, tmp_path: Path
+    ) -> None:
+        """A scoped transaction never adopts a sibling it does not declare."""
+        # Presence on disk is not a declared dependency: importing an unscoped
+        # sibling fails closed on any member that is merely checked out.
+        root = self._workspace(tmp_path, "alpha-package", "beta-package")
+        source_roots = u.Infra._source_roots  # ruff:ignore[private-member-access]
+
+        scoped = source_roots(root, (Path("alpha-package"),))
+
+        tm.that({path.parent.parent.name for path in scoped}, eq={"alpha-package"})
+
+    def test_unscoped_request_keeps_every_member(self, tmp_path: Path) -> None:
+        """An empty scope still isolates the whole workspace, as documented."""
+        root = self._workspace(tmp_path, "alpha-package", "beta-package")
+        source_roots = u.Infra._source_roots  # ruff:ignore[private-member-access]
+
+        every = source_roots(root)
+
+        tm.that(
+            {path.parent.parent.name for path in every},
+            eq={"alpha-package", "beta-package"},
+        )
