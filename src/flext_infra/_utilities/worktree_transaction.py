@@ -343,10 +343,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def _pyrefly_interpreter(worktree_root: Path) -> str:
         """Resolve the interpreter that owns the checked tree's dependencies.
 
-        ``sys.executable`` is the flext-infra bootstrap interpreter (``uv run
-        --no-project``); it resolves flext-infra's own dependencies and can never
-        see the checked project's dev dependencies (pytest, PyYAML, ...). Type
-        checking the project against it reports every project dependency as a
+        ``sys.executable`` may point at the flext-infra bootstrap interpreter
+        (from ``FLEXT_INFRA_BOOTSTRAP`` / ``uv run --project ...``); it resolves
+        flext-infra's dependencies and may not include the checked project's dev
+        dependencies (pytest, PyYAML, ...). Type checking against it reports each as a
         missing import. The project virtualenv is the only interpreter that can
         resolve the imports the project actually declares.
         """
