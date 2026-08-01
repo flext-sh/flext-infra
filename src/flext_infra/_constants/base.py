@@ -347,6 +347,8 @@ class FlextInfraConstantsBase(
     RK_PROJECTS: Final[str] = "projects"
     RK_WORKSPACE: Final[str] = "workspace"
     RK_ROOT: Final[str] = "root"
+    ROOT_PROJECT_SELECTOR: Final[str] = "."
+    "Project selector naming the workspace root itself."
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"
