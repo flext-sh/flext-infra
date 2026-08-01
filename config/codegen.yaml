@@ -1188,7 +1188,7 @@ Infra:
           overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
-          profiles: [workspace-root, standalone]
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         # Multi-environment CI base: reusable ci-matrix workflow + per-distro
