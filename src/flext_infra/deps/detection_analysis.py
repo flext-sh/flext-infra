@@ -185,10 +185,10 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             if isinstance(module_to_package, Mapping) and root in module_to_package:
                 value = module_to_package.get(root)
                 return str(value) if value is not None else None
-        default_package: str | None = c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root)
-        if default_package is not None:
-            return default_package
-        return f"types-{root.lower()}"
+        # 5a7d1d710 removed the hardcoded module->types-* table: the declared
+        # typing_libraries.module_to_package config is the only source, so an
+        # undeclared module is unknown rather than a guessed types-* name.
+        return None
 
 
 __all__: list[str] = ["FlextInfraDependencyDetectionAnalysis"]
