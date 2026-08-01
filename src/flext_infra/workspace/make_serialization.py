@@ -63,18 +63,21 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         )
         if verb_spec is None:
             return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
-        if self.apply_token not in {"", make_config.apply_value}:
+        # The generated Makefile seeds the absent value and forwards it on every
+        # read-only run, so it means "not applying", not an invalid token.
+        applying = self.apply_token not in {"", make_config.apply_absent_value}
+        if applying and self.apply_token != make_config.apply_value:
             return r[t.StrMapping].fail(
                 f"{make_config.apply_variable} must be "
                 f"{make_config.apply_value} when set"
             )
-        if self.apply_token and not verb_spec.apply_guarded:
+        if applying and not verb_spec.apply_guarded:
             return r[t.StrMapping].fail(
                 f"Make verb '{self.verb}' is read-only and does not accept "
                 f"{make_config.apply_variable}"
             )
         selected_what = self.selector_value or (
-            verb_spec.apply_what if self.apply_token else verb_spec.default_what
+            verb_spec.apply_what if applying else verb_spec.default_what
         )
         if selected_what not in verb_spec.whats:
             allowed = ", ".join(verb_spec.whats)

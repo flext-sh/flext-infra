@@ -409,6 +409,18 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         cls, worktree_root: Path, *, message: str, excluded: t.SequenceOf[Path] = ()
     ) -> p.Result[str]:
         """Commit the complete isolated state as a synthetic checkpoint."""
+        # `make setup` fast-forwards every declared submodule to its branch tip by
+        # contract, so staging gitlinks made the checkpoint differ from HEAD before
+        # the verb even ran: every later verb then reported pending changes for
+        # pointers it never touched, and `gen` aborted before applying anything.
+        submodules_result = cls.git_declared_submodule_paths(worktree_root)
+        if submodules_result.failure:
+            return r[str].fail(
+                submodules_result.error or "failed to resolve declared submodules"
+            )
+        gitlink_exclusions = tuple(
+            f":(exclude){path.as_posix()}" for path in submodules_result.value
+        )
         if excluded:
             tracked_result = cls.git_capture(
                 worktree_root,
@@ -434,13 +446,16 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 # Why: force-add matches git_repository_delta staging (line ~454);
                 # checkpoint captures complete state incl. ignored-but-tracked paths.
                 cls.git_capture(
-                    worktree_root, ("add", "-A", "-f", "--", *tracked_paths)
+                    worktree_root,
+                    ("add", "-A", "-f", "--", *tracked_paths, *gitlink_exclusions),
                 )
                 if tracked_paths
                 else r[str].ok("")
             )
         else:
-            stage_result = cls.git_capture(worktree_root, ("add", "-A"))
+            stage_result = cls.git_capture(
+                worktree_root, ("add", "-A", "--", ".", *gitlink_exclusions)
+            )
         if stage_result.failure:
             return r[str].fail(stage_result.error or "failed to stage checkpoint")
         tree_result = cls.git_capture(worktree_root, ("write-tree",))
