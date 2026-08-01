@@ -36,6 +36,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             description="Caller mutation token validated against the Make contract"
         ),
     ] = ""
+
     def _serialized_command(
         self,
         makefile: Path,
@@ -51,21 +52,11 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             "-f",
             str(makefile),
             f"_serialized_{self.verb}",
-            *(
-                (f"{make_config.selector}={selected_what}",)
-                if selected_what
-                else ()
-            ),
-            *(
-                (f"{make_config.apply_variable}={apply_value}",)
-                if apply_value
-                else ()
-            ),
+            *((f"{make_config.selector}={selected_what}",) if selected_what else ()),
+            *((f"{make_config.apply_variable}={apply_value}",) if apply_value else ()),
         )
 
-    def _make_variables(
-        self, make_config: m.Infra.MakeSpec
-    ) -> p.Result[t.StrMapping]:
+    def _make_variables(self, make_config: m.Infra.MakeSpec) -> p.Result[t.StrMapping]:
         """Resolve one caller request from the canonical verb matrix."""
         verb_spec = next(
             (item for item in make_config.verbs if item.name == self.verb), None
@@ -91,12 +82,10 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"unsupported {self.verb} {make_config.selector}={selected_what} "
                 f"(allowed: {allowed})"
             )
-        return r[t.StrMapping].ok(
-            {
-                make_config.selector: selected_what,
-                make_config.apply_variable: self.apply_token,
-            }
-        )
+        return r[t.StrMapping].ok({
+            make_config.selector: selected_what,
+            make_config.apply_variable: self.apply_token,
+        })
 
     @classmethod
     def _process_failure(
@@ -303,10 +292,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:
             if is_mutation:
                 return self._execute_mutation_once(
-                    checkout,
-                    make_config,
-                    make_variables,
-                    makefile=selected_makefile,
+                    checkout, make_config, make_variables, makefile=selected_makefile
                 )
             return u.Infra.serialization_lock_execute(
                 (mutation_lock_path,),

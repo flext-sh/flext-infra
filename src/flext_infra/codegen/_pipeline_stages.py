@@ -67,17 +67,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         """Conform workspace toolchains through the canonical codegen planner."""
 
         def _action() -> m.Infra.CodegenResult:
-            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             result = FlextInfraCodegenConform.execute_request(
                 m.Infra.CodegenConformRequest(
                     root=ctx.workspace_root,
                     what=c.Infra.CodegenConformSurface.ALL,
                     scope=c.Infra.CodegenConformScope.ALL,
-                    mode=(
-                        c.Infra.CodegenConformMode.CHECK
-                        if dry_run
-                        else c.Infra.CodegenConformMode.APPLY
-                    ),
                 )
             )
             if result.failure:

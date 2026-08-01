@@ -88,4 +88,5 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             return False, issues
         return result.exit_code == 0, issues
 
+
 __all__: list[str] = ["FlextInfraRuffLintGate"]

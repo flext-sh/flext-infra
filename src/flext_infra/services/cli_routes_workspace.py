@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_infra import FlextInfraWorktreeService, c, m
+from flext_infra.codegen.conform import FlextInfraCodegenGenerate
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
@@ -33,6 +34,13 @@ class WorkspaceRoutes(RefactorRoutes):
             ),
         ),
         c.Infra.CLI_GROUP_WORKSPACE: (
+            m.Cli.ResultCommandRoute(
+                name="generate",
+                help_text="Apply the complete generated surface for canonical make gen",
+                model_cls=m.Infra.CodegenGenerateRequest,
+                handler=FlextInfraCodegenGenerate.execute_request,
+                success_message="generated surface applied",
+            ),
             m.Cli.ResultCommandRoute(
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",

@@ -257,6 +257,38 @@ Infra:
           allow_public_targets: true
           allow_toolchain_declarations: true
 
+    cli_transactions:
+      - routes:
+          - check:fix-enforcement
+          - check:fix-pyrefly-settings
+          - codegen:auto-fix
+          - codegen:consolidate
+          - codegen:init
+          - codegen:new
+          - codegen:pipeline
+          - codegen:py-typed
+          - codegen:scaffold
+          - codegen:version-file
+          - deps:extra-paths
+          - deps:modernize
+          - refactor:accessor-migrate
+          - refactor:apply-renames
+          - refactor:migrate-mro
+          - refactor:modernize-cli
+          - refactor:modernize-logging
+          - refactor:modernize-patterns
+          - refactor:modernize-pydantic
+          - refactor:modernize-result-di
+          - refactor:namespace-enforce
+          - refactor:wrapper-root-namespace
+        apply_option: --apply
+        apply_value_source: presence
+        check_options: [--check, --check-only]
+        strip_options: [--check, --check-only, --dry-run]
+      - routes: [workspace:generate]
+        apply_option: --apply-token
+        apply_value_source: make
+
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
@@ -720,12 +752,12 @@ Infra:
       - path: Makefile
         owner: make
         policy: full
+      - path: base.mk
+        owner: make
+        policy: full
       - path: README.md
         owner: codegen
         policy: create-only
-      - path: base.mk
-        owner: make
-        policy: delegated
       - path: config/workspace.yaml
         owner: workspace
         policy: manual
@@ -1116,7 +1148,6 @@ Infra:
             - ".github/*.rej"
         - name: "--- codegen conform: tracked owner inputs ---"
           patterns:
-            - "!base.mk"
         - name: "FINAL BEADS TRACKING POLICY"
           patterns:
             - "!.beads/"
@@ -1140,63 +1171,74 @@ Infra:
             - ".bin/"
             - ".tools/"
             - "__pycache__/"
-            - "base.mk"
             - "!.pre-commit-config.yaml"
     templates:
       root: project
       entries:
         - source: base/.github/ci-template/ci.yml.j2
           destination: .github/ci-template/ci.yml
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/copilot-instructions.md.j2
           destination: .github/copilot-instructions.md
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/dependabot.yml.j2
           destination: .github/dependabot.yml
+          render_context: github
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2
           destination: .github/prompts/flext-aggressive-scale-refactor.prompt.md
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2
           destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/check-beads-policy.sh.j2
           destination: .github/scripts/check-beads-policy.sh
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/check-cqrs-compliance.sh.j2
           destination: .github/scripts/check-cqrs-compliance.sh
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/flext-law-loop.sh.j2
           destination: .github/scripts/flext-law-loop.sh
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/install-git-hooks.sh.j2
           destination: .github/scripts/install-git-hooks.sh
+          render_context: github
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/workflows/ci.yml.j2
           destination: .github/workflows/ci.yml
+          render_context: github
+          requires_ci: true
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.pre-commit-config.yaml.j2
           destination: .pre-commit-config.yaml
+          render_context: make-workflow
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -1212,6 +1254,7 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          render_context: gitignore
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -1222,11 +1265,13 @@ Infra:
         # gives every governed repository the same ast-grep contract.
         - source: base/sgconfig.yml.j2
           destination: sgconfig.yml
+          render_context: sgconfig
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/python-version.j2
           destination: .python-version
+          render_context: toolchain
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -1237,6 +1282,7 @@ Infra:
           overwrite: false
         - source: base/.mise.toml.j2
           destination: .mise.toml
+          render_context: toolchain
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -1245,46 +1291,58 @@ Infra:
         # planner skips every other profile/class (mro-z89e governance).
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
+          render_context: beads
+          requires_beads: true
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
+          render_context: toolchain
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/workflows/docs.yml.j2
           destination: .github/workflows/docs.yml
+          render_context: github
+          requires_ci: true
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/.github/workflows/release.yml.j2
           destination: .github/workflows/release.yml
+          render_context: github
+          requires_ci: true
           profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/ci/docker/ubuntu.Dockerfile.j2
           destination: ci/docker/ubuntu.Dockerfile
+          render_context: docker
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/ci/docker/debian.Dockerfile.j2
           destination: ci/docker/debian.Dockerfile
+          render_context: docker
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/ci/docker/fedora.Dockerfile.j2
           destination: ci/docker/fedora.Dockerfile
+          render_context: docker
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/ci/docker/alpine.Dockerfile.j2
           destination: ci/docker/alpine.Dockerfile
+          render_context: docker
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/ci/docker/arch.Dockerfile.j2
           destination: ci/docker/arch.Dockerfile
+          render_context: docker
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -1292,11 +1350,18 @@ Infra:
         # environment activation is owned by mise + the generated Makefile.
         - source: base/gitmodules.j2
           destination: .gitmodules
+          render_context: make
+          surface: gitmodules
+          merge_strategy: gitmodules
           profiles: [workspace-root]
           delegate: render
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
+          render_context: make
+          surface: makefile
+          operations: [generate]
+          make_role: wrapper
           # The generic conform engine is the single Makefile owner for every
           # profile; workspace-root fan-out is selected inside this template.
           # Fully generated (overwrite: true): a project never owns a verb.
@@ -1307,6 +1372,15 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: true
+        - source: base/base.mk.j2
+          destination: base.mk
+          render_context: make
+          surface: makefile
+          operations: [generate]
+          make_role: engine
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: true
         - source: base/custom.mk.j2
           destination: custom.mk
           profiles: [workspace-root, workspace-member, standalone]
@@ -1314,6 +1388,7 @@ Infra:
           overwrite: false
         - source: base/pyproject.toml.j2
           destination: pyproject.toml
+          surface: pyproject
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

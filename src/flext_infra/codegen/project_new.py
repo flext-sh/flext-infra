@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.conform import FlextInfraCodegenGenerate
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -153,12 +153,12 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 year=self.year,
             ),
         )
-        request = m.Infra.CodegenConformRequest(
+        request = m.Infra.CodegenGenerateRequest(
             root=self.output_root.expanduser().resolve(),
             scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
+            apply_token=config.Infra.codegen.make.apply_value,
         )
-        return FlextInfraCodegenConform.execute_request(
+        return FlextInfraCodegenGenerate.execute_request(
             request, initial_workspace=workspace
         )
 

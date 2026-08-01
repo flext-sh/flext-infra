@@ -47,13 +47,6 @@ class FlextInfraConstantsCodegenProject:
         PYPROJECT = "pyproject"
 
     @unique
-    class CodegenConformMode(StrEnum):
-        """Read-only or write mode accepted by ``codegen conform``."""
-
-        CHECK = "check"
-        APPLY = "apply"
-
-    @unique
     class MakeProfile(StrEnum):
         """Generated Makefile profile for one repository."""
 
@@ -113,13 +106,12 @@ class FlextInfraConstantsCodegenProject:
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
-    CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
 
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
-    # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
+    # delegate: "render" (CLI engine) today; lazy_init/version_file later.
     # NOTE (multi-agent, mro-wkii.17): one base catalog serves both profiles;
     # workspace topology is owned only by config/workspace.yaml.
 

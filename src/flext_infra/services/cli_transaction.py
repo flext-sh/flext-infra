@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import cli as cli_facade
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.services.cli_routes import CliRouteService
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -29,64 +29,69 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         if command_name is None:
             return None
         route_key = f"{group}:{command_name}"
-        governed_routes = (
-            c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES
-            | c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES
-        )
-        return route_key if route_key in governed_routes else None
+        policy = config.Infra.codegen.cli_transaction_policy(route_key)
+        return route_key if policy is not None else None
+
+    @staticmethod
+    def _transaction_policy(route_key: str) -> m.Infra.CliTransactionPolicySpec:
+        """Resolve one already-governed route from the config SSOT."""
+        policy = config.Infra.codegen.cli_transaction_policy(route_key)
+        if policy is None:
+            msg = f"missing CLI transaction policy: {route_key}"
+            raise ValueError(msg)
+        return policy
 
     @staticmethod
     def transaction_apply_requested(route_key: str, args: t.StrSequence) -> bool:
         """Return whether the outer invocation requested source application."""
-        if route_key in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES:
-            return "--apply" in args
-        return any(
-            argument == "--mode=apply"
-            or (
-                argument == "--mode"
-                and index + 1 < len(args)
-                and args[index + 1] == "apply"
+        policy = CliTransactionService._transaction_policy(route_key)
+        option = policy.apply_option
+        if policy.apply_value_source == "presence":
+            return any(
+                argument == option or argument.startswith(f"{option}=")
+                for argument in args
             )
+        expected = config.Infra.codegen.make.apply_value
+        return any(
+            (argument == option and index + 1 < len(args) and args[index + 1] == expected)
+            or argument == f"{option}={expected}"
             for index, argument in enumerate(args)
         )
 
     @staticmethod
     def transaction_check_requested(route_key: str, args: t.StrSequence) -> bool:
         """Return whether the outer invocation requires a zero-delta check."""
-        if route_key in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES:
-            return any(argument in {"--check", "--check-only"} for argument in args)
-        return any(
-            argument == "--mode=check"
-            or (
-                argument == "--mode"
-                and index + 1 < len(args)
-                and args[index + 1] == "check"
-            )
-            for index, argument in enumerate(args)
-        )
+        policy = CliTransactionService._transaction_policy(route_key)
+        return any(argument in policy.check_options for argument in args)
 
     @staticmethod
     def transaction_inner_args(route_key: str, args: t.StrSequence) -> t.StrSequence:
         """Force the isolated invocation to materialize its complete patch."""
+        policy = CliTransactionService._transaction_policy(route_key)
+        supplied_apply_value: str | None = None
         normalized: t.MutableSequenceOf[str] = []
-        skip_next = False
-        for argument in args:
-            if skip_next:
-                skip_next = False
+        index = 0
+        while index < len(args):
+            argument = args[index]
+            if argument == policy.apply_option:
+                if policy.apply_value_source == "make" and index + 1 < len(args):
+                    supplied_apply_value = args[index + 1]
+                index += 2 if policy.apply_value_source == "make" else 1
                 continue
-            if route_key in c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES:
-                if argument == "--mode":
-                    skip_next = True
-                    continue
-                if argument.startswith("--mode="):
-                    continue
-            elif argument in {"--apply", "--check", "--check-only", "--dry-run"}:
+            if argument.startswith(f"{policy.apply_option}="):
+                if policy.apply_value_source == "make":
+                    supplied_apply_value = argument.partition("=")[2]
+                index += 1
+                continue
+            if argument in policy.strip_options:
+                index += 1
                 continue
             normalized.append(argument)
-        if route_key in c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES:
-            normalized.extend(("--mode", "apply"))
-        else:
-            normalized.append("--apply")
+            index += 1
+        normalized.append(policy.apply_option)
+        if policy.apply_value_source == "make":
+            if supplied_apply_value is not None:
+                normalized.append(supplied_apply_value)
         return tuple(normalized)
 
     @staticmethod

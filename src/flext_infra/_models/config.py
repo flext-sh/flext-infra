@@ -513,7 +513,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Mutating public verbs serialized once under the checkout lock; "
                     "validation is owned by later workflow steps"
-                ),
+                )
             ),
         ]
         snapshot_excludes: Annotated[
@@ -798,7 +798,7 @@ class FlextInfraConfigModels:
         ]
 
     class TemplateEntrySpec(_ConfigContract):
-        """One scaffold-only template mapping consumed by ``codegen new``."""
+        """One typed template projection consumed by conform and project creation."""
 
         source: Annotated[Path, m.Field(description="Template-root-relative source")]
         destination: Annotated[
@@ -812,9 +812,67 @@ class FlextInfraConfigModels:
         delegate: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical rendering delegate")
         ]
+        render_context: Annotated[
+            Literal[
+                "project",
+                "gitignore",
+                "sgconfig",
+                "make-workflow",
+                "toolchain",
+                "beads",
+                "github",
+                "docker",
+                "make",
+            ],
+            m.Field(description="Typed context factory selected for this projection"),
+        ] = "project"
+        surface: Annotated[
+            FlextInfraConstantsCodegenProject.CodegenConformSurface,
+            m.Field(description="Partial conform surface owning this projection"),
+        ] = FlextInfraConstantsCodegenProject.CodegenConformSurface.ALL
+        operations: Annotated[
+            tuple[Literal["conform", "generate"], ...],
+            m.Field(
+                min_length=1,
+                description="Canonical operations allowed to plan this projection",
+            ),
+        ] = ("conform", "generate")
+        make_role: Annotated[
+            Literal["none", "wrapper", "engine"],
+            m.Field(description="Role within the generated Make include surface"),
+        ] = "none"
+        requires_ci: Annotated[
+            bool,
+            m.Field(description="Render only for repositories with CI enabled"),
+        ] = False
+        requires_beads: Annotated[
+            bool,
+            m.Field(description="Render only for repositories owning/routing Beads"),
+        ] = False
+        merge_strategy: Annotated[
+            Literal["replace", "gitmodules"],
+            m.Field(description="Config-selected projection merge strategy"),
+        ] = "replace"
         overwrite: Annotated[
             bool, m.Field(description="Whether the template owns existing content")
         ] = False
+
+        @u.model_validator(mode="after")
+        def _validate_projection_contract(self) -> Self:
+            """Reject duplicate operations and malformed generated Make roles."""
+            if len(set(self.operations)) != len(self.operations):
+                msg = f"duplicate template operations: {self.destination}"
+                raise ValueError(msg)
+            if self.make_role != "none" and (
+                self.operations != ("generate",)
+                or self.render_context != "make"
+                or self.surface
+                is not FlextInfraConstantsCodegenProject.CodegenConformSurface.MAKEFILE
+                or not self.overwrite
+            ):
+                msg = f"invalid generated Make projection: {self.destination}"
+                raise ValueError(msg)
+            return self
 
     class TemplatesSpec(_ConfigContract):
         """New-project scaffold root and its complete ordered manifest."""
@@ -824,6 +882,30 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.TemplateEntrySpec, ...],
             m.Field(description="Complete ordered template manifest"),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_make_roles(self) -> Self:
+            """Require exactly one generated Make wrapper and one engine."""
+            destinations = tuple(entry.destination for entry in self.entries)
+            if len(set(destinations)) != len(destinations):
+                msg = "template destinations must be unique"
+                raise ValueError(msg)
+            roles = tuple(
+                entry.make_role for entry in self.entries if entry.make_role != "none"
+            )
+            if roles.count("wrapper") != 1 or roles.count("engine") != 1:
+                msg = "template manifest requires one Make wrapper and one Make engine"
+                raise ValueError(msg)
+            return self
+
+        @property
+        def make_engine_destination(self) -> t.NonEmptyStr:
+            """Return the config-declared include target for the Make wrapper."""
+            return next(
+                entry.destination
+                for entry in self.entries
+                if entry.make_role == "engine"
+            )
 
     class ScaffoldBuildSpec(_ConfigContract):
         """Configured Python build backend for newly scaffolded projects."""
@@ -1114,109 +1196,6 @@ class FlextInfraConfigModels:
             m.Field(description="Typed pytest execution policy"),
         ]
 
-    class MakefileRenderSpec(MakeCommandContext):
-        """Field-only render input for an existing repository Makefile."""
-
-        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
-        infra_repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(
-                description="Canonical bootstrap source for the infrastructure CLI"
-            ),
-        ]
-        infra_repository_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider-owned infrastructure baseline branch"),
-        ]
-        infra_source_root_rel: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Repository-relative local infrastructure source, or None "
-                    "when bootstrap must use the configured Git source"
-                )
-            ),
-        ] = None
-        make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
-            m.Field(description="Selected repository Make profile"),
-        ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr, m.Field(description="Relative workspace root path")
-        ]
-        workspace_members: Annotated[
-            tuple[str, ...], m.Field(description="Declared workspace member paths")
-        ] = ()
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Repositories editable from the selected workspace"),
-        ] = ()
-        workspace_gitlinks: Annotated[
-            tuple[FlextInfraConfigModels.ManagedGitlinkSpec, ...],
-            m.Field(description="Provider-resolved governed Git submodules"),
-        ] = ()
-        uv_link_mode: Annotated[
-            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
-        ]
-        make: Annotated[
-            FlextInfraConfigModels.MakeSpec,
-            m.Field(description="Generated Make command contract"),
-        ]
-        extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
-            m.Field(description="Repository-specific public Make verbs"),
-        ] = ()
-        script_dispatch: Annotated[
-            FlextInfraConfigModels.ScriptDispatchSpec | None,
-            m.Field(description="Optional script command dispatch contract"),
-        ] = None
-
-        makefile_custom_include: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Generated custom Make policy include directive"),
-        ]
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
-            ),
-        ] = ()
-        workspace_cli_group: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="CLI group used for workspace orchestration"),
-        ]
-        project_selection_conflict_error: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mutually exclusive project selector error"),
-        ]
-        mypy_memory_limit_mb: Annotated[
-            int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
-        ]
-        mypy_timeout_seconds: Annotated[
-            int, m.Field(gt=0, description="Generated Mypy wall-time limit in seconds")
-        ]
-        mypy_timeout_exit_code: Annotated[
-            int, m.Field(gt=0, description="Wall-time limiter timeout exit code")
-        ]
-        mypy_signal_exit_offset: Annotated[
-            int, m.Field(gt=0, description="Shell signal exit-code offset")
-        ]
-        prlimit_command: Annotated[
-            t.NonEmptyStr, m.Field(description="Address-space limiter executable")
-        ]
-        prlimit_address_space_option: Annotated[
-            t.NonEmptyStr, m.Field(description="Address-space limiter option")
-        ]
-        timeout_command: Annotated[
-            t.NonEmptyStr, m.Field(description="Wall-time limiter executable")
-        ]
-        timeout_kill_after_seconds: Annotated[
-            int, m.Field(gt=0, description="Forced-termination grace period")
-        ]
-        pytest_process_timeout_seconds: Annotated[
-            int, m.Field(gt=0, description="Pytest process wall-time boundary")
-        ]
-
     class BeadsConfigRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
 
@@ -1354,6 +1333,10 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
+        ]
+        make_engine_path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Config-declared Make engine included by the wrapper"),
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
@@ -1744,6 +1727,30 @@ class FlextInfraConfigModels:
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
 
+    class CliTransactionPolicySpec(_ConfigContract):
+        """One declarative transaction policy shared by compatible CLI routes."""
+
+        routes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="CLI group:command routes using policy"),
+        ]
+        apply_option: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^--[a-z][a-z0-9-]*$", description="Mutation option"),
+        ]
+        apply_value_source: Annotated[
+            Literal["presence", "make"],
+            m.Field(description="Presence flag or MakeSpec-owned token value"),
+        ] = "presence"
+        check_options: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Options requiring a zero-delta transaction"),
+        ] = ()
+        strip_options: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Outer intent options removed from inner command"),
+        ] = ()
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -1804,6 +1811,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical Make contract"),
         ]
+        cli_transactions: Annotated[
+            tuple[FlextInfraConfigModels.CliTransactionPolicySpec, ...],
+            m.Field(min_length=1, description="Typed CLI worktree transaction policy"),
+        ]
         vscode: Annotated[
             FlextInfraConfigModels.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),
@@ -1827,6 +1838,27 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_cli_transaction_routes(self) -> Self:
+            """Reject routes claimed by more than one transaction policy."""
+            routes = tuple(
+                route for policy in self.cli_transactions for route in policy.routes
+            )
+            duplicates = sorted({route for route in routes if routes.count(route) > 1})
+            if duplicates:
+                msg = f"duplicate CLI transaction routes: {duplicates}"
+                raise ValueError(msg)
+            return self
+
+        def cli_transaction_policy(
+            self, route: str
+        ) -> FlextInfraConfigModels.CliTransactionPolicySpec | None:
+            """Resolve one route through the typed transaction SSOT."""
+            return next(
+                (policy for policy in self.cli_transactions if route in policy.routes),
+                None,
+            )
 
         @m.computed_field()
         @property
@@ -2310,22 +2342,8 @@ class FlextInfraConfigModels:
             """Whether the sync altered any environment file."""
             return bool(self.changed_files)
 
-    class BaseMkRenderRequest(_ConfigContract):
-        """Validated public request for one base.mk render."""
-
-        project_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
-        ]
-
-    class BaseMkRenderResult(_ConfigContract):
-        """Rendered base.mk content for one project."""
-
-        content: Annotated[
-            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
-        ]
-
     class CodegenConformRequest(_ConfigContract):
-        """Validated public request for ``flext-infra codegen conform``."""
+        """Validated read-only request for ``flext-infra codegen conform``."""
 
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
         what: Annotated[
@@ -2336,10 +2354,19 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.CodegenConformScope,
             m.Field(description="Repository selection scope"),
         ] = FlextInfraConstantsCodegenProject.CodegenConformScope.SELF
-        mode: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenConformMode,
-            m.Field(description="Read-only check or atomic apply"),
-        ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
+
+    class CodegenGenerateRequest(_ConfigContract):
+        """Validated internal apply request owned by canonical ``make gen``."""
+
+        root: Annotated[Path, m.Field(description="Repository or workspace root")]
+        scope: Annotated[
+            FlextInfraConstantsCodegenProject.CodegenConformScope,
+            m.Field(description="Repository selection scope"),
+        ] = FlextInfraConstantsCodegenProject.CodegenConformScope.SELF
+        apply_token: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Apply token validated against the Make SSOT"),
+        ]
 
     class CodegenFilePlan(_ConfigContract):
         """Expected content and current state for one managed file."""

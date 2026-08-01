@@ -17,7 +17,6 @@ from .__version__ import __version__ as __version__
 from .__version__ import __version_info__ as __version_info__
 
 if TYPE_CHECKING:
-    from . import basemk as basemk
     from flext_cli import d, e, h, r, x
 
     from ._config import config
@@ -39,7 +38,6 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".api": ("FlextInfra", "infra"),
     ".base": ("FlextInfraServiceBase", "s"),
     ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-    ".basemk": ("basemk",),
     ".cli": ("FlextInfraCli", "docs_main", "main"),
     ".constants": ("FlextInfraConstants", "c"),
     ".models": ("FlextInfraModels", "m"),
@@ -77,7 +75,6 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
-    "basemk",
     "c",
     "config",
     "d",

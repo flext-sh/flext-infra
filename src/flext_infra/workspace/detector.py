@@ -425,10 +425,6 @@ class FlextInfraWorkspaceDetector(
             return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
         resolved_workspace = workspace_spec
         if resolved_workspace is None:
-            # mro-5qfa: an aggregator declares submodules without owning the FLEXT
-            # toolchain; .gitmodules alone never promotes it to a workspace root.
-            if not cls._declares_workspace_toolchain(repository_root):
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             workspace_result = cls.load_workspace_spec(repository_root)
             if workspace_result.failure:
                 return r[c.Infra.WorkspaceMode].fail(
