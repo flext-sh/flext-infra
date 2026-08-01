@@ -122,7 +122,8 @@ class FlextInfraModelsWorktree:
             bool, m.Field(description="Whether execution introduced breakage")
         ] = False
         applied: Annotated[
-            bool, m.Field(description="Whether every checked patch was applied")
+            bool,
+            m.Field(description="Whether at least one non-empty patch was applied"),
         ] = False
         summary: Annotated[
             t.NonEmptyStr, m.Field(description="Human-readable transaction outcome")
