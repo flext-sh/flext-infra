@@ -268,6 +268,10 @@ class FlextInfraConfigModels:
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
+        ]
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(
@@ -292,6 +296,15 @@ class FlextInfraConfigModels:
                     "it per project in codegen.yaml"
                 ),
             ),
+        ]
+
+    class MakeWorkflowRenderSpec(_ConfigContract):
+        """Typed input shared by generated local workflow surfaces."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
         ]
 
     class DistroDockerRenderSpec(_ConfigContract):
@@ -350,11 +363,15 @@ class FlextInfraConfigModels:
         ]
 
     class MakeVerbSpec(_ConfigContract):
-        """One public Make verb and its single default selector."""
+        """One public Make verb and its complete handler-selector contract."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
         default_what: Annotated[
             t.NonEmptyStr, m.Field(description="Default WHAT selector")
+        ]
+        whats: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Complete ordered handler selectors"),
         ]
         apply_guarded: Annotated[
             bool, m.Field(description="Whether mutation requires APPLY=Y")
@@ -362,16 +379,66 @@ class FlextInfraConfigModels:
         apply_what: Annotated[
             t.NonEmptyStr,
             m.Field(
+                default="all",
                 description=(
                     "Selector an apply-guarded verb resolves to when APPLY is "
-                    "set and no explicit WHAT is given. Without it the verb "
-                    "fell back to default_what ('check') and silently mutated "
-                    "nothing. Defaults to 'apply' because that is the mutating "
-                    "handler every guarded verb declares; a verb whose mutating "
-                    "surface has another name declares it explicitly"
-                )
+                    "set and no explicit WHAT is given. Without it, "
+                    "a mutating workflow step could silently retain its "
+                    "read-only default selector"
+                ),
             ),
-        ] = "apply"
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_whats(self) -> Self:
+            """Require defaults and mutation selectors to name one owned handler."""
+            if len(set(self.whats)) != len(self.whats):
+                msg = f"make verb {self.name} handler selectors must be unique"
+                raise ValueError(msg)
+            required = {self.default_what}
+            if self.apply_guarded:
+                required.add(self.apply_what)
+            missing = required - set(self.whats)
+            if missing:
+                msg = (
+                    f"make verb {self.name} selectors have no handler: "
+                    f"{', '.join(sorted(missing))}"
+                )
+                raise ValueError(msg)
+            return self
+
+    class MakeWorkflowStepSpec(_ConfigContract):
+        """One canonical workflow step and its explicit mutation intent."""
+
+        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
+        apply: Annotated[
+            bool,
+            m.Field(description="Whether the step supplies the configured apply token"),
+        ] = False
+        contexts: Annotated[
+            tuple[Literal["local", "ci", "pre_commit"], ...],
+            m.Field(
+                min_length=1,
+                description="Execution contexts consuming this single workflow row",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_contexts(self) -> Self:
+            """Require unique contexts and retain every step in the local workflow."""
+            if len(set(self.contexts)) != len(self.contexts):
+                msg = f"make workflow contexts must be unique for {self.verb}"
+                raise ValueError(msg)
+            if "local" not in self.contexts:
+                msg = f"make workflow step {self.verb} must run locally"
+                raise ValueError(msg)
+            return self
+
+    class MakeCiSpec(_ConfigContract):
+        """The only permitted environment delta between local and CI execution."""
+
+        variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
+        value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -440,13 +507,12 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
-        mutation_fixed_points: Annotated[
-            Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, t.NonEmptyStr]],
+        mutation_verbs: Annotated[
+            tuple[t.NonEmptyStr, ...],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
                 description=(
-                    "Authorized mutating WHATs and the validation WHAT each must "
-                    "run afterward under the same lock"
+                    "Mutating public verbs serialized once under the checkout lock; "
+                    "validation is owned by later workflow steps"
                 ),
             ),
         ]
@@ -511,23 +577,15 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
                 )
                 raise ValueError(msg)
-            invalid = set(self.mutation_fixed_points) - set(self.verbs)
+            invalid = set(self.mutation_verbs) - set(self.verbs)
             if invalid:
                 msg = (
                     "make serialization mutation verbs are not serialized: "
                     f"{', '.join(sorted(invalid))}"
                 )
                 raise ValueError(msg)
-            empty = [
-                verb
-                for verb, fixed_points in self.mutation_fixed_points.items()
-                if not fixed_points
-            ]
-            if empty:
-                msg = (
-                    "make serialization mutation verbs require fixed points: "
-                    f"{', '.join(sorted(empty))}"
-                )
+            if len(set(self.mutation_verbs)) != len(self.mutation_verbs):
+                msg = "make serialization mutation verbs must be unique"
                 raise ValueError(msg)
             return self
 
@@ -549,13 +607,6 @@ class FlextInfraConfigModels:
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
-        actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Ordered public docs actions"),
-        ]
-        default_action: Annotated[
-            t.NonEmptyStr, m.Field(description="Default docs action")
-        ]
         mutable_actions: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
@@ -569,27 +620,6 @@ class FlextInfraConfigModels:
                 description="Regex rejecting cross-project relative Markdown links"
             ),
         ]
-
-        @u.model_validator(mode="after")
-        def _validate_docs_actions(self) -> Self:
-            """Require the default action and every mutable action to be declared."""
-            declared = set(self.actions)
-            if self.default_action not in declared:
-                msg = (
-                    f"docs default action must be one of {', '.join(sorted(declared))}"
-                )
-                raise ValueError(msg)
-            unknown = set(self.mutable_actions) - declared
-            if unknown:
-                msg = (
-                    "docs mutable actions must be declared actions: "
-                    f"{', '.join(sorted(unknown))}"
-                )
-                raise ValueError(msg)
-            if not any(action == "all" for action in self.actions):
-                msg = "docs actions must include the 'all' aggregate action"
-                raise ValueError(msg)
-            return self
 
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
@@ -610,6 +640,14 @@ class FlextInfraConfigModels:
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
             m.Field(description="Per-checkout Make validation serialization"),
+        ]
+        workflow: Annotated[
+            tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
+            m.Field(min_length=1, description="Ordered canonical validation workflow"),
+        ]
+        ci: Annotated[
+            FlextInfraConfigModels.MakeCiSpec,
+            m.Field(description="Config-owned CI-only environment delta"),
         ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -635,6 +673,9 @@ class FlextInfraConfigModels:
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
             declared = {verb.name for verb in self.verbs}
+            if len(declared) != len(self.verbs):
+                msg = "make public verb names must be unique"
+                raise ValueError(msg)
             serialized = set(self.serialization.verbs)
             invalid = serialized - declared
             if invalid:
@@ -646,10 +687,39 @@ class FlextInfraConfigModels:
             if "setup" in serialized:
                 msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
-            docs_actions = set(self.docs.actions)
-            if self.docs.default_action not in docs_actions:
-                msg = "make docs default_action must be declared in actions"
+            workflow_verbs = tuple(step.verb for step in self.workflow)
+            if len(set(workflow_verbs)) != len(workflow_verbs):
+                msg = "make workflow verbs must be unique"
                 raise ValueError(msg)
+            unknown_workflow = set(workflow_verbs) - declared
+            if unknown_workflow:
+                msg = (
+                    "make workflow verbs are not declared public verbs: "
+                    f"{', '.join(sorted(unknown_workflow))}"
+                )
+                raise ValueError(msg)
+            verb_specs = {verb.name: verb for verb in self.verbs}
+            invalid_apply = [
+                step.verb
+                for step in self.workflow
+                if step.apply != verb_specs[step.verb].apply_guarded
+            ]
+            if invalid_apply:
+                msg = (
+                    "make workflow apply intent must match verb contract: "
+                    f"{', '.join(sorted(invalid_apply))}"
+                )
+                raise ValueError(msg)
+            mutation_verbs = set(self.serialization.mutation_verbs)
+            guarded_verbs = {verb.name for verb in self.verbs if verb.apply_guarded}
+            if mutation_verbs != guarded_verbs:
+                msg = "serialized mutation verbs must equal apply-guarded public verbs"
+                raise ValueError(msg)
+            docs_verb = next((verb for verb in self.verbs if verb.name == "docs"), None)
+            if docs_verb is None:
+                msg = "make docs verb must be declared"
+                raise ValueError(msg)
+            docs_actions = set(docs_verb.whats)
             invalid_mutable = set(self.docs.mutable_actions) - docs_actions
             if invalid_mutable:
                 msg = "make docs mutable_actions must be declared in actions"
@@ -661,6 +731,12 @@ class FlextInfraConfigModels:
                 msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
+
+        @m.computed_field()
+        @property
+        def handler_whats(self) -> Mapping[str, tuple[str, ...]]:
+            """Canonical public verb-to-handler matrix consumed by every renderer."""
+            return {verb.name: verb.whats for verb in self.verbs}
 
         @m.computed_field()
         @property

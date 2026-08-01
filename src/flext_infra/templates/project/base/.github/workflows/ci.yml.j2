@@ -7,15 +7,11 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
+# Source: config:repository_branch; promotion is integration -> main only
 "on":
   pull_request:
     branches:
-      - {{ repository_branch }}
-  push:
-    branches:
-      - {{ repository_branch }}
-  workflow_dispatch:
+      - main
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -29,8 +25,11 @@ jobs:
   # Source: template + config:github_actions.*
   ci:
     name: ci
+    if: {% raw %}${{ github.head_ref == '{% endraw %}{{ repository_branch }}{% raw %}' }}{% endraw %}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
@@ -44,12 +43,8 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-      - name: Setup (blocking)
-        run: make setup
-
-      - name: Check (blocking)
-        run: make check
-
-      - name: Test (blocking)
-        run: make test
-# End SECTION: ci job
+{% for step in make.workflow if "ci" in step.contexts %}
+      - name: {{ step.verb }} (blocking)
+        run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
+{% endfor %}
+    # End SECTION: ci job

@@ -94,14 +94,32 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 
 # === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
-#        config:make.docs.actions, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release fix gen worktree
-CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
-CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
+# Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
+#        config:make.check_gates_default, config:make.serialization.verbs
+PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
+BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
+SCRIPT_VERBS :=
+_ALLOWED_WHATS_help := usage
+_ALLOWED_WHATS_setup := environment
+_ALLOWED_WHATS_deps := check lock upgrade
+_ALLOWED_WHATS_build := artifacts
+_ALLOWED_WHATS_check := all
+_ALLOWED_WHATS_test := all
+_ALLOWED_WHATS_fmt := check all
+_ALLOWED_WHATS_fix := check all
+_ALLOWED_WHATS_run := default
+_ALLOWED_WHATS_status := diagnostics
+_ALLOWED_WHATS_docs := all generate fix audit build validate
+_ALLOWED_WHATS_clean := generated
+_ALLOWED_WHATS_release := status
+_ALLOWED_WHATS_gen := check all
+_ALLOWED_WHATS_worktree := list add update remove
+
+CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
+CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test gen
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen
+SERIALIZED_VERBS := check test gen fmt fix
+SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -137,18 +155,18 @@ _DEFAULT_build := artifacts
 _DEFAULT_check := all
 _DEFAULT_test := all
 _DEFAULT_fmt := check
+_DEFAULT_fix := check
 _DEFAULT_run := default
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := all
 _DEFAULT_clean := generated
 _DEFAULT_release := status
-_DEFAULT_fix := check
 _DEFAULT_gen := check
 _DEFAULT_worktree := list
 
-_APPLY_WHAT_fmt := apply
-_APPLY_WHAT_fix := apply
-_APPLY_WHAT_gen := apply
+_APPLY_WHAT_fmt := all
+_APPLY_WHAT_fix := all
+_APPLY_WHAT_gen := all
 
 
 # === SECTION: profile routing (managed) ===
@@ -234,7 +252,7 @@ WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(pr
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS := build check clean docs fmt scan test val
+ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
@@ -251,43 +269,16 @@ endif
 
 
 -include custom.mk
-
-_BUILTIN_HANDLERS := \
-	_builtin_help_usage \
-	_builtin_deps_check \
-	_builtin_deps_lock \
-	_builtin_deps_upgrade \
-	_builtin_build_artifacts \
-	_builtin_check_all \
-	_builtin_test_all \
-	_builtin_fmt_check \
-	_builtin_fmt_apply \
-	_builtin_run_default \
-	_builtin_status_diagnostics \
-	_builtin_docs_all \
-_builtin_docs_generate \
-_builtin_docs_fix \
-_builtin_docs_audit \
-_builtin_docs_build \
-_builtin_docs_validate \
-_builtin_clean_generated \
-	_builtin_release_status \
-	_builtin_gen_check \
-	_builtin_gen_apply \
-	_builtin_gen_all \
-	_builtin_fmt_all \
-	_builtin_fix_check \
-	_builtin_fix_apply \
-	_builtin_fix_all \
-	_builtin_worktree_list \
-	_builtin_worktree_add \
-	_builtin_worktree_update \
-	_builtin_worktree_remove
-
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
+	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "Y" ]; then \
+		printf 'ERROR: APPLY must be Y when set\n' >&2; exit 2; \
+	fi; \
+	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
+		printf 'ERROR: verb %s is read-only and does not accept APPLY\n' "$(1)" >&2; exit 2; \
+	fi; \
 	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
@@ -295,16 +286,16 @@ define _dispatch
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
+	case " $(_ALLOWED_WHATS_$(1)) " in \
+		*" $$what "*) ;; \
+		*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
+	esac; \
 	builtin="_builtin_$(1)_$$what"; \
-	custom="_custom_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
-	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
-	esac; \
+	$(SELF_MAKE) "$$builtin" || exit $$?; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -333,31 +324,45 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_fmt_check _builtin_fmt_all _builtin_fix_check _builtin_fix_all _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_worktree_list _builtin_worktree_add _builtin_worktree_update _builtin_worktree_remove
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 
 check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
 
 _serialized_check:
 	$(call _dispatch,check)
 
 
 test: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
 
 _serialized_test:
 	$(call _dispatch,test)
 
 
 gen: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
 
 _serialized_gen:
 	$(call _dispatch,gen)
+
+
+fmt: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fmt" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+_serialized_fmt:
+	$(call _dispatch,fmt)
+
+
+fix: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fix" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+_serialized_fix:
+	$(call _dispatch,fix)
 
 
 
@@ -387,7 +392,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'deps' 'check';
+	@printf '  %-10s WHAT=%s\n' 'deps' 'check|lock|upgrade';
 
 
 
@@ -403,7 +408,11 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check';
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check|all';
+
+
+
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fix' 'check|all';
 
 
 
@@ -427,25 +436,20 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fix' 'check';
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' 'check|all';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' 'check';
-
-
-
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
+	@printf '  %-10s WHAT=%s\n' 'worktree' 'list|add|update|remove';
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
-	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
-	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
+	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
 	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
 			printf '  %s\n' 'Defined in this project:'; \
 			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
@@ -647,9 +651,6 @@ _builtin_build_artifacts:
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-	if [ "$(strip $(APPLY))" = "Y" ]; then \
-		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
-	fi; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
@@ -670,20 +671,16 @@ _builtin_test_all: _builtin_require_environment
 _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_fmt_apply: _builtin_require_environment
+_builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
-_builtin_fmt_all: _builtin_fmt_apply
+_builtin_fix_check:
+	@printf 'ERROR: make fix requires APPLY=Y\n' >&2; exit 2
 
-_builtin_fix_check: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
-
-_builtin_fix_apply: _builtin_require_environment
+_builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-
-_builtin_fix_all: _builtin_fix_apply
 
 
 _builtin_run_default: _builtin_require_environment
@@ -744,12 +741,9 @@ _builtin_release_status: _builtin_require_environment
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
-_builtin_gen_apply: _builtin_require_environment
+_builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-
-# `all` is the strict selector: every generated surface, no scope skipped.
-_builtin_gen_all: _builtin_gen_apply
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list

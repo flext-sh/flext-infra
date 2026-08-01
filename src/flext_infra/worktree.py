@@ -236,7 +236,7 @@ class FlextInfraWorktreeService(s[str]):
         return r.ok(str(lane))
 
     def _update(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
-        """Fast-forward one canonical lane to the explicitly requested base."""
+        """Merge-forward one clean canonical lane to the requested base."""
         if not self.apply_changes:
             return r.fail("worktree update requires --apply")
         lane_result = self._registered_lane(primary_root, branch)
@@ -255,11 +255,34 @@ class FlextInfraWorktreeService(s[str]):
                 f"worktree lane branch mismatch: expected {branch}, "
                 f"found {current_branch.value.strip()}"
             )
-        updated = u.Infra.git_capture(lane, ("merge", "--ff-only", base))
+        status = u.Infra.git_capture(
+            lane, ("status", "--porcelain", "--untracked-files=all")
+        )
+        if status.failure:
+            return r.fail(status.error or f"failed to inspect lane state: {lane}")
+        if status.value.strip():
+            return r.fail(
+                "worktree update requires a clean lane; commit the owned WIP "
+                "before merge-forward"
+            )
+        resolved_base = u.Infra.git_capture(
+            lane, ("rev-parse", "--verify", f"{base}^{{commit}}")
+        )
+        if resolved_base.failure:
+            return r.fail(resolved_base.error or f"cannot resolve update base: {base}")
+        base_oid = resolved_base.value.strip()
+        contains_base = u.Infra.git_run(
+            lane, ("merge-base", "--is-ancestor", base_oid, "HEAD")
+        )
+        if contains_base.failure:
+            return r.fail(contains_base.error or "failed to inspect update ancestry")
+        if contains_base.value.exit_code == 0:
+            return r.ok(str(lane))
+        updated = u.Infra.git_capture(lane, ("merge", "--no-edit", base_oid))
         if updated.failure:
             return r.fail(
                 updated.error
-                or f"worktree update cannot fast-forward {branch} to {base}"
+                or f"worktree update cannot merge-forward {branch} to {base_oid}"
             )
         return r.ok(str(lane))
 

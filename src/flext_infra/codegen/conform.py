@@ -1375,6 +1375,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
+        if destination == ".pre-commit-config.yaml":
+            return r[p.Model].ok(
+                m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
+            )
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
@@ -1411,6 +1415,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_branch=provider.value.branch,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
+                    make=codegen.make,
                     workspace_repositories=workspace_repositories,
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules

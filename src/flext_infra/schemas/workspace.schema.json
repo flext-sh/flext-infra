@@ -205,7 +205,8 @@
       "additionalProperties": false,
       "required": [
         "name",
-        "default_what"
+        "default_what",
+        "whats"
       ],
       "properties": {
         "name": {
@@ -214,6 +215,15 @@
         "default_what": {
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "whats": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
         },
         "apply_guarded": {
           "type": "boolean"
