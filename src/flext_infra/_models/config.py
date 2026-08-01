@@ -356,6 +356,18 @@ class FlextInfraConfigModels:
         default_what: Annotated[
             t.NonEmptyStr, m.Field(description="Default WHAT selector")
         ]
+        whats: Annotated[
+            t.StrSequence,
+            m.Field(
+                default=(),
+                description=(
+                    "Builtin WHAT selectors this verb implements. The generated "
+                    "_BUILTIN_HANDLERS list is derived from these, so a verb's "
+                    "handlers and its default selector come from one source "
+                    "instead of a literal list the template restated by hand"
+                ),
+            ),
+        ]
         apply_guarded: Annotated[
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
