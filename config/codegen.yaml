@@ -179,49 +179,128 @@ Infra:
         verbs: [check, test, gen]
       verbs:
         - name: help
-          default_what: usage
+          whats:
+            - usage
+          default_what: all
+          whats:
+            - usage
           apply_guarded: false
         - name: setup
-          default_what: environment
+          default_what: all
+          whats:
+            - environment
+            - submodules
           apply_guarded: false
         - name: deps
-          default_what: check
+          whats:
+            - check
+            - lock
+            - upgrade
+          default_what: all
+          whats:
+            - check
+            - lock
+            - upgrade
           apply_guarded: false
         - name: build
-          default_what: artifacts
+          whats:
+            - artifacts
+          default_what: all
+          whats:
+            - artifacts
           apply_guarded: false
         - name: check
+          whats:
+            - all
           default_what: all
+          whats:
+            - all
           apply_guarded: false
         - name: test
+          whats:
+            - all
           default_what: all
+          whats:
+            - all
           apply_guarded: false
         - name: fmt
-          default_what: check
+          whats:
+            - check
+            - apply
+            - all
+          default_what: all
+          whats:
+            - all
+            - apply
+            - check
           apply_guarded: true
         - name: run
-          default_what: default
+          whats:
+            - default
+          default_what: all
+          whats:
+            - default
           apply_guarded: false
         - name: status
-          default_what: diagnostics
+          whats:
+            - diagnostics
+          default_what: all
+          whats:
+            - diagnostics
           apply_guarded: false
         - name: docs
           default_what: all
+          whats:
+            - all
           apply_guarded: false
         - name: clean
-          default_what: generated
+          whats:
+            - generated
+          default_what: all
+          whats:
+            - generated
           apply_guarded: false
         - name: release
-          default_what: status
+          whats:
+            - status
+          default_what: all
+          whats:
+            - status
           apply_guarded: false
         - name: fix
-          default_what: check
+          whats:
+            - check
+            - apply
+            - all
+          default_what: all
+          whats:
+            - all
+            - apply
+            - check
           apply_guarded: true
         - name: gen
-          default_what: check
+          whats:
+            - check
+            - apply
+            - all
+          default_what: all
+          whats:
+            - all
+            - apply
+            - check
           apply_guarded: true
         - name: worktree
-          default_what: list
+          whats:
+            - list
+            - add
+            - update
+            - remove
+          default_what: all
+          whats:
+            - add
+            - list
+            - remove
+            - update
           apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
