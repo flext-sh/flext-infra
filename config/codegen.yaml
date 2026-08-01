@@ -1289,9 +1289,14 @@ Infra:
           destination: Makefile
           # The generic conform engine is the single Makefile owner for every
           # profile; workspace-root fan-out is selected inside this template.
+          # Fully generated (overwrite: true): a project never owns a verb.
+          # `overwrite: false` froze every existing Makefile at the shape it
+          # had when first written, so new builtin verbs never reached the
+          # fleet. Customisation lives exclusively in custom.mk, through
+          # pre-/post-verb hooks, and may not redefine a verb.
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/custom.mk.j2
           destination: custom.mk
           profiles: [workspace-root, workspace-member, standalone]
