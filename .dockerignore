@@ -1,0 +1,13 @@
+# Bootstrap files required for clean-machine `make setup` inside Docker.
+# Re-include only the tooling surface; the build fetches the rest.
+*
+!Makefile
+!*.mk
+!pyproject.toml
+!uv.lock
+!.mise.toml
+!.python-version
+!.default-python-packages
+!config/
+!scripts/dispatch.py
+!ci/docker/

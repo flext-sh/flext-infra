@@ -78,7 +78,9 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_bootstrap_include() -> p.Result[str]:
         """Render the canonical Makefile bootstrap include block."""
         return FlextInfraBaseMkTemplateRenderer().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE, make=c.Infra
+            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
+            make=c.Infra,
+            mise_version=config.Infra.codegen.toolchain.mise_version,
         )
 
     @override
@@ -89,7 +91,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def _render_template(
         template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig | m.BaseModel | t.Infra.InfraValue | type,
     ) -> str:
         """Render template."""
         rendered: str = template.render(**kwargs)
@@ -108,6 +110,10 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                 rendered = self._render_template(
                     template,
                     settings=active_config,
+                    apply_value=config.Infra.codegen.make.apply_value,
+                    apply_variable=config.Infra.codegen.make.apply_variable,
+                    docs=config.Infra.codegen.make.docs,
+                    pytest=config.Infra.tooling.tools.pytest,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -131,7 +137,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig | m.BaseModel | t.Infra.InfraValue | type,
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

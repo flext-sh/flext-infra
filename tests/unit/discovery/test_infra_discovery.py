@@ -228,14 +228,13 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         (config_dir / "workspace.yaml").write_text(
-            "version: 2\n"
+            "version: 3\n"
             "name: demo\n"
             "repository:\n"
             "  name: demo\n"
             "  distribution: demo\n"
             "  provider: acme-hosting\n"
             "  url: https://github.com/acme-hosting/demo.git\n"
-            "  branch: main\n"
             "  path: .\n"
             "  role: standalone\n"
             "  state: active\n"
@@ -246,7 +245,6 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
             "  editable: false\n"
             "  read_only: false\n"
             "members: []\n"
-            "content_only: []\n"
             "exclusions:\n"
             "  - path: data\n"
             "    reason: vendored document submodules\n",

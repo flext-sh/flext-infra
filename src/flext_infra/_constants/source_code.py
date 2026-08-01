@@ -37,8 +37,8 @@ class FlextInfraConstantsSourceCode:
         "vendor"
     }
     "Non-productive roots excluded while discovering Python analyzer surfaces."
-    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"site"}
-    "Directories to exclude when analyzing documentation."
+    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"legado", "site"}
+    "Live documentation excludes generated sites and historical evidence roots."
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         "context_test",

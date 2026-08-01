@@ -188,7 +188,7 @@ secrets.yml
 .devcontainer/.env
 .github/*.rej
 
-# --- workspace-migrate: required ignores (auto-managed) ---
+# --- codegen conform: tracked owner inputs ---
 !base.mk
 
 # FINAL BEADS TRACKING POLICY
@@ -206,10 +206,12 @@ legado/
 # codegen module-standardizer reject artifacts (ADR-005 §9)
 *.tpl.rej
 
-# --- workspace-sync: required ignores (auto-managed) ---
+# --- codegen conform: generated runtime ignores ---
 .direnv/
 .reports/
 .venv/
+.bin/
+.tools/
 __pycache__/
 base.mk
 !.pre-commit-config.yaml
@@ -217,6 +219,7 @@ base.mk
 # Derived build and tool artifacts
 __pyrefly_virtual__/
 .benchmarks/
+.bkp/
 .cache/
 .codegraph/
 .dolt_dropped_databases/
@@ -252,3 +255,20 @@ skill-create-output/
 .debug-journal.md
 .mcp.json
 CLAUDE.local.md
+
+# Tracked managed artifacts
+!ci/
+!ci/docker/
+!ci/docker/alpine.Dockerfile
+!ci/docker/arch.Dockerfile
+!ci/docker/debian.Dockerfile
+!ci/docker/fedora.Dockerfile
+!ci/docker/ubuntu.Dockerfile
+!.github/workflows/
+!.github/workflows/ci-matrix.yml
+!.github/workflows/ci.yml
+!.vscode/settings.json
+!LICENSE
+!config/
+!config/workspace.yaml
+!custom.mk

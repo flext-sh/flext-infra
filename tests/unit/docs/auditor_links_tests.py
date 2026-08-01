@@ -125,6 +125,25 @@ class TestAuditorBrokenLinks:
         tm.that(len(issues) > 0, eq=True)
         tm.that(any("missing.md" in issue.message for issue in issues), eq=True)
 
+    def test_broken_link_issues_rejects_cross_project_relative_link(
+        self, tmp_path: Path
+    ) -> None:
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        (docs_dir / "test.md").write_text(
+            "[other project](../../flext-core/docs/index.md)", encoding="utf-8"
+        )
+        scope = m.Infra.DocScope(
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
+        )
+
+        issues = u.Infra.docs_broken_link_issues(scope)
+
+        tm.that(
+            any(issue.issue_type == "cross_project_relative_link" for issue in issues),
+            eq=True,
+        )
+
     def test_broken_link_issues_skips_some_text(self, tmp_path: Path) -> None:
         """Test docs_broken_link_issues skips plain text brackets."""
         docs_dir = tmp_path / "docs"

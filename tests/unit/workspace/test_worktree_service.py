@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import FlextInfraWorktreeService, c
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -411,6 +410,16 @@ class TestsFlextInfraWorktreeService:
         tm.ok(u.Infra.git_capture(attached, ("config", "--unset", "core.worktree")))
         tm.that(
             tm.ok(u.Infra.git_primary_worktree_root(attached)), eq=attached.resolve()
+        )
+        linked = tmp_path / "attached-linked"
+        tm.ok(
+            u.Infra.git_capture(
+                attached, ("worktree", "add", "--detach", str(linked), "HEAD")
+            )
+        )
+        tm.that(tm.ok(u.Infra.git_primary_worktree_root(linked)), eq=linked.resolve())
+        tm.ok(
+            u.Infra.git_capture(linked, ("worktree", "remove", "--force", str(linked)))
         )
         branch = "feature/attached"
         primary = tm.ok(u.Infra.git_primary_worktree_root(attached))

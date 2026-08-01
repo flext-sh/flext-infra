@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-import tomlkit
 
 from flext_tests import tm
+from tests import u
 from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ class TestsFlextInfraExtraPathsManager:
     def test_sync_one_no_tool_section(self, tmp_path: Path) -> None:
         """Verify sync one no tool section."""
         pyproject = tmp_path / "pyproject.toml"
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
         doc["project"] = {"name": "test"}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = _manager().sync_one(pyproject)
@@ -50,9 +50,9 @@ class TestsFlextInfraExtraPathsManager:
     def test_sync_one_no_pyright_section(self, tmp_path: Path) -> None:
         """Verify sync one no pyright section."""
         pyproject = tmp_path / "pyproject.toml"
-        doc = tomlkit.document()
-        tool = tomlkit.table()
-        tool["other"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        tool = u.Cli.toml_table()
+        tool["other"] = u.Cli.toml_table()
         doc["tool"] = tool
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = _manager().sync_one(pyproject)
@@ -72,7 +72,7 @@ class TestsFlextInfraExtraPathsManager:
     ) -> None:
         """Verify sync one success cases."""
         pyproject = tmp_path / "pyproject.toml"
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
         doc["tool"] = tool_doc
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = _manager().sync_one(pyproject, is_root="pyrefly" not in tool_doc)
@@ -81,7 +81,7 @@ class TestsFlextInfraExtraPathsManager:
     def test_sync_one_dry_run(self, tmp_path: Path) -> None:
         """Verify sync one dry run."""
         pyproject = tmp_path / "pyproject.toml"
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
         doc["tool"] = {"pyright": {"extraPaths": ["old"]}}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         tm.ok(_manager().sync_one(pyproject, dry_run=True, is_root=True))

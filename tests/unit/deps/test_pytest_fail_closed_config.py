@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import tomlkit
 
 from flext_infra import config
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
 from flext_tests import tm
+from tests import u
 
 
 class TestsFlextInfraPytestFailClosedConfig:
@@ -14,7 +14,7 @@ class TestsFlextInfraPytestFailClosedConfig:
 
     def test_phase_replaces_stale_collection_and_warning_policy(self) -> None:
         """Replace ignored roots and warning filters without second-apply drift."""
-        document = tomlkit.parse(
+        document = u.Tests.toml_doc(
             """
 [tool.pytest.ini_options]
 addopts = ["--maxfail=1", "--cov=.", "--markdown-docs"]
@@ -29,7 +29,7 @@ testpaths = ["architecture", "guides", "tests"]
 
         first_changes = phase.apply(document)
         second_changes = phase.apply(document)
-        rendered = tomlkit.dumps(document)
+        rendered = u.Cli.toml_dumps(document)
 
         tm.that(first_changes, empty=False)
         second_change_summary = "\n".join(second_changes)

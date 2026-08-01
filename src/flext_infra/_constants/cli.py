@@ -75,7 +75,7 @@ class FlextInfraConstantsCli:
         "maintenance": "Python version enforcement",
         "refactor": "Declarative refactoring and modernization",
         "release": "Release orchestration",
-        "workspace": "Workspace detection, sync, orchestration, migration",
+        "workspace": "Workspace detection and orchestration",
     })
     # mro-wkii.17.26 (codex): write routes share one isolated transaction seam.
     WORKTREE_TRANSACTION_ENV: Final[str] = "FLEXT_INFRA_WORKTREE_TRANSACTION"
@@ -106,8 +106,6 @@ class FlextInfraConstantsCli:
         "refactor:modernize-result-di",
         "refactor:namespace-enforce",
         "refactor:wrapper-root-namespace",
-        "workspace:migrate",
-        "workspace:sync",
     })
     "CLI routes whose mutations must execute in a complete temporary worktree."
     WORKTREE_TRANSACTION_MODE_ROUTES: Final[frozenset[str]] = frozenset({
@@ -116,9 +114,13 @@ class FlextInfraConstantsCli:
     "CLI routes that express application through ``--mode apply``."
     WORKTREE_TRANSACTION_LINT_COMMANDS: Final[t.StrSequencePairTuple] = (
         ("ruff", ("ruff", "check", ".", "--preview", "--statistics")),
+        (
+            "ruff-details",
+            ("ruff", "check", ".", "--preview", "--output-format", "concise"),
+        ),
         ("pyrefly", ("pyrefly", "check")),
     )
-    "Lint commands captured before and after each isolated mutation."
+    "Lint counts and actionable locations captured around isolated mutation."
 
 
 __all__: tuple[str, ...] = ("FlextInfraConstantsCli",)

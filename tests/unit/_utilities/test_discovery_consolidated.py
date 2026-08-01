@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_tests import tm
 from tests import c, m, u
 
@@ -21,6 +22,11 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             tm.that(result.value.exit_code, eq=0)
 
     def test_discover_project_roots_from_tmp_workspace(self, tmp_path: Path) -> None:
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n"
+            "[tool.flext.workspace]\nmembers=['demo-project']\n",
+            encoding="utf-8",
+        )
         project = tmp_path / "demo-project"
         (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
@@ -36,7 +42,9 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         self, tmp_path: Path
     ) -> None:
         (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="workspace"\nversion="0.1.0"\n', encoding="utf-8"
+            '[project]\nname="workspace"\nversion="0.1.0"\n'
+            "[tool.flext.workspace]\nmembers=['attached-project']\n",
+            encoding="utf-8",
         )
         attached = tmp_path / "attached-project"
         (attached / c.Infra.DEFAULT_SRC_DIR / "attached_project").mkdir(parents=True)
@@ -142,10 +150,15 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         tm.that(roots, eq=[tmp_path / "beta", tmp_path / "alpha"])
 
-    def test_discover_project_roots_skips_untracked_git_projects(
+    def test_discover_project_roots_selects_only_configured_projects(
         self, tmp_path: Path
     ) -> None:
         self._init_git_repo(tmp_path)
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n"
+            "[tool.flext.workspace]\nmembers=['tracked']\n",
+            encoding="utf-8",
+        )
         tracked_project = tmp_path / "tracked"
         (tracked_project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         (tracked_project / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -164,7 +177,33 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         roots = u.Infra.discover_project_roots(tmp_path)
 
-        tm.that(roots, eq=[tracked_project, untracked_project])
+        tm.that(roots, eq=[tracked_project])
+
+    def test_gitmodules_only_third_party_project_is_not_discovered(
+        self, tmp_path: Path
+    ) -> None:
+        managed = tmp_path / "managed"
+        third_party = tmp_path / "vendor-fork"
+        for project in (managed, third_party):
+            (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+            (project / c.Infra.PYPROJECT_FILENAME).write_text(
+                f"[project]\nname='{project.name}'\n", encoding="utf-8"
+            )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n"
+            "[tool.flext.workspace]\nmembers=['managed']\n",
+            encoding="utf-8",
+        )
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "vendor-fork"]\n'
+            "\tpath = vendor-fork\n"
+            "\turl = https://example.invalid/vendor-fork.git\n",
+            encoding="utf-8",
+        )
+
+        roots = u.Infra.discover_project_roots(tmp_path)
+
+        tm.that(roots, eq=[managed])
 
     def test_iter_python_files_returns_result_with_paths(self, tmp_path: Path) -> None:
         project = tmp_path / "pkg"
@@ -350,6 +389,10 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         tm.that(result.value, eq=[])
 
     def test_discover_projects_returns_project_info(self, tmp_path: Path) -> None:
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n[tool.flext.workspace]\nmembers=['alpha']\n",
+            encoding="utf-8",
+        )
         project = tmp_path / "alpha"
         (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / c.Infra.DIR_TESTS).mkdir(parents=True)
@@ -367,7 +410,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         tm.that(info.name, eq="alpha")
         tm.that(info.has_src, eq=True)
         tm.that(info.has_tests, eq=True)
-        tm.that(info.workspace_role, eq=c.Infra.WorkspaceProjectRole.ATTACHED)
+        tm.that(info.workspace_role, eq=c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER)
 
     def test_discover_projects_includes_workspace_members_without_core_dep(
         self, tmp_path: Path

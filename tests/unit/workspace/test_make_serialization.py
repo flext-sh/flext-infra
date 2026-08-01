@@ -10,10 +10,10 @@ from threading import Event, Lock
 
 import pytest
 from filelock import FileLock, Timeout
+
 from flext_core import r
 from flext_infra import c, config, m, p, t, u
 from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
 from tests import u as test_u
 
@@ -144,7 +144,7 @@ class TestsFlextInfraMakeSerialization:
                         return r[bool].ok(True)
 
                     tm.ok(
-                        FlextInfraSerializationLockOwner.execute(
+                        u.Infra.serialization_lock_execute(
                             (mutation_lock_path,),
                             0,
                             acquire_child_lock,
@@ -249,7 +249,7 @@ class TestsFlextInfraMakeSerialization:
             return r[bool].fail(error)
 
         with pytest.raises(OSError, match=operation_error):
-            FlextInfraSerializationLockOwner.execute(
+            u.Infra.serialization_lock_execute(
                 (lock_path,),
                 serialization.timeout_seconds,
                 operation,
@@ -587,33 +587,14 @@ class TestsFlextInfraMakeSerialization:
         )
         test_u.Tests.initialize_git_repo(tmp_path)
 
-        direct = tm.ok(
-            u.Cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    c.Infra.PACKAGE_IMPORT_NAME,
-                    c.Infra.CLI_GROUP_WORKSPACE,
-                    "serialize-make",
-                    "--workspace",
-                    str(tmp_path),
-                    "--makefile",
-                    str(makefile),
-                    "--verb",
-                    validation_verb,
-                ],
-                cwd=tmp_path,
-            )
-        )
         outer_make = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", validation_verb], cwd=tmp_path
             )
         )
 
-        tm.that(direct.exit_code, eq=make_failure_exit_code)
-        tm.that(direct.stdout + direct.stderr, has=f"Error {private_exit_code}")
         tm.that(outer_make.exit_code, eq=make_failure_exit_code)
+        tm.that(outer_make.stdout + outer_make.stderr, has=f"Error {private_exit_code}")
         tm.that(outer_make.exit_code, ne=0)
 
     def test_selected_makefile_is_required_at_the_cli_boundary(

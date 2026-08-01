@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import tomlkit
 
 from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
@@ -56,7 +55,7 @@ class TestsFlextInfraDepsModernizerTooling:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Render every managed formatting tool from typed policy."""
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureFormattingToolingPhase(tool_config_document).apply(doc)
 
@@ -100,7 +99,7 @@ class TestsFlextInfraDepsModernizerTooling:
     ) -> None:
         """Keep formatting output stable after the first application."""
         phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
@@ -112,7 +111,7 @@ class TestsFlextInfraDepsModernizerTooling:
     ) -> None:
         """Remove the obsolete codespell skip setting."""
         phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
-        doc = tomlkit.parse(
+        doc = u.Tests.toml_doc(
             """
 [tool.codespell]
 check-filenames = true
@@ -134,7 +133,7 @@ skip = ".git,poetry.lock"
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureNamespaceToolingPhase().apply(
             doc, path=project_dir / "pyproject.toml"
@@ -156,7 +155,7 @@ skip = ".git,poetry.lock"
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        doc = tomlkit.parse(
+        doc = u.Tests.toml_doc(
             """
 [project]
 dependencies = ["flext-core>=0.1.0"]
@@ -193,7 +192,7 @@ workspace = true
         _ = (test_dir / "test_dummy.py").write_text(
             "def test_dummy() -> None:\n    assert True\n", encoding="utf-8"
         )
-        doc = tomlkit.parse(
+        doc = u.Tests.toml_doc(
             """
 [lint]
 select = ["E501"]
@@ -277,7 +276,7 @@ select = ["E501"]
         package_dir.mkdir(parents=True, exist_ok=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
         phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc, path=project_dir / "pyproject.toml")
         second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
@@ -298,7 +297,7 @@ select = ["E501"]
             "      src/flext_cli/_config.py: [N802]\n",
             encoding="utf-8",
         )
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
             doc, path=project_dir / "pyproject.toml"
@@ -319,7 +318,7 @@ select = ["E501"]
         """A project without local policy receives only the global Ruff policy."""
         project_dir = tmp_path / "flext-tests"
         project_dir.mkdir()
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
             doc, path=project_dir / "pyproject.toml"
@@ -347,7 +346,7 @@ select = ["E501"]
             encoding="utf-8",
         )
         phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc, path=project_dir / "pyproject.toml")
         second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
@@ -378,7 +377,7 @@ select = ["E501"]
             encoding="utf-8",
         )
         _ = workspace_root.joinpath("pyproject.toml").write_text(
-            "[project]\nname = 'workspace'\n\n"
+            "[project]\nname = 'workspace'\nversion = '0.1.0'\n\n"
             "[tool.uv.workspace]\n"
             "members = ['flext-core']\n",
             encoding="utf-8",
@@ -386,7 +385,7 @@ select = ["E501"]
         _ = internal_project.joinpath("pyproject.toml").write_text(
             '[project]\nname = "flext-core"\nversion = "0.1.0"\n', encoding="utf-8"
         )
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
             doc, path=workspace_root / "pyproject.toml"

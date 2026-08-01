@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, u
+from tests import u as test_u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
@@ -15,11 +16,8 @@ class TestCodegenManifestlessExisting:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == "flext-infra"
-        )
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+        local_repository = repository.model_copy(update={"path": Path()})
         preserved = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
@@ -47,7 +45,7 @@ class TestCodegenManifestlessExisting:
         )
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.that(derived.repository, eq=repository)
+        tm.that(derived.repository, eq=local_repository)
         tm.that(derived.project, eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,

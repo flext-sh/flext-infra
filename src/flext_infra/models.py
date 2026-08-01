@@ -21,6 +21,7 @@ from flext_infra._models.docs import FlextInfraModelsDocs
 from flext_infra._models.enforcement import FlextInfraModelsEnforcement
 from flext_infra._models.gates import FlextInfraModelsGates
 from flext_infra._models.github import FlextInfraModelsGithub
+from flext_infra._models.layout import FlextInfraModelsLayout
 from flext_infra._models.mixins import FlextInfraModelsMixins
 from flext_infra._models.refactor import FlextInfraModelsRefactor
 from flext_infra._models.release import FlextInfraModelsRelease
@@ -51,6 +52,7 @@ class FlextInfraModels(m):
         FlextInfraModelsEnforcement,
         FlextInfraModelsGates,
         FlextInfraModelsGithub,
+        FlextInfraModelsLayout,
         FlextInfraModelsRefactor,
         FlextInfraModelsRelease,
         FlextInfraModelsMixins,

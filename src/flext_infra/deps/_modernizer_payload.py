@@ -134,13 +134,12 @@ class FlextInfraPyprojectModernizerPayloadMixin:
             self._recurse_into_item(item_value, key)
             table[key] = item_value
 
-    def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None:
+    def _reorder_document_inplace(
+        self, doc: t.Cli.TomlDocument, *, preferred_first: t.StrSequence | None = None
+    ) -> None:
         """Apply deterministic ordering for top-level groups and nested tables."""
         root_keys = [str(key) for key in doc]
-        ordered_root = self._ordered_keys(
-            root_keys,
-            preferred_first=("build-system", "dependency-groups", "project", "tool"),
-        )
+        ordered_root = self._ordered_keys(root_keys, preferred_first=preferred_first)
         if ordered_root != root_keys:
             root_items: dict[str, t.Cli.TomlItem | t.Cli.TomlContainer] = {
                 key: doc[key] for key in root_keys

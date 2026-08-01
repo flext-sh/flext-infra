@@ -50,6 +50,11 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
+    tomlsort_sort_first: t.StrSequence = m.Field(
+        default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
+        exclude=True,
+        description="Config-owned top-level TOML section order",
+    )
 
     def conform_source(
         self,
@@ -58,6 +63,7 @@ class FlextInfraPyprojectModernizer(
         path: Path,
         declared_python_dirs: t.StrSequence = (),
         project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply."""
         payload_source = u.Cli.toml_mapping_from_text(source)
@@ -84,6 +90,7 @@ class FlextInfraPyprojectModernizer(
             skip_comments=False,
             declared_python_dirs=declared_python_dirs,
             project_kind=project_kind,
+            analysis_exclusions=analysis_exclusions,
         )
         if not state.rendered:
             return r[str].fail(
@@ -99,6 +106,7 @@ class FlextInfraPyprojectModernizer(
         path: Path,
         declared_python_dirs: t.StrSequence = (),
         project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
         # mro-j47u (codex): resolve values only; template retains the full structure.
@@ -120,6 +128,7 @@ class FlextInfraPyprojectModernizer(
             path=path,
             declared_python_dirs=declared_python_dirs,
             project_kind=project_kind,
+            analysis_exclusions=analysis_exclusions,
         )
         if conformed.failure:
             return r[m.Infra.ToolingRuntimeContext].fail(
@@ -242,6 +251,7 @@ class FlextInfraPyprojectModernizer(
                 ],
                 "pyright_execution_environments": environments,
                 "ruff_src": ruff.get("src"),
+                "ruff_exclude": ruff.get(c.Infra.EXCLUDE),
                 "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
             })
         except c.ValidationError as exc:

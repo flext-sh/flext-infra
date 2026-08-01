@@ -18,28 +18,42 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool = False
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+        *,
+        attached: bool = False,
+        local_infra: bool = False,
     ) -> tuple[Path, Path]:
+        provider = config.Infra.codegen.providers[0]
+        role = (
+            c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            if attached
+            else c.Infra.RepositoryRole(profile.value)
+        )
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
             distribution="fixture-project",
-            url="https://github.com/flext-sh/fixture-project.git",
-            branch=config.Infra.codegen.providers[0].branch,
+            url=f"{provider.base_url}/fixture-project.git",
             path=Path(),
-            role=c.Infra.RepositoryRole(profile.value),
-            provider="flext-sh",
-            profile=profile,
-            checkout=c.Infra.CheckoutKind.ROOT,
+            role=role,
+            provider=provider.name,
+            checkout=(
+                c.Infra.CheckoutKind.SUBMODULE
+                if attached
+                else c.Infra.CheckoutKind.ROOT
+            ),
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=True,
             read_only=False,
         )
         project_root = tmp_path / profile.value / "fixture-project"
-        workspace_root = (
-            project_root.parent
-            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-            else project_root
+        workspace_root = project_root.parent if attached else project_root
+        infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
+        local_members = (
+            (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
+            if local_infra
+            else ()
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -61,12 +75,10 @@ class TestsCodegenMakeEnvironment:
                 upstream="flext_cli",
                 homepage="https://github.com/flext-sh/fixture-project",
                 documentation="https://github.com/flext-sh/fixture-project",
-                workspace_root_rel=(
-                    ".." if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
-                ),
+                workspace_root_rel=".",
                 year=2026,
             ),
-            members=(),
+            members=local_members,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -121,8 +133,7 @@ class TestsCodegenMakeEnvironment:
         ("profile", "attached"),
         [
             (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
-            (c.Infra.MakeProfile.WORKSPACE_MEMBER, True),
-            (c.Infra.MakeProfile.WORKSPACE_MEMBER, False),
+            (c.Infra.MakeProfile.STANDALONE, True),
             (c.Infra.MakeProfile.STANDALONE, False),
         ],
     )
@@ -130,10 +141,10 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, workspace_root = self._render_makefile(
+        project_root, _workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = workspace_root if attached else project_root
+        runtime_root = project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -187,13 +198,14 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
         tm.that(output[4], eq=str(runtime_python))
 
-    def test_setup_preserves_external_uv_and_removes_hostile_venv(
-        self, tmp_path: Path
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
+    )
+    def test_setup_provisions_environment_before_project_runtime(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
-        """Clean CI can provision uv on PATH without leaking an active venv."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        """Setup creates the venv and syncs dependencies before any runtime use."""
+        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -235,9 +247,11 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-        commands = uv_log.read_text(encoding="utf-8")
-        tm.that(commands, has="venv --clear")
-        tm.that(commands, has="sync --project")
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(commands[0], has="venv --clear")
+        tm.that(commands[1], has="sync --project")
+        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
+            tm.that(commands[2], has="pip check")
 
     def test_serialized_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -312,6 +326,81 @@ class TestsCodegenMakeEnvironment:
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
+    def test_dependency_upgrade_selects_only_one_distribution(
+        self, tmp_path: Path
+    ) -> None:
+        """Refresh one Git dependency without globally upgrading the lock."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        uv_log = tmp_path / "uv.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "DEPENDENCY=flext-cli",
+                    "APPLY=Y",
+                ],
+                cwd=project_root,
+                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(
+            commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
+        )
+        tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
+
+    def test_dependency_upgrade_rejects_non_distribution_selector(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail before uv when the dependency selector is not one package name."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        uv_log = tmp_path / "uv.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "DEPENDENCY=flext-cli --all",
+                    "APPLY=Y",
+                ],
+                cwd=project_root,
+                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
+        )
+        tm.that(uv_log.exists(), eq=False)
+
     def test_serialized_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
     ) -> None:
@@ -345,7 +434,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
+            'git -C "$$root" submodule update --init --recursive -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)

@@ -5,10 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+from flext_cli import u
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -16,6 +17,49 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
+
+    @staticmethod
+    def docs_update_toc(content: str) -> t.StrIntPair:
+        """Normalize the managed table of contents in Markdown content."""
+        toc = FlextInfraUtilitiesDocsContract.docs_build_toc(content)
+        if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
+            updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
+            return (updated, int(updated != content))
+        lines = content.splitlines()
+        if lines and lines[0].startswith("# "):
+            insert_at = 1
+            while insert_at < len(lines) and (not lines[insert_at].strip()):
+                insert_at += 1
+            lines[1:insert_at] = [""]
+            lines.insert(2, toc)
+            lines.insert(3, "")
+            updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
+            return (updated, 1)
+        return (toc + "\n\n" + content, 1)
+
+    @staticmethod
+    def docs_anchorize(text: str) -> str:
+        """Convert a heading title to a GitHub-compatible anchor slug."""
+        normalized: str = u.norm_str(text, case="lower")
+        alnum_only: str = c.Infra.ANCHOR_NON_ALNUM_RE.sub("", normalized)
+        collapsed_whitespace: str = c.Infra.ANCHOR_WHITESPACE_RE.sub("-", alnum_only)
+        slug: str = c.Infra.ANCHOR_DASH_COLLAPSE_RE.sub(
+            "-", collapsed_whitespace
+        ).strip("-")
+        return slug
+
+    @staticmethod
+    def docs_build_toc(content: str) -> str:
+        """Generate a managed TOC block from second- and third-level headings."""
+        items: t.MutableSequenceOf[str] = []
+        for level, title in c.Infra.HEADING_H2_H3_RE.findall(content):
+            anchor = FlextInfraUtilitiesDocsContract.docs_anchorize(title)
+            if anchor:
+                indent = "  " if level == "###" else ""
+                items.append(f"{indent}- [{title}](#{anchor})")
+        if not items:
+            items = ["- No sections found"]
+        return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
     def docs_workspace_contract(workspace_root: Path) -> t.JsonMapping:
@@ -69,10 +113,15 @@ class FlextInfraUtilitiesDocsContract:
         current = (
             path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if path.exists() else ""
         )
-        changed = current != content
+        normalized = (
+            FlextInfraUtilitiesDocsContract.docs_update_toc(content)[0]
+            if path.suffix == ".md"
+            else content
+        )
+        changed = current != normalized
         if changed and apply:
             path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+            _ = path.write_text(normalized, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.GeneratedFile(
             path=path.as_posix(), changed=changed, written=changed and apply
         )

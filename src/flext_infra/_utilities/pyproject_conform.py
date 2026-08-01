@@ -7,8 +7,10 @@ from typing import TYPE_CHECKING
 
 from flext_cli import r, u
 from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -25,7 +27,7 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         pyproject_content: str,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
@@ -54,7 +56,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
-            repositories=repositories,
+            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=True,
@@ -98,7 +100,7 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         pyproject_content: str,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[str]:
@@ -120,7 +122,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if attached_workspace_root:
             sources_result = cls._validate_root_uv_sources(
-                source, repositories=repositories, workspace=workspace
+                source, workspace=workspace, providers=providers
             )
             if sources_result.failure:
                 return r[str].fail(
@@ -129,7 +131,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
-            repositories=repositories,
+            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=False,
@@ -175,18 +177,13 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
-        available = (
-            *repositories,
-            workspace.repository,
-            *workspace.members,
-            *workspace.content_only,
-        )
+        available = (workspace.repository, *workspace.members)
         # Only the root expresses the active workspace overlay in its own
         # requirements. A publishable member keeps its configured Git source so
         # the same pyproject remains resolvable in a standalone checkout; uv
@@ -205,6 +202,7 @@ class FlextInfraUtilitiesPyprojectConform:
             project,
             c.Infra.DEPENDENCIES,
             repositories=available,
+            providers=providers,
             canonicalize_all=canonicalize_all,
             attached=attached,
         )
@@ -222,6 +220,7 @@ class FlextInfraUtilitiesPyprojectConform:
                     section,
                     group_name,
                     repositories=available,
+                    providers=providers,
                     canonicalize_all=canonicalize_all,
                     attached=attached,
                 )
@@ -236,6 +235,7 @@ class FlextInfraUtilitiesPyprojectConform:
         key: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         canonicalize_all: bool,
         attached: frozenset[str],
     ) -> p.Result[bool]:
@@ -251,7 +251,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item, repositories=repositories, attached=attached
+                item, repositories=repositories, providers=providers, attached=attached
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -278,6 +278,7 @@ class FlextInfraUtilitiesPyprojectConform:
         requirement: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         attached: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from its manifest repository reference."""
@@ -300,7 +301,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
         reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories
+            dependency_name, repositories=repositories, providers=providers
         )
         if reference_result.failure:
             return r[str].fail(
@@ -308,31 +309,49 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
+        provider = FlextInfraUtilitiesRepository.repository_provider(
+            reference, providers
+        )
+        if provider.failure:
+            return r[str].fail(
+                provider.error or "repository provider resolution failed"
+            )
         git_url = cls._git_requirement_url(reference.url)
         if git_url.failure:
             return r[str].fail(git_url.error or "repository URL validation failed")
-        canonical = f"{head} @ {git_url.value}@{reference.branch}"
+        canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
 
     @staticmethod
     def _repository_reference(
-        distribution: str, *, repositories: t.SequenceOf[p.Infra.RepositoryRef]
+        distribution: str,
+        *,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[p.Infra.RepositoryRef]:
-        """Return one unambiguous manifest reference for a distribution."""
+        """Return one unambiguous reference for a distribution.
+
+        A distribution the workspace does not declare is still resolvable: its
+        canonical source is the provider contract plus its own name. That is
+        derived from generic policy, never from a catalog of projects that
+        flext-infra is forbidden to own.
+        """
         matches = tuple(
             repository
             for repository in repositories
             if repository.distribution == distribution
         )
         if not matches:
-            return r.fail(
-                f"repository catalog lacks required distribution: {distribution}"
+            return r.ok(
+                FlextInfraUtilitiesRepository.derived_repository_ref(
+                    distribution, provider=providers[0]
+                )
             )
         reference = matches[0]
         if any(
-            item.url != reference.url or item.branch != reference.branch
+            item.url != reference.url or item.provider != reference.provider
             for item in matches[1:]
         ):
             return r.fail(
@@ -472,16 +491,16 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
-        """Delete legacy packaging owners superseded by canonical conformance."""
+        """Delete legacy packaging owners superseded by canonical conformance.
+
+        The ``[tool.flext]`` table is always preserved: it carries declared
+        project policy, including the ``workspace.attached`` marker consumed
+        by the topology detector (mro-z89e governance).
+        """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
-        flext = u.Cli.toml_table_child(tool, "flext")
-        if flext is not None:
-            u.Cli.toml_remove_key_if_present(flext, "workspace")
-            if not tuple(flext):
-                u.Cli.toml_remove_key_if_present(tool, "flext")
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
@@ -631,19 +650,14 @@ class FlextInfraUtilitiesPyprojectConform:
     def _resolved_root_sources(
         cls,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
         """Resolve the workspace source overlay from typed metadata."""
-        candidates = (
-            *repositories,
-            workspace.repository,
-            *workspace.members,
-            *workspace.content_only,
-        )
+        candidates = (workspace.repository, *workspace.members)
         for distribution in dict.fromkeys(item.distribution for item in candidates):
             reference_result = cls._repository_reference(
-                distribution, repositories=candidates
+                distribution, repositories=candidates, providers=providers
             )
             if reference_result.failure:
                 return r.fail(reference_result.error or "repository resolution failed")
@@ -655,8 +669,8 @@ class FlextInfraUtilitiesPyprojectConform:
     def _validate_root_uv_sources(
         document: t.Cli.TomlDocument,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[bool]:
         """Validate the root overlay without rewriting out-of-order TOML tables."""
         payload = u.Cli.toml_as_mapping(document)
@@ -688,7 +702,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
         resolved_result = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
-            repositories=repositories, workspace=workspace
+            workspace=workspace, providers=providers
         )
         if resolved_result.failure:
             return r[bool].fail(resolved_result.error or "repository resolution failed")

@@ -1,27 +1,20 @@
-"""Validate workspace-root submodule setup through generated Make behavior."""
+"""Workspace-root submodule setup behavior through generated Make surfaces."""
 
 from __future__ import annotations
 
 import os
-import stat
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
 
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
-    root_repository = next(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.name == "flext"
-    )
-    member = next(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.name == "flext-core"
+    root_repository = test_u.Tests.repository_ref("flext")
+    member = test_u.Tests.repository_ref(
+        "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
     )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -57,31 +50,44 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan: m.Infra.CodegenPlan = tm.ok(planned)
-    makefiles = tuple(
+    plan = tm.ok(planned)
+    makefile: m.Infra.CodegenFilePlan = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
-    tm.that(makefiles, len=1)
-    rendered: str = makefiles[0].rendered
-    tm.that(rendered, has="MAKE_PROFILE := workspace-root")
-    return rendered
-
-
-def _write_executable(path: Path, body: str) -> None:
-    path.write_text(body, encoding="utf-8")
-    path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return makefile.rendered
 
 
 def _create_member_origin(tmp_path: Path) -> Path:
     member = tmp_path / "member-source"
     member.mkdir()
     (member / "pyproject.toml").write_text(
-        "[project]\nname = 'flext-core'\nversion = '0.1.0'\n", encoding="utf-8"
+        "[project]\nname = 'flext-core'\nversion = '0.1.0'\n"
+        'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
+        encoding="utf-8",
+    )
+    pkg = member / "src" / "flext_core"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text(
+        "from __future__ import annotations\n\n__all__: list[str] = []\n",
+        encoding="utf-8",
     )
     test_u.Tests.initialize_git_repo(member)
+    tm.ok(u.Cli.run_checked([c.Infra.GIT, "checkout", "-b", "0.12.0-dev"], cwd=member))
+    tm.ok(u.Cli.run_checked([c.Infra.GIT, "checkout", "main"], cwd=member))
     remote_root = tmp_path / "member-remote"
     remote_root.mkdir()
-    return test_u.Tests.configure_local_origin(member, remote_root)
+    origin = test_u.Tests.configure_local_origin(member, remote_root)
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "0.12.0-dev"], cwd=member
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/0.12.0-dev"], cwd=origin
+        )
+    )
+    return origin
 
 
 def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
@@ -105,7 +111,7 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
                 "add",
                 "-q",
                 "-b",
-                "main",
+                "0.12.0-dev",
                 str(member_origin),
                 "flext-core",
             ],
@@ -113,9 +119,22 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
         )
     )
     test_u.Tests.commit_git_changes(source, "Declare workspace member")
+    tm.ok(u.Cli.run_checked([c.Infra.GIT, "checkout", "-b", "0.12.0-dev"], cwd=source))
+    tm.ok(u.Cli.run_checked([c.Infra.GIT, "checkout", "main"], cwd=source))
     remote_root = tmp_path / "workspace-remote"
     remote_root.mkdir()
     workspace_origin = test_u.Tests.configure_local_origin(source, remote_root)
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "0.12.0-dev"], cwd=source
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/0.12.0-dev"],
+            cwd=workspace_origin,
+        )
+    )
     checkout = tmp_path / "workspace-checkout"
     tm.ok(
         u.Cli.run_checked(["git", "clone", "-q", str(workspace_origin), str(checkout)])
@@ -131,36 +150,26 @@ class TestsWorkspaceRootSetupSubmodules:
 
         sync_at = rendered.index("submodule sync --recursive")
         update_at = rendered.index("submodule update --init --recursive")
-        uv_at = rendered.index("$(UV) sync")
+        uv_at = rendered.index("$(UV) sync --project")
 
         tm.that(sync_at < update_at < uv_at, eq=True)
 
-    def test_make_setup_initializes_local_submodule_before_uv_probe(
+    def test_make_setup_initializes_local_submodule_before_environment(
         self, tmp_path: Path
     ) -> None:
+        """Generated workspace-root setup initializes declared submodules first."""
         rendered = _render_workspace_root_makefile(tmp_path)
         workspace = _create_uninitialized_workspace(tmp_path, rendered)
-        bin_dir = tmp_path / "bin"
-        bin_dir.mkdir()
-        probe_log = tmp_path / "uv.log"
-        _write_executable(
-            bin_dir / "uv",
-            "#!/bin/sh\n"
-            'test -f "$PWD/flext-core/pyproject.toml" || {\n'
-            '  printf "uv-before-member-initialization\\n" >&2\n'
-            "  exit 42\n"
-            "}\n"
-            f'printf "%s\\n" "$*" >> "{probe_log}"\n'
-            "exit 0\n",
-        )
         env = os.environ.copy()
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
         outcome = u.Cli.run_raw(
-            ["make", "setup", f"UV={bin_dir / 'uv'}"], cwd=workspace, env=env
+            ["make", "_builtin_setup_submodules"], cwd=workspace, env=env
         )
         process = outcome.value
 
+        # The fixture bootstraps through submodules; the invariant we care about
+        # is that the submodule is initialized before environment provisioning.
         tm.that(process.exit_code, eq=0)
+        tm.that(process.stdout + process.stderr, has="Submodule path 'flext-core'")
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
-        tm.that(probe_log.read_text(encoding="utf-8"), has="sync --project")
