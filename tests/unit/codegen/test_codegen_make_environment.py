@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 
 import pytest
-import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u
