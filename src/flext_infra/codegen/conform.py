@@ -1415,7 +1415,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make=codegen.make,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
-                    make=codegen.make,
                     workspace_repositories=workspace_repositories,
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
