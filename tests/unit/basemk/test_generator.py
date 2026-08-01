@@ -84,7 +84,7 @@ class TestsFlextInfraBasemkGenerator:
         )
         tm.that(
             result.value,
-            has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s $(VENV_PYTHON) -m pytest",
+            has="$(PYTEST_BOUNDED) $(VENV_PYTHON) -m flext_infra._pytest_entry",
         )
 
     def test_generator_generate_with_basemk_config_object(self) -> None:

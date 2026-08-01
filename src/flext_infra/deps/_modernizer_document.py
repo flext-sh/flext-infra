@@ -53,7 +53,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None: ...
+        @property
+        def tomlsort_sort_first(self) -> t.StrSequence: ...
+
+        def _reorder_document_inplace(
+            self,
+            doc: t.Cli.TomlDocument,
+            *,
+            preferred_first: t.StrSequence | None = None,
+        ) -> None: ...
 
     def _classify_project(
         self, project_dir: Path, *, payload: t.JsonMapping | None = None
@@ -283,7 +291,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
-        self._reorder_document_inplace(doc)
+        self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
         rendered = doc.as_string()
         if not skip_comments:
