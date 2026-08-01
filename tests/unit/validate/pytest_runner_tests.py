@@ -300,10 +300,10 @@ class TestsFlextInfraPytestRunner:
         tm.that(exit_code, eq=0)
         tm.that(summary, has="coverage=not-generated")
 
-    def test_timeout_preserves_exit_124_without_partial_artifacts(
+    def test_timeout_records_partial_profile_without_secondary_failure(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A killed child remains a precise timeout instead of a report error."""
+        """A killed child remains a precise timeout with observable profile state."""
         runner = self._runner(tmp_path)
 
         def fake_run_to_file(
