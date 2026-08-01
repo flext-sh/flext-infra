@@ -16,7 +16,6 @@ SHELL := /bin/sh
 # Source: config:dist / config:make_profile / config:uv_link_mode
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := $(if $(strip $(shell git rev-parse --show-superproject-working-tree 2>/dev/null)),workspace-member,standalone)
-WORKSPACE_ROOT_REL := .
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
@@ -36,7 +35,7 @@ APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
 ARGS ?=
 CHANGED_ONLY ?= 0
 CHECK_GATES ?=
-CI ?= N
+CI ?=
 DEPENDENCY ?=
 FAIL_FAST ?= 0
 FILE ?=
@@ -108,6 +107,21 @@ CHECK_GATES_FAST := lint pyrefly mypy pyright
 DOCS_ACTIONS := generate fix audit build validate
 SERIALIZED_VERBS := deps check test fmt fix docs clean gen worktree
 SERIALIZED_TARGETS := _serialized_deps _serialized_check _serialized_test _serialized_fmt _serialized_fix _serialized_docs _serialized_clean _serialized_gen _serialized_worktree
+_AUTOMATION_HOOKS_help := 1
+_AUTOMATION_HOOKS_setup := 0
+_AUTOMATION_HOOKS_deps := 1
+_AUTOMATION_HOOKS_build := 1
+_AUTOMATION_HOOKS_check := 0
+_AUTOMATION_HOOKS_test := 0
+_AUTOMATION_HOOKS_fmt := 0
+_AUTOMATION_HOOKS_fix := 0
+_AUTOMATION_HOOKS_run := 1
+_AUTOMATION_HOOKS_status := 1
+_AUTOMATION_HOOKS_docs := 1
+_AUTOMATION_HOOKS_clean := 1
+_AUTOMATION_HOOKS_release := 1
+_AUTOMATION_HOOKS_gen := 1
+_AUTOMATION_HOOKS_worktree := 1
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -116,16 +130,13 @@ RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 # End SECTION: lint/type paths
 
-# === SECTION: infra bootstrap (managed) ===
-# Source: config:infra_repository.*, config:infra_source_root_rel, template (UV default)
+# === SECTION: runtime tool resolution (managed) ===
+# Source: template (UV default)
 UV ?= uv
 UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
-FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
-FLEXT_INFRA_SOURCE_ROOT_REL := 
-UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
-# End SECTION: infra bootstrap
+# End SECTION: runtime tool resolution
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -252,14 +263,6 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
-ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
-FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
-else
-FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
-endif
-
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := $(if $(filter Y,$(CI)),self,all)
 ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
@@ -274,11 +277,11 @@ endif
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 ROOT_PROJECT_SELECTOR := .
-CI_INPUT := $(strip $(CI))
-ifneq ($(filter-out 0 1 N Y false true,$(CI_INPUT)),)
-$(error CI must be one of: 0, 1, N, Y, false, true)
+AUTOMATION_INPUT := $(strip $(CI))
+ifneq ($(filter-out 0 1 false true Y,$(AUTOMATION_INPUT)),)
+$(error CI must be one of: 0, 1, false, true, Y)
 endif
-override CI := $(if $(filter 1 Y true,$(CI_INPUT)),Y,N)
+override CI := $(if $(filter 1 true Y,$(AUTOMATION_INPUT)),Y,)
 export CI
 EXPLICIT_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
 PYTEST_FILE_PATH := $(word 1,$(subst ::, ,$(strip $(FLEXT_PYTEST_FILE_RAW))))
@@ -334,10 +337,14 @@ define _dispatch
 		printf 'ERROR: %s WHAT=%s is read-only and does not accept APPLY\n' "$(1)" "$$what" >&2; exit 2; \
 	fi; \
 	builtin="_builtin_$(1)_$$handler"; \
-	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done; \
+	run_hooks=1; \
+	if [ "$(CI)" = "Y" ] && [ "$(_AUTOMATION_HOOKS_$(1))" != 1 ]; then run_hooks=0; fi; \
+	if [ "$$run_hooks" = 1 ]; then \
+		for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
+			$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+			if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		done; \
+	fi; \
 	case "$(_DISPATCH_$(1))" in \
 		builtin) \
 			$(SELF_MAKE) -q "$$builtin" >/dev/null 2>&1; rc=$$?; \
@@ -345,10 +352,12 @@ define _dispatch
 			$(SELF_MAKE) "$$builtin" || exit $$? ;; \
 		*) printf 'ERROR: unsupported dispatch kind for %s: %s\n' "$(1)" "$(_DISPATCH_$(1))" >&2; exit 2 ;; \
 	esac; \
-	for hook in "post-$(1)-$$what" "post-$(1)"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
+	if [ "$$run_hooks" = 1 ]; then \
+		for hook in "post-$(1)-$$what" "post-$(1)"; do \
+			$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+			if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		done; \
+	fi
 endef
 
 define _require_apply
@@ -411,6 +420,7 @@ _builtin_worktree_add \
 _builtin_worktree_update \
 _builtin_worktree_remove \
 _builtin_require_environment _builtin_setup_environment _builtin_setup_submodules \
+	_builtin_setup_hooks \
 	_builtin_build_local _builtin_check_local _builtin_test_local \
 	_builtin_fmt_check_local _builtin_fmt_apply_local _builtin_fix_local
 
@@ -485,7 +495,7 @@ _serialized_worktree:
 setup:
 	$(call _dispatch,setup)
 
-_builtin_setup_all: _builtin_setup_submodules _builtin_setup_environment
+_builtin_setup_all: _builtin_setup_submodules _builtin_setup_environment _builtin_setup_hooks
 
 _builtin_help_all:
 	@printf '%s\n' 'flext-infra [$(MAKE_PROFILE)]' '';
@@ -709,7 +719,8 @@ _builtin_require_environment:
 # === SECTION: setup environment (managed) ===
 # Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
-# It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
+# It never generates, conforms, or mutates project code; `make gen`
+# with APPLY=Y
 # is the single public conformance/generation surface.
 # Runtime routing: a live attached member delegates once to its distinct
 # workspace owner; detached non-root and workspace-root checkouts provision
@@ -720,6 +731,7 @@ _builtin_setup_environment: _builtin_setup_submodules
 	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: $(if $(filter Y,$(CI)),,_builtin_setup_submodules)
+	@printf 'setup profile=%s runtime=%s action=provision\n' '$(MAKE_PROFILE)' '$(RUNTIME_ROOT)'
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
@@ -730,6 +742,22 @@ _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
 # End SECTION: setup environment
+
+_builtin_setup_hooks: _builtin_setup_environment
+	@if [ "$(strip $(CI))" = "Y" ]; then \
+		printf 'INFO: skipping pre-commit install in CI\n'; \
+	elif git -C "$(PROJECT_ROOT)" rev-parse --git-dir >/dev/null 2>&1; then \
+		hooks_path=$$(git -C "$(PROJECT_ROOT)" config --get --default '' core.hooksPath); \
+		if [ -n "$$hooks_path" ]; then \
+			printf 'INFO: skipping pre-commit install (core.hooksPath=%s)\n' "$$hooks_path"; \
+		elif [ -f "$(PROJECT_ROOT)/.pre-commit-config.yaml" ] || [ -f "$(PROJECT_ROOT)/.pre-commit-config.yml" ]; then \
+			cd "$(PROJECT_ROOT)" && $(UV_RUN) pre-commit install; \
+		else \
+			printf 'INFO: skipping pre-commit install (no pre-commit config)\n'; \
+		fi; \
+	else \
+		printf 'INFO: skipping pre-commit install (no git repository)\n'; \
+	fi
 
 _builtin_deps_all: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
@@ -763,7 +791,7 @@ _builtin_build_local:
 
 _builtin_check_local: _builtin_require_environment
 	@set -eu; \
-	if [ -n "$(APPLY)" ] || [ -n "$(FIX)" ] || [ -n "$(CHECK_ONLY)" ]; then \
+	if [ -n "$(APPLYING)" ] || [ -n "$(FIX)" ] || [ -n "$(CHECK_ONLY)" ]; then \
 		printf 'ERROR: check is read-only; APPLY, FIX, and CHECK_ONLY are forbidden\n' >&2; exit 2; \
 	fi; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -882,10 +910,12 @@ _builtin_release_all: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
 _builtin_gen_check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(WORKSPACE_ROOT)" --check
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(WORKSPACE_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_help_usage: _builtin_help_all

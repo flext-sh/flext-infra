@@ -509,7 +509,6 @@ class TestCodegenConform:
             dist=context.dist,
             infra_cli=context.infra_cli,
             make_profile=context.make_profile,
-            workspace_root_rel=context.workspace_root_rel,
             workspace_members=context.workspace_members,
             workspace_repositories=context.workspace_repositories,
             workspace_gitlinks=context.workspace_gitlinks,
@@ -545,34 +544,20 @@ class TestCodegenConform:
         )
         (root / c.Infra.MAKEFILE_FILENAME).write_text(rendered, encoding="utf-8")
 
-        help_process = tm.ok(
-            test_u.Tests.run_isolated_make(
-                ["help", "WRITE=DISABLED", "AUTOMATION=0"], cwd=root
-            )
-        )
+        help_process = tm.ok(test_u.Tests.run_isolated_make(["help"], cwd=root))
         tm.that(
             help_process.exit_code, eq=0, msg=help_process.stdout + help_process.stderr
         )
-        tm.that(help_process.stdout, has="WRITE=ENABLE")
-        tm.that(help_process.stdout, lacks="APPLY=Y")
-
-        fanout = tm.ok(
-            test_u.Tests.run_isolated_make(
-                [
-                    "--dry-run",
-                    "_builtin_fmt_apply",
-                    f"PROJECT={member.path.as_posix()}",
-                    "ACTION=apply",
-                    "WRITE=ENABLE",
-                    "AUTOMATION=ON",
-                ],
-                cwd=root,
-            )
-        )
-        tm.that(fanout.exit_code, eq=0, msg=fanout.stdout + fanout.stderr)
         tm.that(
-            fanout.stdout,
-            has=['--make-arg "ACTION=apply"', '--make-arg "WRITE=ENABLE"'],
+            help_process.stdout,
+            has=f"{make.apply_variable}={make.apply_value}",
+        )
+        tm.that(
+            help_process.stdout,
+            lacks=(
+                f"{config.Infra.codegen.make.apply_variable}="
+                f"{config.Infra.codegen.make.apply_value}"
+            ),
         )
 
         pre_commit = tm.ok(
@@ -580,9 +565,18 @@ class TestCodegenConform:
                 templates / ".pre-commit-config.yaml.j2", render_context
             )
         )
-        tm.that(pre_commit, has="make setup AUTOMATION=ON")
-        tm.that(pre_commit, has="make fmt AUTOMATION=ON WRITE=ENABLE")
-        tm.that(pre_commit, lacks=[" CI=Y", " APPLY=Y"])
+        entry = pre_commit.split("'", 2)[1]
+        expected_commands = [
+            f"make {step.verb}"
+            + (
+                f" {make.apply_variable}={make.apply_value}" if step.apply else ""
+            )
+            for step in make.workflow
+            if "pre_commit" in step.contexts
+        ]
+        tm.that(entry.split(" && "), eq=expected_commands)
+        tm.that(entry, lacks=f"{make.ci.variable}={make.ci.value}")
+        tm.that(entry, lacks=["make gen", "conform"])
 
         context_payload = render_context.model_dump(
             mode="python", exclude_computed_fields=True
@@ -1124,10 +1118,20 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
+        tm.that(
+            gen_check_body.index("deps extra-paths")
+            < gen_check_body.index("codegen conform"),
+            eq=True,
+        )
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_apply_body, eq=True)
         tm.that("--mode apply" in gen_apply_body, eq=True)
         tm.that("_require_apply" in gen_apply_body, eq=True)
+        tm.that(
+            gen_apply_body.index("deps extra-paths")
+            < gen_apply_body.index("codegen conform"),
+            eq=True,
+        )
         # The regeneration contract published on every projection speaks gen.
         make = config.Infra.codegen.make
         tm.that(

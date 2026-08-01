@@ -199,22 +199,18 @@ class FlextInfraWorktreeService(s[str]):
                 created_branch_oid,
                 metadata.error or "invalid lane project metadata",
             )
+        make_config = config.Infra.codegen.make
         setup = u.Cli.run_live(
             (
                 c.Infra.MAKE,
                 "setup",
-                f"{config.Infra.codegen.make.selector}=",
                 f"WORKSPACE={lane}",
             ),
             cwd=lane,
             remove_env_keys=(
-                "MAKEFLAGS",
-                "MAKELEVEL",
-                "MAKEOVERRIDES",
-                "MFLAGS",
-                "UV_PROJECT",
-                "UV_PROJECT_ENVIRONMENT",
-                "VIRTUAL_ENV",
+                *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+                make_config.selector,
+                make_config.apply_variable,
             ),
         )
         if setup.failure:

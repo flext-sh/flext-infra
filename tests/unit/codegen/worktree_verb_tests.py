@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -133,3 +134,62 @@ class TestsCodegenWorktreeVerb:
             invocation_log.read_text(encoding="utf-8"),
             has=["--operation list", f"--operation {operation}"],
         )
+
+    def test_public_make_add_reaches_setup_without_inherited_apply(
+        self, tmp_path: Path
+    ) -> None:
+        """A real public add creates its lane and completes child setup."""
+        make = config.Infra.codegen.make
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        makefile = Path(c.Infra.MAKEFILE_FILENAME).resolve()
+        (repository / c.Infra.MAKEFILE_FILENAME).write_text(
+            tm.ok(u.Cli.files_read_text(makefile)), encoding="utf-8"
+        )
+        (repository / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "worktree-runtime-probe"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        (repository / c.Infra.GITIGNORE).write_text(
+            f"{Path(c.Infra.VENV_BIN_REL).parts[0]}/\n", encoding="utf-8"
+        )
+        test_u.Tests.initialize_git_repo(repository)
+        tm.ok(
+            u.Cli.ensure_symlink(
+                repository / Path(c.Infra.VENV_BIN_REL).parts[0], Path(sys.prefix)
+            )
+        )
+        setup_log = tmp_path / "setup.log"
+        fake_uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            fake_uv,
+            "#!/bin/sh\n"
+            f'printf "%s\\t%s\\n" "$PWD" "$*" >> "{setup_log}"\n',
+        )
+        branch = "feature/public-setup"
+        common_arguments = [
+            "--no-print-directory",
+            "worktree",
+            f"UV={fake_uv}",
+            f"BRANCH={branch}",
+            f"{make.apply_variable}={make.apply_value}",
+        ]
+        added = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    *common_arguments,
+                    f"{make.selector}=add",
+                    "BASE=HEAD",
+                ],
+                cwd=repository,
+            )
+        )
+        tm.that(added.exit_code, eq=0, msg=added.stdout + added.stderr)
+        setup_output = setup_log.read_text(encoding="utf-8")
+        lane = Path(setup_output.split("\t", 1)[0])
+        tm.that(lane.is_dir(), where=bool)
+        tm.that(setup_output, has=["venv --clear", "sync --project"])
+        tm.that(added.stdout + added.stderr, lacks="read-only")
+
+        tm.ok(u.Infra.git_remove_clean_worktree(repository, lane))
+        tm.that(lane.exists(), eq=False)

@@ -224,9 +224,10 @@ class TestsWorkspaceRootMakeContract:
     def test_automated_setup_skips_repository_custom_hooks(
         self, tmp_path: Path
     ) -> None:
-        """Automation runs only the typed workflow, without custom side effects."""
+        """CI setup skips custom hooks and local pre-commit installation."""
         workspace_root, _project_names = _write_workspace(tmp_path)
         hook_log = workspace_root / "hook.log"
+        uv_log = workspace_root / "uv.log"
         (workspace_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             (
                 ".PHONY: pre-setup post-setup\n"
@@ -235,7 +236,9 @@ class TestsWorkspaceRootMakeContract:
             encoding="utf-8",
         )
         fake_uv = workspace_root / "bin" / "uv"
-        test_u.Tests.write_executable(fake_uv, "#!/bin/sh\nexit 0\n")
+        test_u.Tests.write_executable(
+            fake_uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{uv_log}"\n'
+        )
 
         process: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
@@ -246,6 +249,7 @@ class TestsWorkspaceRootMakeContract:
 
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         tm.that(hook_log.exists(), eq=False)
+        tm.that(uv_log.read_text(encoding="utf-8"), lacks="pre-commit install")
 
     def test_generated_make_selects_manifest_projects_and_forwards_gates(
         self, tmp_path: Path
