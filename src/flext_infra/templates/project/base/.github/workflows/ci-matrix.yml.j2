@@ -66,6 +66,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           submodules: {{ checkout_submodules }}
       - name: Setup Python
@@ -90,6 +92,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           submodules: {{ checkout_submodules }}
       - name: Setup Python
