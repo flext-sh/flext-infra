@@ -504,23 +504,25 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
-        """Remove checkout- and interpreter-specific type checker paths."""
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): port the 0.20
-        # canonical path policy so all generated 0.12 projects are portable.
+        """Remove checkout- and interpreter-specific type checker paths.
+
+        Search paths themselves belong to FlextInfraExtraPathsManager, which
+        derives them from the project's declared path dependencies and uv
+        workspace members. Restating a literal here made gen overwrite that
+        derivation with a two-entry list, so sibling sources dropped off the
+        analyzer path and every symbol imported from them degraded to Any.
+        """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return r[bool].ok(True)
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
-            u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
-        mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
-        if mypy is not None:
-            u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
+
         pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
         if pyright is None:
             return r[bool].ok(True)
-        u.Cli.toml_sync_string_list(pyright, c.Infra.EXTRA_PATHS, (".", "src"))
+
         interpreter_keys = ("venv", "venvPath", "pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
