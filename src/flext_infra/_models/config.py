@@ -513,7 +513,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Mutating public verbs serialized once under the checkout lock; "
                     "validation is owned by later workflow steps"
-                ),
+                )
             ),
         ]
         snapshot_excludes: Annotated[
@@ -632,6 +632,18 @@ class FlextInfraConfigModels:
         ]
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
+        ]
+        apply_absent_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="N",
+                description=(
+                    "Value the generated Makefile seeds when the caller enables "
+                    "nothing. It is forwarded verbatim on every read-only run, "
+                    "so the boundary must read it as 'not applying' instead of "
+                    "as an invalid write-enable token"
+                ),
+            ),
         ]
         bootstrap: Annotated[
             FlextInfraConfigModels.MakeBootstrapSpec,
