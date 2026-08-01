@@ -678,7 +678,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 return r.fail(reference_result.error or "repository resolution failed")
         return r.ok({
             member.distribution: {"workspace": True} for member in workspace.members
-        }
+        })
 
     @staticmethod
     def _validate_root_uv_sources(
