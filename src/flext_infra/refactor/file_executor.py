@@ -44,7 +44,11 @@ class FlextInfraClassNestingPostCheckGate:
         if source_symbol and expected_chain and c.Infra.RK_MRO_VALID in post_checks:
             errors.extend(self._validate_mro(file_path, source_symbol, expected_chain))
         if c.Infra.RK_LSP_DIAGNOSTICS_CLEAN in quality_gates:
-            errors.extend(self._validate_types(file_path))
+            errors.extend(
+                self._validate_source(
+                    file_path, updated_source=result.refactored_code
+                )
+            )
         return (not errors, errors)
 
     def _validate_imports(self, file_path: Path) -> t.StrSequence:
@@ -77,13 +81,18 @@ class FlextInfraClassNestingPostCheckGate:
         return list[str]()
 
     @staticmethod
-    def _validate_types(file_path: Path) -> t.StrSequence:
-        """Validate Python syntax in process."""
-        read = u.Cli.files_read_text(file_path)
-        if read.failure:
-            return [f"lsp_diagnostics_clean_failed:{read.error or 'read_failed'}"]
+    def _validate_source(
+        file_path: Path, *, updated_source: str | None
+    ) -> t.StrSequence:
+        """Validate the transformed Python source in process."""
+        source = updated_source
+        if source is None:
+            read = u.Cli.files_read_text(file_path)
+            if read.failure:
+                return [f"lsp_diagnostics_clean_failed:{read.error or 'read_failed'}"]
+            source = read.value
         try:
-            compile(read.value, str(file_path), "exec")
+            compile(source, str(file_path), "exec")
         except SyntaxError as exc:
             return [f"lsp_diagnostics_clean_failed:{exc}"]
         return list[str]()
