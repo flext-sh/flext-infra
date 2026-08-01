@@ -195,7 +195,7 @@ class FlextInfraUtilitiesPyprojectConform:
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
-        available = (workspace.repository, *workspace.members)
+        available = repositories
         # Only the root expresses the active workspace overlay in its own
         # requirements. A publishable member keeps its exact public prerelease
         # so the same pyproject remains resolvable in a standalone checkout; uv
