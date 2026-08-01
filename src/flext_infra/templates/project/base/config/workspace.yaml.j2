@@ -21,8 +21,12 @@ repository:
   extra_verbs:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
-      default_what: {{ verb.default_what | tojson }}
+      whats: {{ verb.whats | tojson }}
       apply_guarded: {{ verb.apply_guarded | tojson }}
+      accepts_selector: {{ verb.accepts_selector | tojson }}
+      help: {{ verb.help | tojson }}
+      lifecycle_order: {{ verb.lifecycle_order | tojson }}
+      serialized: {{ verb.serialized | tojson }}
 {%- endfor %}
 {%- endif %}
 {%- if workspace_repository.script_dispatch %}
@@ -71,8 +75,12 @@ members:
     extra_verbs:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
-        default_what: {{ verb.default_what | tojson }}
+        whats: {{ verb.whats | tojson }}
         apply_guarded: {{ verb.apply_guarded | tojson }}
+        accepts_selector: {{ verb.accepts_selector | tojson }}
+        help: {{ verb.help | tojson }}
+        lifecycle_order: {{ verb.lifecycle_order | tojson }}
+        serialized: {{ verb.serialized | tojson }}
 {%- endfor %}
 {%- endif %}
 {%- if repository.script_dispatch %}
@@ -91,6 +99,7 @@ repository_policy_overlays:
   - project: {{ overlay.project | tojson }}
     beads_enabled: {{ overlay.beads_enabled | tojson }}
     ci_enabled: {{ overlay.ci_enabled | tojson }}
+    ci_propagates: {{ overlay.ci_propagates | tojson }}
 {% else %}
   []
 {%- endfor %}

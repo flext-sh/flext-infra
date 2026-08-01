@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 from flext_infra import t
@@ -88,6 +88,10 @@ class FlextInfraModelsWorktree:
         apply_patch: Annotated[
             bool, m.Field(description="Apply a validated operation patch to source")
         ] = False
+        validation_mode: Annotated[
+            Literal["structural", "quality"],
+            m.Field(description="Post-transaction validation owned by this route"),
+        ] = "quality"
         timeout_seconds: Annotated[
             t.PositiveInt, m.Field(description="Command and lint timeout in seconds")
         ]

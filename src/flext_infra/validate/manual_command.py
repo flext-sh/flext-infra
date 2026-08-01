@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, t, u
+from flext_infra import c, config, t, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -131,26 +131,41 @@ class FlextInfraManualCommandValidator(s[bool]):
             or (arg.startswith("-i") and not arg.startswith("--"))
         )
 
-    @classmethod
-    def render_pre_commit_config(cls) -> str:
-        """Return the canonical generated ``.pre-commit-config.yaml`` content."""
-        config: str = c.Infra.PRE_COMMIT_CONFIG
-        return config
-
     @override
     def execute(self) -> p.Result[bool]:
-        """Fail when the live pre-commit config drifts from the canonical template."""
+        """Validate that generated hooks consume the typed Make sequence exactly."""
         config_path = self.workspace_root / ".pre-commit-config.yaml"
         if not config_path.exists():
             return r[bool].fail(
                 ".pre-commit-config.yaml missing — run `make gen` to generate it"
             )
-        read = u.Cli.files_read_text(config_path)
-        if read.failure:
-            return r[bool].fail(read.error or "pre-commit config read failed")
-        if read.value.strip() != self.render_pre_commit_config().strip():
+        loaded = u.Cli.yaml_load_mapping(config_path)
+        repos = loaded.get("repos")
+        if not isinstance(repos, list) or len(repos) != 1:
             return r[bool].fail(
-                ".pre-commit-config.yaml drifted from canonical template — run `make gen`"
+                ".pre-commit-config.yaml must contain one generated local repository"
+            )
+        repository = repos[0]
+        if not isinstance(repository, dict):
+            return r[bool].fail("pre-commit local repository must be a mapping")
+        hooks = repository.get("hooks")
+        if not isinstance(hooks, list):
+            return r[bool].fail("pre-commit hooks must be a sequence")
+        entries = tuple(
+            hook.get("entry") for hook in hooks if isinstance(hook, dict)
+        )
+        expected = tuple(
+            f"make {verb.name}"
+            + (
+                f" APPLY={config.Infra.codegen.make.apply_value}"
+                if verb.apply_guarded
+                else ""
+            )
+            for verb in config.Infra.codegen.make.lifecycle_verbs
+        )
+        if entries != expected:
+            return r[bool].fail(
+                ".pre-commit-config.yaml does not match the canonical Make sequence"
             )
         return r[bool].ok(True)
 

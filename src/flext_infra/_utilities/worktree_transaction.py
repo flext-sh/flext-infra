@@ -725,16 +725,22 @@ class FlextInfraUtilitiesWorktreeTransaction:
         repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
     ) -> p.Result[m.Infra.WorktreeTransactionReport]:
         """Run and evaluate the command inside an already checkpointed worktree."""
-        lint_commands_result = cls._lint_commands(worktree_root)
-        if lint_commands_result.failure:
-            return r[m.Infra.WorktreeTransactionReport].fail(
-                lint_commands_result.error
-                or "failed to resolve transaction lint executables"
-            )
-        lint_commands = lint_commands_result.value
+        lint_commands: t.StrSequencePairTuple = ()
+        if request.validation_mode == "quality":
+            lint_commands_result = cls._lint_commands(worktree_root)
+            if lint_commands_result.failure:
+                return r[m.Infra.WorktreeTransactionReport].fail(
+                    lint_commands_result.error
+                    or "failed to resolve transaction lint executables"
+                )
+            lint_commands = lint_commands_result.value
         environment = cls._transaction_environment(worktree_root, request.scoped_paths)
-        lint_before = cls._lint_snapshots(
-            worktree_root, environment, request.timeout_seconds, lint_commands
+        lint_before = (
+            cls._lint_snapshots(
+                worktree_root, environment, request.timeout_seconds, lint_commands
+            )
+            if request.validation_mode == "quality"
+            else ()
         )
         relocated = cls._relocate_command(
             request.command, request.workspace_root.resolve(), worktree_root
@@ -752,8 +758,12 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
         else:
             command_output = command_result.value
-        lint_after = cls._lint_snapshots(
-            worktree_root, environment, request.timeout_seconds, lint_commands
+        lint_after = (
+            cls._lint_snapshots(
+                worktree_root, environment, request.timeout_seconds, lint_commands
+            )
+            if request.validation_mode == "quality"
+            else ()
         )
 
         def _run_import_probe() -> p.Cli.CommandOutput:

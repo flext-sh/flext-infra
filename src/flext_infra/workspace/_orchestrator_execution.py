@@ -133,7 +133,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         make_args: t.StrSequence,
     ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
         """Execute a validated orchestration run with progress accounting."""
-        allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
+        allowed_verbs = config.Infra.codegen.make.orchestrated_verbs
         if verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
             return r.fail(f"unsupported orchestrate verb '{verb}' (allowed: {allowed})")
@@ -214,7 +214,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         """
         if project != c.Infra.ROOT_PROJECT_SELECTOR:
             return verb
-        if verb not in config.Infra.codegen.make.serialization.verbs:
+        if verb not in config.Infra.codegen.make.serialized_verbs:
             return verb
         return f"_serialized_{verb}"
 

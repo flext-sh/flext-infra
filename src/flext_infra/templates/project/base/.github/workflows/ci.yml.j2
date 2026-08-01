@@ -7,15 +7,11 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
+# Source: typed integration lane -> main promotion policy
 "on":
   pull_request:
     branches:
-      - {{ repository_branch }}
-  push:
-    branches:
-      - {{ repository_branch }}
-  workflow_dispatch:
+      - main
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -25,10 +21,22 @@ permissions:
 # End SECTION: permissions
 
 jobs:
+  lane-policy:
+    name: integration-lane-policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require typed integration lane
+        run: |
+          if [ "$GITHUB_HEAD_REF" != "{{ repository_branch }}" ]; then
+            printf 'ERROR: PR head must be {{ repository_branch }}, got %s\n' "$GITHUB_HEAD_REF" >&2
+            exit 2
+          fi
+
   # === SECTION: ci job (managed) ===
   # Source: template + config:github_actions.*
   ci:
     name: ci
+    needs: lane-policy
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -44,12 +52,8 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-      - name: Setup (blocking)
-        run: make setup
-
-      - name: Check (blocking)
-        run: make check
-
-      - name: Test (blocking)
-        run: make test
+{% for verb in make.lifecycle_verbs %}
+      - name: Canonical {{ verb.name }}
+        run: make {{ verb.name }}{% if verb.apply_guarded %} APPLY={{ make.apply_value }}{% endif %} CI=Y
+{% endfor %}
     # End SECTION: ci job

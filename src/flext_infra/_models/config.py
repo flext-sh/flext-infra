@@ -261,6 +261,10 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical Make sequence invoked by CI"),
+        ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
@@ -350,28 +354,61 @@ class FlextInfraConfigModels:
         ]
 
     class MakeVerbSpec(_ConfigContract):
-        """One public Make verb and its single default selector."""
+        """Single typed owner of one public Make verb and its handlers."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
-        default_what: Annotated[
-            t.NonEmptyStr, m.Field(description="Default WHAT selector")
+        whats: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Canonical handlers owned by the verb"),
         ]
         apply_guarded: Annotated[
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
-        apply_what: Annotated[
-            t.NonEmptyStr,
+        accepts_selector: Annotated[
+            bool,
+            m.Field(description="Whether callers may override the internal handler"),
+        ] = True
+        help: Annotated[t.NonEmptyStr, m.Field(description="Public help text")]
+        lifecycle_order: Annotated[
+            int | None,
             m.Field(
-                default="all",
-                description=(
-                    "Selector an apply-guarded verb resolves to when APPLY is "
-                    "set and no explicit WHAT is given. Defaults to 'all' so "
-                    "`make gen APPLY=Y` covers every surface with no skipped "
-                    "scope; without it the verb fell back to default_what "
-                    "('check') and silently mutated nothing"
-                ),
+                default=None,
+                gt=0,
+                description="Optional canonical pre-commit and CI execution order",
             ),
+        ] = None
+        serialized: Annotated[
+            bool,
+            m.Field(description="Whether the verb uses checkout serialization"),
+        ] = False
+        orchestrated: Annotated[
+            bool,
+            m.Field(description="Whether workspace roots fan the verb out to members"),
+        ] = False
+
+        @u.model_validator(mode="after")
+        def _validate_handlers(self) -> Self:
+            """Keep the default and lifecycle contract inside this one owner."""
+            if len(set(self.whats)) != len(self.whats):
+                msg = f"make verb {self.name} handlers must be unique"
+                raise ValueError(msg)
+            return self
+
+    class WorktreeTransactionRouteSpec(_ConfigContract):
+        """Typed transaction policy declared once for one governed CLI route."""
+
+        route: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^[a-z0-9-]+:[a-z0-9-]+$", description="group:command"),
         ]
+        apply_style: Annotated[
+            Literal["flag", "mode"],
+            m.Field(description="How the route expresses check/apply intent"),
+        ]
+        validation_mode: Annotated[
+            Literal["structural", "quality"],
+            m.Field(description="Post-transaction validation owned by the route"),
+        ] = "quality"
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -401,10 +438,6 @@ class FlextInfraConfigModels:
 
         filename: Annotated[
             t.NonEmptyStr, m.Field(description="Versioned custom handler filename")
-        ]
-        target_pattern: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Required private target regular expression"),
         ]
         allow_public_targets: bool = m.Field(description="Permit public targets")
         allow_toolchain_declarations: bool = m.Field(
@@ -440,16 +473,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
-        mutation_fixed_points: Annotated[
-            Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, t.NonEmptyStr]],
-            m.Field(
-                default_factory=lambda: MappingProxyType({}),
-                description=(
-                    "Authorized mutating WHATs and the validation WHAT each must "
-                    "run afterward under the same lock"
-                ),
-            ),
-        ]
         snapshot_excludes: Annotated[
             tuple[Path, ...],
             m.Field(
@@ -464,12 +487,6 @@ class FlextInfraConfigModels:
             m.Field(
                 gt=0,
                 description="Maximum seconds to wait for the checkout validation lock",
-            ),
-        ]
-        verbs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1, description="Public Make verbs serialized per checkout"
             ),
         ]
 
@@ -511,24 +528,6 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
                 )
                 raise ValueError(msg)
-            invalid = set(self.mutation_fixed_points) - set(self.verbs)
-            if invalid:
-                msg = (
-                    "make serialization mutation verbs are not serialized: "
-                    f"{', '.join(sorted(invalid))}"
-                )
-                raise ValueError(msg)
-            empty = [
-                verb
-                for verb, fixed_points in self.mutation_fixed_points.items()
-                if not fixed_points
-            ]
-            if empty:
-                msg = (
-                    "make serialization mutation verbs require fixed points: "
-                    f"{', '.join(sorted(empty))}"
-                )
-                raise ValueError(msg)
             return self
 
     class MakeBootstrapSpec(_ConfigContract):
@@ -549,13 +548,6 @@ class FlextInfraConfigModels:
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
-        actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Ordered public docs actions"),
-        ]
-        default_action: Annotated[
-            t.NonEmptyStr, m.Field(description="Default docs action")
-        ]
         mutable_actions: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
@@ -569,27 +561,6 @@ class FlextInfraConfigModels:
                 description="Regex rejecting cross-project relative Markdown links"
             ),
         ]
-
-        @u.model_validator(mode="after")
-        def _validate_docs_actions(self) -> Self:
-            """Require the default action and every mutable action to be declared."""
-            declared = set(self.actions)
-            if self.default_action not in declared:
-                msg = (
-                    f"docs default action must be one of {', '.join(sorted(declared))}"
-                )
-                raise ValueError(msg)
-            unknown = set(self.mutable_actions) - declared
-            if unknown:
-                msg = (
-                    "docs mutable actions must be declared actions: "
-                    f"{', '.join(sorted(unknown))}"
-                )
-                raise ValueError(msg)
-            if not any(action == "all" for action in self.actions):
-                msg = "docs actions must include the 'all' aggregate action"
-                raise ValueError(msg)
-            return self
 
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
@@ -634,22 +605,27 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
-            declared = {verb.name for verb in self.verbs}
-            serialized = set(self.serialization.verbs)
-            invalid = serialized - declared
-            if invalid:
-                msg = (
-                    "make serialization verbs are not declared public verbs: "
-                    f"{', '.join(sorted(invalid))}"
-                )
+            names = tuple(verb.name for verb in self.verbs)
+            if len(set(names)) != len(names):
+                msg = "make verb names must be unique"
                 raise ValueError(msg)
+            lifecycle_orders = tuple(
+                verb.lifecycle_order
+                for verb in self.verbs
+                if verb.lifecycle_order is not None
+            )
+            if len(set(lifecycle_orders)) != len(lifecycle_orders):
+                msg = "make lifecycle_order values must be unique"
+                raise ValueError(msg)
+            serialized = {verb.name for verb in self.verbs if verb.serialized}
             if "setup" in serialized:
                 msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
-            docs_actions = set(self.docs.actions)
-            if self.docs.default_action not in docs_actions:
-                msg = "make docs default_action must be declared in actions"
+            docs_verbs = tuple(verb for verb in self.verbs if verb.name == "docs")
+            if len(docs_verbs) != 1:
+                msg = "make must declare exactly one docs verb"
                 raise ValueError(msg)
+            docs_actions = set(docs_verbs[0].whats)
             invalid_mutable = set(self.docs.mutable_actions) - docs_actions
             if invalid_mutable:
                 msg = "make docs mutable_actions must be declared in actions"
@@ -661,6 +637,29 @@ class FlextInfraConfigModels:
                 msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
+
+        @m.computed_field()
+        @property
+        def lifecycle_verbs(self) -> tuple[FlextInfraConfigModels.MakeVerbSpec, ...]:
+            """Return the lifecycle derived only from per-verb ordering metadata."""
+            return tuple(
+                sorted(
+                    (verb for verb in self.verbs if verb.lifecycle_order is not None),
+                    key=lambda verb: verb.lifecycle_order or 0,
+                )
+            )
+
+        @m.computed_field()
+        @property
+        def serialized_verbs(self) -> tuple[str, ...]:
+            """Derive serialized verb names from their canonical declarations."""
+            return tuple(verb.name for verb in self.verbs if verb.serialized)
+
+        @m.computed_field()
+        @property
+        def orchestrated_verbs(self) -> tuple[str, ...]:
+            """Derive workspace fan-out names from canonical verb declarations."""
+            return tuple(verb.name for verb in self.verbs if verb.orchestrated)
 
         @m.computed_field()
         @property
@@ -948,6 +947,10 @@ class FlextInfraConfigModels:
             bool,
             m.Field(description="Whether conform generates the governed CI surface"),
         ] = True
+        ci_propagates: Annotated[
+            bool,
+            m.Field(description="Whether CI fans workspace verbs out to members"),
+        ] = True
 
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""
@@ -996,6 +999,10 @@ class FlextInfraConfigModels:
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
+        ci_propagates: Annotated[
+            bool,
+            m.Field(description="Resolved generic CI workspace propagation policy"),
+        ] = True
         external_dependency_paths: Annotated[
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
@@ -1320,6 +1327,10 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
+        ci_propagates: Annotated[
+            bool,
+            m.Field(description="Whether CI=Y fans workspace verbs out to members"),
+        ] = True
         workspace_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Relative path to the declared workspace root"),
@@ -1728,6 +1739,23 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical Make contract"),
         ]
+        transaction_routes: Annotated[
+            tuple[FlextInfraConfigModels.WorktreeTransactionRouteSpec, ...],
+            m.Field(description="Typed governed CLI transaction route declarations"),
+        ] = ()
+
+        @m.field_validator("transaction_routes")
+        @classmethod
+        def _validate_transaction_routes(
+            cls,
+            values: tuple[FlextInfraConfigModels.WorktreeTransactionRouteSpec, ...],
+        ) -> tuple[FlextInfraConfigModels.WorktreeTransactionRouteSpec, ...]:
+            """Reject ambiguous duplicate transaction route declarations."""
+            routes = tuple(value.route for value in values)
+            if len(set(routes)) != len(routes):
+                msg = "transaction routes must be unique"
+                raise ValueError(msg)
+            return values
         vscode: Annotated[
             FlextInfraConfigModels.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),

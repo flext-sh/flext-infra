@@ -609,6 +609,7 @@ class FlextInfraWorkspaceDetector(
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_branch_result.value,
                 ci_enabled=overlay.ci_enabled,
+                ci_propagates=overlay.ci_propagates,
                 external_dependency_paths=(
                     resolved_workspace.external_dependency_paths
                 ),

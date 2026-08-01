@@ -23,7 +23,6 @@ class FlextInfraConstantsBasemk:
         "base_venv.mk.j2",
         "project/base/base_mypy_limit.mk.j2",
         "base_preflight.mk.j2",
-        "base_verbs.mk.j2",
         "base_daemons.mk.j2",
         "base_pr.mk.j2",
         "base_clean.mk.j2",

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import cli as cli_facade
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.services.cli_routes import CliRouteService
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -20,8 +20,10 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     shared_value_flags: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
 
     @classmethod
-    def transaction_route_key(cls, group: str, args: t.StrSequence) -> str | None:
-        """Resolve one governed write route from unnormalized CLI arguments."""
+    def transaction_route_policy(
+        cls, group: str, args: t.StrSequence
+    ) -> m.Infra.WorktreeTransactionRouteSpec | None:
+        """Resolve the typed governed route policy from CLI arguments."""
         route_names = {route.name for route in cls.group_commands[group]}
         command_name = next(
             (argument for argument in args if argument in route_names), None
@@ -29,16 +31,21 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         if command_name is None:
             return None
         route_key = f"{group}:{command_name}"
-        governed_routes = (
-            c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES
-            | c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES
+        return next(
+            (
+                policy
+                for policy in config.Infra.codegen.transaction_routes
+                if policy.route == route_key
+            ),
+            None,
         )
-        return route_key if route_key in governed_routes else None
 
     @staticmethod
-    def transaction_apply_requested(route_key: str, args: t.StrSequence) -> bool:
+    def transaction_apply_requested(
+        policy: m.Infra.WorktreeTransactionRouteSpec, args: t.StrSequence
+    ) -> bool:
         """Return whether the outer invocation requested source application."""
-        if route_key in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES:
+        if policy.apply_style == "flag":
             return "--apply" in args
         return any(
             argument == "--mode=apply"
@@ -51,9 +58,11 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         )
 
     @staticmethod
-    def transaction_check_requested(route_key: str, args: t.StrSequence) -> bool:
+    def transaction_check_requested(
+        policy: m.Infra.WorktreeTransactionRouteSpec, args: t.StrSequence
+    ) -> bool:
         """Return whether the outer invocation requires a zero-delta check."""
-        if route_key in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES:
+        if policy.apply_style == "flag":
             return any(argument in {"--check", "--check-only"} for argument in args)
         return any(
             argument == "--mode=check"
@@ -66,7 +75,9 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         )
 
     @staticmethod
-    def transaction_inner_args(route_key: str, args: t.StrSequence) -> t.StrSequence:
+    def transaction_inner_args(
+        policy: m.Infra.WorktreeTransactionRouteSpec, args: t.StrSequence
+    ) -> t.StrSequence:
         """Force the isolated invocation to materialize its complete patch."""
         normalized: t.MutableSequenceOf[str] = []
         skip_next = False
@@ -74,7 +85,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             if skip_next:
                 skip_next = False
                 continue
-            if route_key in c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES:
+            if policy.apply_style == "mode":
                 if argument == "--mode":
                     skip_next = True
                     continue
@@ -83,7 +94,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             elif argument in {"--apply", "--check", "--check-only", "--dry-run"}:
                 continue
             normalized.append(argument)
-        if route_key in c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES:
+        if policy.apply_style == "mode":
             normalized.extend(("--mode", "apply"))
         else:
             normalized.append("--apply")
@@ -172,8 +183,8 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         process_environment = u.Cli.process_env()
         if process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1":
             return None
-        route_key = self.transaction_route_key(group, args)
-        if route_key is None:
+        route_policy = self.transaction_route_policy(group, args)
+        if route_policy is None:
             return None
         candidate_root = self.transaction_workspace_argument(args)
         workspace_result = u.Infra.git_workspace_root(candidate_root)
@@ -183,11 +194,12 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
                 c.Cli.MessageTypes.ERROR,
             )
             return 1
-        apply_requested = self.transaction_apply_requested(route_key, args)
+        apply_requested = self.transaction_apply_requested(route_policy, args)
         request = m.Infra.WorktreeTransactionRequest(
             workspace_root=workspace_result.value,
-            command=(group, *self.transaction_inner_args(route_key, args)),
+            command=(group, *self.transaction_inner_args(route_policy, args)),
             apply_patch=apply_requested,
+            validation_mode=route_policy.validation_mode,
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             scoped_paths=self.transaction_scoped_paths(args, workspace_result.value),
         )
@@ -199,7 +211,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             return 1
         report = result.value
         rendered = u.Infra.render_worktree_transaction_report(report)
-        check_failed = self.transaction_check_requested(route_key, args) and any(
+        check_failed = self.transaction_check_requested(route_policy, args) and any(
             repository.patch for repository in report.repositories
         )
         if check_failed:

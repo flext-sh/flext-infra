@@ -158,17 +158,12 @@ Infra:
         dependency_groups: all
         extras: all
       docs:
-        actions: [all, generate, fix, audit, build, validate]
-        default_action: all
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_fixed_points:
-          gen:
-            apply: check
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -176,62 +171,130 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen]
       verbs:
         - name: help
-          default_what: usage
+          whats: [usage]
           apply_guarded: false
+          accepts_selector: false
+          help: Show canonical commands
         - name: setup
-          default_what: environment
+          whats: [environment]
           apply_guarded: false
+          accepts_selector: false
+          help: Provision the managed environment
+          lifecycle_order: 10
         - name: deps
-          default_what: check
+          whats: [check, lock, upgrade]
           apply_guarded: false
+          help: Check, lock, or upgrade dependencies
         - name: build
-          default_what: artifacts
+          whats: [artifacts]
           apply_guarded: false
+          accepts_selector: false
+          help: Build project artifacts
+          orchestrated: true
         - name: check
-          default_what: all
+          whats: [all]
           apply_guarded: false
+          accepts_selector: false
+          help: Run read-only lint and static analysis
+          lifecycle_order: 50
+          serialized: true
+          orchestrated: true
         - name: test
-          default_what: all
+          whats: [all]
           apply_guarded: false
+          accepts_selector: false
+          help: Run the canonical pytest suite
+          lifecycle_order: 60
+          serialized: true
+          orchestrated: true
         - name: fmt
-          default_what: check
+          whats: [apply]
           apply_guarded: true
+          accepts_selector: false
+          help: Format source exactly once
+          lifecycle_order: 40
+          serialized: true
+          orchestrated: true
         - name: run
-          default_what: default
+          whats: [default]
           apply_guarded: false
+          accepts_selector: false
+          help: Run the project entry point
         - name: status
-          default_what: diagnostics
+          whats: [diagnostics]
           apply_guarded: false
+          accepts_selector: false
+          help: Show project diagnostics
         - name: docs
-          default_what: all
+          whats: [all, generate, fix, audit, build, validate]
           apply_guarded: false
+          help: Generate, fix, audit, build, or validate docs
+          orchestrated: true
         - name: clean
-          default_what: generated
+          whats: [generated]
           apply_guarded: false
+          accepts_selector: false
+          help: Remove generated build artifacts
+          orchestrated: true
         - name: release
-          default_what: status
+          whats: [status]
           apply_guarded: false
+          accepts_selector: false
+          help: Validate release status
         - name: fix
-          default_what: check
+          whats: [apply]
           apply_guarded: true
+          accepts_selector: false
+          help: Apply Ruff lint fixes exactly once
+          lifecycle_order: 30
+          serialized: true
+          orchestrated: true
         - name: gen
-          default_what: check
+          whats: [apply]
           apply_guarded: true
+          accepts_selector: false
+          help: Apply complete generation exactly once
+          lifecycle_order: 20
+          serialized: true
         - name: worktree
-          default_what: list
+          whats: [list, add, update, remove]
           apply_guarded: false
+          help: Manage governed worktrees
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
         workspace-root:
           allow_public_targets: true
           allow_toolchain_declarations: true
+
+    transaction_routes:
+      - { route: check:fix-enforcement, apply_style: flag }
+      - { route: check:fix-pyrefly-settings, apply_style: flag }
+      - { route: codegen:auto-fix, apply_style: flag }
+      - { route: codegen:consolidate, apply_style: flag }
+      - { route: codegen:init, apply_style: flag }
+      - { route: codegen:new, apply_style: flag }
+      - { route: codegen:pipeline, apply_style: flag }
+      - { route: codegen:py-typed, apply_style: flag }
+      - { route: codegen:scaffold, apply_style: flag }
+      - { route: codegen:version-file, apply_style: flag }
+      - { route: deps:extra-paths, apply_style: flag }
+      - { route: deps:modernize, apply_style: flag }
+      - { route: refactor:accessor-migrate, apply_style: flag }
+      - { route: refactor:apply-renames, apply_style: flag }
+      - { route: refactor:migrate-mro, apply_style: flag }
+      - { route: refactor:modernize-cli, apply_style: flag }
+      - { route: refactor:modernize-logging, apply_style: flag }
+      - { route: refactor:modernize-patterns, apply_style: flag }
+      - { route: refactor:modernize-pydantic, apply_style: flag }
+      - { route: refactor:modernize-result-di, apply_style: flag }
+      - { route: refactor:namespace-enforce, apply_style: flag }
+      - { route: refactor:wrapper-root-namespace, apply_style: flag }
+      - { route: codegen:conform, apply_style: mode, validation_mode: structural }
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
@@ -647,9 +710,6 @@ Infra:
         owner: codegen
         policy: full
       - path: ci/docker/ubuntu.Dockerfile
-        owner: codegen
-        policy: full
-      - path: .github/workflows/ci-matrix.yml
         owner: codegen
         policy: full
       - path: .github/workflows/ci.yml
@@ -1174,6 +1234,11 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        - source: base/.pre-commit-config.yaml.j2
+          destination: .pre-commit-config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: true
         - source: base/README.md.j2
           destination: README.md
           profiles: [workspace-root, workspace-member, standalone]
@@ -1224,13 +1289,6 @@ Infra:
           overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
-        # clean-machine images validating bootstrap and make verbs everywhere.
-        - source: base/.github/workflows/ci-matrix.yml.j2
-          destination: .github/workflows/ci-matrix.yml
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

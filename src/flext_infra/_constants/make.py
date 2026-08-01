@@ -50,7 +50,6 @@ class FlextInfraConstantsMake:
     "Make variable carrying the gate selection."
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -60,7 +59,6 @@ class FlextInfraConstantsMake:
     )
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -70,7 +68,6 @@ class FlextInfraConstantsMake:
     )
     PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -85,16 +82,6 @@ class FlextInfraConstantsMake:
         PROJECT_FAST_PATH_CHECK_GATE_VALUES
     )
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
-    ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
-        "build",
-        "check",
-        "clean",
-        "docs",
-        "fmt",
-        "scan",
-        "test",
-        "val",
-    )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",

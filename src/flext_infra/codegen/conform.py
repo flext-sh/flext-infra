@@ -1097,7 +1097,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         planned.extend(managed_result.value)
         if contract.custom:
             custom_result = self._plan_existing_custom(
-                root, codegen, profile=target.make_profile.value
+                root,
+                codegen,
+                extra_verbs=repository.extra_verbs,
+                profile=target.make_profile.value,
             )
             if custom_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1409,6 +1412,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     repository_branch=provider.value.branch,
+                    make=codegen.make,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
                     workspace_repositories=workspace_repositories,
@@ -1462,6 +1466,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         target, workspace, infra_repository.value
                     ),
                     make_profile=profile,
+                    ci_propagates=target.ci_propagates,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                         workspace
@@ -1475,7 +1480,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
-                    orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                    orchestrated_verbs=codegen.make.orchestrated_verbs,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                     project_selection_conflict_error=(
                         c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1562,7 +1567,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
-                orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                ci_propagates=target.ci_propagates,
+                orchestrated_verbs=codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1695,7 +1701,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
-                orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                ci_propagates=target.ci_propagates,
+                orchestrated_verbs=codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1782,6 +1789,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         config: m.Infra.CodegenConfigSpec,
         *,
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
         profile: str | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Validate the handwritten Make surface against its profile contract."""
@@ -1800,7 +1808,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 read.error or f"custom Make read failed: {path}"
             )
-        validation = self.validate_custom_make(read.value, policy)
+        allowed_verbs = tuple(
+            verb.name for verb in (*config.make.verbs, *extra_verbs)
+        )
+        validation = self.validate_custom_make(
+            read.value, policy, allowed_verbs=allowed_verbs
+        )
         if validation.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 validation.error or f"invalid custom Make handlers: {path}"
@@ -1818,10 +1831,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def validate_custom_make(
-        content: str, policy: m.Infra.CustomHandlerPolicy
+        content: str,
+        policy: m.Infra.CustomHandlerPolicy,
+        *,
+        allowed_verbs: tuple[str, ...],
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
-        target_re = re.compile(policy.target_pattern)
+        verb_pattern = "|".join(re.escape(verb) for verb in allowed_verbs)
+        target_re = re.compile(
+            rf"^(_custom_({verb_pattern})_[a-z0-9][a-z0-9-]*|"
+            rf"(pre|post)-({verb_pattern})(-[a-z0-9][a-z0-9-]*)?)$"
+        )
         in_define = False
         # Collapse backslash continuation lines before validating so that
         # directives like `.PHONY` can span multiple physical lines. Only
