@@ -867,7 +867,7 @@ class FlextInfraConfigModels:
                 self.operations != ("generate",)
                 or self.render_context != "make"
                 or self.surface
-                is not FlextInfraConstantsCodegenProject.CodegenConformSurface.MAKEFILE
+                != FlextInfraConstantsCodegenProject.CodegenConformSurface.MAKEFILE
                 or not self.overwrite
             ):
                 msg = f"invalid generated Make projection: {self.destination}"

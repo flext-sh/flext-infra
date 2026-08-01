@@ -167,6 +167,7 @@ _DEFAULT_worktree := list
 _APPLY_WHAT_fmt := all
 _APPLY_WHAT_fix := all
 _APPLY_WHAT_gen := all
+_APPLY_WHAT_worktree := update
 
 
 # === SECTION: profile routing (managed) ===

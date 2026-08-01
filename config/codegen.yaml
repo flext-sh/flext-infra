@@ -174,7 +174,7 @@ Infra:
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_verbs: [gen, fmt, fix]
+        mutation_verbs: [gen, fmt, fix, worktree]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -182,7 +182,7 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen, fmt, fix]
+        verbs: [check, test, gen, fmt, fix, worktree]
       verbs:
         - name: help
           default_what: usage
@@ -246,7 +246,8 @@ Infra:
         - name: worktree
           default_what: list
           whats: [list, add, update, remove]
-          apply_guarded: false
+          apply_guarded: true
+          apply_what: update
       custom_handler_policy:
         filename: custom.mk
         target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"
@@ -1146,8 +1147,6 @@ Infra:
             - ".devcontainer/.host-gitsettings"
             - ".devcontainer/.env"
             - ".github/*.rej"
-        - name: "--- codegen conform: tracked owner inputs ---"
-          patterns:
         - name: "FINAL BEADS TRACKING POLICY"
           patterns:
             - "!.beads/"
