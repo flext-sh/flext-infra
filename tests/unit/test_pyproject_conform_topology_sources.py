@@ -136,7 +136,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         member = workspace.members[0]
         tm.that(
             document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
+            eq=[f"{member.distribution}=={config.Infra.release.version}"],
         )
 
     def test_publishable_member_uses_public_prerelease(self) -> None:
