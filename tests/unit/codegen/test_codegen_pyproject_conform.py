@@ -187,7 +187,7 @@ members = ["packages/member"]
         )
         tm.fail(result)
         tm.that(
-            invalid_root_overlay.error or "",
+            result.error or "",
             has="root uv source is not exclusively workspace-backed: flext-core",
         )
 
