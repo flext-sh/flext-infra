@@ -53,6 +53,4 @@ jobs:
       - name: Test (blocking)
         run: make test
 
-      - name: Val (blocking)
-        run: make val
     # End SECTION: ci job

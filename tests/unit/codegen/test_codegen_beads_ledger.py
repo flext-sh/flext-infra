@@ -200,7 +200,8 @@ class TestCodegenBeadsLedger:
         tm.that(rendered, has=f"host: {server.host}")
         tm.that(rendered, has=f"port: {server.port}")
         tm.that(rendered, has=f"user: {server.user}")
-        tm.that(rendered, has=f"auto-commit: {server.auto_commit}")
+        # Quoted on purpose: bare `on` is a YAML boolean, not the string "on".
+        tm.that(rendered, has=f'auto-commit: "{server.auto_commit}"')
 
     def test_attached_standalone_plan_renders_routing_config(
         self, tmp_path: Path
