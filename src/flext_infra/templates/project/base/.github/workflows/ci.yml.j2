@@ -52,8 +52,8 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-{% for verb in make.lifecycle_verbs %}
-      - name: Canonical {{ verb.name }}
-        run: make {{ verb.name }}{% if verb.apply_guarded %} APPLY={{ make.apply_value }}{% endif %} CI=Y
+{% for step in make.workflow if "ci" in step.contexts %}
+      - name: {{ step.verb }} (blocking)
+        run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %} {{ make.ci.variable }}={{ make.ci.value }}
 {% endfor %}
     # End SECTION: ci job

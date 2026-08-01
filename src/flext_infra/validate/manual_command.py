@@ -154,15 +154,18 @@ class FlextInfraManualCommandValidator(s[bool]):
         entries = tuple(
             hook.get("entry") for hook in hooks if isinstance(hook, dict)
         )
-        expected = tuple(
-            f"make {verb.name}"
+        make_config = config.Infra.codegen.make
+        commands = tuple(
+            f"make {step.verb}"
             + (
-                f" APPLY={config.Infra.codegen.make.apply_value}"
-                if verb.apply_guarded
+                f" {make_config.apply_variable}={make_config.apply_value}"
+                if step.apply
                 else ""
             )
-            for verb in config.Infra.codegen.make.lifecycle_verbs
+            for step in make_config.workflow
+            if "pre_commit" in step.contexts
         )
+        expected = ("bash -eu -o pipefail -c '" + " && ".join(commands) + "'",)
         if entries != expected:
             return r[bool].fail(
                 ".pre-commit-config.yaml does not match the canonical Make sequence"

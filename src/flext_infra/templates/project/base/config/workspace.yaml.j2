@@ -25,7 +25,6 @@ repository:
       apply_guarded: {{ verb.apply_guarded | tojson }}
       accepts_selector: {{ verb.accepts_selector | tojson }}
       help: {{ verb.help | tojson }}
-      lifecycle_order: {{ verb.lifecycle_order | tojson }}
       serialized: {{ verb.serialized | tojson }}
 {%- endfor %}
 {%- endif %}
@@ -79,7 +78,6 @@ members:
         apply_guarded: {{ verb.apply_guarded | tojson }}
         accepts_selector: {{ verb.accepts_selector | tojson }}
         help: {{ verb.help | tojson }}
-        lifecycle_order: {{ verb.lifecycle_order | tojson }}
         serialized: {{ verb.serialized | tojson }}
 {%- endfor %}
 {%- endif %}

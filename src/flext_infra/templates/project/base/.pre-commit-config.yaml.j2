@@ -4,11 +4,11 @@
 repos:
   - repo: local
     hooks:
-{% for verb in make.lifecycle_verbs %}
-      - id: flext-{{ verb.name }}
-        name: FLEXT canonical {{ verb.name }}
-        entry: make {{ verb.name }}{% if verb.apply_guarded %} APPLY={{ make.apply_value }}{% endif %}
+      - id: flext-canonical-workflow
+        name: FLEXT canonical workflow
         language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          '{% for step in make.workflow if "pre_commit" in step.contexts %}make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
         pass_filenames: false
         always_run: true
-{% endfor %}

@@ -378,14 +378,6 @@ class FlextInfraConfigModels:
             m.Field(description="Whether callers may override the internal handler"),
         ] = True
         help: Annotated[t.NonEmptyStr, m.Field(description="Public help text")]
-        lifecycle_order: Annotated[
-            int | None,
-            m.Field(
-                default=None,
-                gt=0,
-                description="Optional canonical pre-commit and CI execution order",
-            ),
-        ] = None
         serialized: Annotated[
             bool,
             m.Field(description="Whether the verb uses checkout serialization"),
@@ -418,6 +410,39 @@ class FlextInfraConfigModels:
             Literal["structural", "quality"],
             m.Field(description="Post-transaction validation owned by the route"),
         ] = "quality"
+
+    class MakeWorkflowStepSpec(_ConfigContract):
+        """One canonical workflow step and its execution contexts."""
+
+        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
+        apply: Annotated[
+            bool,
+            m.Field(description="Whether the step supplies the configured apply token"),
+        ] = False
+        contexts: Annotated[
+            tuple[Literal["local", "ci", "pre_commit"], ...],
+            m.Field(
+                min_length=1,
+                description="Execution contexts consuming this single workflow row",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_contexts(self) -> Self:
+            """Require unique contexts and retain every step in the local workflow."""
+            if len(set(self.contexts)) != len(self.contexts):
+                msg = f"make workflow contexts must be unique for {self.verb}"
+                raise ValueError(msg)
+            if "local" not in self.contexts:
+                msg = f"make workflow step {self.verb} must run locally"
+                raise ValueError(msg)
+            return self
+
+    class MakeCiSpec(_ConfigContract):
+        """The only permitted environment delta between local and CI execution."""
+
+        variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
+        value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -591,6 +616,14 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeSerializationSpec,
             m.Field(description="Per-checkout Make validation serialization"),
         ]
+        workflow: Annotated[
+            tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
+            m.Field(min_length=1, description="Ordered contextual validation workflow"),
+        ]
+        ci: Annotated[
+            FlextInfraConfigModels.MakeCiSpec,
+            m.Field(description="Config-owned CI-only environment delta"),
+        ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
@@ -618,17 +651,32 @@ class FlextInfraConfigModels:
             if len(set(names)) != len(names):
                 msg = "make verb names must be unique"
                 raise ValueError(msg)
-            lifecycle_orders = tuple(
-                verb.lifecycle_order
-                for verb in self.verbs
-                if verb.lifecycle_order is not None
-            )
-            if len(set(lifecycle_orders)) != len(lifecycle_orders):
-                msg = "make lifecycle_order values must be unique"
-                raise ValueError(msg)
             serialized = {verb.name for verb in self.verbs if verb.serialized}
             if "setup" in serialized:
                 msg = "make setup cannot require the managed validation environment"
+                raise ValueError(msg)
+            workflow_verbs = tuple(step.verb for step in self.workflow)
+            if len(set(workflow_verbs)) != len(workflow_verbs):
+                msg = "make workflow verbs must be unique"
+                raise ValueError(msg)
+            unknown_workflow = set(workflow_verbs) - set(names)
+            if unknown_workflow:
+                msg = (
+                    "make workflow verbs are not declared: "
+                    f"{', '.join(sorted(unknown_workflow))}"
+                )
+                raise ValueError(msg)
+            verb_specs = {verb.name: verb for verb in self.verbs}
+            invalid_apply = tuple(
+                step.verb
+                for step in self.workflow
+                if step.apply != verb_specs[step.verb].apply_guarded
+            )
+            if invalid_apply:
+                msg = (
+                    "make workflow apply intent must match verb contract: "
+                    f"{', '.join(sorted(invalid_apply))}"
+                )
                 raise ValueError(msg)
             docs_verbs = tuple(verb for verb in self.verbs if verb.name == "docs")
             if len(docs_verbs) != 1:
@@ -646,17 +694,6 @@ class FlextInfraConfigModels:
                 msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
-
-        @m.computed_field()
-        @property
-        def lifecycle_verbs(self) -> tuple[FlextInfraConfigModels.MakeVerbSpec, ...]:
-            """Return the lifecycle derived only from per-verb ordering metadata."""
-            return tuple(
-                sorted(
-                    (verb for verb in self.verbs if verb.lifecycle_order is not None),
-                    key=lambda verb: verb.lifecycle_order or 0,
-                )
-            )
 
         @m.computed_field()
         @property

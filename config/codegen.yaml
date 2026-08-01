@@ -153,6 +153,16 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      ci:
+        variable: CI
+        value: Y
+      workflow:
+        - { verb: setup, apply: false, contexts: [local, ci, pre_commit] }
+        - { verb: gen, apply: true, contexts: [local] }
+        - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
+        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
+        - { verb: check, apply: false, contexts: [local, ci, pre_commit] }
+        - { verb: test, apply: false, contexts: [local, ci, pre_commit] }
       bootstrap:
         environment: isolated
         dependency_groups: all
@@ -182,7 +192,6 @@ Infra:
           apply_guarded: false
           accepts_selector: false
           help: Provision the managed environment
-          lifecycle_order: 10
         - name: deps
           whats: [check, lock, upgrade]
           apply_guarded: false
@@ -198,7 +207,6 @@ Infra:
           apply_guarded: false
           accepts_selector: false
           help: Run read-only lint and static analysis
-          lifecycle_order: 50
           serialized: true
           orchestrated: true
         - name: test
@@ -206,7 +214,6 @@ Infra:
           apply_guarded: false
           accepts_selector: false
           help: Run the canonical pytest suite
-          lifecycle_order: 60
           serialized: true
           orchestrated: true
         - name: fmt
@@ -214,7 +221,6 @@ Infra:
           apply_guarded: true
           accepts_selector: false
           help: Format source exactly once
-          lifecycle_order: 40
           serialized: true
           orchestrated: true
         - name: run
@@ -248,7 +254,6 @@ Infra:
           apply_guarded: true
           accepts_selector: false
           help: Apply Ruff lint fixes exactly once
-          lifecycle_order: 30
           serialized: true
           orchestrated: true
         - name: gen
