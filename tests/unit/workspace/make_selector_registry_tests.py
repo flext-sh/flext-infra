@@ -188,8 +188,7 @@ class TestsRegistrySelectors:
         fallback = "registry_fallback"
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(
-            f"CC ?= {fallback}\nprobe:\n\t@printf '%s\\n' '$(CC)'\n",
-            encoding="utf-8",
+            f"CC ?= {fallback}\nprobe:\n\t@printf '%s\\n' '$(CC)'\n", encoding="utf-8"
         )
 
         process = tm.ok(
