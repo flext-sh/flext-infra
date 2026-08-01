@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import cProfile
+import marshal
 from pathlib import Path
 
 import pytest
@@ -22,11 +22,9 @@ class TestsFlextInfraCProfileReport:
         report_dir.mkdir(parents=True)
         profile_path = report_dir / "profile.pstats"
         output_path = report_dir / "profile.txt"
-        profiler = cProfile.Profile()
-        profiler.enable()
-        _ = sum(range(10))
-        profiler.disable()
-        profiler.dump_stats(profile_path)
+        callers: dict[tuple[str, int, str], tuple[int, int, float, float]] = {}
+        stats = {("tests/sample.py", 1, "sample"): (1, 1, 0.001, 0.001, callers)}
+        profile_path.write_bytes(marshal.dumps(stats))
 
         result = FlextInfraCProfileReport(
             workspace_root=tmp_path,
@@ -46,6 +44,26 @@ class TestsFlextInfraCProfileReport:
         }
 
         tm.that(routes["cprofile-report"], eq=FlextInfraCProfileReport)
+
+    def test_truncated_profile_returns_typed_failure(self, tmp_path: Path) -> None:
+        policy = config.Infra.tooling.tools.pytest
+        report_dir = tmp_path / ".reports" / "tests" / "profile"
+        report_dir.mkdir(parents=True)
+        profile_path = report_dir / "profile.pstats.pending"
+        output_path = report_dir / "profile.txt"
+        profile_path.write_bytes(b"")
+
+        result = FlextInfraCProfileReport(
+            workspace_root=tmp_path,
+            profile=profile_path,
+            output=output_path,
+            sort=policy.profile_sort,
+            limit=policy.profile_limit,
+        ).execute()
+
+        tm.that(result.failure, eq=True)
+        tm.that(result.error or "", has="render cProfile report")
+        tm.that(output_path.exists(), eq=False)
 
     def test_profile_artifacts_cannot_escape_workspace_reports(
         self, tmp_path: Path

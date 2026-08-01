@@ -231,6 +231,16 @@ class FlextInfraModelsDepsToolSettings(
             ):
                 msg = "pytest run timeout must include item and termination budgets"
                 raise ValueError(msg)
+            if self.process_timeout_seconds < (
+                self.run_timeout_seconds
+                + self.case_timeout_seconds
+                + self.termination_grace_seconds
+            ):
+                msg = (
+                    "pytest process timeout must include run, item, and termination "
+                    "budgets"
+                )
+                raise ValueError(msg)
             derived_options = ("--timeout", "--session-timeout")
             if any(
                 option in {"-o", "--override-ini"}

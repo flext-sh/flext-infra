@@ -648,6 +648,12 @@ class FlextInfraConfigModels:
 
         @m.computed_field()
         @property
+        def check_gates_fast(self) -> tuple[str, ...]:
+            """Canonical file-scoped Make check-gate vocabulary."""
+            return FlextInfraConstantsMake.PROJECT_FAST_PATH_CHECK_GATE_VALUES
+
+        @m.computed_field()
+        @property
         def custom_handler_policies(
             self,
         ) -> Mapping[str, FlextInfraConfigModels.CustomHandlerPolicy]:

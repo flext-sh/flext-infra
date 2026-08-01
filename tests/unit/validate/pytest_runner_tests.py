@@ -179,7 +179,7 @@ class TestsFlextInfraPytestRunner:
                 encoding="utf-8",
             )
             (report_dir / "coverage.xml").write_text("<coverage/>", encoding="utf-8")
-            _dump_real_profile(report_dir / "pytest.pstats")
+            _dump_real_profile(report_dir / "pytest.pstats.pending")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -198,6 +198,14 @@ class TestsFlextInfraPytestRunner:
         latest = tmp_path / ".reports" / "tests" / "latest.txt"
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
+        tm.that(
+            (
+                latest.parent
+                / latest.read_text(encoding="utf-8").strip()
+                / "pytest.pstats"
+            ).is_file(),
+            eq=True,
+        )
 
     def test_full_run_fails_when_coverage_artifact_is_missing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -230,7 +238,7 @@ class TestsFlextInfraPytestRunner:
                 ),
                 encoding="utf-8",
             )
-            _dump_real_profile(report_dir / "pytest.pstats")
+            _dump_real_profile(report_dir / "pytest.pstats.pending")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -274,7 +282,7 @@ class TestsFlextInfraPytestRunner:
                 ),
                 encoding="utf-8",
             )
-            _dump_real_profile(report_dir / "pytest.pstats")
+            _dump_real_profile(report_dir / "pytest.pstats.pending")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -314,6 +322,7 @@ class TestsFlextInfraPytestRunner:
             Path(output_file).write_text(
                 "pytest invocation reached hard timeout\n", encoding="utf-8"
             )
+            (Path(output_file).parent / "pytest.pstats.pending").write_bytes(b"")
             return r[int].ok(c.Infra.PROCESS_TIMEOUT_EXIT_CODE)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -336,5 +345,12 @@ class TestsFlextInfraPytestRunner:
                 "state=TIMED_OUT",
                 "junit=not-generated",
                 "coverage=not-generated",
+                "profile=invalid:",
             ],
+        )
+        tm.that(
+            (
+                tmp_path / ".reports" / "tests" / latest / "pytest-profile-error.txt"
+            ).read_text(encoding="utf-8"),
+            has="cProfile artifact is empty",
         )

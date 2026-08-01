@@ -546,8 +546,9 @@ Infra:
           - --durations=10
           # mro-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
-        # mro-99ae: hard process boundary independent of pytest hook progress.
-        process-timeout-seconds: 60
+        # mro-wkii.17.43: the outer watchdog includes the typed run, one item
+        # window for interpreter/reporting overhead, and termination grace.
+        process-timeout-seconds: 332
       tomlsort:
         all: true
         in_place: true

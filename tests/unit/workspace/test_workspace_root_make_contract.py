@@ -91,7 +91,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     # the Beads lifecycle, which inspects a live Dolt tracker: a unit test then
     # depended on an external service and failed on any machine without it.
     # Planning renders the same files and touches no tracker.
-    planned = tm.ok(
+    planned: m.Infra.CodegenPlan = tm.ok(
         FlextInfraCodegenConform().plan(
             m.Infra.CodegenConformRequest(
                 root=workspace_root,
@@ -140,6 +140,12 @@ class TestsWorkspaceRootMakeContract:
 
         tm.that(make_entries, len=1)
         tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        fast_gates = set(config.Infra.codegen.make.check_gates_fast)
+        tm.that(fast_gates, empty=False)
+        tm.that(
+            fast_gates.issubset(set(config.Infra.codegen.make.check_gates_allowed)),
+            where=bool,
+        )
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.
@@ -274,6 +280,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has=f"--projects {owner}")
         tm.that(output, has="--file")
         tm.that(output, has="--match")
+        tm.that(output, lacks="flext_infra._pytest_entry")
 
     def test_generated_make_routes_root_file_only_to_workspace_root(
         self, tmp_path: Path
@@ -297,17 +304,102 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        # The root project is in the forwarded selection and the typed FILE
-        # selector travels with it. Which project owns the file is decided by
-        # the orchestrator (_select_file_owner), not by this Make recipe, so
-        # this boundary asserts forwarding rather than owner filtering.
-        tm.that(output, has="--projects .")
-        tm.that(output, has="--file")
+        tm.that(output, has="flext_infra._pytest_entry")
+        tm.that(output, lacks="workspace orchestrate")
+        tm.that(output, lacks="make -C .")
 
-    def test_generated_make_default_test_includes_root_and_every_member(
+    def test_generated_root_file_executes_local_pytest_once(
         self, tmp_path: Path
     ) -> None:
-        """Run provider root tests alongside every configured workspace member."""
+        """Run root FILE/FILES locally under one lock without child dispatch."""
+        workspace_root, _ = _write_workspace(tmp_path)
+        selected = "tests/unit/test_provider_contract.py"
+        selected_path = workspace_root / selected
+        selected_path.parent.mkdir(parents=True, exist_ok=True)
+        selected_path.write_text("def test_provider_contract():\n    assert True\n")
+        invocation_log = workspace_root / "root-test.log"
+        runtime_python = workspace_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(
+            runtime_python,
+            (
+                "#!/bin/sh\n"
+                f'printf "python|%s\\n" "$*" >> "{invocation_log}"\n'
+                "verb=''\n"
+                "previous=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then '
+                'exec make --no-print-directory "_serialized_${verb}"; fi\n'
+                "exit 0\n"
+            ),
+        )
+        fake_uv = workspace_root / "bin" / "uv"
+        test_u.Tests.write_executable(
+            fake_uv,
+            f'#!/bin/sh\nprintf "uv|%s\\n" "$*" >> "{invocation_log}"\nexit 0\n',
+        )
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "test",
+                    f"FILE={selected}",
+                    f"UV={fake_uv}",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        invocations = invocation_log.read_text(encoding="utf-8").splitlines()
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(sum("workspace serialize-make" in line for line in invocations), eq=1)
+        tm.that(sum("flext_infra._pytest_entry" in line for line in invocations), eq=1)
+        tm.that(sum("workspace orchestrate" in line for line in invocations), eq=0)
+
+        selected_files = ("src/fixture_workspace/a.py", "tests/unit/test_a.py")
+        for relative_path in selected_files:
+            selected_path = workspace_root / relative_path
+            selected_path.parent.mkdir(parents=True, exist_ok=True)
+            selected_path.write_text("value = 1\n", encoding="utf-8")
+        gates = ",".join(config.Infra.codegen.make.check_gates_fast)
+        invocation_log.write_text("", encoding="utf-8")
+        check_process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "check",
+                    f"PROJECT={c.Infra.ROOT_PROJECT_SELECTOR}",
+                    f"FILES={' '.join(selected_files)}",
+                    f"CHECK_GATES={gates}",
+                    f"UV={fake_uv}",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        invocations = invocation_log.read_text(encoding="utf-8").splitlines()
+        invoked = "\n".join(invocations)
+
+        tm.that(
+            check_process.exit_code,
+            eq=0,
+            msg=check_process.stdout + check_process.stderr,
+        )
+        tm.that(sum("workspace serialize-make" in line for line in invocations), eq=1)
+        tm.that(invoked, has=["ruff check", "ruff format", "pyrefly check", "mypy"])
+        tm.that(invoked, has="pyright")
+        tm.that(invoked, lacks=["workspace orchestrate", "flext_infra check run"])
+        for selected_file in selected_files:
+            tm.that(invoked, has=selected_file)
+
+    def test_generated_make_default_test_validates_only_workspace_root(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep default validation at self; members require explicit selection."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -319,9 +411,41 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="--projects .")
+        tm.that(output, has="flext_infra._pytest_entry")
+        tm.that(output, lacks=["workspace orchestrate", "--projects ."])
         for project_name in project_names:
-            tm.that(output, has=f"--projects {project_name}")
+            tm.that(output, lacks=f"--projects {project_name}")
+
+    def test_generated_make_forwards_file_scoped_check_only_to_selected_member(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root, project_names = _write_workspace(tmp_path)
+        owner = project_names[0]
+        selected_files = "src/flext_demo/a.py tests/unit/test_a.py"
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_check_all",
+                    f"PROJECT={owner}",
+                    f"FILES={selected_files}",
+                    "CHECK_GATES=lint,pyright",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has=f"--projects {owner}")
+        tm.that(output, has=f'--make-arg "FILES={selected_files}"')
+        tm.that(output, has='--make-arg "CHECK_GATES=lint,pyright"')
+        tm.that(output, lacks=["flext_infra check run", "ruff check"])
+        for project_name in project_names[1:]:
+            tm.that(output, lacks=f"--projects {project_name}")
 
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
@@ -375,7 +499,7 @@ class TestsWorkspaceRootMakeContract:
                 tm.that(output, has="--check")
                 tm.that(output, lacks="--apply")
                 invocation_log.write_text("", encoding="utf-8")
-                applied = tm.ok(
+                applied: cli_p.Cli.CommandOutput = tm.ok(
                     test_u.Tests.run_isolated_make(
                         [
                             "-C",
@@ -397,7 +521,7 @@ class TestsWorkspaceRootMakeContract:
                 tm.that(output, lacks="--apply")
                 tm.that(output, lacks="--check")
 
-        invalid = tm.ok(
+        invalid: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
                 ["-C", str(workspace_root), "docs", "WHAT=not-a-docs-action"],
                 cwd=workspace_root,

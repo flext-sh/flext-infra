@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from flext_cli import p as cli_p
 from flext_infra import c, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
@@ -214,7 +215,9 @@ class TestsCodegenSetupSubmodules:
         self._git(project / "vendor/source", "switch", "-q", "-c", "local-work")
         environment = self._fake_uv(project)
 
-        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+        result: cli_p.Cli.CommandOutput = tm.ok(
+            u.Cli.run_raw(["make", "setup"], cwd=project, env=environment)
+        )
 
         tm.that(result.exit_code, eq=2)
         tm.that(result.stderr, has="conflicting branch")
@@ -236,7 +239,9 @@ class TestsCodegenSetupSubmodules:
         marker.write_text("local change", encoding="utf-8")
         environment = self._fake_uv(project)
 
-        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+        result: cli_p.Cli.CommandOutput = tm.ok(
+            u.Cli.run_raw(["make", "setup"], cwd=project, env=environment)
+        )
 
         tm.that(result.exit_code, eq=0)
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")
@@ -262,6 +267,29 @@ class TestsCodegenSetupSubmodules:
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=advanced_head)
         tm.that(advanced_marker.read_text(encoding="utf-8"), eq="fix forward")
+
+    def test_public_setup_does_not_advance_recorded_gitlink(
+        self, tmp_path: Path
+    ) -> None:
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        checkout = project / "vendor/source"
+        recorded_gitlink = self._git(project, "rev-parse", ":vendor/source")
+        remote_marker = source / "remote-advance.txt"
+        remote_marker.write_text("remote advance", encoding="utf-8")
+        self._git(source, "add", "remote-advance.txt")
+        self._git(source, "commit", "-q", "-m", "Advance remote branch")
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+
+        tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=recorded_gitlink)
+        tm.that((checkout / "remote-advance.txt").exists(), eq=False)
+        tm.that(
+            self._git(project, "status", "--porcelain", "--", "vendor/source"), eq=""
+        )
 
     def test_unmanaged_third_party_submodule_is_never_mutated(
         self, tmp_path: Path

@@ -120,8 +120,8 @@ class FlextInfraPytestRunner(s[int]):
     def _report_directory(self) -> Path:
         """Create one collision-resistant report directory under the project."""
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
-        report_root = self.root / self.reports
-        report_dir = report_root / run_id
+        report_root = Path(self.root) / self.reports
+        report_dir: Path = report_root / run_id
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 
@@ -161,7 +161,7 @@ class FlextInfraPytestRunner(s[int]):
             "-m",
             "cProfile",
             "-o",
-            str(report_dir / "pytest.pstats"),
+            str(report_dir / "pytest.pstats.pending"),
             "-m",
             "pytest",
             target,
@@ -233,15 +233,41 @@ class FlextInfraPytestRunner(s[int]):
         if run_result.failure:
             return r[int].fail(run_result.error or "pytest process execution failed")
         exit_code = run_result.value
-        profile_result = FlextInfraCProfileReport(
-            workspace_root=self.root,
-            profile=report_dir / "pytest.pstats",
-            output=report_dir / "pytest-profile.txt",
-            sort=pytest.profile_sort,
-            limit=pytest.profile_limit,
-        ).execute()
-        if profile_result.failure and exit_code == 0:
-            return r[int].fail(profile_result.error or "cProfile report failed")
+        profile_staging = report_dir / "pytest.pstats.pending"
+        profile_file = report_dir / "pytest.pstats"
+        profile_value = "not-generated"
+        if profile_staging.is_file() and profile_staging.stat().st_size > 0:
+            profile_result = FlextInfraCProfileReport(
+                workspace_root=self.root,
+                profile=profile_staging,
+                output=report_dir / "pytest-profile.txt",
+                sort=pytest.profile_sort,
+                limit=pytest.profile_limit,
+            ).execute()
+            if profile_result.failure:
+                error = profile_result.error or "cProfile report failed"
+                u.Cli.atomic_write_text_file(
+                    report_dir / "pytest-profile-error.txt", f"{error}\n"
+                ).unwrap()
+                profile_value = f"invalid:{profile_staging}"
+                if exit_code == 0:
+                    return r[int].fail(error)
+            else:
+                try:
+                    profile_staging.replace(profile_file)
+                except OSError as exc:
+                    return r[int].fail_op("publish cProfile artifact", exc)
+                profile_value = str(profile_file)
+        elif profile_staging.is_file():
+            profile_value = f"invalid:{profile_staging}"
+            error = f"cProfile artifact is empty: {profile_staging}"
+            u.Cli.atomic_write_text_file(
+                report_dir / "pytest-profile-error.txt", f"{error}\n"
+            ).unwrap()
+            if exit_code == 0:
+                return r[int].fail(error)
+        elif exit_code == 0:
+            return r[int].fail(f"cProfile artifact does not exist: {profile_staging}")
         diagnostics_result = self._extract_diagnostics(report_dir)
         if diagnostics_result.failure:
             return r[int].fail(
@@ -263,6 +289,7 @@ class FlextInfraPytestRunner(s[int]):
         summary = (
             f"junit={junit_value}\n"
             f"coverage={coverage_value}\n"
+            f"profile={profile_value}\n"
             f"failed={diagnostics.failed_count}\n"
             f"errors={diagnostics.error_count}\n"
             f"warnings={diagnostics.warning_count}\n"
