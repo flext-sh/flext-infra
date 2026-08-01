@@ -96,7 +96,7 @@ jobs:
           mise exec -- bd version
       - name: Verb surface
         run: make help
-# End SECTION: macos
+  # End SECTION: macos
 
   # === SECTION: windows (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv

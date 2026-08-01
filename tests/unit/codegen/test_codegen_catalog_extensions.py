@@ -54,12 +54,9 @@ class TestsCodegenCatalogExtensions:
         cosmos_docgen = _repository(
             "cosmos-docgen", path=".", role=c.Infra.RepositoryRole.STANDALONE
         ).model_copy(
-            update={
-                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
-                "package": True,
-            }
+            update={"checkout": c.Infra.CheckoutKind.INDEPENDENT, "package": True}
         )
-        payload = cosmos_docgen.model_dump(mode="json")
+        payload = cosmos_docgen.model_dump(mode="json", exclude_none=True)
         payload["checkout_submodules"] = "recursive"
         manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
         manifest_path.parent.mkdir(parents=True)

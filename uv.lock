@@ -812,6 +812,7 @@ dev = [
     { name = "types-toml" },
     { name = "vulture" },
     { name = "yamlfix" },
+    { name = "yamllint" },
 ]
 
 [package.metadata]
@@ -913,6 +914,7 @@ dev = [
     { name = "types-toml", specifier = ">=0.10.8.20240310" },
     { name = "vulture", specifier = ">=2.13" },
     { name = "yamlfix", specifier = ">=1.19.1" },
+    { name = "yamllint", specifier = ">=1.37.1" },
 ]
 
 [[package]]
@@ -3429,4 +3431,17 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/93/1d/b60d4411ff495de9b7598cc041e29c661e8e2f9d476a8a09bad1f54c1bce/yamlfix-1.19.1.tar.gz", hash = "sha256:05f6add13959637564f278e9237f6e201ff75e061a0a4cb9fc06fa95c3001a22", size = 39483, upload-time = "2025-12-18T09:57:23.179Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/30/c7/cba5941b7066f59dbddfe88bdc7154edbe5119bacb3814599997fbc2acac/yamlfix-1.19.1-py3-none-any.whl", hash = "sha256:b885fcf171a2eb59df83c219355bb17dd147675645e2756754372c0bd0b80ea5", size = 28393, upload-time = "2025-12-18T09:57:21.547Z" },
+]
+
+[[package]]
+name = "yamllint"
+version = "1.38.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pathspec" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/28/a0/8fc2d68e132cf918f18273fdc8a1b8432b60d75ac12fdae4b0ef5c9d2e8d/yamllint-1.38.0.tar.gz", hash = "sha256:09e5f29531daab93366bb061e76019d5e91691ef0a40328f04c927387d1d364d", size = 142446, upload-time = "2026-01-13T07:47:53.276Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/92/aed08e68de6e6a3d7c2328ce7388072cd6affc26e2917197430b646aed02/yamllint-1.38.0-py3-none-any.whl", hash = "sha256:fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220", size = 68940, upload-time = "2026-01-13T07:47:51.343Z" },
 ]

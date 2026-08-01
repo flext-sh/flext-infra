@@ -280,6 +280,7 @@ CLAUDE.local.md
 !.github/workflows/ci.yml
 !.github/workflows/docs.yml
 !.github/workflows/release.yml
+!sgconfig.yml
 !.vscode/settings.json
 !LICENSE
 !config/

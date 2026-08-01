@@ -741,6 +741,7 @@ Infra:
           - rumdl>=0.2.46
           - vulture>=2.16
           - yamlfix>=1.19.1
+          - yamllint>=1.37.1
         dependency_profiles:
           # NOTE: a workspace manifest may declare an upstream distribution;
           # conformance must model that upstream relationship generically.
