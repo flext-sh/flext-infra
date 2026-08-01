@@ -24,6 +24,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         ),
     ]
+
     def _serialized_command(
         self,
         makefile: Path,
@@ -37,7 +38,6 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             "-f",
             str(makefile),
             f"_serialized_{self.verb}",
-            f"{make_config.selector}={verb_spec.whats[0]}",
             *(
                 (f"{make_config.apply_variable}={make_config.apply_value}",)
                 if verb_spec.apply_guarded
@@ -218,6 +218,14 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 )
 
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:
+            if verb_spec.transactional:
+                return self._run_make(
+                    checkout,
+                    self._serialized_command(
+                        selected_makefile, config.Infra.codegen.make, verb_spec
+                    ),
+                    failure_context=f"serialized Make {self.verb} failed",
+                )
             if verb_spec.apply_guarded:
                 return u.Infra.serialization_lock_execute(
                     (mutation_lock_path,),

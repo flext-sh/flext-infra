@@ -1,5 +1,5 @@
 # @flext-managed: continuous
-# @flext-regenerate: make gen WHAT=apply APPLY=Y
+# @flext-regenerate: make gen APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # flext-infra — generated project interface.
@@ -31,7 +31,8 @@ UV_LINK_MODE := copy
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-APPLY ?= N
+APPLY ?=
+CI ?=
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -75,6 +76,12 @@ override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 WHAT ?=
 # End SECTION: user overrides
 
+ifneq ($(strip $(CI)),)
+ifneq ($(CI),Y)
+$(error CI must be empty or Y)
+endif
+endif
+
 # === SECTION: derived paths (managed) ===
 # Source: computed (git rev-parse, pwd, abspath)
 PROJECT_ROOT := $(shell pwd -P)
@@ -94,33 +101,14 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 
 # === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
-#        config:make.check_gates_default, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
-BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
-SCRIPT_VERBS :=
-_ALLOWED_WHATS_help := usage
-_ALLOWED_WHATS_setup := environment
-_ALLOWED_WHATS_deps := check lock upgrade
-_ALLOWED_WHATS_build := artifacts
-_ALLOWED_WHATS_check := all
-_ALLOWED_WHATS_test := all
-_ALLOWED_WHATS_fmt := check all
-_ALLOWED_WHATS_fix := check all
-_ALLOWED_WHATS_run := default
-_ALLOWED_WHATS_status := diagnostics
-_ALLOWED_WHATS_docs := all generate fix audit build validate
-_ALLOWED_WHATS_clean := generated
-_ALLOWED_WHATS_release := status
-_ALLOWED_WHATS_gen := check all
-_ALLOWED_WHATS_worktree := list add update remove
-
+# Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
+#        config:make.verbs handlers and serialized properties
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release fix gen worktree
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test gen
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen
-_DEFAULT_HANDLER_gen := apply
+SERIALIZED_VERBS := check test fmt fix gen
+SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_fmt _serialized_fix _serialized_gen
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -150,24 +138,49 @@ REPORT_MYPY_FAILURE = code=$$?; signal=none; if [ "$$code" -ge 128 ]; then signa
 export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 
 
-_DEFAULT_help := usage
-_DEFAULT_deps := check
-_DEFAULT_build := artifacts
-_DEFAULT_check := all
-_DEFAULT_test := all
-_DEFAULT_fmt := check
-_DEFAULT_fix := check
-_DEFAULT_run := default
-_DEFAULT_status := diagnostics
-_DEFAULT_docs := all
-_DEFAULT_clean := generated
-_DEFAULT_release := status
-_DEFAULT_gen := check
-_DEFAULT_worktree := list
-
-_APPLY_WHAT_fmt := all
-_APPLY_WHAT_fix := all
-_APPLY_WHAT_gen := all
+_DEFAULT_HANDLER_help := usage
+_CANONICAL_HANDLERS_help := usage
+_DEFAULT_HANDLER_deps := check
+_CANONICAL_HANDLERS_deps := check lock upgrade
+_DEFAULT_HANDLER_build := artifacts
+_CANONICAL_HANDLERS_build := artifacts
+_DEFAULT_HANDLER_check := all
+_CANONICAL_HANDLERS_check := all
+_DEFAULT_HANDLER_test := all
+_CANONICAL_HANDLERS_test := all
+_DEFAULT_HANDLER_fmt := all
+_CANONICAL_HANDLERS_fmt := all
+_DEFAULT_HANDLER_run := default
+_CANONICAL_HANDLERS_run := default
+_DEFAULT_HANDLER_status := diagnostics
+_CANONICAL_HANDLERS_status := diagnostics
+_DEFAULT_HANDLER_docs := all
+_CANONICAL_HANDLERS_docs := all generate fix audit build validate
+_DEFAULT_HANDLER_clean := generated
+_CANONICAL_HANDLERS_clean := generated
+_DEFAULT_HANDLER_release := status
+_CANONICAL_HANDLERS_release := status
+_DEFAULT_HANDLER_fix := all
+_CANONICAL_HANDLERS_fix := all
+_DEFAULT_HANDLER_gen := all
+_CANONICAL_HANDLERS_gen := all
+_DEFAULT_HANDLER_worktree := list
+_CANONICAL_HANDLERS_worktree := list add update remove
+_ACCEPTS_SELECTOR_help := 0
+_ACCEPTS_SELECTOR_setup := 0
+_ACCEPTS_SELECTOR_deps := 1
+_ACCEPTS_SELECTOR_build := 0
+_ACCEPTS_SELECTOR_check := 0
+_ACCEPTS_SELECTOR_test := 0
+_ACCEPTS_SELECTOR_fmt := 0
+_ACCEPTS_SELECTOR_run := 0
+_ACCEPTS_SELECTOR_status := 0
+_ACCEPTS_SELECTOR_docs := 1
+_ACCEPTS_SELECTOR_clean := 0
+_ACCEPTS_SELECTOR_release := 0
+_ACCEPTS_SELECTOR_fix := 0
+_ACCEPTS_SELECTOR_gen := 0
+_ACCEPTS_SELECTOR_worktree := 1
 
 
 # === SECTION: profile routing (managed) ===
@@ -232,9 +245,15 @@ FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJ
 endif
 
 ifeq ($(MAKE_PROFILE),workspace-root)
+CI_LOCAL_OWNER := 0
+ifeq ($(CI_LOCAL_OWNER)$(CI),1Y)
+CODEGEN_SCOPE := self
+else
 CODEGEN_SCOPE := all
+endif
 ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
 else
+CI_LOCAL_OWNER := 0
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
@@ -247,20 +266,26 @@ WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
 # A workspace root owns no local gate implementation: its verbs fan out to the
 # declared members. Selecting the root here would make it orchestrate itself.
-DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS) .
+
+DEFAULT_PROJECTS := .
+
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
+ORCHESTRATED_VERBS := build check test fmt docs clean fix
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
+ifeq ($(CI_LOCAL_OWNER)$(CI),1Y)
 UV_SYNC_FLAGS := --all-extras --all-groups
+else
+UV_SYNC_FLAGS := --all-extras --all-groups
+endif
 
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(strip $(PROJECTS)),)
@@ -270,24 +295,28 @@ endif
 
 
 -include custom.mk
+
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
+	if [ -n "$$what" ] && [ "$(_ACCEPTS_SELECTOR_$(1))" != "1" ]; then \
+		printf 'ERROR: make %s does not accept WHAT; use the canonical verb only\n' "$(1)" >&2; exit 2; \
+	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_HANDLER_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
-	case " $(_ALLOWED_WHATS_$(1)) " in \
-		*" $$what "*) ;; \
-		*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
-	esac; \
 	builtin="_builtin_$(1)_$$what"; \
+	custom="_custom_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
-	$(SELF_MAKE) "$$builtin" || exit $$?; \
+	case " $(_CANONICAL_HANDLERS_$(1)) " in \
+		*" $$what "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
+	esac; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -316,47 +345,75 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_fmt_check _builtin_fmt_all _builtin_fix_check _builtin_fix_all _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_worktree_list _builtin_worktree_add _builtin_worktree_update _builtin_worktree_remove
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_fmt_all _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_generated _builtin_release_status _builtin_fix_all _builtin_gen_all _builtin_worktree_list _builtin_worktree_add _builtin_worktree_update _builtin_worktree_remove
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 
 check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: make check does not accept WHAT\n' >&2; exit 2; fi
+
+
+	@if [ -n "$(strip $(APPLY))" ]; then printf 'ERROR: make check does not accept APPLY\n' >&2; exit 2; fi
+
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check"
 
 _serialized_check:
 	$(call _dispatch,check)
 
 
 test: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: make test does not accept WHAT\n' >&2; exit 2; fi
+
+
+	@if [ -n "$(strip $(APPLY))" ]; then printf 'ERROR: make test does not accept APPLY\n' >&2; exit 2; fi
+
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test"
 
 _serialized_test:
 	$(call _dispatch,test)
 
 
-gen: _builtin_require_environment
-	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: make gen does not accept WHAT\n' >&2; exit 2; fi
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen"
-
-_serialized_gen:
-	$(call _dispatch,gen)
-
-
 fmt: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fmt" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: make fmt does not accept WHAT\n' >&2; exit 2; fi
+
+
+	$(call _require_apply)
+
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fmt"
 
 _serialized_fmt:
 	$(call _dispatch,fmt)
 
 
 fix: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fix" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: make fix does not accept WHAT\n' >&2; exit 2; fi
+
+
+	$(call _require_apply)
+
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fix"
 
 _serialized_fix:
 	$(call _dispatch,fix)
+
+
+gen: _builtin_require_environment
+
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: make gen does not accept WHAT\n' >&2; exit 2; fi
+
+
+	$(call _require_apply)
+
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen"
+
+_serialized_gen:
+	$(call _dispatch,gen)
 
 
 
@@ -378,72 +435,73 @@ _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
-	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
+	@printf '  %-10s — %s\n' 'help' 'Show canonical commands';
 
 
 
-	@printf '  %-10s\n' 'setup';
+	@printf '  %-10s %s\n' 'setup' 'Provision the managed environment';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'deps' 'check|lock|upgrade';
+	@printf '  %-10s WHAT=%s — %s\n' 'deps' 'check|lock|upgrade' 'Check, lock, or upgrade dependencies';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'build' 'artifacts';
+	@printf '  %-10s — %s\n' 'build' 'Build project artifacts';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' 'all';
+	@printf '  %-10s — %s\n' 'check' 'Run read-only lint and static analysis';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'test' 'all';
+	@printf '  %-10s — %s\n' 'test' 'Run the canonical pytest suite';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check|all';
+	@printf '  %-10s APPLY=Y — %s\n' 'fmt' 'Format source exactly once';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fix' 'check|all';
+	@printf '  %-10s — %s\n' 'run' 'Run the project entry point';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'run' 'default';
+	@printf '  %-10s — %s\n' 'status' 'Show project diagnostics';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'status' 'diagnostics';
+	@printf '  %-10s WHAT=%s — %s\n' 'docs' 'all|generate|fix|audit|build|validate' 'Generate, fix, audit, build, or validate docs';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'docs' 'all|generate|fix|audit|build|validate';
+	@printf '  %-10s — %s\n' 'clean' 'Remove generated build artifacts';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'clean' 'generated';
+	@printf '  %-10s — %s\n' 'release' 'Validate release status';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'release' 'status';
+	@printf '  %-10s APPLY=Y — %s\n' 'fix' 'Apply Ruff lint fixes exactly once';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' 'check|all';
+	@printf '  %-10s APPLY=Y — %s\n' 'gen' 'Apply complete generation exactly once';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'list|add|update|remove';
+	@printf '  %-10s WHAT=%s — %s\n' 'worktree' 'list|add|update|remove' 'Manage governed worktrees';
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
-	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
+	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
+	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
 	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
 			printf '  %s\n' 'Defined in this project:'; \
 			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
@@ -645,6 +703,9 @@ _builtin_build_artifacts:
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
+	if [ -n "$(strip $(APPLY))" ]; then \
+		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
+	fi; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
@@ -662,19 +723,14 @@ _builtin_test_all: _builtin_require_environment
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
 # `fix` owns the mutating lint pass. Running ruff twice per gate was the
 # duplication this split removes.
-_builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
-
 _builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
-_builtin_fix_check:
-	@printf 'ERROR: make fix requires APPLY=Y\n' >&2; exit 2
-
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+
 
 
 _builtin_run_default: _builtin_require_environment
@@ -732,10 +788,7 @@ _builtin_release_status: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
-_builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-
-_builtin_gen_apply: _builtin_require_environment
+_builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 

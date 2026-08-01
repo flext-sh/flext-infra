@@ -1,18 +1,8 @@
-"""Every builtin handler the dispatcher routes to is declared exactly once.
+"""Every builtin handler derives exactly once from ``make.verbs[].whats``.
 
-``_BUILTIN_HANDLERS`` is the list the generated Makefile scans to decide whether
-a verb is served in-process or shelled out to the dispatch script. It was
-hand-written beside ``make.verbs``, so the two lists were free to drift: a verb
-could be declared in the SSOT, render a recipe that calls ``_builtin_<verb>_*``,
-and still be missing from the routing list.
-
-That drift is not hypothetical. ``setup`` is declared in ``make.verbs`` and its
-recipe calls ``_builtin_setup_environment``, but that handler was absent from
-``_BUILTIN_HANDLERS``, so consumers regenerated from this template had no
-working ``make setup``.
-
-These tests pin the invariant: no handler the template defines may be missing
-from the routing list, and no routed handler may be undefined.
+The dispatcher validates each selector against the per-verb projection rendered
+from the typed catalogue. These tests prove that invoked, routed, and defined
+handlers all converge on that single owner.
 """
 
 from __future__ import annotations
@@ -41,9 +31,8 @@ def _template_text() -> str:
 def _routed_handlers() -> set[str]:
     """Return every handler the dispatcher can route to.
 
-    Routing moved from the literal ``_BUILTIN_HANDLERS`` list to per-verb
-    ``_ALLOWED_WHATS_<verb>``, which the dispatcher validates the selector
-    against before building the ``_builtin_<verb>_<what>`` target name.
+    The dispatcher validates per-verb ``_ALLOWED_WHATS_<verb>`` before building
+    the ``_builtin_<verb>_<what>`` target name.
     """
     return {
         f"_builtin_{verb}_{what}"

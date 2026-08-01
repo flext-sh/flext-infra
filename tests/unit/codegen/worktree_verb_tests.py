@@ -32,7 +32,7 @@ class TestsCodegenWorktreeVerb:
         worktree registry, so it is the safe default.
         """
         verb = self._verb("worktree")
-        tm.that(verb.default_what, eq="list")
+        tm.that(verb.whats[0], eq="list")
 
     def test_mutating_operations_own_the_apply_guard(self) -> None:
         """Read-only list remains usable without granting mutation authority.

@@ -205,16 +205,12 @@
       "additionalProperties": false,
       "required": [
         "name",
-        "default_what",
-        "whats"
+        "whats",
+        "help"
       ],
       "properties": {
         "name": {
           "$ref": "#/$defs/name"
-        },
-        "default_what": {
-          "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9-]*$"
         },
         "whats": {
           "type": "array",
@@ -226,6 +222,22 @@
           }
         },
         "apply_guarded": {
+          "type": "boolean"
+        },
+        "accepts_selector": {
+          "type": "boolean"
+        },
+        "help": {
+          "type": "string",
+          "minLength": 1
+        },
+        "serialized": {
+          "type": "boolean"
+        },
+        "orchestrated": {
+          "type": "boolean"
+        },
+        "transactional": {
           "type": "boolean"
         }
       }

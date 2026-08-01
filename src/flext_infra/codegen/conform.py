@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import difflib
 import re
 import os
 import hashlib
@@ -208,9 +209,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         verified_plan = verified.value
         residual = tuple(file for file in verified_plan.files if file.changed)
         if residual:
-            paths = ", ".join(str(file.path) for file in residual)
+            diagnostics: list[str] = []
+            for file in residual:
+                current = u.Cli.files_read_text(file.path)
+                if current.failure:
+                    return r[m.Infra.CodegenResult].fail(
+                        current.error
+                        or f"failed to read residual generated file: {file.path}"
+                    )
+                diff = "\n".join(
+                    difflib.unified_diff(
+                        current.value.splitlines(),
+                        file.rendered.splitlines(),
+                        fromfile=f"{file.path} (first apply)",
+                        tofile=f"{file.path} (second plan)",
+                        lineterm="",
+                    )
+                )
+                diagnostics.append(f"{file.path}\n{diff}")
             return r[m.Infra.CodegenResult].fail(
-                f"codegen apply did not reach a fixed point: {paths}"
+                "codegen apply did not reach a fixed point:\n" + "\n".join(diagnostics)
             )
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
@@ -1812,9 +1830,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 read.error or f"custom Make read failed: {path}"
             )
-        allowed_verbs = tuple(
-            verb.name for verb in (*config.make.verbs, *extra_verbs)
-        )
+        allowed_verbs = tuple(verb.name for verb in (*config.make.verbs, *extra_verbs))
         validation = self.validate_custom_make(
             read.value, policy, allowed_verbs=allowed_verbs
         )

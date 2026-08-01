@@ -1,14 +1,15 @@
 """Tests for the manual-command blocker (AGENTS.md §5).
 
 ``command_blocked`` flags bare tool invocations that bypass make / flext_infra and
-allows monopoly-routed commands; ``render_pre_commit_config`` emits hooks that
-call ``python -m flext_infra`` (never the retired audit scripts).
+allows monopoly-routed commands. The generated pre-commit surface is validated
+through the same typed Make workflow consumed by production.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_tests import tm
 
@@ -74,14 +75,20 @@ class TestManualCommandValidator:
             _V.command_blocked("python -m flext_infra check --what boundary"), eq=False
         )
 
-    def test_render_uses_flext_infra_and_drops_scripts(self) -> None:
-        rendered = _V.render_pre_commit_config()
-        tm.that(
-            "uv run --all-packages python -m flext_infra validate --what manual-cmd"
-            in rendered,
-            eq=True,
+    def test_pre_commit_sequence_uses_only_canonical_make_verbs(self) -> None:
+        steps = tuple(
+            step
+            for step in config.Infra.codegen.make.workflow
+            if "pre_commit" in step.contexts
         )
-        tm.that("audit_banned_cli_libs.py" not in rendered, eq=True)
+
+        tm.that(
+            tuple(step.verb for step in steps),
+            eq=("setup", "fix", "fmt", "check", "test"),
+        )
+        tm.that(
+            tuple(step.apply for step in steps), eq=(False, True, True, False, False)
+        )
 
 
 __all__: t.StrSequence = []

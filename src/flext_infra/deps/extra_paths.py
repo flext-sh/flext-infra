@@ -83,10 +83,11 @@ class FlextInfraExtraPathsManager(
         ]
         return sorted({rules.project_root, source_root, *typings_paths})
 
-    def pyrefly_search_paths(
-        self, *, project_dir: Path, is_root: bool
+    @override
+    def pyrefly_search_paths_from_payload(
+        self, payload: t.JsonMapping, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
-        """Compute pyrefly search paths for a project."""
+        """Compute Pyrefly search paths from the canonical in-memory payload."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = rules.source_dir
         configured_typings = (
@@ -104,15 +105,21 @@ class FlextInfraExtraPathsManager(
         ]
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
         if rules.include_path_dependencies_in_search_path:
-            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-            if pyproject.exists():
-                payload = u.Infra.pyproject_payload(pyproject)
-                paths.update(self._dep_paths(payload, project_dir=project_dir))
-                paths.update(self._uv_source_paths(payload, project_dir=project_dir))
+            paths.update(self._dep_paths(payload, project_dir=project_dir))
+            paths.update(self._uv_source_paths(payload, project_dir=project_dir))
             paths.update(self._workspace_member_source_paths(project_dir=project_dir))
         if (project_dir / source_root).is_dir():
             paths.add(source_root)
         return sorted(paths)
+
+    def pyrefly_search_paths(
+        self, *, project_dir: Path, is_root: bool
+    ) -> t.StrSequence:
+        """Load one project boundary and delegate to the payload calculator."""
+        payload = u.Infra.pyproject_payload(project_dir / c.Infra.PYPROJECT_FILENAME)
+        return self.pyrefly_search_paths_from_payload(
+            payload, project_dir=project_dir, is_root=is_root
+        )
 
     def _workspace_member_source_paths(self, *, project_dir: Path) -> t.StrSequence:
         """Return `<member>/<source_dir>` search paths for uv workspace members.

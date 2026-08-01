@@ -59,9 +59,9 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     def test_validator_honours_the_permissions_it_is_given(self) -> None:
         """A permissive policy accepts what a strict one rejects.
 
-        The ``allow_*`` flags were declarative only: the validator read just
-        ``target_pattern``, so a workspace root's own public targets and
-        variables were rejected no matter what the config permitted.
+        The validator derives target syntax from the canonical verb catalogue;
+        a workspace root's own public targets and variables are accepted only
+        when its typed profile policy explicitly permits them.
         """
         content = "WORKSPACE_BASE ?= 0.12.0-dev\ndone-check:\n\t@echo hi\n"
         strict = config.Infra.codegen.make.custom_handler_policies[
@@ -71,9 +71,12 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
             c.Infra.MakeProfile.WORKSPACE_ROOT
         ]
         validate = FlextInfraCodegenConform.validate_custom_make
+        allowed_verbs = tuple(verb.name for verb in config.Infra.codegen.make.verbs)
 
-        tm.that(validate(content, strict).failure, eq=True)
-        tm.that(validate(content, permissive).success, eq=True)
+        tm.that(validate(content, strict, allowed_verbs=allowed_verbs).failure, eq=True)
+        tm.that(
+            validate(content, permissive, allowed_verbs=allowed_verbs).success, eq=True
+        )
 
     def test_policy_keys_are_normalised_to_profile_values(self) -> None:
         """Lookup succeeds for both a raw string and its StrEnum member.

@@ -7,12 +7,10 @@ Two responsibilities:
   pre-commit hook and the Claude PreToolUse guard. Deny rules are evaluated
   FIRST, per shell segment, after stripping wrappers and path components — an
   allow-list substring can never short-circuit a deny.
-- ``render_pre_commit_config`` — the canonical ``.pre-commit-config.yaml`` content
-  (hooks call ``uv run --all-packages python -m flext_infra``, never standalone
-  scripts).
+- ``execute`` — validate the generated ``.pre-commit-config.yaml`` against the
+  typed Make workflow without owning a second renderer.
 
-``execute`` is a drift gate: the live ``.pre-commit-config.yaml`` MUST equal the
-rendered canonical template.
+``execute`` is a semantic drift gate for the generated hook surface.
 """
 
 from __future__ import annotations
@@ -151,9 +149,7 @@ class FlextInfraManualCommandValidator(s[bool]):
         hooks = repository.get("hooks")
         if not isinstance(hooks, list):
             return r[bool].fail("pre-commit hooks must be a sequence")
-        entries = tuple(
-            hook.get("entry") for hook in hooks if isinstance(hook, dict)
-        )
+        entries = tuple(hook.get("entry") for hook in hooks if isinstance(hook, dict))
         make_config = config.Infra.codegen.make
         commands = tuple(
             f"make {step.verb}"

@@ -21,6 +21,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def _phase(
         self,
+        payload: t.JsonMapping,
         *,
         is_root: bool,
         project_dir: Path | None = None,
@@ -31,8 +32,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
         if project_dir is not None and paths_manager is not None:
-            expected_search = paths_manager.pyrefly_search_paths(
-                project_dir=project_dir, is_root=is_root
+            expected_search = paths_manager.pyrefly_search_paths_from_payload(
+                payload, project_dir=project_dir, is_root=is_root
             )
             expected_includes = paths_manager.pyrefly_project_includes(
                 project_dir=project_dir, is_root=is_root
@@ -122,9 +123,11 @@ class FlextInfraEnsurePyreflyConfigPhase:
             if errors_table is not None
             else ()
         )
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(doc.unwrap())
         return FlextInfraTomlPhaseService.apply_phases(
             doc,
             self._phase(
+                payload,
                 is_root=is_root,
                 project_dir=project_dir,
                 paths_manager=paths_manager,
@@ -155,6 +158,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         return FlextInfraTomlPhaseService.apply_payload_phases(
             payload,
             self._phase(
+                payload,
                 is_root=is_root,
                 project_dir=project_dir,
                 paths_manager=paths_manager,

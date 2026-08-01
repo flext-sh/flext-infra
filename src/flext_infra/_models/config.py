@@ -379,12 +379,20 @@ class FlextInfraConfigModels:
         ] = True
         help: Annotated[t.NonEmptyStr, m.Field(description="Public help text")]
         serialized: Annotated[
-            bool,
-            m.Field(description="Whether the verb uses checkout serialization"),
+            bool, m.Field(description="Whether the verb uses checkout serialization")
         ] = False
         orchestrated: Annotated[
             bool,
             m.Field(description="Whether workspace roots fan the verb out to members"),
+        ] = False
+        transactional: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the handler owns its mutation lock inside an atomic "
+                    "worktree transaction"
+                )
+            ),
         ] = False
 
         @u.model_validator(mode="after")
@@ -392,6 +400,12 @@ class FlextInfraConfigModels:
             """Keep the default and lifecycle contract inside this one owner."""
             if len(set(self.whats)) != len(self.whats):
                 msg = f"make verb {self.name} handlers must be unique"
+                raise ValueError(msg)
+            if self.transactional and not (self.serialized and self.apply_guarded):
+                msg = (
+                    f"transactional make verb {self.name} must be serialized "
+                    "and APPLY-guarded"
+                )
                 raise ValueError(msg)
             return self
 
@@ -994,8 +1008,7 @@ class FlextInfraConfigModels:
             m.Field(description="Whether conform generates the governed CI surface"),
         ] = True
         ci_propagates: Annotated[
-            bool,
-            m.Field(description="Whether CI fans workspace verbs out to members"),
+            bool, m.Field(description="Whether CI fans workspace verbs out to members")
         ] = True
 
     class RepositoryConformTarget(_ConfigContract):
@@ -1118,6 +1131,10 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+        ci_propagates: Annotated[
+            bool,
+            m.Field(description="Whether CI=Y fans workspace verbs out to members"),
+        ] = True
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
@@ -1793,8 +1810,7 @@ class FlextInfraConfigModels:
         @m.field_validator("transaction_routes")
         @classmethod
         def _validate_transaction_routes(
-            cls,
-            values: tuple[FlextInfraConfigModels.WorktreeTransactionRouteSpec, ...],
+            cls, values: tuple[FlextInfraConfigModels.WorktreeTransactionRouteSpec, ...]
         ) -> tuple[FlextInfraConfigModels.WorktreeTransactionRouteSpec, ...]:
             """Reject ambiguous duplicate transaction route declarations."""
             routes = tuple(value.route for value in values)
@@ -1802,6 +1818,7 @@ class FlextInfraConfigModels:
                 msg = "transaction routes must be unique"
                 raise ValueError(msg)
             return values
+
         vscode: Annotated[
             FlextInfraConfigModels.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),

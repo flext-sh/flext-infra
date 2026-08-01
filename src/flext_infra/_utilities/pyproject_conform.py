@@ -608,6 +608,10 @@ class FlextInfraUtilitiesPyprojectConform:
             ])
         )
         if owns_uv_root_policy and exclude_payload:
+            # Structured TOML assignment preserves the replaced item's trivia.
+            # Remove the prior scalar/inline representation first so an AoT is
+            # rendered with canonical spacing on the first pass.
+            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
             u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")

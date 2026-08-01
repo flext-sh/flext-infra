@@ -683,7 +683,9 @@ class TestCodegenConform:
         ]
 
         result = FlextInfraCodegenConform.validate_custom_make(
-            ".PHONY: \\\n\t_custom_check_demo \\", policy
+            ".PHONY: \\\n\t_custom_check_demo \\",
+            policy,
+            allowed_verbs=tuple(verb.name for verb in config.Infra.codegen.make.verbs),
         )
 
         tm.fail(result, has="unterminated .PHONY continuation")
@@ -925,8 +927,12 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="incidente", default_what="all"),
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="incidente", whats=("all",), help="Manage incidents"
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="charts", whats=("all",), help="Manage charts"
+                ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
@@ -969,7 +975,7 @@ class TestScriptDispatchMakefile:
 
         The convergence spine (mro-e9j0.6 C7) fuses codegen+conform under the
         single short ``gen`` verb: one verb, one meaning. The old ``codegen``
-        Make verb is fully replaced — config, serialization, fixed points,
+        Make verb is fully replaced — config, serialization, handlers,
         rendered handlers, and the regeneration header all speak ``gen``.
         """
         make_config = config.Infra.codegen.make
@@ -977,13 +983,12 @@ class TestScriptDispatchMakefile:
         tm.that("gen" in verb_names, eq=True)
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
-        tm.that(gen.default_what, eq="check")
+        tm.that(gen.whats, eq=("all",))
         tm.that(gen.apply_guarded, eq=True)
-        # Serialization follows the rename: gen is serialized, codegen gone.
-        tm.that("gen" in make_config.serialization.verbs, eq=True)
-        tm.that("codegen" in make_config.serialization.verbs, eq=False)
-        tm.that("gen" in make_config.serialization.mutation_fixed_points, eq=True)
-        tm.that("codegen" in make_config.serialization.mutation_fixed_points, eq=False)
+        tm.that(gen.serialized, eq=True)
+        tm.that(gen.transactional, eq=True)
+        tm.that("gen" in make_config.serialized_verbs, eq=True)
+        tm.that("codegen" in make_config.serialized_verbs, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -992,28 +997,19 @@ class TestScriptDispatchMakefile:
         )
         tm.that(" gen" in public_line, eq=True)
         tm.that(" codegen" in public_line, eq=False)
-        tm.that("_DEFAULT_gen := check" in rendered, eq=True)
-        tm.that("_builtin_gen_check:" in rendered, eq=True)
-        tm.that("_builtin_gen_apply:" in rendered, eq=True)
+        tm.that("_DEFAULT_gen := all" in rendered, eq=True)
+        tm.that("_builtin_gen_all:" in rendered, eq=True)
+        tm.that("_builtin_gen_check:" in rendered, eq=False)
+        tm.that("_builtin_gen_apply:" in rendered, eq=False)
         tm.that("_builtin_codegen_check" in rendered, eq=False)
         tm.that("_builtin_codegen_apply" in rendered, eq=False)
-        handlers = rendered.split("_BUILTIN_HANDLERS :=", 1)[1].split("\n\n", 1)[0]
-        tm.that("_builtin_gen_check" in handlers, eq=True)
-        tm.that("_builtin_gen_apply" in handlers, eq=True)
-        # Both handlers drive the conform engine (CLI namespace is unchanged).
-        gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
-        tm.that("codegen conform" in gen_check_body, eq=True)
-        tm.that("--mode check" in gen_check_body, eq=True)
-        gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
-        tm.that("codegen conform" in gen_apply_body, eq=True)
-        tm.that("--mode apply" in gen_apply_body, eq=True)
-        tm.that("_require_apply" in gen_apply_body, eq=True)
+        tm.that("_BUILTIN_HANDLERS" in rendered, eq=False)
+        gen_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
+        tm.that("codegen conform" in gen_body, eq=True)
+        tm.that("--mode apply" in gen_body, eq=True)
+        tm.that("_require_apply" in gen_body, eq=True)
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
-        # The custom-surface policy names gen (not codegen) for hooks/handlers.
-        for policy in config.Infra.codegen.make.custom_handler_policies.values():
-            tm.that("|gen|" in policy.target_pattern, eq=True)
-            tm.that("|codegen|" in policy.target_pattern, eq=False)
+        tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
@@ -1026,9 +1022,13 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
-                m.Infra.MakeVerbSpec(name="chart-release", default_what="all"),
-                m.Infra.MakeVerbSpec(name="bead", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="charts", whats=("all",), help="Manage charts"
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="chart-release", whats=("all",), help="Release charts"
+                ),
+                m.Infra.MakeVerbSpec(name="bead", whats=("all",), help="Manage beads"),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py", roots=("scripts",)

@@ -247,8 +247,9 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_setup_conform" in content, eq=False)
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
-        tm.that("_builtin_gen_check:" in content, eq=True)
-        tm.that("_builtin_gen_apply:" in content, eq=True)
+        tm.that("_builtin_gen_all:" in content, eq=True)
+        tm.that("_builtin_gen_check:" in content, eq=False)
+        tm.that("_builtin_gen_apply:" in content, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
 
@@ -326,7 +327,9 @@ class TestsCodegenCatalogExtensions:
         ).model_copy(
             update={
                 "extra_verbs": (
-                    m.Infra.MakeVerbSpec(name="audit", default_what="all"),
+                    m.Infra.MakeVerbSpec(
+                        name="audit", whats=("all",), help="Audit repository"
+                    ),
                 ),
                 "script_dispatch": m.Infra.ScriptDispatchSpec(
                     dispatcher="scripts/dispatch.py", roots=("scripts",)

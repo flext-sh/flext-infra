@@ -7,7 +7,7 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch; promotion is integration -> main only
+# Source: typed integration lane -> main promotion policy
 "on":
   pull_request:
     branches:
@@ -21,15 +21,24 @@ permissions:
 # End SECTION: permissions
 
 jobs:
+  lane-policy:
+    name: integration-lane-policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require typed integration lane
+        run: |
+          if [ "$GITHUB_HEAD_REF" != "0.12.0-dev" ]; then
+            printf 'ERROR: PR head must be 0.12.0-dev, got %s\n' "$GITHUB_HEAD_REF" >&2
+            exit 2
+          fi
+
   # === SECTION: ci job (managed) ===
   # Source: template + config:github_actions.*
   ci:
     name: ci
-    if: ${{ github.head_ref == '0.12.0-dev' }}
+    needs: lane-policy
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      CI: Y
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -45,18 +54,18 @@ jobs:
 
 
       - name: setup (blocking)
-        run: make setup
-
-      - name: fmt (blocking)
-        run: make fmt APPLY=Y
+        run: make setup CI=Y
 
       - name: fix (blocking)
-        run: make fix APPLY=Y
+        run: make fix APPLY=Y CI=Y
+
+      - name: fmt (blocking)
+        run: make fmt APPLY=Y CI=Y
 
       - name: check (blocking)
-        run: make check
+        run: make check CI=Y
 
       - name: test (blocking)
-        run: make test
+        run: make test CI=Y
 
     # End SECTION: ci job

@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, t, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraExtraPathsSyncMixin:
@@ -23,6 +23,7 @@ class FlextInfraExtraPathsSyncMixin:
         root: Path
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
+        pyrefly_search_paths_from_payload: Callable[..., t.StrSequence]
 
     def _resolve_transitive_deps(
         self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
@@ -54,6 +55,7 @@ class FlextInfraExtraPathsSyncMixin:
         self, doc: t.Cli.TomlDocument, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
         """Apply computed extra paths to an in-memory TOMLDocument."""
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(doc.unwrap())
         # mro-j47u: compare immutable sequences so equal paths stay idempotent.
         expected = tuple(
             self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
@@ -76,8 +78,8 @@ class FlextInfraExtraPathsSyncMixin:
         if mypy_table is not None:
             # Same import graph as Pyrefly: mypy needs the path dependencies
             # that pyright_extra_paths omits (see sync_payload).
-            expected_mypy = self.pyrefly_search_paths(
-                project_dir=project_dir, is_root=is_root
+            expected_mypy = self.pyrefly_search_paths_from_payload(
+                payload, project_dir=project_dir, is_root=is_root
             )
             mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
             current_mypy = u.Cli.toml_as_string_list(
@@ -117,7 +119,9 @@ class FlextInfraExtraPathsSyncMixin:
         if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
-            self.pyrefly_search_paths(project_dir=project_dir, is_root=is_root),
+            self.pyrefly_search_paths_from_payload(
+                payload, project_dir=project_dir, is_root=is_root
+            ),
         ):
             changes.append("synchronized mypy mypy_path")
         return changes

@@ -217,7 +217,7 @@ Infra:
           serialized: true
           orchestrated: true
         - name: fmt
-          whats: [apply]
+          whats: [all]
           apply_guarded: true
           accepts_selector: false
           help: Format source exactly once
@@ -250,18 +250,19 @@ Infra:
           accepts_selector: false
           help: Validate release status
         - name: fix
-          whats: [apply]
+          whats: [all]
           apply_guarded: true
           accepts_selector: false
           help: Apply Ruff lint fixes exactly once
           serialized: true
           orchestrated: true
         - name: gen
-          whats: [apply]
+          whats: [all]
           apply_guarded: true
           accepts_selector: false
           help: Apply complete generation exactly once
           serialized: true
+          transactional: true
         - name: worktree
           whats: [list, add, update, remove]
           apply_guarded: false

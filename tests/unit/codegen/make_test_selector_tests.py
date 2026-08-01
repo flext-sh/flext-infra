@@ -273,6 +273,6 @@ class TestsMakeTestSelector:
             / c.Infra.CUSTOM_MAKE_FILENAME
         ).read_text(encoding="utf-8")
 
-        tm.that(template, has="_builtin_gen_apply")
+        tm.that(template, has="_builtin_gen_all")
         tm.that(template, lacks="_builtin_build_gen")
         tm.that(custom, has="_custom_basemk_generate:")

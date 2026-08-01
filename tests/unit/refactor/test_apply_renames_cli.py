@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, main as infra_main
+from flext_infra import c, config, main as infra_main
 from flext_tests import tm
 
 if TYPE_CHECKING:
@@ -59,6 +59,7 @@ class TestsFlextInfraApplyRenamesCli:
 
     def test_apply_route_uses_worktree_transaction(self) -> None:
         tm.that(
-            "refactor:apply-renames" in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES,
+            "refactor:apply-renames"
+            in {policy.route for policy in config.Infra.codegen.transaction_routes},
             eq=True,
         )
