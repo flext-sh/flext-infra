@@ -19,6 +19,7 @@ SHELL := /bin/sh
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := {{ dist }}
 MAKE_PROFILE := {{ make_profile }}
+ENVIRONMENT_OWNER_LOCAL := {{ 1 if environment_owner_local else 0 }}
 WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
@@ -147,17 +148,17 @@ _CANONICAL_HANDLERS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% 
 
 # === SECTION: profile routing (managed) ===
 # Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
-# Rule: workspace-member delegates runtime to the principal (RUNTIME_ROOT is
-# the governing workspace root); workspace-root and standalone own their
-# runtime locally. An attached member is never promoted to a local runtime.
+# Rule: only a checkout with a distinct governing root delegates runtime.
+# Topology membership remains independent from environment ownership, so a
+# detached member worktree owns its local venv without changing profile.
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
-ifeq ($(MAKE_PROFILE),workspace-member)
-RUNTIME_ROOT := $(WORKSPACE_ROOT)
-else
+ifeq ($(ENVIRONMENT_OWNER_LOCAL),1)
 RUNTIME_ROOT := $(PROJECT_ROOT)
+else
+RUNTIME_ROOT := $(WORKSPACE_ROOT)
 endif
 # End SECTION: profile routing
 
@@ -423,10 +424,8 @@ _builtin_require_environment:
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
 # It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
 # is the single public conformance/generation surface.
-# Profile routing: workspace-member delegates the environment to the
-# principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
-# standalone build their own environment locally.
-ifeq ($(MAKE_PROFILE),workspace-member)
+# Runtime routing follows the typed environment owner, not the topology profile.
+ifeq ($(ENVIRONMENT_OWNER_LOCAL),0)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else ifeq ($(MAKE_PROFILE),workspace-root)

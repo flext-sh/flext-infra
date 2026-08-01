@@ -847,7 +847,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
         ):
             if output.strip():
                 lines.extend((f"{label}:", output.rstrip()))
-        lines.append("lint delta:")
+        if report.lint_before or report.lint_after:
+            lines.append("lint delta:")
         for before, after in zip(report.lint_before, report.lint_after, strict=True):
             lines.append(
                 f"  {before.tool}: errors {before.errors}->{after.errors} "

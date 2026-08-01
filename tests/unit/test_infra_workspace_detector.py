@@ -551,6 +551,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.environment_owner_local, eq=False)
         tm.that(target.attached_standalone, eq=False)
         tm.that(target.beads_enabled, eq=False)
 
@@ -576,6 +577,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.environment_owner_local, eq=True)
         tm.that(target.attached_standalone, eq=True)
         tm.that(target.beads_enabled, eq=False)
 

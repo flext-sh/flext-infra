@@ -597,12 +597,17 @@ class FlextInfraWorkspaceDetector(
             mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
             and resolved_root == governing_root
         )
+        # Topology membership and runtime ownership are independent. A real member
+        # delegates to its distinct governing root; a detached member worktree or
+        # marker-attached checkout has no distinct root and owns its local venv.
+        environment_owner_local = resolved_root == governing_root
         routing_only = is_transaction_worktree or attached_standalone
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
                 root=resolved_root,
                 make_profile=make_profile,
+                environment_owner_local=environment_owner_local,
                 beads_enabled=beads_enabled,
                 attached_standalone=attached_standalone,
                 routing_only=routing_only,

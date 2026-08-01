@@ -230,6 +230,46 @@ class TestCodegenBeadsLedger:
         tm.that(rendered, has=f"port: {server.port}")
         tm.that(rendered, lacks="Owned ledger config")
 
+    def test_attached_standalone_setup_owns_local_environment(
+        self, tmp_path: Path
+    ) -> None:
+        """Render setup against the local venv when no distinct root exists."""
+        root = self._standalone_workspace(
+            tmp_path / "attached-runtime",
+            ledger_id="attached-runtime-ledger",
+            overlay=False,
+            attached_marker=True,
+        )
+        planned = self._plan(root)
+        makefile = next(
+            file
+            for file in planned.files
+            if file.path.name == c.Infra.MAKEFILE_FILENAME
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.MAKEFILE_FILENAME, makefile.rendered
+            )
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "-n",
+                    "_builtin_setup_environment",
+                ],
+                cwd=root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(makefile.rendered, has="ENVIRONMENT_OWNER_LOCAL := 1")
+        tm.that(process.stdout, has=f'--project "{root}"')
+        tm.that(process.stdout, lacks=f'make -C "{root}"')
+
     def test_plain_standalone_plan_renders_no_ledger_config(
         self, tmp_path: Path
     ) -> None:

@@ -665,6 +665,7 @@ class TestsFlextInfraMakeSerialization:
                 f"_serialized_{mutation_verb}:\n"
                 f'\t@test "$({make_config.apply_variable})" = '
                 f'"{make_config.apply_value}"\n'
+                f'\t@test -z "$${{{c.Infra.WORKTREE_TRANSACTION_ENV}}}"\n'
                 f"\t@printf 'run\\n' >> {invocations}\n"
             ),
             encoding="utf-8",

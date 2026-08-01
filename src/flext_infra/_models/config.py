@@ -1027,6 +1027,15 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Make profile inferred from live Git topology"),
         ]
+        environment_owner_local: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether this checkout owns its runtime environment locally; "
+                    "false delegates to a distinct governing workspace root"
+                )
+            ),
+        ]
         beads_enabled: Annotated[
             bool, m.Field(description="Whether this repository owns a Beads tracker")
         ]
@@ -1130,6 +1139,10 @@ class FlextInfraConfigModels:
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
+        ]
+        environment_owner_local: Annotated[
+            bool,
+            m.Field(description="Whether this checkout owns its runtime environment"),
         ]
         ci_propagates: Annotated[
             bool,
@@ -1389,6 +1402,10 @@ class FlextInfraConfigModels:
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
+        ]
+        environment_owner_local: Annotated[
+            bool,
+            m.Field(description="Whether this checkout owns its runtime environment"),
         ]
         ci_propagates: Annotated[
             bool,

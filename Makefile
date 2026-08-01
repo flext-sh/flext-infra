@@ -15,14 +15,15 @@ SHELL := /bin/sh
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
+MAKE_PROFILE := standalone
+ENVIRONMENT_OWNER_LOCAL := 1
 WORKSPACE_ROOT_REL := .
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
 # governance; standalone projects discover managed submodules at runtime from
 # .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
+WORKSPACE_MEMBERS :=
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -185,17 +186,17 @@ _ACCEPTS_SELECTOR_worktree := 1
 
 # === SECTION: profile routing (managed) ===
 # Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
-# Rule: workspace-member delegates runtime to the principal (RUNTIME_ROOT is
-# the governing workspace root); workspace-root and standalone own their
-# runtime locally. An attached member is never promoted to a local runtime.
+# Rule: only a checkout with a distinct governing root delegates runtime.
+# Topology membership remains independent from environment ownership, so a
+# detached member worktree owns its local venv without changing profile.
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
-ifeq ($(MAKE_PROFILE),workspace-member)
-RUNTIME_ROOT := $(WORKSPACE_ROOT)
-else
+ifeq ($(ENVIRONMENT_OWNER_LOCAL),1)
 RUNTIME_ROOT := $(PROJECT_ROOT)
+else
+RUNTIME_ROOT := $(WORKSPACE_ROOT)
 endif
 # End SECTION: profile routing
 
@@ -432,7 +433,7 @@ setup:
 	done
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' '';
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
 	@printf '  %-10s — %s\n' 'help' 'Show canonical commands';
@@ -493,8 +494,6 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s — %s\n' 'worktree' 'list|add|update|remove' 'Manage governed worktrees';
 
-
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
@@ -650,10 +649,8 @@ _builtin_require_environment:
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
 # It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
 # is the single public conformance/generation surface.
-# Profile routing: workspace-member delegates the environment to the
-# principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
-# standalone build their own environment locally.
-ifeq ($(MAKE_PROFILE),workspace-member)
+# Runtime routing follows the typed environment owner, not the topology profile.
+ifeq ($(ENVIRONMENT_OWNER_LOCAL),0)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else ifeq ($(MAKE_PROFILE),workspace-root)

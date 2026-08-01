@@ -312,6 +312,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository=current_repository,
                 root=root,
                 make_profile=current_make_profile,
+                environment_owner_local=True,
                 beads_enabled=(
                     current_make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 ),
@@ -1488,6 +1489,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         target, workspace, infra_repository.value
                     ),
                     make_profile=profile,
+                    environment_owner_local=target.environment_owner_local,
                     ci_propagates=target.ci_propagates,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
@@ -1589,6 +1591,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
+                environment_owner_local=target.environment_owner_local,
                 ci_propagates=target.ci_propagates,
                 orchestrated_verbs=codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1723,6 +1726,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
+                environment_owner_local=target.environment_owner_local,
                 ci_propagates=target.ci_propagates,
                 orchestrated_verbs=codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,

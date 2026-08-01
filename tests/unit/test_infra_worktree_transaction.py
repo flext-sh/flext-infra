@@ -620,6 +620,7 @@ class TestsFlextInfraWorktreeTransaction:
                     "apply",
                 ),
                 apply_patch=False,
+                validation_mode="structural",
                 timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             )
         )
@@ -629,6 +630,7 @@ class TestsFlextInfraWorktreeTransaction:
 
         tm.that(report.breakage_detected, eq=False, msg=f"{output}\n{lint_output}")
         tm.that(output, has="diff -- repository .")
+        tm.that(output, lacks="lint delta:")
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
         tm.that(_git_status(workspace_root), eq=before_status)
