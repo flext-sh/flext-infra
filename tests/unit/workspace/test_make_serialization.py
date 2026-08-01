@@ -695,3 +695,4 @@ class TestsFlextInfraMakeSerialization:
         tm.that(invocations.read_text(encoding="utf-8").splitlines(), eq=["run"])
         with FileLock(tmp_path / make_config.serialization.lock_path, timeout=0):
             pass
+
