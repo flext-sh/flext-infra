@@ -706,6 +706,10 @@ Infra:
         keywords: [clean-architecture, flext, integration, typed]
         dev:
           - actionlint-py>=1.7.12.24
+          # The security gate (flext_infra.gates.bandit) runs unconditionally for
+          # every project owning src/, so the tool it shells out to must be a
+          # declared dev dependency of every generated project.
+          - bandit>=1.8
           - flext-tests
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.

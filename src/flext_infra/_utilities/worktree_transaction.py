@@ -339,8 +339,24 @@ class FlextInfraUtilitiesWorktreeTransaction:
             output=combined_output,
         )
 
+    @staticmethod
+    def _pyrefly_interpreter(worktree_root: Path) -> str:
+        """Resolve the interpreter that owns the checked tree's dependencies.
+
+        ``sys.executable`` is the flext-infra bootstrap interpreter (``uv run
+        --no-project``); it resolves flext-infra's own dependencies and can never
+        see the checked project's dev dependencies (pytest, PyYAML, ...). Type
+        checking the project against it reports every project dependency as a
+        missing import. The project virtualenv is the only interpreter that can
+        resolve the imports the project actually declares.
+        """
+        candidate = worktree_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        if candidate.is_file():
+            return str(candidate.resolve())
+        return sys.executable
+
     @classmethod
-    def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
+    def _lint_commands(cls, worktree_root: Path) -> p.Result[t.StrSequencePairTuple]:
         """Bind lint tools from the managed process environment before mutation."""
         managed_path = u.Cli.process_env().get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
@@ -363,7 +379,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     "--config",
                     c.Infra.PYPROJECT_FILENAME,
                     "--python-interpreter-path",
-                    sys.executable,
+                    cls._pyrefly_interpreter(worktree_root),
                 )
             commands.append((tool, bound_command))
         return r[t.StrSequencePairTuple].ok(tuple(commands))
@@ -709,7 +725,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
     ) -> p.Result[m.Infra.WorktreeTransactionReport]:
         """Run and evaluate the command inside an already checkpointed worktree."""
-        lint_commands_result = cls._lint_commands()
+        lint_commands_result = cls._lint_commands(worktree_root)
         if lint_commands_result.failure:
             return r[m.Infra.WorktreeTransactionReport].fail(
                 lint_commands_result.error
