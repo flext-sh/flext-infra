@@ -11,7 +11,6 @@ import re
 import os
 import hashlib
 from fnmatch import fnmatchcase
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, override
 
@@ -2206,7 +2205,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if not config_path.is_file():
             return fallback
         loaded = u.Cli.yaml_load_mapping(config_path)
-        prefix = loaded.get("issue-prefix") if isinstance(loaded, Mapping) else None
+        prefix = loaded.get("issue-prefix")
         if isinstance(prefix, str) and prefix.strip():
             return prefix.strip()
         return fallback
