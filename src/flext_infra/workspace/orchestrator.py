@@ -152,10 +152,6 @@ class FlextInfraOrchestratorService(
                 )
             owner, effective_file = owner_result.value
             projects = (owner,)
-        prepare_result = self._prepare_projects(projects)
-        if prepare_result.failure:
-            return prepare_result
-
         orchestrate_result = self.orchestrate(
             projects=[
                 self._project_target(project, workspace_root=workspace_root)

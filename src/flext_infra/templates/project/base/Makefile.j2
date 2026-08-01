@@ -255,7 +255,9 @@ _BUILTIN_HANDLERS := \
 	_builtin_check_all \
 	_builtin_test_all \
 	_builtin_fmt_check \
-	_builtin_fmt_apply \
+	_builtin_fmt_all \
+	_builtin_fix_check \
+	_builtin_fix_all \
 	_builtin_run_default \
 	_builtin_status_diagnostics \
 	_builtin_docs_all \
@@ -265,7 +267,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_clean_generated \
 	_builtin_release_status \
 	_builtin_gen_check \
-	_builtin_gen_apply \
+	_builtin_gen_all \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
 	_builtin_worktree_update \
@@ -275,6 +277,12 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
+	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "{{ make.apply_value }}" ]; then \
+		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
+	fi; \
+	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
+		printf 'ERROR: verb %s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" >&2; exit 2; \
+	fi; \
 	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
@@ -324,8 +332,8 @@ define _dispatch
 endef
 
 define _require_apply
-	@if [ "$(APPLY)" != "Y" ]; then \
-		printf 'ERROR: this action requires APPLY=Y\n' >&2; \
+	@if [ "$({{ make.apply_variable }})" != "{{ make.apply_value }}" ]; then \
+		printf 'ERROR: this action requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; \
 		exit 2; \
 	fi
 endef
@@ -475,18 +483,22 @@ _builtin_test_all: _builtin_require_environment
 _builtin_fmt_check: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
-_builtin_fmt_apply: _builtin_require_environment
+_builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=apply" --make-arg "APPLY=Y" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+
+_builtin_fix_check:
+	@printf 'ERROR: make fix requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; exit 2
+
+_builtin_fix_all: _builtin_require_environment
+	$(call _require_apply)
+	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-	if [ "$(FIX)" = "1" ] && [ "$(APPLY)" != "Y" ]; then \
-		printf 'ERROR: FIX=1 requires APPLY=Y\n' >&2; exit 2; \
-	fi; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
@@ -495,7 +507,7 @@ _builtin_check_all: _builtin_require_environment
 			*) printf 'ERROR: unknown CHECK_GATES value: %s (allowed: %s)\n' "$$gate" "$(CHECK_GATES_ALLOWED)" >&2; exit 2 ;; \
 		esac; \
 	done; \
-	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects . $(if $(filter 1,$(FIX)),--fix)
+	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(
@@ -503,13 +515,18 @@ _builtin_test_all: _builtin_require_environment
 ) }}
 
 _builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_fmt_apply: _builtin_require_environment
+_builtin_fmt_all: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff format $(RUFF_PATHS)
+
+_builtin_fix_check:
+	@printf 'ERROR: make fix requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; exit 2
+
+_builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
 {% endif %}
 
 _builtin_run_default: _builtin_require_environment
@@ -554,7 +571,7 @@ _builtin_release_status: _builtin_require_environment
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
-_builtin_gen_apply: _builtin_require_environment
+_builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 

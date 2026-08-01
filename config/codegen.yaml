@@ -153,6 +153,16 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      ci:
+        variable: CI
+        value: Y
+      workflow:
+        - { verb: setup, apply: false }
+        - { verb: gen, apply: true }
+        - { verb: fmt, apply: true }
+        - { verb: fix, apply: true }
+        - { verb: check, apply: false }
+        - { verb: test, apply: false }
       bootstrap:
         environment: isolated
         dependency_groups: all
@@ -166,9 +176,7 @@ Infra:
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_fixed_points:
-          gen:
-            apply: check
+        mutation_verbs: [gen, fmt, fix]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -176,7 +184,7 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen]
+        verbs: [check, test, gen, fmt, fix]
       verbs:
         - name: help
           default_what: usage
@@ -199,6 +207,11 @@ Infra:
         - name: fmt
           default_what: check
           apply_guarded: true
+          apply_what: all
+        - name: fix
+          default_what: check
+          apply_guarded: true
+          apply_what: all
         - name: run
           default_what: default
           apply_guarded: false
@@ -217,6 +230,7 @@ Infra:
         - name: gen
           default_what: check
           apply_guarded: true
+          apply_what: all
         - name: worktree
           default_what: list
           apply_guarded: false
@@ -644,9 +658,6 @@ Infra:
         owner: codegen
         policy: full
       - path: ci/docker/ubuntu.Dockerfile
-        owner: codegen
-        policy: full
-      - path: .github/workflows/ci-matrix.yml
         owner: codegen
         policy: full
       - path: .github/workflows/ci.yml
@@ -1171,6 +1182,11 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        - source: base/.pre-commit-config.yaml.j2
+          destination: .pre-commit-config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
         - source: base/README.md.j2
           destination: README.md
           profiles: [workspace-root, workspace-member, standalone]
@@ -1221,13 +1237,6 @@ Infra:
           overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
-        # clean-machine images validating bootstrap and make verbs everywhere.
-        - source: base/.github/workflows/ci-matrix.yml.j2
-          destination: .github/workflows/ci-matrix.yml
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

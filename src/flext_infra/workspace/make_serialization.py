@@ -147,18 +147,11 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         return primary
 
-    def _execute_transaction_owned_mutation(
-        self,
-        checkout: Path,
-        make_config: m.Infra.MakeSpec,
-        serialization: m.Infra.MakeSerializationSpec,
-        *,
-        fixed_point_what: str,
-        makefile: Path,
-        lock_path: Path,
+    def _execute_mutation_once(
+        self, checkout: Path, *, makefile: Path
     ) -> p.Result[m.Infra.ProcessExit]:
-        """Let the child transaction own apply locks, then lock the fixed point."""
-        primary = self._run_make(
+        """Run one mutation; the enclosing single-flight lock owns serialization."""
+        return self._run_make(
             checkout,
             (
                 c.Infra.MAKE,
@@ -168,83 +161,6 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"_serialized_{self.verb}",
             ),
             failure_context=f"serialized Make {self.verb} failed",
-        )
-        if primary.failure:
-            return primary
-        post_transaction_result = self._capture_fingerprint(
-            checkout, serialization, phase="after transaction-owned mutation"
-        )
-        if post_transaction_result.failure:
-            return self._process_failure(
-                int(c.Infra.ScriptExitCode.INFRA),
-                post_transaction_result.error
-                or "failed to fingerprint workspace after transaction-owned mutation",
-            )
-        post_transaction = post_transaction_result.value
-
-        def locked_fixed_point() -> p.Result[m.Infra.ProcessExit]:
-            locked_start_result = self._capture_fingerprint(
-                checkout, serialization, phase="before locked fixed-point check"
-            )
-            if locked_start_result.failure:
-                return self._process_failure(
-                    int(c.Infra.ScriptExitCode.INFRA),
-                    locked_start_result.error
-                    or "failed to fingerprint workspace before fixed-point check",
-                )
-            locked_start = locked_start_result.value
-            changed_paths = self._changed_paths(post_transaction, locked_start)
-            if changed_paths is not None:
-                return self._process_failure(
-                    int(c.Infra.ScriptExitCode.INFRA),
-                    "workspace changed between transaction apply and fixed-point "
-                    f"lock: {changed_paths}",
-                )
-            fixed_point = self._run_make(
-                checkout,
-                (
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "-f",
-                    str(makefile),
-                    f"_serialized_{self.verb}",
-                    f"{make_config.selector}={fixed_point_what}",
-                    f"{make_config.apply_variable}=",
-                ),
-                failure_context=(
-                    f"serialized Make {self.verb} fixed-point "
-                    f"{make_config.selector}={fixed_point_what} failed"
-                ),
-            )
-            if fixed_point.failure:
-                return fixed_point
-            fixed_after_result = self._capture_fingerprint(
-                checkout, serialization, phase="after fixed-point check"
-            )
-            if fixed_after_result.failure:
-                return self._process_failure(
-                    int(c.Infra.ScriptExitCode.INFRA),
-                    fixed_after_result.error
-                    or "failed to fingerprint workspace after fixed-point check",
-                )
-            changed_paths = self._changed_paths(locked_start, fixed_after_result.value)
-            if changed_paths is not None:
-                return self._process_failure(
-                    int(c.Infra.ScriptExitCode.INFRA),
-                    (
-                        f"serialized Make {self.verb} fixed-point "
-                        f"{make_config.selector}={fixed_point_what} changed workspace: "
-                        f"{changed_paths}"
-                    ),
-                )
-            return primary
-
-        return u.Infra.serialization_lock_execute(
-            (lock_path,),
-            serialization.timeout_seconds,
-            locked_fixed_point,
-            timeout_failure=self._lock_timeout_failure,
-            acquisition_failure=self._lock_acquisition_failure,
         )
 
     @classmethod
@@ -278,19 +194,9 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             return r[m.Infra.ProcessExit].fail(
                 f"Make verb '{self.verb}' is not serialized (allowed: {allowed})"
             )
-        selected_what = os.environ.get(make_config.selector, "").strip()
-        fixed_point_what = serialization.mutation_fixed_points.get(self.verb, {}).get(
-            selected_what
+        is_mutation = self.verb in serialization.mutation_verbs and (
+            os.environ.get(make_config.apply_variable) == make_config.apply_value
         )
-        if (
-            fixed_point_what is not None
-            and os.environ.get(make_config.apply_variable) != make_config.apply_value
-        ):
-            return r[m.Infra.ProcessExit].fail(
-                f"Serialized mutation {self.verb} "
-                f"{make_config.selector}={selected_what} requires "
-                f"{make_config.apply_variable}={make_config.apply_value}"
-            )
 
         checkout = self.root.resolve()
         selected_makefile = self.makefile.resolve()
@@ -312,14 +218,9 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 )
 
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:
-            if fixed_point_what is not None:
-                return self._execute_transaction_owned_mutation(
-                    checkout,
-                    make_config,
-                    serialization,
-                    fixed_point_what=fixed_point_what,
-                    makefile=selected_makefile,
-                    lock_path=mutation_lock_path,
+            if is_mutation:
+                return self._execute_mutation_once(
+                    checkout, makefile=selected_makefile
                 )
             return u.Infra.serialization_lock_execute(
                 (mutation_lock_path,),
