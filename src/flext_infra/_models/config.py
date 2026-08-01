@@ -1036,6 +1036,17 @@ class FlextInfraConfigModels:
             bool,
             m.Field(description="Whether conform generates the governed CI surface"),
         ] = True
+        extra_ignored_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Project-local .gitignore patterns appended after the"
+                    " fleet-wide scaffold sections (mro-jnm1.3 seam); never"
+                    " hand-edit the generated .gitignore, declare the pattern"
+                    " here instead"
+                )
+            ),
+        ] = ()
 
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""

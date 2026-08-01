@@ -1361,15 +1361,32 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
             profile = target.make_profile
-            return r[p.Model].ok(
-                m.Infra.GitignoreRenderSpec(
-                    gitignore_sections=tuple(
-                        section
-                        for section in codegen.gitignore_sections
-                        if not section.profiles or profile in section.profiles
-                    )
-                )
+            sections = tuple(
+                section
+                for section in codegen.gitignore_sections
+                if not section.profiles or profile in section.profiles
             )
+            # Why (ai-hub-qwoc): mro-jnm1.3 seam -- a project-local overlay
+            # extends the fleet-wide scaffold sections instead of the
+            # generated .gitignore being hand-edited (which `codegen conform`
+            # would then treat as WIP and refuse to regenerate).
+            overlay = next(
+                (
+                    item
+                    for item in workspace.repository_policy_overlays
+                    if item.project == repository.distribution
+                ),
+                None,
+            )
+            if overlay is not None and overlay.extra_ignored_patterns:
+                sections = (
+                    *sections,
+                    m.Infra.ScaffoldGitignoreSectionSpec(
+                        name="Project-local exceptions (config/workspace.yaml overlay)",
+                        patterns=overlay.extra_ignored_patterns,
+                    ),
+                )
+            return r[p.Model].ok(m.Infra.GitignoreRenderSpec(gitignore_sections=sections))
         if destination == "sgconfig.yml":
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.

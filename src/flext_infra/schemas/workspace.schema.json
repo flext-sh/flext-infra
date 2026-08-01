@@ -197,6 +197,14 @@
         },
         "ci_enabled": {
           "type": "boolean"
+        },
+        "extra_ignored_patterns": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
