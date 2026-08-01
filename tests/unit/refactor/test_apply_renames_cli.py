@@ -35,7 +35,10 @@ class TestsFlextInfraApplyRenamesCli:
     ) -> None:
         root, source_path, csv_path = _rename_fixture(tmp_path)
         original = source_path.read_text(encoding="utf-8")
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        monkeypatch.setenv(
+            c.Infra.WORKTREE_TRANSACTION_ENV,
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+        )
 
         result = self._run_inner("--csv", str(csv_path), "--roots", str(root))
 
@@ -46,7 +49,10 @@ class TestsFlextInfraApplyRenamesCli:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         root, source_path, csv_path = _rename_fixture(tmp_path)
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        monkeypatch.setenv(
+            c.Infra.WORKTREE_TRANSACTION_ENV,
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+        )
 
         result = self._run_inner(
             "--csv", str(csv_path), "--roots", str(root), "--apply"

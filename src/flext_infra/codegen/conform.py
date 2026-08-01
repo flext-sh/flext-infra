@@ -1402,10 +1402,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
-                        workspace
+                    workspace_members=tuple(
+                        item.path.as_posix() for item in members
                     ),
-                    workspace_members=tuple(item.path.as_posix() for item in members),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
@@ -1601,7 +1600,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
-                    item.path.as_posix() for item in workspace.members
+                    item.path.as_posix() for item in members
                 ),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,

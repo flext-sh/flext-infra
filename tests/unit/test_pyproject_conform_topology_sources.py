@@ -13,6 +13,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, config, m, u
 from flext_tests import tm
 
@@ -95,6 +97,60 @@ workspace = true
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
+    @pytest.mark.parametrize(
+        "workspace_mode",
+        (c.Infra.WorkspaceMode.WORKSPACE, c.Infra.WorkspaceMode.STANDALONE),
+    )
+    def test_project_exclusion_survives_topology_round_trip(
+        self, workspace_mode: c.Infra.WorkspaceMode
+    ) -> None:
+        """Keep project-routed uv exclusions in attached and detached metadata."""
+        exclusion = next(
+            item
+            for item in config.Infra.codegen.uv_exclude_dependencies
+            if item.project == config.Infra.name
+        )
+        workspace = _workspace().model_copy(
+            update={
+                "members": (
+                    _repository(
+                        config.Infra.name,
+                        role=_ROLE.WORKSPACE_MEMBER,
+                        path=config.Infra.name,
+                        checkout=c.Infra.CheckoutKind.SUBMODULE,
+                    ),
+                )
+            }
+        )
+        source = f'[project]\nname = "{config.Infra.name}"\nversion = "0.1.0"\n'
+
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=workspace_mode,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=(),
+                uv_exclude_dependencies=(exclusion,),
+            )
+        )
+        second = tm.ok(
+            u.Infra.pyproject_conform(
+                first,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=workspace_mode,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=(),
+                uv_exclude_dependencies=(exclusion,),
+            )
+        )
+
+        payload = tomllib.loads(first)["tool"]["uv"]["exclude-dependencies"]
+        tm.that(second, eq=first)
+        tm.that(payload, eq=[exclusion.model_dump(mode="json", exclude_none=True)])
+
     def test_attached_root_never_gets_git_specifier(self) -> None:
         workspace = _workspace()
 

@@ -258,7 +258,9 @@ class FlextInfraUtilitiesWorktreeTransaction:
             str(path) for path in source_roots
         )
         return {
-            c.Infra.WORKTREE_TRANSACTION_ENV: "1",
+            c.Infra.WORKTREE_TRANSACTION_ENV: (
+                c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
+            ),
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: python_path,
             c.Infra.ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: "1",
         }
@@ -552,23 +554,23 @@ class FlextInfraUtilitiesWorktreeTransaction:
         return r[bool].ok(True)
 
     @staticmethod
-    def _transaction_lock_paths(
-        deltas: t.SequenceOf[m.Infra.RepositoryDelta],
+    def _configured_lock_paths(
+        repository_roots: t.SequenceOf[Path],
+        relative_lock_paths: t.SequenceOf[Path],
     ) -> p.Result[t.SequenceOf[Path]]:
-        """Resolve the configured Make lock for every participating workspace."""
-        relative_lock_path = config.Infra.codegen.make.serialization.lock_path
+        """Resolve every configured Make lock for the supplied repositories."""
         lock_paths: set[Path] = set()
-        for delta in deltas:
-            for repository_root in (delta.source_root, delta.worktree_root):
-                workspace_result = FlextInfraUtilitiesGitScope.git_workspace_root(
-                    repository_root
+        for repository_root in repository_roots:
+            workspace_result = FlextInfraUtilitiesGitScope.git_workspace_root(
+                repository_root
+            )
+            if workspace_result.failure:
+                return r[t.SequenceOf[Path]].fail(
+                    workspace_result.error
+                    or f"failed to resolve lock owner for {repository_root}"
                 )
-                if workspace_result.failure:
-                    return r[t.SequenceOf[Path]].fail(
-                        workspace_result.error
-                        or f"failed to resolve lock owner for {repository_root}"
-                    )
-                workspace_root = workspace_result.value.resolve()
+            workspace_root = workspace_result.value.resolve()
+            for relative_lock_path in relative_lock_paths:
                 lock_path = (workspace_root / relative_lock_path).resolve()
                 try:
                     lock_path.relative_to(workspace_root)
@@ -582,15 +584,62 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
 
     @classmethod
+    def _transaction_lock_paths(
+        cls, deltas: t.SequenceOf[m.Infra.RepositoryDelta]
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Resolve locks for every source and isolated transaction participant."""
+        serialization = config.Infra.codegen.make.serialization
+        return cls._configured_lock_paths(
+            tuple(
+                repository_root
+                for delta in deltas
+                for repository_root in (delta.source_root, delta.worktree_root)
+            ),
+            (serialization.lock_path,),
+        )
+
+    @classmethod
+    def _clear_isolated_lock_artifacts(
+        cls, repositories: t.SequenceOf[m.Infra.RepositoryWorktree]
+    ) -> p.Result[bool]:
+        """Remove released Make locks before capturing operation-only patches."""
+        serialization = config.Infra.codegen.make.serialization
+        lock_paths_result = cls._configured_lock_paths(
+            tuple(repository.worktree_root for repository in repositories),
+            (
+                serialization.single_flight_lock_path,
+                serialization.lock_path,
+            ),
+        )
+        if lock_paths_result.failure:
+            return r[bool].fail(
+                lock_paths_result.error or "failed to resolve isolated Make locks"
+            )
+        return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
+            lock_paths_result.value,
+            serialization.timeout_seconds,
+            lambda: r[bool].ok(True),
+            timeout_failure=lambda lock_path, timeout_seconds: r[bool].fail(
+                f"timed out clearing isolated Make lock '{lock_path}' "
+                f"after {timeout_seconds}s"
+            ),
+            acquisition_failure=lambda error: r[bool].fail(
+                f"isolated Make lock cleanup failed: {error}"
+            ),
+            ephemeral=True,
+        )
+
+    @classmethod
     def _apply_transaction_patches_locked(
         cls, deltas: t.SequenceOf[m.Infra.RepositoryDelta]
     ) -> p.Result[bool]:
-        """Preflight all source HEADs and apply every patch under acquired locks."""
+        """Preflight every source and reconcile only non-empty checked patches."""
         head_preflight = cls._preflight_source_heads(deltas)
         if head_preflight.failure:
             return head_preflight
+        patches = tuple(delta for delta in deltas if delta.patch)
         ordered = sorted(
-            deltas, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
+            patches, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
         )
         for delta in ordered:
             result = FlextInfraUtilitiesGitScope.git_apply_patch(delta)
@@ -598,13 +647,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 return r[bool].fail(
                     f"{delta.relative_path}: {result.error or 'patch apply failed'}"
                 )
-        return r[bool].ok(True)
+        return r[bool].ok(bool(patches))
 
     @classmethod
     def git_apply_transaction_patches(
         cls, deltas: t.SequenceOf[m.Infra.RepositoryDelta]
     ) -> p.Result[bool]:
-        """Lock every workspace across source-HEAD preflight and patch apply."""
+        """Lock every source before reconciling all non-empty checked patches."""
         lock_paths_result = cls._transaction_lock_paths(deltas)
         if lock_paths_result.failure:
             return r[bool].fail(
@@ -755,6 +804,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
         lint_after = cls._lint_snapshots(
             worktree_root, environment, request.timeout_seconds, lint_commands
         )
+        lock_cleanup = cls._clear_isolated_lock_artifacts(repositories)
+        if lock_cleanup.failure:
+            return r[m.Infra.WorktreeTransactionReport].fail(
+                lock_cleanup.error or "failed to clear isolated Make lock artifacts"
+            )
 
         def _run_import_probe() -> p.Cli.CommandOutput:
             return cls._import_probe(
@@ -791,9 +845,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
         apply_error = ""
         if request.apply_patch and not breakage:
             apply_result = cls.git_apply_transaction_patches(deltas)
-            applied = apply_result.success
-            apply_error = apply_result.error or "" if apply_result.failure else ""
-            breakage = apply_result.failure
+            if apply_result.failure:
+                apply_error = apply_result.error or ""
+                breakage = True
+            else:
+                applied = apply_result.value
         summary = (
             f"breakage={'yes' if breakage else 'no'}; "
             f"patch-check={'ok' if patch_check.success else patch_check.error}; "

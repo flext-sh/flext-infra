@@ -223,7 +223,8 @@ class FlextInfraReleaseOrchestratorPhases(
         process_environment = u.Cli.process_env()
         if (
             not ctx.dry_run
-            and process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV) != "1"
+            and process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV)
+            != c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
         ):
             return self._version_worktree_transaction(ctx)
         manifest_result = self._version_workspace_manifest_plan(
@@ -307,7 +308,8 @@ class FlextInfraReleaseOrchestratorPhases(
                 transaction_result.error or "release version transaction failed"
             )
         report = transaction_result.value
-        if report.breakage_detected or not report.applied:
+        has_delta = any(repository.patch for repository in report.repositories)
+        if report.breakage_detected or report.applied != has_delta:
             return r[bool].fail(u.Infra.render_worktree_transaction_report(report))
         logger.info(
             "release_phase_version_transaction",

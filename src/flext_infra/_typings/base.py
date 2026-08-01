@@ -97,6 +97,8 @@ class FlextInfraTypesBase:
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."
+    type CheckoutSubmodules = Literal["true", "false", "recursive"]
+    "Closed actions/checkout submodule traversal policy."
     type LayoutRule = Literal["move", "archive", "gitignore", "review"]
     "Closed layout decision kinds produced by the layout engine."
     type LayoutStatus = Literal["planned", "applied", "skipped", "noop"]

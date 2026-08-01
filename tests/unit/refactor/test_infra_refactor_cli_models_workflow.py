@@ -22,7 +22,10 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     def test_namespace_enforce_cli_fails_on_manual_protocol_violation(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        monkeypatch.setenv(
+            c.Infra.WORKTREE_TRANSACTION_ENV,
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+        )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
@@ -47,7 +50,10 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     def test_wrapper_root_namespace_cli_dry_run_succeeds(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        monkeypatch.setenv(
+            c.Infra.WORKTREE_TRANSACTION_ENV,
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+        )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
@@ -78,7 +84,10 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     def test_wrapper_root_namespace_cli_check_fails_when_changes_are_needed(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        monkeypatch.setenv(
+            c.Infra.WORKTREE_TRANSACTION_ENV,
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+        )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
@@ -106,7 +115,10 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     def test_wrapper_root_namespace_cli_apply_rewrites_file(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        monkeypatch.setenv(
+            c.Infra.WORKTREE_TRANSACTION_ENV,
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+        )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )

@@ -13,7 +13,7 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:uv_link_mode
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := $(if $(strip $(shell git rev-parse --show-superproject-working-tree 2>/dev/null)),workspace-member,standalone)
 WORKSPACE_ROOT_REL := .
@@ -550,8 +550,6 @@ _builtin_help_all:
 	@printf '  %-10s\n' 'worktree';
 
 
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
-
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
@@ -713,11 +711,12 @@ _builtin_require_environment:
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
 # It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
 # is the single public conformance/generation surface.
-# Profile routing: workspace-member delegates the environment to the
-# principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
-# standalone build their own environment locally.
+# Runtime routing: a live attached member delegates once to its distinct
+# workspace owner; detached non-root and workspace-root checkouts provision
+# their own environment locally.
 ifeq ($(MAKE_PROFILE),workspace-member)
 _builtin_setup_environment: _builtin_setup_submodules
+	@printf 'setup profile=%s runtime=%s action=delegate\n' '$(MAKE_PROFILE)' '$(RUNTIME_ROOT)'
 	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: $(if $(filter Y,$(CI)),,_builtin_setup_submodules)
@@ -726,6 +725,7 @@ _builtin_setup_environment: $(if $(filter Y,$(CI)),,_builtin_setup_submodules)
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else
 _builtin_setup_environment: _builtin_setup_submodules
+	@printf 'setup profile=%s runtime=%s action=provision\n' '$(MAKE_PROFILE)' '$(RUNTIME_ROOT)'
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif

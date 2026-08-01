@@ -369,13 +369,26 @@ class TestsFlextInfraWorktreeTransaction:
     def test_transaction_apply_preflights_all_heads_before_any_patch(
         self, tmp_path: Path
     ) -> None:
-        """Reject one advanced source before applying any repository delta."""
+        """Reject one advanced patchless source before applying another delta."""
         first_source, first_worktree, first_delta = _operation_delta(tmp_path / "first")
         second_source, second_worktree, second_delta = _operation_delta(
             tmp_path / "second"
         )
         first_artifact = first_source / "artifact.txt"
         second_artifact = second_source / "artifact.txt"
+        second_isolated_artifact = second_worktree / second_artifact.name
+        second_isolated_artifact.write_bytes(second_artifact.read_bytes())
+        second_delta = tm.ok(
+            u.Infra.git_repository_delta(
+                m.Infra.RepositoryWorktree(
+                    relative_path=".",
+                    source_root=second_source,
+                    worktree_root=second_worktree,
+                    checkpoint_sha=second_delta.checkpoint_sha,
+                )
+            )
+        )
+        tm.that(second_delta.patch, eq=b"")
         concurrent = second_source / "concurrent.txt"
         concurrent.write_text("new head\n", encoding="utf-8")
         tm.ok(u.Infra.git_capture(second_source, ("add", concurrent.name)))

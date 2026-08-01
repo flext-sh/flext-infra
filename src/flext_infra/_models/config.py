@@ -283,10 +283,9 @@ class FlextInfraConfigModels:
             ),
         ]
         checkout_submodules: Annotated[
-            t.NonEmptyStr,
+            t.Infra.CheckoutSubmodules,
             m.Field(
                 default="false",
-                pattern=r"^(true|false|recursive)$",
                 description=(
                     "actions/checkout submodules mode. Defaults to 'false' "
                     "because the default GITHUB_TOKEN cannot clone sibling "
@@ -1220,9 +1219,6 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr, m.Field(description="Relative workspace root path")
-        ]
         workspace_members: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace member paths")
         ] = ()
@@ -1834,10 +1830,9 @@ class FlextInfraConfigModels:
             m.Field(description="Immutable GitHub Action catalog"),
         ]
         checkout_submodules: Annotated[
-            t.NonEmptyStr,
+            t.Infra.CheckoutSubmodules,
             m.Field(
                 default="false",
-                pattern=r"^(true|false|recursive)$",
                 description=(
                     "Default actions/checkout submodules mode for every "
                     "generated workflow. 'false' keeps CI green on projects "
@@ -1848,7 +1843,7 @@ class FlextInfraConfigModels:
             ),
         ]
         checkout_submodules_overrides: Annotated[
-            Mapping[str, str],
+            Mapping[str, t.Infra.CheckoutSubmodules],
             m.Field(
                 default_factory=lambda: MappingProxyType({}),
                 description=(
