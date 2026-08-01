@@ -690,24 +690,16 @@ class TestsFlextInfraWorktreeTransaction:
             str(sentinel_bin),
             prepend=c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR,
         )
-        conform_request = m.Infra.CodegenConformRequest(
-            root=workspace_root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
-        conform_arguments = tuple(
-            argument
-            for field_name, value in conform_request.model_dump(mode="json").items()
-            for argument in (f"--{field_name.replace('_', '-')}", str(value))
-        )
+        output_path = workspace_root / c.Infra.MAKEFILE_FILENAME
 
         transaction_result = u.Infra.execute_worktree_transaction(
             m.Infra.WorktreeTransactionRequest(
                 workspace_root=workspace_root,
                 command=(
-                    c.Infra.CLI_GROUP_CODEGEN,
-                    c.Infra.CodegenKind.CONFORM,
-                    *conform_arguments,
+                    c.Infra.CLI_GROUP_BASEMK,
+                    "generate",
+                    "--output",
+                    str(output_path),
                 ),
                 apply_patch=False,
                 timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
@@ -726,7 +718,7 @@ class TestsFlextInfraWorktreeTransaction:
             tm.that((sentinel_bin / f"{tool}.called").exists(), eq=False)
         tm.that(pyproject_path.read_bytes(), eq=before_pyproject)
         tm.that(_git_status(workspace_root), eq=before_status)
-        tm.that((workspace_root / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
+        tm.that(output_path.exists(), eq=False)
 
 
 class TestsFlextInfraWorktreeTransactionScope:
