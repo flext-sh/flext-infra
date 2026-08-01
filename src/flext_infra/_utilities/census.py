@@ -737,8 +737,7 @@ class FlextInfraUtilitiesRefactorCensus:
         applied, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=workspace,
-                post_write=_post_write,
+                workspace=workspace, post_write=_post_write
             ),
         )
         rope.reload()

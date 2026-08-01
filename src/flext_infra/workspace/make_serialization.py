@@ -26,6 +26,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         ),
     ]
+
     def _serialized_command(
         self,
         makefile: Path,
@@ -41,16 +42,8 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             "-f",
             str(makefile),
             f"_serialized_{self.verb}",
-            *(
-                (f"{make_config.selector}={selected_what}",)
-                if selected_what
-                else ()
-            ),
-            *(
-                (f"{make_config.apply_variable}={apply_value}",)
-                if apply_value
-                else ()
-            ),
+            *((f"{make_config.selector}={selected_what}",) if selected_what else ()),
+            *((f"{make_config.apply_variable}={apply_value}",) if apply_value else ()),
         )
 
     @staticmethod
@@ -61,9 +54,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             os.environ.get(c.Infra.MAKEOVERRIDES_ENV, ""),
         )
         try:
-            tokens = tuple(
-                token for raw in raw_channels for token in shlex.split(raw)
-            )
+            tokens = tuple(token for raw in raw_channels for token in shlex.split(raw))
         except ValueError as exc:
             return r[t.StrMapping].fail(f"invalid GNU Make flags: {exc}")
         owned_names = frozenset({make_config.selector, make_config.apply_variable})
@@ -290,10 +281,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:
             if is_mutation:
                 return self._execute_mutation_once(
-                    checkout,
-                    make_config,
-                    make_variables,
-                    makefile=selected_makefile,
+                    checkout, make_config, make_variables, makefile=selected_makefile
                 )
             return u.Infra.serialization_lock_execute(
                 (mutation_lock_path,),

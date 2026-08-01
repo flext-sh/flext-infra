@@ -55,9 +55,7 @@ class FlextInfraAccessorMigrationReportMixin:
         if automated_changes:
             if self.dry_run and include_preview:
                 before, after = u.Infra.preview_source_lint(
-                    py_file,
-                    self.workspace_root,
-                    updated_source=updated_source,
+                    py_file, self.workspace_root, updated_source=updated_source
                 )
             elif not self.dry_run:
                 before = (
@@ -68,8 +66,7 @@ class FlextInfraAccessorMigrationReportMixin:
                 ok, report = u.Infra.protected_source_write(
                     py_file,
                     request=m.Infra.ProtectedSourceWriteRequest(
-                        workspace=self.workspace_root,
-                        updated_source=updated_source,
+                        workspace=self.workspace_root, updated_source=updated_source
                     ),
                 )
                 if not ok:

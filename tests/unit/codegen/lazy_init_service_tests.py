@@ -348,9 +348,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((second_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=())
 
-    def test_applied_initializer_compiles_in_process(
-        self, tmp_path: Path
-    ) -> None:
+    def test_applied_initializer_compiles_in_process(self, tmp_path: Path) -> None:
         """A generated initializer is structurally valid without quality tools."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(

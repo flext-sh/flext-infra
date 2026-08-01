@@ -18,8 +18,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
     @staticmethod
     def _preview_write_baselines(
-        updates: t.MappingKV[Path, str],
-        workspace: Path,
+        updates: t.MappingKV[Path, str], workspace: Path
     ) -> tuple[
         MutableMapping[Path, str | None], MutableMapping[Path, t.Infra.LintSnapshot]
     ]:

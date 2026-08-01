@@ -486,7 +486,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Mutating public verbs serialized once under the checkout lock; "
                     "validation is owned by later workflow steps"
-                ),
+                )
             ),
         ]
         snapshot_excludes: Annotated[

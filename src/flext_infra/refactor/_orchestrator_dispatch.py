@@ -22,17 +22,11 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         loader: FlextInfraRefactorRuleLoader
 
         def refactor_file(
-            self,
-            file_path: Path,
-            *,
-            dry_run: bool = False,
+            self, file_path: Path, *, dry_run: bool = False
         ) -> m.Infra.Result: ...
 
         def refactor_files(
-            self,
-            file_paths: t.SequenceOf[Path],
-            *,
-            dry_run: bool = False,
+            self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         def refactor_project(

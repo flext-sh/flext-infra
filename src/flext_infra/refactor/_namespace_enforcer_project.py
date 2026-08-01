@@ -77,11 +77,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         def _collect_py_files(*, project_root: Path) -> t.SequenceOf[Path]: ...
 
     def _enforce_project(
-        self,
-        *,
-        project_root: Path,
-        project_name: str,
-        apply: bool,
+        self, *, project_root: Path, project_name: str, apply: bool
     ) -> m.Infra.ProjectEnforcementReport:
         """Enforce project."""
         with u.Infra.open_project(project_root) as rope_project:
@@ -142,9 +138,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_loose_object_violations(
-                project_root=project_root,
-                violations=vs,
-                parse_failures=parse_failures,
+                project_root=project_root, violations=vs, parse_failures=parse_failures
             ),
             apply=apply,
         )
@@ -268,9 +262,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_manual_typing_alias_violations(
-                project_root=project_root,
-                violations=vs,
-                parse_failures=parse_failures,
+                project_root=project_root, violations=vs, parse_failures=parse_failures
             ),
             apply=apply,
         )

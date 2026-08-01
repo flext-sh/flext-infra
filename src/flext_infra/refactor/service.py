@@ -63,19 +63,13 @@ class FlextInfraRefactorService:
         return exit_code
 
     def refactor_file(
-        self,
-        file_path: Path,
-        *,
-        dry_run: bool = False,
+        self, file_path: Path, *, dry_run: bool = False
     ) -> m.Infra.Result:
         """Delegate single-file refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_file(file_path, dry_run=dry_run)
 
     def refactor_files(
-        self,
-        file_paths: t.SequenceOf[Path],
-        *,
-        dry_run: bool = False,
+        self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate multi-file refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_files(file_paths, dry_run=dry_run)
@@ -90,10 +84,7 @@ class FlextInfraRefactorService:
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate project refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_project(
-            project_path,
-            dry_run=dry_run,
-            pattern=pattern,
-            apply_safety=apply_safety,
+            project_path, dry_run=dry_run, pattern=pattern, apply_safety=apply_safety
         )
 
     def refactor_workspace(
@@ -106,10 +97,7 @@ class FlextInfraRefactorService:
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate workspace refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_workspace(
-            workspace_root,
-            dry_run=dry_run,
-            pattern=pattern,
-            apply_safety=apply_safety,
+            workspace_root, dry_run=dry_run, pattern=pattern, apply_safety=apply_safety
         )
 
 

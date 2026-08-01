@@ -22,10 +22,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         safety_manager: FlextInfraRefactorSafetyManager
 
         def refactor_files(
-            self,
-            file_paths: t.SequenceOf[Path],
-            *,
-            dry_run: bool = False,
+            self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         @staticmethod
@@ -180,10 +177,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
             self._refactor_header(f"Project: {project}")
             results.extend(
                 self.refactor_project(
-                    project,
-                    dry_run=dry_run,
-                    pattern=pattern,
-                    apply_safety=False,
+                    project, dry_run=dry_run, pattern=pattern, apply_safety=False
                 )
             )
             if apply_safety and not dry_run:

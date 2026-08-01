@@ -70,9 +70,9 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     @staticmethod
     def _run_namespace_enforcement(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run namespace enforcement and record any unresolved violations."""
-        enforcement = FlextInfraNamespaceEnforcer(
-            workspace_root=project_path
-        ).enforce(apply=True)
+        enforcement = FlextInfraNamespaceEnforcer(workspace_root=project_path).enforce(
+            apply=True
+        )
         violating_projects = tuple(
             project_report
             for project_report in enforcement.projects

@@ -136,8 +136,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def build_checks(
-        *,
-        after_metrics: t.MappingKV[str, t.Infra.InfraValue],
+        *, after_metrics: t.MappingKV[str, t.Infra.InfraValue]
     ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
         """Build generator-owned quality checks from census metrics."""
         # Metric-driven checks share the shape ``(name, value==0, "label=value")``.

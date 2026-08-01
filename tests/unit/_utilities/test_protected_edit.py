@@ -25,9 +25,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(result, eq=(True, []))
         tm.that(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=original_source)
 
-    def test_protected_source_write_accepts_valid_source(
-        self, tmp_path: Path
-    ) -> None:
+    def test_protected_source_write_accepts_valid_source(self, tmp_path: Path) -> None:
         py_file = tmp_path / "sample.py"
         original_source = "def value() -> int:\n    return 1\n"
         updated_source = "def value() -> int:\n    return 2\n"
@@ -46,9 +44,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             eq=updated_source.rstrip("\n"),
         )
 
-    def test_protected_test_source_is_not_executed(
-        self, tmp_path: Path
-    ) -> None:
+    def test_protected_test_source_is_not_executed(self, tmp_path: Path) -> None:
         tests_dir = tmp_path / "tests"
         tests_dir.mkdir()
         py_file = tests_dir / "test_placeholder.py"

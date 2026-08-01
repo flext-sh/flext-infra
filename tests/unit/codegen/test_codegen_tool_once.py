@@ -77,9 +77,7 @@ class TestsCodegenToolOnce:
             m.Infra.ModernizeInput,
             m.Infra.AccessorMigrationInput,
         )
-        field_names = {
-            name for model in request_models for name in model.model_fields
-        }
+        field_names = {name for model in request_models for name in model.model_fields}
         stale_flags = {
             name for name in field_names if name == "gates" or name.startswith("skip_")
         }

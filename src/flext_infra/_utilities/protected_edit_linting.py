@@ -88,14 +88,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @classmethod
     def lint_snapshots(
-        cls,
-        paths: t.SequenceOf[Path],
-        workspace: Path,
+        cls, paths: t.SequenceOf[Path], workspace: Path
     ) -> MutableMapping[Path, t.Infra.LintSnapshot]:
         """Return structural snapshots in deterministic path order."""
-        return {
-            path: cls.lint_snapshot(path, workspace) for path in paths
-        }
+        return {path: cls.lint_snapshot(path, workspace) for path in paths}
 
     @staticmethod
     def lint_new_errors(
@@ -114,10 +110,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def preview_source_lint(
-        py_file: Path,
-        workspace: Path,
-        *,
-        updated_source: str,
+        py_file: Path, workspace: Path, *, updated_source: str
     ) -> tuple[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
         """Preview structural output for *updated_source* and restore the file."""
         original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)

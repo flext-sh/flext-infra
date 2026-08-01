@@ -71,8 +71,7 @@ class FlextInfraRefactorMROImportRewriter(
             module_source_paths[scan_result.module] = source_path
         if apply:
             write_errors, failed_paths = cls._write_pending_sources(
-                workspace_root=workspace_root,
-                pending_sources=pending_sources,
+                workspace_root=workspace_root, pending_sources=pending_sources
             )
             errors.extend(write_errors)
             if failed_paths:

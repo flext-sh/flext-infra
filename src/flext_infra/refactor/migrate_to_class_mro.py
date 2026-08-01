@@ -34,11 +34,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         self._workspace_root = workspace_root.resolve()
 
     def run(
-        self,
-        *,
-        target: str,
-        apply: bool,
-        project_names: t.StrSequence | None = None,
+        self, *, target: str, apply: bool, project_names: t.StrSequence | None = None
     ) -> m.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         start_time = perf_counter()

@@ -65,10 +65,7 @@ class FlextInfraRefactorCensusValidateMixin:
             validated_violations = list(report.violations)
             for candidate in report.removal_candidates:
                 preview_result = u.Infra.preview_simple_removal_candidate(
-                    rope,
-                    self.root,
-                    candidate,
-                    source_cache=source_cache,
+                    rope, self.root, candidate, source_cache=source_cache
                 )
                 if preview_result.failure:
                     msg = preview_result.error or (

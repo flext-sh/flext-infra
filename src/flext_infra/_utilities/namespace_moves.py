@@ -142,9 +142,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     raise RuntimeError(msg)
 
     @classmethod
-    def rewrite_runtime_alias_violations(
-        cls, *, py_files: t.SequenceOf[Path]
-    ) -> None:
+    def rewrite_runtime_alias_violations(cls, *, py_files: t.SequenceOf[Path]) -> None:
         """Rewrite runtime alias violations."""
         if not py_files:
             return
@@ -501,8 +499,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 source_file: "\n".join(filtered_lines).rstrip() + "\n",
             },
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=project_root,
-                keep_backup=True,
+                workspace=project_root, keep_backup=True
             ),
         )
         if not ok:
@@ -585,10 +582,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
     @staticmethod
     def _move_typing_alias_lines(
-        *,
-        project_root: Path,
-        source_file: Path,
-        alias_names: t.Infra.StrSet,
+        *, project_root: Path, source_file: Path, alias_names: t.Infra.StrSet
     ) -> None:
         """Move typing alias lines."""
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -687,8 +681,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 source_file: "\n".join(updated_source_lines).rstrip() + "\n",
             },
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=project_root,
-                keep_backup=True,
+                workspace=project_root, keep_backup=True
             ),
         )
         if not ok:

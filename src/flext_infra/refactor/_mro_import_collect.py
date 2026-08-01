@@ -135,10 +135,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
 
     @staticmethod
     def _protected_source_write(
-        *,
-        workspace_root: Path,
-        file_path: Path,
-        updated_source: str,
+        *, workspace_root: Path, file_path: Path, updated_source: str
     ) -> t.Infra.EditResult:
         """Protected source write."""
         result: t.Infra.EditResult = u.Infra.protected_source_write(
@@ -153,10 +150,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
 
     @classmethod
     def _write_pending_sources(
-        cls,
-        *,
-        workspace_root: Path,
-        pending_sources: t.MappingKV[Path, str],
+        cls, *, workspace_root: Path, pending_sources: t.MappingKV[Path, str]
     ) -> tuple[t.StrSequence, t.SequenceOf[Path]]:
         """Write pending sources."""
         errors: list[str] = []

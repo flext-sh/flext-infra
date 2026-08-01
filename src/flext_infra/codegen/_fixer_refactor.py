@@ -49,9 +49,7 @@ class FlextInfraCodegenFixerRefactorMixin(FlextInfraCodegenFixerResultsMixin):
             )
             return
         refactor_results = tuple(
-            service.refactor_project(
-                project_path, dry_run=False, apply_safety=False
-            )
+            service.refactor_project(project_path, dry_run=False, apply_safety=False)
         )
         ctx.files_modified |= {
             str(result.file_path) for result in refactor_results if result.success

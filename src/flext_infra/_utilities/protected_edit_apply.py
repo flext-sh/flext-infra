@@ -54,10 +54,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             failed = True
             reports.extend(
                 FlextInfraUtilitiesProtectedEditApply._reverted_report_lines(
-                    path,
-                    request.workspace,
-                    before_sources[path] or "",
-                    new_errors,
+                    path, request.workspace, before_sources[path] or "", new_errors
                 )
             )
         return (not failed, reports)

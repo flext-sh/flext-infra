@@ -52,10 +52,7 @@ class FlextInfraRefactorOrchestrator(
 
     @override
     def refactor_file(
-        self,
-        file_path: Path,
-        *,
-        dry_run: bool = False,
+        self, file_path: Path, *, dry_run: bool = False
     ) -> m.Infra.Result:
         """Refactor one file using the loader's current rule selections."""
         try:
@@ -168,9 +165,7 @@ class FlextInfraRefactorOrchestrator(
         ok, report = u.Infra.protected_source_write(
             file_path,
             request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=workspace_root,
-                updated_source=current,
-                keep_backup=True,
+                workspace=workspace_root, updated_source=current, keep_backup=True
             ),
         )
         all_changes.extend(report)
@@ -187,10 +182,7 @@ class FlextInfraRefactorOrchestrator(
 
     @override
     def refactor_files(
-        self,
-        file_paths: t.SequenceOf[Path],
-        *,
-        dry_run: bool = False,
+        self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor many files and collect individual results."""
         results: t.MutableSequenceOf[m.Infra.Result] = []

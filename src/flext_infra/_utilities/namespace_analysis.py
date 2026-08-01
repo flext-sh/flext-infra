@@ -74,10 +74,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             )
             rewritten = "\n".join(rewritten_lines).rstrip() + "\n"
             compile(rewritten, str(file_path), "exec")
-            _ = file_path.write_text(
-                rewritten,
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            _ = file_path.write_text(rewritten, encoding=c.Cli.ENCODING_DEFAULT)
 
     @staticmethod
     def _rewrite_class_header(
