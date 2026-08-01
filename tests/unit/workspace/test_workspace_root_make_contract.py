@@ -318,7 +318,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(outputs["check"], lacks=["--fix", "ruff format"])
         tm.that(outputs["test"].count("flext_infra._pytest_entry"), eq=1)
 
-    @pytest.mark.parametrize("mutation", ("APPLY=Y", "FIX=1", "CHECK_ONLY=1"))
+    @pytest.mark.parametrize("mutation", ["APPLY=Y", "FIX=1", "CHECK_ONLY=1"])
     def test_generated_make_check_rejects_mutation_controls(
         self, tmp_path: Path, mutation: str
     ) -> None:

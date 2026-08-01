@@ -1,5 +1,5 @@
 # @flext-managed: continuous
-# @flext-regenerate: make gen WHAT=apply APPLY=Y
+# @flext-regenerate: make gen APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # flext-infra — generated project interface.
@@ -35,12 +35,11 @@ APPLY ?= N
 ARGS ?=
 CHANGED_ONLY ?= 0
 CHECK_GATES ?=
-CHECK_ONLY ?= 0
+CI ?= N
 DEPENDENCY ?=
 FAIL_FAST ?= 0
 FILE ?=
 FILES ?=
-FIX ?= 0
 MATCH ?=
 PROJECT ?=
 PROJECTS ?=
@@ -102,10 +101,10 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
 #        config:make.docs.actions, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release gen worktree
-CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
-CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
-CHECK_GATES_FAST := lint format pyrefly mypy pyright
+PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
+CHECK_GATES_ALLOWED := lint pyrefly mypy pyright silent-failure security markdown smells
+CHECK_GATES_DEFAULT := lint pyrefly mypy pyright silent-failure security markdown smells
+CHECK_GATES_FAST := lint pyrefly mypy pyright
 DOCS_ACTIONS := generate fix audit build validate
 SERIALIZED_VERBS := check test gen
 SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen
@@ -138,19 +137,24 @@ REPORT_MYPY_FAILURE = code=$$?; signal=none; if [ "$$code" -ge 128 ]; then signa
 export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 
 
-_DEFAULT_help := usage
-_DEFAULT_deps := check
-_DEFAULT_build := artifacts
+_DEFAULT_help := all
+_DEFAULT_deps := all
+_DEFAULT_build := all
 _DEFAULT_check := all
 _DEFAULT_test := all
-_DEFAULT_fmt := check
-_DEFAULT_run := default
-_DEFAULT_status := diagnostics
+_DEFAULT_fmt := all
+_DEFAULT_fix := all
+_DEFAULT_run := all
+_DEFAULT_status := all
 _DEFAULT_docs := all
-_DEFAULT_clean := generated
-_DEFAULT_release := status
-_DEFAULT_gen := check
-_DEFAULT_worktree := list
+_DEFAULT_clean := all
+_DEFAULT_release := all
+_DEFAULT_gen := all
+_DEFAULT_worktree := all
+
+_APPLY_WHAT_fmt := all
+_APPLY_WHAT_fix := all
+_APPLY_WHAT_gen := all
 
 
 # === SECTION: profile routing (managed) ===
@@ -215,7 +219,7 @@ FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJ
 endif
 
 ifeq ($(MAKE_PROFILE),workspace-root)
-CODEGEN_SCOPE := all
+CODEGEN_SCOPE := $(if $(filter Y,$(CI)),self,all)
 ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
 else
 CODEGEN_SCOPE := self
@@ -228,20 +232,29 @@ endif
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 ROOT_PROJECT_SELECTOR := .
+CI_INPUT := $(strip $(CI))
+ifneq ($(filter-out 0 1 N Y false true,$(CI_INPUT)),)
+$(error CI must be one of: 0, 1, N, Y, false, true)
+endif
+override CI := $(if $(filter 1 Y true,$(CI_INPUT)),Y,N)
+export CI
 EXPLICIT_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
 PYTEST_FILE_PATH := $(word 1,$(subst ::, ,$(strip $(FLEXT_PYTEST_FILE_RAW))))
 PYTEST_FILE_MEMBER := $(firstword $(foreach member,$(WORKSPACE_MEMBERS),$(if $(filter $(member)/%,$(PYTEST_FILE_PATH)),$(member))))
 PYTEST_FILE_PROJECT := $(if $(strip $(PYTEST_FILE_PATH)),$(if $(strip $(PYTEST_FILE_MEMBER)),$(PYTEST_FILE_MEMBER),$(ROOT_PROJECT_SELECTOR)))
 REQUESTED_PROJECTS := $(if $(strip $(EXPLICIT_PROJECTS)),$(EXPLICIT_PROJECTS),$(PYTEST_FILE_PROJECT))
-DEFAULT_PROJECTS := .
+# A workspace root owns no local gate implementation: its verbs fan out to the
+# declared members by default. CI=Y and an explicit root selection run self.
+DEFAULT_PROJECTS := $(if $(filter Y,$(CI)),.,$(WORKSPACE_MEMBERS) .)
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 ROOT_PROJECT_SELECTED := $(filter $(ROOT_PROJECT_SELECTOR),$(SELECTED_PROJECTS))
 SELECTED_MEMBER_PROJECTS := $(filter-out $(ROOT_PROJECT_SELECTOR),$(SELECTED_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_MEMBER_PROJECTS),--projects $(project))
-WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))") $(if $(strip $(FILES)),--make-arg "FILES=$(strip $(FILES))") $(if $(strip $(FILE)),--make-arg "FILE=$(strip $(FILE))") $(if $(filter 1,$(CHANGED_ONLY)),--make-arg "CHANGED_ONLY=1") $(if $(filter 1,$(CHECK_ONLY)),--make-arg "CHECK_ONLY=1") $(if $(filter 1,$(FIX)),--make-arg "FIX=1") $(if $(filter Y,$(APPLY)),--make-arg "APPLY=Y")
+WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))") $(if $(strip $(FILES)),--make-arg "FILES=$(strip $(FILES))") $(if $(strip $(FILE)),--make-arg "FILE=$(strip $(FILE))") $(if $(filter 1,$(CHANGED_ONLY)),--make-arg "CHANGED_ONLY=1")
+WORKSPACE_FIX_ARGS := $(if $(filter Y,$(APPLY)),--make-arg "APPLY=Y")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
-DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS := build check clean docs fmt scan test val
+DOCS_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
+ORCHESTRATED_VERBS := build check clean docs fix fmt scan test val
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
@@ -274,6 +287,8 @@ _BUILTIN_HANDLERS := \
 	_builtin_fmt_check \
 	_builtin_fmt_apply_local \
 	_builtin_fmt_apply \
+	_builtin_fix_local \
+	_builtin_fix_all \
 	_builtin_run_default \
 	_builtin_status_diagnostics \
 	_builtin_docs_all \
@@ -289,12 +304,25 @@ _builtin_clean_generated \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
 	_builtin_worktree_update \
-	_builtin_worktree_remove
+	_builtin_worktree_remove \
+	_builtin_help_all \
+	_builtin_deps_all \
+	_builtin_build_all \
+	_builtin_fmt_all \
+	_builtin_run_all \
+	_builtin_status_all \
+	_builtin_clean_all \
+	_builtin_release_all \
+	_builtin_gen_all \
+	_builtin_worktree_all
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
+	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
+		what="$(_APPLY_WHAT_$(1))"; \
+	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
@@ -324,8 +352,7 @@ endef
 
 define _run_for_selected_projects
 	@set -eu; \
-	selected="$(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))"; \
-	if [ -z "$$selected" ]; then selected="."; fi; \
+	selected="$(strip $(SELECTED_PROJECTS))"; \
 	for project in $$selected; do \
 		case " $(ALLOWED_PROJECTS) " in \
 			*" $$project "*) ;; \
@@ -383,7 +410,7 @@ _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
-	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
+	@printf '  %-10s\n' 'help';
 
 
 
@@ -391,51 +418,55 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'deps' 'check';
+	@printf '  %-10s\n' 'deps';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'build' 'artifacts';
+	@printf '  %-10s\n' 'build';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' 'all';
+	@printf '  %-10s\n' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'test' 'all';
+	@printf '  %-10s\n' 'test';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check';
+	@printf '  %-10s APPLY=Y\n' 'fmt';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'run' 'default';
+	@printf '  %-10s APPLY=Y\n' 'fix';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'status' 'diagnostics';
+	@printf '  %-10s\n' 'run';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'docs' 'all|generate|fix|audit|build|validate';
+	@printf '  %-10s\n' 'status';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'clean' 'generated';
+	@printf '  %-10s\n' 'docs';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'release' 'status';
+	@printf '  %-10s\n' 'clean';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' 'check';
+	@printf '  %-10s\n' 'release';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
+	@printf '  %-10s APPLY=Y\n' 'gen';
+
+
+
+	@printf '  %-10s\n' 'worktree';
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
@@ -606,7 +637,7 @@ ifeq ($(MAKE_PROFILE),workspace-member)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment: _builtin_setup_submodules
+_builtin_setup_environment: $(if $(filter Y,$(CI)),,_builtin_setup_submodules)
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
@@ -649,8 +680,8 @@ _builtin_build_local:
 
 _builtin_check_local: _builtin_require_environment
 	@set -eu; \
-	if [ "$(FIX)" = "1" ] && [ "$(APPLY)" != "Y" ]; then \
-		printf 'ERROR: FIX=1 requires APPLY=Y\n' >&2; exit 2; \
+	if [ "$(APPLY)" != "N" ] || [ -n "$(FIX)" ] || [ -n "$(CHECK_ONLY)" ]; then \
+		printf 'ERROR: check is read-only; APPLY, FIX, and CHECK_ONLY are forbidden\n' >&2; exit 2; \
 	fi; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
@@ -674,26 +705,24 @@ _builtin_check_local: _builtin_require_environment
 		done; \
 		printf 'Fast-path check: %s\n' "$$files"; \
 		status=0; \
-		case ",$$gates," in *,lint,*) $(UV_RUN) ruff check $$files $(RUFF_ARGS) $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) || status=$$? ;; esac; \
-		case ",$$gates," in *,format,*) $(UV_RUN) ruff format $$files $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),--check,--quiet),--check) || status=$$? ;; esac; \
+		case ",$$gates," in *,lint,*) $(UV_RUN) ruff check --no-fix $$files $(RUFF_ARGS) || status=$$? ;; esac; \
 		case ",$$gates," in *,pyright,*) $(UV_RUN) pyright $$files $(PYRIGHT_ARGS) || status=$$? ;; esac; \
 		case ",$$gates," in *,pyrefly,*) $(UV_RUN) pyrefly check $$files || status=$$? ;; esac; \
 		case ",$$gates," in *,mypy,*) $(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $$files || { $(REPORT_MYPY_FAILURE); status=$$code; } ;; esac; \
 		exit $$status; \
 	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects . $(if $(filter 1,$(FIX)),--fix)
+	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin_test_local: _builtin_require_environment
 
 	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
+# One tool, one verb: fmt only formats; fix owns the mutating Ruff lint pass.
 _builtin_fmt_check_local: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
 _builtin_fmt_apply_local: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
 
@@ -707,6 +736,12 @@ _builtin_fmt_check: _builtin_fmt_check_local
 
 _builtin_fmt_apply: _builtin_fmt_apply_local
 
+_builtin_fix_all: _builtin_fix_local
+
+
+_builtin_fix_local: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
@@ -769,6 +804,28 @@ _builtin_gen_check: _builtin_require_environment
 _builtin_gen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+
+_builtin_help_all: _builtin_help_usage
+
+_builtin_deps_all: _builtin_deps_check
+
+_builtin_build_all: _builtin_build_artifacts
+
+_builtin_fmt_all: $(if $(filter Y,$(APPLY)),_builtin_fmt_apply,_builtin_fmt_check)
+
+_builtin_run_all: _builtin_run_default
+
+_builtin_status_all: _builtin_status_diagnostics
+
+_builtin_clean_all: _builtin_clean_generated
+
+_builtin_release_all: _builtin_release_status
+
+# `all` is the strict selector: apply covers every generated surface; the
+# serialization fixed-point clears APPLY and therefore selects read-only check.
+_builtin_gen_all: $(if $(filter Y,$(APPLY)),_builtin_gen_apply,_builtin_gen_check)
+
+_builtin_worktree_all: _builtin_worktree_list
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list

@@ -113,7 +113,7 @@ class TestWorkspaceCheckCli:
 
         tm.that(exit_code, eq=0)
 
-    @pytest.mark.parametrize("mutation_option", ("--apply", "--fix", "--check-only"))
+    @pytest.mark.parametrize("mutation_option", ["--apply", "--fix", "--check-only"])
     def test_run_cli_rejects_mutation_options(
         self, tmp_path: Path, mutation_option: str
     ) -> None:
