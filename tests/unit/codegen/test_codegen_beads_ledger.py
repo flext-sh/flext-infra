@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -200,7 +201,10 @@ class TestCodegenBeadsLedger:
         tm.that(rendered, has=f"host: {server.host}")
         tm.that(rendered, has=f"port: {server.port}")
         tm.that(rendered, has=f"user: {server.user}")
-        tm.that(rendered, has=f"auto-commit: {server.auto_commit}")
+        # O template serializa o valor com `| tojson`, entao a projecao carrega a
+        # string entre aspas. Derivar a expectativa do mesmo SSOT mantem o teste
+        # valido para qualquer valor declarado em codegen.yaml.
+        tm.that(rendered, has=f"auto-commit: {json.dumps(server.auto_commit)}")
 
     def test_attached_standalone_plan_renders_routing_config(
         self, tmp_path: Path
