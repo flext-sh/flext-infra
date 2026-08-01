@@ -201,6 +201,21 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        checkout_submodules: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="false",
+                pattern=r"^(true|false|recursive)$",
+                description=(
+                    "actions/checkout submodules mode. Defaults to 'false' "
+                    "because the default GITHUB_TOKEN cannot clone sibling "
+                    "private repositories: 'recursive' aborts the job at "
+                    "checkout with 'Repository not found'. Projects whose "
+                    "submodules are public, or that provide a PAT, override "
+                    "it per project in codegen.yaml"
+                ),
+            ),
+        ]
 
     class DistroDockerRenderSpec(_ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
@@ -270,6 +285,18 @@ class FlextInfraConfigModels:
         apply_guarded: Annotated[
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
+        apply_what: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="apply",
+                description=(
+                    "Selector an apply-guarded verb resolves to when APPLY is "
+                    "set and no explicit WHAT is given. Without it, "
+                    "`make gen APPLY=Y` would fall back to default_what "
+                    "('check') and silently mutate nothing"
+                ),
+            ),
+        ]
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -1518,6 +1545,30 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
+        ]
+        checkout_submodules: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="false",
+                pattern=r"^(true|false|recursive)$",
+                description=(
+                    "Default actions/checkout submodules mode for every "
+                    "generated workflow. 'false' keeps CI green on projects "
+                    "whose submodules are private: the default GITHUB_TOKEN "
+                    "cannot clone sibling private repositories and "
+                    "'recursive' aborts the job at checkout"
+                ),
+            ),
+        ]
+        checkout_submodules_overrides: Annotated[
+            Mapping[str, str],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description=(
+                    "Per-distribution override of checkout_submodules, for "
+                    "projects that really do exercise their subprojects in CI"
+                ),
+            ),
         ]
         sgconfig: Annotated[
             FlextInfraConfigModels.SgconfigRenderSpec,

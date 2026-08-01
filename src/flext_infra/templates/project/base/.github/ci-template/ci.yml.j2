@@ -20,7 +20,7 @@ jobs:
       - name: Checkout repository
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
       - name: Setup Python
