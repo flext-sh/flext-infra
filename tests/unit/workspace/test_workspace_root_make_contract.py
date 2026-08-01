@@ -147,12 +147,9 @@ class TestsWorkspaceRootMakeContract:
             where=bool,
         )
         tm.that(
-            {verb.default_what for verb in config.Infra.codegen.make.verbs},
-            eq={"all"},
+            {verb.default_what for verb in config.Infra.codegen.make.verbs}, eq={"all"}
         )
-        tm.that(
-            {verb.name for verb in config.Infra.codegen.make.verbs}, has="fix"
-        )
+        tm.that({verb.name for verb in config.Infra.codegen.make.verbs}, has="fix")
         for verb in config.Infra.codegen.make.verbs:
             if verb.apply_guarded:
                 tm.that(verb.apply_what, eq=verb.default_what)
@@ -170,8 +167,7 @@ class TestsWorkspaceRootMakeContract:
 
         generated: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "gen"],
-                cwd=workspace_root,
+                ["-C", str(workspace_root), "--dry-run", "gen"], cwd=workspace_root
             )
         )
         retired: cli_p.Cli.CommandOutput = tm.ok(
@@ -291,11 +287,7 @@ class TestsWorkspaceRootMakeContract:
             "gen": ("_builtin_gen_all", "CI=Y", "APPLY=Y"),
             "fmt": ("_builtin_fmt_all", "CI=Y", "APPLY=Y"),
             "fix": ("_builtin_fix_all", "CI=Y", "APPLY=Y"),
-            "check": (
-                "_builtin_check_all",
-                "CI=Y",
-                "CHECK_GATES=lint",
-            ),
+            "check": ("_builtin_check_all", "CI=Y", "CHECK_GATES=lint"),
             "test": ("_builtin_test_all", "CI=Y"),
         }
         outputs: dict[str, str] = {}
@@ -332,8 +324,7 @@ class TestsWorkspaceRootMakeContract:
         invocation_log = workspace_root / "uv.log"
         fake_uv = workspace_root / "bin" / "uv"
         test_u.Tests.write_executable(
-            fake_uv,
-            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\nexit 0\n',
+            fake_uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\nexit 0\n'
         )
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -529,13 +520,7 @@ class TestsWorkspaceRootMakeContract:
 
         process: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                [
-                    "-C",
-                    str(workspace_root),
-                    "--dry-run",
-                    "_builtin_test_all",
-                    "CI=Y",
-                ],
+                ["-C", str(workspace_root), "--dry-run", "_builtin_test_all", "CI=Y"],
                 cwd=workspace_root,
             )
         )

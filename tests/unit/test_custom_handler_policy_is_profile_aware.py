@@ -62,18 +62,14 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         public = "check:\n\t@echo hi\n"
         unknown = "pre-unknown-demo:\n\t@echo hi\n"
         policy = config.Infra.codegen.make.custom_handler_policy
-        allowed_verbs = tuple(
-            verb.name for verb in config.Infra.codegen.make.verbs
-        )
+        allowed_verbs = tuple(verb.name for verb in config.Infra.codegen.make.verbs)
         validate = FlextInfraCodegenConform.validate_custom_make
 
         tm.that(
             validate(declared, policy, allowed_verbs=allowed_verbs).success, eq=True
         )
         tm.that(validate(public, policy, allowed_verbs=allowed_verbs).failure, eq=True)
-        tm.that(
-            validate(unknown, policy, allowed_verbs=allowed_verbs).failure, eq=True
-        )
+        tm.that(validate(unknown, policy, allowed_verbs=allowed_verbs).failure, eq=True)
 
     def test_policy_keys_are_normalised_to_profile_values(self) -> None:
         """Lookup succeeds for both a raw string and its StrEnum member.

@@ -157,12 +157,25 @@ Infra:
         variable: CI
         value: Y
       workflow:
-        - { verb: setup, apply: false }
-        - { verb: gen, apply: true }
-        - { verb: fmt, apply: true }
-        - { verb: fix, apply: true }
-        - { verb: check, apply: false }
-        - { verb: test, apply: false }
+        developer:
+          - { verb: setup, apply: false }
+          - { verb: gen, apply: true }
+          - { verb: fmt, apply: true }
+          - { verb: fix, apply: true }
+          - { verb: check, apply: false }
+          - { verb: test, apply: false }
+        ci:
+          - { verb: setup, apply: false }
+          - { verb: fmt, apply: true }
+          - { verb: fix, apply: true }
+          - { verb: check, apply: false }
+          - { verb: test, apply: false }
+        hook:
+          - { verb: setup, apply: false }
+          - { verb: fmt, apply: true }
+          - { verb: fix, apply: true }
+          - { verb: check, apply: false }
+          - { verb: test, apply: false }
       bootstrap:
         environment: isolated
         dependency_groups: all

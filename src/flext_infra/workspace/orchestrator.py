@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidator
 from flext_infra.workspace._orchestrator_discovery import (

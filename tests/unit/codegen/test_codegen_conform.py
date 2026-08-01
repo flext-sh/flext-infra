@@ -686,9 +686,7 @@ class TestCodegenConform:
         result = FlextInfraCodegenConform.validate_custom_make(
             ".PHONY: \\\n\tpre-check-demo \\",
             policy,
-            allowed_verbs=tuple(
-                verb.name for verb in config.Infra.codegen.make.verbs
-            ),
+            allowed_verbs=tuple(verb.name for verb in config.Infra.codegen.make.verbs),
         )
 
         tm.fail(result, has="unterminated .PHONY continuation")
@@ -1013,7 +1011,9 @@ class TestScriptDispatchMakefile:
         tm.that("_builtin_codegen_check" in rendered, eq=False)
         tm.that("_builtin_codegen_apply" in rendered, eq=False)
         tm.that("_BUILTIN_HANDLERS" in rendered, eq=False)
-        tm.that("_HANDLER_MAP_gen := all:all check:check apply:apply" in rendered, eq=True)
+        tm.that(
+            "_HANDLER_MAP_gen := all:all check:check apply:apply" in rendered, eq=True
+        )
         # Both handlers drive the conform engine (CLI namespace is unchanged).
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)

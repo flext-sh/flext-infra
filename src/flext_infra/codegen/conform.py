@@ -1842,6 +1842,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         def is_declared_hook(target: str) -> bool:
             match = target_re.fullmatch(target)
             return match is not None and match.group("verb") in declared_verbs
+
         in_define = False
         # Collapse backslash continuation lines before validating so that
         # directives like `.PHONY` can span multiple physical lines. Only

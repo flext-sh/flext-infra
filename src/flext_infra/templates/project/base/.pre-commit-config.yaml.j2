@@ -7,6 +7,6 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          '{% for step in make.workflow %}make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
+          '{% for step in make.workflow.hook %}make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
         pass_filenames: false
         always_run: true
