@@ -326,7 +326,12 @@ class TestsCodegenCatalogExtensions:
         ).model_copy(
             update={
                 "extra_verbs": (
-                    m.Infra.MakeVerbSpec(name="audit", default_what="all"),
+                    m.Infra.MakeVerbSpec(
+                        name="audit",
+                        default_what="all",
+                        dispatch="script",
+                        handlers={"all": "all"},
+                    ),
                 ),
                 "script_dispatch": m.Infra.ScriptDispatchSpec(
                     dispatcher="scripts/dispatch.py", roots=("scripts",)

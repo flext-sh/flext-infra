@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidator
 from flext_infra.workspace._orchestrator_discovery import (
@@ -125,7 +125,7 @@ class FlextInfraOrchestratorService(
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the workspace-orchestrate CLI flow."""
-        allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
+        allowed_verbs = config.Infra.codegen.make.orchestrated_verbs
         if self.verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
             return r[bool].fail(

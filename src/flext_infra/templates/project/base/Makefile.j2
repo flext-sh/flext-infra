@@ -365,9 +365,9 @@ _serialized_{{ verb }}:
 setup:
 	$(call _dispatch,setup)
 
-_builtin_setup_all: _builtin_setup_environment
+_builtin_setup_all: _builtin_setup_submodules _builtin_setup_environment
 
-_builtin_help_usage:
+_builtin_help_all:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
 {% for verb in make.verbs %}
 {% if verb.name == "setup" %}
@@ -427,7 +427,7 @@ _builtin_setup_environment: _builtin_setup_submodules
 endif
 # End SECTION: setup environment
 
-_builtin_deps_check: _builtin_require_environment
+_builtin_deps_all: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
 
 _builtin_deps_lock:
@@ -506,7 +506,7 @@ _builtin_fmt_apply_local: _builtin_require_environment
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
 {% if make_profile == "workspace-root" %}
-_builtin_build_artifacts: $(if $(strip $(ROOT_PROJECT_SELECTED)),_builtin_build_local)
+_builtin_build_all: $(if $(strip $(ROOT_PROJECT_SELECTED)),_builtin_build_local)
 ifneq ($(strip $(SELECTED_MEMBER_PROJECTS)),)
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 endif
@@ -538,7 +538,7 @@ ifneq ($(strip $(SELECTED_MEMBER_PROJECTS)),)
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_FIX_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 endif
 {% else %}
-_builtin_build_artifacts: _builtin_build_local
+_builtin_build_all: _builtin_build_local
 
 _builtin_check_all: _builtin_check_local
 
@@ -555,10 +555,10 @@ _builtin_fix_local: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 
-_builtin_run_default: _builtin_require_environment
+_builtin_run_all: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
-_builtin_status_diagnostics: _builtin_require_environment
+_builtin_status_all: _builtin_require_environment
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
@@ -581,7 +581,7 @@ _builtin_docs_{{ action }}:
 
 {% endfor %}
 
-_builtin_clean_generated:
+_builtin_clean_all:
 	$(call _require_apply)
 	@find "$(PROJECT_ROOT)" -type d \
 		\( -name __pycache__ -o -name .mypy_cache -o -name .pytest_cache -o -name .ruff_cache \) \
@@ -589,7 +589,7 @@ _builtin_clean_generated:
 	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
-_builtin_release_status: _builtin_require_environment
+_builtin_release_all: _builtin_require_environment
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
@@ -601,29 +601,27 @@ _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
-_builtin_help_all: _builtin_help_usage
+_builtin_help_usage: _builtin_help_all
 
-_builtin_deps_all: _builtin_deps_check
+_builtin_deps_check: _builtin_deps_all
 
-_builtin_build_all: _builtin_build_artifacts
+_builtin_build_artifacts: _builtin_build_all
 
 _builtin_fmt_all: $(if $(filter Y,$(APPLY)),_builtin_fmt_apply,_builtin_fmt_check)
 
-_builtin_run_all: _builtin_run_default
+_builtin_run_default: _builtin_run_all
 
-_builtin_status_all: _builtin_status_diagnostics
+_builtin_status_diagnostics: _builtin_status_all
 
-_builtin_clean_all: _builtin_clean_generated
+_builtin_clean_generated: _builtin_clean_all
 
-_builtin_release_all: _builtin_release_status
+_builtin_release_status: _builtin_release_all
 
-# `all` is the strict selector: apply covers every generated surface; the
-# serialization fixed-point clears APPLY and therefore selects read-only check.
-_builtin_gen_all: $(if $(filter Y,$(APPLY)),_builtin_gen_apply,_builtin_gen_check)
+_builtin_gen_apply: _builtin_gen_all
 
-_builtin_worktree_all: _builtin_worktree_list
+_builtin_worktree_list: _builtin_worktree_all
 
-_builtin_worktree_list:
+_builtin_worktree_all:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
 
 _builtin_worktree_add:

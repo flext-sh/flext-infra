@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -88,18 +87,6 @@ class FlextInfraConstantsMake:
         PROJECT_FAST_PATH_CHECK_GATE_VALUES
     )
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
-    ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
-        "build",
-        "check",
-        "clean",
-        "docs",
-        "fix",
-        "fmt",
-        "fix",
-        "scan",
-        "test",
-        "val",
-    )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",
@@ -264,41 +251,6 @@ class FlextInfraConstantsMake:
         "PR_BASE=<branch>  PR_HEAD=<branch>",
         "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
     )
-    # Phase-set per verb for legacy CLI helpers. Make routing is owned by
-    # the registry discovered from scripts/cmd through flext-tests.
-    WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
-        "boot": frozenset({"imp", "stat", "submodules", "sync", "venv"}),
-        "build": frozenset({
-            "constraints",
-            "docs",
-            "gen",
-            "mod",
-            "stubs",
-            "sync",
-            "up",
-        }),
-        "check": frozenset({
-            "boundary",
-            "coordination",
-            "cqrs",
-            "fmt",
-            "format",
-            "lint",
-            "loc-cap",
-            "markdown",
-            "mypy",
-            "pol",
-            "pyre",
-            "pyrefly",
-            "pyright",
-            "scan",
-            "silent-failure",
-            "types",
-        }),
-        "ship": frozenset({"pr", "push", "rel", "save", "tag"}),
-        "test": frozenset({"all"}),
-        "val": frozenset({"all", "project", "workspace"}),
-    })
     STANDALONE_BOOTSTRAP_VERBS: Final[t.StrPairSequence] = (
         ("venv", "Create virtual environment"),
         ("setup", "Full standalone setup"),

@@ -580,7 +580,9 @@ class TestsWorkspaceRootMakeContract:
 
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
-        docs = config.Infra.codegen.make.docs
+        make_config = config.Infra.codegen.make
+        docs = make_config.docs
+        docs_actions = make_config.docs_actions
         invocation_log = workspace_root / "docs.log"
         test_u.Tests.write_executable(
             workspace_root / ".venv" / "bin" / "python",
@@ -599,7 +601,7 @@ class TestsWorkspaceRootMakeContract:
         uv = workspace_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        for action in docs.actions:
+        for action in docs_actions:
             invocation_log.write_text("", encoding="utf-8")
             process: cli_p.Cli.CommandOutput = tm.ok(
                 test_u.Tests.run_isolated_make(
@@ -617,8 +619,8 @@ class TestsWorkspaceRootMakeContract:
             tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
             output = invocation_log.read_text(encoding="utf-8")
             expected_actions = (
-                tuple(item for item in docs.actions if item != docs.default_action)
-                if action == docs.default_action
+                tuple(item for item in docs_actions if item != "all")
+                if action == "all"
                 else (action,)
             )
             for expected_action in expected_actions:
@@ -648,7 +650,7 @@ class TestsWorkspaceRootMakeContract:
                 applied_output = invocation_log.read_text(encoding="utf-8")
                 tm.that(applied_output, has="--apply")
                 tm.that(applied_output, lacks="--check")
-            elif action != docs.default_action:
+            elif action != "all":
                 tm.that(output, lacks="--apply")
                 tm.that(output, lacks="--check")
 

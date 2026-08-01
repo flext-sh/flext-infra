@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -133,7 +133,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         make_args: t.StrSequence,
     ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
         """Execute a validated orchestration run with progress accounting."""
-        allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
+        allowed_verbs = config.Infra.codegen.make.orchestrated_verbs
         if verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
             return r.fail(f"unsupported orchestrate verb '{verb}' (allowed: {allowed})")

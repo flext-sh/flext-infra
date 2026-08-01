@@ -1476,7 +1476,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
-                    orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                    orchestrated_verbs=config.Infra.codegen.make.orchestrated_verbs,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                     project_selection_conflict_error=(
                         c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1563,7 +1563,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
-                orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                orchestrated_verbs=config.Infra.codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1696,7 +1696,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
-                orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                orchestrated_verbs=config.Infra.codegen.make.orchestrated_verbs,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR

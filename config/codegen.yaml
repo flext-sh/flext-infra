@@ -186,7 +186,7 @@ Infra:
           default_what: all
           apply_guarded: false
           dispatch: builtin
-          handlers: { all: usage, usage: usage }
+          handlers: { all: all, usage: usage }
         - name: setup
           default_what: all
           apply_guarded: false
@@ -196,12 +196,12 @@ Infra:
           default_what: all
           apply_guarded: false
           dispatch: builtin
-          handlers: { all: check, check: check, lock: lock, upgrade: upgrade }
+          handlers: { all: all, check: check, lock: lock, upgrade: upgrade }
         - name: build
           default_what: all
           apply_guarded: false
           dispatch: builtin
-          handlers: { all: artifacts, artifacts: artifacts }
+          handlers: { all: all, artifacts: artifacts }
           orchestrated: true
         - name: check
           default_what: all
@@ -237,12 +237,12 @@ Infra:
           default_what: all
           apply_guarded: false
           dispatch: builtin
-          handlers: { all: default, default: default }
+          handlers: { all: all, default: default }
         - name: status
           default_what: all
           apply_guarded: false
           dispatch: builtin
-          handlers: { all: diagnostics, diagnostics: diagnostics }
+          handlers: { all: all, diagnostics: diagnostics }
         - name: docs
           default_what: all
           apply_guarded: false
@@ -254,14 +254,14 @@ Infra:
           apply_guarded: true
           apply_what: all
           dispatch: builtin
-          handlers: { all: generated, generated: generated }
+          handlers: { all: all, generated: generated }
           orchestrated: true
           serialized: true
         - name: release
           default_what: all
           apply_guarded: false
           dispatch: builtin
-          handlers: { all: status, status: status }
+          handlers: { all: all, status: status }
         - name: gen
           default_what: all
           apply_guarded: true
@@ -273,7 +273,7 @@ Infra:
           default_what: all
           apply_guarded: false
           dispatch: builtin
-          handlers: { all: list, list: list, add: add, update: update, remove: remove }
+          handlers: { all: all, list: list, add: add, update: update, remove: remove }
       custom_handler_policy:
         filename: custom.mk
         target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"

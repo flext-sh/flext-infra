@@ -926,8 +926,18 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="incidente", default_what="all"),
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="incidente",
+                    default_what="all",
+                    dispatch="script",
+                    handlers={"all": "all"},
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="charts",
+                    default_what="all",
+                    dispatch="script",
+                    handlers={"all": "all"},
+                ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
@@ -981,10 +991,10 @@ class TestScriptDispatchMakefile:
         tm.that(gen.default_what, eq="all")
         tm.that(gen.apply_guarded, eq=True)
         # Serialization follows the rename: gen is serialized, codegen gone.
-        tm.that("gen" in make_config.serialization.verbs, eq=True)
-        tm.that("codegen" in make_config.serialization.verbs, eq=False)
-        tm.that("gen" in make_config.serialization.mutation_fixed_points, eq=True)
-        tm.that("codegen" in make_config.serialization.mutation_fixed_points, eq=False)
+        tm.that("gen" in make_config.serialized_verbs, eq=True)
+        tm.that("codegen" in make_config.serialized_verbs, eq=False)
+        tm.that("gen" in make_config.mutation_verbs, eq=True)
+        tm.that("codegen" in make_config.mutation_verbs, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -998,9 +1008,8 @@ class TestScriptDispatchMakefile:
         tm.that("_builtin_gen_apply:" in rendered, eq=True)
         tm.that("_builtin_codegen_check" in rendered, eq=False)
         tm.that("_builtin_codegen_apply" in rendered, eq=False)
-        handlers = rendered.split("_BUILTIN_HANDLERS :=", 1)[1].split("\n\n", 1)[0]
-        tm.that("_builtin_gen_check" in handlers, eq=True)
-        tm.that("_builtin_gen_apply" in handlers, eq=True)
+        tm.that("_BUILTIN_HANDLERS" in rendered, eq=False)
+        tm.that("_HANDLER_MAP_gen := all:all check:check apply:apply" in rendered, eq=True)
         # Both handlers drive the conform engine (CLI namespace is unchanged).
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
@@ -1011,10 +1020,9 @@ class TestScriptDispatchMakefile:
         tm.that("_require_apply" in gen_apply_body, eq=True)
         # The regeneration contract published on every projection speaks gen.
         tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
-        # The custom-surface policy names gen (not codegen) for hooks/handlers.
+        # The handwritten surface only wraps registry-owned handlers.
         for policy in config.Infra.codegen.make.custom_handler_policies.values():
-            tm.that("|gen|" in policy.target_pattern, eq=True)
-            tm.that("|codegen|" in policy.target_pattern, eq=False)
+            tm.that("_custom_" in policy.target_pattern, eq=False)
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
@@ -1027,9 +1035,24 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
-                m.Infra.MakeVerbSpec(name="chart-release", default_what="all"),
-                m.Infra.MakeVerbSpec(name="bead", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="charts",
+                    default_what="all",
+                    dispatch="script",
+                    handlers={"all": "all"},
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="chart-release",
+                    default_what="all",
+                    dispatch="script",
+                    handlers={"all": "all"},
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="bead",
+                    default_what="all",
+                    dispatch="script",
+                    handlers={"all": "all"},
+                ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py", roots=("scripts",)
