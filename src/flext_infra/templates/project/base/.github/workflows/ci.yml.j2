@@ -8,7 +8,7 @@ name: CI
 
 # === SECTION: triggers (managed) ===
 # Source: config:repository_branch
-on:
+"on":
   pull_request:
     branches:
       - {{ repository_branch }}
@@ -33,16 +33,16 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           submodules: recursive
           fetch-depth: 0
 
       - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
 
       - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }} # {{ github_actions["setup-uv"].version }}
+        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
       - name: Setup (blocking)
         run: make setup

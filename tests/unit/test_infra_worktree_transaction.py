@@ -706,10 +706,38 @@ class TestsFlextInfraWorktreeTransactionLint:
             executable.chmod(0o755)
         monkeypatch.setenv("PATH", str(overlay_bin))
 
-        commands = tm.ok(u.Infra._lint_commands())  # ruff:ignore[private-member-access]
+        commands = tm.ok(u.Infra._lint_commands(tmp_path))  # ruff:ignore[private-member-access]
 
         tm.that(
             {Path(command[0]).parent for _tool, command in commands}, eq={overlay_bin}
+        )
+
+    def test_transaction_lint_type_checks_against_the_project_venv(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Prefer the checked tree's interpreter over the bootstrap interpreter."""
+        overlay_bin = tmp_path / "overlay" / "bin"
+        overlay_bin.mkdir(parents=True)
+        for executable_name in {
+            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }:
+            executable = overlay_bin / executable_name
+            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(0o755)
+        monkeypatch.setenv("PATH", str(overlay_bin))
+        venv_python = tmp_path / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        venv_python.parent.mkdir(parents=True)
+        venv_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        venv_python.chmod(0o755)
+
+        commands: t.StrSequencePairTuple = tm.ok(
+            u.Infra._lint_commands(tmp_path)  # ruff:ignore[private-member-access]
+        )
+
+        pyrefly = next(command for tool, command in commands if tool == c.Infra.PYREFLY)
+        tm.that(
+            pyrefly[pyrefly.index("--python-interpreter-path") + 1],
+            eq=str(venv_python.resolve()),
         )
 
     def test_transaction_lint_reports_counts_and_actionable_locations(self) -> None:
