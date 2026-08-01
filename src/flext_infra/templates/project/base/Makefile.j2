@@ -538,6 +538,7 @@ _builtin_test_local: _builtin_require_environment
     "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
 ) }}
 
+# One tool, one verb: fmt only formats; fix owns the mutating Ruff lint pass.
 _builtin_fmt_check_local: _builtin_require_environment
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
@@ -657,6 +658,8 @@ _builtin_clean_all: _builtin_clean_generated
 
 _builtin_release_all: _builtin_release_status
 
+# `all` is the strict selector: apply covers every generated surface; the
+# serialization fixed-point clears APPLY and therefore selects read-only check.
 _builtin_gen_all: $(if $(filter Y,$(APPLY)),_builtin_gen_apply,_builtin_gen_check)
 
 _builtin_worktree_all: _builtin_worktree_list
