@@ -121,6 +121,26 @@ def _workspace(tmp_path: Path) -> Path:
     return workspace_root
 
 
+def _transaction_test_bin(tmp_path: Path, *, include_lint_tools: bool) -> Path:
+    """Build an isolated PATH with real host plumbing and optional fast linters."""
+    managed_bin = tmp_path / "transaction-bin"
+    managed_bin.mkdir()
+    required_host_tools = (c.Infra.GIT, c.Infra.MAKE, "basename", "sed", "uname", "sh")
+    for tool in required_host_tools:
+        resolved_tool = shutil.which(tool)
+        if resolved_tool is None:
+            pytest.fail(f"host tool required by the transaction test: {tool}")
+        (managed_bin / tool).symlink_to(resolved_tool)
+    if include_lint_tools:
+        for executable_name in {
+            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }:
+            executable = managed_bin / executable_name
+            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(0o755)
+    return managed_bin
+
+
 class TestsFlextInfraWorktreeTransaction:
     """Exercise transaction invariants through real Git state."""
 
@@ -659,25 +679,25 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(tracked.read_text(encoding="utf-8"), eq="concurrent\n")
 
     def test_public_dry_run_materializes_inner_patch_without_source_mutation(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Keep request.apply_patch false while the isolated command runs apply."""
+        """Keep source immutable while a real isolated CLI materializes output."""
         workspace_root = _workspace(tmp_path)
         before_status = _git_status(workspace_root)
         before_pyproject = (workspace_root / "pyproject.toml").read_bytes()
+        managed_bin = _transaction_test_bin(tmp_path, include_lint_tools=True)
+        monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PATH, str(managed_bin))
 
         transaction_result = u.Infra.execute_worktree_transaction(
             m.Infra.WorktreeTransactionRequest(
                 workspace_root=workspace_root,
                 command=(
-                    "codegen",
-                    "conform",
-                    "--root",
-                    str(workspace_root),
-                    "--scope",
-                    "self",
-                    "--mode",
-                    "apply",
+                    c.Infra.CLI_GROUP_BASEMK,
+                    "generate",
+                    "--project-name",
+                    "transaction-fixture",
+                    "--output",
+                    str(workspace_root / "Makefile"),
                 ),
                 apply_patch=False,
                 timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
@@ -707,14 +727,7 @@ class TestsFlextInfraWorktreeTransaction:
         # resolvable and the contract is never exercised. Build a bin holding
         # only git and the shell utilities git's own porcelain scripts call, so
         # exactly the managed lint tools are the ones that cannot resolve.
-        managed_bin = tmp_path / "host-bin-without-managed-tools"
-        managed_bin.mkdir()
-        required_host_tools = (c.Infra.GIT, "basename", "sed", "uname", "sh")
-        for tool in required_host_tools:
-            resolved_tool = shutil.which(tool)
-            if resolved_tool is None:
-                pytest.fail(f"host tool required by the transaction test: {tool}")
-            (managed_bin / tool).symlink_to(resolved_tool)
+        managed_bin = _transaction_test_bin(tmp_path, include_lint_tools=False)
         missing_tool = c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS[0][1][0]
         tm.that(shutil.which(missing_tool, path=str(managed_bin)), eq=None)
         tm.that(shutil.which(c.Infra.GIT, path=str(managed_bin)), none=False)
