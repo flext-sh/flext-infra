@@ -984,8 +984,8 @@ class TestScriptDispatchMakefile:
         # Serialization follows the rename: gen is serialized, codegen gone.
         tm.that("gen" in make_config.serialization.verbs, eq=True)
         tm.that("codegen" in make_config.serialization.verbs, eq=False)
-        tm.that("gen" in make_config.serialization.mutation_fixed_points, eq=True)
-        tm.that("codegen" in make_config.serialization.mutation_fixed_points, eq=False)
+        tm.that("gen" in make_config.serialization.mutation_verbs, eq=True)
+        tm.that("codegen" in make_config.serialization.mutation_verbs, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
