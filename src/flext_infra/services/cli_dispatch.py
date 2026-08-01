@@ -90,7 +90,15 @@ class CliDispatchService(CliTransactionService):
         return what, remaining
 
     def translate_what(self, group: str, args: t.StrSequence) -> p.Result[list[str]]:
-        """Map ``--what <phase>`` onto the canonical command selector."""
+        """Map ``--what <phase>`` onto the canonical command selector.
+
+        Only the groups below translate ``--what`` into a selector. Every other
+        group forwards it untouched, because its subcommands declare ``--what``
+        as their own parameter; stripping it here left them without the value
+        and failed the call before the subcommand ever ran.
+        """
+        if group not in c.Infra.CLI_GROUPS_TRANSLATING_WHAT:
+            return r[list[str]].ok(list(args))
         what, remaining = self.split_what(args)
         if what is None:
             return r[list[str]].ok(list(args))
