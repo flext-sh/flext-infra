@@ -1,10 +1,10 @@
-"""Post-apply formatting helpers for refactor census fixes."""
+"""Post-apply structural validation for refactor census fixes."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -12,33 +12,14 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorCensusApplyFormattingMixin:
-    """Mixin for normalizing files touched by census apply operations."""
+    """Mixin for validating files touched by census apply operations."""
 
     @staticmethod
-    def _ruff_fix_touched_files(paths: Iterable[Path]) -> None:
-        """Normalize trailing newlines + import sort on touched files."""
-        existing = sorted({str(path) for path in paths if path.is_file()})
-        if not existing:
-            return
-        check_result = u.Cli.run_raw(
-            ["ruff", "check", "--fix", "--select", "I,W", *existing],
-            timeout=c.Infra.TIMEOUT_SHORT,
-        )
-        if check_result.failure:
-            msg = (
-                "ruff check --fix failed after refactor apply: "
-                f"{check_result.error or 'unknown error'}; files={existing!r}"
-            )
-            raise RuntimeError(msg)
-        format_result = u.Cli.run_raw(
-            ["ruff", "format", *existing], timeout=c.Infra.TIMEOUT_SHORT
-        )
-        if format_result.failure:
-            msg = (
-                "ruff format failed after refactor apply: "
-                f"{format_result.error or 'unknown error'}; files={existing!r}"
-            )
-            raise RuntimeError(msg)
+    def _validate_touched_files(paths: Iterable[Path]) -> None:
+        """Require every touched Python source to compile in-process."""
+        for path in sorted({path.resolve() for path in paths if path.is_file()}):
+            source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            compile(source, str(path), "exec")
 
 
 __all__: list[str] = ["FlextInfraRefactorCensusApplyFormattingMixin"]

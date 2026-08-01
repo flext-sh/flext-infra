@@ -19,13 +19,13 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
 
         result = u.Infra.preview_source_writes(
-            {py_file: updated_source}, workspace=tmp_path, gates=("lint",)
+            {py_file: updated_source}, workspace=tmp_path
         )
 
         tm.that(result, eq=(True, []))
         tm.that(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=original_source)
 
-    def test_protected_source_write_skips_pytest_for_non_test_file(
+    def test_protected_source_write_accepts_valid_source(
         self, tmp_path: Path
     ) -> None:
         py_file = tmp_path / "sample.py"
@@ -36,7 +36,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         result = u.Infra.protected_source_write(
             py_file,
             request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=tmp_path, updated_source=updated_source, gates=("lint",)
+                workspace=tmp_path, updated_source=updated_source
             ),
         )
 
@@ -46,20 +46,23 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             eq=updated_source.rstrip("\n"),
         )
 
-    def test_protected_source_write_treats_no_tests_collected_as_success(
+    def test_protected_test_source_is_not_executed(
         self, tmp_path: Path
     ) -> None:
         tests_dir = tmp_path / "tests"
         tests_dir.mkdir()
         py_file = tests_dir / "test_placeholder.py"
         original_source = "def helper() -> int:\n    return 1\n"
-        updated_source = "def helper() -> int:\n    return 2\n"
+        updated_source = (
+            "def test_runtime_owner() -> None:\n"
+            '    raise RuntimeError("tests run only through make test")\n'
+        )
         py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
 
         result = u.Infra.protected_source_write(
             py_file,
             request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=tmp_path, updated_source=updated_source, gates=("lint",)
+                workspace=tmp_path, updated_source=updated_source
             ),
         )
 
@@ -79,9 +82,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
         result = u.Infra.protected_source_writes(
             {left_file: "VALUE = 2\n", right_file: "VALUE = 20\n"},
-            request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=tmp_path, gates=("lint",), skip_pytest=True
-            ),
+            request=m.Infra.ProtectedSourceWritesRequest(workspace=tmp_path),
         )
 
         tm.that(result, eq=(True, []))
@@ -99,3 +100,21 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
             eq=True,
         )
+
+    def test_protected_source_write_rolls_back_invalid_syntax(
+        self, tmp_path: Path
+    ) -> None:
+        py_file = tmp_path / "sample.py"
+        original_source = "VALUE = 1\n"
+        py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+
+        result = u.Infra.protected_source_write(
+            py_file,
+            request=m.Infra.ProtectedSourceWriteRequest(
+                workspace=tmp_path, updated_source="def broken(:\n"
+            ),
+        )
+
+        tm.that(result[0], eq=False)
+        tm.that("python-syntax" in "\n".join(result[1]), eq=True)
+        tm.that(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=original_source)

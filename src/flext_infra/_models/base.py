@@ -112,11 +112,6 @@ class FlextInfraModelsBase:
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve a .bak copy before editing")
         ] = False
-        gates: Annotated[
-            t.StrSequence | None,
-            m.Field(description="Optional lint gate selection for validation"),
-        ] = None
-
     class ProtectedSourceWritesRequest(m.ArbitraryTypesModel):
         """Validated options for transactionally writing multiple sources."""
 
@@ -126,18 +121,10 @@ class FlextInfraModelsBase:
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve .bak copies before editing")
         ] = False
-        gates: Annotated[
-            t.StrSequence | None,
-            m.Field(description="Optional lint gate selection for validation"),
-        ] = None
         post_write: Annotated[
             Callable[[], None] | None,
             m.Field(description="Optional callback invoked after writes land"),
         ] = None
-        skip_pytest: Annotated[
-            bool, m.Field(description="Whether to bypass per-file pytest validation")
-        ] = False
-
     class ProtectedFileEditRequest(m.ArbitraryTypesModel):
         """Validated options for a protected single-file edit pipeline."""
 
@@ -158,11 +145,6 @@ class FlextInfraModelsBase:
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve a .bak copy before editing")
         ] = False
-        gates: Annotated[
-            t.StrSequence | None,
-            m.Field(description="Optional lint gate selection for validation"),
-        ] = None
-
     class LintGateResult(m.ContractModel):
         """Validated result from one protected-edit lint gate."""
 

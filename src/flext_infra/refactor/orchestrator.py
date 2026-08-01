@@ -174,7 +174,6 @@ class FlextInfraRefactorOrchestrator(
                 workspace=workspace_root,
                 updated_source=current,
                 keep_backup=True,
-                gates=gates,
             ),
         )
         all_changes.extend(report)

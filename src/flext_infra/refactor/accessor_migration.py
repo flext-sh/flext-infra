@@ -38,8 +38,8 @@ class FlextInfraAccessorMigrationOrchestrator(
     @property
     @override
     def lint_tool_names(self) -> t.StrSequence:
-        """Selected lint tool names resolved from gate names."""
-        return u.Infra.selected_lint_tool_names(self.gate_names)
+        """Return the in-process source validator name."""
+        return u.Infra.selected_lint_tool_names()
 
     @override
     def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:

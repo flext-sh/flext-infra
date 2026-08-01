@@ -1,4 +1,4 @@
-"""Preview and reverted-report flows for protected edit workflows."""
+"""Preview and reverted-report flows for protected source edits."""
 
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
     def _preview_write_baselines(
         updates: t.MappingKV[Path, str],
         workspace: Path,
-        gates: t.StrSequence | None = None,
     ) -> tuple[
         MutableMapping[Path, str | None], MutableMapping[Path, t.Infra.LintSnapshot]
     ]:
@@ -37,7 +36,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         if existing_paths:
             before_lints.update(
                 FlextInfraUtilitiesProtectedEditPreview.lint_snapshots(
-                    tuple(existing_paths), workspace, gates=gates
+                    tuple(existing_paths), workspace
                 )
             )
         for path in updates:
@@ -45,7 +44,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 continue
             before_lints[path] = (
                 FlextInfraUtilitiesProtectedEditPreview._new_file_lint_baseline(
-                    path, workspace, gates=gates
+                    path, workspace
                 )
             )
         return before_sources, before_lints
@@ -66,7 +65,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         workspace: Path,
         before_source: str,
         new_errors: t.Infra.LintSnapshot,
-        pytest_failure: str | None = None,
     ) -> list[str]:
         """Reverted report lines."""
         rel = FlextInfraUtilitiesProtectedEditPreview._relative_path(path, workspace)
@@ -82,13 +80,11 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         )
         report_lines = [f"  REVERTED {rel}:"]
         report_lines.extend(f"    {line.rstrip()}" for line in diff[:30])
-        for tool, messages in new_errors.items():
+        for validator, messages in new_errors.items():
             report_lines.extend((
-                f"    NEW {tool} errors:",
+                f"    NEW {validator} errors:",
                 *(f"      {message}" for message in messages[:5]),
             ))
-        if pytest_failure:
-            report_lines.append(f"    pytest failure: {pytest_failure}")
         return report_lines
 
     @staticmethod
@@ -97,13 +93,12 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         before_sources: t.MappingKV[Path, str | None],
         before_lints: t.MappingKV[Path, t.Infra.LintSnapshot],
         workspace: Path,
-        gates: t.StrSequence | None = None,
     ) -> t.Infra.EditResult:
         """Preview write reports."""
         reports: list[str] = []
         failed = False
         after_lints = FlextInfraUtilitiesProtectedEditPreview.lint_snapshots(
-            tuple(updates), workspace, gates=gates
+            tuple(updates), workspace
         )
         for path in updates:
             new_errors = FlextInfraUtilitiesProtectedEditPreview.lint_new_errors(
@@ -124,7 +119,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         updates: t.MappingKV[Path, str],
         *,
         workspace: Path,
-        gates: t.StrSequence | None = None,
         post_write: Callable[[], None] | None = None,
     ) -> t.Infra.EditResult:
         """Preview multiple file writes transactionally and always restore sources."""
@@ -137,7 +131,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         }
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditPreview._preview_write_baselines(
-                normalized_updates, workspace, gates=gates
+                normalized_updates, workspace
             )
         )
 
@@ -148,7 +142,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             if post_write is not None:
                 post_write()
             return FlextInfraUtilitiesProtectedEditPreview._preview_write_reports(
-                normalized_updates, before_sources, before_lints, workspace, gates=gates
+                normalized_updates, before_sources, before_lints, workspace
             )
         finally:
             FlextInfraUtilitiesProtectedEditPreview._restore_preview_sources(

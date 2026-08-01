@@ -148,7 +148,6 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
                 workspace=workspace_root,
                 updated_source=updated_source,
                 keep_backup=True,
-                gates=gates,
             ),
         )
         return result

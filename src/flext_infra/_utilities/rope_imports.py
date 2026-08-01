@@ -228,15 +228,15 @@ class FlextInfraUtilitiesRopeImports:
         file_paths: t.SequenceOf[Path],
         preserve_canonical_aliases: bool = False,
     ) -> p.Result[bool]:
-        """Apply one centralized Rope+Ruff import cleanup for touched files.
+        """Apply one centralized Rope import cleanup for touched files.
 
-        Runs Rope's import organizer per file first, then lets Ruff remove
-        orphaned imports and normalize import ordering/formatting once across the
-        touched path set. Returns whether an import cleanup changed any file.
+        Runs Rope's semantic import organizer per file and validates the
+        resulting Python structure in-process. Generic linting and formatting
+        remain exclusively owned by the canonical Make verbs.
 
         When ``preserve_canonical_aliases`` is set, runtime-alias imports from
         ``flext_core`` / ``flext_infra`` (e.g. ``from flext_core import c, m``)
-        are restored after Ruff only when still referenced semantically, including
+        are restored after organization only when still referenced semantically, including
         forward references that Ruff cannot see inside string annotations.
         """
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
@@ -263,13 +263,6 @@ class FlextInfraUtilitiesRopeImports:
                     organize_result.error or "rope organize_imports failed"
                 )
             rope_changed = rope_changed or organize_result.unwrap_or(False)
-        normalized_paths = tuple(str(path) for path in existing_paths)
-        check_result = u.Cli.run_raw(
-            ["ruff", "check", "--fix", "--select", "I,F401", *normalized_paths],
-            timeout=c.Infra.TIMEOUT_SHORT,
-        )
-        if check_result.failure:
-            return r[bool].fail(check_result.error or "ruff check --fix failed")
         if preserve_canonical_aliases:
             restore_result = cls._ensure_canonical_alias_imports(
                 rope_project, canonical_imports
@@ -279,11 +272,15 @@ class FlextInfraUtilitiesRopeImports:
                     restore_result.error or "canonical alias restore failed"
                 )
             rope_changed = rope_changed or restore_result.unwrap_or(False)
-        format_result = u.Cli.run_raw(
-            ["ruff", "format", *normalized_paths], timeout=c.Infra.TIMEOUT_SHORT
-        )
-        if format_result.failure:
-            return r[bool].fail(format_result.error or "ruff format failed")
+        for file_path in existing_paths:
+            try:
+                compile(
+                    file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                    str(file_path),
+                    "exec",
+                )
+            except (OSError, SyntaxError) as exc:
+                return r[bool].fail_op("validate organized imports", exc)
         return r[bool].ok(rope_changed)
 
     @classmethod

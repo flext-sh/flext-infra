@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 
@@ -17,10 +17,6 @@ class FlextInfraCodegenConsolidatorStepsMixin:
     facade state), so the facade's ``execute`` orchestrator only sequences
     these workers across selected projects.
     """
-
-    _ALL_LINT_GATES: ClassVar[t.StrSequence] = tuple(
-        tool for tool, _ in c.Infra.LINT_TOOLS
-    )
 
     @classmethod
     def _build_value_map_from_constants_file(
@@ -161,7 +157,6 @@ class FlextInfraCodegenConsolidatorStepsMixin:
                 )[-1],
                 restore_fn=lambda: resource.write(backup),
                 keep_backup=True,
-                gates=cls._ALL_LINT_GATES,
             ),
         )
         if ok:

@@ -195,7 +195,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         workspace=workspace_root,
                         updated_source=rewritten,
                         keep_backup=True,
-                        gates=gates,
                     ),
                 )
 
@@ -361,7 +360,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     workspace=file_path.parent,
                     updated_source=rewritten,
                     keep_backup=True,
-                    gates=gates,
                 ),
             )
 
@@ -509,11 +507,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         for start, end in sorted(ranges, reverse=True):
             del filtered_lines[start:end]
 
-        def _post_write() -> None:
-            """Post write."""
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
-
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
                 target_file: updated_target.rstrip() + "\n",
@@ -522,8 +515,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=project_root,
                 keep_backup=True,
-                gates=gates,
-                post_write=_post_write,
             ),
         )
         if not ok:
@@ -703,11 +694,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             else kept_lines
         )
 
-        def _post_write() -> None:
-            """Post write."""
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
-
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
                 target_file: updated_target + "\n",
@@ -716,8 +702,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=project_root,
                 keep_backup=True,
-                gates=gates,
-                post_write=_post_write,
             ),
         )
         if not ok:

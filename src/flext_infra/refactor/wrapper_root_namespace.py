@@ -108,7 +108,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         ok, report = u.Infra.protected_source_writes(
             dict(updates),
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=self.workspace_root, skip_pytest=True
+                workspace=self.workspace_root
             ),
         )
         if ok:

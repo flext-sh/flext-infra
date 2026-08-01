@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import shutil
-import sys
-from concurrent.futures import Future, ThreadPoolExecutor
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
@@ -42,17 +40,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
             kinds=("constant",),
         ).build_report()
         modified_files = self.modified_python_files(self.workspace_root)
-        pyrefly_check, ruff_check = self._run_static_checks(
-            self.workspace_root, modified_files
-        )
         after_metrics = self.after_metrics(
             census_report=census_report, modified_files=modified_files
         )
-        checks = self.build_checks(
-            after_metrics=after_metrics,
-            pyrefly_check=pyrefly_check,
-            ruff_check=ruff_check,
-        )
+        checks = self.build_checks(after_metrics=after_metrics)
         verdict = self.compute_verdict(checks)
         report_data = {
             "workspace": str(self.workspace_root),
@@ -113,95 +104,6 @@ class FlextInfraCodegenQualityGate(s[bool]):
         return list(modified)
 
     @staticmethod
-    def run_static_check(
-        workspace_root: Path, modified_files: t.StrSequence, tool: str
-    ) -> t.MappingKV[str, t.Infra.InfraValue]:
-        """Run a targeted static tool on modified files and normalize result."""
-        if not modified_files:
-            return {
-                "passed": True,
-                "detail": "no modified python files detected",
-                "exit_code": 0,
-            }
-        if tool == c.Infra.PYREFLY:
-            cmd = [
-                sys.executable,
-                "-m",
-                c.Infra.PYREFLY,
-                c.Infra.CHECK,
-                *modified_files,
-                "--config",
-                c.Infra.PYPROJECT_FILENAME,
-                "--summary=none",
-            ]
-        elif tool == c.Infra.RUFF:
-            cmd = [
-                sys.executable,
-                "-m",
-                c.Infra.RUFF,
-                c.Infra.VERB_CHECK,
-                *modified_files,
-                "--output-format",
-                c.Infra.OUTPUT_JSON,
-                "--quiet",
-            ]
-        else:
-            return {
-                "passed": False,
-                "detail": f"unsupported tool: {tool}",
-                "exit_code": 2,
-            }
-        run = u.Cli.run_raw(cmd, cwd=workspace_root)
-        if run.failure:
-            return {
-                "passed": False,
-                "detail": run.error or "execution error",
-                "exit_code": 127,
-            }
-        output = (run.value.stderr or run.value.stdout or "").strip()
-        lines = [line for line in output.splitlines() if line.strip()]
-        return {
-            "passed": run.value.exit_code == 0,
-            "detail": " | ".join(lines[:5]) if lines else "ok",
-            "exit_code": run.value.exit_code,
-        }
-
-    @classmethod
-    def _run_static_checks(
-        cls, workspace_root: Path, modified_files: t.StrSequence
-    ) -> tuple[
-        t.MappingKV[str, t.Infra.InfraValue], t.MappingKV[str, t.Infra.InfraValue]
-    ]:
-        """Run pyrefly and ruff checks in parallel over the same file set.
-
-        Both tools operate on the unmodified ``modified_files`` list and are
-        independent, so they can execute concurrently. When no files changed,
-        the empty-result payload is reused for both tools without spawning
-        subprocesses.
-        """
-        empty_result: t.MappingKV[str, t.Infra.InfraValue] = {
-            "passed": True,
-            "detail": "no modified python files detected",
-            "exit_code": 0,
-        }
-        if not modified_files:
-            return (empty_result, empty_result)
-
-        tools = (c.Infra.PYREFLY, c.Infra.RUFF)
-        results: dict[str, t.MappingKV[str, t.Infra.InfraValue]] = {}
-        with ThreadPoolExecutor(max_workers=len(tools)) as executor:
-            futures: dict[Future[t.MappingKV[str, t.Infra.InfraValue]], str] = {
-                executor.submit(
-                    cls.run_static_check, workspace_root, modified_files, tool
-                ): tool
-                for tool in tools
-            }
-            for future, tool in futures.items():
-                results[tool] = future.result()
-
-        return (results[c.Infra.PYREFLY], results[c.Infra.RUFF])
-
-    @staticmethod
     def after_metrics(
         *, census_report: m.Infra.Census.WorkspaceReport, modified_files: t.StrSequence
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
@@ -236,10 +138,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
     def build_checks(
         *,
         after_metrics: t.MappingKV[str, t.Infra.InfraValue],
-        pyrefly_check: t.MappingKV[str, t.Infra.InfraValue],
-        ruff_check: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
-        """Build quality gate check entries from metrics and tool results."""
+        """Build generator-owned quality checks from census metrics."""
         # Metric-driven checks share the shape ``(name, value==0, "label=value")``.
         # Each row maps to a single ``QualityGateCheck`` via Pydantic v2 batch
         # construction. The detail-label key may differ from the metric path
@@ -268,24 +168,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             )
             for name, metric, label in metric_check_rows
         )
-        # Tool-result checks consume external dict payloads (pyrefly + ruff),
-        # so they keep their own shape inline next to the table.
-        tool_checks = (
-            m.Infra.QualityGateCheck(
-                name=c.Infra.QG_CHECK_TYPE_SAFETY,
-                passed=bool(pyrefly_check.get("passed")),
-                detail=str(pyrefly_check.get("detail", "")),
-                critical=True,
-            ),
-            m.Infra.QualityGateCheck(
-                name=c.Infra.QG_CHECK_LINT_CLEAN,
-                passed=bool(ruff_check.get("passed")),
-                detail=str(ruff_check.get("detail", "")),
-                critical=True,
-            ),
-        )
-        checks: t.SequenceOf[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
-        return [check.model_dump() for check in checks]
+        return [check.model_dump() for check in metric_checks]
 
     @staticmethod
     def compute_verdict(

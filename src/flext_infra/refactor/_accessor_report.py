@@ -61,13 +61,10 @@ class FlextInfraAccessorMigrationReportMixin:
                     py_file,
                     self.workspace_root,
                     updated_source=updated_source,
-                    gates=self.gate_names,
                 )
             elif not self.dry_run:
                 before = (
-                    u.Infra.lint_snapshot(
-                        py_file, self.workspace_root, gates=self.gate_names
-                    )
+                    u.Infra.lint_snapshot(py_file, self.workspace_root)
                     if include_preview
                     else {}
                 )
@@ -76,7 +73,6 @@ class FlextInfraAccessorMigrationReportMixin:
                     request=m.Infra.ProtectedSourceWriteRequest(
                         workspace=self.workspace_root,
                         updated_source=updated_source,
-                        gates=self.gate_names,
                     ),
                 )
                 if not ok:
@@ -91,9 +87,7 @@ class FlextInfraAccessorMigrationReportMixin:
                         )
                     )
                 after = (
-                    u.Infra.lint_snapshot(
-                        py_file, self.workspace_root, gates=self.gate_names
-                    )
+                    u.Infra.lint_snapshot(py_file, self.workspace_root)
                     if include_preview
                     else {}
                 )

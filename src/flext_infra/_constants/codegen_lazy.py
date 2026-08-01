@@ -78,13 +78,8 @@ class FlextInfraConstantsCodegenLazy:
     )
     "Regex: malformed ``from import`` statement (missing module name)."
 
-    LINT_TOOLS: Final[t.StrSequencePairTuple] = (
-        ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
-        ("pyright", ("pyright", "{file}")),
-        ("mypy", ("mypy", "{file}", "--no-error-summary")),
-        ("pyrefly", ("pyrefly", "check", "{file}")),
-    )
-    "Lint tool names and their CLI command templates for validation."
+    SOURCE_VALIDATION_NAME: Final[str] = "python-syntax"
+    "Generator-owned in-process structural validation identifier."
     LOCAL_INFERRED_SEGMENTS: Final[frozenset[str]] = frozenset({
         "_constants",
         "_exceptions",

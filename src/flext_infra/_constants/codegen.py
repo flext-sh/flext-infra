@@ -97,8 +97,6 @@ class FlextInfraConstantsCodegen(
     QG_CHECK_IMPORT_RESOLUTION: Final[str] = "import_resolution"
     QG_CHECK_LAYER_COMPLIANCE: Final[str] = "layer_compliance"
     QG_CHECK_DUPLICATION_REDUCTION: Final[str] = "duplication_reduction"
-    QG_CHECK_TYPE_SAFETY: Final[str] = "type_safety"
-    QG_CHECK_LINT_CLEAN: Final[str] = "lint_clean"
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegen"]

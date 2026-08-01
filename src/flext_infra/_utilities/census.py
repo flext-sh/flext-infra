@@ -675,7 +675,7 @@ class FlextInfraUtilitiesRefactorCensus:
 
         try:
             applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
-                updates, workspace=workspace, gates=gates, post_write=_post_write
+                updates, workspace=workspace, post_write=_post_write
             )
         except RuntimeError as exc:
             _log.warning(
@@ -740,9 +740,7 @@ class FlextInfraUtilitiesRefactorCensus:
             updates,
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=workspace,
-                gates=gates,
                 post_write=_post_write,
-                skip_pytest=True,
             ),
         )
         rope.reload()
