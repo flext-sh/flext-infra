@@ -16,6 +16,8 @@ from flext_infra.workspace.make_serialization import FlextInfraMakeSerialization
 from flext_tests import tm
 from tests import u as test_u
 
+# Derived from the handler SSOT: a serialized mutation runs the verb's
+# apply selector, then re-checks itself with the read-only default.
 _MUTATION_CASES = tuple(
     (verb.name, selector)
     for verb in config.Infra.codegen.make.verbs
