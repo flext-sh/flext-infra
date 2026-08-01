@@ -30,6 +30,12 @@ jobs:
         with:
           python-version: "{{ python_version }}"
 
+      - name: Setup Go build dependency
+        uses: {{ github_actions["setup-go"].repository }}@{{ github_actions["setup-go"].sha }}  # {{ github_actions["setup-go"].version }}
+        with:
+          go-version: "{{ go_version }}"
+          cache: false
+
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
@@ -40,7 +46,7 @@ jobs:
         with:
           version: "{{ mise_version }}"
 
-{% for step in make.workflow %}
+{% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb | title }}
         run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %} {{ make.ci.variable }}={{ make.ci.value }}
 {% if not loop.last %}

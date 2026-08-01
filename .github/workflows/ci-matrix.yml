@@ -37,9 +37,8 @@ jobs:
     if: >-
       github.base_ref == 'main' &&
       contains(fromJSON('["dev", "develop", "0.12.0-dev"]'), github.head_ref)
-    # Clean-machine proof per distro: build the distro image (which runs the
-    # full project bootstrap at image-build time), then smoke the verb surface
-    # inside the built container.
+    # Clean-machine proof per distro: build the distro image, then run the
+    # complete CI lifecycle once in one persistent container.
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -55,23 +54,19 @@ jobs:
           -f ci/docker/${{ matrix.distro }}.Dockerfile
           -t ci-matrix-${{ matrix.distro }}
           .
-      - name: Bootstrap + verb smoke (${{ matrix.distro }})
+      - name: Canonical lifecycle (${{ matrix.distro }})
         run: |
-          docker run --rm ci-matrix-${{ matrix.distro }} mise exec -- python --version
-          docker run --rm ci-matrix-${{ matrix.distro }} mise exec -- go version
-          docker run --rm ci-matrix-${{ matrix.distro }} mise exec -- rustc --version
-          docker run --rm ci-matrix-${{ matrix.distro }} mise exec -- ast-grep --version
-          docker run --rm ci-matrix-${{ matrix.distro }} mise exec -- bd version
-          docker run --rm ci-matrix-${{ matrix.distro }} make setup CI=Y
-          docker run --rm ci-matrix-${{ matrix.distro }} make gen APPLY=Y CI=Y
-          docker run --rm ci-matrix-${{ matrix.distro }} make fmt APPLY=Y CI=Y
-          docker run --rm ci-matrix-${{ matrix.distro }} make fix APPLY=Y CI=Y
-          docker run --rm ci-matrix-${{ matrix.distro }} make check CI=Y
-          docker run --rm ci-matrix-${{ matrix.distro }} make test CI=Y
+          docker run --rm ci-matrix-${{ matrix.distro }} /bin/bash -lc '
+            make setup CI=Y &&
+            make fmt APPLY=Y CI=Y &&
+            make fix APPLY=Y CI=Y &&
+            make check CI=Y &&
+            make test CI=Y
+          '
       # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
-  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/setup-go/mise/setup-uv
   macos:
     if: >-
       github.base_ref == 'main' &&
@@ -85,6 +80,11 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version-file: .python-version
+      - name: Setup Go build dependency
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: "1.26.5"
+          cache: false
       - name: Install mise toolchain
         uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
@@ -95,8 +95,6 @@ jobs:
           enable-cache: true
       - name: Bootstrap
         run: make setup CI=Y
-      - name: Generate
-        run: make gen APPLY=Y CI=Y
       - name: Format
         run: make fmt APPLY=Y CI=Y
       - name: Fix
@@ -105,17 +103,10 @@ jobs:
         run: make check CI=Y
       - name: Test
         run: make test CI=Y
-      - name: Toolchain smoke
-        run: |
-          mise exec -- python --version
-          mise exec -- go version
-          mise exec -- rustc --version
-          mise exec -- ast-grep --version
-          mise exec -- bd version
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
-  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/setup-go/mise/setup-uv
   windows:
     if: >-
       github.base_ref == 'main' &&
@@ -129,6 +120,11 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version-file: .python-version
+      - name: Setup Go build dependency
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: "1.26.5"
+          cache: false
       - name: Install mise toolchain
         uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
@@ -140,9 +136,6 @@ jobs:
       - name: Bootstrap
         shell: bash
         run: make setup CI=Y
-      - name: Generate
-        shell: bash
-        run: make gen APPLY=Y CI=Y
       - name: Format
         shell: bash
         run: make fmt APPLY=Y CI=Y
@@ -155,12 +148,4 @@ jobs:
       - name: Test
         shell: bash
         run: make test CI=Y
-      - name: Toolchain smoke
-        shell: bash
-        run: |
-          mise exec -- python --version
-          mise exec -- go version
-          mise exec -- rustc --version
-          mise exec -- ast-grep --version
-          mise exec -- bd version
 # End SECTION: windows

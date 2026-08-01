@@ -32,10 +32,5 @@ COPY . .
 RUN mise trust .mise.toml && mise install --yes
 # End SECTION: mise install
 
-# === SECTION: bootstrap (managed) ===
-# Source: canonical Make setup; every failure stops the image build.
-RUN make setup CI=Y
-# End SECTION: bootstrap
-
 ENTRYPOINT []
 CMD ["/bin/bash", "-lc", "make help"]

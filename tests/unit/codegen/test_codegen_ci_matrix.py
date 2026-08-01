@@ -110,7 +110,7 @@ class TestCodegenCiMatrix:
         )
 
         make = config.Infra.codegen.make
-        lifecycle = make.workflow
+        lifecycle = tuple(step for step in make.workflow if "ci" in step.contexts)
         for step in lifecycle:
             apply = f" {make.apply_variable}={make.apply_value}" if step.apply else ""
             command = f"make {step.verb}{apply} {make.ci.variable}={make.ci.value}"
@@ -158,6 +158,7 @@ class TestCodegenCiMatrix:
             f"{' ' + make.apply_variable + '=' + make.apply_value if step.apply else ''}"
             f" {make.ci.variable}={make.ci.value}"
             for step in make.workflow
+            if "ci" in step.contexts
         )
         forbidden_tools = (
             "mise exec",
@@ -469,6 +470,7 @@ class TestCodegenCiMatrix:
             f"{' ' + make.apply_variable + '=' + make.apply_value if step.apply else ''}"
             f" {make.ci.variable}={make.ci.value}"
             for step in make.workflow
+            if "ci" in step.contexts
         )
         for host in (macos, windows):
             positions = tuple(host.index(f"run: {command}") for command in lifecycle)

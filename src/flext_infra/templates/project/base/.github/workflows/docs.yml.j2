@@ -40,6 +40,12 @@ jobs:
         with:
           python-version-file: .python-version
 
+      - name: Setup Go build dependency
+        uses: {{ github_actions["setup-go"].repository }}@{{ github_actions["setup-go"].sha }}  # {{ github_actions["setup-go"].version }}
+        with:
+          go-version: "{{ go_version }}"
+          cache: false
+
       - name: Install declared toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
@@ -50,7 +56,7 @@ jobs:
         with:
           enable-cache: true
 
-{% for step in make.workflow %}
+{% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb | title }}
         run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %} {{ make.ci.variable }}={{ make.ci.value }}
 {% endfor %}

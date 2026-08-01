@@ -38,6 +38,12 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
+      - name: Setup Go build dependency
+        uses: {{ github_actions["setup-go"].repository }}@{{ github_actions["setup-go"].sha }}  # {{ github_actions["setup-go"].version }}
+        with:
+          go-version: "{{ go_version }}"
+          cache: false
+
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
@@ -46,7 +52,7 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-{% for step in make.workflow %}
+{% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb | title }} (blocking)
         run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %} {{ make.ci.variable }}={{ make.ci.value }}
 {% endfor %}
