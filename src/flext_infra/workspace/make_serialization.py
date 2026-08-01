@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import shlex
 from pathlib import Path
 from typing import Annotated, override
 
@@ -26,6 +24,18 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         ),
     ]
+    what: Annotated[
+        str,
+        m.Field(
+            description="Caller WHAT value; empty resolves from the verb matrix"
+        ),
+    ] = ""
+    apply_token: Annotated[
+        str,
+        m.Field(
+            description="Caller mutation token validated against the Make contract"
+        ),
+    ] = ""
     def _serialized_command(
         self,
         makefile: Path,
@@ -53,37 +63,40 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             ),
         )
 
-    @staticmethod
-    def _make_variables(make_config: m.Infra.MakeSpec) -> p.Result[t.StrMapping]:
-        """Parse GNU Make's standard command-variable transport exactly once."""
-        raw_channels = (
-            os.environ.get(c.Infra.MAKEFLAGS_ENV, ""),
-            os.environ.get(c.Infra.MAKEOVERRIDES_ENV, ""),
+    def _make_variables(
+        self, make_config: m.Infra.MakeSpec
+    ) -> p.Result[t.StrMapping]:
+        """Resolve one caller request from the canonical verb matrix."""
+        verb_spec = next(
+            (item for item in make_config.verbs if item.name == self.verb), None
         )
-        try:
-            tokens = tuple(
-                token for raw in raw_channels for token in shlex.split(raw)
-            )
-        except ValueError as exc:
-            return r[t.StrMapping].fail(f"invalid GNU Make flags: {exc}")
-        owned_names = frozenset({make_config.selector, make_config.apply_variable})
-        values: dict[str, str] = {}
-        for token in tokens:
-            name, separator, value = token.partition("=")
-            if not separator or name not in owned_names:
-                continue
-            previous = values.get(name)
-            if previous is not None and previous != value:
-                return r[t.StrMapping].fail(
-                    f"conflicting GNU Make values for {name}: {previous}, {value}"
-                )
-            values[name] = value
-        apply_value = values.get(make_config.apply_variable, "")
-        if apply_value and apply_value != make_config.apply_value:
+        if verb_spec is None:
+            return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
+        if self.apply_token not in {"", make_config.apply_value}:
             return r[t.StrMapping].fail(
-                f"{make_config.apply_variable} must be {make_config.apply_value} when set"
+                f"{make_config.apply_variable} must be "
+                f"{make_config.apply_value} when set"
             )
-        return r[t.StrMapping].ok(values)
+        if self.apply_token and not verb_spec.apply_guarded:
+            return r[t.StrMapping].fail(
+                f"Make verb '{self.verb}' is read-only and does not accept "
+                f"{make_config.apply_variable}"
+            )
+        selected_what = self.what or (
+            verb_spec.apply_what if self.apply_token else verb_spec.default_what
+        )
+        if selected_what not in verb_spec.whats:
+            allowed = ", ".join(verb_spec.whats)
+            return r[t.StrMapping].fail(
+                f"unsupported {self.verb} {make_config.selector}={selected_what} "
+                f"(allowed: {allowed})"
+            )
+        return r[t.StrMapping].ok(
+            {
+                make_config.selector: selected_what,
+                make_config.apply_variable: self.apply_token,
+            }
+        )
 
     @classmethod
     def _process_failure(
