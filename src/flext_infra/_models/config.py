@@ -360,18 +360,14 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
         apply_what: Annotated[
-            t.NonEmptyStr,
+            t.NonEmptyStr | None,
             m.Field(
-                default="all",
                 description=(
                     "Selector an apply-guarded verb resolves to when APPLY is "
-                    "set and no explicit WHAT is given. Defaults to 'all' so "
-                    "`make gen APPLY=Y` covers every surface with no skipped "
-                    "scope; without it the verb fell back to default_what "
-                    "('check') and silently mutated nothing"
+                    "set and no explicit WHAT is given; absent for read-only verbs"
                 ),
             ),
-        ]
+        ] = None
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -635,6 +631,17 @@ class FlextInfraConfigModels:
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
             declared = {verb.name for verb in self.verbs}
+            missing_apply_what = tuple(
+                verb.name
+                for verb in self.verbs
+                if verb.apply_guarded and verb.apply_what is None
+            )
+            if missing_apply_what:
+                msg = (
+                    "apply-guarded Make verbs require config-owned apply_what: "
+                    f"{', '.join(missing_apply_what)}"
+                )
+                raise ValueError(msg)
             non_aggregate = tuple(
                 verb.name for verb in self.verbs if verb.default_what != "all"
             )

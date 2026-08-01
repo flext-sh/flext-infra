@@ -134,12 +134,9 @@ UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dep
 {% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor -%}
-{# APPLY=Y alone must mutate: an apply-guarded verb defaults to `check`, so
-   `make gen APPLY=Y` used to run the read-only pass and silently change
-   nothing. With APPLY set and no explicit WHAT, the verb resolves to its
-   mutating selector instead. #}
+{# APPLY=Y alone resolves through the config-owned mutating aggregate. #}
 {% for verb in make.verbs if verb.apply_guarded -%}
-_APPLY_WHAT_{{ verb.name }} := {{ verb.apply_what | default("apply") }}
+_APPLY_WHAT_{{ verb.name }} := {{ verb.apply_what }}
 {% endfor -%}
 {% for verb in extra_verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}

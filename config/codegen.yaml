@@ -200,9 +200,11 @@ Infra:
         - name: fmt
           default_what: all
           apply_guarded: true
+          apply_what: all
         - name: fix
           default_what: all
           apply_guarded: true
+          apply_what: all
         - name: run
           default_what: all
           apply_guarded: false
@@ -221,6 +223,7 @@ Infra:
         - name: gen
           default_what: all
           apply_guarded: true
+          apply_what: all
         - name: worktree
           default_what: all
           apply_guarded: false

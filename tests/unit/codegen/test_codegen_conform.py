@@ -30,7 +30,7 @@ def _conform_target(
     root: Path, repository: m.Infra.RepositoryRef, *, make_profile: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryConformTarget:
     """Build a typed rendering target from the same provider SSOT as production."""
-    provider = tm.ok(
+    provider: m.Infra.ProviderSpec = tm.ok(
         u.Infra.repository_provider(repository, config.Infra.codegen.providers)
     )
     return m.Infra.RepositoryConformTarget(
@@ -131,7 +131,7 @@ class TestCodegenConform:
             remove_env_keys=("MAKEFLAGS",),
         )
 
-        selected_process = tm.ok(selected)
+        selected_process: m.Cli.CommandOutput = tm.ok(selected)
         selected_output = selected_process.stdout + selected_process.stderr
         tm.that(selected_process.exit_code, eq=0)
         tm.that(selected_output, has="uv --version")
@@ -236,7 +236,9 @@ class TestCodegenConform:
             )
         )
 
-        derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        derived: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        )
         tm.that(derived.repository, eq=local_repository)
         tm.that(derived.project, eq=None)
 
@@ -245,7 +247,7 @@ class TestCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        initial_plan = tm.ok(
+        initial_plan: m.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform(workspace_root=root).plan(request)
         )
         plans = {
@@ -385,8 +387,8 @@ class TestCodegenConform:
             workspace_root=root, request=request, initial_workspace=workspace
         )
 
-        first = tm.ok(service.plan(request))
-        second = tm.ok(service.plan(request))
+        first: m.Infra.CodegenPlan = tm.ok(service.plan(request))
+        second: m.Infra.CodegenPlan = tm.ok(service.plan(request))
         first_pyproject = next(
             item for item in first.files if item.path.name == c.Infra.PYPROJECT_FILENAME
         )
@@ -422,7 +424,7 @@ class TestCodegenConform:
         target = _conform_target(
             tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
         )
-        tooling_runtime = tm.ok(
+        tooling_runtime: m.Infra.ToolingRuntimeContext = tm.ok(
             FlextInfraPyprojectModernizer(
                 workspace_root=tmp_path, skip_check=True
             ).resolve_tooling_context(
@@ -439,8 +441,7 @@ class TestCodegenConform:
             config.Infra.codegen,
             tooling_runtime=tooling_runtime,
         )
-        rendered = tm.ok(context)
-        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
+        rendered: m.Infra.MakeRenderContext = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
         # A standalone consumer declares no flext-infra member, so the
@@ -473,7 +474,7 @@ class TestCodegenConform:
             workspace_repository,
             make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
         )
-        tooling_runtime = tm.ok(
+        tooling_runtime: m.Infra.ToolingRuntimeContext = tm.ok(
             FlextInfraPyprojectModernizer(
                 workspace_root=tmp_path, skip_check=True
             ).resolve_tooling_context(
@@ -484,7 +485,7 @@ class TestCodegenConform:
             )
         )
 
-        rendered = tm.ok(
+        rendered: m.Infra.MakeRenderContext = tm.ok(
             FlextInfraCodegenConform.make_render_context(
                 infra_repository,
                 target,
@@ -521,7 +522,7 @@ class TestCodegenConform:
             )
         )
         snapshot_excludes = config.Infra.codegen.make.serialization.snapshot_excludes
-        before = tm.ok(
+        before: m.Infra.WorkspaceFingerprint = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
         route = next(
@@ -537,7 +538,7 @@ class TestCodegenConform:
                 mode=mode,
             )
             tm.ok(route.handler(request))
-        after = tm.ok(
+        after: m.Infra.WorkspaceFingerprint = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
         tm.that(after.digest, eq=before.digest)
@@ -717,7 +718,7 @@ class TestCodegenConform:
             )
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "help"])
-        output = tm.ok(outcome)
+        output: m.Cli.CommandOutput = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         tm.that(
             output.stdout,
@@ -768,7 +769,7 @@ class TestCodegenConform:
             "_serialized_check",
             "WHAT=probe",
         ])
-        output = tm.ok(outcome)
+        output: m.Cli.CommandOutput = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
         pre_at = combined.find("HOOK_PRE")
@@ -911,7 +912,7 @@ class TestScriptDispatchMakefile:
         planned = FlextInfraCodegenConform(
             workspace_root=root, request=request, initial_workspace=workspace
         ).plan(request)
-        plan = tm.ok(planned)
+        plan: m.Infra.CodegenPlan = tm.ok(planned)
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )

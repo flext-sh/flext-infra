@@ -153,6 +153,9 @@ class TestsWorkspaceRootMakeContract:
         tm.that(
             {verb.name for verb in config.Infra.codegen.make.verbs}, has="fix"
         )
+        for verb in config.Infra.codegen.make.verbs:
+            if verb.apply_guarded:
+                tm.that(verb.apply_what, eq=verb.default_what)
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.
