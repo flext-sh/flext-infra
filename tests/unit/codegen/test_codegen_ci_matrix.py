@@ -109,18 +109,71 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: make setup")
         tm.that(workflow, has="run: make check")
         tm.that(workflow, has="run: make test")
+        tm.that(workflow, has="run: make setup CI=Y")
+        tm.that(workflow, has="run: make gen APPLY=Y CI=Y")
+        tm.that(workflow, has="run: make fmt APPLY=Y CI=Y")
+        tm.that(workflow, has="run: make fix APPLY=Y CI=Y")
+        tm.that(workflow, has="run: make check CI=Y")
+        tm.that(workflow, has="run: make test CI=Y")
 
-    def test_docs_workflow_template_uses_canonical_make_selectors(self) -> None:
-        """Workspace docs CI selects audit and validation through WHAT."""
+    def test_docs_workflow_template_uses_default_all_make_contract(self) -> None:
+        """Workspace docs CI delegates the complete lifecycle to Make."""
         root = Path(__file__).resolve().parents[3]
         workflow = (
             root
             / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
         ).read_text(encoding="utf-8")
 
-        tm.that(workflow, has="make docs WHAT=audit")
-        tm.that(workflow, has="make docs WHAT=validate")
+        tm.that(workflow, has="make docs CI=Y")
+        tm.that(workflow, lacks="WHAT=")
         tm.that(workflow, lacks="DOCS_PHASE=")
+
+    def test_workflow_make_calls_explicitly_use_ci_mode(self) -> None:
+        """Every generated workflow enters lifecycle verbs through CI=Y."""
+        root = Path(__file__).resolve().parents[3]
+        workflow_templates = (
+            root / "src/flext_infra/templates/project/base/.github"
+        ).glob("**/*.yml.j2")
+        make_lines = tuple(
+            line.strip()
+            for template in workflow_templates
+            for line in template.read_text(encoding="utf-8").splitlines()
+            if "make " in line and not line.lstrip().startswith("#")
+        )
+        tm.that(make_lines, empty=False)
+        for line in make_lines:
+            tm.that(line, has="CI=Y")
+            tm.that(line, lacks="WHAT=")
+            tm.that(line, lacks="RELEASE_PHASE=")
+
+    def test_workflow_templates_only_allow_governed_promotions(self) -> None:
+        """Every Actions template rejects push, manual, and scheduled execution."""
+        root = Path(__file__).resolve().parents[3]
+        github_templates = root / "src/flext_infra/templates/project/base/.github"
+        templates = (
+            github_templates / "ci-template" / "ci.yml.j2",
+            *(github_templates / "workflows").glob("*.yml.j2"),
+        )
+        tm.that(templates, empty=False)
+        for template in templates:
+            content = template.read_text(encoding="utf-8")
+            tm.that(content, has="github_actions_promotion.target")
+            tm.that(content, has="github.head_ref")
+            tm.that(content, lacks="workflow_dispatch")
+            tm.that(content, lacks="\n  push:")
+            tm.that(content, lacks="\n  schedule:")
+
+        for name in ("docs.yml.j2", "release.yml.j2"):
+            content = next(path for path in templates if path.name == name).read_text(
+                encoding="utf-8"
+            )
+            tm.that(content, has="types: [closed]")
+            tm.that(content, has="github.event.pull_request.merged == true")
+        release = next(
+            path for path in templates if path.name == "release.yml.j2"
+        ).read_text(encoding="utf-8")
+        tm.that(release, has="make release CI=Y")
+        tm.that(release, lacks="run: make rel CI=Y")
 
     def test_ci_uses_typed_action_catalog(self, rendered_project: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
@@ -155,6 +208,7 @@ class TestCodegenCiMatrix:
                 encoding="utf-8"
             )
             tm.that(content, has="make setup")
+            tm.that(content, has="make setup CI=Y")
             tm.that(content, lacks="UV_UNMANAGED_INSTALL")
             tm.that(content, lacks="uv python install")
             tm.that(content, lacks="set +e")
@@ -274,34 +328,52 @@ class TestCodegenCiMatrix:
             "\n  windows:", maxsplit=1
         )[0]
         windows = content.split("\n  windows:", maxsplit=1)[1]
+        lifecycle = (
+            "make setup CI=Y",
+            "make gen APPLY=Y CI=Y",
+            "make fmt APPLY=Y CI=Y",
+            "make fix APPLY=Y CI=Y",
+            "make check CI=Y",
+            "make test CI=Y",
+        )
         for host in (macos, windows):
-            tm.that(host, has="run: make setup")
+            positions = tuple(host.index(f"run: {command}") for command in lifecycle)
+            tm.that(positions, eq=tuple(sorted(positions)))
             tm.that(host, has="mise exec -- ast-grep --version")
             tm.that(host, has="mise exec -- bd version")
+        distro = content.split("\n  distro-matrix:", maxsplit=1)[1].split(
+            "\n  macos:", maxsplit=1
+        )[0]
+        for command in lifecycle:
+            tm.that(distro, has=f"}} {command}")
         tm.that(windows.count("shell: bash"), eq=windows.count("\n        run:"))
 
-    def test_workflow_branches_derive_from_workspace_manifest(
+    def test_rendered_workflows_only_trigger_governed_promotion(
         self, rendered_project: Path
     ) -> None:
-        """Generated workflows consume the repository branch topology owner."""
+        """Rendered CI accepts only configured source branches into main."""
         root = rendered_project
-        manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
-        repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
-        provider_name = str(repository["provider"])
-        provider = next(
-            p for p in config.Infra.codegen.providers if p.name == provider_name
-        )
-        branch = provider.branch
-        blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8"
-        )
-        matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
-            encoding="utf-8"
-        )
-        tm.that(blocking, has=f"      - {branch}")
-        tm.that(matrix, has=f"branches: [{branch}]")
-        tm.that(blocking, lacks="      - main")
-        tm.that(matrix, lacks="branches: [main]")
+        promotion = config.Infra.codegen.github_actions_promotion
+        for filename in ("ci.yml", "ci-matrix.yml"):
+            workflow = root / ".github" / "workflows" / filename
+            content = workflow.read_text(encoding="utf-8")
+            payload = u.Cli.yaml_load_mapping(workflow)
+            events = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["on"])
+            pull_request = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                events["pull_request"]
+            )
+            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["jobs"])
+
+            tm.that(tuple(events), eq=("pull_request",))
+            tm.that(pull_request["branches"], eq=[promotion.target])
+            tm.that(content, lacks="workflow_dispatch")
+            tm.that(content, lacks="\n  push:")
+            for job in jobs.values():
+                job_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job)
+                condition = str(job_payload["if"])
+                tm.that(condition, has=promotion.target)
+                for source in promotion.sources:
+                    tm.that(condition, has=source)
 
     def test_makefile_normalizes_windows_runtime_paths(
         self, rendered_project: Path

@@ -3,10 +3,9 @@ name: CI
 
 on:
   pull_request:
-  push:
     branches:
-      - {{ repository_branch }}
-  workflow_dispatch:
+      - {{ github_actions_promotion.target }}
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -14,6 +13,9 @@ permissions:
 jobs:
   ci:
     name: ci
+    if: >-
+      github.base_ref == '{{ github_actions_promotion.target }}' &&
+      contains(fromJSON('{{ github_actions_promotion.sources | list | tojson }}'), github.head_ref)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -39,10 +41,19 @@ jobs:
           version: "{{ mise_version }}"
 
       - name: Setup
-        run: make setup
+        run: make setup CI=Y
+
+      - name: Generate
+        run: make gen APPLY=Y CI=Y
+
+      - name: Format
+        run: make fmt APPLY=Y CI=Y
+
+      - name: Fix
+        run: make fix APPLY=Y CI=Y
 
       - name: Check
-        run: make check
+        run: make check CI=Y
 
       - name: Test
-        run: make test
+        run: make test CI=Y

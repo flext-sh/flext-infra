@@ -70,6 +70,11 @@ Infra:
     checkout_submodules_overrides:
       cosmos-docgen: recursive
 
+    # GitHub Actions run only for the governed GitFlow promotion into main.
+    github_actions_promotion:
+      target: main
+      sources: [dev, develop, 0.12.0-dev]
+
     github_actions:
       checkout:
         repository: actions/checkout

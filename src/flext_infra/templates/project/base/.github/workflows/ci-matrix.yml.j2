@@ -10,13 +10,11 @@
 name: ci-matrix
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
+# Source: config:github_actions_promotion
 "on":
-  push:
-    branches: [{{ repository_branch }}]
   pull_request:
-    branches: [{{ repository_branch }}]
-  workflow_dispatch: {}
+    branches: [{{ github_actions_promotion.target }}]
+    types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -36,6 +34,9 @@ jobs:
   # === SECTION: distro-matrix (managed) ===
   # Source: template + config:github_actions.checkout (distro list is template literal by design)
   distro-matrix:
+    if: >-
+      github.base_ref == '{{ github_actions_promotion.target }}' &&
+      contains(fromJSON('{{ github_actions_promotion.sources | list | tojson }}'), github.head_ref)
     # Clean-machine proof per distro: build the distro image (which runs the
     # full project bootstrap at image-build time), then smoke the verb surface
     # inside the built container.
@@ -61,13 +62,20 @@ jobs:
           docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- rustc --version
           docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- ast-grep --version
           docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- bd version
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make setup CI=Y
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make gen APPLY=Y CI=Y
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make fmt APPLY=Y CI=Y
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make fix APPLY=Y CI=Y
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check CI=Y
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make test CI=Y
       # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   macos:
+    if: >-
+      github.base_ref == '{{ github_actions_promotion.target }}' &&
+      contains(fromJSON('{{ github_actions_promotion.sources | list | tojson }}'), github.head_ref)
     runs-on: macos-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
@@ -86,7 +94,17 @@ jobs:
         with:
           enable-cache: true
       - name: Bootstrap
-        run: make setup
+        run: make setup CI=Y
+      - name: Generate
+        run: make gen APPLY=Y CI=Y
+      - name: Format
+        run: make fmt APPLY=Y CI=Y
+      - name: Fix
+        run: make fix APPLY=Y CI=Y
+      - name: Check
+        run: make check CI=Y
+      - name: Test
+        run: make test CI=Y
       - name: Toolchain smoke
         run: |
           mise exec -- python --version
@@ -94,13 +112,14 @@ jobs:
           mise exec -- rustc --version
           mise exec -- ast-grep --version
           mise exec -- bd version
-      - name: Verb surface
-        run: make help
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   windows:
+    if: >-
+      github.base_ref == '{{ github_actions_promotion.target }}' &&
+      contains(fromJSON('{{ github_actions_promotion.sources | list | tojson }}'), github.head_ref)
     runs-on: windows-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
@@ -120,7 +139,22 @@ jobs:
           enable-cache: true
       - name: Bootstrap
         shell: bash
-        run: make setup
+        run: make setup CI=Y
+      - name: Generate
+        shell: bash
+        run: make gen APPLY=Y CI=Y
+      - name: Format
+        shell: bash
+        run: make fmt APPLY=Y CI=Y
+      - name: Fix
+        shell: bash
+        run: make fix APPLY=Y CI=Y
+      - name: Check
+        shell: bash
+        run: make check CI=Y
+      - name: Test
+        shell: bash
+        run: make test CI=Y
       - name: Toolchain smoke
         shell: bash
         run: |
@@ -129,7 +163,4 @@ jobs:
           mise exec -- rustc --version
           mise exec -- ast-grep --version
           mise exec -- bd version
-      - name: Verb surface
-        shell: bash
-        run: make help
 # End SECTION: windows

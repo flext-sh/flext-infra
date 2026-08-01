@@ -264,6 +264,17 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class GithubActionsPromotionSpec(_ConfigContract):
+        """The only source and target branches allowed to execute Actions."""
+
+        target: Annotated[
+            t.NonEmptyStr, m.Field(description="Promotion target branch")
+        ]
+        sources: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Allowed promotion source branches"),
+        ]
+
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
@@ -277,6 +288,10 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
+        ]
+        github_actions_promotion: Annotated[
+            FlextInfraConfigModels.GithubActionsPromotionSpec,
+            m.Field(description="Exclusive GitHub Actions promotion route"),
         ]
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
@@ -1694,6 +1709,10 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
+        ]
+        github_actions_promotion: Annotated[
+            FlextInfraConfigModels.GithubActionsPromotionSpec,
+            m.Field(description="Exclusive GitHub Actions promotion route"),
         ]
         checkout_submodules: Annotated[
             t.NonEmptyStr,
