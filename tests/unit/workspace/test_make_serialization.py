@@ -151,6 +151,7 @@ class TestsFlextInfraMakeSerialization:
         """Only the configured write-enable token can request mutation."""
         make_config = config.Infra.codegen.make
         verb = next(item for item in make_config.verbs if item.serialized)
+        invalid_token = f"{make_config.apply_value}-invalid"
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(
             f".PHONY: _serialized_{verb.name}\n_serialized_{verb.name}:\n\t@exit 0\n",
@@ -173,7 +174,7 @@ class TestsFlextInfraMakeSerialization:
                     "--verb",
                     verb.name,
                     "--apply-token",
-                    "invalid-token",
+                    invalid_token,
                 ],
                 cwd=tmp_path,
             )

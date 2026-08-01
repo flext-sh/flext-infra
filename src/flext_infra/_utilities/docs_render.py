@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, t
+from flext_infra import c, config, m, t
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -223,10 +223,11 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix, "AGENTS.md"
         )
+        make = config.Infra.codegen.make
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `fmt APPLY=Y`, `val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` and `Required Python quality gates`; selector routing is owned universally by `~/.agents/skills/make-check/SKILL.md`.",
+            f"Canonical `make` verbs (`check`, `test`, `fmt {make.apply_variable}={make.apply_value}`, `val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` and `Required Python quality gates`; selector routing is owned universally by `~/.agents/skills/make-check/SKILL.md`.",
         ]
 
     @staticmethod

@@ -120,7 +120,8 @@ class FlextInfraConstantsCli:
     path scoping. Measured on ai-hub: `ruff check src/ tests/` reports zero
     errors while the transaction reported 548 (189 SLF001, 70 PLC2701, 52
     S108 ...), so a clean repository could not be conformed at all --
-    `make gen APPLY=Y` aborted before writing a single managed file.
+    The generated mutating `make gen` command aborted before writing a single
+    managed file.
 
     Linting belongs to its own verb and runs exactly once: `ruff check` in
     `make check`, `ruff format` in `make fmt`, `ruff check --fix` in

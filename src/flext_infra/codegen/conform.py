@@ -1260,36 +1260,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return f"{preserved}{separator}{managed}"
 
     @staticmethod
-    def _infra_repository(
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Resolve the repository that owns the infrastructure CLI.
-
-        The owner is read from the live workspace topology when that topology
-        declares it. A standalone consumer legitimately declares no
-        flext-infra member, so the reference is then derived from the provider
-        contract. Either way nothing is looked up in a project catalog, which
-        flext-infra is forbidden to own.
-        """
-        matches = tuple(
-            item
-            for item in (workspace.repository, *workspace.members)
-            if item.distribution == config.Infra.name
-        )
-        if len(matches) > 1:
-            return r[m.Infra.RepositoryRef].fail(
-                "workspace topology declares more than one "
-                f"{config.Infra.name} checkout"
-            )
-        if matches:
-            return r[m.Infra.RepositoryRef].ok(matches[0])
-        return r[m.Infra.RepositoryRef].ok(
-            u.Infra.derived_repository_ref(
-                config.Infra.name, provider=config.Infra.codegen.providers[0]
-            )
-        )
-
-    @staticmethod
     def _repository_provider(
         repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.ProviderSpec]:
@@ -1317,35 +1287,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
-
-    @staticmethod
-    def _infra_source_root_rel(
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        infra_repository: m.Infra.RepositoryRef,
-    ) -> str | None:
-        """Return a local engine source path only when the workspace declares it."""
-        if target.make_profile is not c.Infra.MakeProfile.WORKSPACE_ROOT:
-            return None
-        workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = (
-            workspace.repository,
-            *workspace.members,
-        )
-        local: m.Infra.RepositoryRef | None = next(
-            (
-                item
-                for item in workspace_repositories
-                if item.distribution == infra_repository.distribution
-                and item.url == infra_repository.url
-                and item.provider == infra_repository.provider
-            ),
-            None,
-        )
-        if local is None:
-            return None
-        workspace_root_rel = FlextInfraCodegenConform._workspace_root_rel(workspace)
-        local_path: Path = local.path
-        return (Path(workspace_root_rel) / local_path).as_posix()
 
     def _artifact_render_context(
         self,
@@ -1401,6 +1342,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             database = workspace.ledger_id or issue_prefix
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
+                    make=codegen.make,
                     issue_prefix=issue_prefix,
                     database=database,
                     server=server,
@@ -1449,17 +1391,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
-            infra_repository = self._infra_repository(workspace)
-            if infra_repository.failure:
-                return r[p.Model].fail(
-                    infra_repository.error
-                    or "infrastructure CLI repository resolution failed"
-                )
-            infra_provider = self._repository_provider(infra_repository.value, codegen)
-            if infra_provider.failure:
-                return r[p.Model].fail(
-                    infra_provider.error or "infrastructure provider resolution failed"
-                )
             gitlinks = self._managed_gitlinks(workspace, codegen)
             if gitlinks.failure:
                 return r[p.Model].fail(
@@ -1470,11 +1401,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     pytest=config.Infra.tooling.tools.pytest,
                     dist=dist,
                     infra_cli=config.Infra.name,
-                    infra_repository=infra_repository.value,
-                    infra_repository_branch=infra_provider.value.branch,
-                    infra_source_root_rel=self._infra_source_root_rel(
-                        target, workspace, infra_repository.value
-                    ),
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
@@ -1527,19 +1453,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        infra_repository = FlextInfraCodegenConform._infra_repository(workspace)
-        if infra_repository.failure:
-            return r[m.Infra.MakeRenderContext].fail(
-                infra_repository.error
-                or "infrastructure CLI repository resolution failed"
-            )
-        infra_provider = FlextInfraCodegenConform._repository_provider(
-            infra_repository.value, codegen
-        )
-        if infra_provider.failure:
-            return r[m.Infra.MakeRenderContext].fail(
-                infra_provider.error or "infrastructure provider resolution failed"
-            )
         members = (
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
@@ -1565,11 +1478,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
-                infra_repository=infra_repository.value,
-                infra_repository_branch=infra_provider.value.branch,
-                infra_source_root_rel=FlextInfraCodegenConform._infra_source_root_rel(
-                    target, workspace, infra_repository.value
-                ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
@@ -1623,19 +1531,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"supported licenses: {supported}"
             )
         profile = target.make_profile
-        infra_repository = FlextInfraCodegenConform._infra_repository(workspace)
-        if infra_repository.failure:
-            return r[m.Infra.ProjectRenderContext].fail(
-                infra_repository.error
-                or "infrastructure CLI repository resolution failed"
-            )
-        infra_provider = FlextInfraCodegenConform._repository_provider(
-            infra_repository.value, codegen
-        )
-        if infra_provider.failure:
-            return r[m.Infra.ProjectRenderContext].fail(
-                infra_provider.error or "infrastructure provider resolution failed"
-            )
         repository_provider = FlextInfraCodegenConform._repository_provider(
             repository, codegen
         )
@@ -1695,11 +1590,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
-                infra_repository=infra_repository.value,
-                infra_repository_branch=infra_provider.value.branch,
-                infra_source_root_rel=FlextInfraCodegenConform._infra_source_root_rel(
-                    target, workspace, infra_repository.value
-                ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,

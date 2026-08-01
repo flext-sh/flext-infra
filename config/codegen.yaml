@@ -181,21 +181,35 @@ Infra:
         - FILES
         - FIX
         - GET
+        - GNUMAKEFLAGS
+        - HOME
+        - HOSTNAME
+        - LANG
+        - LC_ALL
         - LD
         - LEX
         - LINT
+        - LOGNAME
         - M2C
+        - MFLAGS
         - MATCH
         - MAKEINFO
         - OS
+        - OUTPUT_OPTION
         - PATH
         - PC
+        - PWD
         - RM
         - SHELL
+        - SUFFIXES
         - TANGLE
+        - TERM
         - TEX
         - TEXI2DVI
+        - TMPDIR
+        - USER
         - VERBOSE
+        - VPATH
         - VIRTUAL_ENV
         - WEAVE
         - YACC
@@ -241,8 +255,7 @@ Infra:
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_commit] }
         - { verb: test, apply: false, contexts: [local, ci, pre_commit] }
-      bootstrap:
-        environment: isolated
+      setup:
         dependency_groups: all
         extras: all
         lock_mode: frozen

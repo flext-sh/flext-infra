@@ -36,9 +36,10 @@ class FlextInfraConstantsDeps:
     PEP621_REQUIREMENT_HEAD_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"
     )
-    BANNER: Final[str] = (
+    BANNER_TEMPLATE: Final[str] = (
         "# @flext-managed: continuous\n"
-        "# @flext-regenerate: make deps WHAT=upgrade APPLY=Y\n"
+        "# @flext-regenerate: make deps {selector}=upgrade "
+        "{apply_variable}={apply_value}\n"
         "# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py\n"
         "# @flext-maintenance: do not edit managed sections; edit the SSOT\n"
         "# [MANAGED] FLEXT pyproject standardization\n"

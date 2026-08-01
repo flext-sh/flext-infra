@@ -18,6 +18,16 @@ class FlextInfraInjectCommentsPhase:
         "# FLEXT Pyright suppression rationale (validated at the facade-MRO boundary):"
     )
 
+    @staticmethod
+    def _managed_banner() -> str:
+        """Render the maintenance banner from the typed Make command SSOT."""
+        make = config.Infra.codegen.make
+        return c.Infra.BANNER_TEMPLATE.format(
+            selector=make.selector,
+            apply_variable=make.apply_variable,
+            apply_value=make.apply_value,
+        )
+
     @classmethod
     def _mypy_rationale_lines(cls) -> t.StrSequence:
         """Render evidence-backed Mypy exclusions from the tooling SSOT."""
@@ -70,7 +80,7 @@ class FlextInfraInjectCommentsPhase:
         markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_BANNER_LINE)
-        markers.update(c.Infra.BANNER.splitlines())
+        markers.update(cls._managed_banner().splitlines())
         markers.update(cls._mypy_rationale_lines())
         markers.update(cls._ruff_rationale_lines())
         markers.update(cls._pyright_rationale_lines())
@@ -156,7 +166,7 @@ class FlextInfraInjectCommentsPhase:
         lines = rendered.splitlines()
         cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
         changes.extend(cleanup_changes)
-        banner_lines = c.Infra.BANNER.splitlines()
+        banner_lines = self._managed_banner().splitlines()
         # NOTE (multi-agent, mro-wkii.17.9.2.1): banner injection owns the
         # leading separator so parse/render trivia cannot require a second pass.
         first_content = next(

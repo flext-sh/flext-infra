@@ -556,12 +556,9 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-    class MakeBootstrapSpec(_ConfigContract):
-        """Hermetic project dependency surface used before conform."""
+    class MakeSetupSpec(_ConfigContract):
+        """Dependency surface installed by the generated setup handler."""
 
-        environment: Annotated[
-            Literal["isolated"], m.Field(description="uv environment isolation policy")
-        ]
         dependency_groups: Annotated[
             Literal["all"],
             m.Field(description="Project dependency-group selection policy"),
@@ -628,9 +625,9 @@ class FlextInfraConfigModels:
                 description="Fixed generated Make namespaces unavailable to dynamic roles",
             ),
         ]
-        bootstrap: Annotated[
-            FlextInfraConfigModels.MakeBootstrapSpec,
-            m.Field(description="Pre-conform project environment contract"),
+        setup: Annotated[
+            FlextInfraConfigModels.MakeSetupSpec,
+            m.Field(description="Generated setup dependency installation contract"),
         ]
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
@@ -1219,25 +1216,6 @@ class FlextInfraConfigModels:
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
-        infra_repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(
-                description="Canonical bootstrap source for the infrastructure CLI"
-            ),
-        ]
-        infra_repository_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider-owned infrastructure baseline branch"),
-        ]
-        infra_source_root_rel: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Repository-relative local infrastructure source, or None "
-                    "when bootstrap must use the configured Git source"
-                )
-            ),
-        ] = None
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -1329,6 +1307,10 @@ class FlextInfraConfigModels:
     class BeadsConfigRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
 
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Generated Make regeneration command contract"),
+        ]
         issue_prefix: Annotated[
             t.NonEmptyStr,
             m.Field(description="Ledger issue prefix from the declared ledger_id"),
@@ -1441,25 +1423,6 @@ class FlextInfraConfigModels:
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
-        infra_repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(
-                description="Canonical bootstrap source for the infrastructure CLI"
-            ),
-        ]
-        infra_repository_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider-owned infrastructure baseline branch"),
-        ]
-        infra_source_root_rel: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Repository-relative local infrastructure source, or None "
-                    "when bootstrap must use the configured Git source"
-                )
-            ),
-        ] = None
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),

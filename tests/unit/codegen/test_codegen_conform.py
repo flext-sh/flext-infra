@@ -447,58 +447,7 @@ class TestCodegenConform:
         rendered: m.Infra.MakeRenderContext = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
-        # A standalone consumer declares no flext-infra member, so the
-        # reference is derived from the provider contract. The generated
-        # Makefile consumes exactly the distribution and the URL (the
-        # bootstrap requirement), which is what this asserts; the topology
-        # role of a derived reference is not part of that contract.
-        tm.that(rendered.infra_repository.distribution, eq=config.Infra.name)
-        tm.that(
-            rendered.infra_repository.url,
-            eq=f"{config.Infra.codegen.providers[0].base_url.rstrip('/')}"
-            f"/{config.Infra.name}.git",
-        )
-        tm.that(rendered.infra_source_root_rel, eq=None)
-
-    def test_make_context_resolves_attached_infra_member_from_workspace(
-        self, tmp_path: Path
-    ) -> None:
-        """An attached member bootstraps from its declared local checkout."""
-        workspace_repository = test_u.Tests.repository_ref("workspace-root-fixture")
-        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
-        workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=workspace_repository.name,
-            repository=workspace_repository,
-            members=(infra_repository,),
-        )
-        target = _conform_target(
-            tmp_path,
-            workspace_repository,
-            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
-        )
-        tooling_runtime: m.Infra.ToolingRuntimeContext = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True
-            ).resolve_tooling_context(
-                project_name=infra_repository.distribution,
-                package_name=infra_repository.distribution.replace("-", "_"),
-                path=tmp_path / infra_repository.path / "pyproject.toml",
-                declared_python_dirs=("src",),
-            )
-        )
-
-        rendered: m.Infra.MakeRenderContext = tm.ok(
-            FlextInfraCodegenConform.make_render_context(
-                infra_repository,
-                target,
-                workspace,
-                config.Infra.codegen,
-                tooling_runtime=tooling_runtime,
-            )
-        )
-
-        tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
+        tm.that(rendered.make, eq=config.Infra.codegen.make)
 
     def test_make_context_round_trips_mutated_dispatch_environment(
         self, tmp_path: Path
@@ -559,9 +508,6 @@ class TestCodegenConform:
             pytest=context.pytest,
             dist=context.dist,
             infra_cli=context.infra_cli,
-            infra_repository=context.infra_repository,
-            infra_repository_branch=context.infra_repository_branch,
-            infra_source_root_rel=context.infra_source_root_rel,
             make_profile=context.make_profile,
             workspace_root_rel=context.workspace_root_rel,
             workspace_members=context.workspace_members,

@@ -344,7 +344,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         """Resolve the interpreter that owns the checked tree's dependencies.
 
         ``sys.executable`` may point at the flext-infra bootstrap interpreter
-        (from ``FLEXT_INFRA_BOOTSTRAP`` / ``uv run --project ...``); it resolves
+        (from the generated Make runtime / ``uv run --project ...``); it resolves
         flext-infra's dependencies and may not include the checked project's dev
         dependencies (pytest, PyYAML, ...). Type checking against it reports each as a
         missing import. The project virtualenv is the only interpreter that can

@@ -164,7 +164,7 @@ class TestsWorkspaceRootMakeContract:
             encoding="utf-8"
         )
         tm.that(
-            f"UV_SYNC_FLAGS := --{config.Infra.codegen.make.bootstrap.lock_mode}"
+            f"UV_SYNC_FLAGS := --{config.Infra.codegen.make.setup.lock_mode}"
             in rendered,
             eq=True,
         )
