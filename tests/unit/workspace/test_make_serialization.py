@@ -145,7 +145,7 @@ class TestsFlextInfraMakeSerialization:
             observed.read_text(encoding="utf-8").strip().split("|")
         )
         tm.that(selected, eq=verb.default_what)
-        tm.that(transported_apply, eq=apply_token or "")
+        tm.that(transported_apply, eq=apply_token or make_config.apply_absent_value)
 
     def test_public_cli_rejects_an_arbitrary_apply_token(self, tmp_path: Path) -> None:
         """Only the configured write-enable token can request mutation."""
