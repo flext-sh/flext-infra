@@ -622,6 +622,15 @@ class FlextInfraConfigModels:
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
             declared = {verb.name for verb in self.verbs}
+            non_aggregate = tuple(
+                verb.name for verb in self.verbs if verb.default_what != "all"
+            )
+            if non_aggregate:
+                msg = (
+                    "public Make verbs must default to the all aggregate: "
+                    f"{', '.join(non_aggregate)}"
+                )
+                raise ValueError(msg)
             serialized = set(self.serialization.verbs)
             invalid = serialized - declared
             if invalid:

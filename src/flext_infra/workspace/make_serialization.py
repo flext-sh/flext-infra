@@ -279,6 +279,12 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"Make verb '{self.verb}' is not serialized (allowed: {allowed})"
             )
         selected_what = os.environ.get(make_config.selector, "").strip()
+        if not selected_what:
+            selected_what = next(
+                verb.default_what
+                for verb in make_config.verbs
+                if verb.name == self.verb
+            )
         fixed_point_what = serialization.mutation_fixed_points.get(self.verb, {}).get(
             selected_what
         )

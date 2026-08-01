@@ -168,7 +168,10 @@ Infra:
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
         mutation_fixed_points:
           gen:
+            all: all
             apply: check
+          fix:
+            all: all
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -176,19 +179,19 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen]
+        verbs: [check, test, gen, fix]
       verbs:
         - name: help
-          default_what: usage
+          default_what: all
           apply_guarded: false
         - name: setup
-          default_what: environment
+          default_what: all
           apply_guarded: false
         - name: deps
-          default_what: check
+          default_what: all
           apply_guarded: false
         - name: build
-          default_what: artifacts
+          default_what: all
           apply_guarded: false
         - name: check
           default_what: all
@@ -197,32 +200,35 @@ Infra:
           default_what: all
           apply_guarded: false
         - name: fmt
-          default_what: check
+          default_what: all
+          apply_guarded: true
+        - name: fix
+          default_what: all
           apply_guarded: true
         - name: run
-          default_what: default
+          default_what: all
           apply_guarded: false
         - name: status
-          default_what: diagnostics
+          default_what: all
           apply_guarded: false
         - name: docs
           default_what: all
           apply_guarded: false
         - name: clean
-          default_what: generated
+          default_what: all
           apply_guarded: false
         - name: release
-          default_what: status
+          default_what: all
           apply_guarded: false
         - name: gen
-          default_what: check
+          default_what: all
           apply_guarded: true
         - name: worktree
-          default_what: list
+          default_what: all
           apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
+        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:

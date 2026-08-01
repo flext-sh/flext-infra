@@ -695,9 +695,12 @@ class TestsFlextInfraMakeSerialization:
             (
                 f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
+                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ] '
+                f'&& [ "$({make_config.apply_variable})" = '
+                f'"{make_config.apply_value}" ]; then '
                 f"printf 'generated\\n' > {projection}; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
+                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ] '
+                f'&& [ -z "$({make_config.apply_variable})" ]; then '
                 f'[ "$({make_config.apply_variable})" != '
                 f'"{make_config.apply_value}" ] || exit 9; '
                 "else exit 8; fi\n"
@@ -774,9 +777,12 @@ class TestsFlextInfraMakeSerialization:
             (
                 f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
+                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ] '
+                f'&& [ "$({make_config.apply_variable})" = '
+                f'"{make_config.apply_value}" ]; then '
                 f"{sys.executable} {worker} {state} mutation; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
+                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ] '
+                f'&& [ -z "$({make_config.apply_variable})" ]; then '
                 f"{sys.executable} {worker} {state} fixed-point; "
                 "else exit 8; "
                 "fi\n"
@@ -886,9 +892,12 @@ class TestsFlextInfraMakeSerialization:
             (
                 f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
+                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ] '
+                f'&& [ "$({make_config.apply_variable})" = '
+                f'"{make_config.apply_value}" ]; then '
                 f"printf 'generated\\n' > {projection}; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
+                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ] '
+                f'&& [ -z "$({make_config.apply_variable})" ]; then '
                 ":; else exit 8; fi\n"
             ),
             encoding="utf-8",

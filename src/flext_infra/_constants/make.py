@@ -90,6 +90,7 @@ class FlextInfraConstantsMake:
         "check",
         "clean",
         "docs",
+        "fix",
         "fmt",
         "scan",
         "test",
