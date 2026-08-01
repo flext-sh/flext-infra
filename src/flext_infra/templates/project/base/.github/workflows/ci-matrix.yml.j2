@@ -47,7 +47,7 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
         run: >-
           docker build
@@ -67,7 +67,7 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
@@ -91,7 +91,7 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:

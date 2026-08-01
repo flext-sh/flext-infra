@@ -56,6 +56,15 @@ Infra:
       test_dirs:
         - ast-grep-rule-tests
 
+    # actions/checkout submodules mode for every generated workflow.
+    # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
+    # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
+    # with "Repository not found" before any code runs. Only projects that
+    # really exercise their subprojects in CI opt in through the override map.
+    checkout_submodules: "false"
+    checkout_submodules_overrides:
+      cosmos-docgen: recursive
+
     github_actions:
       checkout:
         repository: actions/checkout
@@ -210,6 +219,9 @@ Infra:
         - name: release
           default_what: status
           apply_guarded: false
+        - name: fix
+          default_what: check
+          apply_guarded: true
         - name: gen
           default_what: check
           apply_guarded: true
@@ -1273,9 +1285,14 @@ Infra:
           destination: Makefile
           # The generic conform engine is the single Makefile owner for every
           # profile; workspace-root fan-out is selected inside this template.
+          # Fully generated (overwrite: true): a project never owns a verb.
+          # `overwrite: false` froze every existing Makefile at the shape it
+          # had when first written, so new builtin verbs never reached the
+          # fleet. Customisation lives exclusively in custom.mk, through
+          # pre-/post-verb hooks, and may not redefine a verb.
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/custom.mk.j2
           destination: custom.mk
           profiles: [workspace-root, workspace-member, standalone]

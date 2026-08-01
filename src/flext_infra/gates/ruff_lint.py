@@ -42,6 +42,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             c.Infra.VERB_CHECK,
             *check_dirs,
             *ctx.ruff_args,
+            # `check` never mutates: fixing belongs to `make fix`.
+            "--no-fix",
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--quiet",
