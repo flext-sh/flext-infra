@@ -42,7 +42,7 @@ class FlextInfraPytestRunner(s[int]):
         str, m.Field(min_length=1, description="Default repository-relative test root.")
     ]
     reports: Annotated[
-        str, m.Field(min_length=1, description="Repository-relative test report root.")
+        Path, m.Field(description="Repository-relative test report root.")
     ]
     fail_fast: Annotated[bool, m.Field(description="Stop after the first failure.")] = (
         False
@@ -86,7 +86,7 @@ class FlextInfraPytestRunner(s[int]):
             match=cls._environment_value(c.Infra.PYTEST_ENV_MATCH) or None,
             what=cls._environment_value(c.Infra.PYTEST_ENV_WHAT) or None,
             target=cls._environment_value(c.Infra.PYTEST_ENV_TARGET),
-            reports=cls._environment_value(c.Infra.PYTEST_ENV_REPORTS),
+            reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             fail_fast=cls._environment_flag(c.Infra.PYTEST_ENV_FAIL_FAST),
             verbose=cls._environment_flag(c.Infra.PYTEST_ENV_VERBOSE),
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
@@ -96,22 +96,29 @@ class FlextInfraPytestRunner(s[int]):
     def _validate_paths_and_selectors(self) -> Self:
         """Reject selector and output paths that escape the active project."""
         selector = FlextInfraPytestSelectorValidator(
-            workspace_root=self.root, file=self.file, match=self.match, what=self.what
+            workspace_root=self.workspace_root,
+            file=self.file,
+            match=self.match,
+            what=self.what,
         )
         resolved_selector = selector.execute()
         if resolved_selector.failure:
             raise ValueError(resolved_selector.error or "invalid pytest selector")
-        for field_name, value in (("target", self.target), ("reports", self.reports)):
-            path = Path(value)
+        paths: tuple[tuple[str, Path, str], ...] = (
+            ("target", Path(self.target), self.target),
+            ("reports", self.reports, self.reports.as_posix()),
+        )
+        for field_name, path, raw_value in paths:
             if (
-                path.is_absolute()
+                not path.parts
+                or path.is_absolute()
                 or any(part in {"", ".", ".."} for part in path.parts)
-                or any(character in value for character in "\0\r\n")
+                or any(character in raw_value for character in "\0\r\n")
             ):
                 msg = f"{field_name} must be a normalized repository-relative path"
                 raise ValueError(msg)
         target_result = FlextInfraPytestSelectorValidator.resolve_file(
-            self.root, self.target
+            self.workspace_root, self.target
         )
         if target_result.failure:
             raise ValueError(target_result.error or "invalid pytest target")
@@ -120,7 +127,7 @@ class FlextInfraPytestRunner(s[int]):
     def _report_directory(self) -> Path:
         """Create one collision-resistant report directory under the project."""
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
-        report_root = self.root / self.reports
+        report_root = Path(self.workspace_root) / self.reports
         report_dir = report_root / run_id
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
@@ -225,7 +232,7 @@ class FlextInfraPytestRunner(s[int]):
         run_result = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
-            cwd=self.root,
+            cwd=self.workspace_root,
             remove_env_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             live=True,
             deadline=deadline,
@@ -271,9 +278,8 @@ class FlextInfraPytestRunner(s[int]):
             f"state={timeout_state}\n"
         )
         u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
-        u.Cli.atomic_write_text_file(
-            self.root / self.reports / "latest.txt", f"{report_dir.name}\n"
-        ).unwrap()
+        latest_path = report_dir.parent / "latest.txt"
+        u.Cli.atomic_write_text_file(latest_path, f"{report_dir.name}\n").unwrap()
         if exit_code == 0 and any((
             diagnostics.failed_count,
             diagnostics.error_count,
@@ -290,9 +296,7 @@ class FlextInfraPytestRunner(s[int]):
             return r[int].fail(
                 f"coverage report was not generated or is empty: {coverage_file}"
             )
-        sys.stderr.write(
-            f"Reports: {report_dir} (latest: {self.root / self.reports / 'latest.txt'})\n"
-        )
+        sys.stderr.write(f"Reports: {report_dir} (latest: {latest_path})\n")
         if timed_out:
             sys.stderr.write(
                 "ERROR: pytest invocation reached the configured hard wall "

@@ -47,6 +47,7 @@ class TestsFlextInfraPytestRunner:
         *,
         file: str | None = None,
         match: str | None = None,
+        reports: Path = Path(".reports/tests"),
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -56,8 +57,21 @@ class TestsFlextInfraPytestRunner:
             file=file,
             match=match,
             target="tests",
-            reports=".reports/tests",
+            reports=reports,
         )
+
+    def test_reports_remain_typed_after_validation(self, tmp_path: Path) -> None:
+        """Keep the validated report boundary typed through directory creation."""
+        runner = self._runner(tmp_path)
+
+        tm.that(runner.reports, eq=Path(".reports/tests"))
+
+    def test_reports_reject_a_path_outside_the_workspace(self, tmp_path: Path) -> None:
+        """Reject report output that could escape the active project."""
+        with pytest.raises(
+            ValueError, match="reports must be a normalized repository-relative path"
+        ):
+            self._runner(tmp_path, reports=Path("..") / "reports")
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
         self, tmp_path: Path
