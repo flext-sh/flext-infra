@@ -129,9 +129,9 @@ class TestsFlextInfraWorktreeTransaction:
     ) -> None:
         """Import staged sources with distribution metadata from their runtime."""
         workspace_root = _workspace(tmp_path)
-        runtime_root = workspace_root / ".venv"
-        venv.EnvBuilder(with_pip=False, symlinks=True).create(runtime_root)
         runtime_python = workspace_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        runtime_root = runtime_python.parent.parent
+        venv.EnvBuilder(with_pip=False, symlinks=True).create(runtime_root)
         site_result = u.Cli.run_raw(
             (
                 str(runtime_python),
@@ -140,7 +140,7 @@ class TestsFlextInfraWorktreeTransaction:
             ),
             cwd=workspace_root,
         )
-        site_output = tm.ok(site_result)
+        site_output: p.Cli.CommandOutput = tm.ok(site_result)
         site_packages = Path(site_output.stdout.strip())
         dist_info = site_packages / "transaction_fixture-0.1.0.dist-info"
         dist_info.mkdir()
@@ -167,6 +167,21 @@ class TestsFlextInfraWorktreeTransaction:
 
         tm.that(import_probe.exit_code, eq=0)
         tm.that(import_probe.stdout, has="imported 1 packages")
+
+    def test_request_normalizes_relative_workspace_root(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Canonicalize a direct caller's relative root at the typed boundary."""
+        workspace_root = _workspace(tmp_path)
+        monkeypatch.chdir(tmp_path)
+
+        request = m.Infra.WorktreeTransactionRequest(
+            workspace_root=workspace_root.relative_to(tmp_path),
+            command=("codegen", "conform"),
+            timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
+        )
+
+        tm.that(request.workspace_root, eq=workspace_root.resolve())
 
     def test_complete_worktree_includes_declared_existing_nested_repository(
         self, tmp_path: Path

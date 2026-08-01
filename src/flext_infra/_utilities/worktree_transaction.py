@@ -667,7 +667,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         cls, request: m.Infra.WorktreeTransactionRequest
     ) -> p.Result[m.Infra.WorktreeTransactionReport]:
         """Execute, validate, optionally apply, and always remove one worktree."""
-        workspace_root = request.workspace_root.resolve()
+        workspace_root = request.workspace_root
         transaction_id = uuid4().hex
         primary_result = FlextInfraUtilitiesGitScope.git_primary_worktree_root(
             workspace_root
@@ -738,7 +738,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             worktree_root, environment, request.timeout_seconds, lint_commands
         )
         relocated = cls._relocate_command(
-            request.command, request.workspace_root.resolve(), worktree_root
+            request.command, request.workspace_root, worktree_root
         )
         command_result = u.Cli.run_raw(
             (sys.executable, "-m", "flext_infra", *relocated),

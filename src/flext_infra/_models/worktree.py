@@ -103,6 +103,12 @@ class FlextInfraModelsWorktree:
             ),
         ] = ()
 
+        @m.field_validator("workspace_root")
+        @classmethod
+        def normalize_workspace_root(cls, workspace_root: Path) -> Path:
+            """Resolve the source root once at the typed request boundary."""
+            return workspace_root.resolve()
+
     class WorktreeTransactionReport(m.ArbitraryTypesModel):
         """Complete evidence for one isolated worktree transaction."""
 
