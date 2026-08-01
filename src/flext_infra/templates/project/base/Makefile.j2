@@ -128,9 +128,15 @@ UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dep
 
 {% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
+{% if verb.apply_guarded -%}
+_APPLY_DEFAULT_{{ verb.name }} := {{ verb.apply_what or "apply" }}
+{% endif -%}
 {% endfor -%}
 {% for verb in extra_verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
+{% if verb.apply_guarded -%}
+_APPLY_DEFAULT_{{ verb.name }} := {{ verb.apply_what or "apply" }}
+{% endif -%}
 {% endfor %}
 
 # === SECTION: profile routing (managed) ===
@@ -266,6 +272,9 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
+	if [ -z "$$what" ] && [ "$(APPLY)" = "Y" ] && [ -n "$(_APPLY_DEFAULT_$(1))" ]; then \
+		what="$(_APPLY_DEFAULT_$(1))"; \
+	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \

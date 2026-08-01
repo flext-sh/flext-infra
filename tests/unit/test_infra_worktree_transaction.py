@@ -740,12 +740,15 @@ class TestsFlextInfraWorktreeTransactionLint:
             eq=str(venv_python.resolve()),
         )
 
-    def test_transaction_lint_reports_counts_and_actionable_locations(self) -> None:
-        """Keep aggregate regression guards and file-level repair evidence."""
+    def test_transaction_lint_runs_each_tool_exactly_once(self) -> None:
+        """Cada ferramenta roda uma unica vez, conforme a sua funcao."""
+        declared = tuple(
+            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        )
         commands = dict(c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS)
 
+        tm.that(len(declared), eq=len(set(declared)))
         tm.that(commands["ruff"], has="--statistics")
-        tm.that(commands["ruff-details"], has="concise")
 
     def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
         """Stable debt is reported; every introduced diagnostic is rejected."""

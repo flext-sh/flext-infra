@@ -58,7 +58,7 @@ jobs:
         run: |
           docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
           docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
-  # End SECTION: distro-matrix
+      # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
@@ -108,4 +108,4 @@ jobs:
       - name: Verb surface
         shell: bash
         run: make help
-  # End SECTION: windows
+# End SECTION: windows

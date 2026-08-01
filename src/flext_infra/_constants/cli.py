@@ -113,11 +113,10 @@ class FlextInfraConstantsCli:
     })
     "CLI routes that express application through ``--mode apply``."
     WORKTREE_TRANSACTION_LINT_COMMANDS: Final[t.StrSequencePairTuple] = (
+        # Uma execucao por ferramenta: `--statistics` ja fornece as contagens
+        # comparadas antes e depois da mutacao. A variante `concise` rodava a
+        # mesma checagem uma segunda vez sem nenhum consumidor.
         ("ruff", ("ruff", "check", ".", "--preview", "--statistics")),
-        (
-            "ruff-details",
-            ("ruff", "check", ".", "--preview", "--output-format", "concise"),
-        ),
         ("pyrefly", ("pyrefly", "check")),
     )
     "Lint counts and actionable locations captured around isolated mutation."
