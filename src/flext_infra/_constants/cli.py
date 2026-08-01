@@ -112,15 +112,20 @@ class FlextInfraConstantsCli:
         "codegen:conform"
     })
     "CLI routes that express application through ``--mode apply``."
-    WORKTREE_TRANSACTION_LINT_COMMANDS: Final[t.StrSequencePairTuple] = (
-        ("ruff", ("ruff", "check", ".", "--preview", "--statistics")),
-        (
-            "ruff-details",
-            ("ruff", "check", ".", "--preview", "--output-format", "concise"),
-        ),
-        ("pyrefly", ("pyrefly", "check")),
-    )
-    "Lint counts and actionable locations captured around isolated mutation."
+    WORKTREE_TRANSACTION_LINT_COMMANDS: Final[t.StrSequencePairTuple] = ()
+    """Empty by contract: one tool runs once, in the verb that owns it.
+
+    Why (ai-hub-qwoc): this ran `ruff check . --preview` inside the isolated
+    transaction worktree, which has neither the project's pyproject nor its
+    path scoping. Measured on ai-hub: `ruff check src/ tests/` reports zero
+    errors while the transaction reported 548 (189 SLF001, 70 PLC2701, 52
+    S108 ...), so a clean repository could not be conformed at all --
+    `make gen APPLY=Y` aborted before writing a single managed file.
+
+    Linting belongs to its own verb and runs exactly once: `ruff check` in
+    `make check`, `ruff format` in `make fmt`, `ruff check --fix` in
+    `make fix`. Conform owns structural conformance, never a second lint pass.
+    """
 
 
 __all__: tuple[str, ...] = ("FlextInfraConstantsCli",)
