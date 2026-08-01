@@ -13,6 +13,10 @@ implementations directly.
 - An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
   metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
   CI surface, and project runtime.
+- Generated `.envrc` files derive `PROJECT_ROOT` from the nearest
+  `pyproject.toml` through direnv's documented `find_up` stdlib function. They
+  do not depend on undocumented `DIRENV_*` variables, so strict evaluation is
+  valid both at a repository root and under `direnv exec` from a subdirectory.
 - External and fork Git links are observed from live Git metadata. Conform
   preserves their `.gitmodules` blocks but never initializes, updates, checks
   out, lints, type-checks, provisions, or otherwise manages them.
