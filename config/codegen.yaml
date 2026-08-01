@@ -177,6 +177,7 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      apply_absent_value: N
       ci:
         variable: CI
         value: Y
