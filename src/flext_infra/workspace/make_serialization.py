@@ -24,10 +24,10 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         ),
     ]
-    what: Annotated[
+    selector_value: Annotated[
         str,
         m.Field(
-            description="Caller WHAT value; empty resolves from the verb matrix"
+            description="Caller selector value; empty resolves from the verb matrix"
         ),
     ] = ""
     apply_token: Annotated[
@@ -82,7 +82,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"Make verb '{self.verb}' is read-only and does not accept "
                 f"{make_config.apply_variable}"
             )
-        selected_what = self.what or (
+        selected_what = self.selector_value or (
             verb_spec.apply_what if self.apply_token else verb_spec.default_what
         )
         if selected_what not in verb_spec.whats:
