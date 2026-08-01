@@ -250,7 +250,13 @@ Infra:
           apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"
+        # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
+        # dispatch every unknown WHAT to a `_custom_<verb>_<what>` handler --
+        # that IS the canonical extension mechanism for new WHATs, distinct
+        # from pre-/post- lifecycle hooks. The validator must accept both
+        # shapes the runtime itself dispatches to, or every project that
+        # defines a custom WHAT handler fails `codegen conform` outright.
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
