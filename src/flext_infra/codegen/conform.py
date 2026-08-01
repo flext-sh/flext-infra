@@ -1374,6 +1374,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             )
+        if destination == ".pre-commit-config.yaml":
+            return r[p.Model].ok(m.Infra.PreCommitRenderSpec(make=codegen.make))
         if destination == "sgconfig.yml":
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.

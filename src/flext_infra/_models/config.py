@@ -1186,6 +1186,14 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class PreCommitRenderSpec(_ConfigContract):
+        """Typed input for the generated canonical Make lifecycle hooks."""
+
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical Make lifecycle contract"),
+        ]
+
     class SgconfigRenderSpec(_ConfigContract):
         """Typed input for the generated ast-grep project config.
 
