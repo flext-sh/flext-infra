@@ -53,8 +53,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        @property
-        def tomlsort_sort_first(self) -> t.StrSequence: ...
+        # Declared as a plain attribute, not a property: the concrete owner
+        # (FlextInfraPyprojectModernizer) supplies it as a Pydantic field whose
+        # default comes from the tomlsort SSOT. A property here would make the
+        # field an incompatible override of a read-only descriptor.
+        tomlsort_sort_first: t.StrSequence
 
         def _reorder_document_inplace(
             self,

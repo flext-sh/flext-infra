@@ -32,9 +32,15 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
 
     workspace_root: Annotated[
         Path,
-        m.BeforeValidator(lambda v: (v if isinstance(v, Path) else Path(v)).resolve()),
+        m.BeforeValidator(
+            lambda v: ub.resolve_workspace_root_or_cwd(
+                v if isinstance(v, Path) else Path(v)
+            )
+        ),
     ] = m.Field(
-        default_factory=Path.cwd, alias="workspace", description="Workspace root"
+        default_factory=ub.resolve_workspace_root_or_cwd,
+        alias="workspace",
+        description="Workspace root",
     )
     apply_changes: bool = m.Field(
         default=False,
