@@ -43,7 +43,7 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-{% for step in make.workflow %}
+{% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
         run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {% endfor %}
