@@ -47,6 +47,15 @@ Infra:
           user: root
           auto_commit: "on"
 
+    # Why (ai-hub-qwoc): the ast-grep project contract for every governed
+    # repository. A provider manifest may declare sgconfig.yml as a required
+    # surface, so it is rendered from here instead of hand-written per repo.
+    sgconfig:
+      rule_dirs:
+        - ast-grep-rules
+      test_dirs:
+        - ast-grep-rule-tests
+
     github_actions:
       checkout:
         repository: actions/checkout
@@ -1163,6 +1172,16 @@ Infra:
           profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
+        # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
+        # required surface. Without a generator it was hand-written in one
+        # repository and absent in another, so provider discovery failed closed
+        # with "missing declared file: sgconfig.yml". Rendering it from the SSOT
+        # gives every governed repository the same ast-grep contract.
+        - source: base/sgconfig.yml.j2
+          destination: sgconfig.yml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
         - source: base/python-version.j2
           destination: .python-version
           profiles: [workspace-root, standalone]
@@ -1417,4 +1436,3 @@ Infra:
           profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
-

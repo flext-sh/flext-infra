@@ -1151,6 +1151,32 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class SgconfigRenderSpec(_ConfigContract):
+        """Typed input for the generated ast-grep project config.
+
+        Why (ai-hub-qwoc): a provider manifest can declare ``sgconfig.yml`` as a
+        required surface, but no generator owned it, so the file was authored by
+        hand in one repository and simply absent in another -- provider discovery
+        then failed closed with ``missing declared file: sgconfig.yml``. The rule
+        and fixture directories are declared here so every repository renders the
+        same contract from the SSOT instead of a hand-written copy.
+        """
+
+        rule_dirs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                min_length=1,
+                description="Directories holding this project's ast-grep rules",
+            ),
+        ]
+        test_dirs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                default=(),
+                description="Directories holding rule fixtures and snapshots",
+            ),
+        ]
+
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
@@ -1616,6 +1642,12 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
+        ]
+        sgconfig: Annotated[
+            FlextInfraConfigModels.SgconfigRenderSpec,
+            m.Field(
+                description="Canonical ast-grep project contract for every repo"
+            ),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],

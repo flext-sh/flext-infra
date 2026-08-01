@@ -1371,6 +1371,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             )
+        if destination == "sgconfig.yml":
+            # Why (ai-hub-qwoc): the ast-grep contract is identical for every
+            # governed repository, so it renders straight from the codegen SSOT.
+            return r[p.Model].ok(codegen.sgconfig)
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
