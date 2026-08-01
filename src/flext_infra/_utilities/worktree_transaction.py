@@ -352,7 +352,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         """
         candidate = project_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
         if candidate.is_file():
-            return str(candidate.resolve())
+            return str(candidate.absolute())
         return sys.executable
 
     @classmethod

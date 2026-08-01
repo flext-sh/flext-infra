@@ -130,7 +130,7 @@ class TestsFlextInfraWorktreeTransaction:
         """Import staged sources with distribution metadata from their runtime."""
         workspace_root = _workspace(tmp_path)
         runtime_root = workspace_root / ".venv"
-        venv.EnvBuilder(with_pip=False).create(runtime_root)
+        venv.EnvBuilder(with_pip=False, symlinks=True).create(runtime_root)
         runtime_python = workspace_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
         site_result = u.Cli.run_raw(
             (
