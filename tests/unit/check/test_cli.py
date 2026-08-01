@@ -113,9 +113,11 @@ class TestWorkspaceCheckCli:
 
         tm.that(exit_code, eq=0)
 
-    def test_run_cli_fix_rewrites_source_with_forwarded_ruff_args(
-        self, tmp_path: Path
+    @pytest.mark.parametrize("mutation_option", ("--apply", "--fix", "--check-only"))
+    def test_run_cli_rejects_mutation_options(
+        self, tmp_path: Path, mutation_option: str
     ) -> None:
+        """The check CLI has no write-capable parameter surface."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(
             workspace, "flext-core", "import os\n\nvalue = 1\n"
@@ -128,38 +130,14 @@ class TestWorkspaceCheckCli:
             str(workspace),
             "--gates",
             "lint",
-            "--fix",
+            mutation_option,
             "--ruff-args",
             "--select F401",
             "--projects",
             "flext-core",
         ])
 
-        tm.that(exit_code, eq=0)
-        tm.that("import os" in module_path.read_text(encoding="utf-8"), eq=False)
-
-    def test_run_cli_check_only_preserves_source(self, tmp_path: Path) -> None:
-        workspace = self._create_workspace(tmp_path)
-        module_path = self._write_module(
-            workspace, "flext-core", "import os\n\nvalue = 1\n"
-        )
-
-        exit_code = main([
-            "check",
-            "run",
-            "--workspace",
-            str(workspace),
-            "--gates",
-            "lint",
-            "--fix",
-            "--check-only",
-            "--ruff-args",
-            "--select F401",
-            "--projects",
-            "flext-core",
-        ])
-
-        tm.that(exit_code, eq=1)
+        tm.that(exit_code, ne=0)
         tm.that(module_path.read_text(encoding="utf-8"), eq="import os\n\nvalue = 1\n")
 
     def test_run_cli_accepts_shared_dry_run_flag(self) -> None:

@@ -25,14 +25,10 @@ class TestsCodegenWorktreeVerb:
         """
         tm.that(self._verb("worktree").name, eq="worktree")
 
-    def test_worktree_defaults_to_a_read_only_selector(self) -> None:
-        """The default operation reports state without mutating the repository.
-
-        `list` is the only selector that reports state without touching the
-        worktree registry, so it is the safe default.
-        """
+    def test_worktree_defaults_to_the_aggregate_contract(self) -> None:
+        """Every public verb shares the selector-free aggregate default."""
         verb = self._verb("worktree")
-        tm.that(verb.default_what, eq="list")
+        tm.that(verb.default_what, eq="all")
 
     def test_mutating_operations_own_the_apply_guard(self) -> None:
         """Read-only list remains usable without granting mutation authority.

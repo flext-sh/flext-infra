@@ -693,6 +693,7 @@ class TestsFlextInfraMakeSerialization:
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(
             (
+                f"{make_config.selector} ?= {mutation_what}\n"
                 f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
                 f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ] '
@@ -709,6 +710,14 @@ class TestsFlextInfraMakeSerialization:
         )
         test_u.Tests.initialize_git_repo(tmp_path)
 
+        default_what = next(
+            verb.default_what
+            for verb in make_config.verbs
+            if verb.name == mutation_verb
+        )
+        mutation_env = {make_config.apply_variable: make_config.apply_value}
+        if mutation_what != default_what:
+            mutation_env[make_config.selector] = mutation_what
         process = tm.ok(
             u.Cli.run_raw(
                 [
@@ -725,10 +734,7 @@ class TestsFlextInfraMakeSerialization:
                     mutation_verb,
                 ],
                 cwd=tmp_path,
-                env={
-                    make_config.apply_variable: make_config.apply_value,
-                    make_config.selector: mutation_what,
-                },
+                env=mutation_env,
             )
         )
 

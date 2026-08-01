@@ -122,9 +122,9 @@ def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
         "\t@true\n"
         "check test:\n"
         "\t@printf 'project=%s verb=%s gates=%s uv_project=%s uv_env=%s "
-        "venv=%s fail_fast=%s\\n' '$(notdir $(CURDIR))' '$@' "
+        "venv=%s fail_fast=%s ci=%s\\n' '$(notdir $(CURDIR))' '$@' "
         "'$(CHECK_GATES)' '$(UV_PROJECT)' '$(UV_PROJECT_ENVIRONMENT)' "
-        "'$(VIRTUAL_ENV)' '$(FAIL_FAST)'\n"
+        "'$(VIRTUAL_ENV)' '$(FAIL_FAST)' '$(CI)'\n"
         f"\t@exit {exit_code}\n",
         encoding="utf-8",
     )
@@ -146,6 +146,13 @@ class TestsWorkspaceRootMakeContract:
             fast_gates.issubset(set(config.Infra.codegen.make.check_gates_allowed)),
             where=bool,
         )
+        tm.that(
+            {verb.default_what for verb in config.Infra.codegen.make.verbs},
+            eq={"all"},
+        )
+        tm.that(
+            {verb.name for verb in config.Infra.codegen.make.verbs}, has="fix"
+        )
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.
@@ -160,7 +167,7 @@ class TestsWorkspaceRootMakeContract:
 
         generated: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "gen", "WHAT=check"],
+                ["-C", str(workspace_root), "--dry-run", "gen"],
                 cwd=workspace_root,
             )
         )
@@ -253,6 +260,98 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has='--make-arg "APPLY=Y"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")
+
+    def test_generated_make_help_publishes_selector_free_standard_commands(
+        self, tmp_path: Path
+    ) -> None:
+        """The standard command surface never requires or advertises WHAT."""
+        workspace_root, _ = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "help"], cwd=workspace_root
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has=["gen", "fmt", "fix", "APPLY=Y"])
+        tm.that(output, lacks="WHAT=")
+
+    def test_generated_make_strict_pipeline_invokes_each_tool_once(
+        self, tmp_path: Path
+    ) -> None:
+        """Each strict phase owns one tool and never repeats another phase."""
+        workspace_root, _ = _write_workspace(tmp_path)
+        handlers = {
+            "setup": ("_builtin_setup_environment", "CI=Y"),
+            "gen": ("_builtin_gen_all", "CI=Y", "APPLY=Y"),
+            "fmt": ("_builtin_fmt_all", "CI=Y", "APPLY=Y"),
+            "fix": ("_builtin_fix_all", "CI=Y", "APPLY=Y"),
+            "check": (
+                "_builtin_check_all",
+                "CI=Y",
+                "CHECK_GATES=lint",
+            ),
+            "test": ("_builtin_test_all", "CI=Y"),
+        }
+        outputs: dict[str, str] = {}
+        for phase, arguments in handlers.items():
+            process: cli_p.Cli.CommandOutput = tm.ok(
+                test_u.Tests.run_isolated_make(
+                    ["-C", str(workspace_root), "--dry-run", *arguments],
+                    cwd=workspace_root,
+                )
+            )
+            output = process.stdout + process.stderr
+            tm.that(process.exit_code, eq=0, msg=output)
+            outputs[phase] = output
+
+        tm.that(outputs["setup"].count(" sync --project "), eq=1)
+        tm.that(outputs["gen"].count(" codegen conform "), eq=1)
+        tm.that(outputs["gen"], lacks=["ruff ", "pyrefly", "pyright", "mypy"])
+        tm.that(outputs["fmt"].count(" ruff format "), eq=1)
+        tm.that(outputs["fmt"], lacks="ruff check")
+        tm.that(outputs["fix"].count(" ruff check --fix "), eq=1)
+        tm.that(outputs["fix"], lacks="ruff format")
+        tm.that(outputs["check"].count(" check run "), eq=1)
+        tm.that(outputs["check"], lacks=["--fix", "ruff format"])
+        tm.that(outputs["test"].count("flext_infra._pytest_entry"), eq=1)
+
+    @pytest.mark.parametrize("mutation", ("APPLY=Y", "FIX=1", "CHECK_ONLY=1"))
+    def test_generated_make_check_rejects_mutation_controls(
+        self, tmp_path: Path, mutation: str
+    ) -> None:
+        """Check fails before any tool when a mutation control is supplied."""
+        workspace_root, _ = _write_workspace(tmp_path)
+        runtime_python = workspace_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        invocation_log = workspace_root / "uv.log"
+        fake_uv = workspace_root / "bin" / "uv"
+        test_u.Tests.write_executable(
+            fake_uv,
+            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\nexit 0\n',
+        )
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "_builtin_check_local",
+                    mutation,
+                    f"UV={fake_uv}",
+                ],
+                cwd=workspace_root,
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr,
+            has="check is read-only; APPLY, FIX, and CHECK_ONLY are forbidden",
+        )
+        tm.that(invocation_log.exists(), eq=False)
 
     def test_generated_make_routes_file_and_match_only_to_owning_project(
         self, tmp_path: Path
@@ -390,16 +489,19 @@ class TestsWorkspaceRootMakeContract:
             msg=check_process.stdout + check_process.stderr,
         )
         tm.that(sum("workspace serialize-make" in line for line in invocations), eq=1)
-        tm.that(invoked, has=["ruff check", "ruff format", "pyrefly check", "mypy"])
+        tm.that(invoked, has=["ruff check --no-fix", "pyrefly check", "mypy"])
         tm.that(invoked, has="pyright")
-        tm.that(invoked, lacks=["workspace orchestrate", "flext_infra check run"])
+        tm.that(
+            invoked,
+            lacks=["workspace orchestrate", "flext_infra check run", "ruff format"],
+        )
         for selected_file in selected_files:
             tm.that(invoked, has=selected_file)
 
-    def test_generated_make_default_test_validates_only_workspace_root(
+    def test_generated_make_default_test_fans_out_only_to_members(
         self, tmp_path: Path
     ) -> None:
-        """Keep default validation at self; members require explicit selection."""
+        """A local workspace root defaults to every declared member."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -411,8 +513,34 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="workspace orchestrate")
+        tm.that(output, lacks=["flext_infra._pytest_entry", "--projects ."])
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
+
+    def test_generated_make_ci_default_validates_only_workspace_root(
+        self, tmp_path: Path
+    ) -> None:
+        """CI=Y narrows a workspace-root default to its own checkout."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_test_all",
+                    "CI=Y",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="flext_infra._pytest_entry")
-        tm.that(output, lacks=["workspace orchestrate", "--projects ."])
+        tm.that(output, lacks="workspace orchestrate")
         for project_name in project_names:
             tm.that(output, lacks=f"--projects {project_name}")
 
@@ -592,6 +720,7 @@ class TestsWorkspaceRootMakeContract:
         monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(hostile_venv))
         monkeypatch.setenv("VIRTUAL_ENV", str(hostile_venv))
         monkeypatch.setenv("PYTHONPATH", str(hostile_root / "src"))
+        monkeypatch.setenv("CI", "Y")
 
         result = FlextInfraOrchestratorService(verb="check").orchestrate(
             project_names, "check", make_args=("CHECK_GATES=lint,pyrefly",)
@@ -602,6 +731,7 @@ class TestsWorkspaceRootMakeContract:
         for output in outputs:
             child_log = Path(output.stdout).read_text(encoding="utf-8")
             tm.that(child_log, has="gates=lint,pyrefly")
+            tm.that(child_log, has="ci=Y")
             tm.that(child_log, lacks=str(hostile_root))
 
     def test_orchestrator_fail_fast_preserves_child_exit_and_skips_remaining(

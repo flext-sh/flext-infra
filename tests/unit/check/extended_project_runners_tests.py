@@ -42,7 +42,7 @@ class TestsExtendedProjectRunners:
         )
         try:
             result = checker.run_projects(
-                ["p1"], ["lint", "format", "pyrefly"], reports_dir=tmp_path / "reports"
+                ["p1"], ["lint", "pyrefly"], reports_dir=tmp_path / "reports"
             )
         finally:
             if original_pythonpath:

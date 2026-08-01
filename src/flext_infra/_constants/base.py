@@ -267,7 +267,7 @@ class FlextInfraConstantsBase(
     MARKDOWN: Final[str] = "markdown"
     SILENT_FAILURE: Final[str] = "silent-failure"
     DEFAULT_CSV: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
+        "lint,pyrefly,mypy,pyright,silent-failure,security,markdown"
     )
 
     @unique

@@ -151,7 +151,7 @@ class TestsFlextInfraBasemkRenderer:
         text = result.value
         for part in (
             "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"',
+            'echo "  CHECK_GATES=lint,pyrefly,mypy,pyright,security,markdown,smells"',
             'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
             'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
             'echo "  DIAG=1                      Emit extended pytest diagnostics"',

@@ -61,7 +61,7 @@ class FlextInfraWorkspaceChecker(
             name = gate.strip()
             if not name:
                 continue
-            if name not in c.Infra.ALLOWED_GATES:
+            if name not in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES:
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
@@ -86,8 +86,6 @@ class FlextInfraWorkspaceChecker(
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,
-            apply_fixes=params.fix,
-            check_only=params.check_only,
             ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
         )

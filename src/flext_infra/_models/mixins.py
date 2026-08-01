@@ -102,23 +102,9 @@ class FlextInfraModelsMixins:
             """Resolved output directory when provided."""
             return ub.normalize_optional_path(self.output_dir)
 
-    class WriteMixin(ScopeMixin):
-        """Canonical write contract — apply/dry-run + safety gates.
+    class GateSelectionMixin:
+        """Canonical typed gate selection shared by read and write commands."""
 
-        Gates are stored as ``t.StrSequence`` — CSV strings are parsed
-        by ``@field_validator`` so downstream consumers always see a
-        normalized list.
-        """
-
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply changes instead of running in dry-run mode",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
-                },
-            ),
-        ] = False
         gates: t.StrSequence = m.Field(
             default_factory=lambda: tuple(
                 gate.strip()
@@ -144,6 +130,22 @@ class FlextInfraModelsMixins:
                     token.strip() for token in part.split(",") if token.strip()
                 )
             return tuple(normalized)
+
+    class ReadGateMixin(ScopeMixin, GateSelectionMixin):
+        """Read-only scoped command with a typed gate selection."""
+
+    class WriteMixin(ScopeMixin, GateSelectionMixin):
+        """Canonical write contract — apply/dry-run plus safety gates."""
+
+        apply: Annotated[
+            bool,
+            m.Field(
+                description="Apply changes instead of running in dry-run mode",
+                json_schema_extra={
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
+                },
+            ),
+        ] = False
 
         @m.computed_field()
         @property

@@ -15,12 +15,11 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
 
-    class RunCommand(mm.WriteMixin, m.ContractModel):
+    class RunCommand(mm.ReadGateMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check run``.
 
-        Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
-        ``apply``/``dry_run``, ``workspace``, ``projects``, ``fail_fast``,
-        ``verbose`` from ``WriteMixin``.
+        Inherits canonical ``gates`` (parsed to ``t.StrSequence``), workspace,
+        projects, fail-fast, and verbose fields from the read-only mixin.
         """
 
         reports_dir: Annotated[
@@ -29,16 +28,6 @@ class FlextInfraModelsCheck:
                 alias="reports-dir", description="Directory used to write check reports"
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
-        fix: Annotated[
-            bool, m.Field(False, description="Apply supported gate fixes before run")
-        ] = False
-        check_only: Annotated[
-            bool,
-            m.Field(
-                alias="check-only",
-                description="Enable check-only mode for supported tools",
-            ),
-        ] = False
         ruff_args: Annotated[
             str | None,
             m.Field(alias="ruff-args", description="Extra arguments forwarded to Ruff"),

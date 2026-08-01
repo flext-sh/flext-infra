@@ -977,7 +977,7 @@ class TestScriptDispatchMakefile:
         tm.that("gen" in verb_names, eq=True)
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
-        tm.that(gen.default_what, eq="check")
+        tm.that(gen.default_what, eq="all")
         tm.that(gen.apply_guarded, eq=True)
         # Serialization follows the rename: gen is serialized, codegen gone.
         tm.that("gen" in make_config.serialization.verbs, eq=True)
@@ -992,7 +992,7 @@ class TestScriptDispatchMakefile:
         )
         tm.that(" gen" in public_line, eq=True)
         tm.that(" codegen" in public_line, eq=False)
-        tm.that("_DEFAULT_gen := check" in rendered, eq=True)
+        tm.that("_DEFAULT_gen := all" in rendered, eq=True)
         tm.that("_builtin_gen_check:" in rendered, eq=True)
         tm.that("_builtin_gen_apply:" in rendered, eq=True)
         tm.that("_builtin_codegen_check" in rendered, eq=False)
@@ -1009,7 +1009,7 @@ class TestScriptDispatchMakefile:
         tm.that("--mode apply" in gen_apply_body, eq=True)
         tm.that("_require_apply" in gen_apply_body, eq=True)
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
+        tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
         for policy in config.Infra.codegen.make.custom_handler_policies.values():
             tm.that("|gen|" in policy.target_pattern, eq=True)

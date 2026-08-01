@@ -318,11 +318,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     def _execute_gate(
         gate_instance: FlextInfraGate, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """Run fix-then-check or check-only for a single gate instance."""
-        if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
-            fix_execution = gate_instance.fix(project_dir, ctx)
-            if not fix_execution.result.passed:
-                return fix_execution
+        """Run one read-only gate check; mutation belongs to the fix verb."""
         return gate_instance.check(project_dir, ctx)
 
 

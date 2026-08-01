@@ -326,7 +326,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             result.stdout,
             has=[
-                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells",
+                "CHECK_GATES=lint,pyrefly,mypy,pyright,security,markdown,smells",
                 "FILE=src/foo.py             Single file for check/fmt/test",
                 'FILES="a.py b.py"          Multiple files for check/fmt; test rejects it',
                 "CHANGED_ONLY=1              Git-changed Python files for check",
@@ -794,7 +794,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, eq=2)
         tm.that(
             result.stdout + result.stderr,
-            has="FILE/FILES/CHANGED_ONLY fast-path only supports lint,format,pyrefly,mypy,pyright",
+            has="FILE/FILES/CHANGED_ONLY fast-path only supports lint,pyrefly,mypy,pyright",
         )
 
     def test_make_boot_works_without_existing_venv_in_workspace_mode(

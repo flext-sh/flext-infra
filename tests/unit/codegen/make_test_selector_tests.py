@@ -49,12 +49,13 @@ class TestsMakeTestSelector:
 
         canonical = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "fmt", "WHAT=check", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "fmt", f"UV={uv}"], cwd=tmp_path
             )
         )
         tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)
         invocations = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocations, has=["ruff check --no-fix", "ruff format --check"])
+        tm.that(invocations, has="ruff format --check")
+        tm.that(invocations, lacks="ruff check")
         calls_before_retired = invocations.splitlines()
 
         retired = tm.ok(
