@@ -3,6 +3,7 @@ name: CI
 
 on:
   pull_request:
+    branches: [main]
   push:
     branches:
       - {{ repository_branch }}
@@ -14,6 +15,7 @@ permissions:
 jobs:
   ci:
     name: ci
+    if: github.event_name != 'pull_request' || github.head_ref == '{{ repository_branch }}'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -36,11 +38,8 @@ jobs:
       - name: Install declared toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
 
-      - name: Setup
-        run: make setup
+{% for step in make.workflow if "ci" in step.contexts %}
+      - name: {{ step.verb | capitalize }}
+        run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %} {{ make.ci.variable }}={{ make.ci.value }}
 
-      - name: Check
-        run: make check
-
-      - name: Test
-        run: make test
+{% endfor %}

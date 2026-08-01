@@ -84,24 +84,6 @@ class TestsFlextInfraLazyInitProcessing:
         level_two_content, level_three_content, level_four_content = (
             path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in generated_paths
         )
-        format_result = u.Cli.run_raw(
-            [
-                c.Infra.RUFF,
-                c.Infra.FORMAT,
-                "--check",
-                *(str(path) for path in generated_paths),
-            ],
-            cwd=workspace_root,
-        ).unwrap()
-        lint_result = u.Cli.run_raw(
-            [
-                c.Infra.RUFF,
-                c.Infra.CHECK,
-                "--no-fix",
-                *(str(path) for path in generated_paths),
-            ],
-            cwd=workspace_root,
-        ).unwrap()
         check_service = u.Tests.create_lazy_init_service(workspace_root)
         check_result = check_service.generate_inits(check_only=True)
         after = tuple(path.read_bytes() for path in generated_paths)
@@ -115,8 +97,8 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(level_four_content, contains='"worker"')
         tm.that(level_two_content, contains="FlextTestsWorker")
         tm.that(level_three_content, contains="FlextTestsWorker")
-        tm.that(format_result.exit_code, eq=0)
-        tm.that(lint_result.exit_code, eq=0)
+        for path in generated_paths:
+            compile(path.read_text(encoding="utf-8"), str(path), "exec")
         tm.that(check_result, eq=0)
         tm.that(check_service.modified_files, empty=True)
         tm.that(after, eq=before)

@@ -158,7 +158,7 @@ Infra:
         value: Y
       workflow:
         - { verb: setup, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: gen, apply: true, contexts: [local] }
+        - { verb: gen, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_commit] }
@@ -172,11 +172,11 @@ Infra:
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
       serialization:
-        lock_path: .state/flext-infra/make-validation.lock
-        single_flight_lock_path: .state/flext-infra/make-single-flight.lock
+        lock_path: .reports/locks/make-validation.lock
+        single_flight_lock_path: .reports/locks/make-single-flight.lock
         snapshot_excludes:
-          - .state/flext-infra/make-validation.lock
-          - .state/flext-infra/make-single-flight.lock
+          - .reports/locks/make-validation.lock
+          - .reports/locks/make-single-flight.lock
           - .reports
           - .pytest_cache
           - .coverage
@@ -271,10 +271,6 @@ Infra:
         filename: custom.mk
         allow_public_targets: false
         allow_toolchain_declarations: false
-      custom_handler_profile_overrides:
-        workspace-root:
-          allow_public_targets: true
-          allow_toolchain_declarations: true
 
     transaction_routes:
       - { route: check:fix-enforcement, apply_style: flag }
@@ -340,7 +336,6 @@ Infra:
       - { name: .scope }
       - { name: .serena }
       - { name: .sisyphus }
-      - { name: .state }
       - { name: .superpowers }
       - { name: .trash }
       - { name: .turbo }

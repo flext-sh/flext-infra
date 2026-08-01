@@ -34,7 +34,7 @@ class TestsSerializationLockLifecycle:
 
     def test_durable_lock_artifact_survives_for_reuse(self, tmp_path: Path) -> None:
         """A serialized Make verb keeps its lock file for the next invocation."""
-        lock_path = tmp_path / ".state" / "flext-infra" / "make-validation.lock"
+        lock_path = tmp_path / ".reports" / "locks" / "make-validation.lock"
         lock_path.parent.mkdir(parents=True)
 
         tm.ok(
@@ -53,7 +53,7 @@ class TestsSerializationLockLifecycle:
         self, tmp_path: Path
     ) -> None:
         """An isolated transaction leaves neither the lock nor its state root."""
-        state_root = tmp_path / ".state"
+        state_root = tmp_path / ".reports"
         lock_path = state_root / "flext-infra" / "make-validation.lock"
         lock_path.parent.mkdir(parents=True)
 
@@ -75,7 +75,7 @@ class TestsSerializationLockLifecycle:
         self, tmp_path: Path
     ) -> None:
         """Teardown removes only the directories the lock itself created."""
-        state_root = tmp_path / ".state"
+        state_root = tmp_path / ".reports"
         lock_path = state_root / "flext-infra" / "make-validation.lock"
         lock_path.parent.mkdir(parents=True)
         sibling = state_root / "other-owner" / "keep.txt"

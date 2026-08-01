@@ -14,7 +14,7 @@ from flext_tests import tm
 
 
 class TestCodegenCiMatrix:
-    """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
+    """Prove codegen emits one blocking CI workflow and distro Dockerfiles."""
 
     @staticmethod
     def _render_project(root: Path) -> Path:
@@ -35,17 +35,18 @@ class TestCodegenCiMatrix:
         tm.ok(result)
         return root
 
-    def test_ci_matrix_workflow_emitted(self, tmp_path: Path) -> None:
-        """Generated project carries .github/workflows/ci-matrix.yml."""
+    def test_ci_has_one_workflow_owner(self, tmp_path: Path) -> None:
+        """Generated projects carry CI and never a parallel matrix workflow."""
         root = self._render_project(tmp_path / "external")
-        tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
+        workflows = root / ".github" / "workflows"
+        tm.that((workflows / "ci.yml").is_file(), eq=True)
+        tm.that((workflows / "ci-matrix.yml").exists(), eq=False)
 
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")
-        workflows = "\n".join(
-            (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
-            for filename in ("ci.yml", "ci-matrix.yml")
+        workflows = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
         )
         catalog = {
             f"{action.repository}@{action.sha}": action.version
@@ -76,9 +77,15 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
 
-        tm.that(workflow, has="run: make setup")
-        tm.that(workflow, has="run: make check")
-        tm.that(workflow, has="run: make test")
+        expected = tuple(
+            f"run: make {step.verb}"
+            f"{' APPLY=Y' if step.apply else ''} CI=Y"
+            for step in config.Infra.codegen.make.workflow
+            if "ci" in step.contexts
+        )
+        tm.that(workflow, has=expected)
+        positions = tuple(workflow.index(command) for command in expected)
+        tm.that(positions, eq=tuple(sorted(positions)))
 
     def test_ci_uses_typed_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
@@ -148,32 +155,6 @@ class TestCodegenCiMatrix:
         }
         tm.that(after, eq=before)
 
-    def test_ci_matrix_has_only_supported_generic_legs(self, tmp_path: Path) -> None:
-        """Generic Python CI emits only its complete cross-platform legs."""
-        root = self._render_project(tmp_path / "external")
-        workflow = root / ".github" / "workflows" / "ci-matrix.yml"
-        tm.that(workflow.is_file(), eq=True)
-        content = u.Cli.yaml_load_mapping(workflow)
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(content["jobs"])
-        for leg in ("distro-matrix", "macos", "windows"):
-            tm.that(jobs, has=leg)
-        tm.that(jobs, lacks="wsl")
-        tm.that(jobs, lacks="kind")
-
-    def test_host_legs_bootstrap_only_through_make_setup(self, tmp_path: Path) -> None:
-        """MacOS and Windows bootstrap through the same Make surface."""
-        root = self._render_project(tmp_path / "external")
-        content = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
-            encoding="utf-8"
-        )
-        macos = content.split("\n  macos:", maxsplit=1)[1].split(
-            "\n  windows:", maxsplit=1
-        )[0]
-        windows = content.split("\n  windows:", maxsplit=1)[1]
-        for host in (macos, windows):
-            tm.that(host, has="run: make setup")
-        tm.that(windows.count("shell: bash"), eq=2)
-
     def test_workflow_branches_derive_from_workspace_manifest(
         self, tmp_path: Path
     ) -> None:
@@ -189,13 +170,9 @@ class TestCodegenCiMatrix:
         blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
-            encoding="utf-8"
-        )
         tm.that(blocking, has=f"      - {branch}")
-        tm.that(matrix, has=f"branches: [{branch}]")
-        tm.that(blocking, lacks="      - main")
-        tm.that(matrix, lacks="branches: [main]")
+        tm.that(blocking, has="branches: [main]")
+        tm.that(blocking, has=f"github.head_ref == '{branch}'")
 
     def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""

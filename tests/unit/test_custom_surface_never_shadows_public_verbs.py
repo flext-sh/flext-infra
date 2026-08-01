@@ -71,18 +71,10 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
 
         tm.that(offenders, eq={})
 
-    def test_basemk_generation_has_a_declared_make_selector(self) -> None:
-        """The infra-only base.mk owner remains callable through Make."""
+    def test_project_custom_surface_declares_no_handler(self) -> None:
+        """The project custom surface cannot create a parallel handler."""
         custom = (_workspace_root() / c.Infra.CUSTOM_MAKE_FILENAME).read_text(
             encoding="utf-8"
         )
 
-        tm.that(custom, has="_custom_basemk_generate:")
-        tm.that(
-            custom,
-            has=(
-                "basemk generate \\\n"
-                '\t\t--project-name "$(PROJECT_NAME)" --output "$$output"'
-            ),
-            lacks="basemk generate --output",
-        )
+        tm.that(custom, lacks=["_custom_", "basemk generate"])

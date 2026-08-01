@@ -154,7 +154,7 @@ class TestsWorkspaceRootMakeContract:
 
         generated: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "gen", "WHAT=check"],
+                ["-C", str(workspace_root), "--dry-run", "gen", "APPLY=Y"],
                 cwd=workspace_root,
             )
         )
@@ -231,7 +231,7 @@ class TestsWorkspaceRootMakeContract:
                     "-C",
                     str(workspace_root),
                     "--dry-run",
-                    "_builtin_fmt_apply",
+                    "_builtin_fmt_all",
                     f"PROJECT={project_names[0]}",
                     "APPLY=Y",
                 ],
@@ -243,7 +243,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--verb fmt")
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, has='--make-arg "WHAT=apply"')
+        tm.that(output, lacks='--make-arg "WHAT=')
         tm.that(output, has='--make-arg "APPLY=Y"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")

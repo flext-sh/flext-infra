@@ -330,7 +330,7 @@ class TestCodegenConform:
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
-            "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
+            "custom.mk": ".PHONY: pre-status\npre-status:\n\t@true\n",
         }
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -773,10 +773,10 @@ class TestCodegenConform:
                 custom,
                 (
                     ".PHONY: \\\n"
-                    "\t_custom_check_demo \\\n"
-                    "\t_custom_run_demo\n"
-                    "_custom_check_demo:\n\t@true\n"
-                    "_custom_run_demo:\n\t@true\n"
+                    "\tpre-check \\\n"
+                    "\tpost-run\n"
+                    "pre-check:\n\t@true\n"
+                    "post-run:\n\t@true\n"
                 ),
             )
         )
@@ -798,7 +798,7 @@ class TestCodegenConform:
         ]
 
         result = FlextInfraCodegenConform.validate_custom_make(
-            ".PHONY: \\\n\t_custom_check_demo \\",
+            ".PHONY: \\\n\tpre-check \\",
             policy,
             allowed_verbs=tuple(verb.name for verb in config.Infra.codegen.make.verbs),
         )
@@ -827,10 +827,9 @@ class TestCodegenConform:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
-                ".PHONY: pre-check post-test-all _custom_check_myscan\n"
+                ".PHONY: pre-check post-test-all\n"
                 "pre-check:\n\t@true\n"
-                "post-test-all:\n\t@true\n"
-                "_custom_check_myscan:\n\t@true\n",
+                "post-test-all:\n\t@true\n",
             )
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "help"])
@@ -843,7 +842,6 @@ class TestCodegenConform:
                 "pre-<verb>",
                 "pre-check",
                 "post-test-all",
-                "_custom_check_myscan",
             ],
         )
 
@@ -866,30 +864,25 @@ class TestCodegenConform:
                 apply_changes=True,
             ).execute()
         )
-        # The private target is the dispatcher entry point invoked while the
-        # public verb holds the serialization lock. Exercising it directly
-        # keeps this test focused on hook ordering and independent of bootstrap.
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
-                ".PHONY: pre-check post-check _custom_check_probe\n"
-                "pre-check:\n\t@echo HOOK_PRE\n"
-                "_custom_check_probe:\n\t@echo HANDLER_BODY\n"
-                "post-check:\n\t@echo HOOK_POST\n",
+                ".PHONY: pre-help post-help\n"
+                "pre-help:\n\t@echo HOOK_PRE\n"
+                "post-help:\n\t@echo HOOK_POST\n",
             )
         )
         outcome = u.Cli.run_raw([
             "make",
             "-C",
             str(root),
-            "_serialized_check",
-            "WHAT=probe",
+            "help",
         ])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
         pre_at = combined.find("HOOK_PRE")
-        body_at = combined.find("HANDLER_BODY")
+        body_at = combined.find("Canonical Make interface")
         post_at = combined.find("HOOK_POST")
         tm.that(pre_at >= 0 and body_at >= 0 and post_at >= 0, eq=True)
         tm.that(pre_at < body_at, eq=True)
