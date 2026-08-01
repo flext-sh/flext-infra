@@ -362,7 +362,6 @@ class FlextInfraConfigModels:
         apply_what: Annotated[
             t.NonEmptyStr,
             m.Field(
-                default="apply",
                 description=(
                     "Selector an apply-guarded verb resolves to when APPLY is "
                     "set and no explicit WHAT is given. Without it the verb "
@@ -370,9 +369,9 @@ class FlextInfraConfigModels:
                     "nothing. Defaults to 'apply' because that is the mutating "
                     "handler every guarded verb declares; a verb whose mutating "
                     "surface has another name declares it explicitly"
-                ),
+                )
             ),
-        ]
+        ] = "apply"
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""

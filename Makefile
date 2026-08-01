@@ -647,7 +647,7 @@ _builtin_build_artifacts:
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-	if [ -n "$(strip $(APPLY))" ]; then \
+	if [ "$(strip $(APPLY))" = "Y" ]; then \
 		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
 	fi; \
 	gates="$(strip $(CHECK_GATES))"; \
