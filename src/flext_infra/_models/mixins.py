@@ -102,13 +102,8 @@ class FlextInfraModelsMixins:
             """Resolved output directory when provided."""
             return ub.normalize_optional_path(self.output_dir)
 
-    class WriteMixin(ScopeMixin):
-        """Canonical write contract — apply/dry-run + safety gates.
-
-        Gates are stored as ``t.StrSequence`` — CSV strings are parsed
-        by ``@field_validator`` so downstream consumers always see a
-        normalized list.
-        """
+    class ApplyMixin(ScopeMixin):
+        """Canonical mutation contract for tool-independent write commands."""
 
         apply: Annotated[
             bool,
@@ -119,6 +114,21 @@ class FlextInfraModelsMixins:
                 },
             ),
         ] = False
+
+        @m.computed_field()
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            return not self.apply
+
+    class WriteMixin(ApplyMixin):
+        """Mutation contract for commands that dispatch safety gates.
+
+        Gates are stored as ``t.StrSequence`` — CSV strings are parsed
+        by ``@field_validator`` so downstream consumers always see a
+        normalized list.
+        """
+
         gates: t.StrSequence = m.Field(
             default_factory=lambda: tuple(
                 gate.strip()
@@ -144,12 +154,6 @@ class FlextInfraModelsMixins:
                     token.strip() for token in part.split(",") if token.strip()
                 )
             return tuple(normalized)
-
-        @m.computed_field()
-        @property
-        def dry_run(self) -> bool:
-            """Whether writes are disabled (inverse of apply)."""
-            return not self.apply
 
     # ═══════════════════ RELEASE MIXINS ═══════════════════
 

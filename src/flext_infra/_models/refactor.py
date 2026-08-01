@@ -34,7 +34,7 @@ class FlextInfraModelsRefactor(
     - ``ArbitraryTypesModel`` for mutable report/result payloads.
     """
 
-    class RefactorMigrateMroInput(mm.WriteMixin, m.ContractModel):
+    class RefactorMigrateMroInput(mm.ApplyMixin, m.ContractModel):
         """CLI/service request for MRO migration."""
 
         target: Annotated[
@@ -44,13 +44,13 @@ class FlextInfraModelsRefactor(
             ),
         ] = "all"
 
-    class RefactorNamespaceEnforceInput(mm.WriteMixin, m.ContractModel):
+    class RefactorNamespaceEnforceInput(mm.ApplyMixin, m.ContractModel):
         """CLI/service request for namespace enforcement."""
 
-    class ModernizeInput(mm.WriteMixin, m.ContractModel):
+    class ModernizeInput(mm.ApplyMixin, m.ContractModel):
         """CLI/service request for generic modernize transformers."""
 
-    class AccessorMigrationInput(mm.WriteMixin, m.ContractModel):
+    class AccessorMigrationInput(mm.ApplyMixin, m.ContractModel):
         """CLI/service request for accessor migration dry-runs and applies."""
 
         preview_limit: Annotated[

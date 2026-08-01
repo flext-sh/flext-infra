@@ -43,8 +43,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
     """Apply supported auto-fixes + removal candidates, then regenerate inits.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
-    detector-context / fix-key / runtime-alias-rewrite helpers + root +
-    dry_run_gate_names from the facade and sibling mixins via MRO.
+    detector-context / fix-key / runtime-alias-rewrite helpers + root from the
+    facade and sibling mixins via MRO.
     """
 
     if TYPE_CHECKING:
@@ -52,8 +52,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         @property
         def root(self) -> Path: ...
 
-        @property
-        def dry_run_gate_names(self) -> t.StrSequence: ...
         @staticmethod
         def _detector_context(
             rope: p.Infra.RopeWorkspaceDsl,
@@ -120,7 +118,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     project_root=ctx.project_root,
                     violations=manual_typing_violations,
                     parse_failures=parse_failures,
-                    gates=self.dry_run_gate_names,
                 )
                 changed = True
             elif action == "rewrite_compatibility_alias":
@@ -236,7 +233,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             )
         for candidate in report.removal_candidates:
             apply_result = u.Infra.apply_simple_removal_candidate(
-                rope, self.root, candidate, gates=self.dry_run_gate_names
+                rope, self.root, candidate
             )
             if apply_result.failure:
                 msg = apply_result.error or (

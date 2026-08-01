@@ -641,12 +641,11 @@ class FlextInfraUtilitiesRefactorCensus:
         workspace: Path,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        gates: t.StrSequence,
         source_cache: dict[Path, str] | None = None,
     ) -> p.Result[bool]:
-        """Preview one simple removal candidate, requiring clean gates.
+        """Preview one simple removal candidate with structural validation.
 
-        ``r.ok(True)`` when the simulated removal cleared the gate
+        ``r.ok(True)`` when the simulated removal passed source validation
         snapshot. ``r.ok(False)`` when the candidate is outside the
         simple-removal contract. ``r.fail(...)`` when planning or
         ``preview_source_writes`` failed — the message lists the reason.
@@ -690,7 +689,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if applied:
             return r[bool].ok(True)
         return r[bool].fail(
-            "; ".join(reports) if reports else "preview gates rejected removal"
+            "; ".join(reports) if reports else "preview validation rejected removal"
         )
 
     @staticmethod
@@ -699,18 +698,17 @@ class FlextInfraUtilitiesRefactorCensus:
         workspace: Path,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        gates: t.StrSequence,
         post_apply_hook: _CensusCallable[[Path], None] | None = None,
     ) -> p.Result[bool]:
-        """Apply one simple removal candidate permanently, gates-validated.
+        """Apply one simple removal candidate with structural validation.
 
         ``post_apply_hook`` is executed **after** sources are written and rope
-        imports are organised, but **before** the gate snapshot runs. Callers
+        imports are organised, but **before** source validation runs. Callers
         that need to regenerate governance artefacts (e.g. ``__init__.py``
         lazy maps via ``FlextInfraCodegenLazyInit``) pass the regeneration
         routine here. This keeps ``flext_infra._utilities.census`` outside
         the ``flext_infra.codegen.lazy_init`` import cycle while still
-        giving gates a chance to verify post-cascade correctness.
+        giving validation a chance to verify post-cascade correctness.
         """
         if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
             candidate
@@ -747,7 +745,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if applied:
             return r[bool].ok(True)
         return r[bool].fail(
-            "; ".join(reports) if reports else "apply gates rejected removal"
+            "; ".join(reports) if reports else "apply validation rejected removal"
         )
 
     @staticmethod

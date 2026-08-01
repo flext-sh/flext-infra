@@ -56,18 +56,17 @@ class FlextInfraRefactorOrchestrator(
         file_path: Path,
         *,
         dry_run: bool = False,
-        gates: t.StrSequence | None = None,
     ) -> m.Infra.Result:
         """Refactor one file using the loader's current rule selections."""
         try:
             if file_path.suffix != c.Infra.EXT_PYTHON:
                 return self._skip_result(file_path)
-            return self._refactor_python_file(file_path, dry_run=dry_run, gates=gates)
+            return self._refactor_python_file(file_path, dry_run=dry_run)
         except Exception as exc:
             return self._error_result(file_path, str(exc))
 
     def _refactor_python_file(
-        self, file_path: Path, *, dry_run: bool, gates: t.StrSequence | None
+        self, file_path: Path, *, dry_run: bool
     ) -> m.Infra.Result:
         """Refactor one Python source file after caller-level exception handling."""
         workspace_root = u.Infra.project_root(file_path) or file_path.parent
@@ -92,7 +91,6 @@ class FlextInfraRefactorOrchestrator(
                 current=current,
                 original=original,
                 all_changes=all_changes,
-                gates=gates,
             )
         return error_result or m.Infra.Result(
             file_path=file_path,
@@ -165,7 +163,6 @@ class FlextInfraRefactorOrchestrator(
         current: str,
         original: str,
         all_changes: t.MutableSequenceOf[str],
-        gates: t.StrSequence | None,
     ) -> m.Infra.Result | None:
         """Write transformed source through protected validation."""
         ok, report = u.Infra.protected_source_write(
@@ -194,12 +191,11 @@ class FlextInfraRefactorOrchestrator(
         file_paths: t.SequenceOf[Path],
         *,
         dry_run: bool = False,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor many files and collect individual results."""
         results: t.MutableSequenceOf[m.Infra.Result] = []
         for file_path in file_paths:
-            result = self.refactor_file(file_path, dry_run=dry_run, gates=gates)
+            result = self.refactor_file(file_path, dry_run=dry_run)
             results.append(result)
             if result.success and result.modified:
                 u.Cli.info(

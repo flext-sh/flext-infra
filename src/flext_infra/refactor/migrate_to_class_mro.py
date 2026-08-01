@@ -39,7 +39,6 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         target: str,
         apply: bool,
         project_names: t.StrSequence | None = None,
-        gates: t.StrSequence | None = None,
     ) -> m.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         start_time = perf_counter()
@@ -73,7 +72,6 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
                 scan_results=scan_results,
                 apply=apply,
                 project_names=project_names,
-                gates=gates,
             )
         )
         rewrite_duration = perf_counter() - rewrite_start

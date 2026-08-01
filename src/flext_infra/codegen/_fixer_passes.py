@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import m, u
 from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.refactor.migrate_to_class_mro import (
@@ -22,7 +22,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     def _run_mro_migration(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run the MRO migrator and accumulate fixed/skipped violations."""
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path).run(
-            target="all", apply=True, gates=(c.Infra.LINT,)
+            target="all", apply=True
         )
         _log.info(
             "mro_migration_complete",
@@ -70,9 +70,9 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     @staticmethod
     def _run_namespace_enforcement(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run namespace enforcement and record any unresolved violations."""
-        enforcement = FlextInfraNamespaceEnforcer(workspace_root=project_path).enforce(
-            apply=True, gates=(c.Infra.LINT,)
-        )
+        enforcement = FlextInfraNamespaceEnforcer(
+            workspace_root=project_path
+        ).enforce(apply=True)
         violating_projects = tuple(
             project_report
             for project_report in enforcement.projects

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -79,13 +78,15 @@ class FlextInfraClassNestingPostCheckGate:
 
     @staticmethod
     def _validate_types(file_path: Path) -> t.StrSequence:
-        """Validate types."""
-        result = u.Cli.capture([sys.executable, "-m", "py_compile", str(file_path)])
-        return (
-            [f"lsp_diagnostics_clean_failed:{result.error or ''}"]
-            if result.failure
-            else list[str]()
-        )
+        """Validate Python syntax in process."""
+        read = u.Cli.files_read_text(file_path)
+        if read.failure:
+            return [f"lsp_diagnostics_clean_failed:{read.error or 'read_failed'}"]
+        try:
+            compile(read.value, str(file_path), "exec")
+        except SyntaxError as exc:
+            return [f"lsp_diagnostics_clean_failed:{exc}"]
+        return list[str]()
 
 
 class FlextInfraRefactorFileExecutor:

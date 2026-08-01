@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_cli import cli
-from flext_infra import c, m, p, r, t, u
+from flext_infra import m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._accessor_report import FlextInfraAccessorMigrationReportMixin
 from flext_infra.refactor._accessor_rewrite import (
@@ -24,21 +24,11 @@ class FlextInfraAccessorMigrationOrchestrator(
         int,
         m.Field(description="Maximum number of file previews to include in the report"),
     ] = 10
-    gates: Annotated[
-        str,
-        m.Field(description="Comma-separated lint gates for preview/apply validation"),
-    ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
-
-    @property
-    @override
-    def gate_names(self) -> t.StrSequence:
-        """Normalized lint gate names."""
-        return u.Infra.normalize_cli_values(self.gates)
 
     @property
     @override
     def lint_tool_names(self) -> t.StrSequence:
-        """Return the in-process source validator name."""
+        """In-process source validator name."""
         return u.Infra.selected_lint_tool_names()
 
     @override
@@ -132,7 +122,6 @@ class FlextInfraAccessorMigrationOrchestrator(
             target_module=params.module,
             target_namespace=params.namespace,
             preview_limit=params.preview_limit,
-            gates=",".join(params.gates),
         ).execute()
         if result.failure:
             return r[m.Infra.AccessorMigrationReport].fail(

@@ -67,22 +67,18 @@ class FlextInfraRefactorService:
         file_path: Path,
         *,
         dry_run: bool = False,
-        gates: t.StrSequence | None = None,
     ) -> m.Infra.Result:
         """Delegate single-file refactoring to the dedicated orchestrator."""
-        return self.orchestrator.refactor_file(file_path, dry_run=dry_run, gates=gates)
+        return self.orchestrator.refactor_file(file_path, dry_run=dry_run)
 
     def refactor_files(
         self,
         file_paths: t.SequenceOf[Path],
         *,
         dry_run: bool = False,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate multi-file refactoring to the dedicated orchestrator."""
-        return self.orchestrator.refactor_files(
-            file_paths, dry_run=dry_run, gates=gates
-        )
+        return self.orchestrator.refactor_files(file_paths, dry_run=dry_run)
 
     def refactor_project(
         self,
@@ -91,7 +87,6 @@ class FlextInfraRefactorService:
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate project refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_project(
@@ -99,7 +94,6 @@ class FlextInfraRefactorService:
             dry_run=dry_run,
             pattern=pattern,
             apply_safety=apply_safety,
-            gates=gates,
         )
 
     def refactor_workspace(
@@ -109,7 +103,6 @@ class FlextInfraRefactorService:
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate workspace refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_workspace(
@@ -117,7 +110,6 @@ class FlextInfraRefactorService:
             dry_run=dry_run,
             pattern=pattern,
             apply_safety=apply_safety,
-            gates=gates,
         )
 
 

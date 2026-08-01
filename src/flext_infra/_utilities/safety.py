@@ -1,7 +1,7 @@
 """Copy-on-write safety primitives for file transformation with automatic rollback.
 
 Provides static helpers for backing up files before transformation,
-validating post-transform quality via gates, and restoring on failure.
+validating post-transform behavior, and restoring on failure.
 """
 
 from __future__ import annotations

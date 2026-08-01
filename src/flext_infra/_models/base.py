@@ -104,7 +104,7 @@ class FlextInfraModelsBase:
         }
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Workspace root used for protected validation")
         ]
         updated_source: Annotated[
             str, m.Field(description="Replacement source content to write")
@@ -112,11 +112,12 @@ class FlextInfraModelsBase:
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve a .bak copy before editing")
         ] = False
+
     class ProtectedSourceWritesRequest(m.ArbitraryTypesModel):
         """Validated options for transactionally writing multiple sources."""
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Workspace root used for protected validation")
         ]
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve .bak copies before editing")
@@ -125,11 +126,12 @@ class FlextInfraModelsBase:
             Callable[[], None] | None,
             m.Field(description="Optional callback invoked after writes land"),
         ] = None
+
     class ProtectedFileEditRequest(m.ArbitraryTypesModel):
         """Validated options for a protected single-file edit pipeline."""
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Workspace root used for protected validation")
         ]
         before_source: Annotated[
             str, m.Field(description="Original source text used for diff and restore")
@@ -145,15 +147,6 @@ class FlextInfraModelsBase:
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve a .bak copy before editing")
         ] = False
-    class LintGateResult(m.ContractModel):
-        """Validated result from one protected-edit lint gate."""
-
-        tool_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Canonical lint tool name")
-        ]
-        errors: Annotated[
-            t.StrSequence, m.Field(description="Error lines reported by the lint tool")
-        ] = m.Field(default_factory=tuple)
 
     class TransformStep(m.ContractModel):
         """Declarative step for enforcement pipeline."""

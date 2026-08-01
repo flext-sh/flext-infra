@@ -239,7 +239,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
 
         result = orchestrator.run(
             m.Infra.ModernizeInput(
-                workspace=str(tmp_path), projects=["flext-demo"], apply=False, gates=[]
+                workspace=str(tmp_path), projects=["flext-demo"], apply=False
             )
         )
 
@@ -259,7 +259,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
 
         result = orchestrator.run(
             m.Infra.ModernizeInput(
-                workspace=str(tmp_path), projects=["flext-demo"], apply=False, gates=[]
+                workspace=str(tmp_path), projects=["flext-demo"], apply=False
             )
         )
 

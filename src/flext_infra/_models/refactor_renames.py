@@ -12,7 +12,7 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsRefactorRenames:
     """Contracts for the generic CSV-driven rename engine."""
 
-    class ApplyRenamesInput(mm.WriteMixin, m.ContractModel):
+    class ApplyRenamesInput(mm.ApplyMixin, m.ContractModel):
         """Validated CLI request for CSV-driven symbol renames."""
 
         csv: Annotated[

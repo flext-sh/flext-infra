@@ -82,7 +82,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         project_root: Path,
         project_name: str,
         apply: bool,
-        gates: t.StrSequence | None = None,
     ) -> m.Infra.ProjectEnforcementReport:
         """Enforce project."""
         with u.Infra.open_project(project_root) as rope_project:
@@ -90,7 +89,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 project_root=project_root,
                 project_name=project_name,
                 apply=apply,
-                gates=gates,
                 rope_project=rope_project,
             )
 
@@ -118,7 +116,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         project_root: Path,
         project_name: str,
         apply: bool,
-        gates: t.StrSequence | None,
         rope_project: t.Infra.RopeProject,
     ) -> m.Infra.ProjectEnforcementReport:
         """Enforce project using the Rope project scoped to ``project_root``."""
@@ -148,7 +145,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 project_root=project_root,
                 violations=vs,
                 parse_failures=parse_failures,
-                gates=gates,
             ),
             apply=apply,
         )
@@ -178,7 +174,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_namespace_source_violations(
-                violations=vs, parse_failures=parse_failures, gates=gates
+                violations=vs, parse_failures=parse_failures
             ),
             apply=apply,
         )
@@ -229,7 +225,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 )
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_runtime_alias_violations(
-                py_files=py_files, gates=gates
+                py_files=py_files
             ),
             apply=apply,
         )
@@ -258,7 +254,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_manual_protocol_violations(
-                project_root=project_root, py_files=py_files, violations=vs, gates=gates
+                project_root=project_root, py_files=py_files, violations=vs
             ),
             apply=apply,
         )
@@ -275,7 +271,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 project_root=project_root,
                 violations=vs,
                 parse_failures=parse_failures,
-                gates=gates,
             ),
             apply=apply,
         )
@@ -289,7 +284,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_compatibility_alias_violations(
-                violations=vs, parse_failures=parse_failures, gates=gates
+                violations=vs, parse_failures=parse_failures
             ),
             apply=apply,
         )

@@ -26,7 +26,6 @@ class FlextInfraRefactorOrchestratorScopeMixin:
             file_paths: t.SequenceOf[Path],
             *,
             dry_run: bool = False,
-            gates: t.StrSequence | None = None,
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         @staticmethod
@@ -119,7 +118,6 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor files under configured project directories."""
         checkpoint_ref, error_results = self._try_safety_checkpoint(
@@ -139,7 +137,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
             ]
         u.Cli.info(f"Found {len(collected)} files to process")
         results: t.MutableSequenceOf[m.Infra.Result] = []
-        results.extend(self.refactor_files(collected, dry_run=dry_run, gates=gates))
+        results.extend(self.refactor_files(collected, dry_run=dry_run))
         results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and not dry_run:
             self._finalize_safety(
@@ -157,7 +155,6 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor all discoverable workspace projects."""
         root = workspace_root.resolve()
@@ -187,7 +184,6 @@ class FlextInfraRefactorOrchestratorScopeMixin:
                     dry_run=dry_run,
                     pattern=pattern,
                     apply_safety=False,
-                    gates=gates,
                 )
             )
             if apply_safety and not dry_run:

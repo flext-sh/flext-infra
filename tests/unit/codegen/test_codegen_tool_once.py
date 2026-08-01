@@ -71,6 +71,11 @@ class TestsCodegenToolOnce:
             m.Infra.ProtectedFileEditRequest,
             m.Infra.ProtectedSourceWriteRequest,
             m.Infra.ProtectedSourceWritesRequest,
+            m.Infra.ApplyRenamesInput,
+            m.Infra.RefactorMigrateMroInput,
+            m.Infra.RefactorNamespaceEnforceInput,
+            m.Infra.ModernizeInput,
+            m.Infra.AccessorMigrationInput,
         )
         field_names = {
             name for model in request_models for name in model.model_fields

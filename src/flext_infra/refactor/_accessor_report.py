@@ -26,9 +26,6 @@ class FlextInfraAccessorMigrationReportMixin:
         workspace_root: Path
 
         @property
-        def gate_names(self) -> t.StrSequence: ...
-
-        @property
         def lint_tool_names(self) -> t.StrSequence: ...
 
     @staticmethod

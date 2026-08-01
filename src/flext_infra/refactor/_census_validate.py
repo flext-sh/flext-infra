@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING
 from flext_infra import u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 _log = u.fetch_logger(__name__)
 
 
 class FlextInfraRefactorCensusValidateMixin:
-    """Filter removal candidates through dry-run gates, surfacing rejections.
+    """Filter removal candidates through structural preview validation.
 
     Parent of FlextInfraRefactorCensusCollectMixin (its ``_assemble_report``
     calls ``_validated_project_reports``); borrows root + dry-run flags + the
@@ -28,8 +28,6 @@ class FlextInfraRefactorCensusValidateMixin:
         @property
         def root(self) -> Path: ...
 
-        @property
-        def dry_run_gate_names(self) -> t.StrSequence: ...
         @staticmethod
         def _raw_violation(
             *,
@@ -49,7 +47,7 @@ class FlextInfraRefactorCensusValidateMixin:
         rope: p.Infra.RopeWorkspaceDsl,
         project_reports: tuple[m.Infra.Census.ProjectReport, ...],
     ) -> tuple[m.Infra.Census.ProjectReport, ...]:
-        """Keep only removal candidates that pass the configured dry-run gates.
+        """Keep only removal candidates that pass structural preview validation.
 
         Gate rejections are surfaced as explicit ``preview_rejected``
         violations so the census still completes with actionable output
@@ -70,7 +68,6 @@ class FlextInfraRefactorCensusValidateMixin:
                     rope,
                     self.root,
                     candidate,
-                    gates=self.dry_run_gate_names,
                     source_cache=source_cache,
                 )
                 if preview_result.failure:

@@ -6,7 +6,6 @@ import difflib
 import shutil
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
 
 from flext_infra._utilities.protected_edit_preview import (
     FlextInfraUtilitiesProtectedEditPreview,
@@ -14,6 +13,7 @@ from flext_infra._utilities.protected_edit_preview import (
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
     """Apply, rollback, backup, and structural validation for protected edits."""
