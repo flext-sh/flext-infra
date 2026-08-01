@@ -32,7 +32,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
     ] = None
     apply_token: Annotated[
         str | None,
-        m.Field(description="Explicit caller mutation token; absent is read-only"),
+        m.Field(description="Caller mutation token validated against typed config"),
     ] = None
 
     def _serialized_command(
@@ -61,7 +61,12 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         )
         if verb_spec is None:
             return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
-        if self.apply_token not in {None, make_config.apply_value}:
+        applying = self.apply_token not in {
+            None,
+            "",
+            make_config.apply_absent_value,
+        }
+        if applying and self.apply_token != make_config.apply_value:
             return r[t.StrMapping].fail(
                 f"{make_config.apply_variable} must be "
                 f"{make_config.apply_value} when set"
@@ -74,7 +79,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"(allowed: {allowed})"
             )
         handler = verb_spec.handlers[selected_what]
-        if self.apply_token and not handler.mutating:
+        if applying and not handler.mutating:
             return r[t.StrMapping].fail(
                 f"Make verb '{self.verb}' {make_config.selector}={selected_what} "
                 f"is read-only and does not accept {make_config.apply_variable}"

@@ -17,7 +17,11 @@ SHELL := /bin/sh
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := {{ dist }}
-MAKE_PROFILE := {{ make_profile }}
+{% if make_profile == "workspace-root" -%}
+MAKE_PROFILE := workspace-root
+{% else -%}
+MAKE_PROFILE := $(if $(strip $(shell git rev-parse --show-superproject-working-tree 2>/dev/null)),workspace-member,standalone)
+{% endif -%}
 WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
@@ -33,7 +37,8 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-APPLY ?=
+{{ make.apply_variable }} ?= {{ make.apply_absent_value }}
+APPLYING := $(if $(filter-out {{ make.apply_absent_value }},$(strip $({{ make.apply_variable }}))),$(strip $({{ make.apply_variable }})))
 ARGS ?=
 CHANGED_ONLY ?= 0
 CHECK_GATES ?=
@@ -268,7 +273,8 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "{{ make.apply_value }}" ]; then \
+	applying="$(strip $(APPLYING))"; \
+	if [ -n "$$applying" ] && [ "$$applying" != "{{ make.apply_value }}" ]; then \
 		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
 	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
@@ -282,7 +288,7 @@ define _dispatch
 	done; \
 	if [ -z "$$handler" ]; then printf 'ERROR: unsupported %s WHAT=%s (registry:%s)\n' "$(1)" "$$what" "$(_HANDLER_MAP_$(1))" >&2; exit 2; fi; \
 	case " $(_MUTATING_WHATS_$(1)) " in *" $$what "*) mutating=Y ;; *) mutating=N ;; esac; \
-	if [ -n "$(strip $(APPLY))" ] && [ "$$mutating" != Y ]; then \
+	if [ -n "$$applying" ] && [ "$$mutating" != Y ]; then \
 		printf 'ERROR: %s WHAT=%s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" "$$what" >&2; exit 2; \
 	fi; \
 	builtin="_builtin_$(1)_$$handler"; \
@@ -365,7 +371,7 @@ setup:
 _builtin_setup_all: _builtin_setup_submodules _builtin_setup_environment
 
 _builtin_help_all:
-	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
+	@printf '%s\n' '{{ dist }} [$(MAKE_PROFILE)]' '';
 {% for verb in make.verbs %}
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';

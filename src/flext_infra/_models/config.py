@@ -597,6 +597,16 @@ class FlextInfraConfigModels:
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
         ]
+        apply_absent_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="N",
+                description=(
+                    "Config-owned token emitted when the caller does not enable "
+                    "mutation"
+                ),
+            ),
+        ]
         bootstrap: Annotated[
             FlextInfraConfigModels.MakeBootstrapSpec,
             m.Field(description="Pre-conform project environment contract"),

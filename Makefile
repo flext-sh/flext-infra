@@ -15,7 +15,7 @@ SHELL := /bin/sh
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
+MAKE_PROFILE := $(if $(strip $(shell git rev-parse --show-superproject-working-tree 2>/dev/null)),workspace-member,standalone)
 WORKSPACE_ROOT_REL := .
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
@@ -31,7 +31,8 @@ UV_LINK_MODE := copy
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-APPLY ?=
+APPLY ?= N
+APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
 ARGS ?=
 CHANGED_ONLY ?= 0
 CHECK_GATES ?=
@@ -314,7 +315,8 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "Y" ]; then \
+	applying="$(strip $(APPLYING))"; \
+	if [ -n "$$applying" ] && [ "$$applying" != "Y" ]; then \
 		printf 'ERROR: APPLY must be Y when set\n' >&2; exit 2; \
 	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
@@ -328,7 +330,7 @@ define _dispatch
 	done; \
 	if [ -z "$$handler" ]; then printf 'ERROR: unsupported %s WHAT=%s (registry:%s)\n' "$(1)" "$$what" "$(_HANDLER_MAP_$(1))" >&2; exit 2; fi; \
 	case " $(_MUTATING_WHATS_$(1)) " in *" $$what "*) mutating=Y ;; *) mutating=N ;; esac; \
-	if [ -n "$(strip $(APPLY))" ] && [ "$$mutating" != Y ]; then \
+	if [ -n "$$applying" ] && [ "$$mutating" != Y ]; then \
 		printf 'ERROR: %s WHAT=%s is read-only and does not accept APPLY\n' "$(1)" "$$what" >&2; exit 2; \
 	fi; \
 	builtin="_builtin_$(1)_$$handler"; \
@@ -486,7 +488,7 @@ setup:
 _builtin_setup_all: _builtin_setup_submodules _builtin_setup_environment
 
 _builtin_help_all:
-	@printf '%s\n' 'flext-infra [standalone]' '';
+	@printf '%s\n' 'flext-infra [$(MAKE_PROFILE)]' '';
 
 
 	@printf '  %-10s\n' 'help';
@@ -547,6 +549,8 @@ _builtin_help_all:
 
 	@printf '  %-10s\n' 'worktree';
 
+
+	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
