@@ -161,11 +161,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Whether generated mutations are forbidden."""
             ...
 
-        @property
-        def checkout_submodules(self) -> str:
-            """Explicit actions/checkout submodules mode."""
-            ...
-
     @runtime_checkable
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""

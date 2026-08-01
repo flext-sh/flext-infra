@@ -42,43 +42,20 @@ def _repository(
 
 
 class TestsCodegenCatalogExtensions:
-    def test_checkout_submodules_defaults_false_and_validates_override(
-        self, tmp_path: Path
-    ) -> None:
-        """The workspace manifest alone opts a reverse-consumer workspace in."""
-        cosmos_main = _repository(
-            "cosmos-main", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+    def test_checkout_submodules_uses_fleet_default_and_named_override(self) -> None:
+        """The codegen SSOT owns self-only CI and the reverse-consumer exception."""
+        codegen = config.Infra.codegen
+        tm.that(codegen.checkout_submodules, eq="false")
+        tm.that(tuple(codegen.checkout_submodules_overrides), eq=("cosmos-docgen",))
+        tm.that(
+            codegen.checkout_submodules_overrides["cosmos-docgen"], eq="recursive"
         )
-        tm.that(cosmos_main.checkout_submodules, eq="false")
-
-        cosmos_docgen = _repository(
-            "cosmos-docgen", path=".", role=c.Infra.RepositoryRole.STANDALONE
-        ).model_copy(
-            update={"checkout": c.Infra.CheckoutKind.INDEPENDENT, "package": True}
+        tm.that(
+            codegen.checkout_submodules_overrides.get(
+                "cosmos-main", codegen.checkout_submodules
+            ),
+            eq="false",
         )
-        payload = cosmos_docgen.model_dump(mode="json", exclude_none=True)
-        payload["checkout_submodules"] = "recursive"
-        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        manifest_path.parent.mkdir(parents=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                manifest_path,
-                {
-                    "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
-                    "name": cosmos_docgen.name,
-                    "repository": payload,
-                    "members": [],
-                },
-            )
-        )
-        configured = m.Infra.WorkspaceSpec.model_validate(
-            u.Cli.yaml_load_mapping(manifest_path)
-        )
-        tm.that(configured.repository.checkout_submodules, eq="recursive")
-
-        payload["checkout_submodules"] = "invalid"
-        with pytest.raises(c.ValidationError):
-            m.Infra.RepositoryRef.model_validate(payload)
 
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
         selector = config.Infra.codegen.toolchain.beads.version

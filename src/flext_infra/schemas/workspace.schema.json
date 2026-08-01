@@ -149,13 +149,6 @@
         "read_only": {
           "type": "boolean"
         },
-        "checkout_submodules": {
-          "enum": [
-            "false",
-            "recursive"
-          ],
-          "default": "false"
-        },
         "extra_verbs": {
           "type": "array",
           "items": {

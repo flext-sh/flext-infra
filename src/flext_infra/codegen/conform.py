@@ -1413,7 +1413,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mise_version=codegen.toolchain.mise_version,
                     github_actions=codegen.github_actions,
                     workspace_repositories=workspace_repositories,
-                    checkout_submodules=repository.checkout_submodules,
+                    checkout_submodules=codegen.checkout_submodules_overrides.get(
+                        dist, codegen.checkout_submodules
+                    ),
                 )
             )
         destination_path = Path(destination)

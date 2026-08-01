@@ -179,7 +179,7 @@ jobs:
           for path in docs/CHANGELOG.md docs/releases/latest.md "docs/releases/${RELEASE_TAG}.md"; do
             [ -e "$path" ] && CHANGELOG_PATHS+=("$path")
           done
-          if [ "${`#CHANGELOG_PATHS`[@]}" -gt 0 ]; then
+          if [ "${#CHANGELOG_PATHS[@]}" -gt 0 ]; then
             git add -- "${CHANGELOG_PATHS[@]}"
             if ! git diff --cached --quiet; then
               git commit -m "docs: close changelog for ${RELEASE_TAG}"
