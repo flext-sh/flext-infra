@@ -61,17 +61,23 @@ jobs:
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
-  # Source: template + config:github_actions.checkout/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   macos:
     runs-on: macos-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           submodules: recursive
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
+        with:
+          python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
+        with:
+          enable-cache: true
       - name: Bootstrap
         run: make setup
       - name: Verb surface
@@ -79,17 +85,23 @@ jobs:
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
-  # Source: template + config:github_actions.checkout/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   windows:
     runs-on: windows-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           submodules: recursive
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
+        with:
+          python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
+        with:
+          enable-cache: true
       - name: Bootstrap
         shell: bash
         run: make setup

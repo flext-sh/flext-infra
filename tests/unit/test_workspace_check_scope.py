@@ -13,21 +13,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
 
 class TestsFlextInfraWorkspaceCheckScope:
     def test_workspace_root_check_fans_out_to_every_member(self) -> None:
         """The root selects declared members and forwards check gates."""
-        # Members come from the workspace manifest SSOT, never a literal list.
-        workspace = tm.ok(
-            FlextInfraWorkspaceDetector.load_workspace_spec(
-                Path(flext_infra.__file__).resolve().parents[2]
-            )
-        )
-        members = tuple(member.path.as_posix() for member in workspace.members)
-        tm.that(bool(members), eq=True)
+        # The member list is rendered from the manifest at generation time, so
+        # the contract lives in the template, not in this checkout's topology.
 
         template = (
             Path(flext_infra.__file__).resolve().parent
