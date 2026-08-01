@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import cProfile
+import marshal
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,13 +24,19 @@ def _dump_real_profile(path: Path) -> None:
     emits a 2-byte marshal payload, and ``pstats.Stats`` rejects it with
     "Cannot create or construct a <class 'pstats.Stats'> object". The runner
     renders a real report from this artifact, so the fixture must produce a
-    real profile.
+    loadable profile.
+
+    The payload is marshalled directly instead of running a live profiler:
+    the canonical runner already executes the whole suite under
+    ``python -m cProfile``, and CPython allows only one active profiler, so
+    enabling a second one raises "Another profiling tool is already active"
+    and the fixture would fail for a reason that has nothing to do with the
+    behaviour under test.
     """
-    profiler = cProfile.Profile()
-    profiler.enable()
-    _ = sum(range(10))
-    profiler.disable()
-    profiler.dump_stats(path)
+    stats = {
+        ("tests/sample_test.py", 1, "test_ok"): (1, 1, 0.001, 0.001, {}),
+    }
+    path.write_bytes(marshal.dumps(stats))
 
 
 class TestsFlextInfraPytestRunner:
@@ -95,6 +101,34 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
+
+    def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
+        """pytest-benchmark warns at configure time when xdist is active.
+
+        Projects set ``filterwarnings = ["error"]``, which promotes that warning
+        to an INTERNALERROR before a single test runs, so the whole suite is
+        unrunnable in parallel. pytest-benchmark cannot measure anything under
+        xdist anyway, so the parallel argv asks for that outcome explicitly
+        instead of letting the plugin abort the session announcing it.
+        """
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+
+        command = runner.build_command(report_dir)
+
+        tm.that(command, has="--benchmark-disable")
+
+    def test_focused_run_keeps_benchmarks_enabled(self, tmp_path: Path) -> None:
+        """A focused run is single-process, so benchmarks stay measurable."""
+        test_file = tmp_path / "tests" / "sample.py"
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text("", encoding="utf-8")
+        runner = self._runner(tmp_path, file="tests/sample.py")
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+
+        command = runner.build_command(report_dir)
+
+        tm.that(command, lacks="--benchmark-disable")
 
     def test_environment_rejects_free_form_pytest_args(
         self, monkeypatch: pytest.MonkeyPatch

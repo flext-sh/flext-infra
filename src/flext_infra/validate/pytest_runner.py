@@ -144,6 +144,12 @@ class FlextInfraPytestRunner(s[int]):
                 str(pytest.parallel_workers),
                 "--dist",
                 pytest.parallel_distribution,
+                # pytest-benchmark disables itself under xdist and warns while
+                # configuring. Projects run filterwarnings=["error"], which
+                # turns that warning into an INTERNALERROR before collection.
+                # Asking for the same outcome up front keeps the run truthful:
+                # benchmarks are off because the run is parallel, not silenced.
+                "--benchmark-disable",
             )
         )
         optional_args = (
