@@ -35,6 +35,14 @@
         "$ref": "#/$defs/repository"
       }
     },
+    "content_only": {
+      "$comment": "Vendored or content-only gitlinks: present in the tree but never managed, mutated, or included in conform fan-out.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/relativePath"
+      }
+    },
     "exclusions": {
       "type": "array",
       "uniqueItems": true,

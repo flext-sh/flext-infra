@@ -1584,6 +1584,15 @@ class FlextInfraConfigModels:
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
+        content_only: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description=(
+                    "Vendored gitlinks present in the tree but never managed, "
+                    "mutated, or included in conform fan-out"
+                )
+            ),
+        ] = ()
         exclusions: Annotated[
             tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
             m.Field(description="Ordered paths deliberately excluded from inventory"),
