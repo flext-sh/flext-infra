@@ -453,11 +453,12 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 else r[str].ok("")
             )
         else:
-            # No leading "." pathspec: it makes git reject the whole call when
-            # any ignored directory sits at the root. The exclusions alone are
-            # enough to keep gitlinks out of the checkpoint.
+            # `-f` matches the tracked-paths branch above and the operation
+            # delta staging: the checkpoint must capture ignored-but-tracked
+            # paths. Without it git aborts the whole call whenever an ignored
+            # directory sits at the repository root.
             stage_result = cls.git_capture(
-                worktree_root, ("add", "-A", "--", *gitlink_exclusions)
+                worktree_root, ("add", "-A", "-f", "--", *gitlink_exclusions)
             )
         if stage_result.failure:
             return r[str].fail(stage_result.error or "failed to stage checkpoint")
