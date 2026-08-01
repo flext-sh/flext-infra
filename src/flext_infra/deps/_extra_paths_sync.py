@@ -25,6 +25,10 @@ class FlextInfraExtraPathsSyncMixin:
         pyright_extra_paths: Callable[..., t.StrSequence]
         pyrefly_search_paths: Callable[..., t.StrSequence]
 
+    def resolve_transitive_dependency_names(self, direct_names: t.StrSequence) -> t.StrSequence:
+        """Return the transitive workspace path-dependency closure of direct_names."""
+        return self._resolve_transitive_deps(direct_names)
+
     def _resolve_transitive_deps(
         self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
     ) -> t.StrSequence:

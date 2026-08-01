@@ -43,6 +43,11 @@ class FlextInfraExtraPathsManager(
             u.Infra.workspace_member_names(self.workspace_root)
         )
 
+    @property
+    def workspace_project_names(self) -> t.StrSequence:
+        """Return the managed workspace member names backing dependency resolution."""
+        return tuple(sorted(self._workspace_project_names))
+
     @override
     def execute(self) -> p.Result[bool]:
         """Synchronize extra paths for the configured project slice."""

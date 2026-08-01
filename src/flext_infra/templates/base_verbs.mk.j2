@@ -148,7 +148,7 @@ _check_impl:
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
 			case "$$g" in \
-				lint|pyrefly|mypy|pyright|security|markdown|smells) ;; \
+				{{ make.PROJECT_CHECK_GATES_ALLOWED | replace(',', '|') }}) ;; \
 				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: {{ make.PROJECT_CHECK_GATES_ALLOWED }})"; exit 2;; \
 			esac; \
 		done; \
