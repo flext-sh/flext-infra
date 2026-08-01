@@ -16,8 +16,8 @@ from flext_infra.workspace.make_serialization import FlextInfraMakeSerialization
 from flext_tests import tm
 from tests import u as test_u
 
-# Derived from the handler SSOT: a serialized mutation runs the verb's
-# apply selector, then re-checks itself with the read-only default.
+# Derived from the handler SSOT: each serialized mutation runs exactly one
+# configured mutating handler under the checkout's single-flight lock.
 _MUTATION_CASES = tuple(
     (verb.name, selector)
     for verb in config.Infra.codegen.make.verbs
@@ -100,10 +100,10 @@ class TestsFlextInfraMakeSerialization:
         [None, "", config.Infra.codegen.make.apply_absent_value],
         ids=("none", "empty", "configured-absent"),
     )
-    def test_absent_selector_and_apply_use_the_configured_default(
+    def test_absent_selector_and_apply_transport_through_public_cli(
         self, tmp_path: Path, apply_token: str | None
     ) -> None:
-        """The public CLI transports absent intent through one real child Make."""
+        """The public CLI preserves omitted, empty, and configured absent intent."""
         make_config = config.Infra.codegen.make
         verb = next(
             item
@@ -145,7 +145,45 @@ class TestsFlextInfraMakeSerialization:
             observed.read_text(encoding="utf-8").strip().split("|")
         )
         tm.that(selected, eq=verb.default_what)
-        tm.that(transported_apply, eq=apply_token or make_config.apply_absent_value)
+        tm.that(transported_apply, eq=apply_token or "")
+
+    def test_public_cli_rejects_an_arbitrary_apply_token(self, tmp_path: Path) -> None:
+        """Only the configured write-enable token can request mutation."""
+        make_config = config.Infra.codegen.make
+        verb = next(item for item in make_config.verbs if item.serialized)
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            f".PHONY: _serialized_{verb.name}\n_serialized_{verb.name}:\n\t@exit 0\n",
+            encoding="utf-8",
+        )
+        test_u.Tests.initialize_git_repo(tmp_path)
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    c.Infra.PACKAGE_IMPORT_NAME,
+                    c.Infra.CLI_GROUP_WORKSPACE,
+                    "serialize-make",
+                    "--workspace",
+                    str(tmp_path),
+                    "--makefile",
+                    str(makefile),
+                    "--verb",
+                    verb.name,
+                    "--apply-token",
+                    "invalid-token",
+                ],
+                cwd=tmp_path,
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr,
+            has=["must be", make_config.apply_value, "when set"],
+        )
 
     def test_unknown_selector_is_rejected_before_apply_intent(
         self, tmp_path: Path

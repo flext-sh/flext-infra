@@ -614,6 +614,20 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        reserved_variables: Annotated[
+            tuple[t.Infra.MakeVariable, ...],
+            m.Field(
+                min_length=1,
+                description="Fixed generated Make variables unavailable to dynamic roles",
+            ),
+        ]
+        reserved_variable_prefixes: Annotated[
+            tuple[t.Infra.MakeVariable, ...],
+            m.Field(
+                min_length=1,
+                description="Fixed generated Make namespaces unavailable to dynamic roles",
+            ),
+        ]
         bootstrap: Annotated[
             FlextInfraConfigModels.MakeBootstrapSpec,
             m.Field(description="Pre-conform project environment contract"),
@@ -652,6 +666,29 @@ class FlextInfraConfigModels:
             variables = (self.selector, self.apply_variable, self.ci.variable)
             if len(set(variables)) != len(variables):
                 msg = "make selector, apply, and CI variables must be distinct"
+                raise ValueError(msg)
+            if len(set(self.reserved_variables)) != len(self.reserved_variables):
+                msg = "make reserved variables must be unique"
+                raise ValueError(msg)
+            if len(set(self.reserved_variable_prefixes)) != len(
+                self.reserved_variable_prefixes
+            ):
+                msg = "make reserved variable prefixes must be unique"
+                raise ValueError(msg)
+            collisions = [
+                variable
+                for variable in variables
+                if variable in self.reserved_variables
+                or any(
+                    variable.startswith(prefix)
+                    for prefix in self.reserved_variable_prefixes
+                )
+            ]
+            if collisions:
+                msg = (
+                    "dynamic Make variables collide with fixed generated variables: "
+                    f"{', '.join(sorted(collisions))}"
+                )
                 raise ValueError(msg)
             if self.ci.value in {"0", "false"}:
                 msg = "make CI value must represent an enabled automation state"

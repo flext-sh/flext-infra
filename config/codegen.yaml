@@ -154,6 +154,83 @@ Infra:
       apply_variable: APPLY
       apply_value: Y
       apply_absent_value: N
+      reserved_variables:
+        - APPLYING
+        - AR
+        - ARFLAGS
+        - ARGS
+        - AS
+        - ATTACHED_MEMBER
+        - AUTOMATION_INPUT
+        - BASE
+        - BRANCH
+        - CC
+        - CHANGED_ONLY
+        - CHECK_ONLY
+        - CO
+        - CPP
+        - CTANGLE
+        - CURDIR
+        - CWEAVE
+        - CXX
+        - DEPENDENCY
+        - DIAG
+        - FAIL_FAST
+        - FC
+        - FILE
+        - FILES
+        - FIX
+        - GET
+        - LD
+        - LEX
+        - LINT
+        - M2C
+        - MATCH
+        - MAKEINFO
+        - OS
+        - PATH
+        - PC
+        - RM
+        - SHELL
+        - TANGLE
+        - TEX
+        - TEXI2DVI
+        - VERBOSE
+        - VIRTUAL_ENV
+        - WEAVE
+        - YACC
+      reserved_variable_prefixes:
+        - _
+        - ALLOWED_
+        - CALLER_
+        - CHECK_
+        - CODEGEN_
+        - DEFAULT_
+        - DOCS_
+        - EXPLICIT_
+        - FLEXT_
+        - MAKE
+        - MANAGED_
+        - MYPY_
+        - NORMALIZED_
+        - PROJECT
+        - PUBLIC_
+        - PYRIGHT_
+        - PYTEST_
+        - REPORT_
+        - REQUESTED_
+        - RESOLVED_
+        - ROOT_
+        - RUFF_
+        - RUNTIME_
+        - SANITIZED_
+        - SELECTED_
+        - SELF_
+        - SERIALIZED_
+        - PROCESS_
+        - UV
+        - VALIDATE_
+        - WORKSPACE
       ci:
         variable: CI
         value: Y

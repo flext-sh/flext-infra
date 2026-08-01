@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,6 +14,18 @@ from tests import u as test_u
 
 if TYPE_CHECKING:
     from tests import t
+
+_MAKE_TEMPLATE_ROOT = (
+    Path(__file__).resolve().parents[3]
+    / "src"
+    / "flext_infra"
+    / "templates"
+    / "project"
+    / "base"
+)
+_FIXED_ASSIGNMENT_PATTERN = re.compile(
+    r"^(?:override\s+)?([A-Z_][A-Z0-9_]*)\s*[:?+]?=", re.MULTILINE
+)
 
 
 class TestsRegistrySelectors:
@@ -112,6 +126,86 @@ class TestsRegistrySelectors:
         payload["ci"] = ci
 
         with pytest.raises(ValueError, match="enabled automation state"):
+            m.Infra.MakeSpec.model_validate(payload)
+
+    @pytest.mark.parametrize("field", ["selector", "apply_variable", "ci"])
+    def test_dynamic_variables_reject_every_fixed_make_namespace(
+        self, field: str
+    ) -> None:
+        """Dynamic registry variables never alias fixed generated Make state."""
+        make_config = config.Infra.codegen.make
+        collisions = (
+            *make_config.reserved_variables,
+            *(f"{prefix}RESERVED" for prefix in make_config.reserved_variable_prefixes),
+        )
+        for collision in collisions:
+            payload = make_config.model_dump(
+                mode="python", exclude_computed_fields=True
+            )
+            if field == "ci":
+                ci = dict(payload["ci"])
+                ci["variable"] = collision
+                payload["ci"] = ci
+            else:
+                payload[field] = collision
+
+            with pytest.raises(
+                ValueError, match="collide with fixed generated variables"
+            ):
+                m.Infra.MakeSpec.model_validate(payload)
+
+    def test_reserved_namespaces_cover_every_fixed_template_assignment(self) -> None:
+        """The typed reservation policy covers the live generated Make surface."""
+        make_config = config.Infra.codegen.make
+        template_sources = tuple(
+            path.read_text(encoding="utf-8")
+            for path in (
+                _MAKE_TEMPLATE_ROOT / "Makefile.j2",
+                _MAKE_TEMPLATE_ROOT / "base_mypy_limit.mk.j2",
+            )
+        )
+        fixed_variables = {
+            variable
+            for source in template_sources
+            for variable in _FIXED_ASSIGNMENT_PATTERN.findall(source)
+        }
+        uncovered = {
+            variable
+            for variable in fixed_variables
+            if variable not in make_config.reserved_variables
+            and not any(
+                variable.startswith(prefix)
+                for prefix in make_config.reserved_variable_prefixes
+            )
+        }
+
+        tm.that(uncovered, empty=True)
+
+    def test_gnu_make_predefined_variable_collision_is_rejected(
+        self, tmp_path: Path
+    ) -> None:
+        """A real GNU Make default cannot silently capture a dynamic role."""
+        fallback = "registry_fallback"
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            f"CC ?= {fallback}\nprobe:\n\t@printf '%s\\n' '$(CC)'\n",
+            encoding="utf-8",
+        )
+
+        process = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "probe"], cwd=tmp_path
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(process.stdout.strip(), empty=False)
+        tm.that(process.stdout.strip(), ne=fallback)
+        payload = config.Infra.codegen.make.model_dump(
+            mode="python", exclude_computed_fields=True
+        )
+        payload["selector"] = "CC"
+        with pytest.raises(ValueError, match="collide with fixed generated variables"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @pytest.mark.parametrize("location", ["name", "default", "key", "target"])
