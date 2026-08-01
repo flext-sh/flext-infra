@@ -8,6 +8,7 @@
 !.mise.toml
 !.python-version
 !.default-python-packages
+!README.md
 !config/
 !scripts/dispatch.py
 !ci/docker/

@@ -10,18 +10,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, infra, m
+from flext_infra import c, config, infra, m
 from flext_tests import tm
 
 
-def _write_pyproject(root: Path, *, requires_python: str = ">=3.13") -> None:
+def _write_pyproject(root: Path, *, requires_python: str | None = None) -> None:
     root.mkdir(parents=True, exist_ok=True)
+    requirement = (
+        requires_python or config.Infra.codegen.toolchain.python_required_version
+    )
     _ = (root / "pyproject.toml").write_text(
         (
             "[project]\n"
             'name = "workspace"\n'
             'version = "0.1.0"\n'
-            f'requires-python = "{requires_python}"\n'
+            f'requires-python = "{requirement}"\n'
         ),
         encoding="utf-8",
     )
@@ -49,7 +52,11 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.that("DIRENV_DIR" in envrc, eq=False)
         tm.that('PROJECT_ROOT="$(find_up pyproject.toml)"' in envrc, eq=True)
         tm.that('PROJECT_ROOT="${PROJECT_ROOT%/*}"' in envrc, eq=True)
-        tm.that('python = "3.13"' in mise, eq=True)
+        tm.that(
+            f'version = "{config.Infra.codegen.toolchain.python_version}"' in mise,
+            eq=True,
+        )
+        tm.that('MISE_PYTHON_COMPILE = "0"' in mise, eq=True)
 
     def test_sync_preserves_custom_envrc_without_force(self, tmp_path: Path) -> None:
         """Custom (non-generated) .envrc content is never clobbered."""
@@ -110,7 +117,10 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.ok(result)
         merged = mise.read_text(encoding="utf-8")
         tm.that('node = "22"' in merged, eq=True)
-        tm.that('python = "3.13"' in merged, eq=True)
+        tm.that(
+            f'version = "{config.Infra.codegen.toolchain.python_version}"' in merged,
+            eq=True,
+        )
         tm.that("mypy" in merged, eq=False)
         tm.that("ruff" in merged, eq=False)
 
@@ -125,7 +135,8 @@ class TestsFlextInfraFacadeEnvironmentSync:
 
         tm.ok(result)
         rendered = (workspace / ".mise.toml").read_text(encoding="utf-8")
-        tm.that('python = "3.14"' in rendered, eq=True)
+        tm.that('version = "3.14"' in rendered, eq=True)
+        tm.that('MISE_PYTHON_COMPILE = "0"' in rendered, eq=True)
 
     def test_sync_removes_generated_files_without_pyproject(
         self, tmp_path: Path

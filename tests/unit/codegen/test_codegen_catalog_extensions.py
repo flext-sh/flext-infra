@@ -42,6 +42,47 @@ def _repository(
 
 
 class TestsCodegenCatalogExtensions:
+    def test_checkout_submodules_defaults_false_and_validates_override(
+        self, tmp_path: Path
+    ) -> None:
+        """The workspace manifest alone opts a reverse-consumer workspace in."""
+        cosmos_main = _repository(
+            "cosmos-main", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+        )
+        tm.that(cosmos_main.checkout_submodules, eq="false")
+
+        cosmos_docgen = _repository(
+            "cosmos-docgen", path=".", role=c.Infra.RepositoryRole.STANDALONE
+        ).model_copy(
+            update={
+                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+                "package": True,
+            }
+        )
+        payload = cosmos_docgen.model_dump(mode="json")
+        payload["checkout_submodules"] = "recursive"
+        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        manifest_path.parent.mkdir(parents=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest_path,
+                {
+                    "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+                    "name": cosmos_docgen.name,
+                    "repository": payload,
+                    "members": [],
+                },
+            )
+        )
+        configured = m.Infra.WorkspaceSpec.model_validate(
+            u.Cli.yaml_load_mapping(manifest_path)
+        )
+        tm.that(configured.repository.checkout_submodules, eq="recursive")
+
+        payload["checkout_submodules"] = "invalid"
+        with pytest.raises(c.ValidationError):
+            m.Infra.RepositoryRef.model_validate(payload)
+
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
         selector = config.Infra.codegen.toolchain.beads.version
 
@@ -538,6 +579,8 @@ class TestsCodegenCatalogExtensions:
             )
         for workflow in workflows:
             tm.that("acme-content" in workflow.rendered, eq=False)
+            if "actions/checkout@" in workflow.rendered:
+                tm.that(workflow.rendered, has="submodules: false")
         gitmodules = next(
             file.rendered for file in plan.files if file.path.name == ".gitmodules"
         )
@@ -546,10 +589,11 @@ class TestsCodegenCatalogExtensions:
         mise = tomllib.loads(
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
-        tm.that(
-            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
-            eq=config.Infra.codegen.toolchain.beads.version,
-        )
+        beads = config.Infra.codegen.toolchain.beads
+        beads_tool = mise["tools"][beads.selector]
+        tm.that(beads_tool["version"], eq=beads.version)
+        tm.that(beads_tool["depends"], eq=["go"])
+        tm.that(beads_tool["install_env"]["CGO_ENABLED"], eq="0")
         pyproject = tomllib.loads(
             next(
                 file.rendered

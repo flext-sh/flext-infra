@@ -34,7 +34,7 @@ jobs:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
       - name: Setup Python
@@ -56,7 +56,7 @@ jobs:
       # upload as artifact so the real error is always reachable.
       - name: Docs audit (blocking)
         run: |
-          make docs DOCS_PHASE=audit || {
+          make docs WHAT=audit || {
             for f in .reports/workspace/docs/*.log; do
               echo "=== $f ==="
               tail -60 "$f"
@@ -77,7 +77,7 @@ jobs:
 
       - name: Docs validate (blocking)
         run: |
-          make docs DOCS_PHASE=validate || {
+          make docs WHAT=validate || {
             for f in .reports/workspace/docs/*.log; do
               echo "=== $f ==="
               tail -60 "$f"
@@ -105,7 +105,7 @@ jobs:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
       - name: Setup Python

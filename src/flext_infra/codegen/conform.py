@@ -1410,8 +1410,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dist=dist,
                     repository_branch=provider.value.branch,
                     python_version=codegen.toolchain.python_version,
+                    mise_version=codegen.toolchain.mise_version,
                     github_actions=codegen.github_actions,
                     workspace_repositories=workspace_repositories,
+                    checkout_submodules=repository.checkout_submodules,
                 )
             )
         destination_path = Path(destination)
@@ -1423,6 +1425,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.DistroDockerRenderSpec(
                     package_name=dist.replace("-", "_"),
                     python_version=codegen.toolchain.python_version,
+                    mise_version=codegen.toolchain.mise_version,
                 )
             )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
@@ -1712,6 +1715,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads_tool_selector=codegen.toolchain.beads.selector,
                 beads_tool_version=codegen.toolchain.beads.version,
+                go_version=codegen.toolchain.go_version,
+                rust_version=codegen.toolchain.rust_version,
+                ast_grep_selector=codegen.toolchain.ast_grep_selector,
+                mise_version=codegen.toolchain.mise_version,
                 beads_enabled=target.beads_enabled,
                 canonical_project_name=target.canonical_project_name,
                 const_name=project.constant_name,

@@ -161,6 +161,11 @@ class FlextInfraProtocolsBase(Protocol):
             """Whether generated mutations are forbidden."""
             ...
 
+        @property
+        def checkout_submodules(self) -> str:
+            """Explicit actions/checkout submodules mode."""
+            ...
+
     @runtime_checkable
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
@@ -381,6 +386,21 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def mise_version(self) -> str:
             """Exact mise binary version."""
+            ...
+
+        @property
+        def go_version(self) -> str:
+            """Exact Go compiler version."""
+            ...
+
+        @property
+        def rust_version(self) -> str:
+            """Exact Rust compiler version."""
+            ...
+
+        @property
+        def ast_grep_selector(self) -> str:
+            """Portable mise backend selector for ast-grep."""
             ...
 
         @property

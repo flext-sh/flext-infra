@@ -169,6 +169,16 @@ class FlextInfraConfigModels:
         mise_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact mise binary version")
         ]
+        go_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Go compiler version")
+        ]
+        rust_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Rust compiler version")
+        ]
+        ast_grep_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Portable mise backend selector for ast-grep"),
+        ]
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -278,6 +288,20 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        checkout_submodules: Annotated[
+            Literal["false", "recursive"],
+            m.Field(
+                default="false",
+                description=(
+                    "Explicit actions/checkout submodules mode; false is the "
+                    "fleet default and recursive is reserved for a configured "
+                    "reverse-consumer workspace"
+                ),
+            ),
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact mise runtime version")
+        ]
 
     class DistroDockerRenderSpec(_ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
@@ -287,6 +311,9 @@ class FlextInfraConfigModels:
         ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact mise runtime version")
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
@@ -887,6 +914,17 @@ class FlextInfraConfigModels:
         read_only: Annotated[
             bool, m.Field(description="Repository rejects generated mutations")
         ]
+        checkout_submodules: Annotated[
+            Literal["false", "recursive"],
+            m.Field(
+                default="false",
+                description=(
+                    "Explicit actions/checkout submodules mode; false is the "
+                    "fleet default and recursive is reserved for a configured "
+                    "reverse-consumer workspace"
+                ),
+            ),
+        ] = "false"
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
@@ -1383,6 +1421,18 @@ class FlextInfraConfigModels:
         ]
         beads_tool_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Beads CLI version")
+        ]
+        go_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Go compiler version")
+        ]
+        rust_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Rust compiler version")
+        ]
+        ast_grep_selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Portable ast-grep mise selector")
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact mise runtime version")
         ]
         beads_enabled: Annotated[
             bool, m.Field(description="Whether conform owns this repository's tracker")

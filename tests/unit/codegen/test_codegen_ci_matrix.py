@@ -40,6 +40,29 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
+    def test_standalone_workflows_do_not_checkout_private_submodules(
+        self, tmp_path: Path
+    ) -> None:
+        """Standalone CI reaches runtime without sibling-repository credentials."""
+        root = self._render_project(tmp_path / "external")
+        workflows = tuple(
+            (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
+            for filename in ("ci.yml", "ci-matrix.yml")
+        )
+        for workflow in workflows:
+            tm.that(workflow, has="submodules: false")
+            tm.that(workflow, lacks="submodules: recursive")
+
+        template_root = (
+            Path(__file__).resolve().parents[3]
+            / "src/flext_infra/templates/project/base/.github/workflows"
+        )
+        for template in template_root.glob("*.yml.j2"):
+            content = template.read_text(encoding="utf-8")
+            if "submodules:" in content:
+                tm.that(content, has="checkout_submodules")
+                tm.that(content, lacks="submodules: recursive")
+
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")
@@ -66,6 +89,9 @@ class TestCodegenCiMatrix:
         tm.that(workflows, lacks="set +e")
         tm.that(workflows, lacks="|| make")
         tm.that(workflows, lacks="soft-pass")
+        tm.that(
+            workflows, has=f'version: "{config.Infra.codegen.toolchain.mise_version}"'
+        )
 
     def test_blocking_ci_bootstraps_only_through_make_setup(
         self, tmp_path: Path
@@ -79,6 +105,18 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: make setup")
         tm.that(workflow, has="run: make check")
         tm.that(workflow, has="run: make test")
+
+    def test_docs_workflow_template_uses_canonical_make_selectors(self) -> None:
+        """Workspace docs CI selects audit and validation through WHAT."""
+        root = Path(__file__).resolve().parents[3]
+        workflow = (
+            root
+            / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
+        ).read_text(encoding="utf-8")
+
+        tm.that(workflow, has="make docs WHAT=audit")
+        tm.that(workflow, has="make docs WHAT=validate")
+        tm.that(workflow, lacks="DOCS_PHASE=")
 
     def test_ci_uses_typed_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
@@ -115,9 +153,47 @@ class TestCodegenCiMatrix:
             tm.that(content, has="make setup")
             tm.that(content, lacks="UV_UNMANAGED_INSTALL")
             tm.that(content, lacks="uv python install")
+            tm.that(content, lacks="set +e")
+            tm.that(content, lacks="soft-pass")
+            tm.that(content, lacks="go.dev/dl/")
+            tm.that(content, lacks="rustup.rs")
+            tm.that(
+                content,
+                has=f'MISE_VERSION="v{config.Infra.codegen.toolchain.mise_version}"',
+            )
             if distro == "alpine":
                 tm.that(content, has="bash")
                 tm.that(content, has="build-base")
+
+    def test_mise_toolchain_declares_portable_build_dependencies(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated mise config orders portable Python, Rust, Go, and CLIs."""
+        root = self._render_project(tmp_path / "external")
+        mapping = u.Cli.toml_mapping_from_text(
+            (root / ".mise.toml").read_text(encoding="utf-8")
+        )
+        tm.that(mapping is not None, eq=True)
+        tools = u.Cli.toml_mapping_child(mapping or {}, "tools")
+        tm.that(tools is not None, eq=True)
+        toolchain = config.Infra.codegen.toolchain
+        tool_map = tools or {}
+        python = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tool_map["python"])
+        ast_grep = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tool_map[toolchain.ast_grep_selector]
+        )
+        beads = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tool_map[toolchain.beads.selector]
+        )
+
+        tm.that(python["version"], eq=toolchain.python_version)
+        tm.that(python["install_env"], has="MISE_PYTHON_COMPILE")
+        tm.that(tool_map["go"], eq=toolchain.go_version)
+        tm.that(tool_map["rust"], eq=toolchain.rust_version)
+        tm.that(ast_grep["depends"], has="rust")
+        tm.that(ast_grep["install_env"], has="CARGO_TERM_QUIET")
+        tm.that(beads["depends"], has="go")
+        tm.that(beads["install_env"], has="CGO_ENABLED")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
         self, tmp_path: Path
@@ -172,7 +248,9 @@ class TestCodegenCiMatrix:
         windows = content.split("\n  windows:", maxsplit=1)[1]
         for host in (macos, windows):
             tm.that(host, has="run: make setup")
-        tm.that(windows.count("shell: bash"), eq=2)
+            tm.that(host, has="mise exec -- ast-grep --version")
+            tm.that(host, has="mise exec -- bd version")
+        tm.that(windows.count("shell: bash"), eq=windows.count("\n        run:"))
 
     def test_workflow_branches_derive_from_workspace_manifest(
         self, tmp_path: Path
@@ -223,6 +301,7 @@ class TestCodegenCiMatrix:
             "!.mise.toml",
             "!.python-version",
             "!.default-python-packages",
+            "!README.md",
             "!config/",
             "!scripts/dispatch.py",
             "!ci/docker/",

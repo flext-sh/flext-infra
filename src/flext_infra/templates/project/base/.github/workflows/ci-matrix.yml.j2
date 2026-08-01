@@ -47,7 +47,7 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
         run: >-
           docker build
@@ -56,9 +56,14 @@ jobs:
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
         run: |
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- python --version
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- go version
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- rustc --version
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- ast-grep --version
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- bd version
           docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
           docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
-  # End SECTION: distro-matrix
+      # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
@@ -67,22 +72,31 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
+        with:
+          version: "{{ mise_version }}"
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
           enable-cache: true
       - name: Bootstrap
         run: make setup
+      - name: Toolchain smoke
+        run: |
+          mise exec -- python --version
+          mise exec -- go version
+          mise exec -- rustc --version
+          mise exec -- ast-grep --version
+          mise exec -- bd version
       - name: Verb surface
         run: make help
-  # End SECTION: macos
+# End SECTION: macos
 
   # === SECTION: windows (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
@@ -91,13 +105,15 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
+        with:
+          version: "{{ mise_version }}"
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
@@ -105,7 +121,15 @@ jobs:
       - name: Bootstrap
         shell: bash
         run: make setup
+      - name: Toolchain smoke
+        shell: bash
+        run: |
+          mise exec -- python --version
+          mise exec -- go version
+          mise exec -- rustc --version
+          mise exec -- ast-grep --version
+          mise exec -- bd version
       - name: Verb surface
         shell: bash
         run: make help
-  # End SECTION: windows
+# End SECTION: windows

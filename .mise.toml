@@ -9,16 +9,19 @@
 # === SECTION: tools (managed) ===
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
-#          gitleaks_version, tokei_version, beads.selector, beads.version)
+#          gitleaks_version, tokei_version, go_version, rust_version,
+#          ast_grep_selector, beads.selector, beads.version)
 [tools]
-python = "3.13"
+python = { version = "3.13", install_env = { MISE_PYTHON_COMPILE = "0" } }
+go = "1.26.5"
+rust = "1.88.0"
 # Native toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
 kubectl = "1.32.0"
 helm = "3.19.4"
 kind = "0.31.0"
 taplo = "0.10.0"
-ast-grep = "0.45.0"
+"cargo:ast-grep" = { version = "0.45.0", depends = ["rust"], locked = true, install_env = { CARGO_TERM_QUIET = "true" } }
 gitleaks = "8.30.1"
-tokei = "14.0.0"
-"go:github.com/steveyegge/beads/cmd/bd" = "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
+tokei = { version = "14.0.0", depends = ["rust"], install_env = { CARGO_TERM_QUIET = "true" } }
+"go:github.com/steveyegge/beads/cmd/bd" = { version = "423afdcb2813e36b2bc4c96b07e0fc3516a34495", depends = ["go"], install_env = { CGO_ENABLED = "0" } }
 # End SECTION: tools
