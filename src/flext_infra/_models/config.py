@@ -1109,6 +1109,9 @@ class FlextInfraConfigModels:
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
+        pytest_process_timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Pytest process wall-time boundary")
+        ]
 
     class BeadsConfigRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
