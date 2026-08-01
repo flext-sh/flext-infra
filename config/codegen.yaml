@@ -8,8 +8,10 @@ Infra:
       # compatible 3.13 patch; no patch is pinned in generated repositories.
       # Derived as computed fields on ToolchainSpec:
       #   python_required_version -> >=3.13,<3.14
-      # uv is supplied by the caller environment and is deliberately not pinned.
-      # Dependency floors live in pyproject; uv.lock owns resolved versions.
+      # Clean-machine CI images install this exact official uv release. Local
+      # callers may supply any compatible uv; dependency floors remain in the
+      # generated bootstrap contract.
+      uv_version: "0.11.16"
       python_version: "3.13"
       uv_link_mode: copy
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.

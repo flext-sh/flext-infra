@@ -1430,6 +1430,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     package_name=dist.replace("-", "_"),
                     python_version=codegen.toolchain.python_version,
                     mise_version=codegen.toolchain.mise_version,
+                    uv_version=codegen.toolchain.uv_version,
                 )
             )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:

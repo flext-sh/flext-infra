@@ -20,7 +20,7 @@ RUN apk add --no-cache \
 RUN curl -fsSL https://mise.run | MISE_VERSION="v{{ mise_version }}" sh
 # uv is intentionally supplied by the caller environment; install it explicitly
 # in clean-machine images so the project bootstrap can resolve dependencies.
-RUN curl -fsSL https://astral.sh/uv/install.sh | sh
+RUN curl -fsSL https://astral.sh/uv/{{ uv_version }}/install.sh | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 # End SECTION: managed tool bootstrap
 

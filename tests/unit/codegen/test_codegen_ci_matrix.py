@@ -293,6 +293,14 @@ class TestCodegenCiMatrix:
             tm.that(content, lacks="rustup.rs")
             tm.that(
                 content,
+                has=(
+                    "https://astral.sh/uv/"
+                    f"{config.Infra.codegen.toolchain.uv_version}/install.sh"
+                ),
+            )
+            tm.that(content, lacks="https://astral.sh/uv/install.sh")
+            tm.that(
+                content,
                 has=f'MISE_VERSION="v{config.Infra.codegen.toolchain.mise_version}"',
             )
             if distro == "alpine":

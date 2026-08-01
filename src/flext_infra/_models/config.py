@@ -130,6 +130,13 @@ class FlextInfraConfigModels:
                 description="Python major.minor line, e.g. '3.13'",
             ),
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$",
+                description="Exact official uv version for clean-machine images",
+            ),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
@@ -372,6 +379,9 @@ class FlextInfraConfigModels:
         ]
         mise_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact mise runtime version")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv installer version")
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
