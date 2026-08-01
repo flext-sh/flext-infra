@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from collections.abc import MutableMapping
 from importlib import import_module
 from typing import TYPE_CHECKING, cast
@@ -82,6 +84,11 @@ class FlextInfraUtilitiesDocsBuild:
             if not isinstance(runner, type):
                 completed = runner.run_raw(
                     [
+                        # Anchor MkDocs to this interpreter: a bare "mkdocs"
+                        # resolves through PATH, where an unrelated system
+                        # executable of the same name can shadow it.
+                        sys.executable,
+                        "-m",
                         "mkdocs",
                         c.Infra.DIR_BUILD,
                         "--strict",
