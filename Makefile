@@ -15,14 +15,14 @@ SHELL := /bin/sh
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
+MAKE_PROFILE := workspace-member
 WORKSPACE_ROOT_REL := .
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
 # governance; standalone projects discover managed submodules at runtime from
 # .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS :=
+WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -31,9 +31,10 @@ UV_LINK_MODE := copy
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-# Unset by default: the guard accepts only the mutation value or nothing at
-# all, so a placeholder here would make every invocation fail validation.
-APPLY ?=
+APPLY ?= N
+# The seeded absent value means "not applying", so every guard compares against
+# APPLYING and a plain read-only run never trips the write-enable check.
+APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -98,9 +99,9 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
+PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree basemk
 BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
-SCRIPT_VERBS :=
+SCRIPT_VERBS := basemk
 _ALLOWED_WHATS_help := usage
 _ALLOWED_WHATS_setup := environment
 _ALLOWED_WHATS_deps := check lock upgrade
@@ -116,6 +117,7 @@ _ALLOWED_WHATS_clean := generated
 _ALLOWED_WHATS_release := status
 _ALLOWED_WHATS_gen := check all
 _ALLOWED_WHATS_worktree := list add update remove
+_ALLOWED_WHATS_basemk := generate
 
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
@@ -169,6 +171,7 @@ _DEFAULT_worktree := list
 _APPLY_WHAT_fmt := all
 _APPLY_WHAT_fix := all
 _APPLY_WHAT_gen := all
+_DEFAULT_basemk := generate
 
 
 # === SECTION: profile routing (managed) ===
@@ -275,13 +278,14 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "Y" ]; then \
+	applying="$(strip $(APPLYING))"; \
+	if [ -n "$$applying" ] && [ "$$applying" != "Y" ]; then \
 		printf 'ERROR: APPLY must be Y when set\n' >&2; exit 2; \
 	fi; \
-	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
+	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
 		printf 'ERROR: verb %s is read-only and does not accept APPLY\n' "$(1)" >&2; exit 2; \
 	fi; \
-	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
+	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
@@ -383,7 +387,7 @@ setup:
 	done
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [standalone]' '';
+	@printf '%s\n' 'flext-infra [workspace-member]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
@@ -444,6 +448,8 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s\n' 'worktree' 'list|add|update|remove';
 
+
+	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
@@ -652,9 +658,6 @@ _builtin_build_artifacts:
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 _builtin_check_all: _builtin_require_environment
-	@if [ -n "$(strip $(APPLY))" ]; then \
-		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
-	fi
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \

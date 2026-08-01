@@ -33,9 +33,10 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-# Unset by default: the guard accepts only the mutation value or nothing at
-# all, so a placeholder here would make every invocation fail validation.
-APPLY ?=
+{{ make.apply_variable }} ?= {{ make.apply_absent_value }}
+# The seeded absent value means "not applying", so every guard compares against
+# APPLYING and a plain read-only run never trips the write-enable check.
+APPLYING := $(if $(filter-out {{ make.apply_absent_value }},$(strip $({{ make.apply_variable }}))),$(strip $({{ make.apply_variable }})))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -255,13 +256,14 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "{{ make.apply_value }}" ]; then \
+	applying="$(strip $(APPLYING))"; \
+	if [ -n "$$applying" ] && [ "$$applying" != "{{ make.apply_value }}" ]; then \
 		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
 	fi; \
-	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
+	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
 		printf 'ERROR: verb %s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" >&2; exit 2; \
 	fi; \
-	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
+	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
@@ -477,9 +479,6 @@ _builtin_build_artifacts:
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 _builtin_check_all: _builtin_require_environment
-	@if [ -n "$(strip $(APPLY))" ]; then \
-		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
-	fi
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
