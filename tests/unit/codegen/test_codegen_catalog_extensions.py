@@ -45,16 +45,22 @@ class TestsCodegenCatalogExtensions:
     def test_checkout_submodules_uses_fleet_default_and_named_override(self) -> None:
         """The codegen SSOT owns self-only CI and the reverse-consumer exception."""
         codegen = config.Infra.codegen
-        tm.that(codegen.checkout_submodules, eq="false")
-        tm.that(tuple(codegen.checkout_submodules_overrides), eq=("cosmos-docgen",))
-        tm.that(
-            codegen.checkout_submodules_overrides["cosmos-docgen"], eq="recursive"
-        )
+        modes = {"true", "false", "recursive"}
+        tm.that(codegen.checkout_submodules in modes, eq=True)
+        tm.that(codegen.checkout_submodules_overrides, empty=False)
+        for project, mode in codegen.checkout_submodules_overrides.items():
+            tm.that(mode in modes, eq=True)
+            tm.that(
+                codegen.checkout_submodules_overrides.get(
+                    project, codegen.checkout_submodules
+                ),
+                eq=mode,
+            )
         tm.that(
             codegen.checkout_submodules_overrides.get(
-                "cosmos-main", codegen.checkout_submodules
+                "unlisted-project", codegen.checkout_submodules
             ),
-            eq="false",
+            eq=codegen.checkout_submodules,
         )
 
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:

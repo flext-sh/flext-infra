@@ -10,8 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, t, u
+from flext_infra import c, config, m, t, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
 
@@ -106,15 +108,10 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
 
-        tm.that(workflow, has="run: make setup")
-        tm.that(workflow, has="run: make check")
-        tm.that(workflow, has="run: make test")
-        tm.that(workflow, has="run: make setup CI=Y")
-        tm.that(workflow, has="run: make gen APPLY=Y CI=Y")
-        tm.that(workflow, has="run: make fmt APPLY=Y CI=Y")
-        tm.that(workflow, has="run: make fix APPLY=Y CI=Y")
-        tm.that(workflow, has="run: make check CI=Y")
-        tm.that(workflow, has="run: make test CI=Y")
+        lifecycle = config.Infra.codegen.github_actions_workflows.lifecycle
+        for step in lifecycle:
+            command = f"make {step.verb}{' APPLY=Y' if step.apply else ''} CI=Y"
+            tm.that(workflow.count(f"run: {command}"), eq=1)
 
     def test_docs_workflow_template_uses_default_all_make_contract(self) -> None:
         """Workspace docs CI delegates the complete lifecycle to Make."""
@@ -124,7 +121,7 @@ class TestCodegenCiMatrix:
             / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
         ).read_text(encoding="utf-8")
 
-        tm.that(workflow, has="make docs CI=Y")
+        tm.that(workflow, has="github_actions_workflows.docs_verb")
         tm.that(workflow, lacks="WHAT=")
         tm.that(workflow, lacks="DOCS_PHASE=")
 
@@ -147,22 +144,25 @@ class TestCodegenCiMatrix:
             tm.that(line, lacks="RELEASE_PHASE=")
 
     def test_rendered_ci_jobs_call_each_make_lifecycle_verb_once(
-        self, rendered_project: Path
+        self, rendered_workspace: Path
     ) -> None:
         """Each rendered CI job delegates once to every lifecycle Make verb."""
-        lifecycle = (
-            "make setup CI=Y",
-            "make gen APPLY=Y CI=Y",
-            "make fmt APPLY=Y CI=Y",
-            "make fix APPLY=Y CI=Y",
-            "make check CI=Y",
-            "make test CI=Y",
+        lifecycle = tuple(
+            f"make {step.verb}{' APPLY=Y' if step.apply else ''} CI=Y"
+            for step in config.Infra.codegen.github_actions_workflows.lifecycle
         )
-        forbidden_tools = ("uv ", "ruff ", "pytest ", "mypy ", "pyright ", "pyrefly ")
+        forbidden_tools = (
+            "mise exec",
+            "uv ",
+            "ruff ",
+            "pytest ",
+            "mypy ",
+            "pyright ",
+            "pyrefly ",
+        )
         workflows = (
-            rendered_project / ".github" / "ci-template" / "ci.yml",
-            rendered_project / ".github" / "workflows" / "ci.yml",
-            rendered_project / ".github" / "workflows" / "ci-matrix.yml",
+            rendered_workspace / ".github" / "ci-template" / "ci.yml",
+            *(rendered_workspace / ".github" / "workflows").glob("*.yml"),
         )
         for workflow in workflows:
             payload = u.Cli.yaml_load_mapping(workflow)
@@ -175,15 +175,53 @@ class TestCodegenCiMatrix:
                     for step in steps
                     if "run"
                     in (
-                        step_payload := t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                            step
-                        )
+                        step_payload := t.Cli.JSON_MAPPING_ADAPTER.validate_python(step)
                     )
                 )
                 for command in lifecycle:
                     tm.that(commands.count(command), eq=1, msg=str(workflow))
                 for tool in forbidden_tools:
                     tm.that(commands, lacks=tool)
+
+    def test_rendered_delivery_uses_owned_verbs_and_artifact_path_once(
+        self, rendered_workspace: Path
+    ) -> None:
+        """Docs and release consume only their typed Make and artifact owners."""
+        policy = config.Infra.codegen.github_actions_workflows
+        docs_path = rendered_workspace / ".github" / "workflows" / "docs.yml"
+        release_path = rendered_workspace / ".github" / "workflows" / "release.yml"
+        docs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.yaml_load_mapping(docs_path)["jobs"]
+        )
+        release = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.yaml_load_mapping(release_path)["jobs"]
+        )
+        docs_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(next(iter(docs.values())))
+        release_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            next(iter(release.values()))
+        )
+        docs_steps = t.Cli.JSON_LIST_ADAPTER.validate_python(docs_job["steps"])
+        release_steps = t.Cli.JSON_LIST_ADAPTER.validate_python(release_job["steps"])
+        docs_commands = "\n".join(
+            str(step["run"])
+            for raw_step in docs_steps
+            if "run" in (step := t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step))
+        )
+        release_commands = "\n".join(
+            str(step["run"])
+            for raw_step in release_steps
+            if "run" in (step := t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step))
+        )
+        tm.that(docs_commands.count(f"make {policy.docs_verb} CI=Y"), eq=1)
+        tm.that(release_commands.count(f"make {policy.release_verb} CI=Y"), eq=1)
+        upload = next(
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step)
+            for raw_step in docs_steps
+            if config.Infra.codegen.github_actions["upload-pages-artifact"].repository
+            in str(raw_step)
+        )
+        upload_with = t.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
+        tm.that(upload_with["path"], eq=policy.docs_artifact_path)
 
     def test_workflow_templates_only_allow_governed_promotions(self) -> None:
         """Every Actions template rejects push, manual, and scheduled execution."""
@@ -206,12 +244,12 @@ class TestCodegenCiMatrix:
             content = next(path for path in templates if path.name == name).read_text(
                 encoding="utf-8"
             )
-            tm.that(content, has="types: [closed]")
+            tm.that(content, has="github_actions_workflows.delivery_event_types")
             tm.that(content, has="github.event.pull_request.merged == true")
         release = next(
             path for path in templates if path.name == "release.yml.j2"
         ).read_text(encoding="utf-8")
-        tm.that(release, has="make release CI=Y")
+        tm.that(release, has="github_actions_workflows.release_verb")
         tm.that(release, lacks="run: make rel CI=Y")
 
     def test_ci_uses_typed_action_catalog(self, rendered_project: Path) -> None:
@@ -237,17 +275,16 @@ class TestCodegenCiMatrix:
                 (root / "ci" / "docker" / f"{distro}.Dockerfile").is_file(), eq=True
             )
 
-    def test_distro_bootstrap_is_fail_closed_and_self_contained(
+    def test_distro_images_defer_the_single_lifecycle_to_the_workflow(
         self, rendered_project: Path
     ) -> None:
-        """Every distro runs the canonical self-bootstrap fail-closed."""
+        """Distro images never duplicate the workflow-owned Make lifecycle."""
         root = rendered_project
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             content = (root / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
                 encoding="utf-8"
             )
-            tm.that(content, has="make setup")
-            tm.that(content, has="make setup CI=Y")
+            tm.that(content, lacks="make setup")
             tm.that(content, lacks="UV_UNMANAGED_INSTALL")
             tm.that(content, lacks="uv python install")
             tm.that(content, lacks="set +e")
@@ -336,10 +373,10 @@ class TestCodegenCiMatrix:
         tm.that(jobs, lacks="kind")
 
     def test_generated_workflows_pass_strict_yamllint(
-        self, rendered_project: Path
+        self, rendered_workspace: Path
     ) -> None:
         """Rendered workflows satisfy YAML indentation with warnings as errors."""
-        root = rendered_project
+        root = rendered_workspace
         lint = u.Cli.run_checked(
             [
                 "yamllint",
@@ -347,9 +384,9 @@ class TestCodegenCiMatrix:
                 "--config-data",
                 (
                     "{extends: default, rules: {document-start: disable, "
-                    "line-length: disable, truthy: disable}}"
+                    "line-length: disable}}"
                 ),
-                ".github/workflows",
+                ".github",
             ],
             cwd=root,
         )
@@ -367,24 +404,19 @@ class TestCodegenCiMatrix:
             "\n  windows:", maxsplit=1
         )[0]
         windows = content.split("\n  windows:", maxsplit=1)[1]
-        lifecycle = (
-            "make setup CI=Y",
-            "make gen APPLY=Y CI=Y",
-            "make fmt APPLY=Y CI=Y",
-            "make fix APPLY=Y CI=Y",
-            "make check CI=Y",
-            "make test CI=Y",
+        lifecycle = tuple(
+            f"make {step.verb}{' APPLY=Y' if step.apply else ''} CI=Y"
+            for step in config.Infra.codegen.github_actions_workflows.lifecycle
         )
         for host in (macos, windows):
             positions = tuple(host.index(f"run: {command}") for command in lifecycle)
             tm.that(positions, eq=tuple(sorted(positions)))
-            tm.that(host, has="mise exec -- ast-grep --version")
-            tm.that(host, has="mise exec -- bd version")
+            tm.that(host, lacks="mise exec")
         distro = content.split("\n  distro-matrix:", maxsplit=1)[1].split(
             "\n  macos:", maxsplit=1
         )[0]
         for command in lifecycle:
-            tm.that(distro, has=f"}} {command}")
+            tm.that(distro, has=command)
         tm.that(windows.count("shell: bash"), eq=windows.count("\n        run:"))
 
     def test_rendered_workflows_only_trigger_governed_promotion(
@@ -405,6 +437,12 @@ class TestCodegenCiMatrix:
 
             tm.that(tuple(events), eq=("pull_request",))
             tm.that(pull_request["branches"], eq=[promotion.target])
+            tm.that(
+                pull_request["types"],
+                eq=list(
+                    config.Infra.codegen.github_actions_workflows.validation_event_types
+                ),
+            )
             tm.that(content, lacks="workflow_dispatch")
             tm.that(content, lacks="\n  push:")
             for job in jobs.values():
@@ -456,6 +494,43 @@ def rendered_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return TestCodegenCiMatrix.render_project(
         tmp_path_factory.mktemp("ci-matrix") / "external"
     )
+
+
+@pytest.fixture(scope="module")
+def rendered_workspace(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Render all workspace-root workflows through the production planner."""
+    root = TestCodegenCiMatrix.render_project(
+        tmp_path_factory.mktemp("ci-workspace") / "workspace"
+    )
+    workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+    repository = workspace.repository.model_copy(
+        update={
+            "role": c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            "profile": c.Infra.MakeProfile.WORKSPACE_ROOT,
+            "checkout": c.Infra.CheckoutKind.ROOT,
+            "path": Path(),
+            "package": False,
+            "editable": False,
+        }
+    )
+    workspace = workspace.model_copy(update={"repository": repository})
+    request = m.Infra.CodegenConformRequest(
+        root=root,
+        scope=c.Infra.CodegenConformScope.SELF,
+        mode=c.Infra.CodegenConformMode.CHECK,
+    )
+    plan = tm.ok(
+        FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        ).plan(request)
+    )
+    for planned in plan.files:
+        if planned.path.parts[:1] != (".github",) or planned.path.suffix != ".yml":
+            continue
+        destination = root / planned.path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(planned.rendered, encoding="utf-8")
+    return root
 
 
 __all__: list[str] = []

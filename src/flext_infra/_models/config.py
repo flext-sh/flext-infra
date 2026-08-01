@@ -267,12 +267,47 @@ class FlextInfraConfigModels:
     class GithubActionsPromotionSpec(_ConfigContract):
         """The only source and target branches allowed to execute Actions."""
 
-        target: Annotated[
-            t.NonEmptyStr, m.Field(description="Promotion target branch")
-        ]
+        target: Annotated[t.NonEmptyStr, m.Field(description="Promotion target branch")]
         sources: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Allowed promotion source branches"),
+        ]
+
+    class GithubActionsLifecycleStepSpec(_ConfigContract):
+        """One ordered canonical Make invocation in every Actions job."""
+
+        verb: Annotated[t.NonEmptyStr, m.Field(description="Canonical Make verb")]
+        apply: Annotated[
+            bool, m.Field(description="Whether the verb requires APPLY=Y")
+        ] = False
+
+    class GithubActionsWorkflowPolicySpec(_ConfigContract):
+        """Typed lifecycle, delivery, and artifact policy for Actions."""
+
+        validation_event_types: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="PR events that validate promotion"),
+        ]
+        delivery_event_types: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Merged PR delivery events"),
+        ]
+        lifecycle: Annotated[
+            tuple[FlextInfraConfigModels.GithubActionsLifecycleStepSpec, ...],
+            m.Field(min_length=1, description="Ordered tool-once Make lifecycle"),
+        ]
+        docs_verb: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical docs Make verb")
+        ]
+        docs_artifact_path: Annotated[
+            t.NonEmptyStr, m.Field(description="Generated Pages artifact directory")
+        ]
+        release_verb: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical release Make verb")
+        ]
+        release_channels: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Release channels owned by Make"),
         ]
 
     class GithubWorkflowRenderSpec(_ConfigContract):
@@ -292,6 +327,10 @@ class FlextInfraConfigModels:
         github_actions_promotion: Annotated[
             FlextInfraConfigModels.GithubActionsPromotionSpec,
             m.Field(description="Exclusive GitHub Actions promotion route"),
+        ]
+        github_actions_workflows: Annotated[
+            FlextInfraConfigModels.GithubActionsWorkflowPolicySpec,
+            m.Field(description="Actions lifecycle and delivery policy"),
         ]
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
@@ -1726,6 +1765,10 @@ class FlextInfraConfigModels:
         github_actions_promotion: Annotated[
             FlextInfraConfigModels.GithubActionsPromotionSpec,
             m.Field(description="Exclusive GitHub Actions promotion route"),
+        ]
+        github_actions_workflows: Annotated[
+            FlextInfraConfigModels.GithubActionsWorkflowPolicySpec,
+            m.Field(description="Actions lifecycle and delivery policy"),
         ]
         checkout_submodules: Annotated[
             t.NonEmptyStr,

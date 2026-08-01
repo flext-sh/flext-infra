@@ -12,7 +12,7 @@ name: CI
   pull_request:
     branches:
       - {{ github_actions_promotion.target }}
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: {{ github_actions_workflows.validation_event_types | list | tojson }}
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -46,21 +46,10 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-      - name: Setup (blocking)
-        run: make setup CI=Y
-
-      - name: Generate (blocking)
-        run: make gen APPLY=Y CI=Y
-
-      - name: Format (blocking)
-        run: make fmt APPLY=Y CI=Y
-
-      - name: Fix (blocking)
-        run: make fix APPLY=Y CI=Y
-
-      - name: Check (blocking)
-        run: make check CI=Y
-
-      - name: Test (blocking)
-        run: make test CI=Y
+{% for lifecycle_step in github_actions_workflows.lifecycle %}
+      - name: {{ lifecycle_step.verb | title }} (blocking)
+        run: make {{ lifecycle_step.verb }}{% if lifecycle_step.apply %} APPLY=Y{% endif %} CI=Y
+{% if not loop.last %}
+{% endif %}
+{% endfor %}
 # End SECTION: ci job

@@ -4,7 +4,7 @@ name: Release
 "on":
   pull_request:
     branches: [{{ github_actions_promotion.target }}]
-    types: [closed]
+    types: {{ github_actions_workflows.delivery_event_types | list | tojson }}
 
 permissions:
   contents: write
@@ -46,10 +46,12 @@ jobs:
         with:
           enable-cache: false
 
-      - name: Setup
-        run: make setup CI=Y
+{% for lifecycle_step in github_actions_workflows.lifecycle %}
+      - name: {{ lifecycle_step.verb | title }}
+        run: make {{ lifecycle_step.verb }}{% if lifecycle_step.apply %} APPLY=Y{% endif %} CI=Y
+{% endfor %}
 
       - name: Release from version and repository SSOT
         env:
           GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
-        run: make release CI=Y
+        run: make {{ github_actions_workflows.release_verb }} CI=Y

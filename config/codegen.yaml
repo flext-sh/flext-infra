@@ -75,6 +75,27 @@ Infra:
       target: main
       sources: [dev, develop, 0.12.0-dev]
 
+    github_actions_workflows:
+      validation_event_types: [opened, synchronize, reopened, ready_for_review]
+      delivery_event_types: [closed]
+      lifecycle:
+        - verb: setup
+          apply: false
+        - verb: gen
+          apply: true
+        - verb: fmt
+          apply: true
+        - verb: fix
+          apply: true
+        - verb: check
+          apply: false
+        - verb: test
+          apply: false
+      docs_verb: docs
+      docs_artifact_path: .reports/docs/site
+      release_verb: release
+      release_channels: [github, testpypi-canary]
+
     github_actions:
       checkout:
         repository: actions/checkout

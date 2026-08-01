@@ -14,7 +14,7 @@ name: ci-matrix
 "on":
   pull_request:
     branches: [{{ github_actions_promotion.target }}]
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: {{ github_actions_workflows.validation_event_types | list | tojson }}
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -37,9 +37,8 @@ jobs:
     if: >-
       github.base_ref == '{{ github_actions_promotion.target }}' &&
       contains(fromJSON('{{ github_actions_promotion.sources | list | tojson }}'), github.head_ref)
-    # Clean-machine proof per distro: build the distro image (which runs the
-    # full project bootstrap at image-build time), then smoke the verb surface
-    # inside the built container.
+    # Clean-machine proof per distro: build the distro image, then run the
+    # complete lifecycle once in one persistent container.
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -55,19 +54,13 @@ jobs:
           -f ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
-      - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
+      - name: Canonical lifecycle ({% raw %}${{ matrix.distro }}{% endraw %})
         run: |
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- python --version
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- go version
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- rustc --version
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- ast-grep --version
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} mise exec -- bd version
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make setup CI=Y
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make gen APPLY=Y CI=Y
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make fmt APPLY=Y CI=Y
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make fix APPLY=Y CI=Y
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check CI=Y
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make test CI=Y
+          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} /bin/bash -lc '
+{% for lifecycle_step in github_actions_workflows.lifecycle %}
+            make {{ lifecycle_step.verb }}{% if lifecycle_step.apply %} APPLY=Y{% endif %} CI=Y{% if not loop.last %} &&{% endif %}
+{% endfor %}
+          '
       # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
@@ -93,25 +86,10 @@ jobs:
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
           enable-cache: true
-      - name: Bootstrap
-        run: make setup CI=Y
-      - name: Generate
-        run: make gen APPLY=Y CI=Y
-      - name: Format
-        run: make fmt APPLY=Y CI=Y
-      - name: Fix
-        run: make fix APPLY=Y CI=Y
-      - name: Check
-        run: make check CI=Y
-      - name: Test
-        run: make test CI=Y
-      - name: Toolchain smoke
-        run: |
-          mise exec -- python --version
-          mise exec -- go version
-          mise exec -- rustc --version
-          mise exec -- ast-grep --version
-          mise exec -- bd version
+{% for lifecycle_step in github_actions_workflows.lifecycle %}
+      - name: {{ lifecycle_step.verb | title }}
+        run: make {{ lifecycle_step.verb }}{% if lifecycle_step.apply %} APPLY=Y{% endif %} CI=Y
+{% endfor %}
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
@@ -137,30 +115,9 @@ jobs:
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
           enable-cache: true
-      - name: Bootstrap
+{% for lifecycle_step in github_actions_workflows.lifecycle %}
+      - name: {{ lifecycle_step.verb | title }}
         shell: bash
-        run: make setup CI=Y
-      - name: Generate
-        shell: bash
-        run: make gen APPLY=Y CI=Y
-      - name: Format
-        shell: bash
-        run: make fmt APPLY=Y CI=Y
-      - name: Fix
-        shell: bash
-        run: make fix APPLY=Y CI=Y
-      - name: Check
-        shell: bash
-        run: make check CI=Y
-      - name: Test
-        shell: bash
-        run: make test CI=Y
-      - name: Toolchain smoke
-        shell: bash
-        run: |
-          mise exec -- python --version
-          mise exec -- go version
-          mise exec -- rustc --version
-          mise exec -- ast-grep --version
-          mise exec -- bd version
+        run: make {{ lifecycle_step.verb }}{% if lifecycle_step.apply %} APPLY=Y{% endif %} CI=Y
+{% endfor %}
 # End SECTION: windows

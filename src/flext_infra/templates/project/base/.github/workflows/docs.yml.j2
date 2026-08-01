@@ -4,7 +4,7 @@ name: Docs
 "on":
   pull_request:
     branches: [{{ github_actions_promotion.target }}]
-    types: [closed]
+    types: {{ github_actions_workflows.delivery_event_types | list | tojson }}
 
 permissions:
   contents: read
@@ -50,11 +50,13 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Setup
-        run: make setup CI=Y
+{% for lifecycle_step in github_actions_workflows.lifecycle %}
+      - name: {{ lifecycle_step.verb | title }}
+        run: make {{ lifecycle_step.verb }}{% if lifecycle_step.apply %} APPLY=Y{% endif %} CI=Y
+{% endfor %}
 
       - name: Build docs
-        run: make docs CI=Y
+        run: make {{ github_actions_workflows.docs_verb }} CI=Y
 
       - name: Configure Pages
         uses: {{ github_actions["configure-pages"].repository }}@{{ github_actions["configure-pages"].sha }}  # {{ github_actions["configure-pages"].version }}
@@ -62,7 +64,7 @@ jobs:
       - name: Upload Pages artifact
         uses: {{ github_actions["upload-pages-artifact"].repository }}@{{ github_actions["upload-pages-artifact"].sha }}  # {{ github_actions["upload-pages-artifact"].version }}
         with:
-          path: site
+          path: {{ github_actions_workflows.docs_artifact_path }}
 
       - name: Deploy Pages
         id: deployment
