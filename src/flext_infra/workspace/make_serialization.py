@@ -117,7 +117,16 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         cls, checkout: Path, command: t.StrSequence, *, failure_context: str
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one private Make phase and retain its process semantics."""
-        result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
+        # The enclosing serialization already holds the checkout's mutation lock.
+        # Without this marker the child Make re-enters run_worktree_transaction,
+        # which waits for that very lock and deadlocks: parent in do_wait, child
+        # sleeping on a lock only the parent can release.
+        result = u.Cli.run_raw(
+            list(command),
+            cwd=checkout,
+            env={c.Infra.WORKTREE_TRANSACTION_ENV: "1"},
+            capture=False,
+        )
         if result.failure:
             return cls._process_failure(
                 int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context
