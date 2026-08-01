@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -403,6 +404,8 @@ class TestCodegenCiMatrix:
         root = rendered_workspace
         lint = u.Cli.run_checked(
             [
+                sys.executable,
+                "-m",
                 "yamllint",
                 "--strict",
                 "--config-data",
@@ -552,9 +555,14 @@ def rendered_workspace(tmp_path_factory: pytest.TempPathFactory) -> Path:
         ).plan(request)
     )
     for planned in plan.files:
-        if planned.path.parts[:1] != (".github",) or planned.path.suffix != ".yml":
+        relative = (
+            planned.path.relative_to(root)
+            if planned.path.is_absolute()
+            else planned.path
+        )
+        if relative.parts[:1] != (".github",) or relative.suffix != ".yml":
             continue
-        destination = root / planned.path
+        destination = root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(planned.rendered, encoding="utf-8")
     return root

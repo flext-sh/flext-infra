@@ -693,6 +693,9 @@ Infra:
       - path: ci/docker/ubuntu.Dockerfile
         owner: codegen
         policy: full
+      - path: .github/workflows/ci-matrix.yml
+        owner: codegen
+        policy: full
       - path: .github/workflows/ci.yml
         owner: codegen
         policy: full
@@ -1271,6 +1274,11 @@ Infra:
           overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.github/workflows/ci-matrix.yml.j2
+          destination: .github/workflows/ci-matrix.yml
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
