@@ -103,15 +103,27 @@ class FlextInfraExtraPathsManager(
             for relative_path in rules.project_shared_search_paths
             if (project_dir / relative_path).is_dir()
         ]
+        # Why (ai-hub-qwoc, fleet-wide fix): pyrefly resolves the FIRST
+        # matching search-path entry. "src" must precede "." or every module
+        # resolves twice (ai_hub.X via src AND src.ai_hub.X via "."),
+        # producing distinct classes for the same symbol and phantom
+        # bad-argument-type errors. A naive sorted({...}) puts "." before
+        # "src" (ASCII '.' < 's'), silently breaking every consumer with a
+        # "." shared search path (e.g. tests.* resolution). Sort everything
+        # else, then place the declared source root first so it always wins.
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
         if rules.include_path_dependencies_in_search_path:
             paths.update(self._dep_paths(payload, project_dir=project_dir))
             paths.update(self._uv_source_paths(payload, project_dir=project_dir))
             paths.update(self._workspace_member_source_paths(project_dir=project_dir))
-        if (project_dir / source_root).is_dir():
-            paths.add(source_root)
-        return sorted(paths)
+        has_source_root = (project_dir / source_root).is_dir()
+        paths.discard(source_root)
+        ordered = sorted(paths)
+        if has_source_root:
+            ordered = [source_root, *ordered]
+        return ordered
 
+    @override
     def pyrefly_search_paths(
         self, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:

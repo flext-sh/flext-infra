@@ -24,6 +24,7 @@ class FlextInfraExtraPathsSyncMixin:
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
         pyrefly_search_paths_from_payload: Callable[..., t.StrSequence]
+        pyrefly_search_paths: Callable[..., t.StrSequence]
 
     def _resolve_transitive_deps(
         self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
