@@ -268,6 +268,10 @@ class FlextInfraConfigModels:
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
+        ]
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(

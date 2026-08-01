@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 from pathlib import Path
 from typing import Annotated, override
 
@@ -25,6 +26,58 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         ),
     ]
+    def _serialized_command(
+        self,
+        makefile: Path,
+        make_config: m.Infra.MakeSpec,
+        *,
+        selected_what: str,
+        apply_value: str,
+    ) -> t.StrSequence:
+        """Build the nested command with validated public Make variables."""
+        return (
+            c.Infra.MAKE,
+            "--no-print-directory",
+            "-f",
+            str(makefile),
+            f"_serialized_{self.verb}",
+            *(
+                (f"{make_config.selector}={selected_what}",)
+                if selected_what
+                else ()
+            ),
+            *(
+                (f"{make_config.apply_variable}={apply_value}",)
+                if apply_value
+                else ()
+            ),
+        )
+
+    @staticmethod
+    def _make_variables(make_config: m.Infra.MakeSpec) -> p.Result[t.StrMapping]:
+        """Parse GNU Make's standard command-variable transport exactly once."""
+        try:
+            tokens = shlex.split(os.environ.get(c.Infra.MAKEFLAGS_ENV, ""))
+        except ValueError as exc:
+            return r[t.StrMapping].fail(f"invalid GNU Make flags: {exc}")
+        owned_names = frozenset({make_config.selector, make_config.apply_variable})
+        values: dict[str, str] = {}
+        for token in tokens:
+            name, separator, value = token.partition("=")
+            if not separator or name not in owned_names:
+                continue
+            previous = values.get(name)
+            if previous is not None and previous != value:
+                return r[t.StrMapping].fail(
+                    f"conflicting GNU Make values for {name}: {previous}, {value}"
+                )
+            values[name] = value
+        apply_value = values.get(make_config.apply_variable, "")
+        if apply_value and apply_value != make_config.apply_value:
+            return r[t.StrMapping].fail(
+                f"{make_config.apply_variable} must be {make_config.apply_value} when set"
+            )
+        return r[t.StrMapping].ok(values)
 
     @classmethod
     def _process_failure(
@@ -104,6 +157,8 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         self,
         checkout: Path,
         serialization: m.Infra.MakeSerializationSpec,
+        make_config: m.Infra.MakeSpec,
+        make_variables: t.StrMapping,
         *,
         makefile: Path,
     ) -> p.Result[m.Infra.ProcessExit]:
@@ -119,12 +174,11 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         primary = self._run_make(
             checkout,
-            (
-                c.Infra.MAKE,
-                "--no-print-directory",
-                "-f",
-                str(makefile),
-                f"_serialized_{self.verb}",
+            self._serialized_command(
+                makefile,
+                make_config,
+                selected_what=make_variables.get(make_config.selector, ""),
+                apply_value=make_variables.get(make_config.apply_variable, ""),
             ),
             failure_context=f"serialized Make {self.verb} failed",
         )
@@ -148,17 +202,21 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         return primary
 
     def _execute_mutation_once(
-        self, checkout: Path, *, makefile: Path
+        self,
+        checkout: Path,
+        make_config: m.Infra.MakeSpec,
+        make_variables: t.StrMapping,
+        *,
+        makefile: Path,
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one mutation; the enclosing single-flight lock owns serialization."""
         return self._run_make(
             checkout,
-            (
-                c.Infra.MAKE,
-                "--no-print-directory",
-                "-f",
-                str(makefile),
-                f"_serialized_{self.verb}",
+            self._serialized_command(
+                makefile,
+                make_config,
+                selected_what=make_variables.get(make_config.selector, ""),
+                apply_value=make_variables.get(make_config.apply_variable, ""),
             ),
             failure_context=f"serialized Make {self.verb} failed",
         )
@@ -194,8 +252,14 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             return r[m.Infra.ProcessExit].fail(
                 f"Make verb '{self.verb}' is not serialized (allowed: {allowed})"
             )
+        make_variables_result = self._make_variables(make_config)
+        if make_variables_result.failure:
+            return r[m.Infra.ProcessExit].fail(
+                make_variables_result.error or "invalid GNU Make variables"
+            )
+        make_variables = make_variables_result.value
         is_mutation = self.verb in serialization.mutation_verbs and (
-            os.environ.get(make_config.apply_variable) == make_config.apply_value
+            make_variables.get(make_config.apply_variable) == make_config.apply_value
         )
 
         checkout = self.root.resolve()
@@ -220,13 +284,20 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:
             if is_mutation:
                 return self._execute_mutation_once(
-                    checkout, makefile=selected_makefile
+                    checkout,
+                    make_config,
+                    make_variables,
+                    makefile=selected_makefile,
                 )
             return u.Infra.serialization_lock_execute(
                 (mutation_lock_path,),
                 serialization.timeout_seconds,
                 lambda: self._execute_locked(
-                    checkout, serialization, makefile=selected_makefile
+                    checkout,
+                    serialization,
+                    make_config,
+                    make_variables,
+                    makefile=selected_makefile,
                 ),
                 timeout_failure=self._lock_timeout_failure,
                 acquisition_failure=self._lock_acquisition_failure,
