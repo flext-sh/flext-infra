@@ -153,22 +153,28 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      ci:
+        variable: CI
+        value: Y
+      workflow:
+        - { verb: setup, apply: false }
+        - { verb: gen, apply: true }
+        - { verb: fmt, apply: true }
+        - { verb: fix, apply: true }
+        - { verb: check, apply: false }
+        - { verb: test, apply: false }
       bootstrap:
         environment: isolated
         dependency_groups: all
         extras: all
       docs:
-        actions: [all, generate, fix, audit, build, validate]
-        default_action: all
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_fixed_points:
-          gen:
-            apply: check
+        mutation_verbs: [gen, fmt, fix]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -176,135 +182,74 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen]
+        verbs: [check, test, gen, fmt, fix]
       verbs:
         - name: help
-          whats:
-            - usage
-          default_what: all
-          whats:
-            - usage
+          default_what: usage
+          whats: [usage]
           apply_guarded: false
         - name: setup
-          default_what: all
-          whats:
-            - environment
-            - submodules
+          default_what: environment
+          whats: [environment]
           apply_guarded: false
         - name: deps
-          whats:
-            - check
-            - lock
-            - upgrade
-          default_what: all
-          whats:
-            - check
-            - lock
-            - upgrade
+          default_what: check
+          whats: [check, lock, upgrade]
           apply_guarded: false
         - name: build
-          whats:
-            - artifacts
-          default_what: all
-          whats:
-            - artifacts
+          default_what: artifacts
+          whats: [artifacts]
           apply_guarded: false
         - name: check
-          whats:
-            - all
           default_what: all
-          whats:
-            - all
+          whats: [all]
           apply_guarded: false
         - name: test
-          whats:
-            - all
           default_what: all
-          whats:
-            - all
+          whats: [all]
           apply_guarded: false
         - name: fmt
-          whats:
-            - check
-            - apply
-            - all
-          default_what: all
-          whats:
-            - all
-            - apply
-            - check
+          default_what: check
+          whats: [check, all]
           apply_guarded: true
+          apply_what: all
+        - name: fix
+          default_what: check
+          whats: [check, all]
+          apply_guarded: true
+          apply_what: all
         - name: run
-          whats:
-            - default
-          default_what: all
-          whats:
-            - default
+          default_what: default
+          whats: [default]
           apply_guarded: false
         - name: status
-          whats:
-            - diagnostics
-          default_what: all
-          whats:
-            - diagnostics
+          default_what: diagnostics
+          whats: [diagnostics]
           apply_guarded: false
         - name: docs
           default_what: all
-          whats:
-            - all
+          whats: [all, generate, fix, audit, build, validate]
           apply_guarded: false
         - name: clean
-          whats:
-            - generated
-          default_what: all
-          whats:
-            - generated
+          default_what: generated
+          whats: [generated]
           apply_guarded: false
         - name: release
-          whats:
-            - status
-          default_what: all
-          whats:
-            - status
+          default_what: status
+          whats: [status]
           apply_guarded: false
-        - name: fix
-          whats:
-            - check
-            - apply
-            - all
-          default_what: all
-          whats:
-            - all
-            - apply
-            - check
-          apply_guarded: true
         - name: gen
-          whats:
-            - check
-            - apply
-            - all
-          default_what: all
-          whats:
-            - all
-            - apply
-            - check
+          default_what: check
+          whats: [check, all]
           apply_guarded: true
+          apply_what: all
         - name: worktree
-          whats:
-            - list
-            - add
-            - update
-            - remove
-          default_what: all
-          whats:
-            - add
-            - list
-            - remove
-            - update
+          default_what: list
+          whats: [list, add, update, remove]
           apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
+        target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -726,9 +671,6 @@ Infra:
         owner: codegen
         policy: full
       - path: ci/docker/ubuntu.Dockerfile
-        owner: codegen
-        policy: full
-      - path: .github/workflows/ci-matrix.yml
         owner: codegen
         policy: full
       - path: .github/workflows/ci.yml
@@ -1253,6 +1195,11 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        - source: base/.pre-commit-config.yaml.j2
+          destination: .pre-commit-config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
         - source: base/README.md.j2
           destination: README.md
           profiles: [workspace-root, workspace-member, standalone]
@@ -1303,13 +1250,6 @@ Infra:
           overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
-        # clean-machine images validating bootstrap and make verbs everywhere.
-        - source: base/.github/workflows/ci-matrix.yml.j2
-          destination: .github/workflows/ci-matrix.yml
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

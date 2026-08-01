@@ -22,6 +22,7 @@ repository:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
       default_what: {{ verb.default_what | tojson }}
+      whats: {{ verb.whats | tojson }}
       apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}
@@ -72,6 +73,7 @@ members:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
         default_what: {{ verb.default_what | tojson }}
+        whats: {{ verb.whats | tojson }}
         apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}
