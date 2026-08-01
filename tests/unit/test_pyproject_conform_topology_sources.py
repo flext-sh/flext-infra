@@ -205,8 +205,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
             has="attached workspace dependency declares direct source",
         )
 
-    def test_publishable_member_rejects_unmapped_direct_source(self) -> None:
-        """Fail closed when no typed workspace repository owns a direct source."""
+    def test_publishable_member_pins_unmapped_provider_source_to_branch(self) -> None:
+        """Derive the declared branch for a provider source absent from members."""
         workspace = _workspace_with_consumer()
         consumer = workspace.members[1]
         result = u.Infra.pyproject_dependencies_conform(
@@ -221,7 +221,16 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
-        tm.fail(result, has="repository catalog lacks required distribution")
+        document = tomllib.loads(tm.ok(result))
+        tm.that(
+            document["project"]["dependencies"],
+            eq=[
+                (
+                    "flext-unmapped @ git+https://github.com/flext-sh/"
+                    f"flext-unmapped.git@{_PROVIDER_SPEC.branch}"
+                )
+            ],
+        )
 
     def test_root_workspace_overlay_resolves_publishable_member_with_uv(
         self, tmp_path: Path
