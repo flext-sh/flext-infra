@@ -30,8 +30,12 @@ WORKDIR /workspace
 COPY . .
 
 # === SECTION: mise install (managed) ===
-# Source: computed (reads .mise.toml from copied workspace)
-RUN mise trust .mise.toml && mise install --yes
+# Source: computed (reads .mise.toml) + config:toolchain.go_version
+# Go-backed tools require the configured compiler to be active before the
+# remaining mise graph starts its portable source-build backends.
+RUN mise trust .mise.toml \
+    && mise install go@{{ go_version }} --yes \
+    && mise install --yes
 # End SECTION: mise install
 
 ENTRYPOINT []

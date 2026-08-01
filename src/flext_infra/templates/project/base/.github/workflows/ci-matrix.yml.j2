@@ -64,7 +64,7 @@ jobs:
       # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
-  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/setup-go/mise/setup-uv
   macos:
     if: >-
       github.base_ref == '{{ github_actions_promotion.target }}' &&
@@ -78,6 +78,11 @@ jobs:
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           python-version-file: .python-version
+      - name: Setup Go build dependency
+        uses: {{ github_actions["setup-go"].repository }}@{{ github_actions["setup-go"].sha }}  # {{ github_actions["setup-go"].version }}
+        with:
+          go-version: "{{ go_version }}"
+          cache: false
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
@@ -93,7 +98,7 @@ jobs:
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
-  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/setup-go/mise/setup-uv
   windows:
     if: >-
       github.base_ref == '{{ github_actions_promotion.target }}' &&
@@ -107,6 +112,11 @@ jobs:
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           python-version-file: .python-version
+      - name: Setup Go build dependency
+        uses: {{ github_actions["setup-go"].repository }}@{{ github_actions["setup-go"].sha }}  # {{ github_actions["setup-go"].version }}
+        with:
+          go-version: "{{ go_version }}"
+          cache: false
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:

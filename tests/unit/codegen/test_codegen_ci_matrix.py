@@ -354,6 +354,38 @@ class TestCodegenCiMatrix:
         tm.that(beads["depends"], has="go")
         tm.that(beads["install_env"], has="CGO_ENABLED")
 
+    def test_ci_provisions_go_before_go_backed_mise_tools(
+        self, rendered_project: Path
+    ) -> None:
+        """Activate configured Go before mise starts Go-backed installs."""
+        root = rendered_project
+        toolchain = config.Infra.codegen.toolchain
+        workflow = (root / ".github/workflows/ci-matrix.yml").read_text(
+            encoding="utf-8"
+        )
+        setup_go = config.Infra.codegen.github_actions["setup-go"]
+        setup_go_ref = f"{setup_go.repository}@{setup_go.sha}"
+        for host in ("macos", "windows"):
+            section = workflow.split(f"\n  {host}:", maxsplit=1)[1]
+            if host == "macos":
+                section = section.split("\n  windows:", maxsplit=1)[0]
+            tm.that(section, has=setup_go_ref)
+            tm.that(section, has=f'go-version: "{toolchain.go_version}"')
+            tm.that(
+                section.index(setup_go_ref) < section.index("jdx/mise-action@"),
+                eq=True,
+            )
+
+        for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
+            content = (root / "ci/docker" / f"{distro}.Dockerfile").read_text(
+                encoding="utf-8"
+            )
+            pinned_go = f"mise install go@{toolchain.go_version} --yes"
+            tm.that(content, has=pinned_go)
+            tm.that(
+                content.index(pinned_go) < content.index("mise install --yes"), eq=True
+            )
+
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
         self, rendered_project: Path
     ) -> None:
