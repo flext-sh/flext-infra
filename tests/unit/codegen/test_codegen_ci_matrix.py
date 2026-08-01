@@ -108,9 +108,11 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
 
-        lifecycle = config.Infra.codegen.github_actions_workflows.lifecycle
+        make = config.Infra.codegen.make
+        lifecycle = make.workflow
         for step in lifecycle:
-            command = f"make {step.verb}{' APPLY=Y' if step.apply else ''} CI=Y"
+            apply = f" {make.apply_variable}={make.apply_value}" if step.apply else ""
+            command = f"make {step.verb}{apply} {make.ci.variable}={make.ci.value}"
             tm.that(workflow.count(f"run: {command}"), eq=1)
 
     def test_docs_workflow_template_uses_default_all_make_contract(self) -> None:
@@ -122,11 +124,12 @@ class TestCodegenCiMatrix:
         ).read_text(encoding="utf-8")
 
         tm.that(workflow, has="github_actions_workflows.docs_verb")
+        tm.that(workflow, has="make.ci.variable")
         tm.that(workflow, lacks="WHAT=")
         tm.that(workflow, lacks="DOCS_PHASE=")
 
     def test_workflow_make_calls_explicitly_use_ci_mode(self) -> None:
-        """Every generated workflow enters lifecycle verbs through CI=Y."""
+        """Every generated workflow enters lifecycle verbs through CI mode."""
         root = Path(__file__).resolve().parents[3]
         workflow_templates = (
             root / "src/flext_infra/templates/project/base/.github"
@@ -139,7 +142,8 @@ class TestCodegenCiMatrix:
         )
         tm.that(make_lines, empty=False)
         for line in make_lines:
-            tm.that(line, has="CI=Y")
+            tm.that(line, has="make.ci.variable")
+            tm.that(line, has="make.ci.value")
             tm.that(line, lacks="WHAT=")
             tm.that(line, lacks="RELEASE_PHASE=")
 
@@ -147,9 +151,12 @@ class TestCodegenCiMatrix:
         self, rendered_workspace: Path
     ) -> None:
         """Each rendered CI job delegates once to every lifecycle Make verb."""
+        make = config.Infra.codegen.make
         lifecycle = tuple(
-            f"make {step.verb}{' APPLY=Y' if step.apply else ''} CI=Y"
-            for step in config.Infra.codegen.github_actions_workflows.lifecycle
+            f"make {step.verb}"
+            f"{' ' + make.apply_variable + '=' + make.apply_value if step.apply else ''}"
+            f" {make.ci.variable}={make.ci.value}"
+            for step in make.workflow
         )
         forbidden_tools = (
             "mise exec",
@@ -212,8 +219,17 @@ class TestCodegenCiMatrix:
             for raw_step in release_steps
             if "run" in (step := t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step))
         )
-        tm.that(docs_commands.count(f"make {policy.docs_verb} CI=Y"), eq=1)
-        tm.that(release_commands.count(f"make {policy.release_verb} CI=Y"), eq=1)
+        ci = config.Infra.codegen.make.ci
+        tm.that(
+            docs_commands.count(f"make {policy.docs_verb} {ci.variable}={ci.value}"),
+            eq=1,
+        )
+        tm.that(
+            release_commands.count(
+                f"make {policy.release_verb} {ci.variable}={ci.value}"
+            ),
+            eq=1,
+        )
         upload = next(
             t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step)
             for raw_step in docs_steps
@@ -412,9 +428,12 @@ class TestCodegenCiMatrix:
             "\n  windows:", maxsplit=1
         )[0]
         windows = content.split("\n  windows:", maxsplit=1)[1]
+        make = config.Infra.codegen.make
         lifecycle = tuple(
-            f"make {step.verb}{' APPLY=Y' if step.apply else ''} CI=Y"
-            for step in config.Infra.codegen.github_actions_workflows.lifecycle
+            f"make {step.verb}"
+            f"{' ' + make.apply_variable + '=' + make.apply_value if step.apply else ''}"
+            f" {make.ci.variable}={make.ci.value}"
+            for step in make.workflow
         )
         for host in (macos, windows):
             positions = tuple(host.index(f"run: {command}") for command in lifecycle)

@@ -46,12 +46,12 @@ jobs:
         with:
           enable-cache: false
 
-{% for lifecycle_step in github_actions_workflows.lifecycle %}
-      - name: {{ lifecycle_step.verb | title }}
-        run: make {{ lifecycle_step.verb }}{% if lifecycle_step.apply %} APPLY=Y{% endif %} CI=Y
+{% for step in make.workflow %}
+      - name: {{ step.verb | title }}
+        run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %} {{ make.ci.variable }}={{ make.ci.value }}
 {% endfor %}
 
       - name: Release from version and repository SSOT
         env:
           GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
-        run: make {{ github_actions_workflows.release_verb }} CI=Y
+        run: make {{ github_actions_workflows.release_verb }} {{ make.ci.variable }}={{ make.ci.value }}
