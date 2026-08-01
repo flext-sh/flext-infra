@@ -102,6 +102,14 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         active_config = settings or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
         sections: t.MutableSequenceOf[str] = []
+        docs_verb = next(
+            (item for item in config.Infra.codegen.make.verbs if item.name == "docs"),
+            None,
+        )
+        if docs_verb is None:
+            return r[str].fail("codegen SSOT declares no 'docs' verb")
+        docs_whats = tuple(docs_verb.whats)
+        docs_default_what = docs_verb.default_what
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
                 template: p.Infra.RenderableTemplate = self._environment.get_template(
@@ -113,6 +121,11 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     apply_value=config.Infra.codegen.make.apply_value,
                     apply_variable=config.Infra.codegen.make.apply_variable,
                     docs=config.Infra.codegen.make.docs,
+                    # `MakeDocsSpec.actions` was folded into the single verb
+                    # SSOT; the docs selectors now come from the same
+                    # `make.verbs[].whats` the dispatcher validates against.
+                    docs_whats=docs_whats,
+                    docs_default_what=docs_default_what,
                     pytest=config.Infra.tooling.tools.pytest,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,

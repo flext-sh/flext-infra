@@ -56,27 +56,28 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             *((f"{make_config.apply_variable}={apply_value}",) if apply_value else ()),
         )
 
-    def _make_variables(
-        self, make_config: m.Infra.MakeSpec
-    ) -> p.Result[t.StrMapping]:
+    def _make_variables(self, make_config: m.Infra.MakeSpec) -> p.Result[t.StrMapping]:
         """Resolve one caller request from the canonical verb matrix."""
         verb_spec = next(
             (item for item in make_config.verbs if item.name == self.verb), None
         )
         if verb_spec is None:
             return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
-        if self.apply_token not in {"", make_config.apply_value}:
+        # The generated Makefile seeds the absent value and forwards it on every
+        # read-only run, so it means "not applying", not an invalid token.
+        applying = self.apply_token not in {"", make_config.apply_absent_value}
+        if applying and self.apply_token != make_config.apply_value:
             return r[t.StrMapping].fail(
                 f"{make_config.apply_variable} must be "
                 f"{make_config.apply_value} when set"
             )
-        if self.apply_token and not verb_spec.apply_guarded:
+        if applying and not verb_spec.apply_guarded:
             return r[t.StrMapping].fail(
                 f"Make verb '{self.verb}' is read-only and does not accept "
                 f"{make_config.apply_variable}"
             )
         selected_what = self.selector_value or (
-            verb_spec.apply_what if self.apply_token else verb_spec.default_what
+            verb_spec.apply_what if applying else verb_spec.default_what
         )
         if selected_what not in verb_spec.whats:
             allowed = ", ".join(verb_spec.whats)
@@ -84,12 +85,10 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"unsupported {self.verb} {make_config.selector}={selected_what} "
                 f"(allowed: {allowed})"
             )
-        return r[t.StrMapping].ok(
-            {
-                make_config.selector: selected_what,
-                make_config.apply_variable: self.apply_token,
-            }
-        )
+        return r[t.StrMapping].ok({
+            make_config.selector: selected_what,
+            make_config.apply_variable: self.apply_token,
+        })
 
     @classmethod
     def _process_failure(
@@ -119,7 +118,16 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         cls, checkout: Path, command: t.StrSequence, *, failure_context: str
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one private Make phase and retain its process semantics."""
-        result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
+        # The enclosing serialization already holds the checkout's mutation lock.
+        # Without this marker the child Make re-enters run_worktree_transaction,
+        # which waits for that very lock and deadlocks: parent in do_wait, child
+        # sleeping on a lock only the parent can release.
+        result = u.Cli.run_raw(
+            list(command),
+            cwd=checkout,
+            env={c.Infra.WORKTREE_TRANSACTION_ENV: "1"},
+            capture=False,
+        )
         if result.failure:
             return cls._process_failure(
                 int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context

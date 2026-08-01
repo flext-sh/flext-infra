@@ -33,7 +33,10 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-APPLY ?= N
+{{ make.apply_variable }} ?= {{ make.apply_absent_value }}
+# The seeded absent value means "not applying", so every guard compares against
+# APPLYING and a plain read-only run never trips the write-enable check.
+APPLYING := $(if $(filter-out {{ make.apply_absent_value }},$(strip $({{ make.apply_variable }}))),$(strip $({{ make.apply_variable }})))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -253,13 +256,14 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "{{ make.apply_value }}" ]; then \
+	applying="$(strip $(APPLYING))"; \
+	if [ -n "$$applying" ] && [ "$$applying" != "{{ make.apply_value }}" ]; then \
 		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
 	fi; \
-	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
+	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
 		printf 'ERROR: verb %s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" >&2; exit 2; \
 	fi; \
-	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
+	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
@@ -550,10 +554,14 @@ _builtin_release_status: _builtin_require_environment
 
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE_ROOT)" --check
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(WORKSPACE_ROOT)" --check
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(WORKSPACE_ROOT)" --apply
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list

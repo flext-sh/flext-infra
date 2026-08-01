@@ -23,6 +23,11 @@ class FlextInfraExtraPathsSyncMixin:
         root: Path
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
+        pyrefly_search_paths: Callable[..., t.StrSequence]
+
+    def resolve_transitive_dependency_names(self, direct_names: t.StrSequence) -> t.StrSequence:
+        """Return the transitive workspace path-dependency closure of direct_names."""
+        return self._resolve_transitive_deps(direct_names)
 
     def _resolve_transitive_deps(
         self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
@@ -147,8 +152,15 @@ class FlextInfraExtraPathsSyncMixin:
     ) -> p.Result[int]:
         """Synchronize extraPaths and mypy_path across projects."""
         if project_dirs:
+            updated_selected = 0
             for project_dir in project_dirs:
                 pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+                # A governed worktree transaction materializes only the scoped
+                # submodule's source tree, so a selected member legitimately has
+                # no pyproject there. Failing closed made every scoped apply
+                # report breakage and silently skip writing the derived paths.
+                if not pyproject.exists():
+                    continue
                 sync_result = self.sync_one(
                     pyproject, dry_run=dry_run, is_root=project_dir == self.root
                 )
@@ -157,17 +169,34 @@ class FlextInfraExtraPathsSyncMixin:
                         sync_result.error or f"sync failed for {pyproject}"
                     )
                 if sync_result.value and (not dry_run):
+                    updated_selected += 1
                     u.Cli.info(f"Updated {pyproject}")
-            return r[int].ok(0)
-        pyproject = self.root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject.exists():
-            return r[int].fail(f"Missing {pyproject}")
-        sync_result = self.sync_one(pyproject, dry_run=dry_run, is_root=True)
-        if sync_result.failure:
-            return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
-        if sync_result.value and (not dry_run):
-            u.Cli.info("Updated extraPaths and mypy_path from path dependencies.")
-        return r[int].ok(0)
+            return r[int].ok(updated_selected)
+        # WHAT=all is the canonical default: an unselected run owns the root AND
+        # every managed member. Syncing only the root left each member's
+        # mypy_path/extraPaths frozen at whatever was last written by hand, so
+        # sibling path dependencies never reached the member analyzers and every
+        # symbol imported from them degraded to Any.
+        targets: t.MutableSequenceOf[Path] = [self.root]
+        targets.extend(
+            self.root / member for member in u.Infra.workspace_member_names(self.root)
+        )
+        updated = 0
+        for target in targets:
+            pyproject = target / c.Infra.PYPROJECT_FILENAME
+            if not pyproject.exists():
+                if target == self.root:
+                    return r[int].fail(f"Missing {pyproject}")
+                continue
+            sync_result = self.sync_one(
+                pyproject, dry_run=dry_run, is_root=target == self.root
+            )
+            if sync_result.failure:
+                return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
+            if sync_result.value and (not dry_run):
+                updated += 1
+                u.Cli.info(f"Updated {pyproject}")
+        return r[int].ok(updated)
 
 
 __all__: list[str] = ["FlextInfraExtraPathsSyncMixin"]

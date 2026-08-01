@@ -633,6 +633,18 @@ class FlextInfraConfigModels:
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
         ]
+        apply_absent_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="N",
+                description=(
+                    "Value the generated Makefile seeds when the caller enables "
+                    "nothing. It is forwarded verbatim on every read-only run, "
+                    "so the boundary must read it as 'not applying' instead of "
+                    "as an invalid write-enable token"
+                ),
+            ),
+        ]
         bootstrap: Annotated[
             FlextInfraConfigModels.MakeBootstrapSpec,
             m.Field(description="Pre-conform project environment contract"),
@@ -1024,6 +1036,17 @@ class FlextInfraConfigModels:
             bool,
             m.Field(description="Whether conform generates the governed CI surface"),
         ] = True
+        extra_ignored_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Project-local .gitignore patterns appended after the"
+                    " fleet-wide scaffold sections (mro-jnm1.3 seam); never"
+                    " hand-edit the generated .gitignore, declare the pattern"
+                    " here instead"
+                )
+            ),
+        ] = ()
 
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""

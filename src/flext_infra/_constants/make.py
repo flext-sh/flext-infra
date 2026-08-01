@@ -37,6 +37,12 @@ class FlextInfraConstantsMake:
     CLI_GROUP_VALIDATE: Final[str] = "validate"
     CLI_ROUTE_MAINTENANCE: Final[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: Final[str] = "workspace"
+    CLI_GROUPS_TRANSLATING_WHAT: Final[frozenset[str]] = frozenset({
+        CLI_GROUP_CHECK,
+        CLI_GROUP_VALIDATE,
+        CLI_GROUP_CODEGEN,
+    })
+    "Groups whose --what maps onto a selector instead of a subcommand option."
     MYPY_MEMORY_LIMIT_MB_ENV: Final[str] = "MYPY_MEMORY_LIMIT_MB"
     MYPY_MEMORY_LIMIT_MB_DEFAULT: Final[int] = 6144
     MYPY_TIMEOUT_SECONDS_ENV: Final[str] = "MYPY_TIMEOUT_SECONDS"
@@ -50,6 +56,7 @@ class FlextInfraConstantsMake:
     "Make variable carrying the gate selection."
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
         "lint",
+        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -68,6 +75,7 @@ class FlextInfraConstantsMake:
     )
     PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
         "lint",
+        "format",
         "pyrefly",
         "mypy",
         "pyright",

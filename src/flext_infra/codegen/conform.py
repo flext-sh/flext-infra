@@ -10,7 +10,6 @@ import re
 import os
 import hashlib
 from fnmatch import fnmatchcase
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, override
 
@@ -410,7 +409,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
-                    canonical_prefix=self._beads_ledger_identity(workspace, target),
+                    # Why (ai-hub-qwoc): canonical_prefix verifies the LIVE
+                    # Beads ledger's issue-prefix (hyphenated, matches real
+                    # issue IDs) -- it must never be workspace.ledger_id,
+                    # which is the separate Dolt-safe database identifier and
+                    # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
+                    canonical_prefix=self.declared_beads_prefix(
+                        target.root, fallback=target.canonical_project_name
+                    ),
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
@@ -1362,15 +1368,32 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
             profile = target.make_profile
-            return r[p.Model].ok(
-                m.Infra.GitignoreRenderSpec(
-                    gitignore_sections=tuple(
-                        section
-                        for section in codegen.gitignore_sections
-                        if not section.profiles or profile in section.profiles
-                    )
-                )
+            sections = tuple(
+                section
+                for section in codegen.gitignore_sections
+                if not section.profiles or profile in section.profiles
             )
+            # Why (ai-hub-qwoc): mro-jnm1.3 seam -- a project-local overlay
+            # extends the fleet-wide scaffold sections instead of the
+            # generated .gitignore being hand-edited (which `codegen conform`
+            # would then treat as WIP and refuse to regenerate).
+            overlay = next(
+                (
+                    item
+                    for item in workspace.repository_policy_overlays
+                    if item.project == repository.distribution
+                ),
+                None,
+            )
+            if overlay is not None and overlay.extra_ignored_patterns:
+                sections = (
+                    *sections,
+                    m.Infra.ScaffoldGitignoreSectionSpec(
+                        name="Project-local exceptions (config/workspace.yaml overlay)",
+                        patterns=overlay.extra_ignored_patterns,
+                    ),
+                )
+            return r[p.Model].ok(m.Infra.GitignoreRenderSpec(gitignore_sections=sections))
         if destination == "sgconfig.yml":
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
@@ -1387,13 +1410,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            ledger_identity = FlextInfraCodegenConform._beads_ledger_identity(
-                workspace, target
+            # Why (ai-hub-qwoc): issue-prefix and the Dolt database name are
+            # DISTINCT identifiers that happened to collide when neither the
+            # committed config nor workspace.ledger_id declared an override --
+            # issue-prefix is the human-facing tracker namespace (matches real
+            # issue IDs like "ai-hub-1234", hyphenated), while database is the
+            # Dolt-safe identifier (underscore-only, e.g. "ai_hub"). Collapsing
+            # both onto one ledger_identity silently renamed issue-prefix to
+            # the database form whenever ledger_id was declared explicitly.
+            issue_prefix = FlextInfraCodegenConform.declared_beads_prefix(
+                target.root, fallback=target.canonical_project_name
             )
+            database = workspace.ledger_id or issue_prefix
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
-                    issue_prefix=ledger_identity,
-                    database=ledger_identity,
+                    issue_prefix=issue_prefix,
+                    database=database,
                     server=server,
                     routing=target.routing_only,
                 )
@@ -1955,15 +1987,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         )
 
-    @classmethod
-    def _beads_ledger_identity(
-        cls, workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
-    ) -> str:
-        """Derive the ledger namespace from the declared SSOT identity."""
-        return workspace.ledger_id or cls.declared_beads_prefix(
-            target.root, fallback=target.canonical_project_name
-        )
-
     @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
         """Resolve the principal checkout owning the workspace ledger."""
@@ -2046,7 +2069,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if not config_path.is_file():
             return fallback
         loaded = u.Cli.yaml_load_mapping(config_path)
-        prefix = loaded.get("issue-prefix") if isinstance(loaded, Mapping) else None
+        prefix = loaded.get("issue-prefix")
         if isinstance(prefix, str) and prefix.strip():
             return prefix.strip()
         return fallback
