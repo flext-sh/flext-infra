@@ -50,7 +50,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan = tm.ok(planned)
+    plan: m.Infra.CodegenPlan = tm.ok(planned)
     makefile: m.Infra.CodegenFilePlan = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
@@ -148,8 +148,8 @@ class TestsWorkspaceRootSetupSubmodules:
     ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
-        sync_at = rendered.index("submodule sync --recursive")
-        update_at = rendered.index("submodule update --init --recursive")
+        sync_at = rendered.index("submodule sync --quiet")
+        update_at = rendered.index("submodule update --init --")
         uv_at = rendered.index("$(UV) sync --project")
 
         tm.that(sync_at < update_at < uv_at, eq=True)
@@ -160,6 +160,9 @@ class TestsWorkspaceRootSetupSubmodules:
         """Generated workspace-root setup initializes declared submodules first."""
         rendered = _render_workspace_root_makefile(tmp_path)
         workspace = _create_uninitialized_workspace(tmp_path, rendered)
+        recorded_gitlink: str = tm.ok(
+            u.Cli.capture([c.Infra.GIT, "rev-parse", ":flext-core"], cwd=workspace)
+        ).strip()
         env = os.environ.copy()
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
@@ -173,3 +176,11 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(process.exit_code, eq=0)
         tm.that(process.stdout + process.stderr, has="Submodule path 'flext-core'")
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
+        tm.that(
+            tm.ok(
+                u.Cli.capture(
+                    [c.Infra.GIT, "rev-parse", "HEAD"], cwd=workspace / "flext-core"
+                )
+            ).strip(),
+            eq=recorded_gitlink,
+        )

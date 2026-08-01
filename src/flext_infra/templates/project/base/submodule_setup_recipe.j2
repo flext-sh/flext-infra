@@ -5,10 +5,11 @@
 # Source: template (submodule_setup_recipe.j2)
 # Computed: workspace-root uses WORKSPACE_MEMBERS from config; standalone discovers
 #           submodules with flext-managed=true from .gitmodules at runtime.
-# Rule: all managed submodules are synced and initialized recursively before
-#       branch validation; unmanaged submodules are never touched. Local changes
-#       on the declared branch are preserved. Nested submodules inside managed
-#       trees are validated recursively.
+# Rule: managed gitlinks are initialized at the exact commit recorded by their
+#       superproject and the declared remote branch is validation-only. Setup
+#       never advances an active checkout. Unmanaged submodules are never touched;
+#       local commits and changes on the declared branch are preserved. Nested
+#       submodules inside managed trees are initialized and validated recursively.
 # Free: no
 # End SECTION: submodule setup
 {{ target }}:
@@ -34,10 +35,6 @@
 	fi; \
 	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
 	if [ -z "$$managed" ]; then exit 0; fi; \
-	git -C "$$root" submodule sync --recursive --quiet; \
-	for child_path in $$managed; do \
-		git -C "$$root" submodule update --init --recursive -- "$$child_path"; \
-	done; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
@@ -58,6 +55,12 @@
 			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$$child_path" >&2; \
 			exit 2; \
 		fi; \
+		git -C "$$superproject" submodule sync --quiet -- "$$child_path"; \
+		status=$$(git -C "$$superproject" submodule status -- "$$child_path" || :); \
+		case "$$status" in \
+			-*) git -C "$$superproject" submodule update --init -- "$$child_path" ;; \
+			U*) printf 'ERROR: governed gitlink is conflicted: %s\n' "$$child_path" >&2; exit 2 ;; \
+		esac; \
 		branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$section.branch"); \
 		if [ -z "$$branch" ]; then \
 			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
@@ -78,10 +81,15 @@
 			printf 'ERROR: %s: fetch origin %s failed\n' "$$child_path" "$$branch" >&2; \
 			exit 1; \
 		}; \
+		remote_head=$$(git -C "$$child_root" rev-parse FETCH_HEAD); \
 		gitlink=$$(git -C "$$superproject" ls-files --stage -- "$$child_path" | awk '$$1 == "160000" {print $$2}'); \
 		if [ -z "$$gitlink" ]; then \
 			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
 			exit 2; \
+		fi; \
+		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "$$remote_head"; then \
+			printf 'ERROR: %s: origin/%s diverges from recorded gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+			exit 1; \
 		fi; \
 		current=$$(git -C "$$child_root" branch --show-current); \
 		head=$$(git -C "$$child_root" rev-parse HEAD); \
@@ -95,19 +103,18 @@
 		fi; \
 		if [ -z "$$current" ]; then \
 			if git -C "$$child_root" rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
-				git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "refs/heads/$$branch" || { \
+				branch_head=$$(git -C "$$child_root" rev-parse "refs/heads/$$branch"); \
+				git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "$$branch_head" || { \
 					printf 'ERROR: %s: local branch %s diverges from gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
 					exit 1; \
 				}; \
-				git -C "$$child_root" checkout --quiet "$$branch"; \
+				if [ "$$branch_head" = "$$gitlink" ]; then \
+					git -C "$$child_root" checkout --quiet "$$branch"; \
+				fi; \
 			else \
 				git -C "$$child_root" checkout --quiet -b "$$branch"; \
 			fi; \
 		fi; \
-		git -C "$$child_root" pull --ff-only --quiet origin "$$branch" || { \
-			printf 'ERROR: %s: fast-forward pull of origin/%s failed\n' "$$child_path" "$$branch" >&2; \
-			exit 1; \
-		}; \
 		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
 			printf 'ERROR: %s: branch %s diverges from recorded gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
 			exit 1; \

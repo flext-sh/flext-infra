@@ -108,6 +108,18 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
 
         tm.ok(orchestrator.orchestrate(["project-a", "project-b"], "check"), len=2)
 
+    def test_rejects_workspace_root_as_an_orchestrated_child(self) -> None:
+        """Keep the root in its local Make lane instead of nested ``make -C .``."""
+        calls: t.MutableSequenceOf[str] = []
+        orchestrator = self.RunnerOrchestrator(
+            self.ProjectRunner({c.Infra.ROOT_PROJECT_SELECTOR: 0}, calls=calls)
+        )
+
+        result = orchestrator.orchestrate([c.Infra.ROOT_PROJECT_SELECTOR], "check")
+
+        tm.fail(result, has="not an orchestrated child project")
+        tm.that(calls, empty=True)
+
     def test_fail_fast(self) -> None:
         """Stop orchestration after the first failing project when requested."""
         calls: t.MutableSequenceOf[str] = []
@@ -218,9 +230,9 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         )
 
     def test_execute_returns_success_for_supported_verb(self) -> None:
-        """Return success when execute resolves and runs a supported verb."""
+        """Return success when execute resolves and runs a supported child verb."""
         project = m.Infra.ProjectInfo(
-            name="flext-demo", path=Path.cwd(), stack="python"
+            name="flext-demo", path=Path.cwd() / "flext-demo", stack="python"
         )
         orchestrator = self.PreparedOrchestrator(
             self.ProjectRunner({"flext-demo": 0}), project
