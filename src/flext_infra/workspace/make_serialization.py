@@ -25,17 +25,17 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         ),
     ]
     selector_value: Annotated[
-        str,
+        str | None,
         m.Field(
-            description="Caller selector value; empty resolves from the verb matrix"
+            description="Explicit caller selector; absent resolves from the registry"
         ),
-    ] = ""
+    ] = None
     apply_token: Annotated[
-        str,
+        str | None,
         m.Field(
-            description="Caller mutation token validated against the Make contract"
+            description="Explicit caller mutation token; absent is read-only"
         ),
-    ] = ""
+    ] = None
 
     def _serialized_command(
         self,
@@ -73,7 +73,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         )
         if verb_spec is None:
             return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
-        if self.apply_token not in {"", make_config.apply_value}:
+        if self.apply_token not in {None, make_config.apply_value}:
             return r[t.StrMapping].fail(
                 f"{make_config.apply_variable} must be "
                 f"{make_config.apply_value} when set"
@@ -95,7 +95,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         return r[t.StrMapping].ok(
             {
                 make_config.selector: selected_what,
-                make_config.apply_variable: self.apply_token,
+                make_config.apply_variable: self.apply_token or "",
             }
         )
 

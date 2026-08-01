@@ -111,10 +111,6 @@ class CliDispatchService(CliTransactionService):
             return r[list[str]].ok([what, *remaining])
         if group == c.Infra.CLI_GROUP_CODEGEN and remaining[:1] == ["conform"]:
             return r[list[str]].ok([*remaining, "--what", what])
-        if group == c.Infra.CLI_GROUP_WORKSPACE and remaining[:1] == [
-            "serialize-make"
-        ]:
-            return r[list[str]].ok([*remaining, "--what", what])
         return r[list[str]].fail(f"--what is not supported for group '{group}'")
 
     def run_group(self, group: str, args: t.StrSequence) -> int:

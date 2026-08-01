@@ -355,7 +355,7 @@ $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 
 {% for verb in make.serialized_verbs %}
 {{ verb }}: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}" --selector-value "$({{ make.selector }})" --apply-token "$({{ make.apply_variable }})"
+	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}" $(if $(strip $({{ make.selector }})),--selector-value "$({{ make.selector }})") $(if $(strip $({{ make.apply_variable }})),--apply-token "$({{ make.apply_variable }})")
 
 _serialized_{{ verb }}:
 	$(call _dispatch,{{ verb }})
