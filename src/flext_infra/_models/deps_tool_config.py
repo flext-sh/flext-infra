@@ -207,6 +207,14 @@ class FlextInfraModelsDepsToolSettings(
                 description="Standard pytest addopts enforced by modernizer.",
             ),
         ]
+        process_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="process-timeout-seconds",
+                gt=0,
+                description="Hard timeout for the complete pytest process.",
+            ),
+        ]
 
         @model_validator(mode="after")
         def _validate_execution_limits(self) -> Self:

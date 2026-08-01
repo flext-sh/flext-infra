@@ -124,6 +124,9 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+                    pytest_process_timeout_seconds=(
+                        config.Infra.tooling.tools.pytest.process_timeout_seconds
+                    ),
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

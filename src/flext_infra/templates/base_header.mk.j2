@@ -16,6 +16,9 @@ COMPLEXITY_MAX ?= 10
 {{ variable_name }} ?={% if default_value %} {{ default_value }}{% endif %}
 {% endfor %}
 
+PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
+PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
 PYTEST_REPORTS_DIR ?= .reports/tests
 override PYTEST_CASE_TIMEOUT_SECONDS := {{ pytest.case_timeout_seconds }}
 override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}

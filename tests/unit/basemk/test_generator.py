@@ -80,12 +80,12 @@ class TestsFlextInfraBasemkGenerator:
         tm.ok(result)
         tm.that(
             result.value,
-            has=(
-                f"override PYTEST_RUN_TIMEOUT_SECONDS := {policy.run_timeout_seconds}"
-            ),
+            has=(f"PYTEST_PROCESS_TIMEOUT_SECONDS ?= {policy.process_timeout_seconds}"),
         )
-        tm.that(result.value, has="-m flext_infra._pytest_entry")
-        tm.that(result.value, lacks="PYTEST_PROCESS_TIMEOUT_SECONDS")
+        tm.that(
+            result.value,
+            has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s $(VENV_PYTHON) -m pytest",
+        )
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(
