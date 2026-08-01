@@ -412,4 +412,4 @@ _builtin_worktree_add:
 
 _builtin_worktree_remove:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation remove --branch "$(BRANCH)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation remove --branch '$(subst ','"'"',$(BRANCH))' --apply
