@@ -430,28 +430,30 @@ class FlextInfraConfigModels:
             bool,
             m.Field(description="Whether the step supplies the configured apply token"),
         ] = False
+        contexts: Annotated[
+            tuple[Literal["local", "ci", "pre_commit"], ...],
+            m.Field(
+                min_length=1,
+                description="Execution contexts consuming this single workflow row",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_contexts(self) -> Self:
+            """Require unique contexts and retain every step in the local workflow."""
+            if len(set(self.contexts)) != len(self.contexts):
+                msg = f"make workflow contexts must be unique for {self.verb}"
+                raise ValueError(msg)
+            if "local" not in self.contexts:
+                msg = f"make workflow step {self.verb} must run locally"
+                raise ValueError(msg)
+            return self
 
     class MakeCiSpec(_ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
         value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
-
-    class MakeWorkflowSpec(_ConfigContract):
-        """Context-specific workflows derived from the public verb registry."""
-
-        developer: Annotated[
-            tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
-            m.Field(min_length=1, description="Explicit local developer lifecycle"),
-        ]
-        ci: Annotated[
-            tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
-            m.Field(min_length=1, description="CI lifecycle without conformance"),
-        ]
-        hook: Annotated[
-            tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
-            m.Field(min_length=1, description="Pre-commit lifecycle without conformance"),
-        ]
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -611,8 +613,8 @@ class FlextInfraConfigModels:
             m.Field(description="Per-checkout Make validation serialization"),
         ]
         workflow: Annotated[
-            FlextInfraConfigModels.MakeWorkflowSpec,
-            m.Field(description="Context-specific canonical validation workflows"),
+            tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
+            m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         ci: Annotated[
             FlextInfraConfigModels.MakeCiSpec,
@@ -652,38 +654,37 @@ class FlextInfraConfigModels:
                 msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
             verb_specs = {verb.name: verb for verb in self.verbs}
-            workflow_profiles = {
-                "developer": self.workflow.developer,
-                "ci": self.workflow.ci,
-                "hook": self.workflow.hook,
+            workflow_verbs = tuple(step.verb for step in self.workflow)
+            if len(set(workflow_verbs)) != len(workflow_verbs):
+                msg = "make workflow verbs must be unique"
+                raise ValueError(msg)
+            unknown_workflow = set(workflow_verbs) - declared
+            if unknown_workflow:
+                msg = (
+                    "make workflow verbs are not declared: "
+                    f"{', '.join(sorted(unknown_workflow))}"
+                )
+                raise ValueError(msg)
+            invalid_apply = [
+                step.verb
+                for step in self.workflow
+                if step.apply != verb_specs[step.verb].apply_guarded
+            ]
+            if invalid_apply:
+                msg = (
+                    "make workflow apply intent must match registry: "
+                    f"{', '.join(sorted(invalid_apply))}"
+                )
+                raise ValueError(msg)
+            context_verbs = {
+                context: {
+                    step.verb for step in self.workflow if context in step.contexts
+                }
+                for context in ("ci", "pre_commit")
             }
-            for profile, steps in workflow_profiles.items():
-                workflow_verbs = tuple(step.verb for step in steps)
-                if len(set(workflow_verbs)) != len(workflow_verbs):
-                    msg = f"make {profile} workflow verbs must be unique"
-                    raise ValueError(msg)
-                unknown_workflow = set(workflow_verbs) - declared
-                if unknown_workflow:
-                    msg = (
-                        f"make {profile} workflow verbs are not declared: "
-                        f"{', '.join(sorted(unknown_workflow))}"
-                    )
-                    raise ValueError(msg)
-                invalid_apply = [
-                    step.verb
-                    for step in steps
-                    if step.apply != verb_specs[step.verb].apply_guarded
-                ]
-                if invalid_apply:
-                    msg = (
-                        f"make {profile} workflow apply intent must match registry: "
-                        f"{', '.join(sorted(invalid_apply))}"
-                    )
-                    raise ValueError(msg)
-            for profile in ("ci", "hook"):
-                verbs = {step.verb for step in workflow_profiles[profile]}
+            for context, verbs in context_verbs.items():
                 if "setup" not in verbs or "gen" in verbs:
-                    msg = f"make {profile} workflow requires setup and forbids gen"
+                    msg = f"make {context} workflow requires setup and forbids gen"
                     raise ValueError(msg)
             guarded_verbs = {verb.name for verb in self.verbs if verb.apply_guarded}
             unserialized_mutations = guarded_verbs - serialized
