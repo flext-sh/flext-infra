@@ -1,6 +1,10 @@
-<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
 # FLEXT Infra API Overview
+
+<!-- TOC START -->
+- [Next Pages](#next-pages)
+<!-- TOC END -->
+
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 - Package: `flext_infra`
 - Version: `0.12.0rc0`

@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraLazyInitTransforms:
     """Behavior tests for generated lazy-init transform output."""
 
-    def test_private_subpackage_initializer_is_empty(self, tmp_path: Path) -> None:
-        """Never publish private subpackage implementation classes."""
+    def test_private_subpackage_initializer_is_lazy(self, tmp_path: Path) -> None:
+        """Private implementation packages retain a lazy MRO facade."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -38,10 +38,10 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
-        tm.that(init_content, lacks="from .mapper import")
-        tm.that(init_content, lacks="FlextDemoUtilitiesMapper")
-        tm.that(init_content, has="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="install_lazy_exports(")
+        tm.that(init_content, has="from .mapper import FlextDemoUtilitiesMapper")
+        tm.that(init_content, has="FlextDemoUtilitiesMapper")
+        tm.that(init_content, has="__all__: tuple[str, ...]")
+        tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
 
     def test_source_packages_exclude_test_named_modules(self, tmp_path: Path) -> None:
@@ -75,8 +75,8 @@ class TestsFlextInfraLazyInitTransforms:
         )
 
         tm.that(result, eq=0)
-        tm.that(init_content, has="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="FlextDemoModel")
+        tm.that(init_content, has='"FlextDemoModel"')
+        tm.that(init_content, has='".model": ("FlextDemoModel",)')
         for _filename, class_name in test_modules:
             tm.that(init_content, lacks=class_name)
         tm.that(init_content, lacks="_test_tmp")

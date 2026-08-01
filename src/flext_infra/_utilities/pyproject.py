@@ -10,7 +10,6 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tomlkit import TOMLDocument
 
 from flext_cli import u
 from flext_core import r
@@ -93,7 +92,7 @@ class FlextInfraUtilitiesPyproject:
         return validated if validated is not None else {}
 
     @staticmethod
-    def normalized_toml_payload(document: TOMLDocument) -> t.JsonMapping:
+    def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
         """Return one TOML document normalized through the infra adapter."""
         payload = u.Cli.toml_as_mapping(document)
         if not payload:

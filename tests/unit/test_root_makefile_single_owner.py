@@ -20,7 +20,7 @@ from flext_tests import tm
 
 class TestsFlextInfraRootMakefileSingleOwner:
     def test_single_makefile_entry_owns_every_profile(self) -> None:
-        """One render entry owns the Makefile for all three profiles."""
+        """One render entry owns the Makefile for both effective profiles."""
         entries = tuple(
             entry
             for entry in config.Infra.codegen.templates.entries
@@ -29,7 +29,6 @@ class TestsFlextInfraRootMakefileSingleOwner:
 
         tm.that(entries, len=1)
         tm.that(entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
-        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_MEMBER)
         tm.that(entries[0].profiles, has=c.Infra.MakeProfile.STANDALONE)
 
     def test_no_divergent_workspace_makefile_template_remains(self) -> None:

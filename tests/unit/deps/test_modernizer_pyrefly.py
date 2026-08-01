@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-import tomlkit
 
 from flext_infra import c, config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -113,8 +112,8 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify root projects receive the canonical Pyrefly fields."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         phase = FlextInfraEnsurePyreflyConfigPhase(tool_config_document)
         _ = phase.apply(doc, is_root=True)
 
@@ -122,8 +121,8 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify child projects receive Pyrefly configuration changes."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=False
         )
@@ -133,11 +132,11 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the obsolete fallback interpreter setting is removed."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         pyrefly["fallback-python-interpreter-name"] = "python"
@@ -160,11 +159,11 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the canonical Python version is written."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
@@ -176,11 +175,11 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify generated-code error handling follows canonical policy."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
@@ -194,11 +193,11 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the default Pyrefly search path is written."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
@@ -221,11 +220,11 @@ class TestsFlextInfraModernizerPyrefly:
             encoding="utf-8",
         )
 
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
 
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
@@ -245,7 +244,7 @@ class TestsFlextInfraModernizerPyrefly:
         """Keep pre-write import roots identical to post-write discovery."""
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
@@ -277,11 +276,11 @@ class TestsFlextInfraModernizerPyrefly:
             "[tool.pyright]\ninclude = ['src']\n", encoding="utf-8"
         )
 
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
 
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
@@ -324,11 +323,11 @@ class TestsFlextInfraModernizerPyrefly:
             "", encoding="utf-8"
         )
 
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
 
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
@@ -346,11 +345,11 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the canonical Pyrefly error table is populated."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
@@ -364,14 +363,14 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify stale error keys are removed from TOML documents."""
-        doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = tomlkit.table()
+        tool["pyrefly"] = u.Cli.toml_table()
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        pyrefly["errors"] = tomlkit.table()
+        pyrefly["errors"] = u.Cli.toml_table()
         errors = pyrefly["errors"]
         tm.that(errors, is_=MutableMapping)
         errors["annotation-mismatch"] = "error"
@@ -418,7 +417,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify a second Pyrefly phase run produces no changes."""
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
         phase = FlextInfraEnsurePyreflyConfigPhase(tool_config_document)
 
         _ = phase.apply(doc, is_root=True)

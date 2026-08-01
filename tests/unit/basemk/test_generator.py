@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_infra import config, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 
@@ -64,6 +64,28 @@ class TestsFlextInfraBasemkGenerator:
                 result.value,
                 has=f"$(if $(filter 1,$({variable})),{enabled_flag},{disabled_flag})",
             )
+
+    def test_generator_enforces_pytest_process_deadline(self) -> None:
+        """The rendered base.mk carries the config-owned invocation deadline.
+
+        mro-wkii.17.37 renamed the hard process boundary to
+        ``PYTEST_RUN_TIMEOUT_SECONDS`` and moved enforcement into the typed
+        Python runner, so the generated Make surface publishes the budget and
+        delegates execution instead of wrapping pytest in a shell timeout.
+        """
+        policy = config.Infra.tooling.tools.pytest
+
+        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
+
+        tm.ok(result)
+        tm.that(
+            result.value,
+            has=(f"PYTEST_PROCESS_TIMEOUT_SECONDS ?= {policy.process_timeout_seconds}"),
+        )
+        tm.that(
+            result.value,
+            has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s $(VENV_PYTHON) -m pytest",
+        )
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(

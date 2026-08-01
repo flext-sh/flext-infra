@@ -1,0 +1,126 @@
+{% macro submodule_setup_recipe(target, project_root) -%}
+.PHONY: {{ target }}
+
+# === SECTION: submodule setup (managed) ===
+# Source: template (submodule_setup_recipe.j2)
+# Computed: workspace-root uses WORKSPACE_MEMBERS from config; standalone discovers
+#           submodules with flext-managed=true from .gitmodules at runtime.
+# Rule: all managed submodules are synced and initialized recursively before
+#       branch validation; unmanaged submodules are never touched. Local changes
+#       on the declared branch are preserved. Nested submodules inside managed
+#       trees are validated recursively.
+# Free: no
+# End SECTION: submodule setup
+{{ target }}:
+	@set -eu; \
+	root="{{ project_root }}"; \
+	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	profile="$(MAKE_PROFILE)"; \
+	if [ "$$profile" = "workspace-root" ]; then \
+		managed="$(WORKSPACE_MEMBERS)"; \
+	else \
+		managed=""; \
+		keys=$$(git -C "$$root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.flext-managed$$' || :); \
+		for key in $$keys; do \
+			value=$$(git -C "$$root" config -f .gitmodules --get "$$key"); \
+			if [ "$$value" = "true" ]; then \
+				section=$${key%.flext-managed}; \
+				path=$$(git -C "$$root" config -f .gitmodules --get --default "" "$$section.path"); \
+				if [ -n "$$path" ]; then \
+					managed="$$managed $$path"; \
+				fi; \
+			fi; \
+		done; \
+	fi; \
+	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
+	if [ -z "$$managed" ]; then exit 0; fi; \
+	git -C "$$root" submodule sync --recursive --quiet; \
+	for child_path in $$managed; do \
+		git -C "$$root" submodule update --init --recursive -- "$$child_path"; \
+	done; \
+	validate_submodule() { \
+		superproject="$$1"; \
+		child_path="$$2"; \
+		child_root="$$superproject/$$child_path"; \
+		keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+		section=""; \
+		for key in $$keys; do \
+			declared=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
+			if [ "$$declared" = "$$child_path" ]; then \
+				if [ -n "$$section" ]; then \
+					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$$child_path" >&2; \
+					exit 2; \
+				fi; \
+				section=$${key%.path}; \
+			fi; \
+		done; \
+		if [ -z "$$section" ]; then \
+			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$$child_path" >&2; \
+			exit 2; \
+		fi; \
+		branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$section.branch"); \
+		if [ -z "$$branch" ]; then \
+			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
+			exit 2; \
+		fi; \
+		if [ "$$branch" = "." ]; then \
+			branch=$$(git -C "$$superproject" branch --show-current); \
+			if [ -z "$$branch" ]; then \
+				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$$child_path" >&2; \
+				exit 1; \
+			fi; \
+		fi; \
+		git check-ref-format --branch "$$branch" >/dev/null || { \
+			printf 'ERROR: %s: invalid declared branch %s\n' "$$child_path" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		git -C "$$child_root" fetch --quiet origin "$$branch" || { \
+			printf 'ERROR: %s: fetch origin %s failed\n' "$$child_path" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		gitlink=$$(git -C "$$superproject" ls-files --stage -- "$$child_path" | awk '$$1 == "160000" {print $$2}'); \
+		if [ -z "$$gitlink" ]; then \
+			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
+			exit 2; \
+		fi; \
+		current=$$(git -C "$$child_root" branch --show-current); \
+		head=$$(git -C "$$child_root" rev-parse HEAD); \
+		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
+			printf 'ERROR: %s: conflicting branch %s; expected %s\n' "$$child_path" "$$current" "$$branch" >&2; \
+			exit 1; \
+		fi; \
+		if [ -z "$$current" ] && [ "$$head" != "$$gitlink" ]; then \
+			printf 'ERROR: %s: detached HEAD diverges from recorded gitlink %s\n' "$$child_path" "$$gitlink" >&2; \
+			exit 1; \
+		fi; \
+		if [ -z "$$current" ]; then \
+			if git -C "$$child_root" rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
+				git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "refs/heads/$$branch" || { \
+					printf 'ERROR: %s: local branch %s diverges from gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+					exit 1; \
+				}; \
+				git -C "$$child_root" checkout --quiet "$$branch"; \
+			else \
+				git -C "$$child_root" checkout --quiet -b "$$branch"; \
+			fi; \
+		fi; \
+		git -C "$$child_root" pull --ff-only --quiet origin "$$branch" || { \
+			printf 'ERROR: %s: fast-forward pull of origin/%s failed\n' "$$child_path" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
+			printf 'ERROR: %s: branch %s diverges from recorded gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+			exit 1; \
+		fi; \
+		if [ -f "$$child_root/.gitmodules" ]; then \
+			nested_keys=$$(git -C "$$child_root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+			for nested_key in $$nested_keys; do \
+				nested_path=$$(git -C "$$child_root" config -f .gitmodules --get "$$nested_key"); \
+				validate_submodule "$$child_root" "$$nested_path"; \
+				done; \
+		fi; \
+	}; \
+	for child_path in $$managed; do \
+		validate_submodule "$$root" "$$child_path"; \
+	done
+{%- endmacro %}

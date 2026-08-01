@@ -1,11 +1,12 @@
 # ast-grep configuration for skill rule testing
 # Reference: https://ast-grep.github.io/guide/test-rule.html
 #
-# Canonical skill root: .agents/skills/ (see .agents/INSTRUCTION_SURFACE.md).
+# Canonical engineering authority: AGENTS.md plus universal ~/.agents/skills/.
+# These package-owned rule fixtures do not depend on retired project skill links.
 # .claude/skills/** is non-canonical and MUST NOT be referenced here.
 
 # ruleDirs: directories containing rule YAML files
-# Each skill under .agents/skills/*/rules/ is discovered here.
+# Package-owned rule YAML files are discovered here.
 ruleDirs:
   - rules
 

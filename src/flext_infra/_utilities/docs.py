@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra._utilities._docs_scope_build import (
     FlextInfraUtilitiesDocsScopeBuildMixin,
 )
+from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,7 +33,8 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         return sorted(
             path
             for path in search_root.rglob("*.md")
-            if not any(
+            if ".bak" not in path.name
+            and not any(
                 part in c.Infra.DOC_EXCLUDED_DIRS or part.startswith(".")
                 for part in path.parts
             )
@@ -81,45 +83,17 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     @staticmethod
     def anchorize(text: str) -> str:
         """Convert a heading title to a GitHub-compatible anchor slug."""
-        normalized: str = u.norm_str(text, case="lower")
-        alnum_only: str = c.Infra.ANCHOR_NON_ALNUM_RE.sub("", normalized)
-        collapsed_whitespace: str = c.Infra.ANCHOR_WHITESPACE_RE.sub("-", alnum_only)
-        slug: str = c.Infra.ANCHOR_DASH_COLLAPSE_RE.sub(
-            "-", collapsed_whitespace
-        ).strip("-")
-        return slug
+        return FlextInfraUtilitiesDocsContract.docs_anchorize(text)
 
     @staticmethod
     def build_toc(content: str) -> str:
         """Generate a TOC block from ## and ### headings in content."""
-        items: t.MutableSequenceOf[str] = []
-        for level, title in c.Infra.HEADING_H2_H3_RE.findall(content):
-            anchor = FlextInfraUtilitiesDocs.anchorize(title)
-            if not anchor:
-                continue
-            indent = "  " if level == "###" else ""
-            items.append(f"{indent}- [{title}](#{anchor})")
-        if not items:
-            items = ["- No sections found"]
-        return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
+        return FlextInfraUtilitiesDocsContract.docs_build_toc(content)
 
     @staticmethod
     def update_toc(content: str) -> t.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
-        toc = FlextInfraUtilitiesDocs.build_toc(content)
-        if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
-            updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
-            return (updated, int(updated != content))
-        lines = content.splitlines()
-        if lines and lines[0].startswith("# "):
-            insert_at = 1
-            while insert_at < len(lines) and (not lines[insert_at].strip()):
-                insert_at += 1
-            lines.insert(insert_at, "")
-            lines.insert(insert_at + 1, toc)
-            lines.insert(insert_at + 2, "")
-            return ("\n".join(lines) + ("\n" if content.endswith("\n") else ""), 1)
-        return (toc + "\n\n" + content, 1)
+        return FlextInfraUtilitiesDocsContract.docs_update_toc(content)
 
     @staticmethod
     def run_scoped(

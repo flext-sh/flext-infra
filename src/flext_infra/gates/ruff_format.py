@@ -77,8 +77,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build fix command."""
-        _ = project_dir, ctx, targets
-        return self._python_module_command(c.Infra.RUFF, c.Infra.FORMAT, ".")
+        _ = project_dir, ctx
+        return self._python_module_command(c.Infra.RUFF, c.Infra.FORMAT, *targets)
 
 
 __all__: list[str] = ["FlextInfraRuffFormatGate"]

@@ -9,13 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from flext_core import r
-from flext_infra import c, u
-from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_infra import c, m, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
     class _WorkspaceOrchestratorProtocol(Protocol):
         @property
@@ -48,25 +48,21 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
 
     @staticmethod
     def _prepare_projects(
-        projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+        projects: t.SequenceOf[m.Infra.ProjectInfo],
     ) -> p.Result[bool]:
-        """Ensure each selected project has ``base.mk`` and ``Makefile``."""
+        """Conform each selected project through the sole project writer."""
         for project in projects:
             project_root = project.path.resolve()
-            needs_sync = any(
-                not (project_root / filename).is_file()
-                for filename in (c.Infra.BASE_MK, c.Infra.MAKEFILE_FILENAME)
+            conform_result = FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=project_root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
             )
-            if not needs_sync:
-                continue
-            sync_result = FlextInfraSyncService(
-                workspace_root=project_root,
-                canonical_root=workspace_root,
-                apply_changes=True,
-            ).execute()
-            if sync_result.failure:
-                sync_error = sync_result.error or "workspace sync failed"
-                return r[bool].fail(f"{project.name}: {sync_error}")
+            if conform_result.failure:
+                conform_error = conform_result.error or "project conform failed"
+                return r[bool].fail(f"{project.name}: {conform_error}")
         return r[bool].ok(True)
 
 

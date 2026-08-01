@@ -13,9 +13,7 @@ from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
 from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
 
 
 class WorkspaceRoutes(RefactorRoutes):
@@ -59,7 +57,6 @@ class WorkspaceRoutes(RefactorRoutes):
                         "Detect workspace or standalone mode",
                         FlextInfraWorkspaceDetector,
                     ),
-                    ("sync", "Sync base.mk to project root", FlextInfraSyncService),
                     (
                         "orchestrate",
                         "Run make verb across projects",
@@ -69,11 +66,6 @@ class WorkspaceRoutes(RefactorRoutes):
                         "serialize-make",
                         "Run one state-sensitive Make verb under its checkout lock",
                         FlextInfraMakeSerializationService,
-                    ),
-                    (
-                        "migrate",
-                        "Migrate workspace projects to flext_infra tooling",
-                        FlextInfraProjectMigrator,
                     ),
                     (
                         "worktree",

@@ -19,6 +19,8 @@ class FlextInfraEnsureRuffConfigPhase:
     @staticmethod
     def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
         """Discover child project packages when generating workspace root settings."""
+        if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
+            return ()
         discovered = u.Infra.discover_projects(project_dir)
         if discovered.failure:
             return ()
@@ -37,20 +39,18 @@ class FlextInfraEnsureRuffConfigPhase:
 
     @staticmethod
     def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
-        """Return the project's declared workspace-exclusion path globs.
+        """Return immutable repository and explicit exclusion path globs.
 
-        Paths declared under ``exclusions`` in the repository-local
-        ``config/workspace.yaml`` are vendored, non-source trees (e.g. document
-        submodules) that must not be linted as engine source. They are unioned
-        into the emitted Ruff ``exclude`` list so the topology SSOT owns the
-        lint scope. A repository without a manifest contributes nothing.
+        Content-only repositories are foreign, read-only trees and therefore
+        never enter Ruff. Explicit ``exclusions`` extend that same typed scope
+        for non-repository paths without duplicating repository declarations.
         """
-        spec = FlextInfraWorkspaceDetector.load_workspace_spec(project_dir)
-        if spec.failure:
+        if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
             return ()
-        return sorted({
-            exclusion.path.as_posix() for exclusion in spec.value.exclusions
-        })
+        paths = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
+        if paths.failure:
+            raise ValueError(paths.error or "workspace analysis scope is unavailable")
+        return sorted(path.as_posix() for path in paths.value)
 
     @staticmethod
     def _remove_stale_lint_section(doc: t.Cli.TomlDocument) -> t.StrSequence:
@@ -113,6 +113,7 @@ class FlextInfraEnsureRuffConfigPhase:
         stale_patterns: t.StrSequence,
         per_file_ignores: t.MappingKV[str, t.StrSequence],
         include_handler: bool,
+        analysis_exclusions: t.StrSequence = (),
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
@@ -120,6 +121,7 @@ class FlextInfraEnsureRuffConfigPhase:
         effective_exclude = sorted({
             *ruff_cfg.exclude,
             *self._workspace_exclusion_globs(path.parent),
+            *analysis_exclusions,
         })
         # NOTE(mro-p68a.5, agent codex): models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
@@ -202,7 +204,13 @@ class FlextInfraEnsureRuffConfigPhase:
             return configured
         return phase
 
-    def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:
+    def apply(
+        self,
+        doc: t.Cli.TomlDocument,
+        *,
+        path: Path,
+        analysis_exclusions: t.StrSequence = (),
+    ) -> t.StrSequence:
         """Apply canonical Ruff tables with namespace-aware first-party detection."""
         effective_ignores = self._per_file_ignores(path.parent)
         per_file_ignores = u.Cli.toml_table_path(
@@ -227,11 +235,16 @@ class FlextInfraEnsureRuffConfigPhase:
                 stale_patterns=stale_patterns,
                 per_file_ignores=effective_ignores,
                 include_handler=True,
+                analysis_exclusions=analysis_exclusions,
             ),
         )
 
     def apply_payload(
-        self, payload: t.MutableJsonMapping, *, path: Path
+        self,
+        payload: t.MutableJsonMapping,
+        *,
+        path: Path,
+        analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply canonical Ruff settings directly to one normalized payload."""
         effective_ignores = self._per_file_ignores(path.parent)
@@ -265,6 +278,7 @@ class FlextInfraEnsureRuffConfigPhase:
                     stale_patterns=stale_patterns,
                     per_file_ignores=effective_ignores,
                     include_handler=False,
+                    analysis_exclusions=analysis_exclusions,
                 ),
             )
         )

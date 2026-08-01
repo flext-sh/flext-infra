@@ -1007,22 +1007,10 @@ class_nesting:
   target_name: FlextInfraWorkspaceDetector
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraProjectMigrator
-  current_file: flext-core/src/flext_infra/workspace/migrator.py
-  target_namespace: FlextWorkspaceMigrator
-  target_name: FlextInfraProjectMigrator
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraOrchestratorService
   current_file: flext-core/src/flext_infra/workspace/orchestrator.py
   target_namespace: FlextWorkspaceOrchestrator
   target_name: FlextInfraOrchestratorService
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraSyncService
-  current_file: flext-core/src/flext_infra/workspace/sync.py
-  target_namespace: FlextWorkspaceSync
-  target_name: FlextInfraSyncService
   confidence: medium
   reason: top_level_class_without_namespace_prefix
 - loose_name: TestsFlextServiceBase
