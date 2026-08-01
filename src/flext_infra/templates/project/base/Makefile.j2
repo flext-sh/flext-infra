@@ -129,6 +129,13 @@ UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dep
 {% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor -%}
+{# APPLY=Y alone must mutate: an apply-guarded verb defaults to `check`, so
+   `make gen APPLY=Y` used to run the read-only pass and silently change
+   nothing. With APPLY set and no explicit WHAT, the verb resolves to its
+   mutating selector instead. #}
+{% for verb in make.verbs if verb.apply_guarded -%}
+_APPLY_WHAT_{{ verb.name }} := {{ verb.apply_what | default("apply") }}
+{% endfor -%}
 {% for verb in extra_verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor %}
@@ -208,7 +215,9 @@ endif
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS) .
+# A workspace root owns no local gate implementation: its verbs fan out to the
+# declared members. Selecting the root here would make it orchestrate itself.
+DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS){% if make_profile != "workspace-root" %} .{% endif %}
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
@@ -266,6 +275,9 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
+	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
+		what="$(_APPLY_WHAT_$(1))"; \
+	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
