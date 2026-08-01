@@ -127,7 +127,7 @@ class FlextInfraWorktreeService(s[str]):
         primary = self._primary_root()
         if primary.failure:
             return r.fail(primary.error or "failed to resolve primary worktree")
-        operation = str(self.operation)
+        operation = self.operation
         if operation == c.Infra.WorktreeOperation.LIST:
             return u.Infra.git_capture(
                 primary.value, ("worktree", "list", "--porcelain")
