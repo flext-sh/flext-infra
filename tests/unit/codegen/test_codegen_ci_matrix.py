@@ -146,6 +146,45 @@ class TestCodegenCiMatrix:
             tm.that(line, lacks="WHAT=")
             tm.that(line, lacks="RELEASE_PHASE=")
 
+    def test_rendered_ci_jobs_call_each_make_lifecycle_verb_once(
+        self, rendered_project: Path
+    ) -> None:
+        """Each rendered CI job delegates once to every lifecycle Make verb."""
+        lifecycle = (
+            "make setup CI=Y",
+            "make gen APPLY=Y CI=Y",
+            "make fmt APPLY=Y CI=Y",
+            "make fix APPLY=Y CI=Y",
+            "make check CI=Y",
+            "make test CI=Y",
+        )
+        forbidden_tools = ("uv ", "ruff ", "pytest ", "mypy ", "pyright ", "pyrefly ")
+        workflows = (
+            rendered_project / ".github" / "ci-template" / "ci.yml",
+            rendered_project / ".github" / "workflows" / "ci.yml",
+            rendered_project / ".github" / "workflows" / "ci-matrix.yml",
+        )
+        for workflow in workflows:
+            payload = u.Cli.yaml_load_mapping(workflow)
+            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["jobs"])
+            for job in jobs.values():
+                job_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job)
+                steps = t.Cli.JSON_LIST_ADAPTER.validate_python(job_payload["steps"])
+                commands = "\n".join(
+                    str(step_payload["run"])
+                    for step in steps
+                    if "run"
+                    in (
+                        step_payload := t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                            step
+                        )
+                    )
+                )
+                for command in lifecycle:
+                    tm.that(commands.count(command), eq=1, msg=str(workflow))
+                for tool in forbidden_tools:
+                    tm.that(commands, lacks=tool)
+
     def test_workflow_templates_only_allow_governed_promotions(self) -> None:
         """Every Actions template rejects push, manual, and scheduled execution."""
         root = Path(__file__).resolve().parents[3]
