@@ -72,10 +72,11 @@ workspace = true
             repositories=(workspace.repository, *workspace.members),
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
-            toolchain=toolchain,
         )
-        tm.that(second.success, eq=True)
-        tm.that(second.value, eq=first.value)
+        tm.that(result.success, eq=True, msg=result.error)
+        document = tomllib.loads(result.value)
+        tm.that(document["project"]["dependencies"], eq=["flext-core"])
+        tm.that(document["tool"]["uv"]["sources"]["flext-core"], eq={"workspace": True})
 
     def test_full_conform_preserves_distinct_dev_dependency_variants(self) -> None:
         workspace, repositories, toolchain = _fixtures()
