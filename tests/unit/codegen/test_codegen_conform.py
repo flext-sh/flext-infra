@@ -932,13 +932,13 @@ class TestScriptDispatchMakefile:
                     name="incidente",
                     default_what="all",
                     dispatch="script",
-                    handlers={"all": "all"},
+                    handlers={"all": {"target": "all"}},
                 ),
                 m.Infra.MakeVerbSpec(
                     name="charts",
                     default_what="all",
                     dispatch="script",
-                    handlers={"all": "all"},
+                    handlers={"all": {"target": "all"}},
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -991,7 +991,7 @@ class TestScriptDispatchMakefile:
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
         tm.that(gen.default_what, eq="all")
-        tm.that(gen.apply_guarded, eq=True)
+        tm.that(gen.handlers["all"].mutating, eq=True)
         # Serialization follows the rename: gen is serialized, codegen gone.
         tm.that("gen" in make_config.serialized_verbs, eq=True)
         tm.that("codegen" in make_config.serialized_verbs, eq=False)
@@ -1043,19 +1043,19 @@ class TestScriptDispatchMakefile:
                     name="charts",
                     default_what="all",
                     dispatch="script",
-                    handlers={"all": "all"},
+                    handlers={"all": {"target": "all"}},
                 ),
                 m.Infra.MakeVerbSpec(
                     name="chart-release",
                     default_what="all",
                     dispatch="script",
-                    handlers={"all": "all"},
+                    handlers={"all": {"target": "all"}},
                 ),
                 m.Infra.MakeVerbSpec(
                     name="bead",
                     default_what="all",
                     dispatch="script",
-                    handlers={"all": "all"},
+                    handlers={"all": {"target": "all"}},
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(

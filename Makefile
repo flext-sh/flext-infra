@@ -105,8 +105,8 @@ CHECK_GATES_ALLOWED := lint pyrefly mypy pyright silent-failure security markdow
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright silent-failure security markdown smells
 CHECK_GATES_FAST := lint pyrefly mypy pyright
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test fmt fix clean gen
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_fmt _serialized_fix _serialized_clean _serialized_gen
+SERIALIZED_VERBS := deps check test fmt fix docs clean gen worktree
+SERIALIZED_TARGETS := _serialized_deps _serialized_check _serialized_test _serialized_fmt _serialized_fix _serialized_docs _serialized_clean _serialized_gen _serialized_worktree
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -139,53 +139,63 @@ export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 _DEFAULT_help := all
 _DISPATCH_help := builtin
 _HANDLER_MAP_help := all:all usage:usage
+_MUTATING_WHATS_help :=
 _DEFAULT_deps := all
 _DISPATCH_deps := builtin
 _HANDLER_MAP_deps := all:all check:check lock:lock upgrade:upgrade
+_MUTATING_WHATS_deps := lock upgrade
 _DEFAULT_build := all
 _DISPATCH_build := builtin
 _HANDLER_MAP_build := all:all artifacts:artifacts
+_MUTATING_WHATS_build :=
 _DEFAULT_check := all
 _DISPATCH_check := builtin
 _HANDLER_MAP_check := all:all
+_MUTATING_WHATS_check :=
 _DEFAULT_test := all
 _DISPATCH_test := builtin
 _HANDLER_MAP_test := all:all
+_MUTATING_WHATS_test :=
 _DEFAULT_fmt := all
 _DISPATCH_fmt := builtin
 _HANDLER_MAP_fmt := all:all check:check apply:apply
+_MUTATING_WHATS_fmt := all apply
 _DEFAULT_fix := all
 _DISPATCH_fix := builtin
 _HANDLER_MAP_fix := all:all
+_MUTATING_WHATS_fix := all
 _DEFAULT_run := all
 _DISPATCH_run := builtin
 _HANDLER_MAP_run := all:all default:default
+_MUTATING_WHATS_run :=
 _DEFAULT_status := all
 _DISPATCH_status := builtin
 _HANDLER_MAP_status := all:all diagnostics:diagnostics
+_MUTATING_WHATS_status :=
 _DEFAULT_docs := all
 _DISPATCH_docs := builtin
 _HANDLER_MAP_docs := all:all generate:generate fix:fix audit:audit build:build validate:validate
+_MUTATING_WHATS_docs := all generate fix
 _DEFAULT_clean := all
 _DISPATCH_clean := builtin
 _HANDLER_MAP_clean := all:all generated:generated
+_MUTATING_WHATS_clean := all generated
 _DEFAULT_release := all
 _DISPATCH_release := builtin
 _HANDLER_MAP_release := all:all status:status
+_MUTATING_WHATS_release :=
 _DEFAULT_gen := all
 _DISPATCH_gen := builtin
 _HANDLER_MAP_gen := all:all check:check apply:apply
+_MUTATING_WHATS_gen := all apply
 _DEFAULT_worktree := all
 _DISPATCH_worktree := builtin
 _HANDLER_MAP_worktree := all:all list:list add:add update:update remove:remove
+_MUTATING_WHATS_worktree := add update remove
 _DEFAULT_setup := all
 _DISPATCH_setup := builtin
 _HANDLER_MAP_setup := all:all
-
-_APPLY_WHAT_fmt := all
-_APPLY_WHAT_fix := all
-_APPLY_WHAT_clean := all
-_APPLY_WHAT_gen := all
+_MUTATING_WHATS_setup :=
 
 
 # === SECTION: profile routing (managed) ===
@@ -290,7 +300,7 @@ PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
-UV_SYNC_FLAGS := --all-extras --all-groups
+UV_SYNC_FLAGS := --frozen --all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(strip $(PROJECTS)),)
@@ -307,12 +317,6 @@ define _dispatch
 	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "Y" ]; then \
 		printf 'ERROR: APPLY must be Y when set\n' >&2; exit 2; \
 	fi; \
-	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
-		printf 'ERROR: verb %s is read-only and does not accept APPLY\n' "$(1)" >&2; exit 2; \
-	fi; \
-	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
-		what="$(_APPLY_WHAT_$(1))"; \
-	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
@@ -323,6 +327,10 @@ define _dispatch
 		if [ "$$selector" = "$$what" ]; then handler=$${entry#*:}; break; fi; \
 	done; \
 	if [ -z "$$handler" ]; then printf 'ERROR: unsupported %s WHAT=%s (registry:%s)\n' "$(1)" "$$what" "$(_HANDLER_MAP_$(1))" >&2; exit 2; fi; \
+	case " $(_MUTATING_WHATS_$(1)) " in *" $$what "*) mutating=Y ;; *) mutating=N ;; esac; \
+	if [ -n "$(strip $(APPLY))" ] && [ "$$mutating" != Y ]; then \
+		printf 'ERROR: %s WHAT=%s is read-only and does not accept APPLY\n' "$(1)" "$$what" >&2; exit 2; \
+	fi; \
 	builtin="_builtin_$(1)_$$handler"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
@@ -408,6 +416,13 @@ $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 
+deps: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "deps" $(if $(strip $(WHAT)),--selector-value "$(WHAT)") $(if $(strip $(APPLY)),--apply-token "$(APPLY)")
+
+_serialized_deps:
+	$(call _dispatch,deps)
+
+
 check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check" $(if $(strip $(WHAT)),--selector-value "$(WHAT)") $(if $(strip $(APPLY)),--apply-token "$(APPLY)")
 
@@ -436,6 +451,13 @@ _serialized_fix:
 	$(call _dispatch,fix)
 
 
+docs: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "docs" $(if $(strip $(WHAT)),--selector-value "$(WHAT)") $(if $(strip $(APPLY)),--apply-token "$(APPLY)")
+
+_serialized_docs:
+	$(call _dispatch,docs)
+
+
 clean: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "clean" $(if $(strip $(WHAT)),--selector-value "$(WHAT)") $(if $(strip $(APPLY)),--apply-token "$(APPLY)")
 
@@ -450,6 +472,13 @@ _serialized_gen:
 	$(call _dispatch,gen)
 
 
+worktree: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "worktree" $(if $(strip $(WHAT)),--selector-value "$(WHAT)") $(if $(strip $(APPLY)),--apply-token "$(APPLY)")
+
+_serialized_worktree:
+	$(call _dispatch,worktree)
+
+
 
 setup:
 	$(call _dispatch,setup)
@@ -460,7 +489,7 @@ _builtin_help_all:
 	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
-	@printf '  %-10s WHAT=%s\n' 'help' 'all|usage';
+	@printf '  %-10s\n' 'help';
 
 
 
@@ -468,55 +497,55 @@ _builtin_help_all:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'deps' 'all|check|lock|upgrade';
+	@printf '  %-10s\n' 'deps';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'build' 'all|artifacts';
+	@printf '  %-10s\n' 'build';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' 'all';
+	@printf '  %-10s\n' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'test' 'all';
+	@printf '  %-10s\n' 'test';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'all|check|apply';
+	@printf '  %-10s APPLY=Y\n' 'fmt';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fix' 'all';
+	@printf '  %-10s APPLY=Y\n' 'fix';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'run' 'all|default';
+	@printf '  %-10s\n' 'run';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'status' 'all|diagnostics';
+	@printf '  %-10s\n' 'status';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'docs' 'all|generate|fix|audit|build|validate';
+	@printf '  %-10s APPLY=Y\n' 'docs';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'clean' 'all|generated';
+	@printf '  %-10s APPLY=Y\n' 'clean';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'release' 'all|status';
+	@printf '  %-10s\n' 'release';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' 'all|check|apply';
+	@printf '  %-10s APPLY=Y\n' 'gen';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'all|list|add|update|remove';
+	@printf '  %-10s\n' 'worktree';
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';

@@ -330,7 +330,7 @@ class TestsCodegenCatalogExtensions:
                         name="audit",
                         default_what="all",
                         dispatch="script",
-                        handlers={"all": "all"},
+                        handlers={"all": {"target": "all"}},
                     ),
                 ),
                 "script_dispatch": m.Infra.ScriptDispatchSpec(

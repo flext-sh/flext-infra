@@ -66,19 +66,18 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"{make_config.apply_variable} must be "
                 f"{make_config.apply_value} when set"
             )
-        if self.apply_token and not verb_spec.apply_guarded:
-            return r[t.StrMapping].fail(
-                f"Make verb '{self.verb}' is read-only and does not accept "
-                f"{make_config.apply_variable}"
-            )
-        selected_what = self.selector_value or (
-            verb_spec.apply_what if self.apply_token else verb_spec.default_what
-        )
+        selected_what = self.selector_value or verb_spec.default_what
         if selected_what not in verb_spec.handlers:
             allowed = ", ".join(verb_spec.handlers)
             return r[t.StrMapping].fail(
                 f"unsupported {self.verb} {make_config.selector}={selected_what} "
                 f"(allowed: {allowed})"
+            )
+        handler = verb_spec.handlers[selected_what]
+        if self.apply_token and not handler.mutating:
+            return r[t.StrMapping].fail(
+                f"Make verb '{self.verb}' {make_config.selector}={selected_what} "
+                f"is read-only and does not accept {make_config.apply_variable}"
             )
         return r[t.StrMapping].ok({
             make_config.selector: selected_what,
@@ -264,8 +263,12 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 make_variables_result.error or "invalid GNU Make variables"
             )
         make_variables = make_variables_result.value
-        is_mutation = self.verb in make_config.mutation_verbs and (
-            make_variables.get(make_config.apply_variable) == make_config.apply_value
+        verb_spec = next(item for item in make_config.verbs if item.name == self.verb)
+        selected_what = make_variables[make_config.selector]
+        is_mutation = (
+            verb_spec.handlers[selected_what].mutating
+            and make_variables.get(make_config.apply_variable)
+            == make_config.apply_value
         )
 
         checkout = self.root.resolve()

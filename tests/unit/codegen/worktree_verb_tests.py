@@ -37,4 +37,5 @@ class TestsCodegenWorktreeVerb:
         selectors enforce the guard individually in their own recipes instead.
         """
         verb = self._verb("worktree")
-        tm.that(verb.apply_guarded, eq=False)
+        tm.that(verb.handlers["list"].mutating, eq=False)
+        tm.that(verb.handlers["add"].mutating, eq=True)

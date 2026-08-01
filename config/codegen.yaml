@@ -167,6 +167,7 @@ Infra:
         environment: isolated
         dependency_groups: all
         extras: all
+        lock_mode: frozen
       docs:
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs
@@ -184,96 +185,103 @@ Infra:
       verbs:
         - name: help
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, usage: usage }
+          handlers: { all: { target: all }, usage: { target: usage } }
         - name: setup
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all }
+          handlers: { all: { target: all } }
         - name: deps
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, check: check, lock: lock, upgrade: upgrade }
+          handlers:
+            all: { target: all }
+            check: { target: check }
+            lock: { target: lock, mutating: true }
+            upgrade: { target: upgrade, mutating: true }
+          serialized: true
         - name: build
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, artifacts: artifacts }
+          handlers: { all: { target: all }, artifacts: { target: artifacts } }
           orchestrated: true
         - name: check
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all }
+          handlers: { all: { target: all } }
           orchestrated: true
           serialized: true
         - name: test
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all }
+          handlers: { all: { target: all } }
           orchestrated: true
           serialized: true
         - name: fmt
           default_what: all
-          apply_guarded: true
-          apply_what: all
           dispatch: builtin
-          handlers: { all: all, check: check, apply: apply }
+          handlers:
+            all: { target: all, mutating: true }
+            check: { target: check }
+            apply: { target: apply, mutating: true }
           orchestrated: true
           serialized: true
         - name: fix
           default_what: all
-          apply_guarded: true
-          apply_what: all
           dispatch: builtin
-          handlers: { all: all }
+          handlers: { all: { target: all, mutating: true } }
           orchestrated: true
           serialized: true
         - name: run
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, default: default }
+          handlers: { all: { target: all }, default: { target: default } }
         - name: status
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, diagnostics: diagnostics }
+          handlers: { all: { target: all }, diagnostics: { target: diagnostics } }
         - name: docs
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, generate: generate, fix: fix, audit: audit, build: build, validate: validate }
+          handlers:
+            all: { target: all, mutating: true }
+            generate: { target: generate, mutating: true }
+            fix: { target: fix, mutating: true }
+            audit: { target: audit }
+            build: { target: build }
+            validate: { target: validate }
           orchestrated: true
+          serialized: true
         - name: clean
           default_what: all
-          apply_guarded: true
-          apply_what: all
           dispatch: builtin
-          handlers: { all: all, generated: generated }
+          handlers:
+            all: { target: all, mutating: true }
+            generated: { target: generated, mutating: true }
           orchestrated: true
           serialized: true
         - name: release
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, status: status }
+          handlers: { all: { target: all }, status: { target: status } }
         - name: gen
           default_what: all
-          apply_guarded: true
-          apply_what: all
           dispatch: builtin
-          handlers: { all: all, check: check, apply: apply }
+          handlers:
+            all: { target: all, mutating: true }
+            check: { target: check }
+            apply: { target: apply, mutating: true }
           serialized: true
         - name: worktree
           default_what: all
-          apply_guarded: false
           dispatch: builtin
-          handlers: { all: all, list: list, add: add, update: update, remove: remove }
+          handlers:
+            all: { target: all }
+            list: { target: list }
+            add: { target: add, mutating: true }
+            update: { target: update, mutating: true }
+            remove: { target: remove, mutating: true }
+          serialized: true
       custom_handler_policy:
         filename: custom.mk
         allow_public_targets: false

@@ -133,19 +133,18 @@ UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dep
 {% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 _DISPATCH_{{ verb.name }} := {{ verb.dispatch }}
-_HANDLER_MAP_{{ verb.name }} :={% for selector, handler in verb.handlers.items() %} {{ selector }}:{{ handler }}{% endfor %}
+_HANDLER_MAP_{{ verb.name }} :={% for selector, handler in verb.handlers.items() %} {{ selector }}:{{ handler.target }}{% endfor %}
+_MUTATING_WHATS_{{ verb.name }} :={% for selector, handler in verb.handlers.items() if handler.mutating %} {{ selector }}{% endfor %}
 {% endfor -%}
 _DEFAULT_setup := {{ (make.verbs | selectattr("name", "equalto", "setup") | first).default_what }}
 _DISPATCH_setup := {{ (make.verbs | selectattr("name", "equalto", "setup") | first).dispatch }}
-_HANDLER_MAP_setup :={% for selector, handler in (make.verbs | selectattr("name", "equalto", "setup") | first).handlers.items() %} {{ selector }}:{{ handler }}{% endfor %}
-{# APPLY=Y alone resolves through the config-owned mutating aggregate. #}
-{% for verb in make.verbs if verb.apply_guarded -%}
-_APPLY_WHAT_{{ verb.name }} := {{ verb.apply_what }}
-{% endfor -%}
+_HANDLER_MAP_setup :={% for selector, handler in (make.verbs | selectattr("name", "equalto", "setup") | first).handlers.items() %} {{ selector }}:{{ handler.target }}{% endfor %}
+_MUTATING_WHATS_setup :={% for selector, handler in (make.verbs | selectattr("name", "equalto", "setup") | first).handlers.items() if handler.mutating %} {{ selector }}{% endfor %}
 {% for verb in extra_verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 _DISPATCH_{{ verb.name }} := {{ verb.dispatch }}
-_HANDLER_MAP_{{ verb.name }} :={% for selector, handler in verb.handlers.items() %} {{ selector }}:{{ handler }}{% endfor %}
+_HANDLER_MAP_{{ verb.name }} :={% for selector, handler in verb.handlers.items() %} {{ selector }}:{{ handler.target }}{% endfor %}
+_MUTATING_WHATS_{{ verb.name }} :={% for selector, handler in verb.handlers.items() if handler.mutating %} {{ selector }}{% endfor %}
 {% endfor %}
 
 # === SECTION: profile routing (managed) ===
@@ -250,7 +249,7 @@ PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
-UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} $(if $(filter Y,$(CI)),,--all-packages){% endif %} --all-extras --all-groups
+UV_SYNC_FLAGS := --{{ make.bootstrap.lock_mode }}{% if make_profile == "workspace-root" %} $(if $(filter Y,$(CI)),,--all-packages){% endif %} --all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(strip $(PROJECTS)),)
@@ -272,12 +271,6 @@ define _dispatch
 	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "{{ make.apply_value }}" ]; then \
 		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
 	fi; \
-	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
-		printf 'ERROR: verb %s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" >&2; exit 2; \
-	fi; \
-	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
-		what="$(_APPLY_WHAT_$(1))"; \
-	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
@@ -288,6 +281,10 @@ define _dispatch
 		if [ "$$selector" = "$$what" ]; then handler=$${entry#*:}; break; fi; \
 	done; \
 	if [ -z "$$handler" ]; then printf 'ERROR: unsupported %s WHAT=%s (registry:%s)\n' "$(1)" "$$what" "$(_HANDLER_MAP_$(1))" >&2; exit 2; fi; \
+	case " $(_MUTATING_WHATS_$(1)) " in *" $$what "*) mutating=Y ;; *) mutating=N ;; esac; \
+	if [ -n "$(strip $(APPLY))" ] && [ "$$mutating" != Y ]; then \
+		printf 'ERROR: %s WHAT=%s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" "$$what" >&2; exit 2; \
+	fi; \
 	builtin="_builtin_$(1)_$$handler"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
@@ -342,7 +339,7 @@ endef
 
 .PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) \
 {% for verb in make.verbs if verb.dispatch == "builtin" -%}
-{% for handler in verb.handlers.values() | unique -%}
+{% for handler in verb.handlers.values() | map(attribute="target") | unique -%}
 	_builtin_{{ verb.name }}_{{ handler }} \
 {% endfor -%}
 {% endfor -%}
@@ -373,10 +370,10 @@ _builtin_help_all:
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';
 {% else %}
-	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.handlers | join('|') }}';
+	@printf '  %-10s{% if verb.handlers[verb.default_what].mutating %} APPLY=Y{% endif %}\n' '{{ verb.name }}';
 {% endif %}
 {% endfor %}{% for verb in extra_verbs %}
-	@printf '  %-10s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}';
+	@printf '  %-10s{% if verb.handlers[verb.default_what].mutating %} APPLY=Y{% endif %}\n' '{{ verb.name }}';
 {% endfor %}
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';

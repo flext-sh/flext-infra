@@ -17,6 +17,11 @@ if TYPE_CHECKING:
     from flext_cli import p as cli_p
     from flext_infra import p
 
+_MAKEFILE_TEMPLATE = (
+    Path(__file__).resolve().parents[3]
+    / "src/flext_infra/templates/project/base/Makefile.j2"
+)
+
 
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     workspace_root = tmp_path / "workspace"
@@ -151,8 +156,13 @@ class TestsWorkspaceRootMakeContract:
         )
         tm.that({verb.name for verb in config.Infra.codegen.make.verbs}, has="fix")
         for verb in config.Infra.codegen.make.verbs:
-            if verb.apply_guarded:
-                tm.that(verb.apply_what, eq=verb.default_what)
+            tm.that(verb.default_what in verb.handlers, eq=True)
+        template = _MAKEFILE_TEMPLATE.read_text(encoding="utf-8")
+        tm.that(
+            f"UV_SYNC_FLAGS := --{config.Infra.codegen.make.bootstrap.lock_mode}"
+            in template,
+            eq=True,
+        )
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.
@@ -255,7 +265,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--verb fmt")
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, has='--make-arg "WHAT=apply"')
+        tm.that(output, lacks='--make-arg "WHAT=apply"')
         tm.that(output, has='--make-arg "APPLY=Y"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")

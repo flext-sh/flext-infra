@@ -362,6 +362,17 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="repository discovery policy")
         ]
 
+    class MakeHandlerSpec(_ConfigContract):
+        """One selector-owned implementation and mutation contract."""
+
+        target: Annotated[
+            t.NonEmptyStr, m.Field(description="Private implementation target")
+        ]
+        mutating: bool = m.Field(
+            default=False,
+            description="Whether this selector accepts APPLY for mutation",
+        )
+
     class MakeVerbSpec(_ConfigContract):
         """One exhaustive public Make verb dispatch registry entry."""
 
@@ -369,15 +380,12 @@ class FlextInfraConfigModels:
         default_what: Annotated[
             t.NonEmptyStr, m.Field(description="Default WHAT selector")
         ]
-        apply_guarded: Annotated[
-            bool, m.Field(description="Whether mutation requires APPLY=Y")
-        ] = False
         dispatch: Annotated[
             Literal["builtin", "script"],
             m.Field(description="Single implementation boundary for this verb"),
         ]
         handlers: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
+            Mapping[t.NonEmptyStr, FlextInfraConfigModels.MakeHandlerSpec],
             m.Field(
                 min_length=1,
                 description="Exhaustive WHAT selector to implementation handler map",
@@ -389,16 +397,6 @@ class FlextInfraConfigModels:
         orchestrated: bool = m.Field(
             default=False, description="Fan this verb out from a workspace root"
         )
-        apply_what: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description=(
-                    "Selector an apply-guarded verb resolves to when APPLY is "
-                    "set and no explicit WHAT is given; absent for read-only verbs"
-                )
-            ),
-        ] = None
-
         @u.model_validator(mode="after")
         def _validate_handler_registry(self) -> Self:
             """Require selectors and mutation routing to resolve in one registry."""
@@ -410,15 +408,6 @@ class FlextInfraConfigModels:
                     f"Make verb {self.name} default_what is not a declared handler: "
                     f"{self.default_what}"
                 )
-                raise ValueError(msg)
-            if self.apply_guarded and self.apply_what not in self.handlers:
-                msg = (
-                    f"Make verb {self.name} apply_what is not a declared handler: "
-                    f"{self.apply_what or '<missing>'}"
-                )
-                raise ValueError(msg)
-            if not self.apply_guarded and self.apply_what is not None:
-                msg = f"Read-only Make verb {self.name} cannot declare apply_what"
                 raise ValueError(msg)
             return self
 
@@ -574,6 +563,10 @@ class FlextInfraConfigModels:
             Literal["all"],
             m.Field(description="Project optional-dependency selection policy"),
         ]
+        lock_mode: Annotated[
+            Literal["frozen"],
+            m.Field(description="Use the committed lock without re-resolution"),
+        ]
 
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
@@ -668,7 +661,10 @@ class FlextInfraConfigModels:
             invalid_apply = [
                 step.verb
                 for step in self.workflow
-                if step.apply != verb_specs[step.verb].apply_guarded
+                if step.apply
+                != verb_specs[step.verb]
+                .handlers[verb_specs[step.verb].default_what]
+                .mutating
             ]
             if invalid_apply:
                 msg = (
@@ -686,7 +682,11 @@ class FlextInfraConfigModels:
                 if "setup" not in verbs or "gen" in verbs:
                     msg = f"make {context} workflow requires setup and forbids gen"
                     raise ValueError(msg)
-            guarded_verbs = {verb.name for verb in self.verbs if verb.apply_guarded}
+            guarded_verbs = {
+                verb.name
+                for verb in self.verbs
+                if any(handler.mutating for handler in verb.handlers.values())
+            }
             unserialized_mutations = guarded_verbs - serialized
             if unserialized_mutations:
                 msg = "apply-guarded public verbs must be serialized"
@@ -727,7 +727,11 @@ class FlextInfraConfigModels:
         @property
         def mutation_verbs(self) -> tuple[str, ...]:
             """Mutating verbs derived from the registry apply contract."""
-            return tuple(verb.name for verb in self.verbs if verb.apply_guarded)
+            return tuple(
+                verb.name
+                for verb in self.verbs
+                if any(handler.mutating for handler in verb.handlers.values())
+            )
 
         @m.computed_field()
         @property

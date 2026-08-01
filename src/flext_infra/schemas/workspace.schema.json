@@ -231,18 +231,21 @@
             "pattern": "^[a-z0-9][a-z0-9-]*$"
           },
           "additionalProperties": {
-            "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "target"
+            ],
+            "properties": {
+              "target": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "mutating": {
+                "type": "boolean"
+              }
+            }
           }
-        },
-        "apply_guarded": {
-          "type": "boolean"
-        },
-        "apply_what": {
-          "type": [
-            "string",
-            "null"
-          ]
         },
         "serialized": {
           "type": "boolean"

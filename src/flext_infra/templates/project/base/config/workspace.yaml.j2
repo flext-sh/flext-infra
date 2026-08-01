@@ -24,8 +24,6 @@ repository:
       default_what: {{ verb.default_what | tojson }}
       dispatch: {{ verb.dispatch | tojson }}
       handlers: {{ verb.handlers | tojson }}
-      apply_guarded: {{ verb.apply_guarded | tojson }}
-      apply_what: {{ verb.apply_what | tojson }}
       serialized: {{ verb.serialized | tojson }}
       orchestrated: {{ verb.orchestrated | tojson }}
 {%- endfor %}
@@ -79,8 +77,6 @@ members:
         default_what: {{ verb.default_what | tojson }}
         dispatch: {{ verb.dispatch | tojson }}
         handlers: {{ verb.handlers | tojson }}
-        apply_guarded: {{ verb.apply_guarded | tojson }}
-        apply_what: {{ verb.apply_what | tojson }}
         serialized: {{ verb.serialized | tojson }}
         orchestrated: {{ verb.orchestrated | tojson }}
 {%- endfor %}
