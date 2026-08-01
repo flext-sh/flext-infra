@@ -39,9 +39,20 @@ def _template_text() -> str:
 
 
 def _routed_handlers() -> set[str]:
-    """Return every handler name listed in ``_BUILTIN_HANDLERS``."""
-    body = _template_text().split("_BUILTIN_HANDLERS := \\", 1)[1].split("\n\n", 1)[0]
-    return set(re.findall(r"_builtin_[a-z_]+", body))
+    """Return every handler the dispatcher can route to.
+
+    Routing moved from the literal ``_BUILTIN_HANDLERS`` list to per-verb
+    ``_ALLOWED_WHATS_<verb>``, which the dispatcher validates the selector
+    against before building the ``_builtin_<verb>_<what>`` target name.
+    """
+    return {
+        f"_builtin_{verb}_{what}"
+        for verb, whats in re.findall(
+            r"_ALLOWED_WHATS_([a-z_]+) :=([^\n]*)", _template_text()
+        )
+        for what in whats.split()
+        if not what.startswith("{")
+    }
 
 
 def _defined_handlers() -> set[str]:
@@ -88,18 +99,18 @@ def test_every_routed_handler_is_defined() -> None:
     assert not missing, f"routed but never defined: {missing}"
 
 
-def test_routing_list_keeps_makefile_continuation_syntax() -> None:
-    """Every routed handler stays indented under its backslash continuation.
+def test_routing_declares_one_allowed_whats_per_verb() -> None:
+    """Each verb owns exactly one ``_ALLOWED_WHATS_`` assignment.
 
-    ``make`` reads an unindented continuation line as a new target, so losing
-    the leading tab turns the routing list into "multiple target patterns" and
-    the whole Makefile stops parsing. Jinja's ``-%}`` strips that tab, which is
-    exactly how the list broke once ``setup`` joined it.
+    Routing no longer uses a continuation-joined list; the dispatcher validates
+    the selector against the per-verb variable before naming the target. A verb
+    missing its assignment makes every WHAT fail as unsupported, and a verb
+    declared twice silently keeps only the last set of selectors.
     """
-    body = _template_text().split("_BUILTIN_HANDLERS := \\", 1)[1].split("\n\n", 1)[0]
-    handler_lines = [
-        line for line in body.splitlines() if "_builtin_" in line and "{%" not in line
-    ]
+    assignments = re.findall(
+        r"^_ALLOWED_WHATS_([a-z_]+) :=", _template_text(), re.MULTILINE
+    )
+    templated = re.findall(r"_ALLOWED_WHATS_\{\{ verb\.name \}\}", _template_text())
 
-    assert handler_lines
-    assert all(line.startswith("\t") for line in handler_lines), handler_lines
+    assert templated, "routing must be generated from the verb catalogue"
+    assert len(assignments) == len(set(assignments)), assignments
