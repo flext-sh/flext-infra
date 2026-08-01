@@ -533,6 +533,10 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 return r[m.Infra.RepositoryDelta].fail(
                     update_result.error or f"failed to stage source gitlink: {path}"
                 )
+        # Gitlinks are owned by `make setup`, which fast-forwards each declared
+        # submodule to its branch tip. Including them here made every verb that
+        # runs after setup report "pending changes" for pointers it never
+        # touched, so `gen` aborted before applying anything.
         names_result = cls.git_capture(
             repository.worktree_root,
             (
@@ -540,6 +544,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 "--cached",
                 "--name-only",
                 "-z",
+                "--ignore-submodules=all",
                 repository.checkpoint_sha,
                 "--",
                 *exclusions,
@@ -551,6 +556,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 "diff",
                 "--cached",
                 "--binary",
+                "--ignore-submodules=all",
                 repository.checkpoint_sha,
                 "--",
                 *exclusions,
