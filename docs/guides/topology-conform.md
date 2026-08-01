@@ -6,13 +6,17 @@ implementations directly.
 
 ## Effective topology
 
-- Effective Make profiles are only `workspace-root` and `standalone`.
+- The typed conform registry contains `workspace-root`, `workspace-member`, and
+  `standalone`. Root-scoped member planning uses `workspace-member` so every
+  member receives the same generated repository baseline as a standalone
+  project without gaining root fan-out behavior.
 - A repository is a workspace root only when its live `.gitmodules`, its
   `WorkspaceSpec.members`, and each member's provider URL and
   `ProviderSpec.branch` agree exactly for at least one mutable first-party member.
 - An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
   metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
-  CI surface, and project runtime.
+  CI surface, and project runtime. Invoking that Makefile directly therefore
+  reports `standalone`; `workspace-member` is the root conform planning profile.
 - Generated `.envrc` files derive `PROJECT_ROOT` from the nearest
   `pyproject.toml` through direnv's documented `find_up` stdlib function. They
   do not depend on undocumented `DIRENV_*` variables, so strict evaluation is

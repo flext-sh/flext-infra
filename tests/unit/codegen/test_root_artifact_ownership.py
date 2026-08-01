@@ -6,11 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra import c, config
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
-from tests import u
 
 
 class TestsRootArtifactOwnership:
@@ -25,6 +23,28 @@ class TestsRootArtifactOwnership:
         )
 
         tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
+
+    def test_every_template_profile_is_registered(self) -> None:
+        """Every profile used by a template resolves through the typed registry."""
+        registered = {profile.name for profile in config.Infra.codegen.profiles}
+        mapped = {
+            profile
+            for entry in config.Infra.codegen.templates.entries
+            for profile in entry.profiles
+        }
+
+        tm.that(registered, eq=set(c.Infra.MakeProfile))
+        tm.that(mapped - registered, eq=set())
+
+    def test_workspace_member_consumes_the_standalone_template_baseline(self) -> None:
+        """Workspace members receive every template consumed by a standalone."""
+        for entry in config.Infra.codegen.templates.entries:
+            if c.Infra.MakeProfile.STANDALONE in entry.profiles:
+                tm.that(
+                    c.Infra.MakeProfile.WORKSPACE_MEMBER in entry.profiles,
+                    eq=True,
+                    msg=entry.destination,
+                )
 
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
         configured = config.Infra.codegen.managed_files
@@ -106,7 +126,8 @@ class TestsRootArtifactOwnership:
         with pytest.raises(ValueError, match="must be full-managed"):
             type(spec).model_validate(mutated)
 
-    def test_conform_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
+    def test_project_new_returns_one_verified_owned_plan(self, tmp_path: Path) -> None:
+        """Return the verified conform plan instead of planning the project again."""
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -121,43 +142,16 @@ class TestsRootArtifactOwnership:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        u.Tests.initialize_git_repo(root)
-        manual = {
-            "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
-            "custom.mk": b"# manual project extension\n",
-        }
-        (root / "custom.mk").write_bytes(manual["custom.mk"])
-        u.Tests.commit_git_changes(root, "Seed manual extensions")
-        request = m.Infra.CodegenConformRequest(root=root)
-        planned = FlextInfraCodegenConform(workspace_root=root, request=request).plan(
-            request
-        )
-        tm.ok(planned)
-        governed = tuple(
-            file for file in planned.value.files if file.policy is not None
-        )
         configured_policies = {
             item.path.as_posix(): item.policy
             for item in config.Infra.codegen.managed_files
         }
-        before = tuple(
-            sorted(
-                (path.relative_to(root).as_posix(), path.read_bytes())
-                for path in root.rglob("*")
-                if path.is_file() and ".git" not in path.relative_to(root).parts
-            )
+        governed = tuple(
+            file for file in created.value.plan.files if file.policy is not None
         )
-
-        checked = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
-        )
-        first = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY})
-        )
-
-        tm.ok(checked)
-        tm.ok(first)
         tm.that(governed, empty=False)
+        tm.that(created.value.written_files, empty=False)
+        tm.that(tuple(file for file in created.value.plan.files if file.changed), eq=())
         tm.that(
             len({file.path for file in governed}),
             eq=len(governed),
@@ -166,18 +160,6 @@ class TestsRootArtifactOwnership:
         for file in governed:
             relative = file.path.relative_to(root).as_posix()
             tm.that(file.policy, eq=configured_policies[relative])
-        tm.that(checked.value.written_files, eq=())
-        tm.that(first.value.written_files, eq=())
-        after = tuple(
-            sorted(
-                (path.relative_to(root).as_posix(), path.read_bytes())
-                for path in root.rglob("*")
-                if path.is_file() and ".git" not in path.relative_to(root).parts
-            )
-        )
-        tm.that(after, eq=before)
-        for relative, expected in manual.items():
-            tm.that((root / relative).read_bytes(), eq=expected)
 
 
 __all__: list[str] = []

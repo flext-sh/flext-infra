@@ -134,6 +134,11 @@ Infra:
         setup_scope: root-and-members
         execution_scope: root
         discovery_scope: manifest
+      - name: workspace-member
+        environment_scope: self
+        setup_scope: self
+        execution_scope: self
+        discovery_scope: none
       - name: standalone
         environment_scope: self
         setup_scope: self
