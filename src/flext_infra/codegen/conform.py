@@ -409,7 +409,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
-                    canonical_prefix=self._beads_ledger_identity(workspace, target),
+                    # Why (ai-hub-qwoc): canonical_prefix verifies the LIVE
+                    # Beads ledger's issue-prefix (hyphenated, matches real
+                    # issue IDs) -- it must never be workspace.ledger_id,
+                    # which is the separate Dolt-safe database identifier and
+                    # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
+                    canonical_prefix=self.declared_beads_prefix(
+                        target.root, fallback=target.canonical_project_name
+                    ),
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
@@ -1978,15 +1985,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     else ""
                 ),
             )
-        )
-
-    @classmethod
-    def _beads_ledger_identity(
-        cls, workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
-    ) -> str:
-        """Derive the ledger namespace from the declared SSOT identity."""
-        return workspace.ledger_id or cls.declared_beads_prefix(
-            target.root, fallback=target.canonical_project_name
         )
 
     @staticmethod
