@@ -320,7 +320,8 @@ Infra:
         }
       # mro-jnm1.2: gitignore-only entries absorbed from the removed
       # REQUIRED_GITIGNORE_ENTRIES constant; they feed no other projection.
-      - { name: .flext-deps, vscode_exclude: false, watch_exclude: false }
+      # NOTA: .flext-deps foi removido — o cutover para fontes git eliminou o
+      # cache, e o gate de actions proibe qualquer referencia ao mecanismo.
       - {
           name: .flext-sync.lock,
           is_dir: false,
