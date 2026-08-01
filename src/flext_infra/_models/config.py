@@ -298,6 +298,15 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class MakeWorkflowRenderSpec(_ConfigContract):
+        """Typed input shared by generated local workflow surfaces."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
+        ]
+
     class DistroDockerRenderSpec(_ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
 
@@ -1184,14 +1193,6 @@ class FlextInfraConfigModels:
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",
             ),
-        ]
-
-    class PreCommitRenderSpec(_ConfigContract):
-        """Typed input for the generated canonical Make lifecycle hooks."""
-
-        make: Annotated[
-            FlextInfraConfigModels.MakeSpec,
-            m.Field(description="Canonical Make lifecycle contract"),
         ]
 
     class SgconfigRenderSpec(_ConfigContract):

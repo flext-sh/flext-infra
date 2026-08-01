@@ -96,6 +96,7 @@ CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
 SERIALIZED_VERBS := check test gen
 SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen
+_DEFAULT_HANDLER_gen := apply
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -239,51 +240,20 @@ endif
 
 -include custom.mk
 
-_BUILTIN_HANDLERS := \
-	_builtin_help_usage \
-	_builtin_deps_check \
-	_builtin_deps_lock \
-	_builtin_deps_upgrade \
-	_builtin_build_artifacts \
-	_builtin_check_all \
-	_builtin_test_all \
-	_builtin_fmt_check \
-	_builtin_fmt_apply \
-	_builtin_run_default \
-	_builtin_status_diagnostics \
-	_builtin_docs_all \
-_builtin_docs_generate \
-_builtin_docs_fix \
-_builtin_docs_audit \
-_builtin_docs_build \
-_builtin_docs_validate \
-_builtin_clean_generated \
-	_builtin_release_status \
-	_builtin_gen_check \
-	_builtin_gen_apply \
-	_builtin_worktree_list \
-	_builtin_worktree_add \
-	_builtin_worktree_update \
-	_builtin_worktree_remove
-
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
+	if [ -z "$$what" ]; then what="$(_DEFAULT_HANDLER_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
 	builtin="_builtin_$(1)_$$what"; \
-	custom="_custom_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
-	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
-	esac; \
+	$(SELF_MAKE) "$$builtin" || exit $$?; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -312,27 +282,29 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS)
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 
 check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
 
 _serialized_check:
 	$(call _dispatch,check)
 
 
 test: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
 
 _serialized_test:
 	$(call _dispatch,test)
 
 
 gen: _builtin_require_environment
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: make gen does not accept WHAT\n' >&2; exit 2; fi
+	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen"
 
 _serialized_gen:
@@ -409,9 +381,9 @@ _builtin_help_usage:
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
-	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
+	@printf '  %s\n' 'for all or some WHATs.';
 	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
 			printf '  %s\n' 'Defined in this project:'; \
 			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \

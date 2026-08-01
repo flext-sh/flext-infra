@@ -24,6 +24,26 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         ),
     ]
+    def _serialized_command(
+        self,
+        makefile: Path,
+        make_config: m.Infra.MakeSpec,
+        verb_spec: m.Infra.MakeVerbSpec,
+    ) -> t.StrSequence:
+        """Transport runtime intent derived only from the canonical verb owner."""
+        return (
+            c.Infra.MAKE,
+            "--no-print-directory",
+            "-f",
+            str(makefile),
+            f"_serialized_{self.verb}",
+            f"{make_config.selector}={verb_spec.whats[0]}",
+            *(
+                (f"{make_config.apply_variable}={make_config.apply_value}",)
+                if verb_spec.apply_guarded
+                else ()
+            ),
+        )
 
     @classmethod
     def _process_failure(
@@ -103,6 +123,8 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         self,
         checkout: Path,
         serialization: m.Infra.MakeSerializationSpec,
+        make_config: m.Infra.MakeSpec,
+        verb_spec: m.Infra.MakeVerbSpec,
         *,
         makefile: Path,
     ) -> p.Result[m.Infra.ProcessExit]:
@@ -118,13 +140,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         primary = self._run_make(
             checkout,
-            (
-                c.Infra.MAKE,
-                "--no-print-directory",
-                "-f",
-                str(makefile),
-                f"_serialized_{self.verb}",
-            ),
+            self._serialized_command(makefile, make_config, verb_spec),
             failure_context=f"serialized Make {self.verb} failed",
         )
         after_result = self._capture_fingerprint(
@@ -208,20 +224,8 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     serialization.timeout_seconds,
                     lambda: self._run_make(
                         checkout,
-                        (
-                            c.Infra.MAKE,
-                            "--no-print-directory",
-                            "-f",
-                            str(selected_makefile),
-                            f"_serialized_{self.verb}",
-                            (
-                                f"{config.Infra.codegen.make.selector}="
-                                f"{verb_spec.whats[0]}"
-                            ),
-                            (
-                                f"{config.Infra.codegen.make.apply_variable}="
-                                f"{config.Infra.codegen.make.apply_value}"
-                            ),
+                        self._serialized_command(
+                            selected_makefile, config.Infra.codegen.make, verb_spec
                         ),
                         failure_context=f"serialized Make {self.verb} failed",
                     ),
@@ -232,7 +236,11 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 (mutation_lock_path,),
                 serialization.timeout_seconds,
                 lambda: self._execute_locked(
-                    checkout, serialization, makefile=selected_makefile
+                    checkout,
+                    serialization,
+                    config.Infra.codegen.make,
+                    verb_spec,
+                    makefile=selected_makefile,
                 ),
                 timeout_failure=self._lock_timeout_failure,
                 acquisition_failure=self._lock_acquisition_failure,

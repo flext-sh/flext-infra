@@ -256,7 +256,6 @@ Infra:
           apply_guarded: true
           accepts_selector: false
           help: Apply complete generation exactly once
-          lifecycle_order: 20
           serialized: true
         - name: worktree
           whats: [list, add, update, remove]
