@@ -379,15 +379,14 @@ class FlextInfraConfigModels:
         apply_what: Annotated[
             t.NonEmptyStr,
             m.Field(
-                default="all",
                 description=(
                     "Selector an apply-guarded verb resolves to when APPLY is "
                     "set and no explicit WHAT is given. Without it, "
                     "a mutating workflow step could silently retain its "
                     "read-only default selector"
-                ),
+                )
             ),
-        ]
+        ] = "all"
 
         @u.model_validator(mode="after")
         def _validate_whats(self) -> Self:
@@ -513,7 +512,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Mutating public verbs serialized once under the checkout lock; "
                     "validation is owned by later workflow steps"
-                ),
+                )
             ),
         ]
         snapshot_excludes: Annotated[

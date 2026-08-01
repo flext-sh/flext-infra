@@ -83,6 +83,7 @@ class FlextInfraExtraPathsManager(
         ]
         return sorted({rules.project_root, source_root, *typings_paths})
 
+    @override
     def pyrefly_search_paths(
         self, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:

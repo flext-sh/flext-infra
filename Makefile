@@ -31,7 +31,9 @@ UV_LINK_MODE := copy
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-APPLY ?= N
+# Unset by default: the guard accepts only the mutation value or nothing at
+# all, so a placeholder here would make every invocation fail validation.
+APPLY ?=
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -650,6 +652,9 @@ _builtin_build_artifacts:
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 _builtin_check_all: _builtin_require_environment
+	@if [ -n "$(strip $(APPLY))" ]; then \
+		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
+	fi
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \

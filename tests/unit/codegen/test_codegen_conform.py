@@ -925,8 +925,10 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="incidente", default_what="all"),
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="incidente", default_what="all", whats=("all",)
+                ),
+                m.Infra.MakeVerbSpec(name="charts", default_what="all", whats=("all",)),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
@@ -1026,9 +1028,11 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
-                m.Infra.MakeVerbSpec(name="chart-release", default_what="all"),
-                m.Infra.MakeVerbSpec(name="bead", default_what="all"),
+                m.Infra.MakeVerbSpec(name="charts", default_what="all", whats=("all",)),
+                m.Infra.MakeVerbSpec(
+                    name="chart-release", default_what="all", whats=("all",)
+                ),
+                m.Infra.MakeVerbSpec(name="bead", default_what="all", whats=("all",)),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py", roots=("scripts",)

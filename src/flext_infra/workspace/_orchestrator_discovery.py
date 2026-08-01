@@ -44,4 +44,5 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
         except ValueError:
             return str(project_path)
 
+
 __all__: list[str] = ["FlextInfraWorkspaceOrchestratorDiscoveryMixin"]
