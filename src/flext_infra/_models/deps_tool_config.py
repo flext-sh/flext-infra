@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
+
+from pydantic import model_validator
 
 from flext_cli import m
 from flext_infra import t
@@ -64,6 +66,100 @@ class FlextInfraModelsDepsToolSettings(
         """Pytest baseline settings loaded from YAML."""
 
         # mro-j47u (codex): every rendered pytest value is validated config data.
+        case_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="case-timeout-seconds",
+                gt=0,
+                description="Hard maximum runtime for one pytest item.",
+            ),
+        ]
+        run_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="run-timeout-seconds",
+                gt=0,
+                description="Hard wall-clock maximum for one pytest invocation.",
+            ),
+        ]
+        termination_grace_seconds: Annotated[
+            int,
+            m.Field(
+                alias="termination-grace-seconds",
+                gt=0,
+                description="Grace period reserved inside the invocation deadline.",
+            ),
+        ]
+        enforcement_plugin: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="enforcement-plugin",
+                description="Required pytest11 enforcement plugin loaded by Make.",
+            ),
+        ]
+        progress_args: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                alias="progress-args",
+                min_length=1,
+                description="Arguments that expose each pytest item and live progress.",
+            ),
+        ]
+        report_args: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                alias="report-args",
+                min_length=1,
+                description="Canonical concise pytest reporting arguments.",
+            ),
+        ]
+        diagnostic_args: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                alias="diagnostic-args",
+                min_length=1,
+                description="Canonical expanded pytest diagnostic arguments.",
+            ),
+        ]
+        parallel_workers: Annotated[
+            int,
+            m.Field(
+                alias="parallel-workers",
+                gt=0,
+                le=16,
+                description="Fixed pytest-xdist worker budget for full runs.",
+            ),
+        ]
+        parallel_distribution: Annotated[
+            Literal["worksteal"],
+            m.Field(
+                alias="parallel-distribution",
+                description="Pytest-xdist scheduler for full runs.",
+            ),
+        ]
+        profile_sort: Annotated[
+            Literal[
+                "calls",
+                "cumulative",
+                "filename",
+                "line",
+                "name",
+                "nfl",
+                "pcalls",
+                "stdname",
+                "time",
+            ],
+            m.Field(alias="profile-sort", description="Sort key for cProfile reports."),
+        ]
+        profile_limit: Annotated[
+            int,
+            m.Field(
+                alias="profile-limit",
+                gt=0,
+                le=1000,
+                description="Maximum cProfile rows rendered.",
+            ),
+        ]
         min_version: Annotated[
             t.NonEmptyStr,
             m.Field(alias="min-version", description="Minimum pytest version."),
@@ -111,29 +207,66 @@ class FlextInfraModelsDepsToolSettings(
                 description="Standard pytest addopts enforced by modernizer.",
             ),
         ]
-        profile_sort: Annotated[
-            Literal[
-                "calls",
-                "cumulative",
-                "filename",
-                "line",
-                "name",
-                "nfl",
-                "pcalls",
-                "stdname",
-                "time",
-            ],
-            m.Field(alias="profile-sort", description="Sort key for cProfile reports."),
-        ]
-        profile_limit: Annotated[
+        process_timeout_seconds: Annotated[
             int,
             m.Field(
-                alias="profile-limit",
+                alias="process-timeout-seconds",
                 gt=0,
-                le=1000,
-                description="Maximum cProfile rows rendered.",
+                description="Hard timeout for the complete pytest process.",
             ),
         ]
+
+        @model_validator(mode="after")
+        def _validate_execution_limits(self) -> Self:
+            """Keep item and termination budgets inside the hard invocation cap."""
+            if self.case_timeout_seconds >= self.run_timeout_seconds:
+                msg = "pytest case timeout must be less than run timeout"
+                raise ValueError(msg)
+            if self.termination_grace_seconds >= self.run_timeout_seconds:
+                msg = "pytest termination grace must be less than run timeout"
+                raise ValueError(msg)
+            if (
+                self.case_timeout_seconds + self.termination_grace_seconds
+                > self.run_timeout_seconds
+            ):
+                msg = "pytest run timeout must include item and termination budgets"
+                raise ValueError(msg)
+            derived_options = ("--timeout", "--session-timeout")
+            if any(
+                option in {"-o", "--override-ini"}
+                or option.startswith(("-o=", "--override-ini=", *derived_options))
+                for option in self.standard_addopts
+            ):
+                msg = "pytest runtime policy options are derived from typed fields"
+                raise ValueError(msg)
+            if "--verbose" not in self.progress_args:
+                msg = "pytest progress args must expose verbose item progress"
+                raise ValueError(msg)
+            runner_owned_prefixes = (
+                "-k",
+                "-n",
+                "-o",
+                "-p",
+                "-x",
+                "--cov",
+                "--dist",
+                "--junitxml",
+                "--override-ini",
+                "--timeout",
+            )
+            for argument in (
+                *self.progress_args,
+                *self.report_args,
+                *self.diagnostic_args,
+            ):
+                if (
+                    not argument.startswith("-")
+                    or any(character in argument for character in "\0\r\n")
+                    or argument.startswith(runner_owned_prefixes)
+                ):
+                    msg = "pytest reporting args must not override runner-owned policy"
+                    raise ValueError(msg)
+            return self
 
     class TomlsortConfig(m.ArbitraryTypesModel):
         """tomlsort baseline settings loaded from YAML."""

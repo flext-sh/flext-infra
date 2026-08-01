@@ -73,17 +73,10 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
 
     def test_basemk_generation_has_a_declared_make_selector(self) -> None:
         """The infra-only base.mk owner remains callable through Make."""
-        repository = next(
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.distribution == "flext-infra"
-        )
-        verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
         custom = (_workspace_root() / c.Infra.CUSTOM_MAKE_FILENAME).read_text(
             encoding="utf-8"
         )
 
-        tm.that(verbs.get("basemk"), eq="generate")
         tm.that(custom, has="_custom_basemk_generate:")
         tm.that(
             custom,

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
 from tests import u
 
@@ -20,21 +21,82 @@ class TestsRootArtifactOwnership:
         paths = tuple(item.path.as_posix() for item in configured)
 
         tm.that(len(paths), eq=len(set(paths)))
-        required = (
-            ".github/workflows/ci.yml",
-            ".github/workflows/ci-matrix.yml",
-            "ci/docker/alpine.Dockerfile",
-            "ci/docker/arch.Dockerfile",
-            "ci/docker/debian.Dockerfile",
-            "ci/docker/fedora.Dockerfile",
-            "ci/docker/ubuntu.Dockerfile",
-        )
-        for path in required:
-            owned = next(item for item in configured if item.path.as_posix() == path)
-            tm.that(owned.owner, eq="codegen")
+        github_templates = {
+            Path(entry.destination)
+            for entry in config.Infra.codegen.templates.entries
+            if Path(entry.destination).parts[:1] == (".github",)
+        }
+        github_managed = {
+            item.path: item
+            for item in configured
+            if item.path.parts[:1] == (".github",)
+        }
+        tm.that(set(github_managed), eq=github_templates)
+        tm.that(github_templates, empty=False)
+        for owned in github_managed.values():
             tm.that(owned.policy, eq="full")
 
-    def test_legacy_sync_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
+    def test_every_packaged_github_template_is_declared(self) -> None:
+        """Keep the packaged GitHub tree and typed render manifest bijective."""
+        template_root = (
+            Path(__file__).parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+        )
+        physical = {
+            path.relative_to(template_root).as_posix().removesuffix(".j2")
+            for path in (template_root / ".github").rglob("*.j2")
+        }
+        declared = {
+            entry.destination
+            for entry in config.Infra.codegen.templates.entries
+            if Path(entry.destination).parts[:1] == (".github",)
+        }
+
+        tm.that(physical, eq=declared)
+
+    def test_github_template_without_managed_owner_is_rejected(self) -> None:
+        """Reject any config where a GitHub projection escapes full ownership."""
+        spec = config.Infra.codegen
+        github_managed = tuple(
+            item for item in spec.managed_files if item.path.parts[:1] == (".github",)
+        )
+        target = github_managed[0]
+        mutated = spec.model_copy(
+            update={
+                "managed_files": tuple(
+                    item for item in spec.managed_files if item.path != target.path
+                )
+            }
+        )
+
+        with pytest.raises(ValueError, match="ownership mismatch"):
+            type(spec).model_validate(mutated)
+
+    def test_github_managed_owner_must_be_full(self) -> None:
+        """Reject weaker policies for every config-declared GitHub artifact."""
+        spec = config.Infra.codegen
+        target = next(
+            item for item in spec.managed_files if item.path.parts[:1] == (".github",)
+        )
+        mutated = spec.model_copy(
+            update={
+                "managed_files": tuple(
+                    item.model_copy(update={"policy": "merge"})
+                    if item.path == target.path
+                    else item
+                    for item in spec.managed_files
+                )
+            }
+        )
+
+        with pytest.raises(ValueError, match="must be full-managed"):
+            type(spec).model_validate(mutated)
+
+    def test_conform_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -76,8 +138,12 @@ class TestsRootArtifactOwnership:
             )
         )
 
-        checked = FlextInfraSyncService(workspace_root=root).execute()
-        first = FlextInfraSyncService(workspace_root=root, apply_changes=True).execute()
+        checked = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+        )
+        first = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY})
+        )
 
         tm.ok(checked)
         tm.ok(first)
@@ -90,8 +156,8 @@ class TestsRootArtifactOwnership:
         for file in governed:
             relative = file.path.relative_to(root).as_posix()
             tm.that(file.policy, eq=configured_policies[relative])
-        tm.that(checked.value.files_changed, eq=0)
-        tm.that(first.value.files_changed, eq=0)
+        tm.that(checked.value.written_files, eq=())
+        tm.that(first.value.written_files, eq=())
         after = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())

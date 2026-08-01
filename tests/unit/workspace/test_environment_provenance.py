@@ -18,22 +18,24 @@ def _workspace(root: Path, distribution: str = "sample-member") -> Path:
     root.mkdir()
     member = root / distribution
     (member / "src").mkdir(parents=True)
+    (root / ".gitmodules").write_text(
+        f'[submodule "{distribution}"]\n\tpath = {distribution}\n\turl = https://github.com/flext-sh/{distribution}.git\n\tbranch = 0.12.0-dev\n',
+        encoding="utf-8",
+    )
     config_dir = root / "config"
     config_dir.mkdir()
     (config_dir / "workspace.yaml").write_text(
         f"""
-version: 2
+version: 3
 name: sample
 repository:
   name: sample
   distribution: sample
   provider: flext-sh
   url: https://github.com/flext-sh/sample.git
-  branch: main
   path: .
   role: workspace-root
   state: active
-  profile: workspace-root
   checkout: root
   codegen: conform
   package: false
@@ -44,19 +46,24 @@ members:
     distribution: {distribution}
     provider: flext-sh
     url: https://github.com/flext-sh/{distribution}.git
-    branch: main
     path: {distribution}
     role: workspace-member
     state: active
-    profile: workspace-member
     checkout: submodule
     codegen: conform
     package: true
     editable: true
     read_only: false
-content_only: []
 exclusions: []
 """.lstrip(),
+        encoding="utf-8",
+    )
+    (root / ".gitmodules").write_text(
+        f"""[submodule \"{distribution}\"]
+\tpath = {distribution}
+\turl = https://github.com/flext-sh/{distribution}.git
+\tbranch = 0.12.0-dev
+""",
         encoding="utf-8",
     )
     return root

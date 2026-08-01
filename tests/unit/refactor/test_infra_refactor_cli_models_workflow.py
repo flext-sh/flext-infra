@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c
-from flext_infra import main as infra_main
+from flext_infra import c, main as infra_main
 from flext_tests import tm
 from tests import u
 

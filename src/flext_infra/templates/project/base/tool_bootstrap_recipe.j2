@@ -1,0 +1,62 @@
+{% macro tool_bootstrap_recipe(target, tools_bin, mise, mise_data_dir, mise_version) -%}
+.PHONY: {{ target }}
+
+{{ target }}:
+	@set -eu; \
+	tools_bin="{{ tools_bin }}"; \
+	mise="{{ mise }}"; \
+	mise_data_dir="{{ mise_data_dir }}"; \
+	mise_version="{{ mise_version }}"; \
+	uv_version=""; \
+	if command -v uv >/dev/null 2>&1; then \
+		uv_version=$$(uv --version 2>/dev/null | sed 's/uv //' | cut -d ' ' -f 1 || true); \
+	fi; \
+	if [ -z "$$uv_version" ]; then \
+		printf 'ERROR: make setup requires uv >= 0.11.0 in PATH; install from https://github.com/astral-sh/uv\n' >&2; \
+		exit 2; \
+	fi; \
+	if [ "$$(printf '%s\n%s' '0.11.0' "$$uv_version" | sort -V | head -n1)" != '0.11.0' ]; then \
+		printf 'ERROR: make setup requires uv >= 0.11.0, found %s\n' "$$uv_version" >&2; \
+		exit 2; \
+	fi; \
+	current=""; \
+	if [ -x "$$mise" ]; then \
+		current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
+	fi; \
+	if [ "$$current" != "$$mise_version" ]; then \
+		command -v curl >/dev/null 2>&1 || { \
+			printf 'ERROR: make setup requires curl to bootstrap project binaries\n' >&2; \
+			exit 2; \
+		}; \
+		case "$$(uname -s)" in \
+			Linux*) os=linux ;; \
+			Darwin*) os=macos ;; \
+			MINGW*|MSYS*|CYGWIN*|Windows_NT) os=windows ;; \
+			*) printf 'ERROR: unsupported bootstrap OS: %s\n' "$$(uname -s)" >&2; exit 2 ;; \
+		esac; \
+		case "$$(uname -m)" in \
+			x86_64|amd64) arch=x64 ;; \
+			aarch64|arm64) arch=arm64 ;; \
+			*) printf 'ERROR: unsupported bootstrap architecture: %s\n' "$$(uname -m)" >&2; exit 2 ;; \
+		esac; \
+		suffix="$$os-$$arch"; extension=""; \
+		if [ "$$os" = linux ] && ldd --version 2>&1 | grep -qi musl; then \
+			suffix="$$suffix-musl"; \
+		fi; \
+		if [ "$$os" = windows ]; then extension=.exe; fi; \
+		asset="mise-v$$mise_version-$$suffix$$extension"; \
+		url="https://github.com/jdx/mise/releases/download/v$$mise_version/$$asset"; \
+		mkdir -p "$$tools_bin" "$$mise_data_dir"; \
+		tmp="$$mise.download"; \
+		if ! curl -fsSL "$$url" -o "$$tmp"; then rm -f "$$tmp"; exit 2; fi; \
+		chmod +x "$$tmp"; \
+		mv "$$tmp" "$$mise"; \
+		current=$$("$$mise" --version | cut -d ' ' -f 1); \
+		[ "$$current" = "$$mise_version" ] || { \
+			printf 'ERROR: mise bootstrap version mismatch: expected %s, got %s\n' \
+				"$$mise_version" "$$current" >&2; \
+			exit 2; \
+		}; \
+	fi; \
+	{{ mise }} install --yes
+{%- endmacro %}

@@ -27,7 +27,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         (tmp_path / "pyproject.toml").write_text(
             "[project]\nname='workspace'\n\n"
             "[tool.uv.workspace]\n"
-            "members = ['project1', 'project2']\n",
+            "members = ['project2']\n",
             encoding="utf-8",
         )
         proj1 = tmp_path / "project1"
@@ -69,9 +69,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(projects[0].has_src, eq=True)
         tm.that(projects[1].has_src, eq=False)
         tm.that(projects[1].has_tests, eq=False)
-        tm.that(
-            projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
-        )
+        tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.ATTACHED)
         tm.that(
             (
                 projects[1].workspace_role
@@ -162,7 +160,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         (tmp_path / "pyproject.toml").write_text(
             "[project]\nname='workspace-root'\ndependencies=['flext-core>=0.1.0']\n\n"
             "[tool.uv.workspace]\n"
-            "members = ['project1', 'project2']\n",
+            "members = ['project2']\n",
             encoding="utf-8",
         )
         project1 = tmp_path / "project1"
@@ -185,12 +183,6 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     def test_discover_projects_derives_package_name_from_hatch_packages(
         self, service: u.Infra, tmp_path: Path
     ) -> None:
-        (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace-root'\n\n"
-            "[tool.uv.workspace]\n"
-            "members = ['project1']\n",
-            encoding="utf-8",
-        )
         project = tmp_path / "project1"
         package_dir = project / "src" / "custom_pkg"
         package_dir.mkdir(parents=True)
@@ -229,21 +221,20 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(result.value[0].name, eq="demo-project")
         tm.that(result.value[0].package_name, eq="demo_pkg")
 
-    def test_discover_python_dirs_skips_content_only_repositories(
+    def test_discover_python_dirs_skips_workspace_excluded_dirs(
         self, service: u.Infra, tmp_path: Path
     ) -> None:
-        """Immutable external repositories are never Python source roots."""
+        """Manifest-excluded vendored trees are never Python source roots."""
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         (config_dir / "workspace.yaml").write_text(
-            "version: 2\n"
+            "version: 3\n"
             "name: demo\n"
             "repository:\n"
             "  name: demo\n"
             "  distribution: demo\n"
             "  provider: acme-hosting\n"
             "  url: https://github.com/acme-hosting/demo.git\n"
-            "  branch: main\n"
             "  path: .\n"
             "  role: standalone\n"
             "  state: active\n"
@@ -254,22 +245,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
             "  editable: false\n"
             "  read_only: false\n"
             "members: []\n"
-            "content_only:\n"
-            "  - name: upstream-fork\n"
-            "    distribution: upstream-fork\n"
-            "    provider: acme-hosting\n"
-            "    url: https://github.com/acme-hosting/upstream-fork.git\n"
-            "    branch: main\n"
-            "    path: data\n"
-            "    role: content-only\n"
-            "    state: content-only\n"
-            "    profile: null\n"
-            "    checkout: submodule\n"
-            "    codegen: none\n"
-            "    package: false\n"
-            "    editable: false\n"
-            "    read_only: true\n"
-            "exclusions: []\n",
+            "exclusions:\n"
+            "  - path: data\n"
+            "    reason: vendored document submodules\n",
             encoding="utf-8",
         )
         src_dir = tmp_path / "src"

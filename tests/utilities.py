@@ -9,20 +9,16 @@ from typing import TYPE_CHECKING, override
 
 from flext_cli import cli as cli_facade
 from flext_infra import config, main, r, u
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
 if TYPE_CHECKING:
-    from tomlkit import TOMLDocument
-
     from flext_infra.gates.base_gate import FlextInfraGate
 
 
@@ -177,8 +173,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                live: bool = False,
+                deadline: p.Cli.ProcessDeadline | None = None,
             ) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
+                del input_data, live, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -325,6 +326,46 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def repository_ref(
+            name: str,
+            *,
+            role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            path: Path | None = None,
+        ) -> m.Infra.RepositoryRef:
+            """Build a repository reference from the provider contract.
+
+            flext-infra owns no catalog of projects, so a test that needs a
+            repository declares the one it means instead of borrowing a row
+            from a registry. Only the provider contract (generic policy) is
+            read from config, which keeps the fixture valid for any provider.
+
+            The role decides the rest: a workspace root is its own checkout at
+            ``.`` and is never editable, while a member is a submodule at its
+            own directory and is overlaid editable. Letting callers set those
+            independently is how fixtures ended up declaring members at ``.``,
+            which is not a valid submodule pathspec.
+            """
+            provider = config.Infra.codegen.providers[0]
+            is_member = role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            return m.Infra.RepositoryRef(
+                name=name,
+                distribution=name,
+                url=f"{provider.base_url.rstrip('/')}/{name}.git",
+                path=path if path is not None else Path(name) if is_member else Path(),
+                role=role,
+                provider=provider.name,
+                checkout=(
+                    c.Infra.CheckoutKind.SUBMODULE
+                    if is_member
+                    else c.Infra.CheckoutKind.ROOT
+                ),
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=True,
+                editable=is_member,
+                read_only=False,
+            )
+
+        @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
             # mro-wkii.17 (codex): tests consume the validated config singleton;
             # the removed utility loader must not survive as a hidden test path.
@@ -332,7 +373,23 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return config.Infra.tooling
 
         @staticmethod
-        def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
+        def toml_doc(text: str) -> t.Cli.TomlDocument:
+            """Parse fixture TOML text into a document, failing closed.
+
+            ``u.Cli.toml_parse_text`` is fail-soft because production parses
+            untrusted files. A fixture literal is authored valid, so a ``None``
+            here means the fixture itself is broken and the test must fail with
+            that reason instead of propagating an optional into every call.
+            """
+            document = u.Cli.toml_parse_text(text)
+            tm.that(document, none=False, msg="fixture TOML failed to parse")
+            if document is None:
+                msg = "fixture TOML failed to parse"
+                raise TypeError(msg)
+            return document
+
+        @staticmethod
+        def toml_doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
             """Provide the typed test helper `toml_doc_mapping`."""
             normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
             tm.that(normalized, is_=Mapping)
@@ -387,45 +444,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     )
                 )
             )
-
-        class MigratorDiscovery:
-            """Typed discovery stub for migrator behavior tests."""
-
-            def __init__(
-                self,
-                projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
-                *,
-                error: str = "",
-            ) -> None:
-                """Store projects and an optional discovery failure."""
-                self._projects = projects or []
-                self._error = error
-
-            def discover_projects(
-                self, workspace_root: Path
-            ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
-                """Provide the typed test helper `discover_projects`."""
-                _ = workspace_root
-                if self._error:
-                    return r[Sequence[m.Infra.ProjectInfo]].fail(self._error)
-                return r[Sequence[m.Infra.ProjectInfo]].ok(self._projects)
-
-        class MigratorGenerator(FlextInfraBaseMkGenerator):
-            """Typed base.mk generator stub for migrator behavior tests."""
-
-            def __init__(self, content: str = "", *, fail: str = "") -> None:
-                """Store generated content and an optional failure."""
-                self._content = content
-                self._fail = fail
-
-            @override
-            def generate_basemk(
-                self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
-            ) -> p.Result[str]:
-                del settings
-                if self._fail:
-                    return r[str].fail(self._fail)
-                return r[str].ok(self._content)
 
         @staticmethod
         def is_docker_available() -> bool:
@@ -485,18 +503,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             manifest_path = config_dir / "workspace.yaml"
             manifest_path.write_text(
                 (
-                    "version: 2\n"
+                    "version: 3\n"
                     f"name: {name}\n"
                     "repository:\n"
                     f"  name: {name}\n"
                     f"  distribution: {name}\n"
                     "  provider: flext-sh\n"
                     f"  url: https://github.com/flext-sh/{name}.git\n"
-                    "  branch: main\n"
                     "  path: .\n"
                     "  role: standalone\n"
                     "  state: active\n"
-                    "  profile: standalone\n"
                     "  checkout: independent\n"
                     "  codegen: conform\n"
                     "  package: true\n"
@@ -521,7 +537,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  workspace_root_rel: .\n"
                     "  year: 2026\n"
                     "members: []\n"
-                    "content_only: []\n"
                     "exclusions: []\n"
                 ),
                 encoding="utf-8",
@@ -557,6 +572,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             _write(workspace / "docs/guides/README.md", "# Guides\n")
             _write(workspace / "docs/projects/README.md", "# Projects\n")
             _write(workspace / "docs/api-reference/README.md", "# API Reference\n")
+            if project_names:
+                members = ", ".join(f'"{name}"' for name in project_names)
+                _write(
+                    workspace / "pyproject.toml",
+                    (
+                        '[project]\nname = "workspace"\n\n'
+                        f"[tool.uv.workspace]\nmembers = [{members}]\n"
+                    ),
+                )
 
             for name in project_names:
                 project = workspace / name
@@ -770,7 +794,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
-            """Attach and seed a local bare origin for push behavior tests."""
+            """Attach and seed a local bare origin for push behavior tests.
+
+            ``initialize_git_repo`` already seeds a placeholder origin, so the
+            remote is re-pointed rather than added: a second ``remote add``
+            fails with "remote origin already exists".
+            """
             bare_remote = remote_root / "origin.git"
             tm.ok(
                 cli_facade.run_checked([
@@ -785,7 +814,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     [
                         c.Infra.GIT,
                         "remote",
-                        "add",
+                        "set-url",
                         c.Infra.GIT_ORIGIN,
                         str(bare_remote),
                     ],
@@ -805,42 +834,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
             )
             return bare_remote
-
-        @staticmethod
-        def create_path_sync_workspace(
-            root: Path,
-            *,
-            root_pyproject: str,
-            projects: t.StrMapping | None = None,
-            gitmodules_members: t.StrSequence = (),
-            extra_dirs: t.StrSequence = (),
-        ) -> Path:
-            """Create a dependency-path synchronization workspace."""
-            workspace = root / "workspace"
-            workspace.mkdir(parents=True, exist_ok=True)
-            (workspace / "pyproject.toml").write_text(root_pyproject, encoding="utf-8")
-            if gitmodules_members:
-                gitmodules_lines: list[str] = []
-                for name in gitmodules_members:
-                    gitmodules_lines.extend((
-                        f'[submodule "{name}"]',
-                        f"\tpath = {name}",
-                        f"\turl = https://example.invalid/{name}.git",
-                        "",
-                    ))
-                (workspace / ".gitmodules").write_text(
-                    "\n".join(gitmodules_lines).rstrip() + "\n", encoding="utf-8"
-                )
-            for directory in extra_dirs:
-                (workspace / directory).mkdir(parents=True, exist_ok=True)
-            for name, pyproject in dict(projects or {}).items():
-                project = workspace / name
-                project.mkdir(parents=True, exist_ok=True)
-                (project / "pyproject.toml").write_text(pyproject, encoding="utf-8")
-                package = project / "src" / name.replace("-", "_")
-                package.mkdir(parents=True, exist_ok=True)
-                (package / "__init__.py").write_text("", encoding="utf-8")
-            return workspace
 
         @staticmethod
         def create_path_sync_pyproject(
@@ -866,17 +859,56 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return "\n".join(lines) + "\n"
 
         @staticmethod
-        def initialize_git_repo(repo_root: Path) -> None:
-            """Initialize and commit a deterministic Git fixture."""
+        def configure_git_identity(repository_root: Path) -> None:
+            """Set deterministic repository-local identity for real Git fixtures."""
+            tm.ok(
+                cli_facade.run_checked(
+                    [
+                        c.Infra.GIT,
+                        "config",
+                        "--local",
+                        "user.email",
+                        "tests@flext.local",
+                    ],
+                    cwd=repository_root,
+                )
+            )
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "config", "--local", "user.name", "Flext Tests"],
+                    cwd=repository_root,
+                )
+            )
+
+        @staticmethod
+        def initialize_git_repo(repo_root: Path, origin_url: str | None = None) -> None:
+            """Initialize and commit a deterministic Git fixture.
+
+            The initial commit allows an empty tree so fixtures that seed
+            hooks or config before any file still get a resolvable HEAD.
+            A fake remote baseline ref is created so workspace discovery
+            matches a real clone. The baseline branch is read from the same
+            provider config production reads. ``origin_url`` defaults to the
+            repository itself; fixtures that must be recognised as
+            provider-governed pass their declared provider URL instead.
+            """
+            baseline_branch = config.Infra.codegen.providers[0].branch
             commands: t.SequenceOf[t.StrSequence] = (
                 (c.Infra.GIT, "init", "-b", "main"),
                 (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
-                (c.Infra.GIT, "commit", "-m", "init"),
+                (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
+                (c.Infra.GIT, "remote", "add", "origin", origin_url or str(repo_root)),
+                (
+                    c.Infra.GIT,
+                    "update-ref",
+                    f"refs/remotes/origin/{baseline_branch}",
+                    "HEAD",
+                ),
             )
             for command in commands:
-                _ = cli_facade.run_checked(list(command), cwd=repo_root)
+                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
 
         @staticmethod
         def to_pascal(snake: str) -> str:
@@ -959,22 +991,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project
 
         @staticmethod
-        def create_migrator_project(
-            project_root: Path, name: str = "project-a"
-        ) -> m.Infra.ProjectInfo:
-            """Create a typed project fixture for migration tests."""
-            result: m.Infra.ProjectInfo = m.Infra.ProjectInfo.model_validate(
-                obj={
-                    "name": name,
-                    "path": project_root,
-                    "stack": "python/external",
-                    "has_tests": False,
-                    "has_src": True,
-                }
-            )
-            return result
-
-        @staticmethod
         def write_executable(path: Path, body: str) -> None:
             """Write one executable fixture with deterministic permissions."""
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -991,36 +1007,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 cwd=cwd,
                 remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
-
-        @staticmethod
-        def create_migrator_dir_layout(
-            tmp_path: Path,
-            *,
-            name: str = "project-a",
-            base_mk: str | None = "base.mk",
-            pyproject: str | None = "[project]\n",
-            gitignore: str | None = "",
-            makefile: str | None = "content",
-        ) -> Path:
-            """Create a temp project directory layout for migrator tests.
-
-            Centralized SSOT replacing the 6-line scaffold previously
-            duplicated across migrator test modules. Pass ``None`` for any
-            file kwarg to skip that file (used by ``*_not_found`` tests).
-            """
-            root = tmp_path / name
-            root.mkdir(parents=True)
-            (root / ".git").mkdir()
-            writes = (
-                ("base.mk", base_mk),
-                ("Makefile", makefile),
-                ("pyproject.toml", pyproject),
-                (".gitignore", gitignore),
-            )
-            for filename, content in writes:
-                if content is not None:
-                    (root / filename).write_text(content, encoding="utf-8")
-            return root
 
         @staticmethod
         def create_project_info(
@@ -1101,7 +1087,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "check:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
             )
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
-                (f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
+                (
+                    f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
+                    "[tool.ruff.lint.per-file-ignores]\n"
+                    "# PEP 562 lazy facades import typing-only names that are "
+                    "published as strings in __all__.\n"
+                    '"**/__init__.py" = ["TC004"]\n'
+                ),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
             (package_root / c.Infra.INIT_PY).write_text(
@@ -1258,46 +1250,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
-        def create_migrator_discovery(
-            projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
-            *,
-            error: str = "",
-        ) -> p.Infra.Discovery:
-            """Provide the typed test helper `create_migrator_discovery`."""
-            return TestsFlextInfraUtilities.Tests.MigratorDiscovery(
-                projects, error=error
-            )
-
-        @staticmethod
-        def create_migrator_generator(
-            content: str = "", *, fail: str = ""
-        ) -> FlextInfraBaseMkGenerator:
-            """Provide the typed test helper `create_migrator_generator`."""
-            return TestsFlextInfraUtilities.Tests.MigratorGenerator(content, fail=fail)
-
-        @staticmethod
-        def build_project_migrator(
-            project: m.Infra.ProjectInfo,
-            base_mk: str,
-            *,
-            workspace_root: Path | None = None,
-            dry_run: bool = False,
-        ) -> FlextInfraProjectMigrator:
-            """Compose a project migrator with typed test dependencies."""
-            migrator = FlextInfraProjectMigrator(
-                workspace_root=workspace_root or Path("/dummy"),
-                apply_changes=not dry_run,
-                dry_run=dry_run,
-            )
-            migrator.discovery = (
-                TestsFlextInfraUtilities.Tests.create_migrator_discovery([project])
-            )
-            migrator.generator = (
-                TestsFlextInfraUtilities.Tests.create_migrator_generator(base_mk)
-            )
-            return migrator
-
-        @staticmethod
         def detect_command(
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
@@ -1335,21 +1287,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return FlextInfraRuntimeDevDependencyDetector(
                 workspace_root=tmp_path, deps=deps
             )
-
-        @staticmethod
-        def write_migrator_project(project_root: Path) -> None:
-            """Provide the typed test helper `write_migrator_project`."""
-            project_root.mkdir(parents=True, exist_ok=True)
-            (project_root / ".git").mkdir(parents=True, exist_ok=True)
-            (project_root / "base.mk").write_text("OLD_BASE\n", encoding="utf-8")
-            (project_root / "Makefile").write_text(
-                'python "$(WORKSPACE_ROOT)/scripts/check/workspace_check.py"\n',
-                encoding="utf-8",
-            )
-            (project_root / "pyproject.toml").write_text(
-                "[project]\n", encoding="utf-8"
-            )
-            (project_root / ".gitignore").write_text("", encoding="utf-8")
 
         @staticmethod
         def create_gate_execution(
@@ -1403,6 +1340,74 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "gates": resolved_gates,
             })
             return result
+
+        @staticmethod
+        def repository_profile(root: Path) -> c.Infra.MakeProfile:
+            """Return the Make profile *root* declares in its own manifest.
+
+            Only that manifest is read. The full detector also walks the parent
+            superproject on the live filesystem, which breaks the isolation law
+            and races other tests' temp fixtures under xdist.
+
+            Returns:
+                ``WORKSPACE_ROOT`` when the manifest declares members, else
+                ``WORKSPACE_MEMBER``.
+
+            """
+            from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+            workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+            return (
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+                if workspace.members
+                else c.Infra.MakeProfile.WORKSPACE_MEMBER
+            )
+
+        @staticmethod
+        def ignore_patterns_for(root: Path) -> tuple[str, ...]:
+            """Return the ignore patterns that apply to *root*'s declared profile.
+
+            Returns:
+                Every SSOT pattern whose section targets that profile.
+
+            """
+            profile = TestsFlextInfraUtilities.Tests.repository_profile(root)
+            return tuple(
+                pattern
+                for section in config.Infra.codegen.gitignore_sections
+                if not section.profiles or profile in section.profiles
+                for pattern in section.patterns
+            )
+
+        @staticmethod
+        def is_tracked_under(rendered: str, relative_path: str) -> bool:
+            """Return whether git tracks *relative_path* under *rendered*.
+
+            Ignore semantics are subtle (ordering, negation, directory
+            prefixes), so the question is delegated to git itself against a
+            throwaway repository, never reimplemented here.
+
+            Returns:
+                ``True`` when git would track the path.
+
+            """
+            import tempfile
+
+            with tempfile.TemporaryDirectory() as raw_root:
+                probe_root = Path(raw_root)
+                tm.ok(u.Cli.run_checked(["git", "init", "-q", str(probe_root)]))
+                (probe_root / ".gitignore").write_text(rendered, encoding="utf-8")
+                target = probe_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("", encoding="utf-8")
+                # `git check-ignore` exits 0 when the path IS ignored, so a
+                # failed run is the success case for a tracked artifact.
+                probe = tm.ok(
+                    u.Cli.run_raw(
+                        ["git", "check-ignore", "-q", relative_path], cwd=probe_root
+                    )
+                )
+            return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
 
         @staticmethod
         def create_checker_project(

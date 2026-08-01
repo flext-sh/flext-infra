@@ -5,7 +5,7 @@
 # FLEXT verbs in base.mk own those. Add project-specific actions as
 # `_custom_<verb>_<what>` (e.g. run WHAT=<what>) or wrap a verb with a hook.
 
-.PHONY: _custom_basemk_generate _custom_run_cprofile-report _custom_run_cprofile-test
+.PHONY: _custom_basemk_generate _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
 _custom_basemk_generate:
 	@set -eu; \
 	output="$(strip $(OUTPUT))"; \
@@ -38,3 +38,22 @@ _custom_run_cprofile-test:
 _custom_run_cprofile-report:
 	@set -eu; \
 	"$(RUNTIME_PYTHON)" -m flext_infra._cprofile_entry
+
+# mro-0wuz: project-layout engine (SSOT in flext-infra/config/codegen.yaml).
+# Dry-run report by default; APPLY=Y executes the idempotent reorganization.
+# PROJECT=<name> scopes to one workspace member; otherwise the whole
+# workspace rooted at WORKSPACE_ROOT is planned/applied.
+_custom_build_layout:
+	@set -eu; \
+	apply=""; \
+	if [ "$(APPLY)" = "Y" ]; then apply="--apply"; fi; \
+	project=""; \
+	if [ -n "$(strip $(PROJECT))" ]; then project="--project $(strip $(PROJECT))"; fi; \
+	$(PROJECT_FLEXT_INFRA) codegen layout --workspace "$(WORKSPACE_ROOT)" $$project $$apply
+
+# mro-0wuz: layout warning gate (severity from codegen.yaml layout.severity).
+_custom_check_layout:
+	@set -eu; \
+	projects="."; \
+	if [ -n "$(strip $(PROJECT))" ]; then projects="$(strip $(PROJECT))"; fi; \
+	$(PROJECT_FLEXT_INFRA) check run --workspace "$(WORKSPACE_ROOT)" --gates layout --projects "$$projects"

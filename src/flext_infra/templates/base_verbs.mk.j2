@@ -275,11 +275,15 @@ _fmt_impl:
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --no-cache --deny-config-warnings --color never $$md_config; \
+		if [ "$(CHECK_ONLY)" = "1" ]; then \
+			echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" fmt --check --no-cache --deny-config-warnings --color never $$md_config; \
+		else \
+			echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" fmt --no-cache --deny-config-warnings --color never $$md_config; \
+		fi; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
-docs: ## Build docs
+docs: ## Run docs (WHAT={{ docs.actions | join('|') }})
 	$(call _run_verb_hooks,pre,docs,$(WHAT))
 	$(call _run_verb_body,docs,_docs_impl)
 	$(call _run_verb_hooks,post,docs,$(WHAT))
@@ -291,26 +295,19 @@ _docs_impl:
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=FAIL REASON=docs-module-missing"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(DOCS_PHASE)" = "all" ]; then \
-		phases="generate fix audit build validate"; \
-		all_mode=1; \
+	$(Q)if [ "$(WHAT)" = "{{ docs.default_action }}" ]; then \
+		actions="{% for action in docs.actions if action != docs.default_action %}{{ action }} {% endfor %}"; \
 	else \
-		phases="$(DOCS_PHASE)"; \
-		all_mode=0; \
+		actions="$(WHAT)"; \
 	fi; \
-	for phase in $$phases; do \
-		case "$$phase" in \
-			audit) subcmd="$(PROJECT_INFRA_DOCS) audit"; extra="--strict" ;; \
-			fix) subcmd="$(PROJECT_INFRA_DOCS) fix"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
-			build) subcmd="$(PROJECT_INFRA_DOCS) build"; extra="" ;; \
-			generate) subcmd="$(PROJECT_INFRA_DOCS) generate"; extra="--apply" ;; \
-			validate) subcmd="$(PROJECT_INFRA_DOCS) validate"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
-				*) echo "ERROR: invalid DOCS_PHASE=$$phase (allowed: {{ make.DOCS_PHASES_ALLOWED }})"; exit 2 ;; \
-			esac; \
-		if [ "$$phase" = "fix" ] && [ "$$all_mode" = "1" ]; then extra="--apply"; fi; \
-		cmd="$$subcmd --workspace . --output-dir .reports/docs"; \
-		if [ -n "$$extra" ]; then cmd="$$cmd $$extra"; fi; \
-		eval $$cmd || exit $$?; \
+	for action in $$actions; do \
+		case "$$action" in \
+{%- for action in docs.actions if action != docs.default_action %}
+			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
+{%- endfor %}
+			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs.actions | join('|') }})"; exit 2 ;; \
+		esac; \
+		$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }} $$extra || exit $$?; \
 	done
 
 # kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
@@ -329,10 +326,7 @@ test: ## Run pytest only
 
 _test_impl:
 {{ test_report_recipe(
-    "$(VENV_PYTHON) -m pytest",
-    "$(PROJECT_INFRA_VALIDATE)",
-    "$(PYTEST_TARGETS)",
-    "$(TESTS_DIR)",
+    "$(VENV_PYTHON) -m flext_infra._pytest_entry",
     "$(Q)",
 ) }}
 

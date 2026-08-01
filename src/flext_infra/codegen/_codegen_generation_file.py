@@ -8,16 +8,21 @@ from flext_infra.codegen._codegen_generation_standard import (
 )
 
 
-# mro-wkii.17.26 (codex): Root packages are lazy; subpackages are static or empty.
 class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMixin):
     """Render canonical initializer artifacts from one validated plan."""
 
     @classmethod
     def render_init(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render the package's canonical initializer form."""
-        if cls._is_public_api_root_namespace(plan.context.current_pkg):
-            return cls._render_root(plan)
-        return cls._render_static(plan)
+        """Render a lazy facade for each importable package boundary.
+
+        Nested packages own the same PEP 562 facade contract as the public
+        root, so MRO fragments remain lazy and consistently reachable through
+        their package boundary.  Pytest fixture packages remain the explicit
+        lifecycle boundary because pytest owns their registration.
+        """
+        if cls._is_runtime_fixture_package(plan.context.current_pkg):
+            return cls._render_static(plan)
+        return cls._render_root(plan)
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationFileMixin"]
