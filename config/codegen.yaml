@@ -153,6 +153,16 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      ci:
+        variable: CI
+        value: Y
+      workflow:
+        - { verb: setup, apply: false }
+        - { verb: gen, apply: true }
+        - { verb: fmt, apply: true }
+        - { verb: fix, apply: true }
+        - { verb: check, apply: false }
+        - { verb: test, apply: false }
       bootstrap:
         environment: isolated
         dependency_groups: all
@@ -164,10 +174,6 @@ Infra:
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_fixed_points:
-          gen:
-            all: all
-            apply: check
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -218,6 +224,7 @@ Infra:
           dispatch: builtin
           handlers: { all: all, check: check, apply: apply }
           orchestrated: true
+          serialized: true
         - name: fix
           default_what: all
           apply_guarded: true
@@ -225,6 +232,7 @@ Infra:
           dispatch: builtin
           handlers: { all: all }
           orchestrated: true
+          serialized: true
         - name: run
           default_what: all
           apply_guarded: false
@@ -248,6 +256,7 @@ Infra:
           dispatch: builtin
           handlers: { all: generated, generated: generated }
           orchestrated: true
+          serialized: true
         - name: release
           default_what: all
           apply_guarded: false
@@ -267,7 +276,7 @@ Infra:
           handlers: { all: list, list: list, add: add, update: update, remove: remove }
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
+        target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -689,9 +698,6 @@ Infra:
         owner: codegen
         policy: full
       - path: ci/docker/ubuntu.Dockerfile
-        owner: codegen
-        policy: full
-      - path: .github/workflows/ci-matrix.yml
         owner: codegen
         policy: full
       - path: .github/workflows/ci.yml
@@ -1216,6 +1222,11 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        - source: base/.pre-commit-config.yaml.j2
+          destination: .pre-commit-config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
         - source: base/README.md.j2
           destination: README.md
           profiles: [workspace-root, workspace-member, standalone]
@@ -1266,13 +1277,6 @@ Infra:
           overwrite: false
         - source: base/.envrc.j2
           destination: .envrc
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
-        # clean-machine images validating bootstrap and make verbs everywhere.
-        - source: base/.github/workflows/ci-matrix.yml.j2
-          destination: .github/workflows/ci-matrix.yml
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

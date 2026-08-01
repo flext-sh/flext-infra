@@ -101,8 +101,7 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 
 # === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
-#        config:make.verbs
+# Source: config:make.verbs and its computed registry projections.
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
@@ -266,11 +265,16 @@ _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% en
 {% endif %}
 
 {{ makefile_custom_include }}
-
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
+	if [ -n "$(strip $(APPLY))" ] && [ "$(strip $(APPLY))" != "{{ make.apply_value }}" ]; then \
+		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
+	fi; \
+	if [ -n "$(strip $(APPLY))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
+		printf 'ERROR: verb %s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" >&2; exit 2; \
+	fi; \
 	if [ -z "$$what" ] && [ -n "$(strip $(APPLY))" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
@@ -316,8 +320,8 @@ define _dispatch
 endef
 
 define _require_apply
-	@if [ "$(APPLY)" != "Y" ]; then \
-		printf 'ERROR: this action requires APPLY=Y\n' >&2; \
+	@if [ "$({{ make.apply_variable }})" != "{{ make.apply_value }}" ]; then \
+		printf 'ERROR: this action requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; \
 		exit 2; \
 	fi
 endef
@@ -369,7 +373,7 @@ _builtin_help_usage:
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';
 {% else %}
-	@printf '  %-10s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}';
+	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.handlers | join('|') }}';
 {% endif %}
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}';
@@ -381,7 +385,7 @@ _builtin_help_usage:
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
 	@printf '  %s\n' 'for all or some registry-declared WHATs.';
 	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
 			printf '  %s\n' 'Defined in this project:'; \
 			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
@@ -593,7 +597,7 @@ _builtin_release_status: _builtin_require_environment
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
-_builtin_gen_apply: _builtin_require_environment
+_builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
