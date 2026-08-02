@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_tests import tm
-from tests import m, u
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,16 +36,34 @@ def test_update_toc_replaces_existing_block() -> None:
     tm.that(updated, has="Section")
 
 
+def test_update_toc_does_not_invent_a_title_for_untitled_markdown() -> None:
+    content = "Intro without a title.\n\n## Section\n"
+
+    updated, changed = u.Infra.update_toc(content)
+
+    tm.that(updated, eq=content)
+    tm.that(changed, eq=0)
+
+
 def test_generated_markdown_is_toc_normalized_before_write(tmp_path: Path) -> None:
     generated = tmp_path / "generated.md"
 
     result = u.Infra.docs_write_if_needed(
-        generated, "# Generated\n\n## Section\n", apply=True
+        generated,
+        (
+            "# Generated\n\n"
+            f"{c.Infra.GENERATED_HEADER}\n\n"
+            "## Section\n"
+        ),
+        apply=True,
     )
 
     tm.that(result.changed, eq=True)
-    tm.that(generated.read_text(), has="<!-- TOC START -->")
-    tm.that(generated.read_text(), has="[Section](#section)")
+    content = generated.read_text()
+    tm.that(content, starts="# Generated\n")
+    tm.that(content, has="<!-- TOC START -->")
+    tm.that(content, has="[Section](#section)")
+    tm.that(content.index("<!-- TOC START -->"), gt=content.index("# Generated"))
 
 
 def test_generated_non_markdown_preserves_exact_content(tmp_path: Path) -> None:

@@ -10,7 +10,7 @@ from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_tests import tm
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -114,6 +114,19 @@ def test_generate_fix_cycle_is_byte_identical_on_second_run(tmp_path: Path) -> N
     first_cycle = {
         path: path.read_bytes() for path in u.Infra.iter_markdown_files(workspace)
     }
+    generated_pages = [
+        content.decode()
+        for content in first_cycle.values()
+        if c.Infra.GENERATED_HEADER.encode() in content
+    ]
+    tm.that(generated_pages, empty=False)
+    tm.that(
+        all(
+            page.startswith("# ") and c.Infra.TOC_START in page
+            for page in generated_pages
+        ),
+        eq=True,
+    )
 
     tm.ok(generator.execute())
     tm.ok(fixer.execute())

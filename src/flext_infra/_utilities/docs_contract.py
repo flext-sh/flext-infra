@@ -20,22 +20,23 @@ class FlextInfraUtilitiesDocsContract:
 
     @staticmethod
     def docs_update_toc(content: str) -> t.StrIntPair:
-        """Normalize the managed table of contents in Markdown content."""
-        toc = FlextInfraUtilitiesDocsContract.docs_build_toc(content)
-        if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
-            updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
-            return (updated, int(updated != content))
+        """Normalize the managed TOC after a canonical first-line H1."""
         lines = content.splitlines()
-        if lines and lines[0].startswith("# "):
-            insert_at = 1
-            while insert_at < len(lines) and (not lines[insert_at].strip()):
-                insert_at += 1
-            lines.insert(insert_at, "")
-            lines.insert(insert_at + 1, toc)
-            lines.insert(insert_at + 2, "")
-            updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
-            return (updated, 1)
-        return (toc + "\n\n" + content, 1)
+        if not lines or not lines[0].startswith("# "):
+            return (content, 0)
+        without_toc = c.Infra.TOC_BLOCK_RE.sub("", content, count=1)
+        body_lines = without_toc.splitlines()[1:]
+        while body_lines and not body_lines[0].strip():
+            body_lines.pop(0)
+        toc = FlextInfraUtilitiesDocsContract.docs_build_toc(without_toc)
+        updated = "\n".join([
+            lines[0],
+            "",
+            toc,
+            "",
+            *body_lines,
+        ]).rstrip() + ("\n" if content.endswith("\n") else "")
+        return (updated, int(updated != content))
 
     @staticmethod
     def docs_anchorize(text: str) -> str:
