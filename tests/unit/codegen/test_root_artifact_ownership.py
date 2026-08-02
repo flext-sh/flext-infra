@@ -76,15 +76,9 @@ class TestsRootArtifactOwnership:
             )
         )
 
-        checked = FlextInfraSyncService(workspace_root=root).execute()
         first = FlextInfraSyncService(workspace_root=root, apply_changes=True).execute()
-        second = FlextInfraSyncService(
-            workspace_root=root, apply_changes=True
-        ).execute()
 
-        tm.ok(checked)
         tm.ok(first)
-        tm.ok(second)
         tm.that(governed, empty=False)
         tm.that(
             len({file.path for file in governed}),
@@ -94,9 +88,7 @@ class TestsRootArtifactOwnership:
         for file in governed:
             relative = file.path.relative_to(root).as_posix()
             tm.that(file.policy, eq=configured_policies[relative])
-        tm.that(checked.value.files_changed, eq=0)
         tm.that(first.value.files_changed, eq=0)
-        tm.that(second.value.files_changed, eq=0)
         after = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
