@@ -227,6 +227,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"repository is not one declared workspace member: {current_path}"
                 )
             current_repository = current_matches[0]
+        if self.initial_workspace is None and root.is_dir():
+            effective_repository = FlextInfraWorkspaceDetector.effective_repository(
+                root, current_repository
+            )
+            if effective_repository.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    effective_repository.error
+                    or "effective repository topology resolution failed"
+                )
+            current_repository = effective_repository.value
+            if current_repository.name == workspace.repository.name:
+                workspace = m.Infra.WorkspaceSpec.model_validate({
+                    **workspace.model_dump(),
+                    "repository": current_repository,
+                })
         selected_result = self._select_repositories(
             request, workspace, current_repository
         )
@@ -769,6 +784,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
+            required_dev_dependencies=codegen.scaffold.project.dev,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -828,9 +844,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
         workspace_mode = (
-            c.Infra.WorkspaceMode.WORKSPACE
-            if root == workspace_root or repository in workspace.members
-            else c.Infra.WorkspaceMode.STANDALONE
+            c.Infra.WorkspaceMode.STANDALONE
+            if repository.profile is c.Infra.MakeProfile.STANDALONE
+            else c.Infra.WorkspaceMode.WORKSPACE
         )
         uv_exclude_dependencies = tuple(
             item
@@ -888,6 +904,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace=workspace,
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
+            required_dev_dependencies=codegen.scaffold.project.dev,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1097,6 +1114,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     dist=dist,
+                    infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
@@ -1166,11 +1184,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
+                infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+                project_selection_conflict_error=(
+                    c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
+                ),
                 workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                     repository, workspace
                 ),
@@ -1269,11 +1291,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
+                infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+                project_selection_conflict_error=(
+                    c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
+                ),
                 workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                     repository, workspace
                 ),
@@ -1301,6 +1327,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                taplo_version=codegen.toolchain.taplo_version,
+                ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
                 tokei_version=codegen.toolchain.tokei_version,
                 author_name=project.author_name,

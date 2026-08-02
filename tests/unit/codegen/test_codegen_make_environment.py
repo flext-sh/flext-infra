@@ -164,7 +164,12 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             u.Cli.run_raw(
-                ["make", "--no-print-directory", "status", "WHAT=probe"],
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "status",
+                    f"{config.Infra.codegen.make.selector}=probe",
+                ],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -222,7 +227,7 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
         result = u.Cli.run_raw(
-            ["make", "--no-print-directory", "setup"],
+            [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
@@ -234,19 +239,53 @@ class TestsCodegenMakeEnvironment:
         tm.that(commands, has="venv --clear")
         tm.that(commands, has="sync --project")
 
-        workflows_result = u.Cli.run_raw(
-            ["make", "--no-print-directory", "check", "CHECK_GATES=workflows"],
-            cwd=project_root,
-            env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+    def test_serialized_runner_preserves_provisioned_external_tools(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep managed tools reachable while removing the hostile active venv."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
         )
-        workflows_process = tm.ok(workflows_result)
+        hostile_venv = tmp_path / "hostile" / ".venv"
+        hostile_bin = hostile_venv / "bin"
+        hostile_bin.mkdir(parents=True)
+        provisioned_bin = tmp_path / "provisioned" / "bin"
+        provisioned_bin.mkdir(parents=True)
+        fixture_tool = "managed-tool"
+        for bin_root in (hostile_bin, provisioned_bin):
+            for tool in (fixture_tool, "uv"):
+                test_u.Tests.write_executable(
+                    bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
+                )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        tool_log = tmp_path / "tools.log"
+        test_u.Tests.write_executable(
+            runtime_python,
+            (
+                "#!/bin/sh\n"
+                f"command -v uv > '{tool_log}'\n"
+                f"command -v {fixture_tool} >> '{tool_log}'\n"
+            ),
+        )
+        active_env = {
+            "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "VIRTUAL_ENV": str(hostile_venv),
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "test"],
+                cwd=project_root,
+                env=active_env,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
-            workflows_process.exit_code,
-            eq=0,
-            msg=workflows_process.stdout + workflows_process.stderr,
+            tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
         )
-        tm.that(uv_log.read_text(encoding="utf-8"), has="actionlint")
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
@@ -260,14 +299,40 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that("UV ?= uv" in makefile, eq=True)
         tm.that(
-            'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            (
+                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
+                '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
+            )
+            in makefile,
             eq=True,
         )
-        tm.that("CHECK_GATE_NAMES :=" in makefile, eq=True)
-        tm.that("workflows" in makefile, eq=True)
-        tm.that("$(UV_RUN) actionlint" in makefile, eq=True)
+        tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
+        tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
+        tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+
+    def test_serialized_gate_fails_closed_before_managed_environment_exists(
+        self, tmp_path: Path
+    ) -> None:
+        """A serialized gate preserves the canonical setup-required diagnostic."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "test"],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr,
+            has=["missing environment interpreter", "make setup creates it"],
+        )
 
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
         project_root, _workspace_root = self._render_makefile(
@@ -278,8 +343,8 @@ class TestsCodegenMakeEnvironment:
         for required in (
             "UV ?= uv",
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
-            "--no-install-project",
-            '--editable "$(PROJECT_ROOT)"',
+            '$(UV) sync --project "$(PROJECT_ROOT)"',
+            '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
             "refs/heads/$$branch",
         ):
@@ -289,6 +354,9 @@ class TestsCodegenMakeEnvironment:
             "uv@",
             "define _setup_submodules",
             "SETUP_BRANCH :=",
+            "--no-install-project",
+            '--editable "$(PROJECT_ROOT)"',
+            "pip install",
         ):
             tm.that(makefile, lacks=forbidden)
 

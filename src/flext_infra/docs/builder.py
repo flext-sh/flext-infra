@@ -48,7 +48,9 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
 
     def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
         """Build one scope via the docs build utilities and persist its reports."""
-        report = u.Infra.docs_run_mkdocs(scope, runner=self._runner)
+        report: m.Infra.DocsPhaseReport = u.Infra.docs_run_mkdocs(
+            scope, runner=self._runner
+        )
         u.Infra.docs_write_build_reports(scope, report)
         self.logger.info(
             "docs_build_scope_completed",

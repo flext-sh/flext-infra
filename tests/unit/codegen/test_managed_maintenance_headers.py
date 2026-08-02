@@ -22,18 +22,19 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             fields[key] = value.strip()
         return fields
 
-    def test_representative_managed_owners_publish_complete_contract(self) -> None:
-        """Publish status, regeneration, SSOT, and maintenance fields."""
+    def test_live_managed_owners_publish_regeneration_contract(self) -> None:
+        """Publish the real owner and canonical regeneration command."""
         templates = Path(__file__).parents[3] / "src" / "flext_infra" / "templates"
-        owners = (templates / "project" / "base" / "Makefile.j2",)
-        for owner in owners:
-            fields = self._fields(owner.read_text(encoding="utf-8"))
-            tm.that(fields.get("@flext-managed"), eq="continuous")
-            tm.that(
-                fields.get("@flext-regenerate"), eq="make codegen WHAT=apply APPLY=Y"
-            )
-            tm.that(fields.get("@flext-ssot", ""), has="flext-infra/")
-            tm.that(fields.get("@flext-maintenance", ""), has="do not edit")
+        makefile_fields = self._fields(
+            (templates / "project" / "base" / "Makefile.j2").read_text(encoding="utf-8")
+        )
+        tm.that(makefile_fields.get("@flext-managed"), eq="continuous")
+        tm.that(
+            makefile_fields.get("@flext-regenerate"),
+            eq="make codegen WHAT=apply APPLY=Y",
+        )
+        tm.that(makefile_fields.get("@flext-ssot", ""), has="flext-infra/")
+        tm.that(makefile_fields.get("@flext-maintenance", ""), has="do not edit")
 
         pyproject_fields = self._fields(c.Infra.BANNER)
         tm.that(pyproject_fields.get("@flext-managed"), eq="continuous")
@@ -55,5 +56,5 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             / "base"
             / "custom.mk.j2"
         )
-        fields = self._fields(template.read_text(encoding="utf-8"))
-        tm.that(fields.get("@flext-managed") == "continuous", eq=False)
+        text = template.read_text(encoding="utf-8")
+        tm.that(text, lacks="[MANAGED]")

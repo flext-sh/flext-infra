@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-from flext_infra import c, r, t
+from flext_cli import r, u
+from flext_infra.constants import c
+from flext_infra.typings import t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesPyprojectConform:
@@ -28,6 +29,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
+        required_dev_dependencies: t.StrSequence,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
@@ -42,22 +44,16 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
 
-        if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE:
-            provenance_result = cls._validate_dependency_provenance(
-                source, workspace=workspace, workspace_mode=workspace_mode
-            )
-            if provenance_result.failure:
-                return r[str].fail(
-                    provenance_result.error or "dependency provenance validation failed"
-                )
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
+            required_dev_dependencies=required_dev_dependencies,
         )
         normalized = cls._normalize_requirements(
             source,
+            project_name=project_name,
             repositories=repositories,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -82,7 +78,10 @@ class FlextInfraUtilitiesPyprojectConform:
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source, workspace=workspace, workspace_mode=workspace_mode
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -114,20 +113,12 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
-        workspace_root = cls._is_workspace_root(
+        attached_workspace_root = cls._is_attached_workspace_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE:
-            provenance_result = cls._validate_dependency_provenance(
-                source, workspace=workspace, workspace_mode=workspace_mode
-            )
-            if provenance_result.failure:
-                return r[str].fail(
-                    provenance_result.error or "dependency provenance validation failed"
-                )
-        if workspace_root:
+        if attached_workspace_root:
             sources_result = cls._validate_root_uv_sources(
                 source, repositories=repositories, workspace=workspace
             )
@@ -137,6 +128,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
         normalized = cls._normalize_requirements(
             source,
+            project_name=project_name,
             repositories=repositories,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -152,7 +144,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         sources_result = (
             r[bool].ok(True)
-            if workspace_root
+            if attached_workspace_root
             else cls._sync_uv_sources(
                 source,
                 project_name=project_name,
@@ -163,7 +155,10 @@ class FlextInfraUtilitiesPyprojectConform:
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source, workspace=workspace, workspace_mode=workspace_mode
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -179,6 +174,7 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
+        project_name: str,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
@@ -191,12 +187,17 @@ class FlextInfraUtilitiesPyprojectConform:
             *workspace.members,
             *workspace.content_only,
         )
-        # An attached workspace member resolves through [tool.uv.sources]
-        # workspace=true, so a git specifier would be a second, contradictory
-        # source that uv silently overrides (mro-sw2l.1).
+        # Only the root expresses the active workspace overlay in its own
+        # requirements. A publishable member keeps its configured Git source so
+        # the same pyproject remains resolvable in a standalone checkout; uv
+        # replaces it with workspace=true from the attached root.
         attached = (
             frozenset(member.distribution for member in workspace.members)
-            if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
+            if cls._is_attached_workspace_root(
+                project_name=project_name,
+                workspace=workspace,
+                workspace_mode=workspace_mode,
+            )
             else frozenset()
         )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
@@ -290,6 +291,11 @@ class FlextInfraUtilitiesPyprojectConform:
         head = head_match.group("head").strip()
         marker_text = marker.strip()
         if dependency_name in attached:
+            if "@" in requirement_part:
+                return r[str].fail(
+                    "attached workspace dependency declares direct source: "
+                    f"{dependency_name}"
+                )
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
@@ -302,12 +308,10 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
-        if not reference.url.startswith("https://"):
-            return r[str].fail(
-                "repository URL must use the configured HTTPS transport: "
-                f"{reference.url}"
-            )
-        canonical = f"{head} @ git+{reference.url}@{reference.branch}"
+        git_url = cls._git_requirement_url(reference.url)
+        if git_url.failure:
+            return r[str].fail(git_url.error or "repository URL validation failed")
+        canonical = f"{head} @ {git_url.value}@{reference.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
@@ -353,6 +357,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
+        required_dev_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and normalize declared groups."""
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
@@ -366,6 +371,11 @@ class FlextInfraUtilitiesPyprojectConform:
         dev = [
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
+            *(
+                requirement
+                for requirement in required_dev_dependencies
+                if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+            ),
         ]
         if dev:
             u.Cli.toml_sync_string_list(
@@ -407,7 +417,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> None:
         """Keep the generated workspace dependency group only at the root."""
-        workspace_root = cls._is_workspace_root(
+        workspace_root = cls._is_attached_workspace_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -430,30 +440,34 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _is_workspace_root(
+        *, project_name: str, workspace: p.Infra.WorkspaceSpec
+    ) -> bool:
+        """Identify the real multi-project root, not an autonomous repository."""
+        return bool(workspace.members) and (
+            project_name == workspace.repository.distribution
+        )
+
+    @classmethod
+    def _is_attached_workspace_root(
+        cls,
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> bool:
-        """Identify the real multi-project root, not an autonomous repository."""
+        """Identify the root only when the active topology is attached."""
         return (
             workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
-            and bool(workspace.members)
-            and (project_name == workspace.repository.distribution)
+            and cls._is_workspace_root(project_name=project_name, workspace=workspace)
         )
 
     @staticmethod
     def _owns_uv_root_policy(
-        *,
-        project_name: str,
-        workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        *, project_name: str, workspace: p.Infra.WorkspaceSpec
     ) -> bool:
         """Identify autonomous and multi-project roots that own uv root policy."""
-        return (
-            workspace_mode is c.Infra.WorkspaceMode.STANDALONE
-            or not workspace.members
-            or (project_name == workspace.repository.distribution)
+        return not workspace.members or (
+            project_name == workspace.repository.distribution
         )
 
     @staticmethod
@@ -526,15 +540,13 @@ class FlextInfraUtilitiesPyprojectConform:
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
-        workspace_root = cls._is_workspace_root(
+        workspace_root = cls._is_attached_workspace_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
         owns_uv_root_policy = cls._owns_uv_root_policy(
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            project_name=project_name, workspace=workspace
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
@@ -547,6 +559,25 @@ class FlextInfraUtilitiesPyprojectConform:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
+        existing_constraints = u.Cli.toml_as_string_list(
+            u.Cli.toml_value(uv, "constraint-dependencies")
+        )
+        selected_constraints = (
+            tuple(constraint_dependencies)
+            if workspace_root and constraint_dependencies is not None
+            else existing_constraints
+        )
+        retained_constraints = tuple(
+            requirement
+            for requirement in selected_constraints
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != "uv"
+        )
+        if retained_constraints:
+            u.Cli.toml_sync_string_list(
+                uv, "constraint-dependencies", retained_constraints
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(
@@ -560,10 +591,6 @@ class FlextInfraUtilitiesPyprojectConform:
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         if workspace_root:
-            if constraint_dependencies is not None:
-                u.Cli.toml_sync_string_list(
-                    uv, "constraint-dependencies", tuple(constraint_dependencies)
-                )
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
                 workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
@@ -680,10 +707,12 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
         return r[bool].ok(True)
 
-    @staticmethod
+    @classmethod
     def _validate_dependency_provenance(
+        cls,
         document: t.Cli.TomlDocument,
         *,
+        project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[bool]:
@@ -694,14 +723,20 @@ class FlextInfraUtilitiesPyprojectConform:
         member_names = frozenset(member.distribution for member in workspace.members)
         raw_values: list[str] = []
         project = payload.get(c.Infra.PROJECT)
-        if isinstance(project, Mapping):
-            for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
-                value = project.get(key)
-                if isinstance(value, Mapping):
-                    for group in value.values():
-                        raw_values.extend(u.Cli.toml_as_string_list(group))
-                else:
-                    raw_values.extend(u.Cli.toml_as_string_list(value))
+        if not isinstance(project, Mapping):
+            return r[bool].fail("pyproject content must define [project]")
+        attached_workspace_root = cls._is_attached_workspace_root(
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        )
+        for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
+            value = project.get(key)
+            if isinstance(value, Mapping):
+                for group in value.values():
+                    raw_values.extend(u.Cli.toml_as_string_list(group))
+            else:
+                raw_values.extend(u.Cli.toml_as_string_list(value))
         groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
         if isinstance(groups, Mapping):
             for group in groups.values():
@@ -711,17 +746,14 @@ class FlextInfraUtilitiesPyprojectConform:
             if dependency_name not in member_names:
                 continue
             has_direct_source = "@" in requirement.partition(";")[0]
-            if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE and has_direct_source:
+            if attached_workspace_root and has_direct_source:
                 return r[bool].fail(
                     "attached workspace dependency declares direct source: "
                     f"{dependency_name}"
                 )
-            if (
-                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
-                and not has_direct_source
-            ):
+            if not attached_workspace_root and not has_direct_source:
                 return r[bool].fail(
-                    "standalone dependency lacks configured Git source: "
+                    "publishable dependency lacks configured Git source: "
                     f"{dependency_name}"
                 )
         return r[bool].ok(True)

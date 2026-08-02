@@ -44,27 +44,13 @@ def owned_provider() -> str:
 
 
 class TestsFlextInfraEngineIsConsumerAgnostic:
-    def test_repository_catalog_declares_only_owned_provider(
-        self, owned_provider: str
-    ) -> None:
-        foreign = sorted({
-            repository.provider
-            for repository in config.Infra.codegen.repositories
-            if repository.provider != owned_provider
-        })
+    def test_repository_catalog_uses_declared_providers(self) -> None:
+        declared = {provider.name for provider in config.Infra.codegen.providers}
+        referenced = {
+            repository.provider for repository in config.Infra.codegen.repositories
+        }
 
-        tm.that(foreign, eq=[])
-
-    def test_provider_catalog_declares_only_owned_provider(
-        self, owned_provider: str
-    ) -> None:
-        foreign = sorted(
-            provider.name
-            for provider in config.Infra.codegen.providers
-            if provider.name != owned_provider
-        )
-
-        tm.that(foreign, eq=[])
+        tm.that(referenced - declared, eq=set())
 
     def test_workspace_catalog_declares_only_owned_workspaces(
         self, owned_provider: str

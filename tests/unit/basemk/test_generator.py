@@ -23,21 +23,27 @@ class TestsFlextInfraBasemkGenerator:
         result = FlextInfraBaseMkGenerator(project_name="demo-project").execute()
 
         tm.ok(result)
-        tm.that(result.value, has="PROJECT_NAME := demo-project")
+        tm.that(result.value, has="PROJECT_NAME ?= demo-project")
 
     def test_generator_generate_with_none_config_uses_default(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
 
         tm.ok(result)
-        tm.that(result.value, has="PROJECT_NAME := unnamed")
+        tm.that(result.value, has="PROJECT_NAME ?=")
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
-        settings = m.Infra.BaseMkConfig(project_name="test-proj")
+        settings = m.Infra.BaseMkConfig(
+            project_name="test-proj",
+            python_version="3.13",
+            source_dir="src",
+            tests_dir="tests",
+            lint_gates=["mypy"],
+        )
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=settings)
 
         tm.ok(result)
-        tm.that(result.value, has="PROJECT_NAME := test-proj")
+        tm.that(result.value, has="PROJECT_NAME ?= test-proj")
 
     def test_generator_generate_with_invalid_mapping_fails(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(

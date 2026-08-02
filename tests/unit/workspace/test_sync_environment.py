@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra import FlextInfraWorkspaceEnvironment, c, config
 from flext_tests import tm
 
 pytestmark = pytest.mark.timeout(60)
@@ -30,7 +29,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
                 f'name = "{name}"\n'
                 'version = "0.1.0"\n'
                 'description = "Demo project"\n'
-                'requires-python = ">=3.13"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             ),
             encoding="utf-8",
         )
@@ -100,6 +99,12 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         mise_text = (project_root / ".mise.toml").read_text(encoding="utf-8")
         toolchain = config.Infra.codegen.toolchain
         tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
+        for field in type(toolchain).model_fields:
+            if field == "python_version" or not field.endswith("_version"):
+                continue
+            version = getattr(toolchain, field)
+            tool_name = field.removesuffix("_version").replace("_", "-")
+            tm.that(mise_text, has=f'{tool_name} = "{version}"', msg=field)
         tm.that(mise_text, lacks="uv =")
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")

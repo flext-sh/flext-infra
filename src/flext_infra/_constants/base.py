@@ -65,6 +65,8 @@ class FlextInfraConstantsBase(
     "Project/package name key."
     PACKAGE_IMPORT_NAME: Final[str] = "flext_infra"
     "Canonical import package name for flext-infra itself."
+    WORKSPACE_FINGERPRINT_READ_CHUNK_BYTES: Final[int] = 1024 * 1024
+    "Bounded read size used while hashing workspace files."
     VERSION: Final[str] = "version"
     "Version key within project or tool sections."
     PYREFLY: Final[str] = "pyrefly"
@@ -242,12 +244,12 @@ class FlextInfraConstantsBase(
         "UV_NO_VERIFY_HASHES",
     )
     "Ambient uv variables removed before a policy-bound release build."
-    SG: Final[str] = "sg"
-    "ast-grep (sg) binary."
+    SG: Final[str] = "ast-grep"
+    "Canonical ast-grep binary."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
-    MARKDOWNLINT: Final[str] = "markdownlint"
-    "Markdown linter binary."
+    RUMDL: Final[str] = "rumdl"
+    "uv-managed Markdown linter console script."
     OUTPUT_JSON: Final[str] = "json"
     "Common CLI output format flag value."
     PR: Final[str] = "pr"
@@ -264,7 +266,6 @@ class FlextInfraConstantsBase(
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
     SILENT_FAILURE: Final[str] = "silent-failure"
-    TYPE_ALIAS: Final[str] = "type"
     DEFAULT_CSV: Final[str] = (
         "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
     )

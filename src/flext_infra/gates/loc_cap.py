@@ -43,17 +43,19 @@ class FlextInfraLocCapGate(FlextInfraGate):
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
         if result.exit_code != 0:
-            detail = u.Infra.process_diagnostics(result.stdout, result.stderr)
             return (
                 False,
                 (
                     m.Infra.Issue(
-                        file=c.Infra.PYPROJECT_FILENAME,
-                        line=1,
-                        column=1,
-                        code="tokei-exec",
-                        message=detail or f"tokei exited with code {result.exit_code}",
-                        severity=c.Infra.ERROR,
+                        file="<tokei>",
+                        line=0,
+                        column=0,
+                        code="LOC_CAP_EXEC",
+                        message=u.Infra.process_diagnostics(
+                            result.stdout, result.stderr
+                        )
+                        or "tokei execution failed",
+                        severity="ERROR",
                     ),
                 ),
             )

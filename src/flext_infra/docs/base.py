@@ -38,10 +38,10 @@ class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC)
     ) -> p.Result[bool]:
         """Convert a verb result into a boolean execute() outcome.
 
-        ``failure_predicate=None`` skips per-report aggregation entirely
-        (used by ``fix`` and ``generate`` whose phase semantics treat WARN
-        and OK as success). When provided, reports matching the predicate
-        are counted and surfaced as a single ``e.fail_operation`` failure.
+        When provided, reports matching ``failure_predicate`` are counted and
+        surfaced as one ``e.fail_operation`` failure. Phases whose reports carry
+        a ``passed`` contract must provide a predicate so drift cannot be
+        accepted as successful execution.
         """
         if result.failure:
             return e.fail_operation(label, result.error)

@@ -32,7 +32,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         )
 
         tm.fail(result)
-        assert result.error
+        tm.that(result.error, empty=False)
 
     def test_generator_write_to_stream_handles_oserror(self) -> None:
         result = FlextInfraBaseMkGenerator().write(

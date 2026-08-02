@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra import FlextInfraWorkspaceEnvironment, config
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
     from tests import m, t
 
@@ -34,7 +37,18 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that(any(c.startswith("[DRY-RUN]") for c in migrations[0].changes), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="OLD_BASE\n")
 
-    def test_migrator_apply_updates_project_files(self, tmp_path: Path) -> None:
+    def test_migrator_apply_updates_project_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Apply migration with the external TOML formatter boundary available."""
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        fake_taplo = fake_bin / "taplo"
+        fake_taplo.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        fake_taplo.chmod(0o755)
+        monkeypatch.setenv(
+            "PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
         project_root = tmp_path / "project-a"
         u.Tests.write_migrator_project(project_root)
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
@@ -53,7 +67,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),
-            has='python = "3.13"',
+            has=f'python = "{config.Infra.codegen.toolchain.python_version}"',
         )
 
     def test_migrator_handles_missing_pyproject_gracefully(

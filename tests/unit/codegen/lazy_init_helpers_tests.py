@@ -407,6 +407,8 @@ class TestsFlextInfraLazyInitHelpers:
             tm.that(exports_content, has=f'    "{alias_name}",')
         has_all, public_exports = u.Tests.extract_lazy_init_exports(exports_content)
         tm.that(has_all, eq=True)
+        # mro-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
+        # exclusively in the static facade imports.
         alias_positions = tuple(
             public_exports.index(alias) for alias in ruff_ordered_aliases
         )

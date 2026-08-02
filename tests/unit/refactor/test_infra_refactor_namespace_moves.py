@@ -82,9 +82,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         protocols_text = protocols_file.read_text(encoding="utf-8")
         tm.that(protocols_text, has="from typing import Protocol")
         tm.that(protocols_text, has="class External(Protocol):")
-        assert source_file.with_suffix(".py.bak").exists()
-        assert consumer_file.with_suffix(".py.bak").exists()
-        assert protocols_file.with_suffix(".py.bak").exists()
+        tm.that(source_file.with_suffix(".py.bak").exists(), eq=True)
+        tm.that(consumer_file.with_suffix(".py.bak").exists(), eq=True)
+        tm.that(protocols_file.with_suffix(".py.bak").exists(), eq=True)
 
     def test_rewrite_manual_typing_alias_violations_uses_public_runtime_api(
         self, tmp_path: Path
@@ -122,8 +122,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.that(typings_text, has="PayloadMap: TypeAlias = t.StrMapping")
         tm.that(typings_text, has="from typing import TypeAlias")
         tm.that(typings_text, has="from flext_core import t")
-        assert source_file.with_suffix(".py.bak").exists()
-        assert typings_file.with_suffix(".py.bak").exists()
+        tm.that(source_file.with_suffix(".py.bak").exists(), eq=True)
+        tm.that(typings_file.with_suffix(".py.bak").exists(), eq=True)
 
     def test_rewrite_compatibility_alias_violations_uses_public_runtime_api(
         self, tmp_path: Path
@@ -156,7 +156,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         source_text = source_file.read_text(encoding="utf-8")
         tm.that(source_text, lacks="LegacyThing = NewThing")
         tm.that(source_text, has="REGISTRY = [NewThing]")
-        assert source_file.with_suffix(".py.bak").exists()
+        tm.that(source_file.with_suffix(".py.bak").exists(), eq=True)
 
     def test_rewrite_compatibility_alias_violations_migrates_foreign_canonical_alias(
         self, tmp_path: Path

@@ -49,7 +49,7 @@ codegen = [
 {% endfor %}
 ]
 dev = [
-{% for item in dependency_profile.dev if item != dist %}
+{% for item in scaffold.project.dev if item != dist %}
   {{ item | tojson }},
 {% endfor %}
 ]
@@ -85,6 +85,11 @@ show_missing = {{ tooling.tools.coverage.show_missing | lower }}
 skip_covered = {{ tooling.tools.coverage.skip_covered | lower }}
 
 [tool.coverage.run]
+source = [
+{% for item in tooling.tools.coverage.source %}
+  {{ item | tojson }},
+{% endfor %}
+]
 omit = [
 {% for item in tooling.tools.coverage.omit %}
   {{ item | tojson }},
@@ -230,8 +235,6 @@ extraPaths = [
   {{ item | tojson }},
 {% endfor %}
 ]
-venv = {{ tooling_runtime.pyright_venv | tojson }}
-venvPath = {{ tooling_runtime.pyright_venv_path | tojson }}
 {% for setting in tooling_runtime.pyright_settings %}
 {% if setting.value is boolean %}
 {{ setting.name }} = {{ setting.value | lower }}

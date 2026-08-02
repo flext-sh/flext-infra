@@ -104,7 +104,6 @@ class TestsFlextInfraModernizerPyrefly:
         linked_pyrefly = u.Cli.json_as_mapping(linked_tool["pyrefly"])
         attached_pyright = u.Cli.json_as_mapping(attached_tool["pyright"])
         linked_pyright = u.Cli.json_as_mapping(linked_tool["pyright"])
-        rules = config.Infra.tooling.tools.pyright.path_rules
         tm.that(attached_pyrefly, lacks="python-interpreter-path")
         tm.that(attached_pyright["venvPath"], eq=rules.project_venv_path)
         tm.that(linked_pyrefly, lacks="python-interpreter-path")

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_tests import tm
-from tests import m, u
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,16 +30,30 @@ def test_fix_apply_updates_docs_file_and_writes_reports(tmp_path: Path) -> None:
 
     tm.ok(result)
     tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
-    assert (workspace / ".reports/docs/fix-report.md").exists()
+    tm.that((workspace / ".reports/docs/fix-report.md").exists(), eq=True)
 
 
-def test_fix_report_warns_without_apply_when_changes_exist(tmp_path: Path) -> None:
+def test_fix_check_apply_check_converges(tmp_path: Path) -> None:
+    """Fail on unapplied drift, apply it, then pass at the fixed point."""
     workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
+    fixer = FlextInfraDocFixer()
 
-    result = FlextInfraDocFixer().fix(workspace, apply=False)
+    check = fixer.fix(workspace, apply=False)
+    tm.ok(check)
+    tm.that(check.value[0].result, eq=c.Infra.ResultStatus.FAIL)
+    tm.that(check.value[0].passed, eq=False)
+    tm.that(check.value[0].changed_files, gt=0)
 
-    tm.ok(result)
-    tm.that(result.value[0].result, eq="WARN")
+    applied = fixer.fix(workspace, apply=True)
+    tm.ok(applied)
+    tm.that(applied.value[0].result, eq=c.Infra.ResultStatus.OK)
+    tm.that(applied.value[0].passed, eq=True)
+
+    fixed_point = fixer.fix(workspace, apply=False)
+    tm.ok(fixed_point)
+    tm.that(fixed_point.value[0].result, eq=c.Infra.ResultStatus.OK)
+    tm.that(fixed_point.value[0].passed, eq=True)
+    tm.that(fixed_point.value[0].changed_files, eq=0)
 
 
 def test_fix_item_model_tracks_link_and_toc_counts() -> None:

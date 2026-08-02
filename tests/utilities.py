@@ -568,7 +568,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 _write(
                     project / f"src/{pkg_name}/__init__.py",
-                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n__all__ = ["hello"]\n',
+                    '"""Documentation fixture package."""\n\n'
+                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n'
+                    '__all__ = ["hello"]\n',
                 )
                 _write(project / "README.md", f"# {name}\n")
                 _write(project / "docs/README.md", "# Project Docs\n")
@@ -610,26 +612,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def release_policy_root() -> Path:
-            """Locate the checkout that owns the release policy files.
-
-            Counting parent directories encodes the checkout depth into the
-            suite: inside `<repo>/.worktrees/<lane>/` the extra segments make a
-            fixed index land mid-path, and every release test then fails with
-            FileNotFoundError for a reason unrelated to the code under test.
-
-            Walk upwards instead and stop at the first directory that actually
-            holds the policy file, so the lookup is correct for a plain clone,
-            a linked worktree, and any future layout.
-            """
-            marker = Path(c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH)
-            for candidate in Path(__file__).resolve().parents:
-                if (candidate / marker).is_file():
-                    return candidate
-            msg = (
-                f"no ancestor of {Path(__file__).resolve()} provides "
-                f"{c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH}"
-            )
-            raise FileNotFoundError(msg)
+            """Return the repository-owned isolated release policy fixture."""
+            return Path(__file__).resolve().parent / "fixtures" / "release"
 
         @staticmethod
         def create_release_workspace(
@@ -818,6 +802,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cwd=repo_root,
                 )
             )
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/main"],
+                    cwd=bare_remote,
+                )
+            )
             return bare_remote
 
         @staticmethod
@@ -994,6 +984,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
             path.chmod(0o755)
+
+        @staticmethod
+        def run_isolated_make(
+            args: t.StrSequence, *, cwd: Path
+        ) -> p.Result[p.Cli.CommandOutput]:
+            """Run Make without selectors or recursion state inherited from pytest."""
+            return cli_facade.run_raw(
+                [c.Infra.MAKE, *args],
+                cwd=cwd,
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
 
         @staticmethod
         def create_migrator_dir_layout(

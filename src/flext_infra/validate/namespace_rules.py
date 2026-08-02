@@ -88,10 +88,11 @@ class FlextInfraNamespaceRules:
             return ""
         kind = self._kind(func)
         if kind == "Name":
-            value: str = getattr(func, "id", "")
-            return value
+            identifier = getattr(func, "id", "")
+            return identifier if isinstance(identifier, str) else ""
         if kind == "Attribute":
-            return getattr(func, "attr", "")
+            attribute = getattr(func, "attr", "")
+            return attribute if isinstance(attribute, str) else ""
         if kind == "Call":
             return self.call_name(getattr(func, "func", None))
         return ""
@@ -456,7 +457,7 @@ class FlextInfraNamespaceRules:
 
     def _facade_owner(self, filepath: Path) -> str | None:
         """Return the owning facade alias for roots and private families."""
-        filename_owners = {
+        filename_owners: dict[str, str] = {
             c.Infra.CONSTANTS_PY: "c",
             c.Infra.TYPINGS_PY: "t",
             c.Infra.PROTOCOLS_PY: "p",

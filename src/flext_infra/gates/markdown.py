@@ -18,7 +18,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN
     gate_name: ClassVar[str] = "Markdown"
-    can_fix: ClassVar[bool] = True
+    can_fix: ClassVar[bool] = False
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
@@ -57,22 +57,27 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         _ = ctx
-        return [
-            c.Infra.MARKDOWNLINT,
+        return self._python_console_script_command(
+            c.Infra.RUMDL,
+            "check",
+            "--no-cache",
+            "--color",
+            "never",
+            "--output-format",
+            "text",
+            "--deny-config-warnings",
             *self._resolve_config_args(project_dir),
             *check_dirs,
-        ]
+        )
 
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
-        _ = project_dir, ctx
+        _ = ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        for line in u.Infra.process_diagnostics(
-            result.stdout, result.stderr
-        ).splitlines():
+        for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:
                 continue
@@ -85,25 +90,19 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     message=match.group("msg"),
                 )
             )
+        if result.exit_code != 0 and not issues:
+            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
+            issues.append(
+                m.Infra.Issue(
+                    file=str(project_dir),
+                    line=1,
+                    column=1,
+                    code="TOOL_ERROR",
+                    message=f"rumdl exited with code {result.exit_code}: {detail}",
+                    severity="ERROR",
+                )
+            )
         return result.exit_code == 0, issues
-
-    @override
-    def _build_fix_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
-    ) -> t.StrSequence:
-        """Build fix command."""
-        _ = ctx
-        return [
-            c.Infra.MARKDOWNLINT,
-            "--fix",
-            *self._resolve_config_args(project_dir),
-            *targets,
-        ]
-
-    @override
-    def _fix_raw_output(self, result: p.Cli.CommandOutput) -> str:
-        """Fix raw output."""
-        return u.Infra.process_diagnostics(result.stdout, result.stderr)
 
 
 __all__: list[str] = ["FlextInfraMarkdownGate"]

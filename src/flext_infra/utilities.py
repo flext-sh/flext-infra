@@ -45,6 +45,7 @@ from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
@@ -81,6 +82,9 @@ from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.worktree_transaction import (
     FlextInfraUtilitiesWorktreeTransaction,
 )
+from flext_infra._utilities.workspace_fingerprint import (
+    FlextInfraUtilitiesWorkspaceFingerprint,
+)
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
@@ -99,6 +103,7 @@ class FlextInfraUtilities(u):
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenNamespace,
@@ -149,6 +154,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
+        FlextInfraUtilitiesWorkspaceFingerprint,
         # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing
         # u.Infra Git owner and expose one central execution/report surface.
         FlextInfraUtilitiesWorktreeTransaction,

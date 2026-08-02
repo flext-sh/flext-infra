@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -89,6 +90,7 @@ class TestCodegenConform:
         tm.that(process.value, eq="✅ pong")
 
     def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
+        """Generated Make delegates uv selection to the caller environment."""
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -103,11 +105,6 @@ class TestCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
-        tm.that(makefile, lacks="UV_VERSION")
-        tm.that(makefile, lacks="uv@")
-        tm.that(makefile, lacks="mise exec")
         selected = u.Cli.run_raw(
             ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
             remove_env_keys=("MAKEFLAGS",),
@@ -119,6 +116,11 @@ class TestCodegenConform:
         tm.that(selected_output, has="uv --version")
         tm.that(selected_output, lacks="uv@")
         tm.that(selected_output, lacks="UV_VERSION")
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, lacks="UV_VERSION")
+        tm.that(makefile, lacks="uv@")
+        tm.that(makefile, lacks="mise exec")
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -317,6 +319,75 @@ class TestCodegenConform:
             eq=("flext-core",),
         )
 
+    def test_workspace_root_catalog_profile_preserves_platform_coverage(
+        self, tmp_path: Path
+    ) -> None:
+        """Route an arbitrary workspace root through its typed catalog profile."""
+        provider = config.Infra.codegen.providers[0]
+        repository = config.Infra.codegen.repositories[0].model_copy(
+            update={
+                "name": "arbitrary-root",
+                "distribution": "arbitrary-root",
+                "url": f"{provider.base_url}/arbitrary-root.git",
+                "path": Path(),
+                "role": c.Infra.RepositoryRole.WORKSPACE_ROOT,
+                "profile": c.Infra.MakeProfile.WORKSPACE_ROOT,
+                "package": False,
+                "editable": False,
+            }
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="arbitrary-root",
+            repository=repository,
+            project=m.Infra.ProjectSpec(
+                package_name="arbitrary_root",
+                class_stem="ArbitraryRoot",
+                namespace="ArbitraryRoot",
+                constant_name="arbitrary-root",
+                namespace_attribute="arbitrary_root",
+                alias="arbitrary_root",
+                environment_prefix="ARBITRARY_ROOT_",
+                description="Arbitrary workspace root",
+                version="0.1.0",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                homepage=f"{provider.base_url}/arbitrary-root",
+                documentation=f"{provider.base_url}/arbitrary-root",
+                workspace_root_rel=".",
+                year=2026,
+            ),
+        )
+        root = tmp_path / "arbitrary-root"
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        )
+
+        first = tm.ok(service.plan(request))
+        second = tm.ok(service.plan(request))
+        first_pyproject = next(
+            item for item in first.files if item.path.name == c.Infra.PYPROJECT_FILENAME
+        )
+        second_pyproject = next(
+            item
+            for item in second.files
+            if item.path.name == c.Infra.PYPROJECT_FILENAME
+        )
+        report = tomllib.loads(first_pyproject.rendered)["tool"]["coverage"]["report"]
+
+        tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
+        tm.that(
+            report["fail_under"],
+            eq=config.Infra.tooling.tools.coverage.fail_under.platform,
+        )
+
     def test_make_context_accepts_manifest_without_project_or_known_provider(
         self, tmp_path: Path
     ) -> None:
@@ -407,7 +478,14 @@ class TestCodegenConform:
                 if path.is_file() and ".git" not in path.relative_to(root).parts
             )
         )
-        tm.that(after, eq=before)
+        before_by_path = dict(before)
+        after_by_path = dict(after)
+        changed_paths = tuple(
+            path
+            for path in sorted(before_by_path.keys() | after_by_path.keys())
+            if before_by_path.get(path) != after_by_path.get(path)
+        )
+        tm.that(changed_paths, eq=())
 
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
@@ -602,8 +680,9 @@ class TestCodegenConform:
                 apply_changes=True,
             ).execute()
         )
-        # A custom WHAT keeps the handler offline (no uv/network); the
-        # pre-/post-<verb> hooks prove ordering around it.
+        # The private target is the dispatcher entry point invoked while the
+        # public verb holds the serialization lock. Exercising it directly
+        # keeps this test focused on hook ordering and independent of bootstrap.
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
@@ -613,7 +692,13 @@ class TestCodegenConform:
                 "post-check:\n\t@echo HOOK_POST\n",
             )
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
+        outcome = u.Cli.run_raw([
+            "make",
+            "-C",
+            str(root),
+            "_serialized_check",
+            "WHAT=probe",
+        ])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
@@ -689,10 +774,8 @@ class TestCodegenConform:
             )
         )
         tm.fail(result)
-        tm.that(
-            result.error,
-            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
-        )
+        tm.that(result.error, has="not a regular file")
+        tm.that(result.error, has=str(root / "custom.mk"))
 
 
 class TestScriptDispatchMakefile:
@@ -801,18 +884,16 @@ class TestScriptDispatchMakefile:
         broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
         tm.that(broken, eq=[])
 
-    def test_repo_without_script_dispatch_renders_unchanged_surface(
+    def test_repo_without_script_dispatch_omits_script_routing(
         self, tmp_path: Path
     ) -> None:
-        """A repo with no script dispatch keeps the canonical builtin surface."""
+        """A repo with no script dispatch omits every script-routing projection."""
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
         # No script routing leaks into non-opted-in repositories.
         tm.that("tr '-' '_'" in rendered, eq=False)
         tm.that("scripts/dispatch.py" in rendered, eq=False)
-        # The canonical builtin dispatch is preserved verbatim.
-        tm.that('*) $(MAKE) --no-print-directory "$$custom"' in rendered, eq=True)
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

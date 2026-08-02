@@ -1,0 +1,9 @@
+pr: ## Manage pull requests for this repository
+	$(Q)$(PROJECT_INFRA_GITHUB) pr \
+		--repo-root "$(CURDIR)" \
+		--action "$(PR_ACTION)" \
+		$(if $(PR_BASE),--base "$(PR_BASE)",) \
+		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
+		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
+		$(if $(PR_BODY),--body "$(PR_BODY)",) \
+		--draft "$(PR_DRAFT)"

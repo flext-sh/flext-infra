@@ -1,0 +1,14 @@
+export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
+
+VENV_PYTHON := $(ACTIVE_VENV)/bin/python
+UV ?= uv
+FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
+export FLEXT_INFRA_PYTHON
+
+DMPY_SOCKET := .dmypy/socket.$(PROJECT_NAME)
+PYRIGHT_PIDFILE := .pyright/daemon.pid
+PYRIGHT_LOG := .pyright/daemon.log
+
+# Export for subprocesses
+export PROJECT_NAME PYTHON_VERSION
+export FLEXT_ROOT := $(WORKSPACE_ROOT)

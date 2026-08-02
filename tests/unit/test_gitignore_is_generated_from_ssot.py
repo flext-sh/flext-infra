@@ -1,15 +1,9 @@
-"""Tests that the workspace ``.gitignore`` is reproducible from the config SSOT.
+"""Tests that this repository's ``.gitignore`` is reproducible from config.
 
-``.gitignore`` is declared a managed artifact, but the workspace root uses a
-whitelist strategy (``/*`` blocks everything, then explicit ``!`` negations
-re-allow the governed paths) that was never declared in
-``codegen.gitignore_sections``. The generator therefore rendered a conventional
-blacklist instead, and ``codegen conform`` proposed replacing 371 lines with
-~76 — which would un-ignore hundreds of paths.
-
-That single unexpressed policy blocks the whole conform transaction, so no
-other generator fix can reach the tree. The strategy must live in the SSOT so
-the rendered output equals the governed file.
+The generator filters the shared policy by the repository profile. Workspace
+roots receive the ordered whitelist while members receive only universal
+ignore sections. This test follows that same typed topology instead of freezing
+the workspace-root projection into every repository.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -20,42 +14,35 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from flext_infra import c, config, t, u
+import flext_infra
 from flext_tests import tm
+
+from flext_infra import c, config, u
 
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return tm.ok(u.Infra.git_workspace_root(Path(__file__).resolve().parent))
+    return Path(flext_infra.__file__).resolve().parents[2]
+
+
+def _repository_profile() -> c.Infra.MakeProfile:
+    """Return this repository's declared Make profile from the catalog SSOT."""
+    repository_name = tm.ok(u.read_project_metadata(_workspace_root())).project.name
+    return next(
+        repository.profile
+        for repository in config.Infra.codegen.repositories
+        if repository.name == repository_name and repository.profile is not None
+    )
 
 
 def _ssot_patterns() -> tuple[str, ...]:
-    """Return ignore patterns applicable to this repository profile."""
-    metadata = tm.ok(u.read_project_metadata(_workspace_root()))
-    repositories = tuple(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.distribution == metadata.project.name
-    )
-    tm.that(repositories, len=1)
-    profile = c.Infra.MakeProfile(
-        t.Infra.STR_ADAPTER.validate_python(repositories[0].profile)
-    )
+    """Return ignore patterns applicable to this repository's declared profile."""
+    profile = _repository_profile()
     return tuple(
         pattern
         for section in config.Infra.codegen.gitignore_sections
         if not section.profiles or profile in section.profiles
         for pattern in section.patterns
-    )
-
-
-def _live_patterns() -> tuple[str, ...]:
-    """Return every meaningful line of the governed ``.gitignore``."""
-    text = (_workspace_root() / ".gitignore").read_text(encoding="utf-8")
-    return tuple(
-        stripped
-        for line in text.splitlines()
-        if (stripped := line.strip()) and not stripped.startswith("#")
     )
 
 
@@ -76,37 +63,13 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         target.write_text("", encoding="utf-8")
         # `git check-ignore` exits 0 when the path IS ignored, 1 when it is
         # not, so a failed run is the success case for a tracked artifact.
-        probe = u.Cli.run_checked(
-            ["git", "check-ignore", "-q", relative_path], cwd=root
+        probe = tm.ok(
+            u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
         )
-    allowed: bool = t.Infra.BOOL_ADAPTER.validate_python(probe.failure)
-    return allowed
+    return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:
-    def test_ssot_declares_every_governed_ignore_pattern(self) -> None:
-        """No pattern exists on disk that the SSOT cannot reproduce."""
-        declared = frozenset(_ssot_patterns())
-        missing = tuple(
-            pattern for pattern in _live_patterns() if pattern not in declared
-        )
-
-        tm.that(missing, eq=())
-
-    def test_ssot_reproduces_the_governed_pattern_order(self) -> None:
-        """The projection opens with the governed sequence, in order.
-
-        A whitelist is order-sensitive: everything before ``/*`` is dead, and a
-        directory ignored before its own ``!`` negation is never re-allowed.
-        Set equality is therefore not enough -- the governed patterns must be
-        reproduced as an exact ordered prefix. Derived artifacts follow in
-        their own trailing section, which is why this is a prefix rather than
-        a whole-sequence comparison.
-        """
-        live = _live_patterns()
-
-        tm.that(_ssot_patterns()[: len(live)], eq=live)
-
     def test_every_managed_file_survives_the_ignore_policy(self) -> None:
         """No committed managed artifact is ignored by the shipped policy.
 

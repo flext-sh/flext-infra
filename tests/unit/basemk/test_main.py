@@ -45,8 +45,12 @@ class TestsFlextInfraBasemkMain:
 
             tm.that(exit_code, eq=0)
             generated = output_file.read_text(encoding="utf-8")
-            tm.that(generated, has="PROJECT_NAME := ai-hub")
-            tm.that(generated, has="RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python")
+            tm.that(generated, has="PROJECT_NAME ?= ai-hub")
+            tm.that(
+                generated,
+                has='PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)"',
+                lacks="$(if $(wildcard $(VENV_PYTHON))",
+            )
 
     def test_basemk_main_with_project_name_overrides_output(
         self, tmp_path: Path
@@ -64,7 +68,7 @@ class TestsFlextInfraBasemkMain:
             eq=0,
         )
         tm.that(
-            output_file.read_text(encoding="utf-8"), has="PROJECT_NAME := my-project"
+            output_file.read_text(encoding="utf-8"), has="PROJECT_NAME ?= my-project"
         )
 
     def test_basemk_main_with_invalid_command_returns_usage_error(self) -> None:

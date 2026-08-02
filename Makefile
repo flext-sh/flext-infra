@@ -1,16 +1,16 @@
-# flext-infra — generated project interface.
-# Managed by flext-infra codegen conform for new and existing repositories.
 # @flext-managed: continuous
 # @flext-regenerate: make codegen WHAT=apply APPLY=Y
-# @flext-ssot: flext-infra/config/codegen.yaml and flext-infra/src/flext_infra/templates/project/base/Makefile.j2
-# @flext-maintenance: do not edit generated Makefiles directly
+# @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
+# @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
+# flext-infra — generated project interface.
+# Managed by flext-infra codegen conform for new and existing repositories.
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
-WORKSPACE_ROOT_REL := ..
+MAKE_PROFILE := standalone
+WORKSPACE_ROOT_REL := .
 WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -18,31 +18,38 @@ UV_LINK_MODE := copy
 APPLY ?= N
 ARGS ?=
 CHECK_GATES ?=
+FAIL_FAST ?= 0
+FILE ?=
+FIX ?= 0
+MATCH ?=
 PROJECT ?=
 PROJECTS ?=
-# Public selector documented by this Makefile. Forwarded to the test recipe so a
+BASE ?=
+BRANCH ?=
+# Public selector documented by base.mk. Forwarded to the test recipe so a
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
-BRANCH ?=
-BASE ?= HEAD
-PYTEST_TARGETS ?=
+PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
+PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
+PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
+PYTEST_REPORTS_DIR ?= .reports/tests
 WHAT ?=
 
-comma := ,
-CHECK_GATE_NAMES := lint format pyrefly mypy pyright vulture workflows
-CHECK_GATE_LIST := $(subst $(comma), ,$(strip $(CHECK_GATES)))
-UNKNOWN_CHECK_GATES := $(filter-out $(CHECK_GATE_NAMES),$(CHECK_GATE_LIST))
-ifneq ($(strip $(UNKNOWN_CHECK_GATES)),)
-$(error ERROR: unsupported CHECK_GATES: $(UNKNOWN_CHECK_GATES))
-endif
-_check_gate_selected = $(if $(CHECK_GATE_LIST),$(filter $(1),$(CHECK_GATE_LIST)),all)
-
 PROJECT_ROOT := $(shell pwd -P)
-PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree
+SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
+MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
+WORKSPACE ?= $(PROJECT_ROOT)
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
+CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
+CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
+DOCS_PHASES := generate fix audit build validate
+SERIALIZED_VERBS := check test codegen
+SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 UV ?= uv
+UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
@@ -61,7 +68,7 @@ _DEFAULT_deps := check
 _DEFAULT_build := artifacts
 _DEFAULT_check := all
 _DEFAULT_test := all
-_DEFAULT_format := check
+_DEFAULT_fmt := check
 _DEFAULT_run := default
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := check
@@ -69,6 +76,7 @@ _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
 _DEFAULT_worktree := list
+_DEFAULT_basemk := generate
 
 
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
@@ -93,6 +101,8 @@ endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
+FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
+FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/bin/python
 SANITIZED_CALLER_PATH := $(CALLER_PATH)
 ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
 SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
@@ -101,12 +111,17 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
 SANITIZED_CALLER_PATH :=
 endif
 endif
-override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
+RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)" 2>/dev/null)
+ifeq ($(strip $(RESOLVED_UV)),)
+$(error Required uv executable not found: $(UV_REQUESTED))
+endif
+override UV := $(RESOLVED_UV)
+override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_VENV)/bin:$(SANITIZED_CALLER_PATH)
-export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
+export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := all
@@ -120,15 +135,22 @@ endif
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-WORKSPACE_ORCHESTRATE = $(PROJECT_FLEXT_INFRA) workspace orchestrate
+WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
+REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
+FILE_MEMBER := $(firstword $(foreach member,$(WORKSPACE_MEMBERS),$(if $(filter $(member)/%,$(FILE)),$(member))))
+FILE_PROJECT := $(if $(strip $(FILE_MEMBER)),$(FILE_MEMBER),.)
+FILE_RELATIVE := $(if $(filter .,$(FILE_PROJECT)),$(FILE),$(patsubst $(FILE_PROJECT)/%,%,$(FILE)))
+DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS) .
+SELECTED_PROJECTS := $(if $(strip $(FILE)),$(FILE_PROJECT),$(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS)))
+WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
+WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
+WORKSPACE_TEST_ARGS := $(if $(strip $(FILE)),--make-arg "FILE=$(FILE_RELATIVE)") $(if $(strip $(MATCH)),--make-arg "MATCH=$(MATCH)") $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
+DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS := build check clean docs scan test val
-ORCHESTRATE_PROJECT_ARGS = $(if $(strip $(PROJECT)),--projects $(strip $(PROJECT)),$(if $(strip $(PROJECTS)),--projects $(strip $(PROJECTS))))
-ORCHESTRATE_CHECK_ARGS = $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-ORCHESTRATE_TEST_ARGS = $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
 
-UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
-PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
-PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
+PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
@@ -150,42 +172,47 @@ _BUILTIN_HANDLERS := \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
-	_builtin_format_check \
-	_builtin_format_apply \
+	_builtin_fmt_check \
+	_builtin_fmt_apply \
 	_builtin_run_default \
 	_builtin_status_diagnostics \
 	_builtin_docs_check \
-	_builtin_clean_generated \
+	_builtin_docs_all \
+_builtin_docs_generate \
+_builtin_docs_fix \
+_builtin_docs_audit \
+_builtin_docs_build \
+_builtin_docs_validate \
+_builtin_clean_generated \
 	_builtin_release_status \
 	_builtin_codegen_check \
 	_builtin_codegen_apply \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
+	_builtin_worktree_update \
 	_builtin_worktree_remove
+
+SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$@)"; fi; \
-	apply_builtin="_builtin_$@_apply"; \
-	if [ "$(APPLY)" = "Y" ] && [ "$$what" = "$(_DEFAULT_$@)" ]; then \
-		case " $(_BUILTIN_HANDLERS) " in *" $$apply_builtin "*) what="apply" ;; esac; \
-	fi; \
+	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
-	builtin="_builtin_$@_$$what"; \
-	custom="_custom_$@_$$what"; \
-	for hook in "pre-$@" "pre-$@-$$what"; do \
-		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	builtin="_builtin_$(1)_$$what"; \
+	custom="_custom_$(1)_$$what"; \
+	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
 	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
-		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
+		*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
 	esac; \
-	for hook in "post-$@-$$what" "post-$@"; do \
-		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	for hook in "post-$(1)-$$what" "post-$(1)"; do \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done
 endef
 
@@ -209,17 +236,40 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
-$(filter-out setup,$(PUBLIC_VERBS)):
-	$(call _dispatch)
+$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+	$(call _dispatch,$@)
+
+
+check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check"
+
+_serialized_check:
+	$(call _dispatch,check)
+
+
+test: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test"
+
+_serialized_test:
+	$(call _dispatch,test)
+
+
+codegen: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "codegen"
+
+_serialized_codegen:
+	$(call _dispatch,codegen)
+
+
 
 setup:
 	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
-	@$(MAKE) --no-print-directory _builtin_setup_environment
+	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' ''
+	@printf '%s\n' 'flext-infra [standalone]' ''
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage'
@@ -246,7 +296,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'format' 'check'
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check'
 
 
 
@@ -277,6 +327,10 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s\n' 'worktree' 'list'
 
 
+	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate'
+
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)'
+	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update'
 	@printf '\n%s\n' 'Custom hooks (custom.mk):'
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,'
@@ -302,7 +356,7 @@ _builtin_setup_submodules:
 	git -C "$(PROJECT_ROOT)" submodule sync --recursive --quiet; \
 	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
 	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
-		branch=$$(git config -f "$$toplevel/.gitmodules" "submodule.$$name.branch" || true); \
+		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
 		if [ -z "$$branch" ]; then exit 0; fi; \
 		if ! git rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
 			git checkout --quiet -b "$$branch"; \
@@ -323,28 +377,22 @@ _builtin_require_environment:
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
-	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
-	done
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" _builtin_setup_environment
+	@$(SELF_MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
-	@$(UV) pip check --python "$(RUNTIME_VENV)"
 
 _builtin_deps_check: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
@@ -370,24 +418,143 @@ _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all: _builtin_require_environment
-	$(if $(call _check_gate_selected,lint),@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS))
-	$(if $(call _check_gate_selected,format),@$(UV_RUN) ruff format --check $(RUFF_PATHS))
-	$(if $(call _check_gate_selected,pyrefly),@$(UV_RUN) pyrefly check)
-	$(if $(call _check_gate_selected,mypy),@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; })
-	$(if $(call _check_gate_selected,pyright),@$(UV_RUN) pyright)
-	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
-	$(if $(call _check_gate_selected,vulture),@$(UV_RUN) vulture)
-	$(if $(call _check_gate_selected,workflows),@$(UV_RUN) actionlint)
+	@set -eu; \
+	if [ "$(FIX)" = "1" ] && [ "$(APPLY)" != "Y" ]; then \
+		printf 'ERROR: FIX=1 requires APPLY=Y\n' >&2; exit 2; \
+	fi; \
+	gates="$(strip $(CHECK_GATES))"; \
+	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
+	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
+	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
+		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
+			*) printf 'ERROR: unknown CHECK_GATES value: %s (allowed: %s)\n' "$$gate" "$(CHECK_GATES_ALLOWED)" >&2; exit 2 ;; \
+		esac; \
+	done; \
+	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects . $(if $(filter 1,$(FIX)),--fix)
 
 _builtin_test_all: _builtin_require_environment
-	@$(UV_RUN) python -m pytest $(if $(strip $(PYTEST_TARGETS)),$(PYTEST_TARGETS),$(if $(strip $(PYTEST_ARGS)),,"$(PROJECT_ROOT)/tests")) $(PYTEST_ARGS)
+
+	@_files="$(strip $(FILES))"; \
+	if [ -n "$(FILE)" ]; then \
+		case "$(FILE)" in /*|..|../*|*/../*|*/..) \
+			printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
+		esac; \
+		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
+	fi; \
+	_pytest_run="$(PYTEST_TARGETS)"; \
+	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
+	for target in $$_pytest_run; do \
+		if [ ! -e "$$target" ]; then \
+			printf 'ERROR: test target does not exist: %s\n' "$$target" >&2; exit 2; \
+		fi; \
+	done; \
+	_all_pytest_args="$(PYTEST_ARGS)"; \
+	if [ -n "$(MATCH)" ]; then _all_pytest_args="$$_all_pytest_args -k $(MATCH)"; fi; \
+	if [ "$(FAIL_FAST)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -x"; fi; \
+	if [ "$(VERBOSE)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -vv -s"; fi; \
+	run_id=$$(date -u +%Y%m%dT%H%M%SZ)-$$$$; \
+	report_dir="$(PYTEST_REPORTS_DIR)/$$run_id"; \
+	mkdir -p "$$report_dir"; \
+	log_file="$$report_dir/pytest.log"; \
+	junit_file="$$report_dir/junit.xml"; \
+	coverage_file="$$report_dir/coverage.xml"; \
+	summary_file="$$report_dir/summary.txt"; \
+	failed_file="$$report_dir/failed-tests.txt"; \
+	errors_file="$$report_dir/errors.txt"; \
+	warnings_file="$$report_dir/warnings.txt"; \
+	slowest_file="$$report_dir/slowest-tests.txt"; \
+	skips_file="$$report_dir/skipped-tests.txt"; \
+	command_file="$$report_dir/command.txt"; \
+	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
+	_coverage_required=1; \
+	_coverage_value="$$coverage_file"; \
+	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
+		[ "$$_pytest_run" != "$(PROJECT_ROOT)/tests" ]; then \
+		_coverage_args="--no-cov"; \
+		_coverage_required=0; \
+		_coverage_value="not-generated"; \
+	fi; \
+	printf '%s\n' '$(UV_RUN) python -m pytest' \
+		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
+		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
+	$(UV_RUN) python -m pytest $$_pytest_run \
+		$(PYTEST_REPORT_ARGS) \
+		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
+		-p no:metadata \
+		--junitxml="$$junit_file" \
+		$$_coverage_args \
+		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
+	rc=$$?; \
+	cat "$$log_file"; \
+	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
+		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
+			"$$coverage_file" >&2; \
+		if [ "$$rc" -eq 0 ]; then rc=2; fi; \
+	fi; \
+	if [ -f "$$junit_file" ]; then \
+		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
+		failures=$$(grep -Eo 'failures="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
+		errors=$$(grep -Eo 'errors="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
+		skipped=$$(grep -Eo 'skipped="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
+		duration=$$(grep -Eo 'time="[0-9.]+"' "$$junit_file" | head -n 1 | sed -E 's/time="([0-9.]+)"/\1/'); \
+		tests=$${tests:-0}; failures=$${failures:-0}; errors=$${errors:-0}; \
+		skipped=$${skipped:-0}; duration=$${duration:-0}; \
+		passed=$$((tests - failures - errors - skipped)); \
+		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
+		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
+			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
+			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
+	else \
+		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
+			"$$_coverage_value" > "$$summary_file"; \
+	fi; \
+	counts_file="$$report_dir/counts.env"; \
+	if $(PROJECT_FLEXT_INFRA) validate pytest-diag \
+		--junit "$$junit_file" --log "$$log_file" \
+		--failed "$$failed_file" --errors "$$errors_file" \
+		--warnings "$$warnings_file" --slowest "$$slowest_file" \
+		--skips "$$skips_file" > "$$counts_file"; then \
+		:; \
+	else \
+		counts_status=$$?; \
+		printf 'ERROR: pytest diagnostic extraction failed (exit=%s)\n' \
+			"$$counts_status" >&2; \
+		cat "$$counts_file" >&2; \
+		exit "$$counts_status"; \
+	fi; \
+	if ! awk ' \
+		BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
+		$$0 !~ /^(failed_count|error_count|warning_count|skipped_count)=[0-9]+$$/ { invalid=1; next } \
+		{ split($$0, fields, "="); if (seen[fields[1]]++) invalid=1 } \
+		END { if (NR != 4) invalid=1; for (key in required) if (seen[key] != 1) invalid=1; exit invalid } \
+	' "$$counts_file"; then \
+		echo "ERROR: invalid pytest diagnostic counts contract" >&2; \
+		cat "$$counts_file" >&2; \
+		exit 2; \
+	fi; \
+	. "$$counts_file"; \
+	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
+		[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
+		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
+	fi; \
+	if [ "$(DIAG)" = "1" ]; then \
+		run_state=COMPLETED; \
+		if [ "$$rc" -eq 130 ]; then run_state=INTERRUPTED; fi; \
+		printf 'DIAG %s | failed=%s errors=%s warnings=%s skipped=%s\n' \
+			"$$run_state" "$$failed_count" "$$error_count" \
+			"$$warning_count" "$$skipped_count" >&2; \
+	fi; \
+	ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
+	printf 'Reports: %s (latest: %s/latest)\n' \
+		"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
+	exit "$$rc"
 
 
-_builtin_format_check: _builtin_require_environment
+_builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_format_apply: _builtin_require_environment
+_builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
@@ -406,7 +573,36 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" status --short
 
 _builtin_docs_check:
-	@test -s "$(PROJECT_ROOT)/README.md"
+	@set -eu; \
+	for phase in $(DOCS_PHASES); do \
+		case "$$phase" in generate|fix) mode=--check ;; *) mode= ;; esac; \
+		$(PROJECT_FLEXT_INFRA) docs "$$phase" --workspace "$(PROJECT_ROOT)" $$mode $(DOCS_PROJECT_ARGS); \
+	done
+
+_builtin_docs_all:
+	$(call _require_apply)
+	@set -eu; \
+	for phase in $(DOCS_PHASES); do \
+		case "$$phase" in generate|fix) mode=--apply ;; *) mode= ;; esac; \
+		$(PROJECT_FLEXT_INFRA) docs "$$phase" --workspace "$(PROJECT_ROOT)" $$mode $(DOCS_PROJECT_ARGS); \
+	done
+
+_builtin_docs_generate:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --apply $(DOCS_PROJECT_ARGS)
+
+_builtin_docs_fix:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) docs fix --workspace "$(PROJECT_ROOT)" --apply $(DOCS_PROJECT_ARGS)
+
+_builtin_docs_audit:
+	@$(PROJECT_FLEXT_INFRA) docs audit --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
+
+_builtin_docs_build:
+	@$(PROJECT_FLEXT_INFRA) docs build --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
+
+_builtin_docs_validate:
+	@$(PROJECT_FLEXT_INFRA) docs validate --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
 
 _builtin_clean_generated:
 	$(call _require_apply)
@@ -429,12 +625,16 @@ _builtin_codegen_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_worktree_list:
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation list
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
 
 _builtin_worktree_add:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_worktree_update:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
 
 _builtin_worktree_remove:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation remove --branch "$(BRANCH)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply

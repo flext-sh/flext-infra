@@ -184,6 +184,31 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return c.Infra.WorkspaceMode.WORKSPACE
         return c.Infra.WorkspaceMode.STANDALONE
 
+    @classmethod
+    def effective_repository(
+        cls, repository_root: Path, declared: m.Infra.RepositoryRef
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve runtime topology without changing repository identity."""
+        mode_result = cls().detect(repository_root)
+        if mode_result.failure:
+            return r[m.Infra.RepositoryRef].fail(
+                mode_result.error or "unable to resolve repository topology"
+            )
+        if (
+            mode_result.value is not c.Infra.WorkspaceMode.STANDALONE
+            or declared.role is not c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        ):
+            return r[m.Infra.RepositoryRef].ok(declared)
+        return r[m.Infra.RepositoryRef].ok(
+            m.Infra.RepositoryRef.model_validate({
+                **declared.model_dump(),
+                "path": Path(),
+                "role": c.Infra.RepositoryRole.STANDALONE,
+                "profile": c.Infra.MakeProfile.STANDALONE,
+                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+            })
+        )
+
     @staticmethod
     def _gitmodule_contract(
         superproject_root: Path, member_path: str

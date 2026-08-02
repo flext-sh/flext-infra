@@ -11,14 +11,15 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 from flext_infra._utilities.protected_edit_preview import (
     FlextInfraUtilitiesProtectedEditPreview,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
@@ -171,9 +172,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 if cls._has_no_tests_marker(error)
                 else r[bool].fail(error)
             )
-        output = FlextInfraUtilitiesBase.process_diagnostics(
-            run_result.value.stdout, run_result.value.stderr
-        )[:300]
+        output = (run_result.value.stdout + run_result.value.stderr)[:300]
         passed_or_no_tests = run_result.value.exit_code == 0 or (
             run_result.value.exit_code == cls._NO_TESTS_EXIT_CODE
             and cls._has_no_tests_marker(output)

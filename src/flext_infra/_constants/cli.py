@@ -16,6 +16,13 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCli:
     """Shared CLI flag vocabularies and route tables."""
 
+    PROCESS_TIMEOUT_EXIT_CODE: Final[int] = 124
+    "Exit code emitted by the canonical wall-time limiter."
+    PROCESS_SIGNAL_EXIT_OFFSET: Final[int] = 128
+    "POSIX shell offset used to encode a terminating signal."
+    PROCESS_EXIT_ERROR_CODE: Final[str] = "EXTERNAL_PROCESS_EXIT"
+    "Stable result error code for non-zero external process exits."
+
     _SHARED_BOOL_FLAG_VALUES: Final[tuple[str, ...]] = (
         "--apply",
         "--check",

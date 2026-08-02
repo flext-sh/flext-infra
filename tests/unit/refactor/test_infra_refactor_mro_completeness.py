@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:
     """Create a rope project rooted at *workspace*."""
-    return u.Infra.init_rope_project(workspace)
+    rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(workspace)
+    return rope_project
 
 
 def _write_models_project(

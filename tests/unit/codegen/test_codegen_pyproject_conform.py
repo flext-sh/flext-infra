@@ -92,6 +92,59 @@ workspace = true
             eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
 
+    def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
+        workspace = _workspace()
+        source = """[project]
+name = "external-consumer"
+dependencies = ["requests>=2"]
+
+[tool.uv]
+constraint-dependencies = ["uv>=0", "requests<3"]
+"""
+        first = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                source,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+        )
+        second = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                first,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+        )
+
+        document = tomllib.loads(first)
+        tm.that(second, eq=first)
+        tm.that(document["tool"]["uv"]["constraint-dependencies"], eq=["requests<3"])
+
+    def test_dependency_conformance_deletes_empty_uv_constraint_key(self) -> None:
+        workspace = _workspace()
+        source = """[project]
+name = "external-consumer"
+dependencies = ["requests>=2"]
+
+[tool.uv]
+link-mode = "copy"
+constraint-dependencies = ["uv>=0"]
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                source,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+        )
+
+        uv_config = tomllib.loads(conformed)["tool"]["uv"]
+        tm.that(uv_config["link-mode"], eq="copy")
+        tm.that("constraint-dependencies" not in uv_config, eq=True)
+
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
         member = workspace.members[0].model_copy(
@@ -106,23 +159,23 @@ workspace = true
         )
         tm.that(result.failure, eq=True)
 
-    def test_attached_member_rejects_direct_source(self) -> None:
+    def test_attached_root_rejects_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
-                '[project]\nname = "attached-consumer"\n'
+                '[project]\nname = "workspace-root"\n'
                 f'dependencies = ["{member.distribution} @ git+{member.url}@{member.branch}"]\n'
+                "\n[tool.uv.workspace]\n"
+                'members = ["flext-core"]\n'
+                "\n[tool.uv.sources.flext-core]\n"
+                "workspace = true\n"
             ),
             repositories=(workspace.repository, *workspace.members),
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        tm.fail(result)
-        tm.that(
-            result.error or "",
-            has="attached workspace dependency declares direct source",
-        )
+        tm.fail(result, has="attached workspace dependency declares direct source")
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
@@ -134,6 +187,7 @@ workspace = true
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={"uv_link_mode": "copy"}
         )
+        required_dev = config.Infra.codegen.scaffold.project.dev
         source = """[project]
 name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
@@ -142,7 +196,7 @@ dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 dev = ["custom-tool>=1"]
 
 [tool.uv]
-required-version = "==0.11.28"
+required-version = ">=0"
 
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
@@ -154,6 +208,7 @@ python-interpreter-path = "../.venv/bin/python"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         second = tm.ok(
@@ -163,6 +218,7 @@ python-interpreter-path = "../.venv/bin/python"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         document = tomllib.loads(first)

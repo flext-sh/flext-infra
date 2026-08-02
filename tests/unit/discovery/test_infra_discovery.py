@@ -70,8 +70,12 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(projects[1].has_src, eq=False)
         tm.that(projects[1].has_tests, eq=False)
         tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.ATTACHED)
-        assert (
-            projects[1].workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        tm.that(
+            (
+                projects[1].workspace_role
+                == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+            ),
+            eq=True,
         )
 
     def test_discover_projects_empty_workspace(
@@ -102,7 +106,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.ok(result)
         files = result.value
         tm.that(len(files), eq=3)
-        assert all(f.name == "pyproject.toml" for f in files)
+        tm.that(all(f.name == "pyproject.toml" for f in files), eq=True)
 
     def test_find_all_pyproject_files_with_skip_dirs(
         self, service: u.Infra, tmp_path: Path

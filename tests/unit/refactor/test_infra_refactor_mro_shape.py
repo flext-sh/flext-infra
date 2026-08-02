@@ -75,7 +75,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = _detect(target, rope_project)
 
-        assert not violations
+        tm.that(not violations, eq=True)
 
     def test_enforce_049_allows_peer_first_when_shared_alias_base(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
@@ -96,7 +96,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = _detect(target, rope_project)
 
-        assert not violations
+        tm.that(not violations, eq=True)
 
     def test_enforce_046_flags_redundant_nested_namespace(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
@@ -130,7 +130,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = _detect(target, rope_project)
 
-        assert not violations
+        tm.that(not violations, eq=True)
 
     def test_enforce_051_flags_utilities_self_root(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
@@ -168,7 +168,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = _detect(target, rope_project)
 
-        assert not violations
+        tm.that(not violations, eq=True)
 
     def test_parse_failure_is_reported(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
@@ -184,10 +184,10 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = FlextInfraMROShapeDetector.detect_file(ctx)
 
-        assert not violations
-        assert ctx.parse_failures is not None
-        tm.that(len(ctx.parse_failures), eq=1)
-        tm.that(ctx.parse_failures[0].stage, eq="mro_shape")
+        tm.that(not violations, eq=True)
+        parse_failures = tm.not_none(ctx.parse_failures)
+        tm.that(len(parse_failures), eq=1)
+        tm.that(parse_failures[0].stage, eq="mro_shape")
 
 
 if __name__ == "__main__":

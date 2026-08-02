@@ -71,12 +71,12 @@ class FlextInfraSkillRuleRunnerMixin:
         """Run an ast-grep rule and return match count."""
         rule_file_raw = u.Cli.json_get_str_key(rule, c.Infra.RK_FILE)
         if not rule_file_raw:
-            return r[int].ok(0)
+            return r[int].fail("ast-grep rule must declare a non-empty file")
         rule_file = Path(rule_file_raw)
         if not rule_file.is_absolute():
             rule_file = (skill_dir / rule_file_raw).resolve()
         if not rule_file.exists():
-            return r[int].ok(0)
+            return r[int].fail(f"ast-grep rule file does not exist: {rule_file}")
         cmd = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_file), "--json=stream"]
         for pat in include_globs:
             cmd.extend(["--globs", pat])
@@ -90,9 +90,12 @@ class FlextInfraSkillRuleRunnerMixin:
             return r[int].fail(result_wrapper.error or "ast-grep process launch failed")
         result: p.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
-            detail = u.Infra.process_diagnostics(result.stdout, result.stderr)
+            detail = (
+                u.Infra.process_diagnostics(result.stdout, result.stderr)
+                or "no diagnostics"
+            )
             return r[int].fail(
-                detail or f"ast-grep exited with code {result.exit_code}"
+                f"ast-grep exited with code {result.exit_code}: {detail}"
             )
         count = 0
         for raw_line in (result.stdout or "").splitlines():
@@ -130,12 +133,12 @@ class FlextInfraSkillRuleRunnerMixin:
         """Run a custom rule script and return violation count."""
         script_raw = u.Cli.json_get_str_key(rule, "script")
         if not script_raw:
-            return r[int].ok(0)
+            return r[int].fail("custom rule must declare a non-empty script")
         script = Path(script_raw)
         if not script.is_absolute():
             script = (skill_dir / script_raw).resolve()
         if not script.exists():
-            return r[int].ok(0)
+            return r[int].fail(f"custom rule script does not exist: {script}")
         cmd: t.MutableSequenceOf[str] = (
             [sys.executable, str(script)]
             if script.suffix == c.Infra.EXT_PYTHON
@@ -153,9 +156,12 @@ class FlextInfraSkillRuleRunnerMixin:
             )
         result: p.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
-            detail = u.Infra.process_diagnostics(result.stdout, result.stderr)
+            detail = (
+                u.Infra.process_diagnostics(result.stdout, result.stderr)
+                or "no diagnostics"
+            )
             return r[int].fail(
-                detail or f"custom rule exited with code {result.exit_code}"
+                f"custom rule exited with code {result.exit_code}: {detail}"
             )
         count = self._parse_violation_count(result.stdout or "")
         if result.exit_code == 1:

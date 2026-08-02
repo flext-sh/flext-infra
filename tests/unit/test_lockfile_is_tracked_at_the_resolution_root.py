@@ -19,15 +19,34 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from flext_infra import c, config, t, u
+import flext_infra
 from flext_tests import tm
+
+from flext_infra import c, config, u
+
+
+def _workspace_root() -> Path:
+    """Return the repository root that owns the imported package."""
+    return Path(flext_infra.__file__).resolve().parents[2]
+
+
+def _repository_profile() -> c.Infra.MakeProfile:
+    """Return this repository's declared Make profile from the catalog SSOT."""
+    repository_name = tm.ok(u.read_project_metadata(_workspace_root())).project.name
+    return next(
+        repository.profile
+        for repository in config.Infra.codegen.repositories
+        if repository.name == repository_name and repository.profile is not None
+    )
 
 
 def _ssot_patterns() -> tuple[str, ...]:
-    """Return every ignore pattern declared by the config SSOT."""
+    """Return ignore patterns applicable to this repository's declared profile."""
+    profile = _repository_profile()
     return tuple(
         pattern
         for section in config.Infra.codegen.gitignore_sections
+        if not section.profiles or profile in section.profiles
         for pattern in section.patterns
     )
 
@@ -44,11 +63,10 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         target.write_text("", encoding="utf-8")
         # `git check-ignore` exits 0 when the path IS ignored, so a failed run
         # is the success case for a file that must stay trackable.
-        probe = u.Cli.run_checked(
-            ["git", "check-ignore", "-q", relative_path], cwd=root
+        probe = tm.ok(
+            u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
         )
-    allowed: bool = t.Infra.BOOL_ADAPTER.validate_python(probe.failure)
-    return allowed
+    return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
 
 
 class TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot:

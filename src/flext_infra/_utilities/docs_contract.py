@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
@@ -61,16 +63,19 @@ class FlextInfraUtilitiesDocsContract:
     ) -> m.Infra.GeneratedFile:
         """Write generated content only when needed and allowed."""
         if path.exists() and not overwrite:
-            return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
+            return m.Infra.GeneratedFile(
+                path=path.as_posix(), changed=False, written=False
+            )
         current = (
             path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if path.exists() else ""
         )
-        if current == content:
-            return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
-        if apply:
+        changed = current != content
+        if changed and apply:
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
-        return m.Infra.GeneratedFile(path=path.as_posix(), written=apply)
+        return m.Infra.GeneratedFile(
+            path=path.as_posix(), changed=changed, written=changed and apply
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsContract"]

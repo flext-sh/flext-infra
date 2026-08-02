@@ -102,8 +102,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
     @pytest.mark.parametrize(
         ("exit_code", "classification"),
         [
-            (0, ""),
-            (23, ""),
+            (0, "success"),
+            (23, "failure"),
             (c.Infra.PROCESS_TIMEOUT_EXIT_CODE, "timeout"),
             (-9, "signal=9"),
             (c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9, "signal=9"),
@@ -112,5 +112,5 @@ class TestsFlextInfraUtilitiesResourceLimits:
     def test_process_exit_classification(
         self, exit_code: int, classification: str
     ) -> None:
-        """Classify conventional process termination without changing status."""
-        tm.that(u.Infra.process_exit_classification(exit_code), eq=classification)
+        """Classify conventional process outcomes without changing status."""
+        tm.that(u.Infra.classify_process_exit(exit_code), eq=classification)

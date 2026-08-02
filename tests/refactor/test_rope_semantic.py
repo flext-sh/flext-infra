@@ -66,7 +66,7 @@ class TestsFlextInfraRefactorRopeSemantic:
     ) -> None:
         proj, _ = rope_workspace
         bases = u.Infra.get_class_bases(proj, models_resource, "DoesNotExist")
-        assert not bases
+        tm.that(not bases, eq=True)
 
     def test_returns_public_methods(
         self, rope_workspace: RopeWorkspace, models_resource: t.Infra.RopeResource
@@ -101,5 +101,5 @@ class TestsFlextInfraRefactorRopeSemantic:
         proj, _ = rope_workspace
         offset = u.Infra.find_definition_offset(proj, models_resource, "Dog")
         source = models_resource.read()
-        assert offset is not None
+        offset = tm.not_none(offset)
         tm.that(source[offset : offset + 3], eq="Dog")

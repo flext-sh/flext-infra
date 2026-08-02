@@ -24,6 +24,12 @@ _OVER_CAP = (
     + "\n"
 )
 _UNDER_CAP = "from __future__ import annotations\n\nx = 1\n"
+_TOKEI_OVER_CAP = (
+    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":250}}]}}'
+)
+_TOKEI_UNDER_CAP = (
+    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":1}}]}}'
+)
 
 
 def _gate_project(tmp_path: Path, *, name: str, module_src: str) -> Path:
@@ -43,35 +49,39 @@ class TestLocCapGate:
 
     def test_over_cap_module_is_flagged(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_OVER_CAP)
-
-        result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(any(issue.code == "LOC_CAP" for issue in result.issues), eq=True)
-
-    def test_under_cap_module_passes(self, tmp_path: Path) -> None:
-        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
-
-        result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
-
-        tm.that(result.result.passed, eq=True)
-
-    def test_tool_failure_is_reported(self, tmp_path: Path) -> None:
-        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
         runner = u.Tests.SequenceRunner([
-            r.ok(
-                u.Tests.stub_run(stderr="tokei executable unavailable", returncode=127)
-            )
+            r.ok(u.Tests.stub_run(stdout=_TOKEI_OVER_CAP))
         ])
 
         result = u.Tests.run_gate_check(
             FlextInfraLocCapGate, tmp_path, project, runner=runner
         )
 
+        tm.that(not result.result.passed, eq=True)
+        tm.that(any(issue.code == "LOC_CAP" for issue in result.issues), eq=True)
+
+    def test_under_cap_module_passes(self, tmp_path: Path) -> None:
+        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.stub_run(stdout=_TOKEI_UNDER_CAP))
+        ])
+
+        result = u.Tests.run_gate_check(
+            FlextInfraLocCapGate, tmp_path, project, runner=runner
+        )
+
+        tm.that(result.result.passed, eq=True)
+
+    def test_tool_execution_failure_is_not_silenced(self, tmp_path: Path) -> None:
+        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
+        runner = u.Tests.SequenceRunner([r.fail("tokei is unavailable")])
+
+        result = u.Tests.run_gate_check(
+            FlextInfraLocCapGate, tmp_path, project, runner=runner
+        )
+
         tm.that(result.result.passed, eq=False)
-        tm.that(result.issues, len=1)
-        tm.that(result.issues[0].code, eq="tokei-exec")
-        tm.that(result.issues[0].message, has="tokei executable unavailable")
+        tm.that(tuple(issue.code for issue in result.issues), has="LOC_CAP_EXEC")
 
 
 __all__: t.StrSequence = []

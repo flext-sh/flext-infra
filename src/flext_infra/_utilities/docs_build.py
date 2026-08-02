@@ -7,15 +7,15 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c, m
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 if TYPE_CHECKING:
     from pathlib import Path
     from types import ModuleType
 
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDocsBuild:
@@ -70,10 +70,10 @@ class FlextInfraUtilitiesDocsBuild:
             result = m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
-                result="SKIP",
+                result=c.Infra.ResultStatus.FAIL,
                 reason="mkdocs.yml not found",
                 site_dir="",
-                passed=True,
+                passed=False,
             )
         else:
             site_dir = (
@@ -113,9 +113,9 @@ class FlextInfraUtilitiesDocsBuild:
                             passed=True,
                         )
                     else:
-                        reason_lines = FlextInfraUtilitiesBase.process_diagnostics(
-                            output.stdout, output.stderr
-                        ).splitlines()
+                        reason_lines = (
+                            (output.stderr or output.stdout).strip().splitlines()
+                        )
                         result = m.Infra.DocsPhaseReport(
                             phase="build",
                             scope=scope.name,
@@ -187,10 +187,10 @@ class FlextInfraUtilitiesDocsBuild:
             return m.Infra.DocsPhaseReport(
                 phase="serve",
                 scope=scope.name,
-                result="SKIP",
+                result=c.Infra.ResultStatus.FAIL,
                 reason="mkdocs.yml not found",
                 site_dir="",
-                passed=True,
+                passed=False,
             )
         try:
             serve_module = import_module("mkdocs.commands.serve")

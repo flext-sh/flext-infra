@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra import c, m, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesResourceLimits:
@@ -95,7 +95,10 @@ class FlextInfraUtilitiesResourceLimits:
         validated_limit = (
             limit or FlextInfraUtilitiesResourceLimits.mypy_resource_limit()
         )
-        return validated_limit.timeout_seconds + c.Infra.MYPY_TIMEOUT_GRACE_SECONDS
+        timeout_seconds: int = (
+            validated_limit.timeout_seconds + c.Infra.MYPY_TIMEOUT_GRACE_SECONDS
+        )
+        return timeout_seconds
 
     @staticmethod
     def _bounded_mypy_diagnostic(
@@ -130,39 +133,28 @@ class FlextInfraUtilitiesResourceLimits:
         """Return a controlled diagnostic only for timeout or memory exhaustion."""
         validated_limit = limit or cls.mypy_resource_limit()
         combined = f"{output.stdout}\n{output.stderr}".lower()
+        classification = FlextInfraUtilitiesProcess.classify_process_exit(
+            output.exit_code
+        )
         resource_failure = (
-            output.exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE
-            or output.exit_code < 0
-            or output.exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
+            classification == "timeout"
+            or classification.startswith("signal=")
             or any(marker in combined for marker in cls._MEMORY_FAILURE_MARKERS)
         )
         if not resource_failure:
             return None
         signal = (
-            -output.exit_code
-            if output.exit_code < 0
-            else output.exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
-            if output.exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
+            classification.removeprefix("signal=")
+            if classification.startswith("signal=")
             else "none"
         )
         detail = (
-            FlextInfraUtilitiesBase.process_diagnostics(output.stdout, output.stderr)
+            FlextInfraUtilitiesProcess.process_diagnostics(output.stdout, output.stderr)
             or "resource limit reached"
         )
         return cls._bounded_mypy_diagnostic(
             validated_limit, detail=detail, exit_code=output.exit_code, signal=signal
         )
-
-    @staticmethod
-    def process_exit_classification(exit_code: int) -> str:
-        """Classify conventional timeout and signal process exit statuses."""
-        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
-            return "timeout"
-        if exit_code < 0:
-            return f"signal={-exit_code}"
-        if exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
-            return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
-        return ""
 
 
 __all__: list[str] = ["FlextInfraUtilitiesResourceLimits"]

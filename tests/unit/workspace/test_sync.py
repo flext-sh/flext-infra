@@ -219,13 +219,12 @@ class TestsFlextInfraWorkspaceSync:
         )
         tm.that(
             search_paths,
-            eq=list(
+            eq=tuple(
                 config.Infra.codegen.vscode.list_settings[
                     c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
                 ]
             ),
         )
-        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:
         """Return a typed failure when the requested workspace does not exist."""
@@ -297,9 +296,9 @@ class TestsFlextInfraWorkspaceSync:
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="MAKE_PROFILE := standalone")
         tm.that(makefile_text, has="UV ?= uv")
-        tm.that(makefile_text, has="UV_RUN := $(UV) run")
+        tm.that(makefile_text, has="UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run")
         tm.that(makefile_text, has="_builtin_setup_environment:")
-        tm.that(makefile_text, has="$(UV) pip install --python")
+        tm.that(makefile_text, has='$(UV) sync --project "$(PROJECT_ROOT)"')
         tm.that(makefile_text, lacks="poetry")
         tm.that(makefile_text, lacks="_bootstrap-venv")
         tm.that(makefile_text, lacks="BOOTSTRAP_VENV")

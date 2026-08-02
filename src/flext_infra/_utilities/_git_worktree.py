@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesGitWorktreeMixin:
@@ -45,9 +46,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[str].fail(result.error or "git command execution failed")
         output = result.value
         if output.exit_code != 0:
-            detail = FlextInfraUtilitiesBase.process_diagnostics(
-                output.stdout, output.stderr
-            )
+            detail = (output.stderr or output.stdout).strip()
             return r[str].fail(detail or f"git command exited {output.exit_code}")
         return r[str].ok(output.stdout)
 
@@ -62,9 +61,8 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[bytes].fail(result.error or "git command execution failed")
         output: p.Cli.CommandBytesOutput = result.value
         if output.exit_code != 0:
-            detail = FlextInfraUtilitiesBase.process_diagnostics(
-                output.stdout.decode(c.Cli.ENCODING_DEFAULT, errors="replace"),
-                output.stderr.decode(c.Cli.ENCODING_DEFAULT, errors="replace"),
+            detail = (output.stderr or output.stdout).decode(
+                c.Cli.ENCODING_DEFAULT, errors="replace"
             )
             return r[bytes].fail(
                 detail.strip() or f"git command exited {output.exit_code}"
@@ -128,9 +126,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         elif configured_output.exit_code == 1 and common_dir.name == c.Infra.GIT_DIR:
             primary_root = common_dir.parent
         else:
-            detail = FlextInfraUtilitiesBase.process_diagnostics(
-                configured_output.stdout, configured_output.stderr
-            )
+            detail = (configured_output.stderr or configured_output.stdout).strip()
             return r[Path].fail(
                 detail or f"cannot derive primary worktree from {common_dir}"
             )
@@ -275,9 +271,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             output = apply_result.value
             if output.exit_code != 0:
                 return r[bool].fail(
-                    FlextInfraUtilitiesBase.process_diagnostics(
-                        output.stdout, output.stderr
-                    )
+                    (output.stderr or output.stdout).strip()
                     or "dirty patch did not apply"
                 )
         return cls._git_copy_untracked(source_root, worktree_root, tuple(excluded))
@@ -298,9 +292,28 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 if tree_result.failure
                 else parent_result.error or "failed to resolve checkpoint parent"
             )
+        identity_result = cls.git_capture(
+            worktree_root, ("show", "-s", "--format=%an%x00%ae", parent_result.value)
+        )
+        if identity_result.failure:
+            return r[str].fail(
+                identity_result.error or "failed to resolve checkpoint identity"
+            )
+        identity = identity_result.value.rstrip("\n").split("\0")
+        match identity:
+            case [author_name, author_email] if (
+                author_name.strip() and author_email.strip()
+            ):
+                pass
+            case _:
+                return r[str].fail("checkpoint parent has invalid author identity")
         commit_result = cls.git_capture(
             worktree_root,
             (
+                "-c",
+                f"user.name={author_name}",
+                "-c",
+                f"user.email={author_email}",
                 "commit-tree",
                 tree_result.value.strip(),
                 "-p",
@@ -416,10 +429,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         output = result.value
         if output.exit_code != 0:
             return r[bool].fail(
-                FlextInfraUtilitiesBase.process_diagnostics(
-                    output.stdout, output.stderr
-                )
-                or "git apply --check failed"
+                (output.stderr or output.stdout).strip() or "git apply --check failed"
             )
         return r[bool].ok(True)
 
@@ -484,8 +494,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[bool].fail(result.error or "git apply failed")
         output = result.value
         return r[bool].fail(
-            FlextInfraUtilitiesBase.process_diagnostics(output.stdout, output.stderr)
-            or "git apply failed"
+            (output.stderr or output.stdout).strip() or "git apply failed"
         )
 
     @classmethod
@@ -513,10 +522,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             if converged_result.success:
                 return r[bool].ok(True)
             return r[bool].fail(
-                FlextInfraUtilitiesBase.process_diagnostics(
-                    output.stdout, output.stderr
-                )
-                or "git apply failed"
+                (output.stderr or output.stdout).strip() or "git apply failed"
             )
         return r[bool].ok(True)
 
@@ -530,6 +536,25 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         )
         if remove_result.failure:
             return r[bool].fail(remove_result.error or "failed to remove worktree")
+        prune_result = cls.git_capture(source_root, ("worktree", "prune"))
+        if prune_result.failure:
+            return r[bool].fail(
+                prune_result.error or "failed to prune worktree metadata"
+            )
+        return r[bool].ok(True)
+
+    @classmethod
+    def git_remove_clean_worktree(
+        cls, source_root: Path, worktree_root: Path
+    ) -> p.Result[bool]:
+        """Remove an explicitly selected clean worktree and prune metadata."""
+        remove_result = cls.git_capture(
+            source_root, ("worktree", "remove", str(worktree_root))
+        )
+        if remove_result.failure:
+            return r[bool].fail(
+                remove_result.error or "failed to remove clean worktree"
+            )
         prune_result = cls.git_capture(source_root, ("worktree", "prune"))
         if prune_result.failure:
             return r[bool].fail(

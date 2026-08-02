@@ -30,9 +30,9 @@ class TestsFlextInfraPublicApi:
         root = infra_public_root
 
         tm.that(root.__title__, eq="flext-infra")
-        assert root.__version__
-        assert root.infra.__class__ is root.FlextInfra
-        assert callable(root.main)
+        tm.that(root.__version__, empty=False)
+        tm.that(root.infra.__class__ is root.FlextInfra, eq=True)
+        tm.that(callable(root.main), eq=True)
 
     @pytest.mark.parametrize(
         ("alias_name", "class_name"), c.Tests.INFRA_PUBLIC_ROOT_ALIAS_EXPECTATIONS
@@ -46,7 +46,7 @@ class TestsFlextInfraPublicApi:
     def test_public_facades_expose_infra_namespace(
         self, infra_public_root: ModuleType, alias_name: str
     ) -> None:
-        assert hasattr(getattr(infra_public_root, alias_name), "Infra")
+        tm.that(hasattr(getattr(infra_public_root, alias_name), "Infra"), eq=True)
 
     @pytest.mark.parametrize(
         "method_name", c.Tests.INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS
@@ -54,7 +54,7 @@ class TestsFlextInfraPublicApi:
     def test_public_utilities_expose_expected_infra_methods(
         self, infra_public_root: ModuleType, method_name: str
     ) -> None:
-        assert hasattr(infra_public_root.u.Infra, method_name)
+        tm.that(hasattr(infra_public_root.u.Infra, method_name), eq=True)
 
     @pytest.mark.parametrize(
         ("module_name", "alias_name", "class_name"),
@@ -86,7 +86,7 @@ class TestsFlextInfraPublicApi:
         tm.that(root.__version__, eq=metadata.project.version)
         tm.that(root.__description__, eq=metadata.project.description)
         tm.that(root.__url__, eq=metadata.project.urls.homepage)
-        assert metadata.project.authors
+        tm.that(metadata.project.authors, empty=False)
         tm.that(root.__author__, eq=metadata.project.authors[0].name)
 
     def test_test_service_settings_expose_tests_namespace(self) -> None:
