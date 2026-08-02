@@ -84,9 +84,7 @@ def test_setup_never_runs_a_destructive_git_operation() -> None:
         if (lines := _offending_lines(pattern))
     }
 
-    assert not offenders, (
-        f"setup reaches destructive git operations: {offenders}"
-    )
+    assert not offenders, f"setup reaches destructive git operations: {offenders}"
 
 
 def test_setup_never_clears_the_virtualenv() -> None:
