@@ -77,6 +77,55 @@ class TestsFlextInfraWorktreeService:
         tm.that(removed, eq=str(lane))
         tm.that(not lane.exists(), where=bool)
 
+    def test_add_preserves_the_lane_when_setup_fails(self, tmp_path: Path) -> None:
+        """A broken consumer retains the canonical lane needed to fix itself."""
+        repository = self._repository(tmp_path)
+        setup_evidence = "fixture setup failed"
+        (repository / "Makefile").write_text(
+            (
+                ".PHONY: setup\n"
+                "setup:\n"
+                f"\t@printf '{setup_evidence}\\n' >&2\n"
+                "\t@exit 17\n"
+            ),
+            encoding="utf-8",
+        )
+        tm.ok(u.Infra.git_capture(repository, ("add", "Makefile")))
+        tm.ok(
+            u.Infra.git_capture(
+                repository, ("commit", "-m", "test: fail lane setup")
+            )
+        )
+        branch = "bugfix/setup-failure"
+        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch=branch,
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has=["worktree setup failed", str(lane), setup_evidence])
+        tm.that(lane.is_dir(), where=bool)
+        tm.that(
+            tm.ok(
+                u.Infra.git_capture(
+                    repository, ("worktree", "list", "--porcelain")
+                )
+            ),
+            has=[f"worktree {lane}", f"branch refs/heads/{branch}"],
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.git_capture(
+                    repository, ("rev-parse", "--verify", f"refs/heads/{branch}")
+                )
+            ).strip(),
+            empty=False,
+        )
+
     def test_update_fast_forwards_a_lane_to_the_requested_base(
         self, tmp_path: Path
     ) -> None:

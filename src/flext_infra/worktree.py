@@ -135,23 +135,9 @@ class FlextInfraWorktreeService(s[str]):
             if not setup_error:
                 setup_error = f"make setup exited {setup.value.exit_code}"
         if setup_error:
-            cleanup = u.Infra.git_remove_worktree(primary_root, lane)
-            if cleanup.failure:
-                return r.fail(
-                    f"worktree setup failed: {setup_error}; "
-                    f"cleanup failed: {cleanup.error or 'unknown cleanup failure'}"
-                )
-            if not local.value:
-                branch_cleanup = u.Infra.git_capture(
-                    primary_root, ("branch", "-D", branch)
-                )
-                if branch_cleanup.failure:
-                    return r.fail(
-                        f"worktree setup failed: {setup_error}; "
-                        "created branch cleanup failed: "
-                        f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
-                    )
-            return r.fail(f"worktree setup failed: {setup_error}")
+            return r.fail(
+                f"worktree setup failed; lane preserved at {lane}: {setup_error}"
+            )
         return r.ok(str(lane))
 
     def _remove(self, primary_root: Path, branch: str) -> p.Result[str]:
