@@ -112,17 +112,20 @@ _boot_impl:
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)$(UV) lock
 	$(Q)$(UV) sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
-	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
+	$(Q)if [ "$({{ ci.variable }})" = "{{ ci.value }}" ]; then \
+		echo "INFO: skipping Git-hook installation in CI"; \
+	elif git rev-parse --git-dir >/dev/null 2>&1; then \
 		hooks_path=$$(git config --get --default '' core.hooksPath); \
 		if [ -n "$$hooks_path" ]; then \
-			echo "INFO: skipping pre-commit install (core.hooksPath=$$hooks_path)"; \
-		elif [ -f .pre-commit-config.yaml ] || [ -f .pre-commit-config.yml ]; then \
-			$(UV) run pre-commit install; \
+			echo "INFO: skipping generated Git-hook installer (core.hooksPath=$$hooks_path)"; \
+		elif [ -f "{{ git_hooks.installer }}" ]; then \
+			bash "{{ git_hooks.installer }}"; \
 		else \
-			echo "INFO: skipping pre-commit install (no pre-commit config)"; \
+			echo "ERROR: missing generated Git-hook installer {{ git_hooks.installer }}; run: {{ regeneration_command }}" >&2; \
+			exit 2; \
 		fi; \
 	else \
-		echo "INFO: skipping pre-commit install (no git repository)"; \
+		echo "INFO: skipping generated Git-hook installer (no git repository)"; \
 	fi
 
 build: ## Build distributable artifacts
@@ -154,11 +157,6 @@ _check_impl:
 	fi; \
 	gates=$$(echo "$$gates" | tr ',' ' ' | tr ' ' ','); \
 	_files=""; \
-	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
-	if [ -n "$(FILE)" ]; then \
-		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; \
-		else _files="$(FILE)"; fi; \
-	fi; \
 	if [ "$(CHANGED_ONLY)" = "1" ]; then \
 		_files=$$( \
 			{ git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py'; \
@@ -170,7 +168,7 @@ _check_impl:
 		if [ -z "$(CHECK_GATES)" ]; then gates="lint,format,pyrefly,mypy,pyright"; fi; \
 		unsupported_gates=$$(printf '%s\n' "$$gates" | tr ',' '\n' | awk '/^(security|markdown)$$/ {print}'); \
 		if [ -n "$$unsupported_gates" ]; then \
-			echo "ERROR: FILE/FILES/CHANGED_ONLY fast-path only supports {{ make.PROJECT_FAST_PATH_CHECK_GATES }}"; \
+			echo "ERROR: CHANGED_ONLY fast-path only supports {{ make.PROJECT_FAST_PATH_CHECK_GATES }}"; \
 			exit 2; \
 		fi; \
 		echo "Fast-path check: $$_files"; \
@@ -238,13 +236,6 @@ fmt: ## Run code formatting (ruff + rumdl on tracked files)
 
 _fmt_impl:
 	$(Q)_fmt_target="."; \
-	_fmt_files=""; \
-	if [ -n "$(FILES)" ]; then _fmt_files="$(FILES)"; fi; \
-	if [ -n "$(FILE)" ]; then \
-		if [ -n "$$_fmt_files" ]; then _fmt_files="$$_fmt_files $(FILE)"; \
-		else _fmt_files="$(FILE)"; fi; \
-	fi; \
-	if [ -n "$$_fmt_files" ]; then _fmt_target="$$_fmt_files"; fi; \
 	if [ "$(CHECK_ONLY)" = "1" ]; then \
 		$(UV) run ruff format $$_fmt_target --check; \
 	else \
@@ -282,7 +273,7 @@ _fmt_impl:
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
-docs: ## Run docs (WHAT={{ docs.actions | join('|') }})
+docs: ## Run docs (WHAT={{ docs_actions | join('|') }})
 	$(call _run_verb_hooks,pre,docs,$(WHAT))
 	$(call _run_verb_body,docs,_docs_impl)
 	$(call _run_verb_hooks,post,docs,$(WHAT))
@@ -294,17 +285,17 @@ _docs_impl:
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=FAIL REASON=docs-module-missing"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(WHAT)" = "{{ docs.default_action }}" ]; then \
-		actions="{% for action in docs.actions if action != docs.default_action %}{{ action }} {% endfor %}"; \
+	$(Q)if [ "$(WHAT)" = "{{ docs_default_action }}" ]; then \
+		actions="{% for action in docs_actions if action != docs_default_action %}{{ action }} {% endfor %}"; \
 	else \
 		actions="$(WHAT)"; \
 	fi; \
 	for action in $$actions; do \
 		case "$$action" in \
-{%- for action in docs.actions if action != docs.default_action %}
-			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
+{%- for action in docs_actions if action != docs_default_action %}
+			{{ action }}) extra="{% if action in docs_optional_apply_whats %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
 {%- endfor %}
-			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs.actions | join('|') }})"; exit 2 ;; \
+			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs_actions | join('|') }})"; exit 2 ;; \
 		esac; \
 		$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }} $$extra || exit $$?; \
 	done

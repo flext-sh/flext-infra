@@ -231,8 +231,9 @@ class TestsCodegenCatalogExtensions:
 
         Operator contract (mro-e9j0.6 C7 final): setup installs mise, the
         venv, and dependencies — it never generates, conforms, or mutates
-        project code. gen/gen APPLY=Y is the single public conformance and
-        generation surface, and no public ``conform`` verb exists.
+        project code. The config-owned default and apply handlers of ``gen``
+        are the single public conformance surface, and no public ``conform``
+        verb exists.
         """
         template = (
             Path(__file__).parents[3]
@@ -247,9 +248,13 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_setup_conform" in content, eq=False)
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
-        tm.that("_builtin_gen_check:" in content, eq=True)
-        tm.that("_builtin_gen_apply:" in content, eq=True)
-        verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
+        make_config = config.Infra.codegen.make
+        gen = next(verb for verb in make_config.verbs if verb.name == "gen")
+        default_handler = f"_builtin_{gen.name}_{gen.default_what}:"
+        apply_handler = f"_builtin_{gen.name}_{gen.apply_what}:"
+        tm.that(default_handler in content, eq=True)
+        tm.that(apply_handler in content, eq=True)
+        verb_names = {verb.name for verb in make_config.verbs}
         tm.that("conform" in verb_names, eq=False)
 
     def test_transaction_worktrees_skip_the_beads_lifecycle(
@@ -326,7 +331,12 @@ class TestsCodegenCatalogExtensions:
         ).model_copy(
             update={
                 "extra_verbs": (
-                    m.Infra.MakeVerbSpec(name="audit", default_what="all"),
+                    m.Infra.MakeVerbSpec(
+                        name="audit",
+                        default_what="all",
+                        whats=("all",),
+                        apply_what="all",
+                    ),
                 ),
                 "script_dispatch": m.Infra.ScriptDispatchSpec(
                     dispatcher="scripts/dispatch.py", roots=("scripts",)

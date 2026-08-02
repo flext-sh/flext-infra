@@ -193,6 +193,12 @@ class TestCodegenBeadsLedger:
         if rendered is None:
             pytest.fail("owner plan must render the ledger config")
         server = self._toolchain_server()
+        tm.that(
+            rendered,
+            has=(
+                f"# @flext-regenerate: {config.Infra.codegen.make.regeneration_command}"
+            ),
+        )
         tm.that(rendered, has='issue-prefix: "fleet-ledger"')
         tm.that(rendered, has="database: fleet-ledger")
         tm.that(rendered, has="Owned ledger config")

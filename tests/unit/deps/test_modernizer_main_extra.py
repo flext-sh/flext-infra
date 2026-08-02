@@ -17,6 +17,39 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerMainExtra:
     """Validate edge cases through the public modernizer API."""
 
+    @staticmethod
+    def _write_registry_constraint_fixture(
+        workspace: Path,
+    ) -> tuple[tuple[str, str, str], ...]:
+        """Write two registry floors and return name/current/locked tuples."""
+        registry = (("requests", "2.0", "2.32.4"), ("httpx", "0.1", "0.28.1"))
+        requirements = ", ".join(
+            f'"{name}>={current}"' for name, current, _locked in registry
+        )
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            (
+                "[project]\n"
+                'name = "workspace"\n'
+                'version = "0.1.0"\n'
+                f"dependencies = [{requirements}]\n"
+            ),
+            encoding="utf-8",
+        )
+        packages = "".join(
+            (
+                "[[package]]\n"
+                f'name = "{name}"\n'
+                f'version = "{locked}"\n'
+                'source = { registry = "https://pypi.org/simple" }\n'
+            )
+            for name, _current, locked in registry
+        )
+        (workspace / c.Infra.UV_LOCK_FILENAME).write_text(
+            'version = 1\n[manifest]\nmembers = ["workspace"]\n' + packages,
+            encoding="utf-8",
+        )
+        return registry
+
     @pytest.mark.parametrize(
         ("content", "expected"),
         [
@@ -208,6 +241,246 @@ class TestsFlextInfraDepsModernizerMainExtra:
             ),
             has='"requests>=2.32.4"',
         )
+
+    @pytest.mark.parametrize("selected_index", [0, None], ids=["selected", "full"])
+    def test_registry_constraint_rewrite_honors_optional_dependency_selector(
+        self, modernizer_workspace: Path, selected_index: int | None
+    ) -> None:
+        """Rewrite one selected registry floor or every floor when unselected."""
+        registry = self._write_registry_constraint_fixture(modernizer_workspace)
+        selected_name = (
+            registry[selected_index][0].upper() if selected_index is not None else None
+        )
+
+        exit_code = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            rewrite_dependency=selected_name,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+
+        rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        tm.that(exit_code, eq=0)
+        for index, (name, current, locked) in enumerate(registry):
+            expected = locked if selected_index in {None, index} else current
+            tm.that(rendered, has=f'"{name}>={expected}"')
+
+    def test_git_dependency_selection_preserves_registry_floors_and_lock_refresh(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Keep registry floors while preserving the selected Git revision update."""
+        registry = self._write_registry_constraint_fixture(modernizer_workspace)
+        dependency_name = "fixture-git-dependency"
+        previous_revision = "a" * 40
+        updated_revision = "b" * 40
+        pyproject_path = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
+        pyproject_source = pyproject_path.read_text(encoding="utf-8")
+        pyproject_path.write_text(
+            pyproject_source.replace(
+                '"httpx>=0.1"]',
+                (
+                    f'"httpx>=0.1", "{dependency_name} @ '
+                    "git+https://example.invalid/repository.git"
+                    f'@{previous_revision}"]'
+                ),
+                1,
+            ),
+            encoding="utf-8",
+        )
+        lock_path = modernizer_workspace / c.Infra.UV_LOCK_FILENAME
+        previous_lock = lock_path.read_text(encoding="utf-8") + (
+            "[[package]]\n"
+            f'name = "{dependency_name}"\n'
+            'version = "0.12.0.dev0"\n'
+            f'source = {{ git = "https://example.invalid/repository.git?rev={previous_revision}#{previous_revision}" }}\n'
+        )
+        updated_lock = previous_lock.replace(previous_revision, updated_revision)
+        lock_path.write_text(updated_lock, encoding="utf-8")
+        payload = u.Cli.toml_mapping_from_text(
+            pyproject_path.read_text(encoding="utf-8")
+        )
+        tm.that(payload, none=False)
+        if payload is None:
+            pytest.fail("Git dependency fixture must remain valid TOML")
+        tm.that(
+            u.Infra.declared_dependency_names_from_payload(payload), has=dependency_name
+        )
+        tm.that(
+            u.Infra.locked_dependency_versions(lock_path),
+            eq={name: locked for name, _current, locked in registry},
+        )
+
+        exit_code = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            rewrite_dependency=dependency_name,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+
+        rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        tm.that(exit_code, eq=0)
+        for name, current, _locked in registry:
+            tm.that(rendered, has=f'"{name}>={current}"')
+        observed_lock = lock_path.read_text(encoding="utf-8")
+        tm.that(observed_lock, has=updated_revision)
+        tm.that(observed_lock, lacks=previous_revision)
+        tm.that(
+            observed_lock.replace(updated_revision, previous_revision), eq=previous_lock
+        )
+
+    def test_git_only_dependency_selection_accepts_a_valid_non_registry_lock(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Allow a selected direct requirement when its valid lock has no registry."""
+        dependency_name = "fixture-git-dependency"
+        revision = "b" * 40
+        direct_requirement = (
+            f"{dependency_name} @ git+https://example.invalid/repository.git@{revision}"
+        )
+        pyproject_path = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
+        pyproject_path.write_text(
+            (
+                "[project]\n"
+                'name = "workspace"\n'
+                'version = "0.1.0"\n'
+                f'dependencies = ["{direct_requirement}"]\n'
+            ),
+            encoding="utf-8",
+        )
+        (modernizer_workspace / c.Infra.UV_LOCK_FILENAME).write_text(
+            (
+                "version = 1\n"
+                "[[package]]\n"
+                f'name = "{dependency_name}"\n'
+                'version = "0.12.0.dev0"\n'
+                'source = { git = "https://example.invalid/repository.git#revision" }\n'
+            ),
+            encoding="utf-8",
+        )
+
+        exit_code = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            rewrite_dependency=dependency_name,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+
+        tm.that(exit_code, eq=0)
+        tm.that(pyproject_path.read_text(encoding="utf-8"), has=direct_requirement)
+
+    @pytest.mark.parametrize(
+        "lock_content",
+        [
+            None,
+            "[invalid",
+            (
+                "version = 1\n"
+                "[[package]]\n"
+                'name = "different-package"\n'
+                'version = "1.0.0"\n'
+                'source = { git = "https://example.invalid/different.git#revision" }\n'
+            ),
+        ],
+        ids=["missing", "invalid", "selected-package-absent"],
+    )
+    def test_git_dependency_selection_rejects_an_unproven_lock(
+        self, modernizer_workspace: Path, lock_content: str | None
+    ) -> None:
+        """Fail closed unless a valid lock contains the selected direct package."""
+        dependency_name = "fixture-git-dependency"
+        pyproject_path = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
+        pyproject_path.write_text(
+            (
+                "[project]\n"
+                'name = "workspace"\n'
+                'version = "0.1.0"\n'
+                f'dependencies = ["{dependency_name} @ '
+                'git+https://example.invalid/repository.git@revision"]\n'
+            ),
+            encoding="utf-8",
+        )
+        if lock_content is not None:
+            (modernizer_workspace / c.Infra.UV_LOCK_FILENAME).write_text(
+                lock_content, encoding="utf-8"
+            )
+
+        exit_code = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            rewrite_dependency=dependency_name,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+
+        tm.that(exit_code, eq=2)
+
+    def test_registry_dependency_selection_requires_a_registry_lock_source(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Reject a registry declaration backed only by a direct-source lock entry."""
+        dependency_name = "requests"
+        pyproject_path = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
+        pyproject_path.write_text(
+            (
+                "[project]\n"
+                'name = "workspace"\n'
+                'version = "0.1.0"\n'
+                f'dependencies = ["{dependency_name}>=2.0"]\n'
+            ),
+            encoding="utf-8",
+        )
+        (modernizer_workspace / c.Infra.UV_LOCK_FILENAME).write_text(
+            (
+                "version = 1\n"
+                "[[package]]\n"
+                f'name = "{dependency_name}"\n'
+                'version = "2.32.4"\n'
+                'source = { git = "https://example.invalid/requests.git#revision" }\n'
+            ),
+            encoding="utf-8",
+        )
+
+        exit_code = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            rewrite_dependency=dependency_name,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+
+        tm.that(exit_code, eq=2)
+
+    def test_dependency_selector_rejects_an_undeclared_distribution(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Fail closed when a valid selector names no declared requirement."""
+        self._write_registry_constraint_fixture(modernizer_workspace)
+        pyproject_path = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
+        before = pyproject_path.read_text(encoding="utf-8")
+
+        exit_code = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            rewrite_dependency="undeclared-dependency",
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+
+        tm.that(exit_code, eq=2)
+        tm.that(pyproject_path.read_text(encoding="utf-8"), eq=before)
 
     def test_run_apply_rewrites_dependency_constraints_from_uv_lock(
         self, modernizer_workspace: Path

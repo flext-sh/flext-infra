@@ -31,6 +31,16 @@ class TestsFlextInfraBasemkGenerator:
         tm.ok(result)
         tm.that(result.value, has="PROJECT_NAME ?=")
 
+    def test_generator_routes_hook_installation_through_generated_owner(self) -> None:
+        """Never let the legacy base.mk persist a worktree-specific Python."""
+        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
+
+        tm.ok(result)
+        tm.that(
+            result.value, has=config.Infra.codegen.make.git_hooks.installer.as_posix()
+        )
+        tm.that(result.value, lacks="pre-commit install")
+
     def test_generator_pr_booleans_do_not_render_as_positional_values(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
 
@@ -68,10 +78,8 @@ class TestsFlextInfraBasemkGenerator:
     def test_generator_enforces_pytest_process_deadline(self) -> None:
         """The rendered base.mk carries the config-owned invocation deadline.
 
-        mro-wkii.17.37 renamed the hard process boundary to
-        ``PYTEST_RUN_TIMEOUT_SECONDS`` and moved enforcement into the typed
-        Python runner, so the generated Make surface publishes the budget and
-        delegates execution instead of wrapping pytest in a shell timeout.
+        The process watchdog and typed Python runner consume the same
+        ``PYTEST_RUN_TIMEOUT_SECONDS`` value from the pytest policy SSOT.
         """
         policy = config.Infra.tooling.tools.pytest
 
@@ -80,11 +88,17 @@ class TestsFlextInfraBasemkGenerator:
         tm.ok(result)
         tm.that(
             result.value,
-            has=(f"PYTEST_PROCESS_TIMEOUT_SECONDS ?= {policy.process_timeout_seconds}"),
+            has=(
+                "override PYTEST_RUN_TIMEOUT_SECONDS := "
+                f"{policy.run_timeout_seconds}"
+            ),
         )
         tm.that(
             result.value,
-            has="$(PYTEST_BOUNDED) $(VENV_PYTHON) -m flext_infra._pytest_entry",
+            has=[
+                '"$(PYTEST_RUN_TIMEOUT_SECONDS)s"',
+                "$(PYTEST_BOUNDED) $(VENV_PYTHON) -m flext_infra._pytest_entry",
+            ],
         )
 
     def test_generator_generate_with_basemk_config_object(self) -> None:

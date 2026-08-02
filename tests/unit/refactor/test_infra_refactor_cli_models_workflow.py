@@ -23,8 +23,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv(
-            c.Infra.WORKTREE_TRANSACTION_ENV,
-            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+            c.Infra.WORKTREE_TRANSACTION_ENV, c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
         )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
@@ -51,8 +50,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv(
-            c.Infra.WORKTREE_TRANSACTION_ENV,
-            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+            c.Infra.WORKTREE_TRANSACTION_ENV, c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
         )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
@@ -85,8 +83,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv(
-            c.Infra.WORKTREE_TRANSACTION_ENV,
-            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+            c.Infra.WORKTREE_TRANSACTION_ENV, c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
         )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
@@ -116,8 +113,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv(
-            c.Infra.WORKTREE_TRANSACTION_ENV,
-            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+            c.Infra.WORKTREE_TRANSACTION_ENV, c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
         )
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True

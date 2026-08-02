@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+import tomllib
+from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 pytestmark = [
     pytest.mark.integration,
@@ -22,12 +21,104 @@ pytestmark = [
 class TestsMakeSerializationTransaction:
     """Prove real Make children preserve the natural transaction marker."""
 
+    def test_public_gen_applies_one_atomic_plan_and_rejects_foreign_dirty_bytes(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Accept only an exact canonical dirty fixed point on the second run."""
+        target = infra_git_repo
+        distribution = config.Infra.name
+        package_name = distribution.replace("-", "_")
+        pyproject = target / c.Infra.PYPROJECT_FILENAME
+        pyproject.write_text(
+            (
+                "[project]\n"
+                f'name = "{distribution}"\n'
+                f'version = "{config.Infra.version}"\n'
+                "requires-python = "
+                f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
+            ),
+            encoding="utf-8",
+        )
+        package_init = target / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
+        package_init.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        managed = target / c.Infra.MAKEFILE_FILENAME
+        managed.write_text("# committed managed drift\n", encoding="utf-8")
+        baseline = managed.read_bytes()
+        canonical_line_length = config.Infra.tooling.tools.ruff.line_length
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "-A"], cwd=target))
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-q", "-m", "Seed committed drift"], cwd=target
+            )
+        )
+        make_config = config.Infra.codegen.make
+        gen_spec = next(verb for verb in make_config.verbs if verb.name == "gen")
+        tm.that(gen_spec.apply_what in gen_spec.apply_whats, where=bool)
+        command = (
+            c.Infra.MAKE,
+            "--no-print-directory",
+            "gen",
+            f"{make_config.apply_variable}={make_config.apply_value}",
+            f"WORKSPACE={target}",
+        )
+        engine_root = Path(__file__).parents[2]
+
+        first = tm.ok(u.Cli.run_raw(command, cwd=engine_root))
+        first_output = first.stdout + first.stderr
+        first_bytes = managed.read_bytes()
+        first_status = tm.ok(
+            u.Infra.git_capture_bytes(target, ("status", "--porcelain=v1", "-z"))
+        )
+
+        tm.that(first.exit_code, eq=0, msg=first_output)
+        tm.that(first_output.count("transaction: "), eq=1)
+        tm.that(first_output, has="applied=yes")
+        tm.that(first_bytes, ne=baseline)
+        first_pyproject = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        )
+        tooling = t.Cli.JSON_MAPPING_ADAPTER.validate_python(first_pyproject["tool"])
+        ruff = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tooling["ruff"])
+        tm.that(ruff["line-length"], eq=canonical_line_length)
+
+        second = tm.ok(u.Cli.run_raw(command, cwd=engine_root))
+        second_output = second.stdout + second.stderr
+        tm.that(second.exit_code, eq=0, msg=second_output)
+        tm.that(second_output.count("transaction: "), eq=1)
+        tm.that(second_output, has="applied=no")
+        tm.that(managed.read_bytes(), eq=first_bytes)
+        tm.that(
+            tm.ok(
+                u.Infra.git_capture_bytes(target, ("status", "--porcelain=v1", "-z"))
+            ),
+            eq=first_status,
+        )
+
+        foreign = first_bytes + b"# foreign delta\n"
+        managed.write_bytes(foreign)
+        rejected = tm.ok(u.Cli.run_raw(command, cwd=engine_root))
+        rejected_output = rejected.stdout + rejected.stderr
+
+        tm.that(rejected.exit_code, ne=0)
+        tm.that(rejected_output, has="uncommitted WIP in managed file")
+        tm.that(managed.read_bytes(), eq=foreign)
+        direct = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=target,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+        tm.fail(direct, has="uncommitted WIP in managed file")
+        tm.that(managed.read_bytes(), eq=foreign)
+
     def test_public_make_inherits_absent_and_real_transaction_markers(
         self, infra_git_repo: Path
     ) -> None:
         """Inherit the marker without introducing or removing it."""
         make_config = config.Infra.codegen.make
-        mutation_verb = make_config.serialization.mutation_verbs[0]
+        mutation_verb = make_config.mutable_verbs[0]
         verb_spec = next(
             verb for verb in make_config.verbs if verb.name == mutation_verb
         )
@@ -64,8 +155,7 @@ class TestsMakeSerializationTransaction:
             encoding="utf-8",
         )
         (infra_git_repo / ".gitignore").write_text(
-            f"{make_config.serialization.lock_path.parts[0]}/\n",
-            encoding="utf-8",
+            f"{make_config.serialization.lock_path.parts[0]}/\n", encoding="utf-8"
         )
         tm.that(u.Cli.process_env().get(marker), eq=None)
 
@@ -84,8 +174,7 @@ class TestsMakeSerializationTransaction:
 
         tm.that(outer_make.exit_code, eq=0, msg=outer_make.stderr)
         tm.that(
-            outer_make.stdout + outer_make.stderr,
-            has="transaction-marker=<absent>",
+            outer_make.stdout + outer_make.stderr, has="transaction-marker=<absent>"
         )
         tm.that(artifact.exists(), eq=False)
 

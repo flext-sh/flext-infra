@@ -120,8 +120,8 @@ _ALLOWED_WHATS_worktree := list add update remove
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test gen fmt fix
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix
+SERIALIZED_VERBS := deps check test gen fmt fix worktree
+SERIALIZED_TARGETS := _serialized_deps _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix _serialized_worktree
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -166,9 +166,16 @@ _DEFAULT_release := status
 _DEFAULT_gen := check
 _DEFAULT_worktree := list
 
+_APPLY_WHAT_deps := upgrade
+_APPLY_WHATS_deps := lock upgrade
 _APPLY_WHAT_fmt := all
+_APPLY_WHATS_fmt := all
 _APPLY_WHAT_fix := all
+_APPLY_WHATS_fix := all
 _APPLY_WHAT_gen := all
+_APPLY_WHATS_gen := all
+_APPLY_WHAT_worktree := add
+_APPLY_WHATS_worktree := add update remove
 
 
 # === SECTION: profile routing (managed) ===
@@ -279,9 +286,6 @@ define _dispatch
 	if [ -n "$$applying" ] && [ "$$applying" != "Y" ]; then \
 		printf 'ERROR: APPLY must be Y when set\n' >&2; exit 2; \
 	fi; \
-	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
-		printf 'ERROR: verb %s is read-only and does not accept APPLY\n' "$(1)" >&2; exit 2; \
-	fi; \
 	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
@@ -292,6 +296,12 @@ define _dispatch
 	case " $(_ALLOWED_WHATS_$(1)) " in \
 		*" $$what "*) ;; \
 		*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
+	esac; \
+	case " $(_APPLY_WHATS_$(1)) " in \
+		*" $$what "*) if [ -z "$$applying" ]; then \
+			printf 'ERROR: %s WHAT=%s requires APPLY=Y\n' "$(1)" "$$what" >&2; exit 2; fi ;; \
+		*) if [ -n "$$applying" ]; then \
+			printf 'ERROR: %s WHAT=%s is read-only and does not accept APPLY\n' "$(1)" "$$what" >&2; exit 2; fi ;; \
 	esac; \
 	builtin="_builtin_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
@@ -333,6 +343,13 @@ $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 
+deps: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "deps" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+_serialized_deps:
+	$(call _dispatch,deps)
+
+
 check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
 
@@ -368,6 +385,13 @@ _serialized_fix:
 	$(call _dispatch,fix)
 
 
+worktree: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "worktree" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+_serialized_worktree:
+	$(call _dispatch,worktree)
+
+
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -395,7 +419,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'deps' 'check|lock|upgrade';
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'deps' 'check|lock|upgrade';
 
 
 
@@ -443,7 +467,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'list|add|update|remove';
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'worktree' 'list|add|update|remove';
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
@@ -693,14 +717,8 @@ _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
 _builtin_status_diagnostics: _builtin_require_environment
-	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@$(UV) --version
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
-	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
-		$(UV) pip check --python "$(RUNTIME_VENV)"; \
-	fi
-	@git -C "$(PROJECT_ROOT)" status --short
+	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
+		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 
 _builtin_docs_all:
 	@set -eu; \
@@ -745,11 +763,13 @@ _builtin_release_status: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
 _builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE)" --check
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(WORKSPACE)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(WORKSPACE)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list

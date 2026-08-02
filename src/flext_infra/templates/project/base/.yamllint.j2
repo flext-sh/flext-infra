@@ -1,0 +1,19 @@
+---
+extends: default
+
+{% if ignored_paths %}
+ignore: |
+{% for path in ignored_paths %}
+  {{ path }}
+{% endfor %}
+{% endif %}
+rules:
+  line-length:
+    max: {{ line_length }}
+{% for rule, paths in rule_ignores | dictsort %}
+  {{ rule }}:
+    ignore: |
+{% for path in paths %}
+      {{ path }}
+{% endfor %}
+{% endfor %}

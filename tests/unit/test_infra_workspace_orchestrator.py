@@ -7,7 +7,7 @@ from typing import override
 
 import pytest
 
-from flext_infra import c, r, u
+from flext_infra import c, config, r, u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 from tests import m, p, t
@@ -207,7 +207,16 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         result = orchestrator.orchestrate(["flext-demo"], "test")
 
         tm.ok(result, len=1)
-        tm.that(observed_remove_keys, eq=[c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS])
+        tm.that(
+            observed_remove_keys,
+            eq=[
+                (
+                    *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+                    config.Infra.codegen.make.selector,
+                    config.Infra.codegen.make.apply_variable,
+                )
+            ],
+        )
         tm.that(observed_envs[0][c.Infra.ORCHESTRATOR_ENV_NO_COLOR], eq="1")
         tm.that(
             observed_envs[0][c.Infra.ORCHESTRATOR_ENV_PATH],

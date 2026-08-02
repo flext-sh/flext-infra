@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_tests import tm
 
 
@@ -28,9 +28,15 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         makefile_fields = self._fields(
             (templates / "project" / "base" / "Makefile.j2").read_text(encoding="utf-8")
         )
+        make_config = config.Infra.codegen.make
         tm.that(makefile_fields.get("@flext-managed"), eq="continuous")
         tm.that(
-            makefile_fields.get("@flext-regenerate"), eq="make gen WHAT=apply APPLY=Y"
+            makefile_fields.get("@flext-regenerate"),
+            eq="{{ make.regeneration_command }}",
+        )
+        tm.that(
+            make_config.regeneration_command,
+            eq=(f"make gen {make_config.apply_variable}={make_config.apply_value}"),
         )
         tm.that(makefile_fields.get("@flext-ssot", ""), has="flext-infra/")
         tm.that(makefile_fields.get("@flext-maintenance", ""), has="do not edit")

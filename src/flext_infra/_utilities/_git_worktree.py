@@ -31,6 +31,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             (c.Infra.GIT, *arguments),
             cwd=repo_root,
             input_data=input_data,
+            remove_env_keys=c.Infra.GIT_LOCAL_ENV_KEYS,
             timeout=timeout,
         )
         if result.failure:
@@ -56,7 +57,11 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bytes]:
         """Capture byte-exact stdout from one successful Git command."""
         # mro-45r9: patch transport stays binary until the human error boundary.
-        result = u.Cli.run_bytes((c.Infra.GIT, *arguments), cwd=repo_root)
+        result = u.Cli.run_bytes(
+            (c.Infra.GIT, *arguments),
+            cwd=repo_root,
+            remove_env_keys=c.Infra.GIT_LOCAL_ENV_KEYS,
+        )
         if result.failure:
             return r[bytes].fail(result.error or "git command execution failed")
         output: p.Cli.CommandBytesOutput = result.value
@@ -629,6 +634,17 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     def git_check_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
         """Forward-check one operation patch against the live source worktree."""
         return cls._git_check_patch_at(delta.source_root, delta.patch, reverse=False)
+
+    @classmethod
+    def git_check_forward_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+        """Preflight a forward-applicable or already-converged source patch."""
+        forward = cls.git_check_patch(delta)
+        if forward.success:
+            return forward
+        converged = cls._git_source_has_patch(delta)
+        if converged.success:
+            return r[bool].ok(True)
+        return r[bool].fail(forward.error or "source patch forward-check failed")
 
     @classmethod
     def git_check_isolated_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:

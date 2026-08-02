@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -92,9 +93,6 @@ class TestsCodegenMakeEnvironment:
                 initial_workspace=workspace,
             ).plan(request)
         )
-        makefile = next(
-            file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
-        )
         if attached:
             member_source = tmp_path / "member-source"
             member_source.mkdir(parents=True)
@@ -125,9 +123,19 @@ class TestsCodegenMakeEnvironment:
         else:
             project_root.mkdir(parents=True)
             test_u.Tests.initialize_git_repo(project_root)
-        tm.ok(
-            u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
-        )
+        generated_contracts = {
+            Path(c.Infra.MAKEFILE_FILENAME),
+            config.Infra.codegen.make.git_hooks.installer,
+            config.Infra.codegen.make.git_hooks.pre_commit_config,
+        }
+        for planned_file in plan.files:
+            relative_path = planned_file.path.relative_to(project_root)
+            if relative_path not in generated_contracts:
+                continue
+            planned_file.path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(
+                u.Cli.atomic_write_text_file(planned_file.path, planned_file.rendered)
+            )
         return project_root, workspace_root
 
     @pytest.mark.parametrize(
@@ -142,10 +150,10 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = _workspace_root if attached else project_root
+        runtime_root = workspace_root if attached else project_root
         runtime_bin = runtime_root / c.Infra.VENV_BIN_REL
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / c.Infra.PYTHON
@@ -177,17 +185,25 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
             "WORKSPACE_ROOT": str(tmp_path / "hostile-workspace"),
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
+            config.Infra.codegen.make.selector: "all",
         }
+        make_config = config.Infra.codegen.make
+        status = next(verb for verb in make_config.verbs if verb.name == "status")
         process = tm.ok(
             u.Cli.run_raw(
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "status",
+                    f"{make_config.selector}={status.default_what}",
                 ],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+                remove_env_keys=(
+                    *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+                    config.Infra.codegen.make.selector,
+                    config.Infra.codegen.make.apply_variable,
+                ),
             )
         )
         tm.that(
@@ -196,9 +212,7 @@ class TestsCodegenMakeEnvironment:
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
-        expected_profile = (
-            c.Infra.MakeProfile.WORKSPACE_MEMBER if attached else profile
-        )
+        expected_profile = c.Infra.MakeProfile.WORKSPACE_MEMBER if attached else profile
         tm.that(output[0], eq=f"MAKE_PROFILE={expected_profile.value}")
         tm.that(output[1], eq=f"RUNTIME_ROOT={runtime_root}")
         tm.that(output[2], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
@@ -215,9 +229,7 @@ class TestsCodegenMakeEnvironment:
             tmp_path / "detached", c.Infra.MakeProfile.STANDALONE
         )
         attached_root, _ = self._render_makefile(
-            tmp_path / "attached",
-            c.Infra.MakeProfile.STANDALONE,
-            attached=True,
+            tmp_path / "attached", c.Infra.MakeProfile.STANDALONE, attached=True
         )
 
         tm.that(
@@ -266,7 +278,15 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
         result = u.Cli.run_raw(
-            [c.Infra.MAKE, "--no-print-directory", "setup"],
+            [
+                c.Infra.MAKE,
+                "--no-print-directory",
+                "setup",
+                (
+                    f"{config.Infra.codegen.make.ci.variable}="
+                    f"{config.Infra.codegen.make.ci.value}"
+                ),
+            ],
             cwd=project_root,
             env=clean_env,
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
@@ -281,21 +301,17 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv --clear")
         bootstrap = config.Infra.codegen.make.bootstrap
-        expected_sync_flags = " ".join(
-            (
-                *(
-                    ("--all-packages",)
-                    if profile == c.Infra.MakeProfile.WORKSPACE_ROOT
-                    else ()
-                ),
-                f"--{bootstrap.lock_mode}",
-                f"--{bootstrap.extras}-extras",
-                f"--{bootstrap.dependency_groups}-groups",
-            )
-        )
-        tm.that(
-            commands[1], has=f"sync --project {project_root} {expected_sync_flags}"
-        )
+        expected_sync_flags = " ".join((
+            *(
+                ("--all-packages",)
+                if profile == c.Infra.MakeProfile.WORKSPACE_ROOT
+                else ()
+            ),
+            f"--{bootstrap.lock_mode}",
+            f"--{bootstrap.extras}-extras",
+            f"--{bootstrap.dependency_groups}-groups",
+        ))
+        tm.that(commands[1], has=f"sync --project {project_root} {expected_sync_flags}")
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
 
@@ -418,7 +434,11 @@ class TestsCodegenMakeEnvironment:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         runtime_python = project_root / ".venv" / "bin" / "python"
-        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        infra_log = tmp_path / "infra.log"
+        test_u.Tests.write_executable(
+            runtime_python,
+            f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{infra_log}'\nexit 0\n",
+        )
         uv_log = tmp_path / "uv.log"
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(
@@ -430,13 +450,17 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli",
-                    "APPLY=Y",
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                    ),
+                    f"UV={uv}",
                 ],
                 cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                env={"PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )
@@ -447,6 +471,16 @@ class TestsCodegenMakeEnvironment:
             commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
         )
         tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
+        infra_commands = infra_log.read_text(encoding="utf-8").splitlines()
+        tm.that(infra_commands, length=1)
+        tm.that(
+            infra_commands[0],
+            has=[
+                "-m flext_infra deps modernize",
+                "--rewrite-constraints",
+                "--rewrite-dependency flext-cli",
+            ],
+        )
 
     def test_dependency_upgrade_rejects_non_distribution_selector(
         self, tmp_path: Path
@@ -468,10 +502,13 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli --all",
-                    "APPLY=Y",
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                    ),
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
@@ -518,6 +555,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
+            config.Infra.codegen.make.git_hooks.installer.as_posix(),
             'git -C "$$root" submodule update --init --recursive -- "$$child_path"',
             "refs/heads/$$branch",
         ):
@@ -530,8 +568,177 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "pip install",
+            "pre-commit install",
         ):
             tm.that(makefile, lacks=forbidden)
+
+    def test_worktree_aware_hook_uses_each_linked_checkout_runtime(
+        self, tmp_path: Path
+    ) -> None:
+        """One common hook resolves two linked worktrees and fails without a venv."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        hook_policy = config.Infra.codegen.make.git_hooks
+        tracked_contracts = (
+            c.Infra.MAKEFILE_FILENAME,
+            hook_policy.installer.as_posix(),
+            hook_policy.pre_commit_config.as_posix(),
+        )
+        tm.ok(u.Infra.git_capture(project_root, ("add", *tracked_contracts)))
+        tm.ok(
+            u.Infra.git_capture(
+                project_root, ("commit", "-q", "-m", "generated hook fixture")
+            )
+        )
+        worktree_one = tmp_path / "hook-worktree-one"
+        worktree_two = tmp_path / "hook-worktree-two"
+        for branch, worktree in (
+            ("fixture-hook-one", worktree_one),
+            ("fixture-hook-two", worktree_two),
+        ):
+            tm.ok(
+                u.Infra.git_capture(
+                    project_root,
+                    ("worktree", "add", "-q", "-b", branch, str(worktree), "HEAD"),
+                )
+            )
+
+        hook_path = Path(
+            tm.ok(
+                u.Infra.git_capture(
+                    worktree_one, ("rev-parse", "--git-path", "hooks/pre-commit")
+                )
+            )
+        )
+        if not hook_path.is_absolute():
+            hook_path = worktree_one / hook_path
+        test_u.Tests.write_executable(
+            hook_path, "#!/bin/sh\nprintf '%s\\n' \"$PWD\" > legacy-hook.log\n"
+        )
+        config_template = (
+            "repos:\n"
+            "  - repo: local\n"
+            "    hooks:\n"
+            "      - id: linked-worktree-marker\n"
+            "        name: linked worktree marker\n"
+            "        entry: sh -c 'printf __MARKER__ > __MARKER__.log'\n"
+            "        language: system\n"
+            "        pass_filenames: false\n"
+            "        always_run: true\n"
+        )
+        for worktree, marker in (
+            (worktree_one, "config-a"),
+            (worktree_two, "config-b"),
+        ):
+            (worktree / hook_policy.pre_commit_config).write_text(
+                config_template.replace("__MARKER__", marker), encoding="utf-8"
+            )
+            tm.ok(
+                u.Infra.git_capture(
+                    worktree, ("add", hook_policy.pre_commit_config.as_posix())
+                )
+            )
+            tm.ok(
+                u.Infra.git_capture(
+                    worktree, ("commit", "-q", "-m", f"configure {marker}")
+                )
+            )
+        first_runtime = worktree_one / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        first_runtime.parents[1].symlink_to(Path(sys.prefix), target_is_directory=True)
+
+        installer = hook_policy.installer.as_posix()
+        tm.ok(u.Cli.run_checked(["bash", installer], cwd=worktree_one))
+        installed_once = hook_path.read_text(encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["bash", installer], cwd=worktree_one))
+        tm.that(hook_path.read_text(encoding="utf-8"), eq=installed_once)
+        tm.that((hook_path.with_name("pre-commit.legacy")).exists(), eq=True)
+
+        tm.ok(u.Cli.run_checked([str(hook_path)], cwd=worktree_one))
+        tm.that((worktree_one / "config-a.log").read_text(), eq="config-a")
+        tm.that((worktree_one / "config-b.log").exists(), eq=False)
+        tm.that(
+            (worktree_one / "legacy-hook.log").read_text().strip(), eq=str(worktree_one)
+        )
+        missing_environment = tm.ok(u.Cli.run_raw([str(hook_path)], cwd=worktree_two))
+        tm.that(missing_environment.exit_code, ne=0)
+        tm.that(
+            missing_environment.stdout + missing_environment.stderr,
+            has=[str(worktree_two), f'make -C "{worktree_two}" setup'],
+        )
+
+        second_runtime = worktree_two / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        second_runtime.parents[1].symlink_to(Path(sys.prefix), target_is_directory=True)
+        tm.ok(u.Cli.run_checked([str(hook_path)], cwd=worktree_two))
+        tm.that((worktree_two / "config-b.log").read_text(), eq="config-b")
+        tm.that((worktree_two / "config-a.log").exists(), eq=False)
+        tm.that(
+            (worktree_two / "legacy-hook.log").read_text().strip(), eq=str(worktree_two)
+        )
+        tm.that(installed_once, lacks=[str(worktree_one), str(worktree_two)])
+        tm.that(installed_once, lacks="INSTALL_PYTHON=")
+
+    def test_attached_member_hook_uses_parent_runtime_and_member_config(
+        self, tmp_path: Path
+    ) -> None:
+        """Resolve a real submodule's runtime upward without changing its config."""
+        member_root, superproject_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE, attached=True
+        )
+        hook_policy = config.Infra.codegen.make.git_hooks
+        (member_root / hook_policy.pre_commit_config).write_text(
+            (
+                "repos:\n"
+                "  - repo: local\n"
+                "    hooks:\n"
+                "      - id: attached-member-marker\n"
+                "        name: attached member marker\n"
+                "        entry: sh -c 'printf member > member-config.log'\n"
+                "        language: system\n"
+                "        pass_filenames: false\n"
+                "        always_run: true\n"
+            ),
+            encoding="utf-8",
+        )
+        tm.ok(
+            u.Infra.git_capture(
+                member_root,
+                (
+                    "add",
+                    hook_policy.installer.as_posix(),
+                    hook_policy.pre_commit_config.as_posix(),
+                ),
+            )
+        )
+        tm.ok(
+            u.Infra.git_capture(
+                member_root, ("commit", "-q", "-m", "configure attached member hook")
+            )
+        )
+        parent_runtime = superproject_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        parent_runtime.parents[1].symlink_to(Path(sys.prefix), target_is_directory=True)
+        child_runtime = member_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+        tm.that(child_runtime.exists(), eq=False)
+
+        tm.ok(
+            u.Cli.run_checked(
+                ["bash", hook_policy.installer.as_posix()], cwd=member_root
+            )
+        )
+        hook_path = Path(
+            tm.ok(
+                u.Infra.git_capture(
+                    member_root, ("rev-parse", "--git-path", "hooks/pre-commit")
+                )
+            )
+        )
+        if not hook_path.is_absolute():
+            hook_path = member_root / hook_path
+        tm.ok(u.Cli.run_checked([str(hook_path)], cwd=member_root))
+
+        tm.that((member_root / "member-config.log").read_text(), eq="member")
+        tm.that((superproject_root / "member-config.log").exists(), eq=False)
+        tm.that(hook_path.read_text(encoding="utf-8"), lacks=str(superproject_root))
 
     def test_generated_dependency_upgrade_projects_lock_floors(
         self, tmp_path: Path

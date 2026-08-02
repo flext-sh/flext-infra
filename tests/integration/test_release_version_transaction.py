@@ -59,16 +59,13 @@ class TestsReleaseVersionTransaction:
         tm.that(first_exit, eq=0)
         tm.that(first_bytes, ne=baseline_bytes)
         tm.that(
-            first_bytes.decode(),
-            has=f'version = "{c.Tests.RELEASE_VERSION_TARGET}"',
+            first_bytes.decode(), has=f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
         )
         tm.that(second_exit, eq=0)
         tm.that(pyproject.read_bytes(), eq=first_bytes)
         tm.that(
             tm.ok(
-                u.Infra.git_capture_bytes(
-                    workspace, ("status", "--porcelain=v1", "-z")
-                )
+                u.Infra.git_capture_bytes(workspace, ("status", "--porcelain=v1", "-z"))
             ),
             eq=first_status,
         )

@@ -6,7 +6,6 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from threading import Event, Lock
 
 import pytest
 from filelock import FileLock, Timeout
@@ -17,12 +16,12 @@ from flext_infra.workspace.make_serialization import FlextInfraMakeSerialization
 from flext_tests import tm
 from tests import u as test_u
 
-# Derived from the handler SSOT: a serialized mutation runs the verb's
-# apply selector, then re-checks itself with the read-only default.
+# Derived from the handler SSOT: every mutable selector runs its tool exactly once.
 _MUTATION_CASES = tuple(
-    (verb.name, verb.apply_what, verb.default_what)
+    (verb.name, mutation_what)
     for verb in config.Infra.codegen.make.verbs
-    if verb.name in config.Infra.codegen.make.serialization.mutation_verbs
+    if verb.name in config.Infra.codegen.make.mutable_verbs
+    for mutation_what in (*verb.apply_whats, *verb.optional_apply_whats)
 )
 
 
@@ -41,12 +40,10 @@ class TestsFlextInfraMakeSerialization:
         tm.that(serialization.timeout_seconds, gt=0)
         tm.that(serialization.verbs, empty=False)
         tm.that(set(serialization.verbs).issubset(declared_verbs), where=bool)
-        # Every serialized mutation verb is itself serialized and apply-guarded,
-        # so its apply and read-only selectors both come from the handler SSOT.
-        for verb_name, mutation_what, fixed_point_what in _MUTATION_CASES:
+        # Every serialized mutation selector comes from the handler SSOT.
+        for verb_name, mutation_what in _MUTATION_CASES:
             tm.that(verb_name in serialization.verbs, where=bool)
             tm.that(mutation_what, empty=False)
-            tm.that(fixed_point_what, empty=False)
         for lock_path in lock_paths:
             tm.that(not lock_path.is_absolute(), where=bool)
             tm.that(lock_path in serialization.snapshot_excludes, where=bool)
@@ -86,143 +83,6 @@ class TestsFlextInfraMakeSerialization:
         with pytest.raises(ValueError, match="lock paths must be repository-relative"):
             m.Infra.MakeSerializationSpec.model_validate(payload)
 
-    @pytest.mark.parametrize(
-        "contender_is_mutation", [False, True], ids=("check", "mutation")
-    )
-    def test_complete_operation_single_flight(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        *,
-        contender_is_mutation: bool,
-    ) -> None:
-        """Checks and mutations wait through both mutation phases."""
-        make_config = config.Infra.codegen.make
-        serialization = make_config.serialization
-        mutation_verb, mutation_what, fixed_point_what = _MUTATION_CASES[0]
-        check_verb = next(verb for verb in serialization.verbs if verb != mutation_verb)
-        contender_verb = mutation_verb if contender_is_mutation else check_verb
-        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
-        makefile.write_text(
-            f".PHONY: _serialized_{mutation_verb} _serialized_{check_verb}\n",
-            encoding="utf-8",
-        )
-        test_u.Tests.initialize_git_repo(tmp_path)
-        mutation_entered = Event()
-        mutation_release = Event()
-        fixed_point_entered = Event()
-        fixed_point_release = Event()
-        contender_started = Event()
-        contender_entered = Event()
-        child_lock_acquired = Event()
-        primary_order_lock = Lock()
-        primary_count = 0
-        event_timeout_seconds = 2
-        mutation_lock_path = (tmp_path / serialization.lock_path).resolve()
-
-        def controlled_run_make(
-            _service_type: type[FlextInfraMakeSerializationService],
-            _checkout: Path,
-            command: t.StrSequence,
-            *,
-            failure_context: str,
-        ) -> p.Result[m.Infra.ProcessExit]:
-            nonlocal primary_count
-            tm.that(failure_context, empty=False)
-            if (
-                f"_serialized_{mutation_verb}" in command
-                and f"{make_config.selector}={fixed_point_what}" not in command
-            ):
-                with primary_order_lock:
-                    primary_count += 1
-                    primary_index = primary_count
-                if primary_index == 1:
-
-                    def acquire_child_lock() -> p.Result[bool]:
-                        child_lock_acquired.set()
-                        return r[bool].ok(True)
-
-                    tm.ok(
-                        u.Infra.serialization_lock_execute(
-                            (mutation_lock_path,),
-                            0,
-                            acquire_child_lock,
-                            timeout_failure=lambda _path, _timeout: r[bool].fail(
-                                "child mutation lock remained held by its parent"
-                            ),
-                            acquisition_failure=lambda error: r[bool].fail(error),
-                        )
-                    )
-                    mutation_entered.set()
-                    tm.that(
-                        mutation_release.wait(timeout=event_timeout_seconds), where=bool
-                    )
-                else:
-                    contender_entered.set()
-            elif (
-                f"_serialized_{mutation_verb}" in command
-                and f"{make_config.selector}={fixed_point_what}" in command
-            ):
-                fixed_point_entered.set()
-                tm.that(
-                    fixed_point_release.wait(timeout=event_timeout_seconds), where=bool
-                )
-            elif f"_serialized_{check_verb}" in command:
-                contender_entered.set()
-            return r[m.Infra.ProcessExit].ok(
-                m.Infra.ProcessExit(
-                    exit_code=int(c.Infra.ScriptExitCode.PASS),
-                    raw_exit_code=int(c.Infra.ScriptExitCode.PASS),
-                    classification="success",
-                )
-            )
-
-        monkeypatch.setattr(
-            FlextInfraMakeSerializationService,
-            "_run_make",
-            classmethod(controlled_run_make),
-        )
-        mutation_service = FlextInfraMakeSerializationService.model_validate({
-            "workspace_root": tmp_path,
-            "verb": mutation_verb,
-            "makefile": makefile,
-            "selector_value": mutation_what,
-            "apply_token": make_config.apply_value,
-        })
-        contender_service = FlextInfraMakeSerializationService.model_validate({
-            "workspace_root": tmp_path,
-            "verb": contender_verb,
-            "makefile": makefile,
-        })
-
-        def execute_contender() -> p.Result[m.Infra.ProcessExit]:
-            contender_started.set()
-            result: p.Result[m.Infra.ProcessExit] = contender_service.execute()
-            return result
-
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            mutation_future = executor.submit(mutation_service.execute)
-            tm.that(mutation_entered.wait(timeout=event_timeout_seconds), where=bool)
-            tm.that(child_lock_acquired.wait(timeout=event_timeout_seconds), where=bool)
-            contender_future = executor.submit(execute_contender)
-            tm.that(contender_started.wait(timeout=event_timeout_seconds), where=bool)
-            try:
-                tm.that(contender_entered.wait(timeout=0.5), eq=False)
-                mutation_release.set()
-                tm.that(
-                    fixed_point_entered.wait(timeout=event_timeout_seconds), where=bool
-                )
-                tm.that(contender_entered.wait(timeout=0.5), eq=False)
-            finally:
-                mutation_release.set()
-                fixed_point_release.set()
-            mutation_result = mutation_future.result(timeout=event_timeout_seconds)
-            contender_result = contender_future.result(timeout=event_timeout_seconds)
-
-        tm.ok(mutation_result)
-        tm.ok(contender_result)
-        tm.that(contender_entered.is_set(), where=bool)
-
     def test_operation_oserror_is_not_classified_as_lock_acquisition(
         self, tmp_path: Path
     ) -> None:
@@ -257,21 +117,37 @@ class TestsFlextInfraMakeSerialization:
             )
         tm.that(acquisition_failures, eq=[])
 
-    def test_mutation_verbs_must_be_serialized(self) -> None:
+    def test_mutable_verbs_must_be_serialized(self) -> None:
         """A mutating verb outside the serialized set is rejected."""
-        serialization = config.Infra.codegen.make.serialization
-        payload = serialization.model_dump(mode="python")
-        unserialized = next(
-            verb.name
-            for verb in config.Infra.codegen.make.verbs
-            if verb.name not in serialization.verbs
+        make_config = config.Infra.codegen.make
+        payload = make_config.model_dump(mode="python", exclude_computed_fields=True)
+        mutable_verb = make_config.mutable_verbs[0]
+        payload["serialization"] = make_config.serialization.model_copy(
+            update={
+                "verbs": tuple(
+                    verb
+                    for verb in make_config.serialization.verbs
+                    if verb != mutable_verb
+                )
+            }
         )
-        payload["mutation_verbs"] = [*serialization.mutation_verbs, unserialized]
 
-        with pytest.raises(
-            ValueError, match="make serialization mutation verbs are not serialized"
-        ):
-            m.Infra.MakeSerializationSpec.model_validate(payload)
+        with pytest.raises(ValueError, match="mutable public verbs must be serialized"):
+            m.Infra.MakeSpec.model_validate(payload)
+
+    def test_make_workflow_commands_serialize_at_json_boundary(self) -> None:
+        """Serialize the immutable computed command map in public CLI results."""
+        make_config = config.Infra.codegen.make
+
+        payload = make_config.model_dump(mode="json")
+        serialized = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            payload["workflow_commands"]
+        )
+
+        tm.that(tuple(serialized), eq=tuple(make_config.workflow_commands))
+        for context, commands in make_config.workflow_commands.items():
+            actual = t.Cli.JSON_LIST_ADAPTER.validate_python(serialized[context])
+            tm.that(tuple(actual), eq=commands)
 
     def test_process_exit_classifies_timeout_and_signal(self) -> None:
         """Process outcomes retain standard timeout and signal semantics."""
@@ -680,17 +556,11 @@ class TestsFlextInfraMakeSerialization:
             ],
         )
 
-    @pytest.mark.parametrize(
-        ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES
-    )
-    def test_declared_mutation_runs_fixed_point_without_rejecting_own_output(
-        self,
-        tmp_path: Path,
-        mutation_verb: str,
-        mutation_what: str,
-        fixed_point_what: str,
+    @pytest.mark.parametrize(("mutation_verb", "mutation_what"), _MUTATION_CASES)
+    def test_declared_mutation_runs_tool_once_and_owns_its_output(
+        self, tmp_path: Path, mutation_verb: str, mutation_what: str
     ) -> None:
-        """An authorized generator apply owns its projection and proves stability."""
+        """Each authorized mutable selector executes once and owns its result."""
         make_config = config.Infra.codegen.make
         projection = tmp_path / "generated.txt"
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
@@ -698,55 +568,32 @@ class TestsFlextInfraMakeSerialization:
             (
                 f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
-                f"printf 'generated\\n' > {projection}; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
-                f'[ "$({make_config.apply_variable})" != '
-                f'"{make_config.apply_value}" ] || exit 9; '
-                "else exit 8; fi\n"
+                f'\t@[ "$({make_config.selector})" = "{mutation_what}" ]\n'
+                f'\t@[ "$({make_config.apply_variable})" = '
+                f'"{make_config.apply_value}" ]\n'
+                f"\t@printf 'generated\\n' >> {projection}\n"
             ),
             encoding="utf-8",
         )
         test_u.Tests.initialize_git_repo(tmp_path)
 
-        process = tm.ok(
-            u.Cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    c.Infra.PACKAGE_IMPORT_NAME,
-                    c.Infra.CLI_GROUP_WORKSPACE,
-                    "serialize-make",
-                    "--workspace",
-                    str(tmp_path),
-                    "--makefile",
-                    str(makefile),
-                    "--verb",
-                    mutation_verb,
-                    "--selector-value",
-                    mutation_what,
-                    "--apply-token",
-                    make_config.apply_value,
-                ],
-                cwd=tmp_path,
-            )
-        )
+        service = FlextInfraMakeSerializationService.model_validate({
+            "workspace_root": tmp_path,
+            "verb": mutation_verb,
+            "makefile": makefile,
+            "selector_value": mutation_what,
+            "apply_token": make_config.apply_value,
+        })
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.ok(service.execute())
         tm.that(projection.read_text(encoding="utf-8"), eq="generated\n")
 
-    @pytest.mark.parametrize(
-        ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES
-    )
-    def test_transaction_owned_mutation_avoids_nested_lock_and_locks_fixed_point(
-        self,
-        tmp_path: Path,
-        mutation_verb: str,
-        mutation_what: str,
-        fixed_point_what: str,
+    def test_transaction_owned_mutation_avoids_nested_lock_and_runs_tool_once(
+        self, tmp_path: Path
     ) -> None:
-        """The child owns apply serialization before Make locks the fixed point."""
+        """The child owns mutation while Make single-flights one tool execution."""
         make_config = config.Infra.codegen.make
+        mutation_verb, mutation_what = _MUTATION_CASES[0]
         worker = tmp_path / "worker.py"
         worker.write_text(
             (
@@ -771,7 +618,7 @@ class TestsFlextInfraMakeSerialization:
             ),
             encoding="utf-8",
         )
-        state = tmp_path / ".reports" / "serialization-fixed-point"
+        state = tmp_path / ".reports" / "serialization-tool-once"
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(
             (
@@ -779,8 +626,6 @@ class TestsFlextInfraMakeSerialization:
                 f"_serialized_{mutation_verb}:\n"
                 f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
                 f"{sys.executable} {worker} {state} mutation; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
-                f"{sys.executable} {worker} {state} fixed-point; "
                 "else exit 8; "
                 "fi\n"
             ),
@@ -833,29 +678,11 @@ class TestsFlextInfraMakeSerialization:
                     mutation_lock_available = False
                 tm.that(mutation_lock_available, where=bool)
                 (state / "mutation-release").write_text("", encoding="utf-8")
-
-                deadline = time.monotonic() + self._process_start_timeout_seconds
-                while (
-                    not (state / "fixed-point-started").exists()
-                    and not mutation_future.done()
-                    and time.monotonic() < deadline
-                ):
-                    time.sleep(0.01)
-                tm.that((state / "fixed-point-started").exists(), where=bool)
-                fixed_point_lock_held = False
-                try:
-                    with FileLock(lock_path, timeout=0):
-                        pass
-                except Timeout:
-                    fixed_point_lock_held = True
-                tm.that(fixed_point_lock_held, where=bool)
-                (state / "fixed-point-release").write_text("", encoding="utf-8")
                 mutation = tm.ok(
                     mutation_future.result(timeout=self._process_start_timeout_seconds)
                 )
             finally:
                 (state / "mutation-release").touch()
-                (state / "fixed-point-release").touch()
                 mutation_future.cancel()
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
@@ -865,86 +692,5 @@ class TestsFlextInfraMakeSerialization:
             pass
         tm.that(
             (state / "events").read_text(encoding="utf-8").splitlines(),
-            eq=[
-                "mutation-start",
-                "mutation-end",
-                "fixed-point-start",
-                "fixed-point-end",
-            ],
-        )
-
-    @pytest.mark.parametrize(
-        ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES
-    )
-    def test_transaction_to_fixed_point_lock_gap_fails_closed_on_drift(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        mutation_verb: str,
-        mutation_what: str,
-        fixed_point_what: str,
-    ) -> None:
-        """Reject drift after transaction apply and before fixed-point lock entry."""
-        make_config = config.Infra.codegen.make
-        projection = tmp_path / "projection.txt"
-        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
-        makefile.write_text(
-            (
-                f".PHONY: _serialized_{mutation_verb}\n"
-                f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
-                f"printf 'generated\\n' > {projection}; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
-                ":; else exit 8; fi\n"
-            ),
-            encoding="utf-8",
-        )
-        test_u.Tests.initialize_git_repo(tmp_path)
-        lock_path = tmp_path / make_config.serialization.lock_path
-        post_transaction_captured = Event()
-        original_fingerprint = u.Infra.workspace_fingerprint
-        fingerprint_calls = 0
-
-        def observed_fingerprint(
-            checkout: Path, *, excluded_paths: t.SequenceOf[Path] = ()
-        ) -> p.Result[m.Infra.WorkspaceFingerprint]:
-            nonlocal fingerprint_calls
-            result = original_fingerprint(checkout, excluded_paths=excluded_paths)
-            fingerprint_calls += 1
-            if fingerprint_calls == 1:
-                post_transaction_captured.set()
-            return result
-
-        monkeypatch.setattr(u.Infra, "workspace_fingerprint", observed_fingerprint)
-        service = FlextInfraMakeSerializationService.model_validate({
-            "workspace_root": tmp_path,
-            "verb": mutation_verb,
-            "makefile": makefile,
-            "selector_value": mutation_what,
-            "apply_token": make_config.apply_value,
-        })
-
-        incumbent_lock = FileLock(
-            lock_path, timeout=0, fallback_to_soft=False, preserve_lock_file=True
-        )
-        incumbent_lock.acquire()
-        try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                execution_future = executor.submit(service.execute)
-                try:
-                    tm.that(post_transaction_captured.wait(timeout=8), where=bool)
-                    (tmp_path / "concurrent.txt").write_text(
-                        "drift\n", encoding="utf-8"
-                    )
-                    incumbent_lock.release()
-                    result = execution_future.result(timeout=8)
-                finally:
-                    incumbent_lock.release()
-                    execution_future.cancel()
-        finally:
-            incumbent_lock.release()
-
-        tm.fail(
-            result,
-            has="workspace changed between transaction apply and fixed-point lock",
+            eq=["mutation-start", "mutation-end"],
         )

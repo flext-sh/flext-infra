@@ -23,7 +23,13 @@ repository:
     - name: {{ verb.name | tojson }}
       default_what: {{ verb.default_what | tojson }}
       whats: {{ verb.whats | tojson }}
-      apply_guarded: {{ verb.apply_guarded | tojson }}
+{%- if verb.apply_whats %}
+      apply_what: {{ verb.apply_what | tojson }}
+      apply_whats: {{ verb.apply_whats | tojson }}
+{%- endif %}
+{%- if verb.optional_apply_whats %}
+      optional_apply_whats: {{ verb.optional_apply_whats | tojson }}
+{%- endif %}
 {%- endfor %}
 {%- endif %}
 {%- if workspace_repository.script_dispatch %}
@@ -74,7 +80,13 @@ members:
       - name: {{ verb.name | tojson }}
         default_what: {{ verb.default_what | tojson }}
         whats: {{ verb.whats | tojson }}
-        apply_guarded: {{ verb.apply_guarded | tojson }}
+{%- if verb.apply_whats %}
+        apply_what: {{ verb.apply_what | tojson }}
+        apply_whats: {{ verb.apply_whats | tojson }}
+{%- endif %}
+{%- if verb.optional_apply_whats %}
+        optional_apply_whats: {{ verb.optional_apply_whats | tojson }}
+{%- endif %}
 {%- endfor %}
 {%- endif %}
 {%- if repository.script_dispatch %}

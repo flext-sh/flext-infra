@@ -206,6 +206,10 @@ class FlextInfraConfigModels:
             "dolt/*",
             "gh-readonly-queue/*",
         )
+        promotion_branch: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Branch receiving the validated release promotion"),
+        ]
         technical_branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -228,11 +232,17 @@ class FlextInfraConfigModels:
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
-            """Keep the global exclusion set exact and non-extensible."""
+            """Keep exclusions exact and promotion inside the governed set."""
             if self.technical_branch_patterns != self.REQUIRED_TECHNICAL_PATTERNS:
                 msg = (
                     "technical branch patterns must equal the canonical GitHub/Dolt "
                     f"set: {', '.join(self.REQUIRED_TECHNICAL_PATTERNS)}"
+                )
+                raise ValueError(msg)
+            if self.promotion_branch not in self.governed_branch_patterns:
+                msg = (
+                    "promotion branch must be included in governed branch patterns: "
+                    f"{self.promotion_branch}"
                 )
                 raise ValueError(msg)
             return self
@@ -254,12 +264,52 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class YamllintPolicySpec(_ConfigContract):
+        """Canonical YAML lint policy and per-distribution syntax deltas."""
+
+        ignored_paths: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Repository-relative paths excluded from YAML lint"),
+        ] = ()
+        rule_ignores: Annotated[
+            Mapping[t.NonEmptyStr, tuple[t.NonEmptyStr, ...]],
+            m.Field(description="Global rule-specific ignored paths"),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        rule_ignore_overrides: Annotated[
+            Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, tuple[t.NonEmptyStr, ...]]],
+            m.Field(
+                description=(
+                    "Per-distribution rule-specific path deltas required by real "
+                    "YAML syntax"
+                )
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+
+    class YamllintRenderSpec(_ConfigContract):
+        """Resolved typed input consumed by the generated YAML lint template."""
+
+        line_length: Annotated[
+            int, m.Field(gt=0, description="Tooling-owned maximum YAML line length")
+        ]
+        ignored_paths: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Repository-relative paths excluded from YAML lint"),
+        ] = ()
+        rule_ignores: Annotated[
+            Mapping[t.NonEmptyStr, tuple[t.NonEmptyStr, ...]],
+            m.Field(description="Effective rule-specific ignored paths"),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
+        ]
+        promotion_branch: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Config-owned validated release promotion branch"),
         ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
@@ -304,6 +354,17 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
+        ]
+
+    class GitHookInstallerRenderSpec(_ConfigContract):
+        """Minimal typed input consumed by the universal hook installer."""
+
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical generated hook command contract"),
+        ]
+        beads_enabled: Annotated[
+            bool, m.Field(description="Whether the receiving repo owns Beads hooks")
         ]
 
     class DistroDockerRenderSpec(_ConfigContract):
@@ -352,7 +413,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="uv environment ownership")
         ]
         setup_scope: Annotated[
-            t.NonEmptyStr, m.Field(description="setup orchestration scope")
+            t.Infra.SetupScope, m.Field(description="setup orchestration scope")
         ]
         execution_scope: Annotated[
             t.NonEmptyStr, m.Field(description="check/test runtime scope")
@@ -372,21 +433,31 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Complete ordered handler selectors"),
         ]
-        apply_guarded: Annotated[
-            bool, m.Field(description="Whether mutation requires APPLY=Y")
-        ] = False
         apply_what: Annotated[
             t.NonEmptyStr,
             m.Field(
                 default="all",
                 description=(
-                    "Selector an apply-guarded verb resolves to when APPLY is "
+                    "Selector an apply-requiring verb resolves to when APPLY is "
                     "set and no explicit WHAT is given. Without it, "
                     "a mutating workflow step could silently retain its "
                     "read-only default selector"
                 ),
             ),
         ]
+        apply_whats: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Selectors that require the configured apply token",
+            ),
+        ] = ()
+        optional_apply_whats: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(), description="Selectors accepting either check or apply mode"
+            ),
+        ] = ()
 
         @u.model_validator(mode="after")
         def _validate_whats(self) -> Self:
@@ -394,8 +465,32 @@ class FlextInfraConfigModels:
             if len(set(self.whats)) != len(self.whats):
                 msg = f"make verb {self.name} handler selectors must be unique"
                 raise ValueError(msg)
+            if len(set(self.apply_whats)) != len(self.apply_whats):
+                msg = f"make verb {self.name} apply selectors must be unique"
+                raise ValueError(msg)
+            if len(set(self.optional_apply_whats)) != len(self.optional_apply_whats):
+                msg = f"make verb {self.name} optional apply selectors must be unique"
+                raise ValueError(msg)
+            apply_selectors = set(self.apply_whats)
+            optional_apply_selectors = set(self.optional_apply_whats)
+            overlap = apply_selectors & optional_apply_selectors
+            if overlap:
+                msg = (
+                    f"make verb {self.name} required and optional apply selectors "
+                    f"overlap: {', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            unknown_apply = (apply_selectors | optional_apply_selectors) - set(
+                self.whats
+            )
+            if unknown_apply:
+                msg = (
+                    f"make verb {self.name} apply selectors have no handler: "
+                    f"{', '.join(sorted(unknown_apply))}"
+                )
+                raise ValueError(msg)
             required = {self.default_what}
-            if self.apply_guarded:
+            if self.apply_whats:
                 required.add(self.apply_what)
             missing = required - set(self.whats)
             if missing:
@@ -404,16 +499,18 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(missing))}"
                 )
                 raise ValueError(msg)
+            if self.apply_whats and self.apply_what not in self.apply_whats:
+                msg = (
+                    f"make verb {self.name} apply default must be one of its "
+                    "apply selectors"
+                )
+                raise ValueError(msg)
             return self
 
     class MakeWorkflowStepSpec(_ConfigContract):
-        """One canonical workflow step and its explicit mutation intent."""
+        """One canonical workflow verb and its ordered execution contexts."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
-        apply: Annotated[
-            bool,
-            m.Field(description="Whether the step supplies the configured apply token"),
-        ] = False
         contexts: Annotated[
             tuple[Literal["local", "ci", "pre_commit"], ...],
             m.Field(
@@ -506,15 +603,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
-        mutation_verbs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Mutating public verbs serialized once under the checkout lock; "
-                    "validation is owned by later workflow steps"
-                )
-            ),
-        ]
         snapshot_excludes: Annotated[
             tuple[Path, ...],
             m.Field(
@@ -576,16 +664,6 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
                 )
                 raise ValueError(msg)
-            invalid = set(self.mutation_verbs) - set(self.verbs)
-            if invalid:
-                msg = (
-                    "make serialization mutation verbs are not serialized: "
-                    f"{', '.join(sorted(invalid))}"
-                )
-                raise ValueError(msg)
-            if len(set(self.mutation_verbs)) != len(self.mutation_verbs):
-                msg = "make serialization mutation verbs must be unique"
-                raise ValueError(msg)
             return self
 
     class MakeBootstrapSpec(_ConfigContract):
@@ -607,13 +685,28 @@ class FlextInfraConfigModels:
             m.Field(description="Project optional-dependency selection policy"),
         ]
 
+    class MakeGitHooksSpec(_ConfigContract):
+        """Repository-relative generated Git-hook provisioning surface."""
+
+        installer: Annotated[
+            Path, m.Field(description="Canonical generated Git-hook installer")
+        ]
+        pre_commit_config: Annotated[
+            Path, m.Field(description="Canonical generated pre-commit configuration")
+        ]
+
+        @m.field_validator("installer", "pre_commit_config")
+        @classmethod
+        def _validate_repository_relative_path(cls, value: Path) -> Path:
+            """Keep hook-owned artifacts within their receiving repository."""
+            if value.is_absolute() or not value.parts or ".." in value.parts:
+                msg = "make git-hook paths must be repository-relative"
+                raise ValueError(msg)
+            return value
+
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
-        mutable_actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
-        ]
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
         ]
@@ -651,6 +744,10 @@ class FlextInfraConfigModels:
         bootstrap: Annotated[
             FlextInfraConfigModels.MakeBootstrapSpec,
             m.Field(description="Pre-conform project environment contract"),
+        ]
+        git_hooks: Annotated[
+            FlextInfraConfigModels.MakeGitHooksSpec,
+            m.Field(description="Generated Git-hook installation contract"),
         ]
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
@@ -691,6 +788,17 @@ class FlextInfraConfigModels:
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
                 raise ValueError(msg)
+            gen_verbs = tuple(verb for verb in self.verbs if verb.name == "gen")
+            if (
+                len(gen_verbs) != 1
+                or not gen_verbs[0].apply_whats
+                or gen_verbs[0].apply_what not in gen_verbs[0].apply_whats
+            ):
+                msg = (
+                    "make must declare exactly one apply-requiring gen verb with "
+                    "a valid apply default"
+                )
+                raise ValueError(msg)
             serialized = set(self.serialization.verbs)
             invalid = serialized - declared
             if invalid:
@@ -713,31 +821,16 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(unknown_workflow))}"
                 )
                 raise ValueError(msg)
-            verb_specs = {verb.name: verb for verb in self.verbs}
-            invalid_apply = [
-                step.verb
-                for step in self.workflow
-                if step.apply != verb_specs[step.verb].apply_guarded
-            ]
-            if invalid_apply:
+            unserialized_mutations = set(self.mutable_verbs) - serialized
+            if unserialized_mutations:
                 msg = (
-                    "make workflow apply intent must match verb contract: "
-                    f"{', '.join(sorted(invalid_apply))}"
+                    "mutable public verbs must be serialized: "
+                    f"{', '.join(sorted(unserialized_mutations))}"
                 )
-                raise ValueError(msg)
-            mutation_verbs = set(self.serialization.mutation_verbs)
-            guarded_verbs = {verb.name for verb in self.verbs if verb.apply_guarded}
-            if mutation_verbs != guarded_verbs:
-                msg = "serialized mutation verbs must equal apply-guarded public verbs"
                 raise ValueError(msg)
             docs_verb = next((verb for verb in self.verbs if verb.name == "docs"), None)
             if docs_verb is None:
                 msg = "make docs verb must be declared"
-                raise ValueError(msg)
-            docs_actions = set(docs_verb.whats)
-            invalid_mutable = set(self.docs.mutable_actions) - docs_actions
-            if invalid_mutable:
-                msg = "make docs mutable_actions must be declared in actions"
                 raise ValueError(msg)
             if (
                 self.docs.reports_dir.is_absolute()
@@ -746,6 +839,46 @@ class FlextInfraConfigModels:
                 msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
+
+        @m.computed_field()
+        @property
+        def regeneration_command(self) -> str:
+            """Canonical command every continuously managed artifact publishes."""
+            gen = next(verb for verb in self.verbs if verb.name == "gen")
+            return f"make {gen.name} {self.apply_variable}={self.apply_value}"
+
+        @m.computed_field()
+        @property
+        def mutable_verbs(self) -> tuple[str, ...]:
+            """Ordered verbs owning required or optional apply selectors."""
+            return tuple(
+                verb.name
+                for verb in self.verbs
+                if verb.apply_whats or verb.optional_apply_whats
+            )
+
+        @m.computed_field()
+        @property
+        def workflow_commands(self) -> Mapping[str, tuple[str, ...]]:
+            """Commands by execution context, derived from the verb mutation SSOT."""
+            verb_specs = {verb.name: verb for verb in self.verbs}
+            contexts = ("local", "ci", "pre_commit")
+            return MappingProxyType({
+                context: tuple(
+                    f"make {step.verb}"
+                    f"{' ' + self.apply_variable + '=' + self.apply_value if verb_specs[step.verb].apply_whats else ''}"
+                    for step in self.workflow
+                    if context in step.contexts
+                )
+                for context in contexts
+            })
+
+        @u.field_serializer("workflow_commands", when_used="json")
+        def _serialize_workflow_commands(
+            self, value: Mapping[str, tuple[str, ...]]
+        ) -> t.MappingKV[str, t.StrTuple]:
+            """Expose the immutable computed mapping at the JSON boundary."""
+            return dict(value)
 
         @m.computed_field()
         @property
@@ -1156,6 +1289,10 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+        setup_scope: Annotated[
+            t.Infra.SetupScope,
+            m.Field(description="Config-owned setup orchestration scope"),
+        ]
         workspace_members: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace member paths")
         ] = ()
@@ -1225,12 +1362,14 @@ class FlextInfraConfigModels:
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
-        pytest_process_timeout_seconds: Annotated[
-            int, m.Field(gt=0, description="Pytest process wall-time boundary")
-        ]
 
     class BeadsConfigRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
+
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical generated maintenance command contract"),
+        ]
 
         issue_prefix: Annotated[
             t.NonEmptyStr,
@@ -1407,6 +1546,10 @@ class FlextInfraConfigModels:
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
+        ]
+        setup_scope: Annotated[
+            t.Infra.SetupScope,
+            m.Field(description="Config-owned setup orchestration scope"),
         ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr,
@@ -1791,6 +1934,10 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        yamllint: Annotated[
+            FlextInfraConfigModels.YamllintPolicySpec,
+            m.Field(description="Canonical strict YAML lint policy"),
+        ]
         sgconfig: Annotated[
             FlextInfraConfigModels.SgconfigRenderSpec,
             m.Field(description="Canonical ast-grep project contract for every repo"),
@@ -1988,6 +2135,18 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_github_artifact_ownership(self) -> Self:
             """Require one full-managed conform owner for every GitHub template."""
+            colliding_providers = tuple(
+                provider.name
+                for provider in self.providers
+                if provider.branch == self.branch_policy.promotion_branch
+            )
+            if colliding_providers:
+                msg = (
+                    "provider integration branches must differ from the promotion "
+                    f"branch {self.branch_policy.promotion_branch}: "
+                    f"{', '.join(colliding_providers)}"
+                )
+                raise ValueError(msg)
             github_templates = tuple(
                 Path(entry.destination)
                 for entry in self.templates.entries

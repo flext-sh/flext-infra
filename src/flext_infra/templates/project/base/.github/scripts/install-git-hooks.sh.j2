@@ -1,34 +1,23 @@
 #!/usr/bin/env bash
 # Owner-Skill: .agents/skills/scripts-validation/SKILL.md
-# install-git-hooks.sh — Install the Beads git hooks at the workspace root and
-# apply the FLEXT agent-trailer guard.
+# install-git-hooks.sh — Install FLEXT's worktree-aware pre-commit hook and,
+# for repositories that own a Beads ledger, preserve the chained Beads hooks.
 #
-# Canonical owner of git-hook provisioning for this workspace. Reproducible and
-# idempotent: safe to run repeatedly and after every `bd hooks install`.
-#
-# Why the guard:
-#   FLEXT law (R5 / ai-hub agent-law §12) forbids agent attribution trailers by
-#   default. The Beads `prepare-commit-msg` shim's sole job is adding those
-#   trailers, so it must be gated behind an explicit opt-in:
-#       BD_ALLOW_AGENT_COMMIT_TRAILERS=1
-#   `.github/scripts/check-beads-policy.sh` enforces the guard text is present
-#   in the installed hook; `make check WHAT=coordination` fails without it.
-#
-# Mechanism:
-#   `bd hooks install --chain` writes bd-managed sections between markers and
-#   preserves any content OUTSIDE those markers across installs/upgrades. This
-#   script re-applies bd's install, then injects the guard block above the bd
-#   `--- BEGIN BEADS INTEGRATION ---` marker so it survives future bd installs.
+# This generated script is the single owner of Git-hook provisioning. The
+# pre-commit wrapper resolves the active checkout on every invocation, so a
+# common Git directory shared by linked worktrees never persists the Python
+# executable or configuration path from whichever worktree ran setup last.
 #
 # Usage:
-#   make hooks
+#   make setup
 #   .github/scripts/install-git-hooks.sh [--verbose]
 
 set -euo pipefail
 
 VERBOSE="${1:-}"
-WORKSPACE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "${WORKSPACE_ROOT}"
+REPOSITORY_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" \
+	|| { printf 'install-git-hooks: current directory is not a Git checkout\n' >&2; exit 1; }
+cd "${REPOSITORY_ROOT}"
 
 _log() {
 	if [[ "${VERBOSE}" == "--verbose" ]]; then
@@ -41,16 +30,34 @@ fail() {
 	exit 1
 }
 
-command -v bd >/dev/null 2>&1 || fail "bd is not installed; install Beads before provisioning hooks"
+runtime_python() {
+	local superproject_root runtime_root
+	superproject_root="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+	runtime_root="${superproject_root:-${REPOSITORY_ROOT}}"
+	if [[ -x "${runtime_root}/.venv/bin/python" ]]; then
+		printf '%s\n' "${runtime_root}/.venv/bin/python"
+	elif [[ -x "${runtime_root}/.venv/Scripts/python.exe" ]]; then
+		printf '%s\n' "${runtime_root}/.venv/Scripts/python.exe"
+	else
+		fail "managed environment missing for ${REPOSITORY_ROOT}; run: make -C \"${REPOSITORY_ROOT}\" setup"
+	fi
+}
 
-_log "Installing Beads git hooks (chained) at ${WORKSPACE_ROOT}"
+{% if beads_enabled %}
+command -v bd >/dev/null 2>&1 \
+	|| fail "bd is not installed; install Beads before provisioning ledger hooks"
+
+_log "Installing chained Beads hooks at ${REPOSITORY_ROOT}"
 bd hooks install --chain >/dev/null || fail "bd hooks install --chain failed"
 
-hook_path="$(git rev-parse --git-path hooks/prepare-commit-msg)"
-[ -f "${hook_path}" ] || fail "prepare-commit-msg hook missing after bd hooks install"
+prepare_hook="$(git rev-parse --git-path hooks/prepare-commit-msg)"
+[[ "${prepare_hook}" = /* ]] || prepare_hook="${REPOSITORY_ROOT}/${prepare_hook}"
+[[ -f "${prepare_hook}" ]] \
+	|| fail "prepare-commit-msg hook missing after bd hooks install"
 
-_log "Applying FLEXT agent-trailer guard to ${hook_path}"
-GUARD_TOKEN="BD_ALLOW_AGENT_COMMIT_TRAILERS" python3 - "${hook_path}" <<'PY'
+_log "Applying the FLEXT agent-trailer guard to ${prepare_hook}"
+GUARD_TOKEN="BD_ALLOW_AGENT_COMMIT_TRAILERS" "$(runtime_python)" \
+	- "${prepare_hook}" <<'PY'
 import os
 import pathlib
 import sys
@@ -60,7 +67,6 @@ path = pathlib.Path(sys.argv[1])
 text = path.read_text()
 
 if token in text:
-    # Guard already present (idempotent): nothing to do.
     sys.exit(0)
 
 guard = (
@@ -78,23 +84,87 @@ guard = (
 lines = text.splitlines(keepends=True)
 marker = "# --- BEGIN BEADS INTEGRATION"
 insert_at = next(
-    (i for i, line in enumerate(lines) if line.startswith(marker)),
+    (index for index, line in enumerate(lines) if line.startswith(marker)),
     None,
 )
 if insert_at is None:
     raise SystemExit(
         "beads integration marker not found; cannot place guard deterministically"
     )
-
-# Insert the guard immediately before the bd-managed section (outside markers,
-# so `bd hooks install` preserves it on future upgrades).
 lines[insert_at:insert_at] = [guard]
 path.write_text("".join(lines))
 PY
 
-grep -q 'BD_ALLOW_AGENT_COMMIT_TRAILERS' "${hook_path}" \
+grep -q 'BD_ALLOW_AGENT_COMMIT_TRAILERS' "${prepare_hook}" \
 	|| fail "guard token missing after injection"
-grep -q 'bd hooks run prepare-commit-msg' "${hook_path}" \
-	|| fail "bd delegation missing; refusing to leave hook without beads integration"
+grep -q 'bd hooks run prepare-commit-msg' "${prepare_hook}" \
+	|| fail "bd delegation missing from prepare-commit-msg"
+{% endif %}
 
-echo "install-git-hooks: prepare-commit-msg guarded (BD_ALLOW_AGENT_COMMIT_TRAILERS opt-in)"
+pre_commit_hook="$(git rev-parse --git-path hooks/pre-commit)"
+[[ "${pre_commit_hook}" = /* ]] \
+	|| pre_commit_hook="${REPOSITORY_ROOT}/${pre_commit_hook}"
+hook_dir="$(dirname "${pre_commit_hook}")"
+mkdir -p "${hook_dir}"
+hook_dir="$(cd "${hook_dir}" && pwd -P)"
+legacy_hook="${pre_commit_hook}.legacy"
+managed_marker="# FLEXT WORKTREE-AWARE PRE-COMMIT"
+
+if [[ -e "${pre_commit_hook}" ]] \
+	&& ! grep -qF "${managed_marker}" "${pre_commit_hook}" \
+	&& ! grep -qF "File generated by pre-commit" "${pre_commit_hook}"; then
+	if [[ ! -e "${legacy_hook}" ]]; then
+		_log "Preserving the existing pre-commit hook as ${legacy_hook}"
+		mv "${pre_commit_hook}" "${legacy_hook}"
+	elif ! cmp -s "${pre_commit_hook}" "${legacy_hook}"; then
+		fail "refusing to overwrite distinct legacy hook ${legacy_hook}"
+	fi
+fi
+
+temporary_hook="$(mktemp "${hook_dir}/.pre-commit.flext.XXXXXX")"
+cat >"${temporary_hook}" <<'HOOK'
+#!/usr/bin/env sh
+# FLEXT WORKTREE-AWARE PRE-COMMIT
+# Generated by .github/scripts/install-git-hooks.sh — do not hand-edit.
+set -eu
+
+fail() {
+	printf 'FLEXT pre-commit: %s\n' "$*" >&2
+	exit 1
+}
+
+repository_root="$(git rev-parse --show-toplevel 2>/dev/null)" \
+	|| fail "current directory is not a Git checkout"
+superproject_root="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+runtime_root="${superproject_root:-${repository_root}}"
+
+if [ -x "${runtime_root}/.venv/bin/python" ]; then
+	runtime_python="${runtime_root}/.venv/bin/python"
+elif [ -x "${runtime_root}/.venv/Scripts/python.exe" ]; then
+	runtime_python="${runtime_root}/.venv/Scripts/python.exe"
+else
+	fail "managed environment missing for ${repository_root}; run: make -C \"${repository_root}\" setup"
+fi
+
+pre_commit_config="${repository_root}/{{ make.git_hooks.pre_commit_config }}"
+[ -f "${pre_commit_config}" ] \
+	|| fail "missing generated config ${pre_commit_config}; run: cd \"${repository_root}\" && {{ make.regeneration_command }}"
+hook_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+
+exec "${runtime_python}" -m pre_commit hook-impl \
+	--config="${pre_commit_config}" \
+	--hook-type=pre-commit \
+	--hook-dir="${hook_dir}" -- "$@"
+HOOK
+chmod 0755 "${temporary_hook}"
+mv "${temporary_hook}" "${pre_commit_hook}"
+
+grep -qF "${managed_marker}" "${pre_commit_hook}" \
+	|| fail "managed pre-commit marker missing after installation"
+grep -q 'git rev-parse --show-toplevel' "${pre_commit_hook}" \
+	|| fail "active-checkout resolution missing after installation"
+if grep -q '^INSTALL_PYTHON=' "${pre_commit_hook}"; then
+	fail "refusing to persist an installer-checkout Python path"
+fi
+
+echo "install-git-hooks: worktree-aware pre-commit hook installed"

@@ -1,26 +1,11 @@
-"""Every builtin handler the dispatcher routes to is declared exactly once.
-
-``_BUILTIN_HANDLERS`` is the list the generated Makefile scans to decide whether
-a verb is served in-process or shelled out to the dispatch script. It was
-hand-written beside ``make.verbs``, so the two lists were free to drift: a verb
-could be declared in the SSOT, render a recipe that calls ``_builtin_<verb>_*``,
-and still be missing from the routing list.
-
-That drift is not hypothetical. ``setup`` is declared in ``make.verbs`` and its
-recipe calls ``_builtin_setup_environment``, but that handler was absent from
-``_BUILTIN_HANDLERS``, so consumers regenerated from this template had no
-working ``make setup``.
-
-These tests pin the invariant: no handler the template defines may be missing
-from the routing list, and no routed handler may be undefined.
-"""
+"""Prove generated Make handlers derive from the typed verb registry."""
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
-import yaml
+from flext_infra import config
 
 _TEMPLATE = (
     Path(__file__).resolve().parents[3]
@@ -39,12 +24,7 @@ def _template_text() -> str:
 
 
 def _routed_handlers() -> set[str]:
-    """Return every handler the dispatcher can route to.
-
-    Routing moved from the literal ``_BUILTIN_HANDLERS`` list to per-verb
-    ``_ALLOWED_WHATS_<verb>``, which the dispatcher validates the selector
-    against before building the ``_builtin_<verb>_<what>`` target name.
-    """
+    """Return handlers derived from each generated selector declaration."""
     return {
         f"_builtin_{verb}_{what}"
         for verb, whats in re.findall(
@@ -67,16 +47,10 @@ def _invoked_handlers() -> set[str]:
 
 def _ssot_handlers() -> set[str]:
     """Return the handler names the codegen SSOT declares through verb whats."""
-    config = yaml.safe_load(
-        (Path(__file__).resolve().parents[3] / "config" / "codegen.yaml").read_text(
-            encoding="utf-8"
-        )
-    )
-    verbs = config["Infra"]["codegen"]["make"]["verbs"]
     return {
-        f"_builtin_{verb['name']}_{what}"
-        for verb in verbs
-        for what in verb.get("whats") or ()
+        f"_builtin_{verb.name}_{what}"
+        for verb in config.Infra.codegen.make.verbs
+        for what in verb.whats
     }
 
 
@@ -102,10 +76,9 @@ def test_every_routed_handler_is_defined() -> None:
 def test_routing_declares_one_allowed_whats_per_verb() -> None:
     """Each verb owns exactly one ``_ALLOWED_WHATS_`` assignment.
 
-    Routing no longer uses a continuation-joined list; the dispatcher validates
-    the selector against the per-verb variable before naming the target. A verb
-    missing its assignment makes every WHAT fail as unsupported, and a verb
-    declared twice silently keeps only the last set of selectors.
+    The dispatcher validates the selector against the per-verb variable before
+    naming the target. A missing or repeated assignment would make routing
+    incomplete or ambiguous.
     """
     assignments = re.findall(
         r"^_ALLOWED_WHATS_([a-z_]+) :=", _template_text(), re.MULTILINE

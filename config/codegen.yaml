@@ -65,6 +65,20 @@ Infra:
     checkout_submodules_overrides:
       cosmos-docgen: recursive
 
+    # Strict YAML policy is shared by every generated repository. Project
+    # deltas contain only parser exceptions required by real source syntax;
+    # the template derives line length from tooling.tools.yamlfix.line_length.
+    yamllint:
+      ignored_paths:
+        - .git/
+      rule_ignores: {}
+      rule_ignore_overrides:
+        cosmos-gitops:
+          braces:
+            - repo/values/
+          comments-indentation:
+            - repo/values/
+
     github_actions:
       checkout:
         repository: actions/checkout
@@ -125,6 +139,7 @@ Infra:
         base_url: https://github.com/datacosmos-br
         branch: develop
     branch_policy:
+      promotion_branch: main
       technical_branch_patterns:
         - __dolt_remote_info__
         - dolt/*
@@ -143,6 +158,11 @@ Infra:
         setup_scope: root-and-members
         execution_scope: root
         discovery_scope: manifest
+      - name: workspace-member
+        environment_scope: root
+        setup_scope: self
+        execution_scope: self
+        discovery_scope: parent
       - name: standalone
         environment_scope: self
         setup_scope: self
@@ -158,25 +178,26 @@ Infra:
         variable: CI
         value: Y
       workflow:
-        - { verb: setup, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: gen, apply: true, contexts: [local] }
-        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: test, apply: false, contexts: [local, ci, pre_commit] }
+        - { verb: setup, contexts: [local, ci, pre_commit] }
+        - { verb: gen, contexts: [local] }
+        - { verb: fmt, contexts: [local, ci, pre_commit] }
+        - { verb: fix, contexts: [local, ci, pre_commit] }
+        - { verb: check, contexts: [local, ci, pre_commit] }
+        - { verb: test, contexts: [local, ci, pre_commit] }
       bootstrap:
         environment: isolated
         lock_mode: frozen
         dependency_groups: all
         extras: all
+      git_hooks:
+        installer: .github/scripts/install-git-hooks.sh
+        pre_commit_config: .pre-commit-config.yaml
       docs:
-        mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_verbs: [gen, fmt, fix]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -184,71 +205,64 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen, fmt, fix]
+        verbs: [deps, check, test, docs, gen, fmt, fix, worktree]
       verbs:
         - name: help
           default_what: usage
           whats: [usage]
-          apply_guarded: false
         - name: setup
           default_what: environment
           whats: [environment]
-          apply_guarded: false
         - name: deps
           default_what: check
           whats: [check, lock, upgrade]
-          apply_guarded: false
+          apply_what: upgrade
+          apply_whats: [lock, upgrade]
         - name: build
           default_what: artifacts
           whats: [artifacts]
-          apply_guarded: false
         - name: check
           default_what: all
           whats: [all]
-          apply_guarded: false
         - name: test
           default_what: all
           whats: [all]
-          apply_guarded: false
         - name: fmt
           default_what: check
           whats: [check, all]
-          apply_guarded: true
           apply_what: all
+          apply_whats: [all]
         - name: fix
           default_what: check
           whats: [check, all]
-          apply_guarded: true
           apply_what: all
+          apply_whats: [all]
         - name: run
           default_what: default
           whats: [default]
-          apply_guarded: false
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
-          apply_guarded: false
         - name: docs
           default_what: all
           whats: [all, generate, fix, audit, build, validate]
-          apply_guarded: false
+          optional_apply_whats: [generate, fix]
         - name: clean
           default_what: generated
           whats: [generated]
-          apply_guarded: false
         - name: release
           default_what: status
           whats: [status]
-          apply_guarded: false
         - name: gen
           default_what: check
           whats: [check, all]
-          apply_guarded: true
           apply_what: all
+          apply_whats: [all]
         - name: worktree
           default_what: list
           whats: [list, add, update, remove]
-          apply_guarded: false
+          apply_what: add
+          apply_whats: [add, update, remove]
       custom_handler_policy:
         filename: custom.mk
         # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
@@ -717,6 +731,9 @@ Infra:
         owner: pre-commit
         policy: full
       - path: .python-version
+        owner: codegen
+        policy: full
+      - path: .yamllint
         owner: codegen
         policy: full
       - path: .vscode/settings.json
@@ -1195,7 +1212,7 @@ Infra:
           overwrite: false
         - source: base/.github/scripts/install-git-hooks.sh.j2
           destination: .github/scripts/install-git-hooks.sh
-          profiles: [workspace-root]
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/workflows/ci.yml.j2
@@ -1205,6 +1222,11 @@ Infra:
           overwrite: false
         - source: base/.pre-commit-config.yaml.j2
           destination: .pre-commit-config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.yamllint.j2
+          destination: .yamllint
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

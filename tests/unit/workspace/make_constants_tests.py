@@ -1,63 +1,47 @@
-"""Tests for the canonical workspace WHAT phase map.
-
-Asserts the public ``c.Infra`` helper map used by legacy CLI helpers. Public
-Make routing is owned by the registry discovered from ``scripts/cmd``.
-"""
+"""Validate the canonical typed Make verb registry."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import config
 from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import t
 
-_PHASED_VERBS = frozenset({"boot", "build", "check", "test", "val", "ship"})
-_RETIRED_VERBS = frozenset({
-    "scan",
-    "fmt",
-    "types",
-    "pol",
-    "cqrs",
-    "pyre",
-    "stubs",
-    "gen",
-    "mod",
-    "up",
-    "constraints",
-    "sync",
-    "docs",
-    "save",
-    "tag",
-    "push",
-    "pr",
-    "rel",
-    "stat",
-    "imp",
-})
-
 
 class TestMakeConstants:
-    def test_what_phase_verbs_are_canonical_subset(self) -> None:
-        verbs = frozenset(c.Infra.WHAT_PHASES)
-        tm.that(verbs == _PHASED_VERBS, eq=True)
+    """Validate the loaded registry without restating its configured values."""
 
-    def test_retired_verbs_absent_from_surface(self) -> None:
-        tm.that(_RETIRED_VERBS.isdisjoint(c.Infra.WHAT_PHASES), eq=True)
+    def test_verbs_and_selectors_are_unique(self) -> None:
+        verbs = config.Infra.codegen.make.verbs
+        names = tuple(verb.name for verb in verbs)
 
-    def test_what_phases_absorb_retired_verbs(self) -> None:
-        phases = c.Infra.WHAT_PHASES
-        tm.that("format" in phases["check"], eq=True)
-        tm.that("pol" in phases["check"], eq=True)
-        tm.that("scan" in phases["check"], eq=True)
-        tm.that("gen" in phases["build"], eq=True)
-        tm.that("save" in phases["ship"], eq=True)
+        tm.that(bool(verbs), eq=True)
+        tm.that(len(names), eq=len(set(names)))
+        for verb in verbs:
+            tm.that(bool(verb.whats), eq=True)
+            tm.that(len(verb.whats), eq=len(set(verb.whats)))
+            tm.that(verb.default_what in verb.whats, eq=True)
 
-    def test_what_variable_default_declared(self) -> None:
-        names = {name for name, _ in c.Infra.WORKSPACE_VARIABLE_DEFAULTS}
-        tm.that("WHAT" in names, eq=True)
+    def test_apply_selectors_belong_to_their_verbs(self) -> None:
+        make = config.Infra.codegen.make
+        mutable_verbs: list[str] = []
+        for verb in make.verbs:
+            apply_whats = frozenset(verb.apply_whats)
+            optional_apply_whats = frozenset(verb.optional_apply_whats)
+            whats = frozenset(verb.whats)
+
+            tm.that(apply_whats.issubset(whats), eq=True)
+            tm.that(optional_apply_whats.issubset(whats), eq=True)
+            tm.that(apply_whats.isdisjoint(optional_apply_whats), eq=True)
+            if apply_whats or optional_apply_whats:
+                mutable_verbs.append(verb.name)
+            if apply_whats:
+                tm.that(verb.apply_what in apply_whats, eq=True)
+        tm.that(tuple(mutable_verbs), eq=make.mutable_verbs)
+        tm.that(set(make.mutable_verbs).issubset(make.serialization.verbs), eq=True)
 
 
 __all__: t.StrSequence = []

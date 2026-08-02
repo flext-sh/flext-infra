@@ -11,15 +11,18 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_core import r
 from flext_infra._utilities.pyproject import (
     FlextInfraUtilitiesPyproject,
     _validate_infra_payload,
 )
 from flext_infra.constants import c
+from flext_infra.models import m
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra.protocols import p
     from flext_infra.typings import t
 
 
@@ -51,43 +54,83 @@ class FlextInfraUtilitiesDependencies:
         return f">={normalized_version}" if normalized_version else ""
 
     @classmethod
+    def locked_dependency_state(
+        cls, lock_path: Path
+    ) -> p.Result[m.Infra.DependencyLockState]:
+        """Return one validated inventory without conflating Git-only and invalid."""
+        if not lock_path.is_file():
+            return r[m.Infra.DependencyLockState].fail(
+                f"dependency lock does not exist: {lock_path}"
+            )
+        try:
+            raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        except OSError as exc:
+            return r[m.Infra.DependencyLockState].fail_op("read dependency lock", exc)
+        payload_source = u.Cli.toml_mapping_from_text(raw_text)
+        payload = (
+            _validate_infra_payload(payload_source)
+            if payload_source is not None
+            else None
+        )
+        if payload is None:
+            return r[m.Infra.DependencyLockState].fail(
+                f"invalid dependency lock TOML: {lock_path}"
+            )
+        raw_packages = payload.get("package")
+        if not isinstance(raw_packages, list):
+            return r[m.Infra.DependencyLockState].fail(
+                f"dependency lock has no package inventory: {lock_path}"
+            )
+        package_names: set[str] = set()
+        registry_versions: dict[str, str] = {}
+        for raw_package in raw_packages:
+            if not isinstance(raw_package, Mapping):
+                return r[m.Infra.DependencyLockState].fail(
+                    f"dependency lock contains an invalid package entry: {lock_path}"
+                )
+            raw_name = raw_package.get("name")
+            raw_source = raw_package.get("source")
+            dependency_name = (
+                cls.dep_name(raw_name) if isinstance(raw_name, str) else None
+            )
+            if dependency_name is None or not isinstance(raw_source, Mapping):
+                return r[m.Infra.DependencyLockState].fail(
+                    f"dependency lock contains incomplete package metadata: {lock_path}"
+                )
+            package_names.add(dependency_name)
+            if "registry" not in raw_source:
+                continue
+            raw_version = raw_package.get(c.Infra.VERSION)
+            if not isinstance(raw_version, str) or not raw_version.strip():
+                return r[m.Infra.DependencyLockState].fail(
+                    f"registry package lacks a locked version: {dependency_name}"
+                )
+            registry_versions[dependency_name] = raw_version.strip()
+        return r[m.Infra.DependencyLockState].ok(
+            m.Infra.DependencyLockState(
+                package_names=tuple(sorted(package_names)),
+                registry_versions=dict(registry_versions),
+            )
+        )
+
+    @classmethod
     def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
-        """Return normalized registry package versions from one ``uv.lock`` file."""
-        result: t.MappingKV[str, str] = {}
-        if lock_path.is_file():
-            try:
-                raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError:
-                pass
-            else:
-                payload_source = u.Cli.toml_mapping_from_text(raw_text)
-                if payload_source is not None:
-                    payload = _validate_infra_payload(payload_source)
-                    if payload is not None:
-                        raw_packages = payload.get("package")
-                        if isinstance(raw_packages, list):
-                            versions: dict[str, str] = {}
-                            for raw_package in raw_packages:
-                                if not isinstance(raw_package, Mapping):
-                                    continue
-                                raw_source = raw_package.get("source")
-                                if (
-                                    not isinstance(raw_source, Mapping)
-                                    or "registry" not in raw_source
-                                ):
-                                    continue
-                                raw_name = raw_package.get("name")
-                                raw_version = raw_package.get(c.Infra.VERSION)
-                                if not isinstance(raw_name, str) or not isinstance(
-                                    raw_version, str
-                                ):
-                                    continue
-                                dependency_name = cls.dep_name(raw_name)
-                                if dependency_name is None:
-                                    continue
-                                versions[dependency_name] = raw_version.strip()
-                            result = dict(versions)
-        return result
+        """Return normalized registry versions while preserving the legacy API."""
+        state_result = cls.locked_dependency_state(lock_path)
+        return {} if state_result.failure else state_result.value.registry_versions
+
+    @staticmethod
+    def requirement_uses_direct_source(requirement: str) -> bool:
+        """Return whether one PEP 621 requirement uses a direct reference."""
+        requirement_part, _separator, _marker = requirement.strip().partition(";")
+        return " @ " in requirement_part
+
+    @staticmethod
+    def poetry_dependency_uses_direct_source(raw_value: t.Infra.InfraValue) -> bool:
+        """Return whether one Poetry value declares a non-registry source."""
+        return isinstance(raw_value, Mapping) and any(
+            key in raw_value for key in (c.Infra.PATH, "git", "url")
+        )
 
     @classmethod
     def rewrite_requirement_constraint(
@@ -102,7 +145,7 @@ class FlextInfraUtilitiesDependencies:
         raw_text = requirement.strip()
         if raw_text:
             requirement_part, marker_separator, marker_part = raw_text.partition(";")
-            if " @ " not in requirement_part:
+            if not cls.requirement_uses_direct_source(raw_text):
                 head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(
                     requirement_part.strip()
                 )
@@ -152,9 +195,9 @@ class FlextInfraUtilitiesDependencies:
                         if raw_value != rewritten_specifier
                         else None
                     )
-                elif isinstance(raw_value, Mapping) and not any(
-                    key in raw_value for key in (c.Infra.PATH, "git", "url")
-                ):
+                elif isinstance(
+                    raw_value, Mapping
+                ) and not cls.poetry_dependency_uses_direct_source(raw_value):
                     updated: t.MutableJsonMapping = dict(raw_value)
                     if updated.get(c.Infra.VERSION) != rewritten_specifier:
                         updated[c.Infra.VERSION] = rewritten_specifier
@@ -188,93 +231,86 @@ class FlextInfraUtilitiesDependencies:
         cls, payload: t.JsonMapping
     ) -> t.StrSequence:
         """Return normalized dependency names across supported dependency tables."""
-        names: set[str] = set()
-        cls._append_project_dependency_names(payload=payload, names=names)
-        cls._append_dependency_group_names(payload=payload, names=names)
-        cls._append_poetry_dependency_names(payload=payload, names=names)
-        return tuple(sorted(names))
+        return tuple(
+            declaration.name
+            for declaration in cls.dependency_declarations_from_payload(payload)
+        )
 
     @classmethod
-    def _append_project_dependency_names(
-        cls, *, payload: t.JsonMapping, names: set[str]
-    ) -> None:
-        """Append project dependency names."""
+    def dependency_declarations_from_payload(
+        cls, payload: t.JsonMapping
+    ) -> t.SequenceOf[m.Infra.DependencyDeclaration]:
+        """Enumerate every dependency once and aggregate its registry contract."""
+        requirement_groups: t.MutableSequenceOf[t.Infra.InfraValue] = []
+        poetry_tables: t.MutableSequenceOf[t.Infra.InfraValue] = []
         project = payload.get(c.Infra.PROJECT)
-        if not isinstance(project, Mapping):
-            return
-        cls._append_requirement_names(
-            raw_requirements=project.get(c.Infra.DEPENDENCIES), names=names
-        )
-        optional_dependencies = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
-        if not isinstance(optional_dependencies, Mapping):
-            return
-        for raw_requirements in optional_dependencies.values():
-            cls._append_requirement_names(
-                raw_requirements=raw_requirements, names=names
-            )
-
-    @classmethod
-    def _append_dependency_group_names(
-        cls, *, payload: t.JsonMapping, names: set[str]
-    ) -> None:
-        """Append dependency group names."""
+        if isinstance(project, Mapping):
+            requirement_groups.append(project.get(c.Infra.DEPENDENCIES))
+            optional_dependencies = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
+            if isinstance(optional_dependencies, Mapping):
+                requirement_groups.extend(optional_dependencies.values())
         dependency_groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
-        if not isinstance(dependency_groups, Mapping):
-            return
-        for raw_requirements in dependency_groups.values():
-            cls._append_requirement_names(
-                raw_requirements=raw_requirements, names=names
-            )
-
-    @classmethod
-    def _append_poetry_dependency_names(
-        cls, *, payload: t.JsonMapping, names: set[str]
-    ) -> None:
-        """Append poetry dependency names."""
+        if isinstance(dependency_groups, Mapping):
+            requirement_groups.extend(dependency_groups.values())
         tool = payload.get(c.Infra.TOOL)
-        if not isinstance(tool, Mapping):
-            return
-        poetry = tool.get(c.Infra.POETRY)
-        if not isinstance(poetry, Mapping):
-            return
-        cls._append_mapping_dependency_names(
-            raw_mapping=poetry.get(c.Infra.DEPENDENCIES), names=names
-        )
-        poetry_groups = poetry.get(c.Infra.GROUP)
-        if not isinstance(poetry_groups, Mapping):
-            return
-        for raw_group in poetry_groups.values():
-            if not isinstance(raw_group, Mapping):
+        poetry = tool.get(c.Infra.POETRY) if isinstance(tool, Mapping) else None
+        if isinstance(poetry, Mapping):
+            poetry_tables.append(poetry.get(c.Infra.DEPENDENCIES))
+            poetry_groups = poetry.get(c.Infra.GROUP)
+            if isinstance(poetry_groups, Mapping):
+                poetry_tables.extend(
+                    raw_group.get(c.Infra.DEPENDENCIES)
+                    for raw_group in poetry_groups.values()
+                    if isinstance(raw_group, Mapping)
+                )
+        registry_required_by_name: dict[str, bool] = {}
+        for raw_requirements in requirement_groups:
+            if not isinstance(raw_requirements, list):
                 continue
-            cls._append_mapping_dependency_names(
-                raw_mapping=raw_group.get(c.Infra.DEPENDENCIES), names=names
+            for raw_requirement in raw_requirements:
+                requirement = str(raw_requirement)
+                dependency_name = cls.dep_name(requirement)
+                if dependency_name is None:
+                    continue
+                registry_required_by_name[dependency_name] = (
+                    registry_required_by_name.get(dependency_name, False)
+                    or not cls.requirement_uses_direct_source(requirement)
+                )
+        for raw_mapping in poetry_tables:
+            if not isinstance(raw_mapping, Mapping):
+                continue
+            for raw_name, raw_value in raw_mapping.items():
+                dependency_name = cls.dep_name(raw_name)
+                if dependency_name is None or dependency_name == "python":
+                    continue
+                registry_required_by_name[dependency_name] = (
+                    registry_required_by_name.get(dependency_name, False)
+                    or not cls.poetry_dependency_uses_direct_source(raw_value)
+                )
+        return tuple(
+            m.Infra.DependencyDeclaration(
+                name=dependency_name,
+                registry_required=registry_required_by_name[dependency_name],
             )
+            for dependency_name in sorted(registry_required_by_name)
+        )
 
     @classmethod
-    def _append_requirement_names(
-        cls, *, raw_requirements: t.Infra.InfraValue, names: set[str]
-    ) -> None:
-        """Append requirement names."""
-        if not isinstance(raw_requirements, list):
-            return
-        for raw_requirement in raw_requirements:
-            dependency_name = cls.dep_name(str(raw_requirement))
-            if dependency_name is None:
-                continue
-            names.add(dependency_name)
-
-    @classmethod
-    def _append_mapping_dependency_names(
-        cls, *, raw_mapping: t.Infra.InfraValue, names: set[str]
-    ) -> None:
-        """Append mapping dependency names."""
-        if not isinstance(raw_mapping, Mapping):
-            return
-        for raw_name in raw_mapping:
-            dependency_name = cls.dep_name(raw_name)
-            if dependency_name is None or dependency_name == "python":
-                continue
-            names.add(dependency_name)
+    def dependency_requires_registry_lock_from_payload(
+        cls, payload: t.JsonMapping, dependency_name: str
+    ) -> bool:
+        """Return whether any selected declaration expects a registry version."""
+        selected_name = cls.dep_name(dependency_name)
+        if selected_name is None:
+            return False
+        return next(
+            (
+                declaration.registry_required
+                for declaration in cls.dependency_declarations_from_payload(payload)
+                if declaration.name == selected_name
+            ),
+            False,
+        )
 
     @classmethod
     def local_dependency_names_from_payload(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -114,6 +115,58 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     return workspace_root, project_names
 
 
+def _render_standalone_hook_installer(tmp_path: Path) -> str:
+    """Render the real universal installer with Beads ownership disabled."""
+    project_root = tmp_path / "standalone-hook-render"
+    repository = test_u.Tests.repository_ref(
+        "standalone-hook-render", path=Path(), role=c.Infra.RepositoryRole.STANDALONE
+    )
+    workspace = m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name=repository.name,
+        repository=repository,
+        project=m.Infra.ProjectSpec(
+            package_name="standalone_hook_render",
+            class_stem="StandaloneHookRender",
+            namespace="StandaloneHookRender",
+            constant_name="standalone-hook-render",
+            namespace_attribute="standalone_hook_render",
+            alias="standalone_hook_render",
+            environment_prefix="STANDALONE_HOOK_RENDER_",
+            description="Standalone hook render fixture",
+            version="0.12.0",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            homepage="https://github.com/flext-sh/standalone-hook-render",
+            documentation="https://github.com/flext-sh/standalone-hook-render",
+            workspace_root_rel=".",
+            year=2026,
+        ),
+    )
+    request = m.Infra.CodegenConformRequest(
+        root=project_root,
+        scope=c.Infra.CodegenConformScope.SELF,
+        mode=c.Infra.CodegenConformMode.CHECK,
+    )
+    plan = tm.ok(
+        FlextInfraCodegenConform(
+            workspace_root=project_root, request=request, initial_workspace=workspace
+        ).plan(request)
+    )
+    installer = config.Infra.codegen.make.git_hooks.installer
+    rendered = next(
+        planned_file.rendered
+        for planned_file in plan.files
+        if planned_file.path.relative_to(project_root) == installer
+    )
+    if not u.string_non_empty(rendered):
+        msg = "generated hook installer must be a non-empty string"
+        raise TypeError(msg)
+    return rendered
+
+
 def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
     (project_root / "Makefile").write_text(
         "SHELL := /bin/sh\n"
@@ -140,6 +193,19 @@ class TestsWorkspaceRootMakeContract:
 
         tm.that(make_entries, len=1)
         tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+
+    def test_git_hook_installer_is_generated_for_every_repository_profile(self) -> None:
+        """Keep one config-owned installer path across all generated profiles."""
+        hook_policy = config.Infra.codegen.make.git_hooks
+        entries = tuple(
+            entry
+            for entry in config.Infra.codegen.templates.entries
+            if Path(entry.destination) == hook_policy.installer
+        )
+
+        tm.that(entries, len=1)
+        tm.that(set(entries[0].profiles), eq=set(c.Infra.MakeProfile))
+        tm.that(hook_policy.pre_commit_config, eq=Path(".pre-commit-config.yaml"))
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.
@@ -224,6 +290,8 @@ class TestsWorkspaceRootMakeContract:
     ) -> None:
         """Apply formatting only in the selected workspace member."""
         workspace_root, project_names = _write_workspace(tmp_path)
+        make_config = config.Infra.codegen.make
+        fmt_spec = next(verb for verb in make_config.verbs if verb.name == "fmt")
 
         process: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
@@ -231,9 +299,10 @@ class TestsWorkspaceRootMakeContract:
                     "-C",
                     str(workspace_root),
                     "--dry-run",
-                    "_builtin_fmt_apply",
+                    f"_builtin_fmt_{fmt_spec.apply_what}",
                     f"PROJECT={project_names[0]}",
-                    "APPLY=Y",
+                    f"{make_config.selector}={fmt_spec.apply_what}",
+                    f"{make_config.apply_variable}={make_config.apply_value}",
                 ],
                 cwd=workspace_root,
             )
@@ -243,8 +312,15 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--verb fmt")
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, has='--make-arg "WHAT=apply"')
-        tm.that(output, has='--make-arg "APPLY=Y"')
+        tm.that(
+            output, has=f'--make-arg "{make_config.selector}={fmt_spec.apply_what}"'
+        )
+        tm.that(
+            output,
+            has=(
+                f'--make-arg "{make_config.apply_variable}={make_config.apply_value}"'
+            ),
+        )
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")
 
@@ -271,9 +347,12 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has=f"--projects {owner}")
+        tm.that(output, has="--projects .")
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
         tm.that(output, has="--file")
         tm.that(output, has="--match")
+        tm.that(output, lacks="flext_infra._pytest_entry")
 
     def test_generated_make_routes_root_file_only_to_workspace_root(
         self, tmp_path: Path
@@ -297,11 +376,11 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        # The root project is in the forwarded selection and the typed FILE
-        # selector travels with it. Which project owns the file is decided by
-        # the orchestrator (_select_file_owner), not by this Make recipe, so
-        # this boundary asserts forwarding rather than owner filtering.
+        # The canonical orchestrator owns FILE resolution and reaches the root
+        # through its private post-lock target, so public Make never recurses.
+        tm.that(output, has="workspace orchestrate")
         tm.that(output, has="--projects .")
+        tm.that(output, lacks="flext_infra._pytest_entry")
         tm.that(output, has="--file")
 
     def test_generated_make_default_test_includes_root_and_every_member(
@@ -319,13 +398,47 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, lacks="flext_infra._pytest_entry")
         tm.that(output, has="--projects .")
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
 
+    def test_workspace_root_ci_runs_each_gate_locally_once(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep CI self-only when submodules are intentionally not checked out."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+        make_config = config.Infra.codegen.make
+        ci_token = f"{make_config.ci.variable}={make_config.ci.value}"
+        apply_token = f"{make_config.apply_variable}={make_config.apply_value}"
+        probes = {
+            "_builtin_build_artifacts": "build --project",
+            "_builtin_check_all": "check run --workspace",
+            "_builtin_test_all": "flext_infra._pytest_entry",
+            "_builtin_fmt_all": "ruff format",
+            "_builtin_fix_all": "ruff check --fix",
+        }
+
+        for target, local_command in probes.items():
+            command = ["-C", str(workspace_root), "--dry-run", target, ci_token]
+            if target in {"_builtin_fmt_all", "_builtin_fix_all"}:
+                command.append(apply_token)
+            process = tm.ok(test_u.Tests.run_isolated_make(command, cwd=workspace_root))
+            output = process.stdout + process.stderr
+
+            tm.that(process.exit_code, eq=0, msg=output)
+            tm.that(output, has=local_command)
+            tm.that(output, lacks="workspace orchestrate")
+            for project_name in project_names:
+                tm.that(output, lacks=f"--projects {project_name}")
+
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
-        docs = config.Infra.codegen.make.docs
+        make_config = config.Infra.codegen.make
+        docs = make_config.docs
+        docs_spec = next(verb for verb in make_config.verbs if verb.name == "docs")
+        docs_actions = make_config.handler_whats["docs"]
+        docs_default = docs_spec.default_what
         invocation_log = workspace_root / "docs.log"
         test_u.Tests.write_executable(
             workspace_root / ".venv" / "bin" / "python",
@@ -344,7 +457,7 @@ class TestsWorkspaceRootMakeContract:
         uv = workspace_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        for action in docs.actions:
+        for action in docs_actions:
             invocation_log.write_text("", encoding="utf-8")
             process: cli_p.Cli.CommandOutput = tm.ok(
                 test_u.Tests.run_isolated_make(
@@ -352,7 +465,7 @@ class TestsWorkspaceRootMakeContract:
                         "-C",
                         str(workspace_root),
                         "docs",
-                        f"WHAT={action}",
+                        f"{make_config.selector}={action}",
                         f"PROJECTS={project_names[0]}",
                         f"UV={uv}",
                     ],
@@ -362,8 +475,8 @@ class TestsWorkspaceRootMakeContract:
             tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
             output = invocation_log.read_text(encoding="utf-8")
             expected_actions = (
-                tuple(item for item in docs.actions if item != docs.default_action)
-                if action == docs.default_action
+                tuple(item for item in docs_actions if item != docs_default)
+                if action == docs_default
                 else (action,)
             )
             for expected_action in expected_actions:
@@ -371,7 +484,7 @@ class TestsWorkspaceRootMakeContract:
             tm.that(output, has=f"--output-dir {workspace_root / docs.reports_dir}")
             tm.that(output, has=f"--projects {project_names[0]}")
             tm.that(output, lacks=f"--projects {project_names[1]}")
-            if action in docs.mutable_actions:
+            if action in docs_spec.optional_apply_whats:
                 tm.that(output, has="--check")
                 tm.that(output, lacks="--apply")
                 invocation_log.write_text("", encoding="utf-8")
@@ -381,8 +494,8 @@ class TestsWorkspaceRootMakeContract:
                             "-C",
                             str(workspace_root),
                             "docs",
-                            f"WHAT={action}",
-                            "APPLY=Y",
+                            f"{make_config.selector}={action}",
+                            (f"{make_config.apply_variable}={make_config.apply_value}"),
                             f"PROJECTS={project_names[0]}",
                             f"UV={uv}",
                         ],
@@ -393,13 +506,18 @@ class TestsWorkspaceRootMakeContract:
                 applied_output = invocation_log.read_text(encoding="utf-8")
                 tm.that(applied_output, has="--apply")
                 tm.that(applied_output, lacks="--check")
-            elif action != docs.default_action:
+            elif action != docs_default:
                 tm.that(output, lacks="--apply")
                 tm.that(output, lacks="--check")
 
         invalid = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "docs", "WHAT=not-a-docs-action"],
+                [
+                    "-C",
+                    str(workspace_root),
+                    "docs",
+                    f"{make_config.selector}=not-a-docs-action",
+                ],
                 cwd=workspace_root,
             )
         )
@@ -454,6 +572,125 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has=f'venv --clear "{expected_environment}"')
         tm.that(output, has=f'sync --project "{workspace_root}"')
         tm.that(output, has=f'pip check --python "{expected_environment}"')
+
+    def test_setup_installs_root_and_member_hooks_serially_and_skips_ci(
+        self, tmp_path: Path
+    ) -> None:
+        """Run the one generated installer for every config-scoped repository."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+        hook_policy = config.Infra.codegen.make.git_hooks
+        repository_roots = (
+            workspace_root,
+            *(workspace_root / project_name for project_name in project_names),
+        )
+        installer = _render_standalone_hook_installer(tmp_path)
+        config_template = (
+            "repos:\n"
+            "  - repo: local\n"
+            "    hooks:\n"
+            "      - id: setup-fanout-marker\n"
+            "        name: setup fanout marker\n"
+            "        entry: sh -c 'printf __MARKER__ > __MARKER__.log'\n"
+            "        language: system\n"
+            "        pass_filenames: false\n"
+            "        always_run: true\n"
+        )
+        for index, repository_root in enumerate(repository_roots):
+            if index:
+                test_u.Tests.initialize_git_repo(repository_root)
+            installer_path = repository_root / hook_policy.installer
+            installer_path.parent.mkdir(parents=True, exist_ok=True)
+            installer_path.write_text(installer, encoding="utf-8")
+            marker = f"repository-{index}"
+            (repository_root / hook_policy.pre_commit_config).write_text(
+                config_template.replace("__MARKER__", marker), encoding="utf-8"
+            )
+            tm.ok(
+                u.Infra.git_capture(
+                    repository_root,
+                    (
+                        "add",
+                        hook_policy.installer.as_posix(),
+                        hook_policy.pre_commit_config.as_posix(),
+                    ),
+                )
+            )
+            tm.ok(
+                u.Infra.git_capture(
+                    repository_root,
+                    ("commit", "-q", "-m", f"configure repository {index}"),
+                )
+            )
+            runtime = repository_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
+            runtime.parents[1].symlink_to(Path(sys.prefix), target_is_directory=True)
+
+        ci_policy = config.Infra.codegen.make.ci
+        ci = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "_builtin_setup_hooks",
+                    f"{ci_policy.variable}={ci_policy.value}",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        tm.that(ci.exit_code, eq=0, msg=ci.stdout + ci.stderr)
+        hook_paths: list[Path] = []
+        for repository_root in repository_roots:
+            hook_path = Path(
+                tm.ok(
+                    u.Infra.git_capture(
+                        repository_root, ("rev-parse", "--git-path", "hooks/pre-commit")
+                    )
+                )
+            )
+            if not hook_path.is_absolute():
+                hook_path = repository_root / hook_path
+            hook_paths.append(hook_path)
+            tm.that(hook_path.exists(), eq=False)
+
+        local = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "_builtin_setup_hooks"], cwd=workspace_root
+            )
+        )
+        output = local.stdout + local.stderr
+        tm.that(local.exit_code, eq=0, msg=output)
+        tm.that(
+            [line for line in output.splitlines() if "action=install" in line],
+            eq=[
+                f"setup hooks repository={repository_root} action=install"
+                for repository_root in repository_roots
+            ],
+        )
+        for index, (repository_root, hook_path) in enumerate(
+            zip(repository_roots, hook_paths, strict=True)
+        ):
+            tm.that(hook_path.exists(), eq=True)
+            tm.ok(u.Cli.run_checked([str(hook_path)], cwd=repository_root))
+            marker = f"repository-{index}"
+            tm.that((repository_root / f"{marker}.log").read_text(), eq=marker)
+
+        preserved_member = repository_roots[1]
+        preserved_hook = hook_paths[1].read_text(encoding="utf-8")
+        tm.ok(
+            u.Infra.git_capture(
+                preserved_member, ("config", "core.hooksPath", ".operator-hooks")
+            )
+        )
+        preserved = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "_builtin_setup_hooks"], cwd=workspace_root
+            )
+        )
+        tm.that(preserved.exit_code, eq=0, msg=preserved.stdout + preserved.stderr)
+        tm.that(preserved.stdout + preserved.stderr, has=str(preserved_member))
+        tm.that(hook_paths[1].read_text(encoding="utf-8"), eq=preserved_hook)
+        tm.that(
+            preserved.stdout + preserved.stderr, has="action=skip reason=core.hooksPath"
+        )
 
     def test_orchestrator_sanitizes_child_env_and_forwards_gates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

@@ -101,6 +101,12 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         """Render all base.mk templates into a single output string."""
         active_config = settings or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
+        make_config = config.Infra.codegen.make
+        docs_verb = next(verb for verb in make_config.verbs if verb.name == "docs")
+        docs_actions: list[t.JsonValue] = list(docs_verb.whats)
+        docs_optional_apply_whats: list[t.JsonValue] = list(
+            docs_verb.optional_apply_whats
+        )
         sections: t.MutableSequenceOf[str] = []
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
@@ -110,9 +116,15 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                 rendered = self._render_template(
                     template,
                     settings=active_config,
-                    apply_value=config.Infra.codegen.make.apply_value,
-                    apply_variable=config.Infra.codegen.make.apply_variable,
-                    docs=config.Infra.codegen.make.docs,
+                    apply_value=make_config.apply_value,
+                    apply_variable=make_config.apply_variable,
+                    ci=make_config.ci,
+                    docs=make_config.docs,
+                    docs_actions=docs_actions,
+                    docs_default_action=docs_verb.default_what,
+                    docs_optional_apply_whats=docs_optional_apply_whats,
+                    git_hooks=make_config.git_hooks,
+                    regeneration_command=make_config.regeneration_command,
                     pytest=config.Infra.tooling.tools.pytest,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
@@ -124,9 +136,6 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                    pytest_process_timeout_seconds=(
-                        config.Infra.tooling.tools.pytest.process_timeout_seconds
-                    ),
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

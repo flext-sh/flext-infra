@@ -7,7 +7,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models.deps_toml import FlextInfraModelsDepsToml
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
@@ -99,6 +99,14 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
                 description="Rewrite dependency constraints from uv.lock",
             ),
         ] = False
+        rewrite_dependency: Annotated[
+            str | None,
+            m.Field(
+                alias="rewrite-dependency",
+                pattern=c.Infra.DEPENDENCY_SELECTOR_PATTERN,
+                description="Rewrite constraints only for one dependency name",
+            ),
+        ] = None
 
     # NOTE (multi-agent, mro-wkii.17.9): codegen consumes the pure pyproject
     # renderer directly, so no deps CLI payload remains for path/workspace modes.
@@ -122,6 +130,31 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
         payload: Annotated[
             t.MutableJsonMapping, m.Field(description="Validated plain TOML payload")
         ] = m.Field(default_factory=dict)
+
+    class DependencyDeclaration(m.ContractModel):
+        """One normalized dependency declaration and its lock source contract."""
+
+        name: Annotated[
+            t.NonEmptyStr, m.Field(description="Normalized dependency name")
+        ]
+        registry_required: Annotated[
+            bool, m.Field(description="Declaration requires a registry lock version")
+        ]
+
+    class DependencyLockState(m.ArbitraryTypesModel):
+        """Validated dependency inventory from one canonical ``uv.lock``."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, validate_default=False
+        )
+
+        package_names: Annotated[
+            t.StrSequence, m.Field(description="All normalized locked package names")
+        ] = m.Field(default_factory=tuple)
+        registry_versions: Annotated[
+            t.MappingKV[str, str],
+            m.Field(description="Locked versions owned by registry sources"),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
         """Dependency limits configuration metadata."""

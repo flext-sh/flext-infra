@@ -35,7 +35,7 @@ class FlextInfraExtraPathsManager(
 
     @property
     def workspace_project_names(self) -> t.StrSequence:
-        """Return the managed workspace member names backing dependency resolution."""
+        """Managed workspace member names backing dependency resolution."""
         return tuple(sorted(self._workspace_project_names))
 
     @override

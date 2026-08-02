@@ -99,7 +99,7 @@ workspace = true
 class TestsFlextInfraPyprojectConformTopologySources:
     @pytest.mark.parametrize(
         "workspace_mode",
-        (c.Infra.WorkspaceMode.WORKSPACE, c.Infra.WorkspaceMode.STANDALONE),
+        [c.Infra.WorkspaceMode.WORKSPACE, c.Infra.WorkspaceMode.STANDALONE],
     )
     def test_project_exclusion_survives_topology_round_trip(
         self, workspace_mode: c.Infra.WorkspaceMode

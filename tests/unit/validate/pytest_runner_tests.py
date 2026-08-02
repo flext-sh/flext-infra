@@ -47,6 +47,7 @@ class TestsFlextInfraPytestRunner:
         *,
         file: str | None = None,
         match: str | None = None,
+        reports: Path = config.Infra.tooling.tools.pytest.reports_dir,
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -56,8 +57,44 @@ class TestsFlextInfraPytestRunner:
             file=file,
             match=match,
             target="tests",
-            reports=".reports/tests",
+            reports=reports,
         )
+
+    def test_reports_remain_typed_after_validation(self, tmp_path: Path) -> None:
+        """Keep the validated report boundary typed through directory creation."""
+        runner = self._runner(tmp_path)
+
+        tm.that(runner.reports, eq=config.Infra.tooling.tools.pytest.reports_dir)
+
+    def test_reports_reject_a_path_outside_the_workspace(self, tmp_path: Path) -> None:
+        """Reject report output that could escape the active project."""
+        with pytest.raises(
+            ValueError, match="reports must be a normalized repository-relative path"
+        ):
+            self._runner(tmp_path, reports=Path("..") / "reports")
+
+    def test_reports_reject_symlink_escape_before_writing(self, tmp_path: Path) -> None:
+        """Resolve the report root before any artifact can escape the workspace."""
+        workspace = tmp_path / "workspace"
+        external = tmp_path / "external"
+        configured_reports = config.Infra.tooling.tools.pytest.reports_dir
+        escape_reports = configured_reports.with_name(
+            f"{configured_reports.name}-escape"
+        )
+        report_parent = workspace / escape_reports.parent
+        report_parent.mkdir(parents=True)
+        external.mkdir()
+        (workspace / escape_reports).symlink_to(external, target_is_directory=True)
+        runner = self._runner(workspace, reports=escape_reports)
+
+        result = runner.execute()
+
+        error: str | None = result.error
+        tm.that(result.failure, eq=True)
+        tm.that(error is not None, eq=True)
+        if error is not None:
+            tm.that(error, has="reports path escapes workspace")
+        tm.that(tuple(external.iterdir()), eq=())
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
         self, tmp_path: Path
@@ -146,6 +183,7 @@ class TestsFlextInfraPytestRunner:
         captured: dict[str, p.Cli.ProcessDeadline] = {}
         observed_live: t.MutableSequenceOf[bool] = []
         observed_remove_keys: t.MutableSequenceOf[t.StrSequence] = []
+        observed_output_paths: t.MutableSequenceOf[Path] = []
 
         def fake_run_to_file(
             cmd: t.StrSequence,
@@ -167,6 +205,7 @@ class TestsFlextInfraPytestRunner:
             observed_live.append(live)
             observed_remove_keys.append(tuple(remove_env_keys))
             log_path = Path(output_file)
+            observed_output_paths.append(log_path)
             report_dir = log_path.parent
             log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
             (report_dir / "junit.xml").write_text(
@@ -193,7 +232,19 @@ class TestsFlextInfraPytestRunner:
         tm.that(deadline.termination_grace_seconds, eq=policy.termination_grace_seconds)
         tm.that(observed_live, eq=[True])
         tm.that(
-            observed_remove_keys, eq=[tuple(c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS)]
+            observed_remove_keys,
+            eq=[
+                (
+                    *c.Infra.GIT_LOCAL_ENV_KEYS,
+                    *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+                )
+            ],
+        )
+        tm.that(
+            observed_output_paths[0].is_relative_to(
+                runner.workspace_root / runner.reports
+            ),
+            eq=True,
         )
         latest = tmp_path / ".reports" / "tests" / "latest.txt"
         tm.that(latest.is_file(), eq=True)

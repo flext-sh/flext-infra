@@ -225,8 +225,25 @@
             "pattern": "^[a-z0-9][a-z0-9-]*$"
           }
         },
-        "apply_guarded": {
-          "type": "boolean"
+        "apply_what": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "apply_whats": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        },
+        "optional_apply_whats": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
         }
       }
     },

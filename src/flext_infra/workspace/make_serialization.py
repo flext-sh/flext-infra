@@ -71,11 +71,6 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"{make_config.apply_variable} must be "
                 f"{make_config.apply_value} when set"
             )
-        if applying and not verb_spec.apply_guarded:
-            return r[t.StrMapping].fail(
-                f"Make verb '{self.verb}' is read-only and does not accept "
-                f"{make_config.apply_variable}"
-            )
         selected_what = self.selector_value or (
             verb_spec.apply_what if applying else verb_spec.default_what
         )
@@ -84,6 +79,20 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             return r[t.StrMapping].fail(
                 f"unsupported {self.verb} {make_config.selector}={selected_what} "
                 f"(allowed: {allowed})"
+            )
+        requires_apply = selected_what in verb_spec.apply_whats
+        accepts_apply = (
+            requires_apply or selected_what in verb_spec.optional_apply_whats
+        )
+        if applying and not accepts_apply:
+            return r[t.StrMapping].fail(
+                f"{self.verb} {make_config.selector}={selected_what} is read-only "
+                f"and does not accept {make_config.apply_variable}"
+            )
+        if requires_apply and not applying:
+            return r[t.StrMapping].fail(
+                f"{self.verb} {make_config.selector}={selected_what} requires "
+                f"{make_config.apply_variable}={make_config.apply_value}"
             )
         return r[t.StrMapping].ok({
             make_config.selector: selected_what,
@@ -118,11 +127,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         cls, checkout: Path, command: t.StrSequence, *, failure_context: str
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one private Make phase and retain its process semantics."""
-        result = u.Cli.run_raw(
-            list(command),
-            cwd=checkout,
-            capture=False,
-        )
+        result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
         if result.failure:
             return cls._process_failure(
                 int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context
@@ -273,7 +278,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 make_variables_result.error or "invalid GNU Make variables"
             )
         make_variables = make_variables_result.value
-        is_mutation = self.verb in serialization.mutation_verbs and (
+        is_mutation = self.verb in make_config.mutable_verbs and (
             make_variables.get(make_config.apply_variable) == make_config.apply_value
         )
 

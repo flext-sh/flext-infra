@@ -272,9 +272,9 @@ src/flext_infra/
 
 ```bash
 make check PROJECT=flext-infra       # ruff/pyrefly/mypy/pyright
-make fmt WHAT=apply APPLY=Y          # apply canonical source formatting
+make fmt APPLY=Y                     # apply canonical source formatting
 make test  PROJECT=flext-infra       # tests/{unit,integration,refactor}
-make build WHAT=gen                  # regenerate facets workspace-wide
+make gen APPLY=Y                     # regenerate managed facets workspace-wide
 ```
 
 <!-- AIHUB-WORKSPACE-PROVIDERS-BEGIN -->

@@ -23,6 +23,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         skip_check: bool
         skip_comments: bool
         rewrite_constraints: bool
+        rewrite_dependency: str | None
 
         @property
         def root(self) -> Path: ...
@@ -75,6 +76,9 @@ class FlextInfraPyprojectModernizerRunMixin:
 
     def run(self) -> int:
         """Run pyproject modernization for the workspace."""
+        if self.rewrite_dependency is not None and not self.rewrite_constraints:
+            u.Cli.error("--rewrite-dependency requires --rewrite-constraints")
+            return 2
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
@@ -176,6 +180,43 @@ class FlextInfraPyprojectModernizerRunMixin:
             except c.EXC_TYPE_VALIDATION as exc:
                 u.Cli.error(str(exc))
                 return 2
+        selected_dependency = (
+            u.Infra.dep_name(self.rewrite_dependency)
+            if self.rewrite_dependency is not None
+            else None
+        )
+        selected_requires_registry_lock = False
+        if selected_dependency is not None:
+            declared_dependency_names: set[str] = set()
+            for file_path in files:
+                document_state_result = (
+                    r[m.Infra.PyprojectDocumentState].ok(root_state)
+                    if file_path.resolve() == root_state.pyproject_path.resolve()
+                    else self._read_document_state(file_path)
+                )
+                if document_state_result.failure:
+                    continue
+                document_payload = document_state_result.value.payload
+                declarations = u.Infra.dependency_declarations_from_payload(
+                    document_payload
+                )
+                declared_dependency_names.update(
+                    declaration.name for declaration in declarations
+                )
+                selected_requires_registry_lock = (
+                    selected_requires_registry_lock
+                    or any(
+                        declaration.name == selected_dependency
+                        and declaration.registry_required
+                        for declaration in declarations
+                    )
+                )
+            if selected_dependency not in declared_dependency_names:
+                u.Cli.error(
+                    "rewrite dependency is not declared in the selected projects: "
+                    f"{self.rewrite_dependency}"
+                )
+                return 2
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
             u.Infra.canonical_dev_dependencies_from_payload(root_state.payload)
         )
@@ -186,12 +227,43 @@ class FlextInfraPyprojectModernizerRunMixin:
                 u.Cli.error("root project name required for constraint rewriting")
                 return 2
             lock_path = self.root / c.Infra.UV_LOCK_FILENAME
-            locked_versions = u.Infra.locked_dependency_versions(lock_path)
-            if not locked_versions:
+            lock_state_result = u.Infra.locked_dependency_state(lock_path)
+            if lock_state_result.failure:
                 u.Cli.error(
-                    f"missing or invalid {c.Infra.UV_LOCK_FILENAME} at {lock_path}"
+                    lock_state_result.error
+                    or f"missing or invalid {c.Infra.UV_LOCK_FILENAME} at {lock_path}"
                 )
                 return 2
+            lock_state = lock_state_result.value
+            all_locked_versions = lock_state.registry_versions
+            if (
+                selected_dependency is not None
+                and selected_dependency not in lock_state.package_names
+            ):
+                u.Cli.error(
+                    "rewrite dependency is absent from the canonical lock: "
+                    f"{self.rewrite_dependency}"
+                )
+                return 2
+            if (
+                selected_dependency is not None
+                and selected_requires_registry_lock
+                and selected_dependency not in all_locked_versions
+            ):
+                u.Cli.error(
+                    "registry dependency has no canonical locked version: "
+                    f"{self.rewrite_dependency}"
+                )
+                return 2
+            locked_versions = (
+                {
+                    name: version
+                    for name, version in all_locked_versions.items()
+                    if name == selected_dependency
+                }
+                if selected_dependency is not None
+                else all_locked_versions
+            )
             competing_member_locks: t.MutableSequenceOf[Path] = []
             for member_path in configured_member_paths.values():
                 member_lock_path = member_path / c.Infra.UV_LOCK_FILENAME

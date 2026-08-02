@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
@@ -80,6 +81,13 @@ class FlextInfraModelsDepsToolSettings(
                 alias="run-timeout-seconds",
                 gt=0,
                 description="Hard wall-clock maximum for one pytest invocation.",
+            ),
+        ]
+        reports_dir: Annotated[
+            Path,
+            m.Field(
+                alias="reports-dir",
+                description="Repository-relative pytest report root.",
             ),
         ]
         termination_grace_seconds: Annotated[
@@ -207,18 +215,20 @@ class FlextInfraModelsDepsToolSettings(
                 description="Standard pytest addopts enforced by modernizer.",
             ),
         ]
-        process_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                alias="process-timeout-seconds",
-                gt=0,
-                description="Hard timeout for the complete pytest process.",
-            ),
-        ]
 
         @model_validator(mode="after")
         def _validate_execution_limits(self) -> Self:
             """Keep item and termination budgets inside the hard invocation cap."""
+            if (
+                not self.reports_dir.parts
+                or self.reports_dir.is_absolute()
+                or any(part in {"", ".", ".."} for part in self.reports_dir.parts)
+                or any(
+                    character in self.reports_dir.as_posix() for character in "\0\r\n"
+                )
+            ):
+                msg = "pytest reports-dir must be a normalized repository-relative path"
+                raise ValueError(msg)
             if self.case_timeout_seconds >= self.run_timeout_seconds:
                 msg = "pytest case timeout must be less than run timeout"
                 raise ValueError(msg)

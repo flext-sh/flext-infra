@@ -48,3 +48,22 @@ def test_unknown_token_is_still_rejected() -> None:
 
     assert resolved.failure
     assert config.Infra.codegen.make.apply_value in (resolved.error or "")
+
+
+def test_optional_apply_selector_accepts_check_and_apply_modes() -> None:
+    """A config-owned optional selector remains valid on both serialized paths."""
+    make = config.Infra.codegen.make
+    verb = next(item for item in make.verbs if item.optional_apply_whats)
+    selector = verb.optional_apply_whats[0]
+
+    for apply_token in (make.apply_absent_value, make.apply_value):
+        service = FlextInfraMakeSerializationService(
+            workspace_root=Path.cwd(),
+            makefile=Path.cwd() / "Makefile",
+            verb=verb.name,
+            selector_value=selector,
+            apply_token=apply_token,
+        )
+        resolved = service._make_variables(make)  # ruff: ignore[private-member-access]
+
+        assert resolved.success, resolved.error

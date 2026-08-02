@@ -194,6 +194,24 @@ class FlextInfraConstantsBase(
     # CLI tool binary names
     GIT: Final[str] = "git"
     "Git version control binary."
+    GIT_LOCAL_ENV_KEYS: Final[t.StrSequence] = (
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_CONFIG",
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_CONFIG_COUNT",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_IMPLICIT_WORK_TREE",
+        "GIT_GRAFT_FILE",
+        "GIT_INDEX_FILE",
+        "GIT_NO_REPLACE_OBJECTS",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_PREFIX",
+        "GIT_SHALLOW_FILE",
+        "GIT_COMMON_DIR",
+    )
+    "Git repository-local variables removed at explicit-repository boundaries."
     UV: Final[str] = "uv"
     "uv package manager binary."
     GITLEAKS: Final[str] = "gitleaks"

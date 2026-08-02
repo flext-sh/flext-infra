@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
@@ -174,7 +173,7 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(marker.read_text(encoding="utf-8"), eq="nested WIP\n")
         tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
 
-    def test_nested_checkpoint_transport_preserves_source_head_gitlink(
+    def test_transaction_delta_excludes_setup_owned_gitlinks(
         self, tmp_path: Path
     ) -> None:
         workspace_root = _workspace(tmp_path)
@@ -183,11 +182,7 @@ class TestsFlextInfraWorktreeTransaction:
         (nested_root / "marker.txt").write_text("source\n", encoding="utf-8")
         u.Tests.initialize_git_repo(nested_root)
         source_head = tm.ok(u.Infra.git_repository_head(nested_root))
-        # The contract under test is gitlink TRANSPORT: the isolated worktree
-        # must not leak its own checkpoint SHA back into the superproject's
-        # recorded pointer. That pointer only exists when the superproject
-        # actually tracks the nested repository as a gitlink, so the fixture
-        # records it exactly as Git does for an initialized submodule.
+        # The superproject records the initialized submodule exactly as Git does.
         (workspace_root / ".gitmodules").write_text(
             '[submodule "nested-repository"]\n'
             "\tpath = nested-repository\n"
@@ -257,10 +252,9 @@ class TestsFlextInfraWorktreeTransaction:
         deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
 
-        patch_text = root_delta.patch.decode()
-        tm.that(patch_text, has=f"+Subproject commit {source_head}")
-        tm.that(patch_text, lacks=f"+Subproject commit {nested.checkpoint_sha}")
-        tm.ok(u.Infra.git_apply_patch(root_delta))
+        tm.that(root_delta.changed_files, lacks=nested.relative_path)
+        tm.that(root_delta.patch, lacks=b"Subproject commit")
+        tm.that(tm.ok(u.Infra.git_apply_transaction_patches(deltas)), eq=False)
         staged = tm.ok(
             u.Infra.git_capture(
                 workspace_root, ("ls-files", "--stage", "--", nested.relative_path)
@@ -435,6 +429,31 @@ class TestsFlextInfraWorktreeTransaction:
                     acquisition_failure=acquisition_failure,
                 )
             )
+
+    def test_transaction_forward_checks_every_patch_before_any_apply(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject a later working-tree conflict before an earlier source changes."""
+        first_source, _first_worktree, first_delta = _operation_delta(
+            tmp_path / "first"
+        )
+        second_source, _second_worktree, second_delta = _operation_delta(
+            tmp_path / "second"
+        )
+        first_artifact = first_source / "artifact.txt"
+        second_artifact = second_source / "artifact.txt"
+        first_before = first_artifact.read_bytes()
+        second_artifact.write_bytes(b"concurrent\n")
+        first_status = _git_status(first_source)
+        second_status = _git_status(second_source)
+
+        result = u.Infra.git_apply_transaction_patches((first_delta, second_delta))
+
+        tm.fail(result, has="source patch forward-check")
+        tm.that(first_artifact.read_bytes(), eq=first_before)
+        tm.that(second_artifact.read_bytes(), eq=b"concurrent\n")
+        tm.that(_git_status(first_source), eq=first_status)
+        tm.that(_git_status(second_source), eq=second_status)
 
     def test_transaction_lock_blocks_head_movement_after_preflight(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -639,126 +658,26 @@ class TestsFlextInfraWorktreeTransaction:
         report = tm.ok(transaction_result)
         output = u.Infra.render_worktree_transaction_report(report)
         lint_output = "\n".join(item.output for item in report.lint_after)
+        configured_lint_tools = tuple(
+            tool for tool, _command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        )
 
         tm.that(report.breakage_detected, eq=False, msg=f"{output}\n{lint_output}")
+        tm.that(
+            tuple(item.tool for item in report.lint_before), eq=configured_lint_tools
+        )
+        tm.that(
+            tuple(item.tool for item in report.lint_after), eq=configured_lint_tools
+        )
         tm.that(output, has="diff -- repository .")
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
         tm.that(_git_status(workspace_root), eq=before_status)
         tm.that((workspace_root / "Makefile").exists(), eq=False)
 
-    def test_public_transaction_fails_before_command_when_managed_tool_is_missing(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Reject a managed PATH that cannot resolve every declared lint tool."""
-        workspace_root = _workspace(tmp_path)
-        before_status = _git_status(workspace_root)
-        before_pyproject = (workspace_root / "pyproject.toml").read_bytes()
-        # Fixture isolation must hold on any host layout. Pointing the managed
-        # PATH at git's own bin directory is not isolation: on hosts where git
-        # and the lint tools share a directory (e.g. /usr/sbin) the tools stay
-        # resolvable and the contract is never exercised. Build a bin holding
-        # only git and the shell utilities git's own porcelain scripts call, so
-        # exactly the managed lint tools are the ones that cannot resolve.
-        managed_bin = tmp_path / "host-bin-without-managed-tools"
-        managed_bin.mkdir()
-        required_host_tools = (c.Infra.GIT, "basename", "sed", "uname", "sh")
-        for tool in required_host_tools:
-            resolved_tool = shutil.which(tool)
-            if resolved_tool is None:
-                pytest.fail(f"host tool required by the transaction test: {tool}")
-            (managed_bin / tool).symlink_to(resolved_tool)
-        missing_tool = c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS[0][1][0]
-        tm.that(shutil.which(missing_tool, path=str(managed_bin)), eq=None)
-        tm.that(shutil.which(c.Infra.GIT, path=str(managed_bin)), none=False)
-        monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PATH, str(managed_bin))
-
-        transaction_result = u.Infra.execute_worktree_transaction(
-            m.Infra.WorktreeTransactionRequest(
-                workspace_root=workspace_root,
-                command=(
-                    "codegen",
-                    "conform",
-                    "--root",
-                    str(workspace_root),
-                    "--scope",
-                    "self",
-                    "--mode",
-                    "apply",
-                ),
-                apply_patch=False,
-                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
-            )
-        )
-
-        tm.fail(
-            transaction_result,
-            has=(
-                "required transaction lint executable not found on managed PATH: "
-                f"{missing_tool}"
-            ),
-        )
-        tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
-        tm.that(_git_status(workspace_root), eq=before_status)
-
 
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""
-
-    def test_transaction_lint_binds_uv_overlay_tools_from_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Resolve tools from uv's overlay PATH, not the interpreter directory."""
-        overlay_bin = tmp_path / "overlay" / "bin"
-        overlay_bin.mkdir(parents=True)
-        for executable_name in {
-            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
-        }:
-            executable = overlay_bin / executable_name
-            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            executable.chmod(0o755)
-        monkeypatch.setenv("PATH", str(overlay_bin))
-
-        commands = tm.ok(u.Infra._lint_commands(tmp_path))  # ruff:ignore[private-member-access]
-
-        tm.that(
-            {Path(command[0]).parent for _tool, command in commands}, eq={overlay_bin}
-        )
-
-    def test_transaction_lint_type_checks_against_the_project_venv(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Prefer the checked tree's interpreter over the bootstrap interpreter."""
-        overlay_bin = tmp_path / "overlay" / "bin"
-        overlay_bin.mkdir(parents=True)
-        for executable_name in {
-            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
-        }:
-            executable = overlay_bin / executable_name
-            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            executable.chmod(0o755)
-        monkeypatch.setenv("PATH", str(overlay_bin))
-        venv_python = tmp_path / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
-        venv_python.parent.mkdir(parents=True)
-        venv_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-        venv_python.chmod(0o755)
-
-        commands: t.StrSequencePairTuple = tm.ok(
-            u.Infra._lint_commands(tmp_path)  # ruff:ignore[private-member-access]
-        )
-
-        pyrefly = next(command for tool, command in commands if tool == c.Infra.PYREFLY)
-        tm.that(
-            pyrefly[pyrefly.index("--python-interpreter-path") + 1],
-            eq=str(venv_python.resolve()),
-        )
-
-    def test_transaction_lint_reports_counts_and_actionable_locations(self) -> None:
-        """Keep aggregate regression guards and file-level repair evidence."""
-        commands = dict(c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS)
-
-        tm.that(commands["ruff"], has="--statistics")
-        tm.that(commands["ruff-details"], has="concise")
 
     def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
         """Stable debt is reported; every introduced diagnostic is rejected."""

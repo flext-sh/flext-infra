@@ -15,9 +15,11 @@ import json
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
 
 import flext_infra
-from flext_infra import c, m
+from flext_infra import c, config, m, t
 from flext_tests import tm
 
 
@@ -103,6 +105,37 @@ class TestsWorkspaceManifestV2Contract:
         required = schema["$defs"]["repository"]["required"]
         for field in ("checkout", "codegen", "package", "editable", "read_only"):
             tm.that(required, has=field)
+
+    def test_schema_accepts_current_make_verb_and_rejects_removed_field(self) -> None:
+        """Keep the manifest schema aligned with the typed Make selector contract."""
+        schema = json.loads(self._schema_path().read_text(encoding="utf-8"))
+        validator = Draft202012Validator(schema)
+        verb = next(
+            item
+            for item in config.Infra.codegen.make.verbs
+            if item.apply_whats or item.optional_apply_whats
+        )
+        verb_payload = verb.model_dump(mode="json")
+        current = self._v2_workspace()
+        current["repository"] = {
+            **t.Cli.JSON_MAPPING_ADAPTER.validate_python(current["repository"]),
+            "extra_verbs": [verb_payload],
+        }
+
+        validator.validate(current)
+        m.Infra.WorkspaceSpec.model_validate(current)
+
+        removed = self._v2_workspace()
+        removed_field = "apply_guarded"
+        removed_verb = {**verb_payload, removed_field: True}
+        removed["repository"] = {
+            **t.Cli.JSON_MAPPING_ADAPTER.validate_python(removed["repository"]),
+            "extra_verbs": [removed_verb],
+        }
+        with pytest.raises(ValidationError):
+            validator.validate(removed)
+        with pytest.raises(c.ValidationError):
+            m.Infra.WorkspaceSpec.model_validate(removed)
 
     def test_checkout_and_codegen_enums_exist(self) -> None:
         """Expose closed typed vocabularies for checkout and codegen."""

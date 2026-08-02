@@ -56,6 +56,158 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(u.Infra.dep_name(raw), eq=expected)
 
     @pytest.mark.parametrize(
+        ("payload", "expected"),
+        [
+            pytest.param(
+                {
+                    "project": {
+                        "dependencies": [
+                            "selected @ git+https://example.invalid/repository.git"
+                        ]
+                    }
+                },
+                False,
+                id="project-direct",
+            ),
+            pytest.param(
+                {
+                    "project": {
+                        "optional-dependencies": {
+                            "dev": ["selected @ https://example.invalid/archive.whl"]
+                        }
+                    }
+                },
+                False,
+                id="optional-direct",
+            ),
+            pytest.param(
+                {
+                    "dependency-groups": {
+                        "dev": [
+                            (
+                                "selected[extra] @ file:///workspace/selected; "
+                                "python_version < '3.14'"
+                            )
+                        ]
+                    }
+                },
+                False,
+                id="group-direct-with-marker",
+            ),
+            pytest.param(
+                {
+                    "tool": {
+                        "poetry": {
+                            "dependencies": {
+                                "selected": {
+                                    "git": "https://example.invalid/repository.git"
+                                }
+                            }
+                        }
+                    }
+                },
+                False,
+                id="poetry-root-git",
+            ),
+            pytest.param(
+                {
+                    "tool": {
+                        "poetry": {
+                            "dependencies": {
+                                "selected": {
+                                    "url": "https://example.invalid/archive.whl"
+                                }
+                            }
+                        }
+                    }
+                },
+                False,
+                id="poetry-root-url",
+            ),
+            pytest.param(
+                {
+                    "tool": {
+                        "poetry": {
+                            "group": {
+                                "dev": {
+                                    "dependencies": {
+                                        "selected": {"path": "../selected"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                False,
+                id="poetry-group-path",
+            ),
+            pytest.param(
+                {"project": {"dependencies": ["selected>=1.0"]}},
+                True,
+                id="project-registry",
+            ),
+            pytest.param(
+                {"project": {"optional-dependencies": {"dev": ["selected"]}}},
+                True,
+                id="optional-registry",
+            ),
+            pytest.param(
+                {"dependency-groups": {"dev": ["selected~=1.0"]}},
+                True,
+                id="group-registry",
+            ),
+            pytest.param(
+                {"tool": {"poetry": {"dependencies": {"selected": ">=1.0"}}}},
+                True,
+                id="poetry-root-registry",
+            ),
+            pytest.param(
+                {
+                    "tool": {
+                        "poetry": {
+                            "group": {
+                                "dev": {
+                                    "dependencies": {"selected": {"version": ">=1.0"}}
+                                }
+                            }
+                        }
+                    }
+                },
+                True,
+                id="poetry-group-registry",
+            ),
+            pytest.param(
+                {
+                    "project": {
+                        "dependencies": [
+                            "selected @ git+https://example.invalid/repository.git"
+                        ]
+                    },
+                    "tool": {"poetry": {"dependencies": {"selected": ">=1.0"}}},
+                },
+                True,
+                id="mixed-registry-wins",
+            ),
+        ],
+    )
+    def test_dependency_registry_lock_classification_covers_all_tables(
+        self, payload: t.JsonMapping, *, expected: bool
+    ) -> None:
+        """Classify the selected source consistently across every supported table."""
+        declarations = u.Infra.dependency_declarations_from_payload(payload)
+
+        tm.that(declarations, length=1)
+        tm.that(declarations[0].name, eq="selected")
+        tm.that(declarations[0].registry_required, eq=expected)
+        tm.that(
+            u.Infra.declared_dependency_names_from_payload(payload), eq=("selected",)
+        )
+        tm.that(
+            u.Infra.dependency_requires_registry_lock_from_payload(payload, "selected"),
+            eq=expected,
+        )
+
+    @pytest.mark.parametrize(
         ("specs", "expected_length", "expected_names", "check_sorted"),
         [
             (["requests>=2.0", "django>=3.0"], 2, ["requests", "django"], False),
@@ -273,6 +425,43 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(
             u.Infra.locked_dependency_versions(lock_path), eq={"requests": "2.32.4"}
         )
+
+    def test_locked_dependency_state_accepts_a_git_only_inventory(
+        self, tmp_path: Path
+    ) -> None:
+        """Distinguish one valid Git-only lock from invalid or missing TOML."""
+        lock_path = tmp_path / "uv.lock"
+        lock_path.write_text(
+            (
+                "version = 1\n"
+                "[[package]]\n"
+                'name = "selected"\n'
+                'version = "1.0.0"\n'
+                'source = { git = "https://example.invalid/repository.git#revision" }\n'
+            ),
+            encoding="utf-8",
+        )
+
+        state = tm.ok(u.Infra.locked_dependency_state(lock_path))
+
+        tm.that(state.package_names, eq=("selected",))
+        tm.that(state.registry_versions, eq={})
+        tm.that(u.Infra.locked_dependency_versions(lock_path), eq={})
+
+    @pytest.mark.parametrize(
+        "content",
+        [None, "[invalid", "version = 1\n"],
+        ids=["missing", "invalid-toml", "missing-packages"],
+    )
+    def test_locked_dependency_state_rejects_an_invalid_inventory(
+        self, tmp_path: Path, content: str | None
+    ) -> None:
+        """Fail closed when the lock cannot prove its package inventory."""
+        lock_path = tmp_path / "uv.lock"
+        if content is not None:
+            lock_path.write_text(content, encoding="utf-8")
+
+        tm.fail(u.Infra.locked_dependency_state(lock_path))
 
     def test_rewrite_requirement_constraint_preserves_extras_and_markers(self) -> None:
         """Verify rewrite requirement constraint preserves extras and markers."""

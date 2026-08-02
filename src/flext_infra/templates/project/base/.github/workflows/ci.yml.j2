@@ -3,15 +3,15 @@
 # Source: template (base/.github/workflows/ci.yml.j2)
 # Free: no
 # End SECTION: header
-
+---
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch; promotion is integration -> main only
+# Source: config:branch_policy.promotion_branch + repository_branch
 "on":
   pull_request:
     branches:
-      - main
+      - {{ promotion_branch }}
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -25,11 +25,11 @@ jobs:
   # Source: template + config:github_actions.*
   ci:
     name: ci
-    if: {% raw %}${{ github.head_ref == '{% endraw %}{{ repository_branch }}{% raw %}' }}{% endraw %}
+    if: {% raw %}${{ github.base_ref == '{% endraw %}{{ promotion_branch }}{% raw %}' && github.head_ref == '{% endraw %}{{ repository_branch }}{% raw %}' }}{% endraw %}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      {{ make.ci.variable }}: {{ make.ci.value }}
+      {{ make.ci.variable }}: {{ make.ci.value | tojson }}
     steps:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
@@ -43,8 +43,8 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-{% for step in make.workflow if "ci" in step.contexts %}
-      - name: {{ step.verb }} (blocking)
-        run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
+{% for command in make.workflow_commands["ci"] %}
+      - name: {{ command }} (blocking)
+        run: {{ command }}
 {% endfor %}
-    # End SECTION: ci job
+# End SECTION: ci job

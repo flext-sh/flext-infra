@@ -50,6 +50,14 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
+    rewrite_dependency: Annotated[
+        str | None,
+        m.Field(
+            alias="rewrite-dependency",
+            pattern=c.Infra.DEPENDENCY_SELECTOR_PATTERN,
+            description="Rewrite constraints only for one dependency name",
+        ),
+    ] = None
     tomlsort_sort_first: t.StrSequence = m.Field(
         default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
         exclude=True,

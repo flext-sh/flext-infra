@@ -232,7 +232,11 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             + list(make_args),
             log_path,
             env=self._project_child_env(),
-            remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            remove_env_keys=(
+                *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+                config.Infra.codegen.make.selector,
+                config.Infra.codegen.make.apply_variable,
+            ),
         )
         return_code: int = proc_result.unwrap() if proc_result.success else 1
         # mro-9v0d: GNU make exits 2 for any failed recipe, so recover the

@@ -413,7 +413,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
         timeout_seconds: int,
         scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root the scope owns."""
+        """Fresh-import every installed productive package root the scope owns.
+
+        FLEXT packages read their distribution metadata at import time. A
+        workspace transaction can span siblings that are not installed in the
+        calling project's environment, so only packages whose distribution is
+        present can be exercised by this probe.
+        """
         packages = tuple(
             sorted({
                 package_dir.name
@@ -426,10 +432,22 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
         script = (
             "import importlib\n"
+            "import importlib.metadata as _md\n"
             f"packages = {packages!r}\n"
+            "imported = 0\n"
+            "skipped = []\n"
             "for package in packages:\n"
+            "    dist = package.replace('_', '-')\n"
+            "    try:\n"
+            "        _md.distribution(dist)\n"
+            "    except _md.PackageNotFoundError:\n"
+            "        skipped.append(package)\n"
+            "        continue\n"
             "    importlib.import_module(package)\n"
-            "print(f'imported {len(packages)} packages')\n"
+            "    imported += 1\n"
+            "print(f'imported {imported} packages')\n"
+            "if skipped:\n"
+            "    print(f'skipped (not installed): {sorted(skipped)}')\n"
         )
         result = u.Cli.run_raw(
             (sys.executable, "-c", script),
@@ -555,8 +573,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @staticmethod
     def _configured_lock_paths(
-        repository_roots: t.SequenceOf[Path],
-        relative_lock_paths: t.SequenceOf[Path],
+        repository_roots: t.SequenceOf[Path], relative_lock_paths: t.SequenceOf[Path]
     ) -> p.Result[t.SequenceOf[Path]]:
         """Resolve every configured Make lock for the supplied repositories."""
         lock_paths: set[Path] = set()
@@ -606,10 +623,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         serialization = config.Infra.codegen.make.serialization
         lock_paths_result = cls._configured_lock_paths(
             tuple(repository.worktree_root for repository in repositories),
-            (
-                serialization.single_flight_lock_path,
-                serialization.lock_path,
-            ),
+            (serialization.single_flight_lock_path, serialization.lock_path),
         )
         if lock_paths_result.failure:
             return r[bool].fail(
@@ -638,8 +652,17 @@ class FlextInfraUtilitiesWorktreeTransaction:
         if head_preflight.failure:
             return head_preflight
         patches = tuple(delta for delta in deltas if delta.patch)
+        for delta in patches:
+            forward_check = FlextInfraUtilitiesGitScope.git_check_forward_patch(delta)
+            if forward_check.failure:
+                return r[bool].fail(
+                    f"{delta.relative_path}: source patch forward-check failed: "
+                    f"{forward_check.error or 'patch is not reconcilable'}"
+                )
         ordered = sorted(
-            patches, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
+            patches,
+            key=lambda delta: len(Path(delta.relative_path).parts),
+            reverse=True,
         )
         for delta in ordered:
             result = FlextInfraUtilitiesGitScope.git_apply_patch(delta)

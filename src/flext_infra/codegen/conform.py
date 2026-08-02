@@ -1374,9 +1374,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
+        if destination == ".yamllint":
+            policy = codegen.yamllint
+            return r[p.Model].ok(
+                m.Infra.YamllintRenderSpec(
+                    line_length=config.Infra.tooling.tools.yamlfix.line_length,
+                    ignored_paths=policy.ignored_paths,
+                    rule_ignores=self.resolve_yamllint_rule_ignores(policy, dist),
+                )
+            )
         if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
+            )
+        if destination == codegen.make.git_hooks.installer.as_posix():
+            return r[p.Model].ok(
+                m.Infra.GitHookInstallerRenderSpec(
+                    make=codegen.make, beads_enabled=target.beads_enabled
+                )
             )
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
@@ -1400,6 +1415,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             database = workspace.ledger_id or issue_prefix
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
+                    make=codegen.make,
                     issue_prefix=issue_prefix,
                     database=database,
                     server=server,
@@ -1421,6 +1437,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     repository_branch=provider.value.branch,
+                    promotion_branch=codegen.branch_policy.promotion_branch,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
                     make=codegen.make,
@@ -1475,10 +1492,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         target, workspace, infra_repository.value
                     ),
                     make_profile=profile,
+                    setup_scope=self._profile_setup_scope(codegen, profile),
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_members=tuple(
-                        item.path.as_posix() for item in members
-                    ),
+                    workspace_members=tuple(item.path.as_posix() for item in members),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
@@ -1498,9 +1514,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     prlimit_address_space_option=(c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION),
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                    pytest_process_timeout_seconds=(
-                        config.Infra.tooling.tools.pytest.process_timeout_seconds
-                    ),
                 )
             )
         if project_context is not None:
@@ -1514,6 +1527,31 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or f"managed artifact context failed: {destination}"
             )
         return r[p.Model].ok(context_result.value)
+
+    @staticmethod
+    def resolve_yamllint_rule_ignores(
+        policy: m.Infra.YamllintPolicySpec, distribution: str
+    ) -> t.MappingKV[str, t.StrTuple]:
+        """Merge global and project YAML syntax paths in deterministic order."""
+        override = policy.rule_ignore_overrides.get(distribution, {})
+        rules = tuple(dict.fromkeys((*policy.rule_ignores, *override)))
+        return {
+            rule: tuple(
+                dict.fromkeys((
+                    *policy.rule_ignores.get(rule, ()),
+                    *override.get(rule, ()),
+                ))
+            )
+            for rule in rules
+        }
+
+    @staticmethod
+    def _profile_setup_scope(
+        codegen: m.Infra.CodegenConfigSpec, profile: c.Infra.MakeProfile
+    ) -> t.Infra.SetupScope:
+        """Resolve setup scope from the profile that owns the projection."""
+        profile_spec = next(item for item in codegen.profiles if item.name == profile)
+        return profile_spec.setup_scope
 
     @staticmethod
     def make_render_context(
@@ -1572,6 +1610,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
+                setup_scope=FlextInfraCodegenConform._profile_setup_scope(
+                    codegen, profile
+                ),
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
@@ -1581,9 +1622,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_members=tuple(
-                    item.path.as_posix() for item in members
-                ),
+                workspace_members=tuple(item.path.as_posix() for item in members),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
@@ -1705,6 +1744,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
+                setup_scope=FlextInfraCodegenConform._profile_setup_scope(
+                    codegen, profile
+                ),
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
@@ -1714,9 +1756,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_members=tuple(
-                    item.path.as_posix() for item in members
-                ),
+                workspace_members=tuple(item.path.as_posix() for item in members),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
@@ -2351,7 +2391,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _managed_path_wip(root: Path, path: Path) -> p.Result[bool]:
-        """Return file-scoped Git WIP and fail when status cannot be proven."""
+        """Return file-scoped Git WIP and fail when status cannot be proven.
+
+        An isolated transaction checkpoints the source tree's complete dirty
+        state in ``HEAD`` over its original ``HEAD^``. The isolated worktree is
+        therefore clean even when the source path carried WIP. Preserve that
+        provenance so only bytes already equal to the canonical plan pass;
+        divergent source bytes remain blocked.
+        """
         repo_check = u.Cli.run_raw(
             [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=root
         )
@@ -2365,6 +2412,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             relative = path.relative_to(root).as_posix()
         except ValueError:
             return r[bool].fail(f"managed path escapes repository root: {path}")
+        if u.Cli.process_env().get(c.Infra.WORKTREE_TRANSACTION_ENV) == (
+            c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
+        ):
+            checkpoint_delta = u.Cli.run_raw(
+                [c.Infra.GIT, "diff", "--quiet", "HEAD^", "HEAD", "--", relative],
+                cwd=root,
+            )
+            if checkpoint_delta.failure or checkpoint_delta.value.exit_code not in {
+                0,
+                1,
+            }:
+                return r[bool].fail(
+                    f"cannot inspect managed transaction provenance: {path}"
+                )
+            if checkpoint_delta.value.exit_code == 1:
+                return r[bool].ok(True)
         status = u.Cli.run_raw(
             [c.Infra.GIT, "status", "--porcelain", "--", relative], cwd=root
         )

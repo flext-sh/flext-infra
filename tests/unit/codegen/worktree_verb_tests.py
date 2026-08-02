@@ -35,10 +35,8 @@ class TestsCodegenWorktreeVerb:
         tm.that(verb.default_what, eq="list")
 
     def test_mutating_operations_own_the_apply_guard(self) -> None:
-        """Read-only list remains usable without granting mutation authority.
-
-        Guarding at verb level would force `APPLY=Y` onto `list`. The mutating
-        selectors enforce the guard individually in their own recipes instead.
-        """
+        """One typed selector policy separates list from lane mutation."""
         verb = self._verb("worktree")
-        tm.that(verb.apply_guarded, eq=False)
+        tm.that(verb.apply_whats, eq=("add", "update", "remove"))
+        tm.that(verb.default_what in verb.apply_whats, eq=False)
+        tm.that(verb.apply_what, eq=verb.apply_whats[0])

@@ -226,7 +226,7 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` and `Required Python quality gates`; selector routing is owned universally by `~/.agents/skills/make-check/SKILL.md`.",
+            f"Canonical `make` verbs (`check`, `test`, `fmt APPLY=Y`, `val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` and `Required Python quality gates`; selector routing is owned universally by `~/.agents/skills/make-check/SKILL.md`.",
         ]
 
     @staticmethod

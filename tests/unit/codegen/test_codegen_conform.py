@@ -53,6 +53,24 @@ def _conform_target(
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
+    def test_provider_integration_branch_cannot_equal_promotion_branch(self) -> None:
+        """Fail closed when an arbitrary provider collapses integration to release."""
+        codegen = config.Infra.codegen
+        promotion_branch = codegen.branch_policy.promotion_branch
+        selected_provider = codegen.providers[0]
+        payload = codegen.model_dump(mode="python", exclude_computed_fields=True)
+        payload["providers"] = tuple(
+            provider.model_copy(update={"branch": promotion_branch})
+            if provider.name == selected_provider.name
+            else provider
+            for provider in codegen.providers
+        )
+
+        with pytest.raises(
+            ValueError, match="provider integration branches must differ"
+        ):
+            m.Infra.CodegenConfigSpec.model_validate(payload)
+
     @pytest.mark.parametrize(
         ("kind", "name"),
         [
@@ -543,6 +561,51 @@ class TestCodegenConform:
         tm.that(after.digest, eq=before.digest)
         tm.that(u.Infra.workspace_fingerprint_changes(before, after), eq=())
 
+    def test_transaction_provenance_without_checkpoint_parent_fails_closed(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Never classify dirty managed bytes without a checkpoint parent."""
+        root = tmp_path / "single-commit"
+        root.mkdir()
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+        distribution = repository.distribution
+        (root / c.Infra.PYPROJECT_FILENAME).write_text(
+            (
+                "[project]\n"
+                f'name = "{distribution}"\n'
+                f'version = "{config.Infra.version}"\n'
+                "requires-python = "
+                f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
+            ),
+            encoding="utf-8",
+        )
+        package_init = (
+            root
+            / c.Infra.DEFAULT_SRC_DIR
+            / distribution.replace("-", "_")
+            / c.Infra.INIT_PY
+        )
+        package_init.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        managed = root / c.Infra.MAKEFILE_FILENAME
+        managed.write_text("# committed managed bytes\n", encoding="utf-8")
+        test_u.Tests.initialize_git_repo(root, origin_url=repository.url)
+        managed.write_text("# foreign managed bytes\n", encoding="utf-8")
+        monkeypatch.setenv(
+            c.Infra.WORKTREE_TRANSACTION_ENV, c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
+        )
+
+        conformed = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+        tm.fail(conformed, has="cannot inspect managed transaction provenance")
+        tm.that(managed.read_text(encoding="utf-8"), eq="# foreign managed bytes\n")
+
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
     ) -> None:
@@ -925,8 +988,15 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="incidente", default_what="all"),
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="incidente",
+                    default_what="all",
+                    whats=("all",),
+                    apply_what="all",
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="charts", default_what="all", whats=("all",), apply_what="all"
+                ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
@@ -977,13 +1047,16 @@ class TestScriptDispatchMakefile:
         tm.that("gen" in verb_names, eq=True)
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
-        tm.that(gen.default_what, eq="check")
-        tm.that(gen.apply_guarded, eq=True)
+        tm.that(gen.default_what in gen.whats, eq=True)
+        tm.that(bool(gen.apply_whats), eq=True)
+        tm.that(gen.apply_what in gen.apply_whats, eq=True)
+        default_handler = f"_builtin_{gen.name}_{gen.default_what}"
+        apply_handler = f"_builtin_{gen.name}_{gen.apply_what}"
         # Serialization follows the rename: gen is serialized, codegen gone.
         tm.that("gen" in make_config.serialization.verbs, eq=True)
         tm.that("codegen" in make_config.serialization.verbs, eq=False)
-        tm.that("gen" in make_config.serialization.mutation_verbs, eq=True)
-        tm.that("codegen" in make_config.serialization.mutation_verbs, eq=False)
+        tm.that("gen" in make_config.mutable_verbs, eq=True)
+        tm.that("codegen" in make_config.mutable_verbs, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -992,24 +1065,25 @@ class TestScriptDispatchMakefile:
         )
         tm.that(" gen" in public_line, eq=True)
         tm.that(" codegen" in public_line, eq=False)
-        tm.that("_DEFAULT_gen := check" in rendered, eq=True)
-        tm.that("_builtin_gen_check:" in rendered, eq=True)
-        tm.that("_builtin_gen_apply:" in rendered, eq=True)
-        tm.that("_builtin_codegen_check" in rendered, eq=False)
-        tm.that("_builtin_codegen_apply" in rendered, eq=False)
-        handlers = rendered.split("_BUILTIN_HANDLERS :=", 1)[1].split("\n\n", 1)[0]
-        tm.that("_builtin_gen_check" in handlers, eq=True)
-        tm.that("_builtin_gen_apply" in handlers, eq=True)
+        tm.that(f"_DEFAULT_{gen.name} := {gen.default_what}" in rendered, eq=True)
+        tm.that(f"{default_handler}:" in rendered, eq=True)
+        tm.that(f"{apply_handler}:" in rendered, eq=True)
+        tm.that("_builtin_codegen_" in rendered, eq=False)
         # Both handlers drive the conform engine (CLI namespace is unchanged).
-        gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
+        gen_check_body = rendered.split(f"{default_handler}:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
-        gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
+        tm.that(gen_check_body, lacks=["deps modernize", "deps extra-paths"])
+        gen_apply_body = rendered.split(f"{apply_handler}:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_apply_body, eq=True)
         tm.that("--mode apply" in gen_apply_body, eq=True)
         tm.that("_require_apply" in gen_apply_body, eq=True)
+        tm.that(gen_apply_body, lacks=["deps modernize", "deps extra-paths"])
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
+        tm.that(
+            f"# @flext-regenerate: {make_config.regeneration_command}" in rendered,
+            eq=True,
+        )
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
         for policy in config.Infra.codegen.make.custom_handler_policies.values():
             tm.that("|gen|" in policy.target_pattern, eq=True)
@@ -1026,9 +1100,18 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
-                m.Infra.MakeVerbSpec(name="chart-release", default_what="all"),
-                m.Infra.MakeVerbSpec(name="bead", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="charts", default_what="all", whats=("all",), apply_what="all"
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="chart-release",
+                    default_what="all",
+                    whats=("all",),
+                    apply_what="all",
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="bead", default_what="all", whats=("all",), apply_what="all"
+                ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py", roots=("scripts",)

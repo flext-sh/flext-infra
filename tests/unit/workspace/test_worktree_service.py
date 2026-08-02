@@ -87,6 +87,7 @@ class TestsFlextInfraWorktreeService:
         tm.that(added, eq=str(lane))
         tm.that(lane.is_dir(), where=bool)
         tm.that(not lane.is_relative_to(repository), where=bool)
+        tm.that(tm.ok(u.Infra.git_capture(lane, ("status", "--short"))), eq="")
         tm.that(
             tm.ok(u.Infra.git_capture(repository, ("worktree", "list", "--porcelain"))),
             has=f"worktree {lane}",

@@ -86,7 +86,26 @@ class TestsMakeTestSelector:
         invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
             engine_root / ".venv" / "bin" / "python",
-            (f'#!/bin/sh\nprintf "%s\\n" "$PYTHONPATH" "$*" > "{invocation_log}"\n'),
+            (
+                "#!/bin/sh\n"
+                "verb=''\nselector=''\napply=''\nprevious=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  if [ "$previous" = "--selector-value" ]; then selector="$argument"; fi\n'
+                '  if [ "$previous" = "--apply-token" ]; then apply="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then\n'
+                f'  exec make --no-print-directory -f "{selected_makefile}" '
+                '"_serialized_${verb}" "WHAT=${selector}" "APPLY=${apply}" '
+                '"BRANCH=${BRANCH}" "BASE=${BASE}" "WORKSPACE=${WORKSPACE}" '
+                '"UV=${UV}"\n'
+                "fi\n"
+                f'printf "%s\\n" "$PYTHONPATH" "$*" >> "{invocation_log}"\n'
+            ),
+        )
+        test_u.Tests.write_executable(
+            caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
         )
         uv = caller_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
@@ -114,6 +133,80 @@ class TestsMakeTestSelector:
                 "-m flext_infra workspace worktree",
                 f"--workspace {target_root}",
                 "--operation list",
+            ],
+        )
+
+        rejected = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "-f",
+                    str(selected_makefile),
+                    "worktree",
+                    "WHAT=add",
+                    "BRANCH=feature/guarded",
+                    "BASE=HEAD",
+                    f"WORKSPACE={target_root}",
+                    f"UV={uv}",
+                ],
+                cwd=caller_root,
+            )
+        )
+        tm.that(rejected.exit_code, ne=0)
+        tm.that(rejected.stdout + rejected.stderr, has="requires APPLY=Y")
+
+        for operation in ("add", "update", "remove"):
+            applied = tm.ok(
+                test_u.Tests.run_isolated_make(
+                    [
+                        "--no-print-directory",
+                        "-f",
+                        str(selected_makefile),
+                        "worktree",
+                        f"WHAT={operation}",
+                        "BRANCH=feature/guarded",
+                        "BASE=HEAD",
+                        "APPLY=Y",
+                        f"WORKSPACE={target_root}",
+                        f"UV={uv}",
+                    ],
+                    cwd=caller_root,
+                )
+            )
+            tm.that(applied.exit_code, eq=0, msg=applied.stdout + applied.stderr)
+            tm.that(
+                invocation_log.read_text(encoding="utf-8"),
+                has=[f"--operation {operation}", "--apply"],
+            )
+
+        invocation_log.write_text("", encoding="utf-8")
+        generated = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "-f",
+                    str(selected_makefile),
+                    "gen",
+                    "APPLY=Y",
+                    f"WORKSPACE={target_root}",
+                    f"UV={uv}",
+                ],
+                cwd=caller_root,
+            )
+        )
+        tm.that(generated.exit_code, eq=0, msg=generated.stdout + generated.stderr)
+        generation_calls = tuple(
+            call
+            for call in invocation_log.read_text(encoding="utf-8").splitlines()
+            if call.startswith("-m flext_infra ")
+        )
+        tm.that(
+            generation_calls,
+            eq=[
+                (
+                    f"-m flext_infra codegen conform --root {target_root} "
+                    "--scope self --mode apply"
+                )
             ],
         )
 
@@ -272,7 +365,11 @@ class TestsMakeTestSelector:
             Path(flext_infra.__file__).resolve().parents[2]
             / c.Infra.CUSTOM_MAKE_FILENAME
         ).read_text(encoding="utf-8")
+        gen = next(
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == "gen"
+        )
+        apply_handler = f"_builtin_{gen.name}_{gen.apply_what}"
 
-        tm.that(template, has="_builtin_gen_apply")
+        tm.that(template, has=apply_handler)
         tm.that(template, lacks="_builtin_build_gen")
         tm.that(custom, has="_custom_basemk_generate:")

@@ -10,13 +10,11 @@
 name: ci-matrix
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
+# Source: config:branch_policy.promotion_branch + repository_branch
 "on":
-  push:
-    branches: [{{ repository_branch }}]
   pull_request:
-    branches: [{{ repository_branch }}]
-  workflow_dispatch: {}
+    branches:
+      - {{ promotion_branch }}
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -36,10 +34,10 @@ jobs:
   # === SECTION: distro-matrix (managed) ===
   # Source: template + config:github_actions.checkout (distro list is template literal by design)
   distro-matrix:
-    # Clean-machine proof per distro: build the distro image (which runs the
-    # full project bootstrap at image-build time), then smoke the verb surface
-    # inside the built container.
+    if: {% raw %}${{ github.base_ref == '{% endraw %}{{ promotion_branch }}{% raw %}' && github.head_ref == '{% endraw %}{{ repository_branch }}{% raw %}' }}{% endraw %}
     runs-on: ubuntu-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value | tojson }}
     strategy:
       fail-fast: false
       matrix:
@@ -54,16 +52,25 @@ jobs:
           -f ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
-      - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
+      - name: Canonical CI lifecycle ({% raw %}${{ matrix.distro }}{% endraw %})
         run: |
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
-  # End SECTION: distro-matrix
+          docker run --rm \
+            --env {{ make.ci.variable }} \
+            ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} \
+            /bin/sh -lc '
+{% for command in make.workflow_commands["ci"] %}
+              {{ command }}{% if not loop.last %} &&{% endif %}
+{% endfor %}
+            '
+      # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   macos:
+    if: {% raw %}${{ github.base_ref == '{% endraw %}{{ promotion_branch }}{% raw %}' && github.head_ref == '{% endraw %}{{ repository_branch }}{% raw %}' }}{% endraw %}
     runs-on: macos-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value | tojson }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
@@ -78,16 +85,19 @@ jobs:
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
           enable-cache: true
-      - name: Bootstrap
-        run: make setup
-      - name: Verb surface
-        run: make help
-  # End SECTION: macos
+{% for command in make.workflow_commands["ci"] %}
+      - name: {{ command }} (blocking)
+        run: {{ command }}
+{% endfor %}
+# End SECTION: macos
 
   # === SECTION: windows (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   windows:
+    if: {% raw %}${{ github.base_ref == '{% endraw %}{{ promotion_branch }}{% raw %}' && github.head_ref == '{% endraw %}{{ repository_branch }}{% raw %}' }}{% endraw %}
     runs-on: windows-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value | tojson }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
@@ -102,10 +112,9 @@ jobs:
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
           enable-cache: true
-      - name: Bootstrap
+{% for command in make.workflow_commands["ci"] %}
+      - name: {{ command }} (blocking)
         shell: bash
-        run: make setup
-      - name: Verb surface
-        shell: bash
-        run: make help
-  # End SECTION: windows
+        run: {{ command }}
+{% endfor %}
+# End SECTION: windows
