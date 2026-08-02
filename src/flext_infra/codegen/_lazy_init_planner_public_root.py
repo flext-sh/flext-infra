@@ -25,13 +25,15 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         """Return the declared root ABI and its externally owned lazy exports."""
         init_path = pkg_dir / c.Infra.INIT_PY
         if self.rope_workspace.resource(init_path) is None:
-            return (frozenset(), {})
+            empty_exports: frozenset[str] = frozenset()
+            empty_lazy_map: t.MutableLazyAliasMap = {}
+            return (empty_exports, empty_lazy_map)
         source = u.Cli.files_read_text(init_path).unwrap()
         exports = frozenset(
             u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)
         )
         lazy_imports_name = u.Infra.lazy_imports_name_source(source)
-        pending = [lazy_imports_name] if lazy_imports_name else []
+        pending: list[str] = [lazy_imports_name] if lazy_imports_name else []
         visited: set[str] = set()
         entries: list[tuple[str, t.StrSequence]] = []
         while pending:
@@ -43,12 +45,15 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
                 source, assignment
             )
             entries.extend(assignment_entries)
-            pending.extend(reference for reference in references if reference not in visited)
+            pending.extend(
+                reference for reference in references if reference not in visited
+            )
         package_name = pkg_dir.name
         external: t.MutableLazyAliasMap = {}
         for module_name, names in entries:
-            if module_name.startswith(".") or module_name == package_name or module_name.startswith(
-                f"{package_name}."
+            if (
+                module_name.startswith((".", f"{package_name}."))
+                or module_name == package_name
             ):
                 continue
             for name in names:
@@ -65,11 +70,13 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         eager_names: frozenset[str],
     ) -> tuple[set[str], t.MutableLazyAliasMap]:
         """Keep only direct facades in one generated root contract."""
-        explicit_exports, external_lazy_map = (
-            (frozenset(), {})
-            if context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
-            else self._root_public_contract(context.pkg_dir)
-        )
+        if context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS:
+            explicit_exports: frozenset[str] = frozenset()
+            external_lazy_map: t.MutableLazyAliasMap = {}
+        else:
+            explicit_exports, external_lazy_map = self._root_public_contract(
+                context.pkg_dir
+            )
         lazy_map.update(external_lazy_map)
         export_names.update(external_lazy_map)
         if explicit_exports:

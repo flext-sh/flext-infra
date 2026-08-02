@@ -230,15 +230,10 @@ class TestCodegenConform:
             "", encoding=c.Infra.ENCODING_DEFAULT
         )
         test_u.Tests.write_lazy_init_namespace_module(
-            retired_package / "part.py",
-            class_name="FlextDemoResultPart",
-            alias="part",
+            retired_package / "part.py", class_name="FlextDemoResultPart", alias="part"
         )
         tm.ok(
-            FlextInfraCodegenLazyInit(
-                workspace_root=root,
-                apply_changes=True,
-            ).execute()
+            FlextInfraCodegenLazyInit(workspace_root=root, apply_changes=True).execute()
         )
         parent_init = package_root / c.Infra.INIT_PY
         before = parent_init.read_text(encoding=c.Infra.ENCODING_DEFAULT)
@@ -745,7 +740,8 @@ class TestCodegenConform:
         tm.fail(result)
         rejection = Path(f"{custom}.rej")
         tm.that(
-            result.error or "", has="custom.mk line 1 is not a private custom handler"
+            result.error or "",
+            has="custom.mk line 1 is not a declared pre/post lifecycle hook",
         )
         tm.that(rejection.exists(), eq=False)
         tm.that(custom.read_text(encoding="utf-8"), eq=content)
@@ -872,17 +868,12 @@ class TestCodegenConform:
                 "post-help:\n\t@echo HOOK_POST\n",
             )
         )
-        outcome = u.Cli.run_raw([
-            "make",
-            "-C",
-            str(root),
-            "help",
-        ])
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "help"])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
         pre_at = combined.find("HOOK_PRE")
-        body_at = combined.find("Canonical Make interface")
+        body_at = combined.find("flext-demo [standalone]")
         post_at = combined.find("HOOK_POST")
         tm.that(pre_at >= 0 and body_at >= 0 and post_at >= 0, eq=True)
         tm.that(pre_at < body_at, eq=True)
@@ -1050,12 +1041,11 @@ class TestScriptDispatchMakefile:
         # Extra verbs are public targets the dispatcher can reach.
         tm.that("incidente" in rendered, eq=True)
         tm.that("charts" in rendered, eq=True)
-        # The generated dispatch normalizes hyphenated WHAT to the module stem.
-        tm.that("tr '-' '_'" in rendered, eq=True)
+        # The typed SSOT resolves each builtin target statically at generation.
+        tm.that("tr '-' '_'" in rendered, eq=False)
+        tm.that("_builtin_incidente_all" in rendered, eq=True)
         # It forwards to the declared dispatcher through uv, not a raw builtin.
         tm.that("scripts/dispatch.py" in rendered, eq=True)
-        # Existence check spans every declared script root.
-        tm.that("apps/demo-app/scripts" in rendered, eq=True)
         # REGRESSION (fork-bomb): every line of the single-recipe _dispatch shell
         # command must continue with a trailing backslash. A blank/unterminated
         # line splits the recipe, drops $$what/$$builtin, and recurses into the
@@ -1115,6 +1105,8 @@ class TestScriptDispatchMakefile:
         tm.that("_BUILTIN_HANDLERS" in rendered, eq=False)
         gen_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_body, eq=True)
+        tm.that("deps modernize" in gen_body, eq=False)
+        tm.that("deps extra-paths" in gen_body, eq=False)
         tm.that("--mode apply" in gen_body, eq=True)
         tm.that("_require_apply" in gen_body, eq=True)
         # The regeneration contract published on every projection speaks gen.

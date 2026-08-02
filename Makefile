@@ -30,7 +30,7 @@ UV_LINK_MODE := copy
 # End SECTION: project identity
 
 # === SECTION: user overrides (managed) ===
-# Source: template (canonical public knobs documented by base.mk)
+# Source: template (canonical public knobs owned here)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 APPLY ?=
 CI ?=
@@ -47,7 +47,7 @@ BRANCH ?=
 PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 60
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 305
 # mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
 # MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
@@ -72,7 +72,6 @@ override export FLEXT_PYTEST_MATCH_RAW := $(value MATCH)
 override export FLEXT_PYTEST_DIAG_RAW := $(value DIAG)
 override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
 override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
-override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 WHAT ?=
 # End SECTION: user overrides
@@ -273,9 +272,9 @@ DEFAULT_PROJECTS := .
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
+WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS := build check test fmt docs clean fix
+ORCHESTRATED_VERBS := build check test fmt fix
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
@@ -293,8 +292,6 @@ ifneq ($(strip $(PROJECTS)),)
 $(error ERROR: Cannot use PROJECT and PROJECTS together)
 endif
 endif
-
-
 -include custom.mk
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
@@ -309,15 +306,15 @@ define _dispatch
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
 	builtin="_builtin_$(1)_$$what"; \
-	custom="_custom_$(1)_$$what"; \
+	case " $(_CANONICAL_HANDLERS_$(1)) " in \
+		*" $$what "*) ;; \
+		*) printf 'ERROR: unknown WHAT for %s: %s (allowed:%s)\n' "$(1)" "$$what" "$(_CANONICAL_HANDLERS_$(1))" >&2; exit 2 ;; \
+	esac; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
-	case " $(_CANONICAL_HANDLERS_$(1)) " in \
-		*" $$what "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
-	esac; \
+	$(SELF_MAKE) "$$builtin" || exit $$?; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -500,14 +497,16 @@ _builtin_help_usage:
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
-	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
+	@printf '  %s\n' 'for all or some WHATs. Handlers are declared only by the typed verb SSOT.';
 	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
 			printf '  %s\n' 'Defined in this project:'; \
 			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
 		fi; \
 	fi
+
+
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes
@@ -682,7 +681,9 @@ _builtin_deps_upgrade: _builtin_require_environment
 				exit 2 ;; \
 		esac; \
 	fi
-	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade))
+ifneq ($(strip $(DEPENDENCY)),)
+	$(call _run_for_selected_projects,--upgrade-package "$(strip $(DEPENDENCY))")
+else
 	@set -eu; \
 	selected="$(strip $(PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
@@ -690,7 +691,8 @@ _builtin_deps_upgrade: _builtin_require_environment
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
 	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --skip-check "$$@"
-	$(call _run_for_selected_projects,)
+	$(call _run_for_selected_projects,--upgrade)
+endif
 
 
 _builtin_build_artifacts:

@@ -48,7 +48,8 @@ class TestsMakeTestSelector:
 
         canonical = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "fmt", "APPLY=Y", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "_serialized_fmt", "APPLY=Y", f"UV={uv}"],
+                cwd=tmp_path,
             )
         )
         tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)
@@ -251,7 +252,6 @@ class TestsMakeTestSelector:
             has=[
                 "FLEXT_PYTEST_FILE_RAW",
                 "FLEXT_PYTEST_MATCH_RAW",
-                "FLEXT_PYTEST_WHAT_RAW",
                 "FLEXT_PYTEST_FAIL_FAST_RAW",
             ],
             lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
@@ -266,4 +266,4 @@ class TestsMakeTestSelector:
 
         tm.that(template, has="_builtin_gen_all")
         tm.that(template, lacks="_builtin_build_gen")
-        tm.that(custom, lacks=["_custom_", "basemk generate"])
+        tm.that(custom, lacks=["_custom_"])

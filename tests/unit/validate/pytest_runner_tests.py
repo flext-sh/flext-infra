@@ -195,6 +195,13 @@ class TestsFlextInfraPytestRunner:
         tm.that(
             observed_remove_keys, eq=[tuple(c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS)]
         )
+        tm.that(
+            all(
+                key in observed_remove_keys[0]
+                for key in ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE")
+            ),
+            eq=True,
+        )
         latest = tmp_path / ".reports" / "tests" / "latest.txt"
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
@@ -291,6 +298,59 @@ class TestsFlextInfraPytestRunner:
 
         tm.that(exit_code, eq=0)
         tm.that(summary, has="coverage=not-generated")
+
+    def test_diagnostic_failure_is_persisted_with_effective_exit(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Never persist COMPLETED/exit=0 when JUnit contains a failed test."""
+        selected = tmp_path / "tests" / "sample_test.py"
+        selected.parent.mkdir(parents=True)
+        selected.write_text("def test_sample() -> None:\n    pass\n", encoding="utf-8")
+        runner = self._runner(tmp_path, file="tests/sample_test.py")
+
+        def fake_run_to_file(
+            cmd: t.StrSequence,
+            output_file: t.Cli.TextPath,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            live: bool = False,
+            deadline: p.Cli.ProcessDeadline | None = None,
+        ) -> p.Result[int]:
+            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
+            log_path = Path(output_file)
+            report_dir = log_path.parent
+            log_path.write_text("1 failed in 0.01s\n", encoding="utf-8")
+            (report_dir / "junit.xml").write_text(
+                (
+                    '<?xml version="1.0"?>'
+                    '<testsuites><testsuite tests="1" failures="1" errors="0" '
+                    'skipped="0" time="0.01"><testcase classname="Tests" '
+                    'name="test_fail" time="0.01"><failure message="boom"/>'
+                    "</testcase></testsuite></testsuites>"
+                ),
+                encoding="utf-8",
+            )
+            _dump_real_profile(report_dir / "pytest.pstats")
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+
+        exit_code = tm.ok(runner.execute())
+        latest = (
+            (tmp_path / ".reports" / "tests" / "latest.txt")
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+        summary = (tmp_path / ".reports" / "tests" / latest / "summary.txt").read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(exit_code, eq=1)
+        tm.that(summary, has=["failed=1", "exit=1", "state=FAILED"])
 
     def test_timeout_preserves_exit_124_without_partial_artifacts(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

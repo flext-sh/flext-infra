@@ -486,11 +486,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
+            tracker_declaration = self._beads_tracker_declaration(target)
+            if tracker_declaration.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    tracker_declaration.error
+                    or f"Beads tracker declaration is invalid: {repository_root}"
+                )
             beads_plans.append(
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
-                    canonical_prefix=self._beads_ledger_identity(workspace, target),
+                    canonical_prefix=tracker_declaration.value.issue_prefix,
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
@@ -636,11 +642,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         governed_paths = frozenset(governed_by_path)
-        governed_directories = tuple(sorted({
-            path.parent
-            for path in governed_paths
-            if path.parent != Path()
-        }))
+        governed_directories = tuple(
+            sorted({path.parent for path in governed_paths if path.parent != Path()})
+        )
         for relative_directory in governed_directories:
             directory = root / relative_directory
             if not directory.is_dir():
@@ -1529,9 +1533,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Dolt-safe identifier (underscore-only, e.g. "ai_hub"). Collapsing
             # both onto one ledger_identity silently renamed issue-prefix to
             # the database form whenever ledger_id was declared explicitly.
-            issue_prefix = FlextInfraCodegenConform.declared_beads_prefix(
-                target.root, fallback=target.canonical_project_name
-            )
+            declaration = self._beads_tracker_declaration(target)
+            if declaration.failure:
+                return r[p.Model].fail(
+                    declaration.error or "Beads tracker declaration is invalid"
+                )
+            issue_prefix = declaration.value.issue_prefix
             database = workspace.ledger_id or issue_prefix
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
@@ -1983,9 +1990,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
         verb_pattern = "|".join(re.escape(verb) for verb in allowed_verbs)
-        target_re = re.compile(
-            rf"^(pre|post)-({verb_pattern})(-[a-z0-9][a-z0-9-]*)?$"
-        )
+        target_re = re.compile(rf"^(pre|post)-({verb_pattern})(-[a-z0-9][a-z0-9-]*)?$")
         in_define = False
         # Collapse backslash continuation lines before validating so that
         # directives like `.PHONY` can span multiple physical lines. Only
@@ -2027,13 +2032,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 in_define = not raw_line.startswith("endef")
                 continue
             if raw_line.startswith("define "):
-                if not policy.allow_toolchain_declarations:
-                    return r[bool].fail(
-                        f"{policy.filename} line {line_number} "
-                        "declares a macro, which this profile forbids"
-                    )
-                in_define = True
-                continue
+                return r[bool].fail(
+                    f"{policy.filename} line {line_number} declares a macro; "
+                    "custom Make files may only declare pre/post lifecycle hooks"
+                )
             if not raw_line or raw_line.lstrip().startswith("#"):
                 continue
             if raw_line[0].isspace():
@@ -2049,16 +2051,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if target and target_re.fullmatch(target):
                 continue
             if _ASSIGNMENT_RE.match(raw_line) or _DIRECTIVE_RE.match(raw_line):
-                if policy.allow_toolchain_declarations:
-                    continue
                 return r[bool].fail(
-                    f"{policy.filename} line {line_number} "
-                    "declares a variable, which this profile forbids"
+                    f"{policy.filename} line {line_number} declares a variable; "
+                    "custom Make files may only declare pre/post lifecycle hooks"
                 )
-            if target and policy.allow_public_targets:
-                continue
             return r[bool].fail(
-                f"{policy.filename} line {line_number} is not a private custom handler"
+                f"{policy.filename} line {line_number} is not a declared "
+                "pre/post lifecycle hook"
             )
         return r[bool].ok(True)
 
@@ -2115,13 +2114,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @classmethod
-    def _beads_ledger_identity(
-        cls, workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
-    ) -> str:
-        """Derive the ledger namespace from the declared SSOT identity."""
-        return workspace.ledger_id or cls.declared_beads_prefix(
-            target.root, fallback=target.canonical_project_name
-        )
+    def _beads_tracker_declaration(
+        cls, target: m.Infra.RepositoryConformTarget
+    ) -> p.Result[m.Infra.BeadsTrackerDeclaration]:
+        """Resolve the existing declaration or construct the initial typed one.
+
+        An existing repository owns its issue namespace exclusively through the
+        committed tracker config. A repository being initialized has no such
+        artifact yet, so its typed canonical project identity is the explicit
+        input used to create that artifact; an invalid existing declaration is
+        never replaced.
+        """
+        config_path = target.root / c.Infra.BEADS_CONFIG_RELPATH
+        if config_path.is_file():
+            return cls.beads_declaration(target.root)
+        try:
+            declaration = m.Infra.BeadsTrackerDeclaration(
+                issue_prefix=target.canonical_project_name
+            )
+        except c.ValidationError as exc:
+            return r[m.Infra.BeadsTrackerDeclaration].fail_op(
+                "initial Beads tracker declaration is invalid", exc
+            )
+        return r[m.Infra.BeadsTrackerDeclaration].ok(declaration)
 
     @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
@@ -2190,25 +2205,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"Beads tracker declaration is invalid: {config_path}", exc
             )
         return r[m.Infra.BeadsTrackerDeclaration].ok(declaration)
-
-    @staticmethod
-    def declared_beads_prefix(repository_root: Path, *, fallback: str) -> str:
-        """Return the committed tracker prefix, falling back to the derived name.
-
-        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
-        ledger on the machine-wide Dolt server) is the tracker declaration for
-        that repository; deriving the namespace from the repository name and
-        rejecting the declared one inverted the SSOT; the derived name is only
-        the default for repositories without a committed tracker config.
-        """
-        config_path = repository_root / ".beads" / "config.yaml"
-        if not config_path.is_file():
-            return fallback
-        loaded = u.Cli.yaml_load_mapping(config_path)
-        prefix = loaded.get("issue-prefix")
-        if isinstance(prefix, str) and prefix.strip():
-            return prefix.strip()
-        return fallback
 
     @classmethod
     def _verify_beads_plan(

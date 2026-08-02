@@ -78,8 +78,7 @@ class TestCodegenCiMatrix:
         )
 
         expected = tuple(
-            f"run: make {step.verb}"
-            f"{' APPLY=Y' if step.apply else ''} CI=Y"
+            f"run: make {step.verb}{' APPLY=Y' if step.apply else ''} CI=Y"
             for step in config.Infra.codegen.make.workflow
             if "ci" in step.contexts
         )
@@ -170,9 +169,8 @@ class TestCodegenCiMatrix:
         blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        tm.that(blocking, has=f"      - {branch}")
-        tm.that(blocking, has="branches: [main]")
-        tm.that(blocking, has=f"github.head_ref == '{branch}'")
+        tm.that(blocking, has="pull_request:\n    branches:\n      - main")
+        tm.that(blocking, has=f'if [ "$GITHUB_HEAD_REF" != "{branch}" ]')
 
     def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""

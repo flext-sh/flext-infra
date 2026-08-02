@@ -186,7 +186,8 @@
       "required": [
         "project",
         "beads_enabled",
-        "ci_enabled"
+        "ci_enabled",
+        "ci_propagates"
       ],
       "properties": {
         "project": {
@@ -196,6 +197,9 @@
           "type": "boolean"
         },
         "ci_enabled": {
+          "type": "boolean"
+        },
+        "ci_propagates": {
           "type": "boolean"
         }
       }

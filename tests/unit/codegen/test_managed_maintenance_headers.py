@@ -29,9 +29,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             (templates / "project" / "base" / "Makefile.j2").read_text(encoding="utf-8")
         )
         tm.that(makefile_fields.get("@flext-managed"), eq="continuous")
-        tm.that(
-            makefile_fields.get("@flext-regenerate"), eq="make gen APPLY=Y"
-        )
+        tm.that(makefile_fields.get("@flext-regenerate"), eq="make gen APPLY=Y")
         tm.that(makefile_fields.get("@flext-ssot", ""), has="flext-infra/")
         tm.that(makefile_fields.get("@flext-maintenance", ""), has="do not edit")
 

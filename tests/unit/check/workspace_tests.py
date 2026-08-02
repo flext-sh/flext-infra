@@ -92,7 +92,7 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_resolve_gates_deduplicates(self) -> None:
         """Test that resolve_gates removes duplicate gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
+        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "pyrefly"])
         tm.ok(result)
         tm.that(result.value.count("lint"), eq=1)
 

@@ -174,7 +174,7 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(marker.read_text(encoding="utf-8"), eq="nested WIP\n")
         tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
 
-    def test_nested_checkpoint_transport_preserves_source_head_gitlink(
+    def test_nested_checkpoint_transport_excludes_untouched_gitlink(
         self, tmp_path: Path
     ) -> None:
         workspace_root = _workspace(tmp_path)
@@ -229,44 +229,40 @@ class TestsFlextInfraWorktreeTransaction:
             ),
             encoding="utf-8",
         )
+        tm.ok(u.Infra.git_capture(workspace_root, ("add", "-A")))
+        tm.ok(
+            u.Infra.git_capture(
+                workspace_root, ("commit", "-m", "test: track nested repository")
+            )
+        )
         worktree_root = tmp_path / "isolated"
         repositories = tm.ok(
             u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
                 workspace_root, worktree_root, "gitlink-identity-test"
             )
         )
-        nested = next(
-            repository
-            for repository in repositories
-            if repository.relative_path == "nested-repository"
-        )
-        tm.ok(
-            u.Infra.git_capture(
-                worktree_root,
-                (
-                    "update-index",
-                    "--add",
-                    "--cacheinfo",
-                    "160000",
-                    nested.checkpoint_sha,
-                    nested.relative_path,
-                ),
-            )
-        )
+        generated = worktree_root / "transaction-output.txt"
+        generated.write_text("generated\n", encoding="utf-8")
 
         deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
 
         patch_text = root_delta.patch.decode()
-        tm.that(patch_text, has=f"+Subproject commit {source_head}")
-        tm.that(patch_text, lacks=f"+Subproject commit {nested.checkpoint_sha}")
+        tm.that(patch_text, has="diff --git a/transaction-output.txt")
+        tm.that(root_delta.changed_files, has=generated.name)
+        tm.that(root_delta.changed_files, lacks="nested-repository")
+        tm.that(patch_text, lacks="Subproject commit")
         tm.ok(u.Infra.git_apply_patch(root_delta))
+        tm.that(
+            (workspace_root / generated.name).read_text(encoding="utf-8"),
+            eq="generated\n",
+        )
         staged = tm.ok(
             u.Infra.git_capture(
-                workspace_root, ("ls-files", "--stage", "--", nested.relative_path)
+                workspace_root, ("ls-files", "--stage", "--", "nested-repository")
             )
         )
-        tm.that(staged, eq=f"160000 {source_head} 0\t{nested.relative_path}")
+        tm.that(staged, eq=f"160000 {source_head} 0\tnested-repository")
         tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
 
     def test_transaction_apply_removes_source_and_sandbox_lock_state(

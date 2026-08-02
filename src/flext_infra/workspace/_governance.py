@@ -32,7 +32,7 @@ class FlextInfraWorkspaceGovernanceMixin:
 
     @staticmethod
     def _declares_workspace_toolchain(workspace_root: Path) -> bool:
-        """Require a live infra checkout shipping ``base.mk``.
+        """Require a live infra checkout shipping the canonical Make owner.
 
         The checkout is located on disk, not looked up in a project catalog:
         flext-infra owns generic policy, never the map of where each project
@@ -40,8 +40,8 @@ class FlextInfraWorkspaceGovernanceMixin:
         (or at its own root) or it does not.
         """
         candidates = (
-            workspace_root / c.Infra.BASE_MK,
-            workspace_root / config.Infra.name / c.Infra.BASE_MK,
+            workspace_root / c.Infra.MAKEFILE_FILENAME,
+            workspace_root / config.Infra.name / c.Infra.MAKEFILE_FILENAME,
         )
         return any(candidate.is_file() for candidate in candidates)
 

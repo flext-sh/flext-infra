@@ -52,28 +52,20 @@ class FlextInfraOrchestratorService(
             description="Exact pytest -k expression forwarded as one argument.",
         ),
     ] = None
-    what: Annotated[
-        str | None,
-        m.Field(
-            default=None,
-            min_length=1,
-            description="Exact test submode forwarded as one Make assignment.",
-        ),
-    ] = None
 
     @u.model_validator(mode="after")
     def _validate_test_selectors(self) -> Self:
         """Keep pytest selectors typed and out of generic Make argument strings."""
         if self.verb != "test" and any(
-            value is not None for value in (self.file, self.match, self.what)
+            value is not None for value in (self.file, self.match)
         ):
-            msg = "file, match, and what selectors are only valid for the test verb"
+            msg = "file and match selectors are only valid for the test verb"
             raise ValueError(msg)
         if self.verb == "test" and self.make_arg:
             msg = "generic make-arg is forbidden for the test verb"
             raise ValueError(msg)
         if msg := FlextInfraPytestSelectorValidator.syntax_violation(
-            file=self.file, match=self.match, what=self.what
+            file=self.file, match=self.match
         ):
             raise ValueError(msg)
         return self
@@ -86,7 +78,6 @@ class FlextInfraOrchestratorService(
         selectors = (
             *((f"FILE={file}",) if file is not None else ()),
             *((f"MATCH={self.match}",) if self.match is not None else ()),
-            *((f"WHAT={self.what}",) if self.what is not None else ()),
         )
         return (*normalized, *selectors)
 

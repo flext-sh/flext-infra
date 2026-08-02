@@ -1,8 +1,8 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
+
 """Flext Infra package."""
 
 from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
@@ -17,9 +17,6 @@ from .__version__ import __version__ as __version__
 from .__version__ import __version_info__ as __version_info__
 
 if TYPE_CHECKING:
-    from . import basemk as basemk
-    from flext_cli import d, e, h, r, x
-
     from ._config import config
     from ._settings import settings
     from .api import FlextInfra, infra
@@ -32,6 +29,7 @@ if TYPE_CHECKING:
     from .typings import FlextInfraTypes, FlextInfraTypes as t
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from .worktree import FlextInfraWorktreeService
+    from flext_cli import d, e, h, r, x
 
 _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     "._config": ("config",),
@@ -39,7 +37,6 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".api": ("FlextInfra", "infra"),
     ".base": ("FlextInfraServiceBase", "s"),
     ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-    ".basemk": ("basemk",),
     ".cli": ("FlextInfraCli", "docs_main", "main"),
     ".constants": ("FlextInfraConstants", "c"),
     ".models": ("FlextInfraModels", "m"),
@@ -50,9 +47,7 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     "flext_cli": ("d", "e", "h", "r", "x"),
 }
 
-
 _LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
-
 
 _LAZY_IMPORTS = build_lazy_import_map(
     _LAZY_MODULES, alias_groups=_LAZY_ALIAS_GROUPS, sort_keys=False
@@ -77,7 +72,6 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
-    "basemk",
     "c",
     "config",
     "d",

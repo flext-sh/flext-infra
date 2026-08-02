@@ -23,10 +23,7 @@ class TestsFlextInfraPytestSelectorValidator:
         target.write_text("", encoding="utf-8")
         file = f"{relative}::TestsSample::test exact"
         validator = FlextInfraPytestSelectorValidator(
-            workspace_root=tmp_path,
-            file=file,
-            match="exact name and not slow",
-            what="all",
+            workspace_root=tmp_path, file=file, match="exact name and not slow"
         )
 
         tm.ok(validator.execute())
@@ -47,16 +44,6 @@ class TestsFlextInfraPytestSelectorValidator:
     def test_file_rejects_non_normalized_or_control_text(self, file: str) -> None:
         with pytest.raises(c.ValidationError, match="file must"):
             FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), file=file)
-
-    def test_what_accepts_only_canonical_test_modes(self) -> None:
-        validator = FlextInfraPytestSelectorValidator(
-            workspace_root=Path.cwd(), what="all"
-        )
-        tm.ok(validator.execute())
-        with pytest.raises(c.ValidationError, match="what must be"):
-            FlextInfraPytestSelectorValidator(
-                workspace_root=Path.cwd(), what="$(shell touch marker)"
-            )
 
     def test_file_rejects_symlink_hop(self, tmp_path: Path) -> None:
         target = tmp_path / "target.py"

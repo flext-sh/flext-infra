@@ -129,18 +129,14 @@ Per-cycle compliance scorecard:
 6. Behavior tests: no implementation-coupled assertions.
 7. Code reduction: net removal of redundant code, not churn.
 
-Suggested command baseline per cycle:
+Canonical command sequence per cycle:
 
-- `source .venv/bin/activate && unset PYTHONPATH`
-- `scope status`
-- `scope workspace index`
-- `sg --help >/dev/null`
-- `scope refs <SYMBOL> --project <PROJECT>`
-- `ruff check <PATHS>`
-- `pyrefly check <PATHS>`
-- `pyright <PATHS>`
-- `MYPY_MEMORY_LIMIT_MB=6144 MYPY_TIMEOUT_SECONDS=600 make check WHAT=mypy PROJECT=<PROJECT>`
-- `pytest <TEST_PATHS>`
+- `make setup`
+- `make gen APPLY=Y`
+- `make fix APPLY=Y`
+- `make fmt APPLY=Y`
+- `make check`
+- `make test`
 
 Required output format per cycle:
 

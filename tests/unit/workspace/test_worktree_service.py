@@ -56,6 +56,10 @@ class TestsFlextInfraWorktreeService:
         tm.ok(u.Infra.git_capture(repository, ("add", "Makefile", "pyproject.toml")))
         tm.ok(u.Infra.git_capture(repository, ("commit", "-m", message)))
 
+    def test_git_workspace_root_rejects_a_non_repository(self, tmp_path: Path) -> None:
+        """Fail closed instead of treating an arbitrary directory as a Git root."""
+        tm.fail(u.Infra.git_workspace_root(tmp_path), has="not a git repository")
+
     def test_list_reports_the_primary_worktree(self, tmp_path: Path) -> None:
         """List is read-only and reports Git's canonical registry."""
         repository = self._repository(tmp_path)

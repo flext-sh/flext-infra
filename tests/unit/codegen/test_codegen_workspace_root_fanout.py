@@ -34,6 +34,8 @@ class TestsCodegenWorkspaceRootFanout:
         rendered = _render_root_makefile(tmp_path)
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
+        tm.that(rendered, has="_local_check: _builtin_require_environment")
+        tm.that(rendered, has="_local_test: _builtin_require_environment")
         tm.that(rendered, has="MAKE_PROFILE := workspace-root")
         tm.that(rendered, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
 

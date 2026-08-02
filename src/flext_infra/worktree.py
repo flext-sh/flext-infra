@@ -16,6 +16,16 @@ if TYPE_CHECKING:
 class FlextInfraWorktreeService(s[str]):
     """List, add, update, and remove development lanes under the repository."""
 
+    workspace_root: Annotated[
+        Path,
+        m.BeforeValidator(
+            lambda value: (
+                Path(value).expanduser().resolve()
+                if not isinstance(value, Path)
+                else value.expanduser().resolve()
+            )
+        ),
+    ] = m.Field(alias="workspace", description="Explicit repository path")
     operation: Annotated[
         c.Infra.WorktreeOperation, m.Field(description="Worktree lifecycle operation")
     ]

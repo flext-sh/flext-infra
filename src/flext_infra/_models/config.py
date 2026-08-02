@@ -487,9 +487,11 @@ class FlextInfraConfigModels:
         filename: Annotated[
             t.NonEmptyStr, m.Field(description="Versioned custom handler filename")
         ]
-        allow_public_targets: bool = m.Field(description="Permit public targets")
-        allow_toolchain_declarations: bool = m.Field(
-            description="Permit toolchain declarations"
+        allow_public_targets: Literal[False] = m.Field(
+            description="Public targets are forbidden; only declared lifecycle hooks exist"
+        )
+        allow_toolchain_declarations: Literal[False] = m.Field(
+            description="Toolchain declarations are forbidden in custom Make hooks"
         )
 
     class MakeSerializationSpec(_ConfigContract):
@@ -635,6 +637,7 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
         ]
+
         @u.model_validator(mode="after")
         def _validate_serialized_verbs(self) -> Self:
             """Require serialization to target declared non-bootstrap verbs."""
@@ -1080,6 +1083,10 @@ class FlextInfraConfigModels:
             FlextInfraModelsDepsToolSettings.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
+        local_executor_target_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Config-derived root-local Make target prefix"),
+        ] = FlextInfraConstantsMake.LOCAL_EXECUTOR_TARGET_PREFIX
 
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
@@ -1197,7 +1204,7 @@ class FlextInfraConfigModels:
 
         issue_prefix: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Ledger issue prefix from the declared ledger_id"),
+            m.Field(description="Issue namespace from canonical project identity"),
         ]
         database: Annotated[
             t.NonEmptyStr,
@@ -2309,20 +2316,6 @@ class FlextInfraConfigModels:
         def changed(self) -> bool:
             """Whether the sync altered any environment file."""
             return bool(self.changed_files)
-
-    class BaseMkRenderRequest(_ConfigContract):
-        """Validated public request for one base.mk render."""
-
-        project_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
-        ]
-
-    class BaseMkRenderResult(_ConfigContract):
-        """Rendered base.mk content for one project."""
-
-        content: Annotated[
-            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
-        ]
 
     class CodegenConformRequest(_ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""

@@ -157,8 +157,8 @@ class TestsCodegenMakeEnvironment:
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
         (project_root / "custom.mk").write_text(
-            ".PHONY: pre-status\n"
-            "pre-status:\n"
+            ".PHONY: pre-help\n"
+            "pre-help:\n"
             "\t@printf '%s\\n' "
             "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
@@ -175,11 +175,7 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "status",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "help"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -333,7 +329,11 @@ class TestsCodegenMakeEnvironment:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         runtime_python = project_root / ".venv" / "bin" / "python"
-        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        infra_log = tmp_path / "infra.log"
+        test_u.Tests.write_executable(
+            runtime_python,
+            f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{infra_log}'\nexit 0\n",
+        )
         uv_log = tmp_path / "uv.log"
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(
@@ -362,6 +362,7 @@ class TestsCodegenMakeEnvironment:
             commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
         )
         tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
+        tm.that(infra_log.exists(), eq=False)
 
     def test_dependency_upgrade_rejects_non_distribution_selector(
         self, tmp_path: Path

@@ -217,6 +217,48 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             )),
         )
 
+    @pytest.mark.parametrize(
+        ("project", "verb", "expected_target"),
+        [
+            (".", "check", "_local_check"),
+            (".", "fmt", "_local_fmt"),
+            ("flext-demo", "check", "check"),
+        ],
+    )
+    def test_orchestration_uses_the_config_derived_root_local_executor(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        project: str,
+        verb: str,
+        expected_target: str,
+    ) -> None:
+        """Execute the root locally without re-entering workspace fan-out."""
+        observed_commands: t.MutableSequenceOf[t.StrSequence] = []
+        monkeypatch.chdir(tmp_path)
+
+        def fake_run_to_file(
+            cmd: t.StrSequence,
+            output_file: t.Cli.TextPath,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+        ) -> p.Result[int]:
+            _ = cwd, timeout, env, remove_env_keys
+            observed_commands.append(tuple(cmd))
+            Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+            Path(output_file).write_text("", encoding="utf-8")
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+
+        tm.ok(
+            FlextInfraOrchestratorService(verb=verb).orchestrate([project], verb), len=1
+        )
+        tm.that(observed_commands, len=1)
+        tm.that(observed_commands[0][3], eq=expected_target)
+
     def test_execute_returns_success_for_supported_verb(self) -> None:
         """Return success when execute resolves and runs a supported verb."""
         project = m.Infra.ProjectInfo(
@@ -234,7 +276,6 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             verb="test",
             file="tests/unit/sample test.py::TestsSample::test exact",
             match="exact name and not slow",
-            what="all",
         )
 
         tm.that(
@@ -242,7 +283,6 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             eq=(
                 "FILE=tests/unit/sample test.py::TestsSample::test exact",
                 "MATCH=exact name and not slow",
-                "WHAT=all",
             ),
         )
 

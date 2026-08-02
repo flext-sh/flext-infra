@@ -66,10 +66,12 @@ Eliminate these patterns early:
 
 Validation loop:
 
-1. `pyrefly check <touched files>`
-2. `ruff check <touched files>`
-3. Widen to `pyright`, `mypy`, `pytest`, or `make check PROJECT=<project>` only when the slice or contract warrants it
-4. If public contracts changed, keep widening until impacted callers are green
+1. `make setup`
+2. `make gen APPLY=Y`
+3. `make fix APPLY=Y`
+4. `make fmt APPLY=Y`
+5. `make check`
+6. `make test`
 
 Required output on each cycle:
 

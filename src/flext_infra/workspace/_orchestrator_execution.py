@@ -207,16 +207,24 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
     def _project_make_target(project: str, verb: str) -> str:
         """Name the Make target that runs one project's verb exactly once.
 
-        mro-wkii.17.43: the workspace root reaches this dispatcher while it
-        already owns the serialize-make lock, so re-entering its public verb
-        would block on a lock the parent never releases. The root runs the
-        post-lock target instead; every other project takes the public verb.
+        A workspace root must not re-enter either its public verb or its
+        serialized dispatcher: both routes fan out again.  The canonical verb
+        declaration derives one private local executor target for that root;
+        members keep using the public verb and therefore their own lock.
         """
         if project != c.Infra.ROOT_PROJECT_SELECTOR:
             return verb
-        if verb not in config.Infra.codegen.make.serialized_verbs:
+        spec = next(
+            (
+                candidate
+                for candidate in config.Infra.codegen.make.verbs
+                if candidate.name == verb and candidate.orchestrated
+            ),
+            None,
+        )
+        if spec is None:
             return verb
-        return f"_serialized_{verb}"
+        return f"{c.Infra.LOCAL_EXECUTOR_TARGET_PREFIX}{spec.name}"
 
     def _run_project(
         self, project: str, verb: str, _index: int, *, make_args: t.StrSequence

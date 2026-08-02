@@ -19,8 +19,8 @@ class TestFlextInfraCheck:
         with pytest.raises(AttributeError):
             _ = getattr(check_module, "nonexistent_symbol_xyz")
 
-    def test_dir_returns_all_exports(self) -> None:
-        """Test dir() returns all exported symbols."""
+    def test_dir_exposes_no_leaf_exports(self) -> None:
+        """Keep leaf implementations out of the package-level public surface."""
         exports = dir(check_module)
         tm.that(exports, is_=list)
-        tm.that(exports, empty=False)
+        tm.that(exports, empty=True)

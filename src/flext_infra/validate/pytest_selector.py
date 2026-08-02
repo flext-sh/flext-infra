@@ -1,4 +1,4 @@
-"""Typed boundary for exact pytest FILE, MATCH, and WHAT selectors."""
+"""Typed boundary for exact pytest FILE and MATCH selectors."""
 
 from __future__ import annotations
 
@@ -28,21 +28,13 @@ class FlextInfraPytestSelectorValidator(s[bool]):
         str | None,
         m.Field(default=None, min_length=1, description="Exact pytest -k expression."),
     ] = None
-    what: Annotated[
-        str | None,
-        m.Field(default=None, min_length=1, description="Exact pytest submode."),
-    ] = None
 
     @staticmethod
-    def syntax_violation(
-        *, file: str | None, match: str | None, what: str | None
-    ) -> str | None:
+    def syntax_violation(*, file: str | None, match: str | None) -> str | None:
         """Return one deterministic selector syntax violation, if present."""
-        for field_name, value in (("file", file), ("match", match), ("what", what)):
+        for field_name, value in (("file", file), ("match", match)):
             if value is not None and any(character in value for character in "\0\r\n"):
                 return f"{field_name} must not contain control separators"
-        if what not in {None, "all"}:
-            return "what must be: all"
         if file is None:
             return None
         path_prefix = file.split("::", maxsplit=1)[0]
@@ -79,9 +71,7 @@ class FlextInfraPytestSelectorValidator(s[bool]):
     @u.model_validator(mode="after")
     def _validate_selector_syntax(self) -> Self:
         """Reject control separators and non-normalized FILE path prefixes."""
-        if msg := self.syntax_violation(
-            file=self.file, match=self.match, what=self.what
-        ):
+        if msg := self.syntax_violation(file=self.file, match=self.match):
             raise ValueError(msg)
         return self
 

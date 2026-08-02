@@ -604,16 +604,6 @@ class FlextInfraProtocolsBase(Protocol):
         def log(self) -> p.Logger: ...
 
     @runtime_checkable
-    class TemplateRenderer(Protocol):
-        """Protocol for template renderers."""
-
-        def render_all(
-            self, settings: m.Infra.BaseMkConfig | None = None
-        ) -> p.Result[str]:
-            """Render all templates with given configuration."""
-            ...
-
-    @runtime_checkable
     class ViolationWithLine(Protocol):
         """Protocol for violations that have a line number."""
 

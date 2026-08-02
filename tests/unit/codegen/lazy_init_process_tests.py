@@ -92,7 +92,9 @@ class TestsFlextInfraLazyInitProcessing:
         for content in (level_two_content, level_three_content, level_four_content):
             tm.that(content, contains="install_lazy_exports(")
             tm.that(content, contains="__all__: tuple[str, ...]")
-        tm.that(level_four_content, contains="from .worker import FlextTestsWorker")
+        tm.that(
+            level_four_content, contains='".worker": ("FlextTestsWorker", "worker")'
+        )
         tm.that(level_four_content, contains="FlextTestsWorker")
         tm.that(level_four_content, contains='"worker"')
         tm.that(level_two_content, contains="FlextTestsWorker")

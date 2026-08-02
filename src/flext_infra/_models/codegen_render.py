@@ -56,24 +56,8 @@ class FlextInfraModelsCodegenRender:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        runtime_import_lines: str = m.Field(
-            default_factory=str,
-            description="Eager runtime imports for explicit reexports.",
-        )
-        type_checking_lines: str = m.Field(
-            default_factory=str,
-            description="Static declarations for public lazy exports.",
-        )
-        lazy_module_groups: t.StrSequencePairSequence = m.Field(
-            default_factory=tuple, description="Public lazy imports grouped by module."
-        )
-        lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
-            default_factory=tuple, description="Public lazy aliases grouped by module."
-        )
-        exports: t.StrSequence = m.Field(
-            default_factory=tuple, description="Published root ``__all__`` names."
+        rendered_source: t.NonEmptyStr = m.Field(
+            description="Canonical complete generated initializer source."
         )
 
     class StaticPackageInitRender(m.ArbitraryTypesModel):

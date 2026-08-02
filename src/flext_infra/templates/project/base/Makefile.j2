@@ -1,6 +1,42 @@
 {% from "base_test_report_recipe.j2" import test_report_recipe -%}
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
 {% set docs_verb = make.verbs | selectattr("name", "equalto", "docs") | first -%}
+{%- macro local_build(target) -%}
+{{ target }}:
+	@$(UV) build --project "$(PROJECT_ROOT)"
+{%- endmacro -%}
+{%- macro local_check(target) -%}
+{{ target }}: _builtin_require_environment
+	@set -eu; \
+	if [ -n "$(strip $(APPLY))" ]; then \
+		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
+	fi; \
+	gates="$(strip $(CHECK_GATES))"; \
+	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
+	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
+	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
+		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
+			*) printf 'ERROR: unknown CHECK_GATES value: %s (allowed: %s)\n' "$$gate" "$(CHECK_GATES_ALLOWED)" >&2; exit 2 ;; \
+		esac; \
+	done; \
+	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+{%- endmacro -%}
+{%- macro local_test(target) -%}
+{{ target }}: _builtin_require_environment
+{{ test_report_recipe(
+    "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
+) }}
+{%- endmacro -%}
+{%- macro local_fmt(target) -%}
+{{ target }}: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff format $(RUFF_PATHS)
+{%- endmacro -%}
+{%- macro local_fix(target) -%}
+{{ target }}: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+{%- endmacro -%}
 # @flext-managed: continuous
 # @flext-regenerate: make gen APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
@@ -33,7 +69,7 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
 
 # === SECTION: user overrides (managed) ===
-# Source: template (canonical public knobs documented by base.mk)
+# Source: template (canonical public knobs owned here)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 APPLY ?=
 CI ?=
@@ -75,7 +111,6 @@ override export FLEXT_PYTEST_MATCH_RAW := $(value MATCH)
 override export FLEXT_PYTEST_DIAG_RAW := $(value DIAG)
 override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
 override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
-override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 WHAT ?=
 # End SECTION: user overrides
@@ -231,9 +266,9 @@ REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
 # declared members. Selecting the root here would make it orchestrate itself.
 {% if make_profile == "workspace-root" %}
 ifeq ($(CI),Y)
-DEFAULT_PROJECTS :={% if ci_propagates %} $(WORKSPACE_MEMBERS){% else %} .{% endif %}
+DEFAULT_PROJECTS := .
 else
-DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS)
+DEFAULT_PROJECTS := . $(WORKSPACE_MEMBERS)
 endif
 {% else %}
 DEFAULT_PROJECTS := .
@@ -241,7 +276,7 @@ DEFAULT_PROJECTS := .
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
+WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
@@ -312,7 +347,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}{% for verb in extra_verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% if make_profile == "workspace-root" and verb.orchestrated %} {{ local_executor_target_prefix }}{{ verb.name }}{% endif %}{% endfor %}{% for verb in extra_verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -435,7 +470,9 @@ _builtin_deps_upgrade: _builtin_require_environment
 				exit 2 ;; \
 		esac; \
 	fi
-	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade))
+ifneq ($(strip $(DEPENDENCY)),)
+	$(call _run_for_selected_projects,--upgrade-package "$(strip $(DEPENDENCY))")
+else
 	@set -eu; \
 	selected="$(strip $(PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
@@ -443,32 +480,25 @@ _builtin_deps_upgrade: _builtin_require_environment
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
 	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --skip-check "$$@"
-	$(call _run_for_selected_projects,)
+	$(call _run_for_selected_projects,--upgrade)
+endif
 
 {% if make_profile == "workspace-root" %}
-ifeq ($(CI_LOCAL_OWNER)$(CI),1Y)
-_builtin_build_artifacts:
-	@$(UV) build --project "$(PROJECT_ROOT)"
+{% set build_verb = make.verbs | selectattr("name", "equalto", "build") | first %}
+{% set check_verb = make.verbs | selectattr("name", "equalto", "check") | first %}
+{% set test_verb = make.verbs | selectattr("name", "equalto", "test") | first %}
+{% set fmt_verb = make.verbs | selectattr("name", "equalto", "fmt") | first %}
+{% set fix_verb = make.verbs | selectattr("name", "equalto", "fix") | first %}
+{{ local_build(local_executor_target_prefix ~ build_verb.name) }}
 
-_builtin_check_all: _builtin_require_environment
-	@set -eu; \
-	gates="$(strip $(CHECK_GATES))"; \
-	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
-	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+{{ local_check(local_executor_target_prefix ~ check_verb.name) }}
 
-_builtin_test_all: _builtin_require_environment
-{{ test_report_recipe(
-    "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
-) }}
+{{ local_test(local_executor_target_prefix ~ test_verb.name) }}
 
-_builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
+{{ local_fmt(local_executor_target_prefix ~ fmt_verb.name) }}
 
-_builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-else
+{{ local_fix(local_executor_target_prefix ~ fix_verb.name) }}
+
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
@@ -485,45 +515,23 @@ _builtin_fmt_all: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY=Y" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-endif
 {% else %}
-_builtin_build_artifacts:
-	@$(UV) build --project "$(PROJECT_ROOT)"
+{{ local_build("_builtin_build_artifacts") }}
 
 # `check` is read-only by contract: it never mutates the tree. Fixing is owned
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-_builtin_check_all: _builtin_require_environment
-	@set -eu; \
-	if [ -n "$(strip $(APPLY))" ]; then \
-		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
-	fi; \
-	gates="$(strip $(CHECK_GATES))"; \
-	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
-	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
-	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
-			*) printf 'ERROR: unknown CHECK_GATES value: %s (allowed: %s)\n' "$$gate" "$(CHECK_GATES_ALLOWED)" >&2; exit 2 ;; \
-		esac; \
-	done; \
-	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+{{ local_check("_builtin_check_all") }}
 
-_builtin_test_all: _builtin_require_environment
-{{ test_report_recipe(
-    "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
-) }}
+{{ local_test("_builtin_test_all") }}
 
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
 # `fix` owns the mutating lint pass. Running ruff twice per gate was the
 # duplication this split removes.
-_builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
+{{ local_fmt("_builtin_fmt_all") }}
 
-_builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+{{ local_fix("_builtin_fix_all") }}
 
 {% endif %}
 
@@ -569,8 +577,6 @@ _builtin_release_status: _builtin_require_environment
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(WORKSPACE_ROOT)" --apply
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list

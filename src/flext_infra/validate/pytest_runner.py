@@ -35,9 +35,6 @@ class FlextInfraPytestRunner(s[int]):
     match: Annotated[
         str | None, m.Field(default=None, description="Exact pytest -k expression.")
     ] = None
-    what: Annotated[
-        str | None, m.Field(default=None, description="Exact pytest execution mode.")
-    ] = None
     target: Annotated[
         str, m.Field(min_length=1, description="Default repository-relative test root.")
     ]
@@ -74,7 +71,7 @@ class FlextInfraPytestRunner(s[int]):
         raw_args = cls._environment_value(c.Infra.PYTEST_ENV_ARGS)
         raw_files = cls._environment_value(c.Infra.PYTEST_ENV_FILES)
         if raw_args:
-            msg = "PYTEST_ARGS is forbidden; use typed FILE, MATCH, and WHAT selectors"
+            msg = "PYTEST_ARGS is forbidden; use typed FILE and MATCH selectors"
             raise ValueError(msg)
         if raw_files:
             msg = "FILES is forbidden for pytest; use one exact FILE selector"
@@ -84,7 +81,6 @@ class FlextInfraPytestRunner(s[int]):
             started_at_monotonic=started_at_monotonic,
             file=cls._environment_value(c.Infra.PYTEST_ENV_FILE) or None,
             match=cls._environment_value(c.Infra.PYTEST_ENV_MATCH) or None,
-            what=cls._environment_value(c.Infra.PYTEST_ENV_WHAT) or None,
             target=cls._environment_value(c.Infra.PYTEST_ENV_TARGET),
             reports=cls._environment_value(c.Infra.PYTEST_ENV_REPORTS),
             fail_fast=cls._environment_flag(c.Infra.PYTEST_ENV_FAIL_FAST),
@@ -96,7 +92,7 @@ class FlextInfraPytestRunner(s[int]):
     def _validate_paths_and_selectors(self) -> Self:
         """Reject selector and output paths that escape the active project."""
         selector = FlextInfraPytestSelectorValidator(
-            workspace_root=self.root, file=self.file, match=self.match, what=self.what
+            workspace_root=self.root, file=self.file, match=self.match
         )
         resolved_selector = selector.execute()
         if resolved_selector.failure:
@@ -253,7 +249,16 @@ class FlextInfraPytestRunner(s[int]):
             c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
             c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9,
         }
-        timeout_state = "TIMED_OUT" if timed_out else "COMPLETED"
+        if exit_code == 0 and any((
+            diagnostics.failed_count,
+            diagnostics.error_count,
+            diagnostics.warning_count,
+            diagnostics.skipped_count,
+        )):
+            exit_code = 1
+        execution_state = (
+            "TIMED_OUT" if timed_out else "FAILED" if exit_code != 0 else "COMPLETED"
+        )
         junit_file = report_dir / "junit.xml"
         coverage_file = report_dir / "coverage.xml"
         junit_value = str(junit_file) if junit_file.is_file() else "not-generated"
@@ -268,19 +273,12 @@ class FlextInfraPytestRunner(s[int]):
             f"warnings={diagnostics.warning_count}\n"
             f"skipped={diagnostics.skipped_count}\n"
             f"exit={exit_code}\n"
-            f"state={timeout_state}\n"
+            f"state={execution_state}\n"
         )
         u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
         u.Cli.atomic_write_text_file(
             self.root / self.reports / "latest.txt", f"{report_dir.name}\n"
         ).unwrap()
-        if exit_code == 0 and any((
-            diagnostics.failed_count,
-            diagnostics.error_count,
-            diagnostics.warning_count,
-            diagnostics.skipped_count,
-        )):
-            exit_code = 1
         if (
             exit_code == 0
             and self.file is None

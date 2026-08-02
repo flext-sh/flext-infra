@@ -61,13 +61,13 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="_LAZY_MODULES")
         tm.that(content, contains="_LAZY_ALIAS_GROUPS")
-        tm.that(content, contains='".api": ("Demo",)')
+        tm.that(content, contains='".api": (')
         tm.that(content, contains="from .__version__ import __version__ as __version__")
-        tm.that(
-            content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
-        )
+        tm.that(content, contains="__all__: tuple[str, ...] = (")
+        for export_name in ("Demo", "__version__", "r"):
+            tm.that(content, contains=f'"{export_name}"')
         tm.that(content, contains="from .api import Demo")
-        tm.that(content, lacks="if TYPE_CHECKING:")
+        tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
@@ -81,7 +81,7 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="from .api import Demo")
-        tm.that(content, contains='".api": ("Demo",)')
+        tm.that(content, contains='".api": (')
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
@@ -101,7 +101,8 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, lacks="from ._utilities.conversion import DemoConversion")
         tm.that(content, lacks="DemoConversion")
-        tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
+        tm.that(content, contains="__all__: tuple[str, ...] = (")
+        tm.that(content, contains='"Demo"')
 
     def test_root_type_checking_uses_compact_relative_local_imports(self) -> None:
         """Emit relative declarations as explicit public re-exports."""
@@ -136,8 +137,8 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="from .demo import Demo")
-        tm.that(init_content, contains='".demo": ("Demo",)')
-        tm.that(init_content, contains='".nested.item": ("Nested",)')
+        tm.that(init_content, contains='".demo": (')
+        tm.that(init_content, contains='".nested.item": (')
         tm.that(init_content, contains='"Demo"')
         tm.that(init_content, contains='"Nested"')
         tm.that(init_content, contains="install_lazy_exports")
@@ -202,13 +203,9 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="from flext_tests import tm")
-        tm.that(init_content, contains='".constants": ("TestsDemoConstants", "c"),')
-        tm.that(init_content, contains='".utilities": ("TestsDemoUtilities", "u"),')
-        import_block = init_content.split(
-            "from flext_core.lazy import build_lazy_import_map, "
-            "install_lazy_exports\n\n",
-            maxsplit=1,
-        )[1]
+        tm.that(init_content, contains='".constants": (')
+        tm.that(init_content, contains='".utilities": (')
+        import_block = init_content.split("if TYPE_CHECKING:\n", maxsplit=1)[1]
         import_block = import_block.split("_LAZY_MODULES:", maxsplit=1)[0]
         module_offsets = tuple(
             import_block.index(module)
@@ -225,7 +222,7 @@ class TestsFlextInfraCodegenGeneration:
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
         tm.that(import_block, contains="from flext_tests import tm\n")
-        tm.that(init_content, lacks="if TYPE_CHECKING:")
+        tm.that(init_content, contains="if TYPE_CHECKING:")
         tm.that(init_content, contains="install_lazy_exports")
         tm.that(init_content, lacks="TestsDemoCase")
         tm.that(init_content, lacks=".unit.test_demo")

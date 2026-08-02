@@ -107,7 +107,24 @@ class FlextInfraCodegenLazyInitPlanner(
             f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
             export_options=m.Infra.ExportOptions(include_dunder=True),
         )
-        child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
+        is_public_project_root = (
+            context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
+            and context.current_pkg
+            and "." not in context.current_pkg
+            and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+            and u.Infra.matches_project_namespace_package(context.current_pkg)
+        )
+        is_test_facade_root = (
+            context.current_pkg == c.Infra.DIR_TESTS
+            and context.pkg_dir.name == c.Infra.DIR_TESTS
+            and context.surface == c.Infra.DIR_TESTS
+        )
+        is_facade_root = is_public_project_root or is_test_facade_root
+        child_lazy = (
+            ()
+            if is_facade_root
+            else self._merge_children(context.pkg_dir, lazy_map, dir_exports)
+        )
         # Version-submodule dunders are emitted as eager imports rather than
         # lazy. The submodule shares its name (``__version__``) with the dunder
         # string it exports; lazy resolution would let Python's import
@@ -129,19 +146,6 @@ class FlextInfraCodegenLazyInitPlanner(
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
         excluded_lazy_names: t.StrSequence = ()
-        is_public_project_root = (
-            context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
-            and context.current_pkg
-            and "." not in context.current_pkg
-            and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
-            and u.Infra.matches_project_namespace_package(context.current_pkg)
-        )
-        is_test_facade_root = (
-            context.current_pkg == c.Infra.DIR_TESTS
-            and context.pkg_dir.name == c.Infra.DIR_TESTS
-            and context.surface == c.Infra.DIR_TESTS
-        )
-        is_facade_root = is_public_project_root or is_test_facade_root
         export_names = {*lazy_map, *eager_dunders}
         if is_facade_root:
             # mro-pulj (codex) + ulw follow-up: __all__ is the one public
@@ -171,6 +175,11 @@ class FlextInfraCodegenLazyInitPlanner(
         )
         type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))
+        ordered_exports = u.Infra.ordered_namespace_exports(
+            package_dir=context.pkg_dir,
+            package_name=context.current_pkg,
+            export_names=all_export_names,
+        )
         plan = m.Infra.LazyInitPlan(
             context=context,
             action=(
@@ -178,11 +187,8 @@ class FlextInfraCodegenLazyInitPlanner(
                 if preserve_manual_init
                 else c.Infra.LazyInitAction.WRITE
             ),
-            exports=u.Infra.ordered_namespace_exports(
-                package_dir=context.pkg_dir,
-                package_name=context.current_pkg,
-                export_names=all_export_names,
-            ),
+            exports=ordered_exports,
+            published_exports=ordered_exports if is_facade_root else (),
             lazy_map=dict(lazy_map),
             type_checking_map=type_checking_map,
             eager_dunders=eager_dunders,

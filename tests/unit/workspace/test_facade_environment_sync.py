@@ -1,9 +1,7 @@
-"""Public ``infra`` facade contract for workspace environment sync and base.mk.
+"""Public ``infra`` facade contract for workspace environment sync.
 
-Consumers (ai-hub and other governed hubs) must reach environment-file sync
-and base.mk generation exclusively through the public service facade
+Consumers must reach environment-file sync through the public service facade
 (``from flext_infra import infra``) — never by importing internal modules.
-These tests pin that contract against the canonical codegen SSOT templates.
 """
 
 from __future__ import annotations
@@ -146,17 +144,3 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.ok(result)
         tm.that((workspace / ".envrc").exists(), eq=False)
         tm.that((workspace / ".mise.toml").exists(), eq=False)
-
-
-class TestsFlextInfraFacadeBaseMk:
-    """Behavior contract for ``infra.generate_basemk``."""
-
-    def test_generate_basemk_returns_rendered_content(self) -> None:
-        """The facade renders base.mk content for a named project."""
-        result = infra.generate_basemk(
-            m.Infra.BaseMkRenderRequest(project_name="sample-project")
-        )
-
-        tm.ok(result)
-        tm.that("sample-project" in result.value.content, eq=True)
-        tm.that(".PHONY" in result.value.content, eq=True)

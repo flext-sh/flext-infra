@@ -188,9 +188,6 @@ secrets.yml
 .devcontainer/.env
 .github/*.rej
 
-# --- codegen conform: tracked owner inputs ---
-!base.mk
-
 # FINAL BEADS TRACKING POLICY
 !.beads/
 .beads/*
@@ -213,7 +210,6 @@ legado/
 .bin/
 .tools/
 __pycache__/
-base.mk
 !.pre-commit-config.yaml
 
 # Derived build and tool artifacts
@@ -234,7 +230,6 @@ __pyrefly_virtual__/
 .scope/
 .serena/
 .sisyphus/
-.state/
 .superpowers/
 .trash/
 .turbo/
@@ -256,8 +251,6 @@ skill-create-output/
 CLAUDE.local.md
 
 # Tracked managed artifacts
-!.github/ci-template/
-!.github/ci-template/ci.yml
 !.github/copilot-instructions.md
 !.github/dependabot.yml
 !.github/prompts/

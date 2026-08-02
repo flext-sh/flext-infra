@@ -237,7 +237,14 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ] = c.Infra.LazyInitAction.SKIP
         exports: t.StrSequence = m.Field(
             default_factory=tuple,
-            description="Public exports for generated __init__.py.",
+            description="Internal exports available to parent package planning.",
+        )
+        published_exports: t.StrSequence | None = m.Field(
+            default=None,
+            description=(
+                "Explicit public __all__ for generated __init__.py; None preserves "
+                "exports for callers constructing plan fixtures."
+            ),
         )
         lazy_map: t.LazyAliasMap = m.Field(
             default_factory=lambda: MappingProxyType({}),

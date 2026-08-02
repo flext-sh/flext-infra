@@ -153,14 +153,10 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
-        public_exports = exports_content.split(
-            "__all__: tuple[str, ...] =", maxsplit=1
-        )[1]
 
         # mro-i6nq.10: private child classes never become root ABI.
         tm.that(exports_content, lacks="FlextDemoEnforcementEngine")
-        tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
-        tm.that(public_exports, lacks='"_enforcement"')
+        tm.that(exports_content, lacks='"_enforcement"')
 
     def test_regeneration_prunes_stale_private_direct_imports(
         self, tmp_path: Path
@@ -415,7 +411,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(alias_positions, eq=tuple(sorted(alias_positions)))
         tm.that(
             init_content.splitlines(),
-            has="from flext_cli import d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
         )
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')

@@ -18,7 +18,7 @@ class TestWorkspaceCheckerResolveGates:
         tm.fail(result, has="unknown gate")
 
     def test_resolve_gates_skips_empty_strings(self) -> None:
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "", "format"])
+        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "", "pyrefly"])
         tm.ok(result)
         tm.that("" not in result.value, eq=True)
 
@@ -26,7 +26,7 @@ class TestWorkspaceCheckerResolveGates:
         result = FlextInfraWorkspaceChecker.resolve_gates([
             "lint",
             "lint",
-            "format",
+            "pyrefly",
             "lint",
         ])
         tm.ok(result)
@@ -39,7 +39,6 @@ class TestWorkspaceCheckerResolveGates:
     def test_resolve_gates_all_valid_types(self) -> None:
         gates = [
             "lint",
-            "format",
             "pyrefly",
             "mypy",
             "pyright",

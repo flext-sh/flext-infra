@@ -1,19 +1,12 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
 
-"""Flext Infra.docs package."""
+"""Flext Infra.codemod.rules.refactor package."""
 
 from __future__ import annotations
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_MODULES: dict[str, tuple[str, ...]] = {
-    ".auditor": ("FlextInfraDocAuditor",),
-    ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
-    ".base": ("FlextInfraDocServiceBase",),
-    ".builder": ("FlextInfraDocBuilder",),
-    ".fixer": ("FlextInfraDocFixer",),
-    ".generator": ("FlextInfraDocGenerator",),
-    ".server": ("FlextInfraDocServer",),
-    ".validator": ("FlextInfraDocValidator",),
+    ".apply_renames": ("FlextInfraApplyRenames",)
 }
 
 _LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}

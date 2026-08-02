@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 import flext_infra.validate as core_module
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_tests import tm
 
 if TYPE_CHECKING:
@@ -31,17 +30,12 @@ class TestCoreModuleInit:
         exports = dir(core_module)
         tm.that(core_module.__all__, eq=())
         for implementation in (
-            "FlextInfraBaseMkValidator",
             "FlextInfraInventoryService",
             "FlextInfraSkillValidator",
             "FlextInfraStubSupplyChain",
             "FlextInfraTextPatternScanner",
         ):
             tm.that(exports, lacks=implementation)
-
-    def test_core_lazy_imports_work(self) -> None:
-        """Test that lazy imports resolve to real classes."""
-        tm.that(FlextInfraBaseMkValidator, none=False)
 
 
 __all__: t.StrSequence = []

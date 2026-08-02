@@ -138,8 +138,10 @@ class TestCodegenBeadsLedger:
         tm.that(plan.ledger_root, eq=principal.resolve())
         tm.that(plan.routes_to_principal_ledger, eq=False)
 
-    def test_manifest_ledger_id_owns_tracker_namespace(self, tmp_path: Path) -> None:
-        """Derive the tracker identity from the declared ledger, never the repo name."""
+    def test_manifest_ledger_id_owns_database_not_tracker_namespace(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep the issue namespace independent from the routed Dolt database."""
         principal = self._standalone_workspace(
             tmp_path / "principal", ledger_id="workspace-ledger"
         )
@@ -147,7 +149,7 @@ class TestCodegenBeadsLedger:
         plan = self._beads_plan(principal)
 
         tm.that(plan.ledger_id, eq="workspace-ledger")
-        tm.that(plan.canonical_prefix, eq="workspace-ledger")
+        tm.that(plan.canonical_prefix, eq="flext-infra")
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
@@ -193,7 +195,7 @@ class TestCodegenBeadsLedger:
         if rendered is None:
             pytest.fail("owner plan must render the ledger config")
         server = self._toolchain_server()
-        tm.that(rendered, has='issue-prefix: "fleet-ledger"')
+        tm.that(rendered, has='issue-prefix: "flext-infra"')
         tm.that(rendered, has="database: fleet-ledger")
         tm.that(rendered, has="Owned ledger config")
         tm.that(rendered, has=f"mode: {server.mode}")
@@ -222,7 +224,7 @@ class TestCodegenBeadsLedger:
         if rendered is None:
             pytest.fail("attached standalone plan must render the routing config")
         server = self._toolchain_server()
-        tm.that(rendered, has='issue-prefix: "attached-ledger"')
+        tm.that(rendered, has='issue-prefix: "flext-infra"')
         tm.that(rendered, has="database: attached-ledger")
         tm.that(rendered, has="Routing-only client config")
         tm.that(rendered, has=f"mode: {server.mode}")

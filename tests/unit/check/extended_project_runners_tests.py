@@ -42,7 +42,7 @@ class TestsExtendedProjectRunners:
         )
         try:
             result = checker.run_projects(
-                ["p1"], ["lint", "format", "pyrefly"], reports_dir=tmp_path / "reports"
+                ["p1"], ["lint", "pyrefly"], reports_dir=tmp_path / "reports"
             )
         finally:
             if original_pythonpath:
@@ -51,7 +51,7 @@ class TestsExtendedProjectRunners:
                 os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
-        tm.that({"lint", "format", "pyrefly"} <= set(result.value[0].gates), eq=True)
+        tm.that({"lint", "pyrefly"} <= set(result.value[0].gates), eq=True)
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(

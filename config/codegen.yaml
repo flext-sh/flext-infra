@@ -158,7 +158,7 @@ Infra:
         value: Y
       workflow:
         - { verb: setup, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: gen, apply: true, contexts: [local, ci, pre_commit] }
+        - { verb: gen, apply: true, contexts: [local] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_commit] }
@@ -237,13 +237,11 @@ Infra:
           whats: [all, generate, fix, audit, build, validate]
           apply_guarded: false
           help: Generate, fix, audit, build, or validate docs
-          orchestrated: true
         - name: clean
           whats: [generated]
           apply_guarded: false
           accepts_selector: false
           help: Remove generated build artifacts
-          orchestrated: true
         - name: release
           whats: [status]
           apply_guarded: false
@@ -490,7 +488,6 @@ Infra:
       canonical_root_files:
         - pyproject.toml
         - Makefile
-        - base.mk
         - custom.mk
         - README.md
         - LICENSE
@@ -670,9 +667,6 @@ Infra:
             - models
 
     managed_files:
-      - path: .github/ci-template/ci.yml
-        owner: codegen
-        policy: full
       - path: .github/copilot-instructions.md
         owner: codegen
         policy: full
@@ -762,9 +756,6 @@ Infra:
       - path: README.md
         owner: codegen
         policy: create-only
-      - path: base.mk
-        owner: make
-        policy: delegated
       - path: config/workspace.yaml
         owner: workspace
         policy: manual
@@ -1153,9 +1144,6 @@ Infra:
             - ".devcontainer/.host-gitsettings"
             - ".devcontainer/.env"
             - ".github/*.rej"
-        - name: "--- codegen conform: tracked owner inputs ---"
-          patterns:
-            - "!base.mk"
         - name: "FINAL BEADS TRACKING POLICY"
           patterns:
             - "!.beads/"
@@ -1179,16 +1167,10 @@ Infra:
             - ".bin/"
             - ".tools/"
             - "__pycache__/"
-            - "base.mk"
             - "!.pre-commit-config.yaml"
     templates:
       root: project
       entries:
-        - source: base/.github/ci-template/ci.yml.j2
-          destination: .github/ci-template/ci.yml
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
         - source: base/.github/copilot-instructions.md.j2
           destination: .github/copilot-instructions.md
           profiles: [workspace-root]

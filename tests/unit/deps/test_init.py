@@ -19,7 +19,7 @@ class TestsFlextInfraDepsInit:
         with pytest.raises(AttributeError):
             _ = getattr(deps_mod, "nonexistent_symbol_xyz")
 
-    def test_dir_returns_all_exports(self) -> None:
-        """Test dir() returns all exported symbols."""
+    def test_dir_exposes_no_leaf_exports(self) -> None:
+        """Keep leaf implementations out of the package-level public surface."""
         exports = dir(deps_mod)
-        tm.that(len(exports) > 0, eq=True)
+        tm.that(exports, empty=True)

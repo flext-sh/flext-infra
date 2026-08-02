@@ -21,10 +21,11 @@ class FlextInfraConstantsMake:
     VERB_PUBLISH: Final[str] = "publish"
     VERB_RUN: Final[str] = "run"
     VERB_CHECKS: Final[str] = "checks"
+    LOCAL_EXECUTOR_TARGET_PREFIX: Final[str] = "_local_"
+    "Prefix for root-local executors derived from orchestrated verb names."
 
     # --- Canonical make contract constants (was: class Make) ---
 
-    CLI_GROUP_BASEMK: Final[str] = "basemk"
     CLI_GROUP_CHECK: Final[str] = "check"
     CLI_GROUP_CODEGEN: Final[str] = "codegen"
     CLI_GROUP_DEPS: Final[str] = "deps"
@@ -124,8 +125,26 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_REPORTS: Final[str] = "FLEXT_PYTEST_REPORTS_RAW"
     PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
-    PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_GIT_LOCAL_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_CONFIG",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_DIR",
+        "GIT_GRAFT_FILE",
+        "GIT_IMPLICIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_NO_REPLACE_OBJECTS",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_PREFIX",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_SHALLOW_FILE",
+        "GIT_WORK_TREE",
+    )
+    "Git repository-local environment exported to hooks and forbidden in pytest."
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
+        *PYTEST_GIT_LOCAL_ENV_REMOVE_KEYS,
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
     )
@@ -236,7 +255,7 @@ class FlextInfraConstantsMake:
         "CHECK_ONLY=1                Dry-run format/check (no writes)",
         'RUFF_ARGS="--select E501"   Extra args for ruff check',
         'PYRIGHT_ARGS="--level basic" Extra args for pyright',
-        "PYTEST_ARGS=<value>         Rejected; use FILE, MATCH, or WHAT",
+        "PYTEST_ARGS=<value>         Rejected; use FILE or MATCH",
         "DEPENDENCY=<distribution>   Select one package for deps WHAT=upgrade",
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",

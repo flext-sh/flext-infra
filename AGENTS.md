@@ -108,7 +108,8 @@ exist today.
     such value is parametrized through config/settings/templates.
 17. **Canonical command surface only.** Every build, check, test, generation,
     release, deploy, and validation action runs through the project's canonical
-    Make verbs (`make <verb> WHAT=<x>` via the repo's dispatch surface) or the
+    Make verbs (`make <verb>` plus only selectors declared by that verb's typed
+    contract) or the
     project's documented canonical CLI — never through ad-hoc direct tool
     invocations that bypass the command's guards, locks, dry-run semantics, and
     evidence. A broken, out-of-pattern, or misbehaving canonical command is a
@@ -232,7 +233,7 @@ src/flext_infra/
 ├── config/         # validated codegen and enforcement policy
 ├── deps/           # detection, repair, and pyproject modernization
 ├── gates/ check/ validate/     # gate orchestration and validators
-├── docs/ github/ maintenance/ release/ workspace/ services/ _enforcement/ basemk/
+├── docs/ github/ maintenance/ release/ workspace/ services/ _enforcement/
 ├── constants.py typings.py protocols.py models.py utilities.py
 └── _constants/ _typings/ _protocols/ _models/ _utilities/
 ```
@@ -274,7 +275,7 @@ src/flext_infra/
 make check PROJECT=flext-infra       # ruff/pyrefly/mypy/pyright
 make fmt APPLY=Y                     # apply canonical source formatting
 make test  PROJECT=flext-infra       # tests/{unit,integration,refactor}
-make build WHAT=gen                  # regenerate facets workspace-wide
+make gen APPLY=Y                     # regenerate every governed surface
 ```
 
 <!-- AIHUB-WORKSPACE-PROVIDERS-BEGIN -->

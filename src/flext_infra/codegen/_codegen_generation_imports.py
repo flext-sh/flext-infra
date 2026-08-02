@@ -6,6 +6,7 @@ import operator
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from flext_infra import c
 from flext_infra.codegen._codegen_generation_paths import (
     FlextInfraCodegenGenerationPathsMixin,
 )
@@ -27,7 +28,14 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
     @staticmethod
     def _format_import(indent: str, mod: str, parts: t.StrSequence) -> t.StrSequence:
         """Emit one valid import statement for canonical normalization."""
-        return (f"{indent}from {mod} import {', '.join(parts)}",)
+        inline = f"{indent}from {mod} import {', '.join(parts)}"
+        if len(inline) <= c.Infra.MAX_LINE_LENGTH:
+            return (inline,)
+        return (
+            f"{indent}from {mod} import (",
+            *(f"{indent}    {part}," for part in parts),
+            f"{indent})",
+        )
 
     @staticmethod
     def _format_module_alias_import(indent: str, mod: str, export_name: str) -> str:

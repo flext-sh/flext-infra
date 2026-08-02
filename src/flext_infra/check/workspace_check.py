@@ -61,7 +61,10 @@ class FlextInfraWorkspaceChecker(
             name = gate.strip()
             if not name:
                 continue
-            if name not in c.Infra.ALLOWED_GATES:
+            if (
+                name not in c.Infra.ALLOWED_GATES
+                or FlextInfraGateRegistry.default().get(name) is None
+            ):
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
@@ -75,6 +78,10 @@ class FlextInfraWorkspaceChecker(
     @classmethod
     def execute_payload(cls, params: m.Infra.RunCommand) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
+        if params.fix:
+            return r[bool].fail(
+                "check is read-only; use `make fix APPLY=Y` for Ruff mutations"
+            )
         checker = cls(workspace_root=params.workspace_path)
         project_targets_result = cls._resolve_project_targets(params)
         if project_targets_result.failure:

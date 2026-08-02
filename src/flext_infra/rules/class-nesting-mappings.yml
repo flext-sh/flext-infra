@@ -155,30 +155,6 @@ class_nesting:
   target_name: FlextInfraConstantsReporting
   confidence: low
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraConstantsBasemk
-  current_file: flext-core/src/flext_infra/basemk/_constants.py
-  target_namespace: FlextBasemkConstants
-  target_name: FlextInfraConstantsBasemk
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraBaseMkTemplateRenderer
-  current_file: flext-core/src/flext_infra/basemk/renderer.py
-  target_namespace: FlextBasemkRenderer
-  target_name: FlextInfraBaseMkTemplateRenderer
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: _TemplateRenderer
-  current_file: flext-core/src/flext_infra/basemk/generator.py
-  target_namespace: FlextBasemkGenerator
-  target_name: _TemplateRenderer
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraBaseMkGenerator
-  current_file: flext-core/src/flext_infra/basemk/generator.py
-  target_namespace: FlextBasemkGenerator
-  target_name: FlextInfraBaseMkGenerator
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraConstantsCheck
   current_file: flext-core/src/flext_infra/check/_constants.py
   target_namespace: FlextCheckConstants
@@ -399,12 +375,6 @@ class_nesting:
   current_file: flext-core/src/flext_infra/core/_constants.py
   target_namespace: FlextCoreConstants
   target_name: FlextInfraConstantsCore
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraBaseMkValidator
-  current_file: flext-core/src/flext_infra/core/basemk_validator.py
-  target_namespace: FlextCoreBasemkValidator
-  target_name: FlextInfraBaseMkValidator
   confidence: medium
   reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraInventoryService
@@ -963,12 +933,6 @@ class_nesting:
   current_file: flext-core/src/flext_infra/selection.py
   target_namespace: FlextSelection
   target_name: FlextInfraProjectSelector
-  confidence: low
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraTemplateRenderer
-  current_file: flext-core/src/flext_infra/templates.py
-  target_namespace: FlextTemplates
-  target_name: FlextInfraTemplateRenderer
   confidence: low
   reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraTypes

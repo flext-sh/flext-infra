@@ -81,13 +81,15 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             repository_path, ("rev-parse", "--show-superproject-working-tree")
         )
         if superproject.failure:
-            # Not inside any Git work tree -> standalone project owning its own
-            # root; a genuine in-repo failure still fails closed.
             inside = cls.git_capture(
                 repository_path, ("rev-parse", "--is-inside-work-tree")
             )
             if inside.failure or inside.value.strip() != "true":
-                return r[Path].ok(repository_path.expanduser().resolve())
+                return r[Path].fail(
+                    inside.error
+                    or superproject.error
+                    or f"not inside a Git worktree: {repository_path}"
+                )
             return r[Path].fail(
                 superproject.error or "failed to resolve Git superproject"
             )
@@ -421,45 +423,30 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         gitlink_exclusions = tuple(
             f":(exclude){path.as_posix()}" for path in submodules_result.value
         )
-        if excluded:
-            tracked_result = cls.git_capture(
-                worktree_root,
-                (
-                    "ls-files",
-                    "-z",
-                    "--cached",
-                    "--others",
-                    "--exclude-standard",
-                    "--",
-                    ".",
-                    *(f":(exclude){path.as_posix()}" for path in excluded),
-                ),
+        tracked_result = cls.git_capture(
+            worktree_root,
+            (
+                "ls-files",
+                "-z",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "--",
+                ".",
+                *(f":(exclude){path.as_posix()}" for path in excluded),
+                *gitlink_exclusions,
+            ),
+        )
+        if tracked_result.failure:
+            return r[str].fail(
+                tracked_result.error or "failed to resolve checkpoint paths"
             )
-            if tracked_result.failure:
-                return r[str].fail(
-                    tracked_result.error or "failed to resolve checkpoint paths"
-                )
-            tracked_paths = tuple(
-                path for path in tracked_result.value.split("\0") if path
-            )
-            stage_result = (
-                # Why: force-add matches git_repository_delta staging (line ~454);
-                # checkpoint captures complete state incl. ignored-but-tracked paths.
-                cls.git_capture(
-                    worktree_root,
-                    ("add", "-A", "-f", "--", *tracked_paths, *gitlink_exclusions),
-                )
-                if tracked_paths
-                else r[str].ok("")
-            )
-        else:
-            # `-f` matches the tracked-paths branch above and the operation
-            # delta staging: the checkpoint must capture ignored-but-tracked
-            # paths. Without it git aborts the whole call whenever an ignored
-            # directory sits at the repository root.
-            stage_result = cls.git_capture(
-                worktree_root, ("add", "-A", "-f", "--", *gitlink_exclusions)
-            )
+        tracked_paths = tuple(path for path in tracked_result.value.split("\0") if path)
+        stage_result = (
+            cls.git_capture(worktree_root, ("add", "-A", "--", *tracked_paths))
+            if tracked_paths
+            else r[str].ok("")
+        )
         if stage_result.failure:
             return r[str].fail(stage_result.error or "failed to stage checkpoint")
         tree_result = cls.git_capture(worktree_root, ("write-tree",))

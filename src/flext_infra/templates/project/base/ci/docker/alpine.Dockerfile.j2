@@ -37,5 +37,7 @@ COPY . .
 RUN mise trust .mise.toml && mise install --yes
 # End SECTION: mise install
 
+RUN make setup CI=Y
+
 ENTRYPOINT []
 CMD ["/bin/bash", "-lc", "make help"]

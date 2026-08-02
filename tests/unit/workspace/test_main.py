@@ -147,15 +147,14 @@ def _write_orchestratable_workspace(
     member_root = workspace_root / "demo"
     _write_project(member_root, "demo")
     check_recipe = (
-        '\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CURDIR)/captured.txt\n'
+        '\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CAPTURE_PATH)\n'
         if capture_fail_fast
         else "\t@true\n"
     )
-    (member_root / "base.mk").write_text(f"check:\n{check_recipe}", encoding="utf-8")
-    (member_root / "Makefile").write_text("include base.mk\n", encoding="utf-8")
+    (member_root / "Makefile").write_text(f"check:\n{check_recipe}", encoding="utf-8")
 
     # Commit the member so the detector sees a real HEAD/gitlink pair.
-    u.Tests.commit_git_changes(member_root, "fixture: base.mk and Makefile")
+    u.Tests.commit_git_changes(member_root, "fixture: canonical Makefile")
 
     # Stub a managed Python so the generated Makefile can invoke flext_infra.
     # It must delegate to the interpreter running these tests: flext_infra reads
@@ -167,15 +166,6 @@ def _write_orchestratable_workspace(
         f'#!/bin/sh\nexec "{sys.executable}" "$@"\n', encoding="utf-8"
     )
     venv_python.chmod(0o755)
-
-    # Capture the propagated FAIL_FAST value after the generated check runs.
-    # The path is supplied as a make variable so the file lives outside the
-    # workspace and does not trip the "workspace changed during check" guard.
-    if capture_fail_fast:
-        (member_root / "custom.mk").write_text(
-            'post-check:\n\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CAPTURE_PATH)\n',
-            encoding="utf-8",
-        )
 
     return member_root
 

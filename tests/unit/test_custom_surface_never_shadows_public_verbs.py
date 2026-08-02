@@ -77,4 +77,4 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
             encoding="utf-8"
         )
 
-        tm.that(custom, lacks=["_custom_", "basemk generate"])
+        tm.that(custom, lacks=["_custom_"])

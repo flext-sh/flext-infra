@@ -475,7 +475,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             encoding="utf-8",
         )
         infra_repository = u.Tests.repository_ref(config.Infra.name)
-        toolchain_marker = project_root / infra_repository.path / c.Infra.BASE_MK
+        toolchain_marker = (
+            project_root / infra_repository.path / c.Infra.MAKEFILE_FILENAME
+        )
         toolchain_marker.parent.mkdir(parents=True, exist_ok=True)
         toolchain_marker.write_text("# toolchain marker\n", encoding="utf-8")
 

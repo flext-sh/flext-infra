@@ -157,42 +157,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
         for repository in sorted(
             created, key=lambda item: len(Path(item.relative_path).parts), reverse=True
         ):
-            if repository.relative_path == ".":
-                # The isolated root must describe the member commits this
-                # transaction actually contains: members are checkpointed
-                # first (deepest-first ordering), so seed the root index from
-                # those checkpoints instead of the pre-transaction source HEAD.
-                checkpoints = {
-                    nested.relative_path: nested.checkpoint_sha
-                    for nested in checkpointed
-                }
-                for nested in created:
-                    if nested.relative_path == ".":
-                        continue
-                    nested_head = checkpoints.get(nested.relative_path)
-                    if nested_head is None:
-                        cls._cleanup_worktrees(created, worktree_root)
-                        return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
-                            f"missing isolated checkpoint for {nested.relative_path}"
-                        )
-                    update_result = FlextInfraUtilitiesGitScope.git_capture(
-                        repository.worktree_root,
-                        (
-                            "update-index",
-                            "--add",
-                            "--cacheinfo",
-                            "160000",
-                            nested_head,
-                            nested.relative_path,
-                        ),
-                    )
-                    if update_result.failure:
-                        cls._cleanup_worktrees(created, worktree_root)
-                        return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
-                            update_result.error
-                            or "failed to seed isolated gitlink for "
-                            f"{nested.relative_path}"
-                        )
             checkpoint_result = FlextInfraUtilitiesGitScope.git_checkpoint_worktree(
                 repository.worktree_root,
                 message=(
@@ -411,20 +375,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
         timeout_seconds: int,
         scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root the scope owns.
+        """Fresh-import every productive package root the declared scope owns.
 
-        A package is importable only when its distribution metadata is present
-        in the running interpreter: FLEXT packages resolve their own version
-        through importlib.metadata at import time. A workspace-scoped route
-        legitimately spans every declared member, but the interpreter executing
-        it is one project's venv, which installs only that project's declared
-        dependencies. Importing an uninstalled sibling therefore raised
-        PackageNotFoundError and reported breakage for a healthy tree, which
-        blocked every governed apply route from writing its result.
-
-        Skipping packages with no installed distribution keeps the probe a
-        genuine breakage detector for the code the transaction can actually
-        exercise, instead of a false negative for the code it cannot.
+        The managed environment must contain every distribution selected by the
+        typed dependency closure. Missing metadata is installation breakage and
+        fails immediately; the probe never skips an owned package.
         """
         packages = tuple(
             sorted({
@@ -438,22 +393,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
         script = (
             "import importlib\n"
-            "import importlib.metadata as _md\n"
             f"packages = {packages!r}\n"
-            "imported = 0\n"
-            "skipped = []\n"
             "for package in packages:\n"
-            "    dist = package.replace('_', '-')\n"
-            "    try:\n"
-            "        _md.distribution(dist)\n"
-            "    except _md.PackageNotFoundError:\n"
-            "        skipped.append(package)\n"
-            "        continue\n"
             "    importlib.import_module(package)\n"
-            "    imported += 1\n"
-            "print(f'imported {imported} packages')\n"
-            "if skipped:\n"
-            "    print(f'skipped (not installed): {sorted(skipped)}')\n"
+            "print(f'imported {len(packages)} packages')\n"
         )
         result = u.Cli.run_raw(
             (sys.executable, "-c", script),

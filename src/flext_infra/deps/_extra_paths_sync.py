@@ -26,7 +26,9 @@ class FlextInfraExtraPathsSyncMixin:
         pyrefly_search_paths_from_payload: Callable[..., t.StrSequence]
         pyrefly_search_paths: Callable[..., t.StrSequence]
 
-    def resolve_transitive_dependency_names(self, direct_names: t.StrSequence) -> t.StrSequence:
+    def resolve_transitive_dependency_names(
+        self, direct_names: t.StrSequence
+    ) -> t.StrSequence:
         """Return the transitive workspace path-dependency closure of direct_names."""
         return self._resolve_transitive_deps(direct_names)
 
@@ -167,12 +169,8 @@ class FlextInfraExtraPathsSyncMixin:
             updated_selected = 0
             for project_dir in project_dirs:
                 pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-                # A governed worktree transaction materializes only the scoped
-                # submodule's source tree, so a selected member legitimately has
-                # no pyproject there. Failing closed made every scoped apply
-                # report breakage and silently skip writing the derived paths.
                 if not pyproject.exists():
-                    continue
+                    return r[int].fail(f"pyproject not found: {pyproject}")
                 sync_result = self.sync_one(
                     pyproject, dry_run=dry_run, is_root=project_dir == self.root
                 )

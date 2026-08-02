@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
+from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.services.cli_routes import CliRouteService
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class CliTransactionService(CliRouteService, type(cli_facade)):
@@ -115,29 +119,24 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         return Path.cwd().resolve()
 
     @staticmethod
-    def _manifest_member_scope(workspace_root: Path) -> tuple[Path, ...]:
-        """Return workspace-member submodule paths from the topology manifest.
-
-        A workspace-scoped route (scaffold/conform) only touches the root plus
-        its declared members, never unrelated sibling submodules. Reading the
-        manifest lets the transaction isolate exactly those repositories. Any
-        load/parse failure returns an empty tuple so the caller falls back to
-        full-workspace isolation (safe default).
-        """
+    def _manifest_member_scope(workspace_root: Path) -> p.Result[tuple[Path, ...]]:
+        """Return workspace-member paths from the required topology manifest."""
         spec = FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
         if spec.failure:
-            return ()
+            return r[tuple[Path, ...]].fail(
+                spec.error or "workspace topology manifest is required"
+            )
         members: list[Path] = []
         for member in spec.value.members:
             member_path = Path(member.path)
             if member_path != Path():
                 members.append(member_path)
-        return tuple(members)
+        return r[tuple[Path, ...]].ok(tuple(members))
 
     @classmethod
     def transaction_scoped_paths(
         cls, args: t.StrSequence, workspace_root: Path
-    ) -> tuple[Path, ...]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Derive workspace-relative paths the command can touch.
 
         Any explicit target flag wins: ``--root``, ``--output-root``,
@@ -146,9 +145,8 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         manifest, or the transaction adopts siblings the scoped project never
         declared. Otherwise, for a workspace-scoped route, fall back to the
         manifest's member paths so the transaction isolates the root plus
-        declared members instead of every sibling submodule. Returns an empty
-        tuple (full-workspace isolation, safe default) only when neither
-        source yields a target.
+        declared members instead of every sibling submodule. Invalid or
+        out-of-workspace paths fail immediately.
         """
         scoped: list[Path] = []
         value_flags = frozenset({"--output-root", "--project", "--projects", "--root"})
@@ -182,7 +180,9 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
                 try:
                     scoped.append(resolved.relative_to(workspace_root))
                 except ValueError:
-                    return ()
+                    return r[tuple[Path, ...]].fail(
+                        f"transaction target is outside workspace: {resolved}"
+                    )
         if scoped:
             return cls._dependency_closure_scope(scoped, workspace_root)
         return cls._manifest_member_scope(workspace_root)
@@ -190,7 +190,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     @staticmethod
     def _dependency_closure_scope(
         scoped: t.SequenceOf[Path], workspace_root: Path
-    ) -> tuple[Path, ...]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Expand explicit targets to the declared workspace dependency closure.
 
         A scoped target is not self-contained: it imports its declared
@@ -209,20 +209,26 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         manager = FlextInfraExtraPathsManager(workspace_root=workspace_root)
         workspace_names = tuple(manager.workspace_project_names)
         if not workspace_names:
-            return tuple(scoped)
+            return r[tuple[Path, ...]].ok(tuple(scoped))
         closure: dict[Path, None] = dict.fromkeys(scoped)
         for target in scoped:
             pyproject = workspace_root / target / c.Infra.PYPROJECT_FILENAME
             if not pyproject.is_file():
-                continue
+                return r[tuple[Path, ...]].fail(
+                    f"transaction target has no pyproject.toml: {target}"
+                )
             declared = u.Infra.local_dependency_names_from_payload(
                 u.Infra.pyproject_payload(pyproject),
                 workspace_project_names=workspace_names,
             )
             for name in manager.resolve_transitive_dependency_names(declared):
-                if (workspace_root / name).is_dir():
-                    closure.setdefault(Path(name), None)
-        return tuple(closure)
+                dependency_root = workspace_root / name
+                if not dependency_root.is_dir():
+                    return r[tuple[Path, ...]].fail(
+                        f"declared workspace dependency is missing: {dependency_root}"
+                    )
+                closure.setdefault(Path(name), None)
+        return r[tuple[Path, ...]].ok(tuple(closure))
 
     def run_worktree_transaction(self, group: str, args: t.StrSequence) -> int | None:
         """Execute a governed mutation through the central worktree transaction."""
@@ -243,13 +249,20 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             )
             return 1
         apply_requested = self.transaction_apply_requested(route_policy, args)
+        scoped_paths = self.transaction_scoped_paths(args, workspace_result.value)
+        if scoped_paths.failure:
+            self.display_message(
+                scoped_paths.error or "failed to resolve transaction scope",
+                c.Cli.MessageTypes.ERROR,
+            )
+            return 1
         request = m.Infra.WorktreeTransactionRequest(
             workspace_root=workspace_result.value,
             command=(group, *self.transaction_inner_args(route_policy, args)),
             apply_patch=apply_requested,
             validation_mode=route_policy.validation_mode,
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
-            scoped_paths=self.transaction_scoped_paths(args, workspace_result.value),
+            scoped_paths=scoped_paths.value,
         )
         result = u.Infra.execute_worktree_transaction(request)
         if result.failure:

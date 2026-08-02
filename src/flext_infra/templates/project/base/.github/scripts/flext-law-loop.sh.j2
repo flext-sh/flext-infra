@@ -74,11 +74,11 @@ FIXER_SPECS=(
 validate_worktree() {
   local root="$1"
   log "validate: ruff"
-  make -C "${root}" check WHAT=lint || return 1
+  make -C "${root}" check CHECK_GATES=lint || return 1
   log "validate: pyrefly"
-  make -C "${root}" check WHAT=pyrefly || return 1
+  make -C "${root}" check CHECK_GATES=pyrefly || return 1
   log "validate: mypy (bounded ${MYPY_MEMORY_LIMIT_MB}MB/${MYPY_TIMEOUT_SECONDS}s)"
-  make -C "${root}" check WHAT=mypy \
+  make -C "${root}" check CHECK_GATES=mypy \
     MYPY_MEMORY_LIMIT_MB="${MYPY_MEMORY_LIMIT_MB}" \
     MYPY_TIMEOUT_SECONDS="${MYPY_TIMEOUT_SECONDS}" || return 1
   log "validate: pytest"

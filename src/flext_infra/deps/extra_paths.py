@@ -35,7 +35,7 @@ class FlextInfraExtraPathsManager(
 
     @property
     def workspace_project_names(self) -> t.StrSequence:
-        """Return the managed workspace member names backing dependency resolution."""
+        """Managed workspace member names backing dependency resolution."""
         return tuple(sorted(self._workspace_project_names))
 
     @override
@@ -127,7 +127,9 @@ class FlextInfraExtraPathsManager(
             paths.update(self._dep_paths(payload, project_dir=project_dir))
             paths.update(self._uv_source_paths(payload, project_dir=project_dir))
             paths.update(self._workspace_member_source_paths(project_dir=project_dir))
-        has_source_root = source_root in declared or (project_dir / source_root).is_dir()
+        has_source_root = (
+            source_root in declared or (project_dir / source_root).is_dir()
+        )
         paths.discard(source_root)
         ordered = sorted(paths)
         if has_source_root:

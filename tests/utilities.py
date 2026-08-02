@@ -862,21 +862,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def configure_git_identity(repository_root: Path) -> None:
             """Set deterministic repository-local identity for real Git fixtures."""
             tm.ok(
-                cli_facade.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "config",
-                        "--local",
-                        "user.email",
-                        "tests@flext.local",
-                    ],
-                    cwd=repository_root,
+                u.Infra.git_capture(
+                    repository_root,
+                    ("config", "--local", "user.email", "tests@flext.local"),
                 )
             )
             tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "config", "--local", "user.name", "Flext Tests"],
-                    cwd=repository_root,
+                u.Infra.git_capture(
+                    repository_root, ("config", "--local", "user.name", "Flext Tests")
                 )
             )
 
@@ -908,7 +901,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 ),
             )
             for command in commands:
-                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
+                tm.ok(u.Infra.git_capture(repo_root, command[1:]))
 
         @staticmethod
         def to_pascal(snake: str) -> str:

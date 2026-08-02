@@ -24,8 +24,7 @@
   `FlextInfraModels`, `FlextInfraProjectSelectionServiceBase`,
   `FlextInfraProtocols`, `FlextInfraServiceBase`, `FlextInfraTypes`,
   `FlextInfraUtilities`, `FlextInfraWorkspaceEnvironment` (+6 more)
-- Exported module shortcuts: `basemk`
-- Generated module pages: `12`
+- Generated module pages: `11`
 
 ## Next Pages
 
