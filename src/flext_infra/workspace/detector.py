@@ -97,15 +97,47 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             ),
             None,
         )
-        if repository is None:
-            return r[m.Infra.WorkspaceSpec].fail(
-                f"project is absent from the codegen catalog: {project_name}"
+        if repository is not None:
+            return r[m.Infra.WorkspaceSpec].ok(
+                m.Infra.WorkspaceSpec(
+                    version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                    name=project_name,
+                    repository=repository,
+                )
             )
+        # mro-dataop-standalone: external projects not in the catalog are
+        # treated as standalone with a derived repository contract. This avoids
+        # forcing external consumers to be registered in the flext-sh catalog.
+        origin_url = u.Cli.capture(
+            [c.Infra.GIT, "remote", "get-url", "origin"],
+            cwd=repository_root,
+        )
+        if origin_url.failure:
+            return r[m.Infra.WorkspaceSpec].fail(
+                origin_url.error
+                or f"cannot derive standalone spec without origin remote: {repository_root}"
+            )
+        derived_repository = m.Infra.RepositoryRef(
+            name=project_name,
+            distribution=project_name,
+            url=origin_url.value.strip(),
+            branch="main",
+            path=Path("."),
+            role=c.Infra.RepositoryRole.STANDALONE,
+            state=c.Infra.RepositoryState.ACTIVE,
+            provider="external",
+            profile=c.Infra.MakeProfile.STANDALONE,
+            checkout=c.Infra.CheckoutKind.INDEPENDENT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
+        )
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 version=c.Infra.WORKSPACE_MANIFEST_VERSION,
                 name=project_name,
-                repository=repository,
+                repository=derived_repository,
             )
         )
 
