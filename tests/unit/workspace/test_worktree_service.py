@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c
 from flext_tests import tm
 from tests import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraWorktreeService:
@@ -368,6 +365,134 @@ class TestsFlextInfraWorktreeService:
         ).execute()
 
         tm.fail(result, has="requires --base")
+
+    def test_add_fast_forwards_an_existing_local_branch_to_base(
+        self, tmp_path: Path
+    ) -> None:
+        """A stale local branch is reconciled to BASE before setup runs."""
+        repository = self._repository(tmp_path)
+        branch = "feature/stale-local"
+        tm.ok(u.Infra.git_capture(repository, ("branch", branch, "HEAD")))
+        (repository / "base.txt").write_text("base\n", encoding="utf-8")
+        tm.ok(u.Infra.git_capture(repository, ("add", "base.txt")))
+        tm.ok(u.Infra.git_capture(repository, ("commit", "-m", "test: advance base")))
+        base: str = tm.ok(
+            u.Infra.git_capture(repository, ("rev-parse", "HEAD"))
+        ).strip()
+
+        lane: str = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=base,
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(
+            tm.ok(u.Infra.git_capture(Path(lane), ("rev-parse", "HEAD"))).strip(),
+            eq=base,
+        )
+        tm.that(
+            tm.ok(u.Infra.git_capture(repository, ("rev-parse", branch))).strip(),
+            eq=base,
+        )
+
+    def test_add_fast_forwards_a_remote_only_branch_to_base(
+        self, tmp_path: Path
+    ) -> None:
+        """A remote-only branch is checked out then reconciled to BASE."""
+        repository = self._repository(tmp_path)
+        remote = tmp_path / "origin.git"
+        branch = "feature/remote-only"
+        tm.ok(u.Infra.git_capture(repository, ("init", "--bare", str(remote))))
+        tm.ok(
+            u.Infra.git_capture(
+                repository, ("remote", "set-url", "origin", str(remote))
+            )
+        )
+        tm.ok(
+            u.Infra.git_capture(
+                repository, ("push", "origin", f"HEAD:refs/heads/{branch}")
+            )
+        )
+        tm.ok(
+            u.Infra.git_capture(
+                repository,
+                (
+                    "fetch",
+                    "origin",
+                    f"refs/heads/{branch}:refs/remotes/origin/{branch}",
+                ),
+            )
+        )
+        (repository / "base.txt").write_text("base\n", encoding="utf-8")
+        tm.ok(u.Infra.git_capture(repository, ("add", "base.txt")))
+        tm.ok(u.Infra.git_capture(repository, ("commit", "-m", "test: advance base")))
+        base: str = tm.ok(
+            u.Infra.git_capture(repository, ("rev-parse", "HEAD"))
+        ).strip()
+
+        lane: str = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=base,
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(
+            tm.ok(u.Infra.git_capture(Path(lane), ("rev-parse", "HEAD"))).strip(),
+            eq=base,
+        )
+        tm.that(
+            tm.ok(u.Infra.git_capture(repository, ("rev-parse", branch))).strip(),
+            eq=base,
+        )
+
+    def test_add_rejects_a_divergent_existing_branch_before_lane_mutation(
+        self, tmp_path: Path
+    ) -> None:
+        """A divergent branch fails before it creates a lane or runs setup."""
+        repository = self._repository(tmp_path)
+        branch = "feature/divergent"
+        tm.ok(u.Infra.git_capture(repository, ("branch", branch, "HEAD")))
+        (repository / "base.txt").write_text("base\n", encoding="utf-8")
+        tm.ok(u.Infra.git_capture(repository, ("add", "base.txt")))
+        tm.ok(u.Infra.git_capture(repository, ("commit", "-m", "test: advance base")))
+        base: str = tm.ok(
+            u.Infra.git_capture(repository, ("rev-parse", "HEAD"))
+        ).strip()
+        diverged = tmp_path / "diverged"
+        tm.ok(
+            u.Infra.git_capture(repository, ("worktree", "add", str(diverged), branch))
+        )
+        (diverged / "branch.txt").write_text("branch\n", encoding="utf-8")
+        tm.ok(u.Infra.git_capture(diverged, ("add", "branch.txt")))
+        tm.ok(u.Infra.git_capture(diverged, ("commit", "-m", "test: diverge branch")))
+        branch_head: str = tm.ok(
+            u.Infra.git_capture(diverged, ("rev-parse", "HEAD"))
+        ).strip()
+        tm.ok(u.Infra.git_capture(repository, ("worktree", "remove", str(diverged))))
+        lane = self._lane(repository, repository, branch)
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch=branch,
+            base=base,
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="cannot fast-forward")
+        tm.that(not lane.exists(), where=bool)
+        tm.that(
+            tm.ok(u.Infra.git_capture(repository, ("rev-parse", branch))).strip(),
+            eq=branch_head,
+        )
 
     def test_attached_submodule_uses_one_primary_local_container(
         self, tmp_path: Path

@@ -104,46 +104,97 @@ class FlextInfraWorktreeService(s[str]):
         primary_root: Path,
         lane: Path,
         branch: str,
-        created_branch_oid: str | None,
-        setup_error: str,
+        owned_branch_oid: str | None,
+        restore_branch_oid: str | None,
+        failure_detail: str,
     ) -> p.Result[str]:
-        """Roll back only a clean lane created by the current add operation."""
+        """Roll back a clean lane and only the exact branch mutation we own."""
         status = u.Infra.git_capture(
             lane, ("status", "--porcelain", "--untracked-files=all")
         )
         if status.failure:
             return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
+                f"worktree add failed: {failure_detail}; preserving lane {lane}: "
                 f"{status.error or 'cannot prove the new lane is clean'}"
             )
         if status.value.strip():
             return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane} "
+                f"worktree add failed: {failure_detail}; preserving lane {lane} "
                 "because setup left worktree changes"
             )
         cleanup = u.Infra.git_remove_clean_worktree(primary_root, lane)
         if cleanup.failure:
             return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
+                f"worktree add failed: {failure_detail}; preserving lane {lane}: "
                 f"{cleanup.error or 'clean lane rollback failed'}"
             )
-        if created_branch_oid is not None:
-            branch_cleanup = u.Infra.git_capture(
-                primary_root,
-                ("update-ref", "-d", f"refs/heads/{branch}", created_branch_oid),
+        if owned_branch_oid is not None:
+            branch_ref = f"refs/heads/{branch}"
+            branch_arguments = (
+                ("update-ref", "-d", branch_ref, owned_branch_oid)
+                if restore_branch_oid is None
+                else ("update-ref", branch_ref, restore_branch_oid, owned_branch_oid)
             )
-            if branch_cleanup.failure:
+            branch_rollback = u.Infra.git_capture(primary_root, branch_arguments)
+            if branch_rollback.failure:
                 return r.fail(
-                    f"worktree setup failed: {setup_error}; "
-                    "created branch cleanup failed: "
-                    f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
+                    f"worktree add failed: {failure_detail}; branch rollback failed: "
+                    f"{branch_rollback.error or 'unknown branch rollback failure'}"
                 )
-        return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
+        return r.fail(f"worktree add failed: {failure_detail}; clean lane rolled back")
 
     def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
         """Create and set up one branch worktree transactionally."""
         if not self.apply_changes:
             return r.fail("worktree add requires --apply")
+        resolved_base = u.Infra.git_capture(
+            primary_root, ("rev-parse", "--verify", f"{base}^{{commit}}")
+        )
+        if resolved_base.failure:
+            return r.fail(
+                resolved_base.error or f"worktree add cannot resolve base: {base}"
+            )
+        base_oid = resolved_base.value.strip()
+        local_ref = f"refs/heads/{branch}"
+        local = self._ref_exists(local_ref)
+        if local.failure:
+            return r.fail(local.error or "failed to inspect local branch")
+        remote_ref = f"refs/remotes/origin/{branch}"
+        remote_exists = False
+        source_ref: str | None = local_ref if local.value else None
+        if not local.value:
+            remote = self._ref_exists(remote_ref)
+            if remote.failure:
+                return r.fail(remote.error or "failed to inspect remote branch")
+            remote_exists = remote.value
+            if remote_exists:
+                source_ref = remote_ref
+        source_oid: str | None = None
+        if source_ref is not None:
+            resolved_source = u.Infra.git_capture(
+                primary_root, ("rev-parse", "--verify", f"{source_ref}^{{commit}}")
+            )
+            if resolved_source.failure:
+                return r.fail(
+                    resolved_source.error
+                    or f"worktree add cannot resolve branch: {source_ref}"
+                )
+            source_oid = resolved_source.value.strip()
+            ancestry = u.Infra.git_run(
+                primary_root, ("merge-base", "--is-ancestor", source_oid, base_oid)
+            )
+            if ancestry.failure:
+                return r.fail(ancestry.error or "failed to validate worktree base")
+            if ancestry.value.exit_code != 0:
+                detail = (ancestry.value.stderr or ancestry.value.stdout).strip()
+                if ancestry.value.exit_code == 1:
+                    detail = (
+                        f"worktree add cannot fast-forward {source_ref} "
+                        f"from {source_oid} to {base} ({base_oid})"
+                    )
+                return r.fail(
+                    detail or f"failed to validate ancestry from {source_ref} to {base}"
+                )
         lane_result = self._lane_path(primary_root, branch)
         if lane_result.failure:
             return r.fail(lane_result.error or "invalid worktree lane path")
@@ -153,50 +204,88 @@ class FlextInfraWorktreeService(s[str]):
         ensured = u.Cli.ensure_dir(lane.parent)
         if ensured.failure:
             return r.fail(ensured.error or f"failed to create {lane.parent}")
-        local = self._ref_exists(f"refs/heads/{branch}")
-        if local.failure:
-            return r.fail(local.error or "failed to inspect local branch")
         if local.value:
             arguments = ("worktree", "add", str(lane), branch)
-        else:
-            remote = self._ref_exists(f"refs/remotes/origin/{branch}")
-            if remote.failure:
-                return r.fail(remote.error or "failed to inspect remote branch")
+        elif remote_exists:
             arguments = (
-                (
-                    "worktree",
-                    "add",
-                    "--track",
-                    "-b",
-                    branch,
-                    str(lane),
-                    f"origin/{branch}",
-                )
-                if remote.value
-                else ("worktree", "add", "-b", branch, str(lane), base)
+                "worktree",
+                "add",
+                "--track",
+                "-b",
+                branch,
+                str(lane),
+                f"origin/{branch}",
             )
-        added = u.Infra.git_capture(self.workspace_root, arguments)
+        else:
+            arguments = ("worktree", "add", "-b", branch, str(lane), base_oid)
+        added = u.Infra.git_capture(primary_root, arguments)
         if added.failure:
             return r.fail(added.error or f"failed to add worktree for {branch}")
-        created_branch_oid: str | None = None
-        if not local.value:
-            created_oid = u.Infra.git_capture(lane, ("rev-parse", "HEAD"))
-            if created_oid.failure:
+        expected_start_oid = source_oid or base_oid
+        created_branch = not local.value
+        checked_out = u.Infra.git_capture(
+            lane, ("rev-parse", "--verify", "HEAD^{commit}")
+        )
+        if checked_out.failure:
+            return self._rollback_new_lane(
+                primary_root,
+                lane,
+                branch,
+                expected_start_oid if created_branch else None,
+                None,
+                checked_out.error or "failed to retain branch identity",
+            )
+        checked_out_oid = checked_out.value.strip()
+        if checked_out_oid != expected_start_oid:
+            return self._rollback_new_lane(
+                primary_root,
+                lane,
+                branch,
+                checked_out_oid if created_branch else None,
+                None,
+                f"branch moved during preflight: expected {expected_start_oid}, "
+                f"found {checked_out_oid}",
+            )
+        if checked_out_oid != base_oid:
+            reconciled = u.Infra.git_capture(lane, ("merge", "--ff-only", base_oid))
+            if reconciled.failure:
                 return self._rollback_new_lane(
                     primary_root,
                     lane,
                     branch,
+                    checked_out_oid if created_branch else None,
                     None,
-                    created_oid.error or "failed to retain created branch identity",
+                    reconciled.error
+                    or f"failed to fast-forward {branch} to {base_oid}",
                 )
-            created_branch_oid = created_oid.value.strip()
+        final_head = u.Infra.git_capture(
+            lane, ("rev-parse", "--verify", "HEAD^{commit}")
+        )
+        restore_branch_oid = (
+            source_oid if local.value and source_oid != base_oid else None
+        )
+        owned_branch_oid = (
+            base_oid if created_branch or restore_branch_oid is not None else None
+        )
+        if final_head.failure or final_head.value.strip() != base_oid:
+            found = final_head.value.strip() if final_head.success else "unresolved"
+            return self._rollback_new_lane(
+                primary_root,
+                lane,
+                branch,
+                owned_branch_oid,
+                restore_branch_oid,
+                final_head.error
+                or f"branch reconciliation expected {base_oid}, found {found}",
+            )
         metadata = u.read_project_metadata(lane)
         if metadata.failure:
             return self._rollback_new_lane(
                 primary_root,
                 lane,
                 branch,
-                created_branch_oid,
+                owned_branch_oid,
+                restore_branch_oid,
                 metadata.error or "invalid lane project metadata",
             )
         setup = u.Cli.run_live(
@@ -217,7 +306,8 @@ class FlextInfraWorktreeService(s[str]):
                 primary_root,
                 lane,
                 branch,
-                created_branch_oid,
+                owned_branch_oid,
+                restore_branch_oid,
                 setup.error or "make setup execution failed",
             )
         return r.ok(str(lane))
