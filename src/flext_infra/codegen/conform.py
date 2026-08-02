@@ -10,15 +10,18 @@ import re
 from pathlib import Path
 from typing import Annotated, override
 
+from flext_cli import u
 from flext_core import r
 from flext_infra import config, p
+from flext_infra._utilities.pyproject_conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
-from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 # A GNU Make variable assignment: NAME followed by =, :=, ::=, ?= or +=.
@@ -778,7 +781,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 initial_tooling.error or f"initial tooling conform failed: {pyproject}"
             )
-        prepared_result = u.Infra.pyproject_conform(
+        prepared_result = FlextInfraUtilitiesPyprojectConform.pyproject_conform(
             initial_tooling.value,
             repositories=codegen.repositories,
             workspace=workspace,
@@ -854,11 +857,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if item.project == repository.distribution
         )
         if contract.dependencies_only:
-            dependency_result = u.Infra.pyproject_dependencies_conform(
-                pyproject_read.value,
-                repositories=codegen.repositories,
-                workspace=workspace,
-                workspace_mode=workspace_mode,
+            dependency_result = (
+                FlextInfraUtilitiesPyprojectConform.pyproject_dependencies_conform(
+                    pyproject_read.value,
+                    repositories=codegen.repositories,
+                    workspace=workspace,
+                    workspace_mode=workspace_mode,
+                )
             )
             if dependency_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -898,7 +903,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_context.value,
                 contract=contract,
             )
-        prepared_result = u.Infra.pyproject_conform(
+        prepared_result = FlextInfraUtilitiesPyprojectConform.pyproject_conform(
             pyproject_read.value,
             repositories=codegen.repositories,
             workspace=workspace,

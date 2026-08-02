@@ -30,6 +30,8 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
         )
         found = applied = failed = 0
         file_results: t.MutableSequenceOf[m.Infra.ConsolidatorFileResult] = []
+        planned_updates: dict[Path, str] = {}
+        planned_changes: dict[Path, list[str]] = {}
 
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             projects_result = self._selected_projects(rope)
@@ -75,27 +77,45 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                             for symbol, ref, value in matches
                         )
                         continue
-                    ok, changes, lines = self._apply_and_validate(
+                    planned = self._plan_update(
                         rope.rope_project,
                         resource,
-                        python_file,
-                        self.workspace_root,
                         project_layout.package_name,
                         source,
                         matches,
                     )
-                    output_lines.extend(lines)
-                    file_results.append(
-                        m.Infra.ConsolidatorFileResult(
-                            file=str(rel_path),
-                            status="applied" if ok else "reverted",
-                            changes=tuple(changes),
-                        )
+                    if planned is not None:
+                        updated_source, changes = planned
+                        planned_updates[python_file] = updated_source
+                        planned_changes[python_file] = changes
+
+        if not self.dry_run and planned_updates:
+            ok, reports = u.Infra.protected_source_writes(
+                planned_updates,
+                request=m.Infra.ProtectedSourceWritesRequest(
+                    workspace=self.workspace_root,
+                    keep_backup=True,
+                    gates=self._ALL_LINT_GATES,
+                ),
+            )
+            for python_file, changes in planned_changes.items():
+                rel_path = python_file.relative_to(self.workspace_root)
+                file_results.append(
+                    m.Infra.ConsolidatorFileResult(
+                        file=str(rel_path),
+                        status="applied" if ok else "reverted",
+                        changes=tuple(changes),
                     )
-                    if ok:
-                        applied += len(changes)
-                    else:
-                        failed += 1
+                )
+                if ok:
+                    applied += len(changes)
+                    output_lines.extend(
+                        f"  APPLIED {rel_path}: {item}" for item in changes
+                    )
+                else:
+                    failed += 1
+            if not ok:
+                output_lines.extend(reports)
 
         summary = (
             f"Found {found} canonical matches across {len(selected_projects)} projects"

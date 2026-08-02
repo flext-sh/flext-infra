@@ -168,6 +168,7 @@ _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% en
 
 _BUILTIN_HANDLERS := \
 	_builtin_help_usage \
+	_builtin_setup_environment \
 	_builtin_deps_check \
 	_builtin_deps_lock \
 	_builtin_deps_upgrade \
@@ -194,12 +195,38 @@ _BUILTIN_HANDLERS := \
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
+_builtin_what_help:
+	@set -eu; \
+	verb="$(HELP_VERB)"; \
+	choices=''; \
+	for handler in $(_BUILTIN_HANDLERS); do \
+		case "$$handler" in \
+			"_builtin_$${verb}_"*) \
+				choice=$${handler#"_builtin_$${verb}_"}; \
+				choices="$$choices $$choice" ;; \
+		esac; \
+	done; \
+	if [ "$$verb" != "setup" ] && [ -f "$(PROJECT_ROOT)/custom.mk" ]; then \
+		custom_choices=$$(sed -nE \
+			"s/^_custom_$${verb}_([a-z0-9][a-z0-9-]*):.*$$/\1/p" \
+			"$(PROJECT_ROOT)/custom.mk"); \
+		choices="$$choices $$custom_choices"; \
+	fi; \
+	printf 'make %s WHAT choices:\n' "$$verb"; \
+	for choice in $$(printf '%s\n' $$choices | sed '/^$$/d' | sort -u); do \
+		printf '  %s\n' "$$choice"; \
+	done
+
 define _dispatch
 	@what="$(strip $(WHAT))"; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
+	if [ "$$what" = help ]; then \
+		$(SELF_MAKE) _builtin_what_help HELP_VERB="$(1)"; \
+		exit $$?; \
+	fi; \
 	builtin="_builtin_$(1)_$$what"; \
 	custom="_custom_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
@@ -261,14 +288,23 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
+.PHONY: \
+	$(PUBLIC_VERBS) \
+	$(SERIALIZED_TARGETS) \
+	$(_BUILTIN_HANDLERS) \
+	_builtin_what_help
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 {% for verb in make.serialization.verbs %}
-{{ verb }}: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}"
+{{ verb }}:
+	@if [ "$(strip $(WHAT))" = "help" ]; then \
+		$(SELF_MAKE) _builtin_what_help HELP_VERB="{{ verb }}"; \
+	else \
+		$(SELF_MAKE) _builtin_require_environment && \
+		$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}"; \
+	fi
 
 _serialized_{{ verb }}:
 	$(call _dispatch,{{ verb }})
@@ -276,8 +312,13 @@ _serialized_{{ verb }}:
 {% endfor %}
 
 setup:
-	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
-	@$(SELF_MAKE) _builtin_setup_environment
+	@if [ "$(strip $(WHAT))" = "help" ]; then \
+		$(SELF_MAKE) _builtin_what_help HELP_VERB="setup"; \
+	elif [ -n "$(strip $(WHAT))" ]; then \
+		printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; \
+	else \
+		$(SELF_MAKE) _builtin_setup_environment; \
+	fi
 
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';

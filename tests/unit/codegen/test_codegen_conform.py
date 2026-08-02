@@ -657,6 +657,60 @@ class TestCodegenConform:
             ],
         )
 
+    def test_every_make_verb_what_help_lists_real_choices_without_execution(
+        self, infra_git_repo: Path
+    ) -> None:
+        """WHAT=help remains parse-only for every config-owned public verb."""
+        root = infra_git_repo
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        configured_verbs = config.Infra.codegen.make.verbs
+        hook_targets = "\n".join(
+            f"pre-{verb.name}:\n\t@exit 91\npost-{verb.name}:\n\t@exit 92"
+            for verb in configured_verbs
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "custom.mk",
+                (
+                    f"{hook_targets}\n"
+                    "_custom_check_myscan:\n"
+                    "\t@exit 93\n"
+                ),
+            )
+        )
+        for verb in configured_verbs:
+            outcome = u.Cli.run_raw([
+                "make",
+                "-C",
+                str(root),
+                verb.name,
+                f"{config.Infra.codegen.make.selector}=help",
+            ])
+            output = tm.ok(outcome)
+            tm.that(output.exit_code, eq=0)
+            combined = output.stdout + output.stderr
+            tm.that(combined, has=f"make {verb.name} WHAT choices:")
+            tm.that(combined, has=f"  {verb.default_what}")
+            if verb.name == "check":
+                tm.that(combined, has="  myscan")
+        tm.that(
+            (root / config.Infra.codegen.make.serialization.lock_path).exists(),
+            eq=False,
+        )
+
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         self, infra_git_repo: Path
     ) -> None:

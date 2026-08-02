@@ -111,20 +111,16 @@ class FlextInfraCodegenConsolidatorStepsMixin:
                 matches.append((symbol, f"c.{canonical}", raw))
         return tuple(matches)
 
-    @classmethod
-    def _apply_and_validate(
-        cls,
+    @staticmethod
+    def _plan_update(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        py_file: Path,
-        workspace: Path,
         pkg_name: str,
         backup: str,
         matches: t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
-    ) -> t.Infra.EditResultWithDescs:
-        """Apply and validate."""
+    ) -> tuple[str, list[str]] | None:
+        """Materialize one updated source in Rope, then restore for batch apply."""
         src_lines = backup.splitlines(keepends=True)
-        rel = py_file.relative_to(workspace)
         edits: t.MutableSequenceOf[tuple[int, int, str]] = []
         descs: t.MutableSequenceOf[str] = []
         for symbol, ref, value in matches:
@@ -143,30 +139,15 @@ class FlextInfraCodegenConsolidatorStepsMixin:
             ))
             descs.append(f"{symbol.name} = {value} -> {ref}")
         if not edits:
-            return (True, [], [])
-
-        ok, report = u.Infra.protected_file_edit(
-            py_file,
-            request=m.Infra.ProtectedFileEditRequest(
-                workspace=workspace,
-                before_source=backup,
-                edit_fn=lambda: (
-                    u.Infra.rewrite_source_at_offsets(
-                        rope_project, resource, edits, apply=True
-                    ),
-                    u.Infra.add_import(
-                        rope_project, resource, pkg_name, ["c"], apply=True
-                    ),
-                    None,
-                )[-1],
-                restore_fn=lambda: resource.write(backup),
-                keep_backup=True,
-                gates=cls._ALL_LINT_GATES,
-            ),
-        )
-        if ok:
-            return (True, list(descs), [f"  APPLIED {rel}: {item}" for item in descs])
-        return (False, list(descs), report)
+            return None
+        try:
+            u.Infra.rewrite_source_at_offsets(
+                rope_project, resource, edits, apply=True
+            )
+            u.Infra.add_import(rope_project, resource, pkg_name, ["c"], apply=True)
+            return (resource.read(), list(descs))
+        finally:
+            resource.write(backup)
 
 
 __all__: list[str] = ["FlextInfraCodegenConsolidatorStepsMixin"]

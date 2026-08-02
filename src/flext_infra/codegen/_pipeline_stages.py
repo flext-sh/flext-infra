@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, t
+from flext_infra._utilities.project_discovery import (
+    FlextInfraUtilitiesProjectDiscovery,
+)
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
@@ -49,7 +52,9 @@ class FlextInfraCodegenPipelineStagesMixin:
         """
 
         def _action() -> tuple[m.Infra.ProjectInfo, ...]:
-            projects_result = u.Infra.projects(ctx.workspace_root)
+            projects_result = FlextInfraUtilitiesProjectDiscovery.projects(
+                ctx.workspace_root
+            )
             if projects_result.failure:
                 msg = projects_result.error or "project discovery failed"
                 raise RuntimeError(msg)
