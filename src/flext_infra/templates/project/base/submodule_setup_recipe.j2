@@ -5,10 +5,12 @@
 # Source: template (submodule_setup_recipe.j2)
 # Computed: workspace-root uses WORKSPACE_MEMBERS from config; standalone discovers
 #           submodules with flext-managed=true from .gitmodules at runtime.
-# Rule: setup VERIFIES governed gitlinks and never writes to a working tree.
-#       It is invoked automatically by every verb, so a checkout, pull, reset or
-#       submodule update on this path would run unattended against uncommitted
-#       work. Divergence is reported with the exact command to run by hand.
+# Rule: setup PROVISIONS an absent governed gitlink and VERIFIES a present one.
+#       An absent checkout holds no work, so setup clones it and places it on the
+#       declared branch at the recorded gitlink. A present checkout is never
+#       written to: setup is invoked automatically by every verb, so a checkout,
+#       pull, reset or submodule update there would run unattended against
+#       uncommitted work. Divergence is reported with the exact command to run.
 # Free: no
 # End SECTION: submodule setup
 {{ target }}:
@@ -34,12 +36,6 @@
 	fi; \
 	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
 	if [ -z "$$managed" ]; then exit 0; fi; \
-	for child_path in $$managed; do \
-		if [ ! -e "$$root/$$child_path/.git" ]; then \
-			printf 'ERROR: governed gitlink is not initialized: %s; run `git submodule update --init --recursive -- %s` yourself (setup never writes a tree)\\n' "$$child_path" "$$child_path" >&2; \
-			exit 2; \
-		fi; \
-	done; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
@@ -76,28 +72,43 @@
 			printf 'ERROR: %s: invalid declared branch %s\n' "$$child_path" "$$branch" >&2; \
 			exit 1; \
 		}; \
-		git -C "$$child_root" fetch --quiet origin "$$branch" || { \
-			printf 'ERROR: %s: fetch origin %s failed\n' "$$child_path" "$$branch" >&2; \
-			exit 1; \
-		}; \
 		gitlink=$$(git -C "$$superproject" ls-files --stage -- "$$child_path" | awk '$$1 == "160000" {print $$2}'); \
 		if [ -z "$$gitlink" ]; then \
 			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
 			exit 2; \
 		fi; \
+		if [ ! -e "$$child_root/.git" ]; then \
+			git -C "$$superproject" submodule update --init -- "$$child_path" || { \
+				printf 'ERROR: %s: could not initialize the governed gitlink\n' "$$child_path" >&2; \
+				exit 1; \
+			}; \
+			git -C "$$child_root" checkout --quiet -B "$$branch" "$$gitlink" || { \
+				printf 'ERROR: %s: could not place the new checkout on %s at %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+				exit 1; \
+			}; \
+			git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch" >/dev/null 2>&1 || :; \
+		fi; \
+		git -C "$$child_root" fetch --quiet origin "$$branch" || { \
+			printf 'ERROR: %s: fetch origin %s failed\n' "$$child_path" "$$branch" >&2; \
+			exit 1; \
+		}; \
 		current=$$(git -C "$$child_root" branch --show-current); \
 		head=$$(git -C "$$child_root" rev-parse HEAD); \
 		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
 			printf 'ERROR: %s: conflicting branch %s; expected %s\n' "$$child_path" "$$current" "$$branch" >&2; \
 			exit 1; \
 		fi; \
-		if [ -z "$$current" ] && [ "$$head" != "$$gitlink" ]; then \
-			printf 'ERROR: %s: detached HEAD diverges from recorded gitlink %s\n' "$$child_path" "$$gitlink" >&2; \
-			exit 1; \
-		fi; \
 		if [ -z "$$current" ]; then \
-			printf 'ERROR: %s: detached HEAD; check out %s yourself (setup never moves a tree)\\n' "$$child_path" "$$branch" >&2; \
-			exit 1; \
+			if ! git -C "$$child_root" merge-base --is-ancestor "$$head" "refs/remotes/origin/$$branch"; then \
+				printf 'ERROR: %s: detached HEAD %s is not contained in origin/%s; reconcile it yourself (setup never discards commits)\n' "$$child_path" "$$head" "$$branch" >&2; \
+				exit 1; \
+			fi; \
+			git -C "$$child_root" checkout --quiet -B "$$branch" "$$head" || { \
+				printf 'ERROR: %s: could not attach detached HEAD %s to %s\n' "$$child_path" "$$head" "$$branch" >&2; \
+				exit 1; \
+			}; \
+			git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch" >/dev/null 2>&1 || :; \
+			current="$$branch"; \
 		fi; \
 		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "refs/remotes/origin/$$branch"; then \
 			printf 'ERROR: %s: origin/%s diverges from recorded gitlink %s\\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
