@@ -52,11 +52,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
     ) -> t.SequenceOf[m.Infra.DocScope]:
         """Build docs scopes without exception wrapping."""
         resolved_root = workspace_root.resolve()
-        project_state = FlextInfraUtilitiesDocsScope.project_state(resolved_root)
-        enabled = project_state.docs_meta.get("enabled", True)
-        if project_state.project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN) and (
-            enabled if isinstance(enabled, bool) else True
-        ):
+        if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return (
                 FlextInfraUtilitiesDocsScopeBuildMixin._governed_scope(
                     resolved_root, output_dir
