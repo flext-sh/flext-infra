@@ -1,4 +1,4 @@
-"""Profiled pytest runner boundary contracts."""
+"""Pytest runner boundary contracts."""
 
 from __future__ import annotations
 
@@ -47,6 +47,7 @@ class TestsFlextInfraPytestRunner:
         *,
         file: str | None = None,
         match: str | None = None,
+        profile: bool = False,
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -55,6 +56,7 @@ class TestsFlextInfraPytestRunner:
             started_at_monotonic=started_at_monotonic,
             file=file,
             match=match,
+            profile=profile,
             target="tests",
             reports=".reports/tests",
         )
@@ -76,7 +78,9 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
-    def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
+    def test_full_argv_is_config_derived_without_always_on_profiler(
+        self, tmp_path: Path
+    ) -> None:
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
         policy = config.Infra.tooling.tools.pytest
@@ -86,9 +90,6 @@ class TestsFlextInfraPytestRunner:
         tm.that(
             command,
             has=[
-                "-m",
-                "cProfile",
-                "-m",
                 "pytest",
                 "--cov",
                 "-n",
@@ -100,6 +101,18 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
+        tm.that(command, lacks="cProfile")
+
+    def test_explicit_profile_uses_the_same_pytest_runner_once(
+        self, tmp_path: Path
+    ) -> None:
+        runner = self._runner(tmp_path, profile=True)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+
+        command = runner.build_command(report_dir)
+
+        tm.that(command, has=["-m", "cProfile", "-m", "pytest"])
+        tm.that(command.count("pytest"), eq=1)
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -160,7 +173,8 @@ class TestsFlextInfraPytestRunner:
             deadline: p.Cli.ProcessDeadline | None = None,
         ) -> p.Result[int]:
             del cwd, timeout, env, input_data
-            tm.that(cmd, has=["-m", "cProfile", "-m", "pytest"])
+            tm.that(cmd, has=["-m", "pytest"])
+            tm.that(cmd, lacks="cProfile")
             tm.that(deadline is not None, eq=True)
             if deadline is not None:
                 captured["deadline"] = deadline

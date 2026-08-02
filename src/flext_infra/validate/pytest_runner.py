@@ -1,4 +1,4 @@
-"""Typed, profiled pytest execution under one absolute process deadline."""
+"""Typed pytest execution under one absolute process deadline."""
 
 from __future__ import annotations
 
@@ -48,6 +48,9 @@ class FlextInfraPytestRunner(s[int]):
     diagnostic: Annotated[
         bool, m.Field(description="Use expanded pytest diagnostics.")
     ] = False
+    profile: Annotated[
+        bool, m.Field(description="Capture explicit cProfile performance evidence.")
+    ] = False
 
     @staticmethod
     def _environment_value(name: str) -> str:
@@ -86,6 +89,7 @@ class FlextInfraPytestRunner(s[int]):
             fail_fast=cls._environment_flag(c.Infra.PYTEST_ENV_FAIL_FAST),
             verbose=cls._environment_flag(c.Infra.PYTEST_ENV_VERBOSE),
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
+            profile=cls._environment_flag(c.Infra.PYTEST_ENV_PROFILE),
         )
 
     @model_validator(mode="after")
@@ -152,14 +156,21 @@ class FlextInfraPytestRunner(s[int]):
             *(("-k", self.match) if self.match is not None else ()),
             *(("-x",) if self.fail_fast else ()),
         )
+        runner = (
+            (
+                sys.executable,
+                "-m",
+                "cProfile",
+                "-o",
+                str(report_dir / "pytest.pstats"),
+                "-m",
+                "pytest",
+            )
+            if self.profile
+            else (sys.executable, "-m", "pytest")
+        )
         return (
-            sys.executable,
-            "-m",
-            "cProfile",
-            "-o",
-            str(report_dir / "pytest.pstats"),
-            "-m",
-            "pytest",
+            *runner,
             target,
             *pytest.progress_args,
             *report_args,
@@ -204,7 +215,7 @@ class FlextInfraPytestRunner(s[int]):
 
     @override
     def execute(self) -> p.Result[int]:
-        """Execute pytest, profile it, and preserve reports under one deadline."""
+        """Execute pytest once and preserve reports under one deadline."""
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
         command = self.build_command(report_dir)
@@ -229,15 +240,16 @@ class FlextInfraPytestRunner(s[int]):
         if run_result.failure:
             return r[int].fail(run_result.error or "pytest process execution failed")
         exit_code = run_result.value
-        profile_result = FlextInfraCProfileReport(
-            workspace_root=self.root,
-            profile=report_dir / "pytest.pstats",
-            output=report_dir / "pytest-profile.txt",
-            sort=pytest.profile_sort,
-            limit=pytest.profile_limit,
-        ).execute()
-        if profile_result.failure and exit_code == 0:
-            return r[int].fail(profile_result.error or "cProfile report failed")
+        if self.profile:
+            profile_result = FlextInfraCProfileReport(
+                workspace_root=self.root,
+                profile=report_dir / "pytest.pstats",
+                output=report_dir / "pytest-profile.txt",
+                sort=pytest.profile_sort,
+                limit=pytest.profile_limit,
+            ).execute()
+            if profile_result.failure and exit_code == 0:
+                return r[int].fail(profile_result.error or "cProfile report failed")
         diagnostics_result = self._extract_diagnostics(report_dir)
         if diagnostics_result.failure:
             return r[int].fail(

@@ -497,10 +497,9 @@ Infra:
           include-path-dependencies-in-search-path: true
           project-shared-search-paths: ["."]
       pytest:
-        # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
-        # mro-wkii.17.37.1 (1bc6379b): budgets are MEASURED, not aspirational —
-        # they retain the observed coverage-run slack. The typed runner owns
-        # them; never narrow them back to the pre-measurement 10s/60s.
+        # Scaffold and modernizer consume this one complete pytest model.
+        # Budgets and worker capacity are measured runtime policy; the typed
+        # runner owns them and every consumer derives its invocation here.
         case-timeout-seconds: 30
         run-timeout-seconds: 300
         termination-grace-seconds: 2

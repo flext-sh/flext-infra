@@ -1,4 +1,4 @@
-"""Portable per-checkout serialization for state-sensitive Make validation."""
+"""Portable repository-wide serialization for state-sensitive Make validation."""
 
 from __future__ import annotations
 
@@ -205,16 +205,23 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"Selected Make owner does not exist: {selected_makefile}"
             )
         engine_root = selected_makefile.parent
-        mutation_lock_path = (engine_root / serialization.lock_path).resolve()
+        lock_owner_result = u.Infra.git_primary_worktree_root(engine_root)
+        if lock_owner_result.failure:
+            return r[m.Infra.ProcessExit].fail(
+                lock_owner_result.error
+                or f"Cannot resolve the Git lock owner for {engine_root}"
+            )
+        lock_owner = lock_owner_result.value
+        mutation_lock_path = (lock_owner / serialization.lock_path).resolve()
         single_flight_lock_path = (
-            engine_root / serialization.single_flight_lock_path
+            lock_owner / serialization.single_flight_lock_path
         ).resolve()
         for lock_path in (single_flight_lock_path, mutation_lock_path):
             try:
-                lock_path.relative_to(engine_root)
+                lock_path.relative_to(lock_owner)
             except ValueError:
                 return r[m.Infra.ProcessExit].fail(
-                    f"Make serialization lock escapes selected Make owner: {lock_path}"
+                    f"Make serialization lock escapes Git lock owner: {lock_path}"
                 )
 
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:

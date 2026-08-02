@@ -83,6 +83,33 @@ class TestsCodegenGitignoreProfileAware:
             )
         tm.that(rendered, has=_BEADS_CONFIG)
 
+    def test_project_overlay_extends_the_canonical_gitignore_render(self) -> None:
+        """Both generation and conform consume the same typed overlay spec."""
+        project_name = "probe-root"
+        patterns = ("/.runtime-cache/", "!/config/local-policy.yaml")
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=project_name,
+            repository=test_u.Tests.repository_ref(project_name),
+            repository_policy_overlays=(
+                m.Infra.RepositoryPolicyOverlaySpec(
+                    project=project_name, extra_ignored_patterns=patterns
+                ),
+            ),
+        )
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                project_name=project_name,
+                workspace=workspace,
+            )
+        )
+
+        for pattern in patterns:
+            tm.that(rendered.count(pattern), eq=1, msg=pattern)
+
     def test_independent_overlay_generates_canonical_beads_environment(
         self, tmp_path: Path
     ) -> None:

@@ -253,6 +253,7 @@ class TestsMakeTestSelector:
                 "FLEXT_PYTEST_FILE_RAW",
                 "FLEXT_PYTEST_MATCH_RAW",
                 "FLEXT_PYTEST_FAIL_FAST_RAW",
+                "FLEXT_PYTEST_PROFILE_RAW",
             ],
             lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
         )

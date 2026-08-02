@@ -733,6 +733,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             / "templates"
             / codegen.templates.root
         ).resolve()
+        context = FlextInfraCodegenConform._gitignore_render_spec(
+            codegen, profile=profile, project_name=project_name, workspace=workspace
+        )
+        return u.Cli.template_render(templates_root / entry.source, context)
+
+    @staticmethod
+    def _gitignore_render_spec(
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        profile: c.Infra.MakeProfile,
+        project_name: str | None = None,
+        workspace: m.Infra.WorkspaceSpec | None = None,
+    ) -> m.Infra.GitignoreRenderSpec:
+        """Build the one typed render specification for every gitignore path."""
         sections = [
             section
             for section in codegen.gitignore_sections
@@ -774,8 +788,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         patterns=override.gitignore_additions,
                     )
                 )
-        context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
-        return u.Cli.template_render(templates_root / entry.source, context)
+            if workspace is not None:
+                policy_overlay = next(
+                    (
+                        item
+                        for item in workspace.repository_policy_overlays
+                        if item.project == project_name
+                    ),
+                    None,
+                )
+                if policy_overlay is not None and policy_overlay.extra_ignored_patterns:
+                    sections.append(
+                        m.Infra.ScaffoldGitignoreSectionSpec(
+                            name=(
+                                "Project-local exceptions "
+                                "(config/workspace.yaml overlay)"
+                            ),
+                            patterns=policy_overlay.extra_ignored_patterns,
+                        )
+                    )
+        return m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
 
     @staticmethod
     def _select_repositories(
@@ -1499,14 +1531,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
-            profile = target.make_profile
             return r[p.Model].ok(
-                m.Infra.GitignoreRenderSpec(
-                    gitignore_sections=tuple(
-                        section
-                        for section in codegen.gitignore_sections
-                        if not section.profiles or profile in section.profiles
-                    )
+                self._gitignore_render_spec(
+                    codegen,
+                    profile=target.make_profile,
+                    project_name=repository.distribution,
+                    workspace=workspace,
                 )
             )
         if destination == "sgconfig.yml":

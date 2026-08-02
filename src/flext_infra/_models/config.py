@@ -981,6 +981,17 @@ class FlextInfraConfigModels:
         ci_propagates: Annotated[
             bool, m.Field(description="Whether CI fans workspace verbs out to members")
         ] = True
+        extra_ignored_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Project-local .gitignore patterns appended after the "
+                    "fleet-wide scaffold sections; never hand-edit the "
+                    "generated .gitignore, declare the pattern"
+                    " here instead"
+                )
+            ),
+        ] = ()
 
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""

@@ -29,11 +29,12 @@ class FlextInfraSerializationLockOwner:
         """Run ``operation`` while holding every unique lock in stable order.
 
         ``ephemeral`` declares the caller's lock lifecycle. A serialized Make
-        verb reuses its per-checkout lock, so the artifact is durable state and
-        is preserved. An isolated worktree transaction owns its sandbox for one
-        operation, so its lock -- and any directory the lock alone created --
-        is removed on exit; retaining it would leak state into the source
-        checkout the transaction promised not to mutate.
+        verb reuses the primary Git worktree's repository-wide lock, so the
+        artifact is durable state and is preserved. An isolated worktree
+        transaction owns its sandbox for one operation, so its lock -- and any
+        directory the lock alone created -- is removed on exit; retaining it
+        would leak state into the source checkout the transaction promised not
+        to mutate.
         """
         ordered_paths = tuple(sorted(set(lock_paths), key=lambda path: path.as_posix()))
         with ExitStack() as lock_stack:

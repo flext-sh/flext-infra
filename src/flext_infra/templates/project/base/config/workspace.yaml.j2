@@ -98,6 +98,7 @@ repository_policy_overlays:
     beads_enabled: {{ overlay.beads_enabled | tojson }}
     ci_enabled: {{ overlay.ci_enabled | tojson }}
     ci_propagates: {{ overlay.ci_propagates | tojson }}
+    extra_ignored_patterns: {{ overlay.extra_ignored_patterns | tojson }}
 {% else %}
   []
 {%- endfor %}

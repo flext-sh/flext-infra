@@ -1,4 +1,4 @@
-"""Real-process contract for per-checkout Make validation serialization."""
+"""Real-process contract for repository-wide Make validation serialization."""
 
 from __future__ import annotations
 
@@ -23,11 +23,11 @@ _TRANSACTIONAL_VERBS = tuple(
 
 
 class TestsFlextInfraMakeSerialization:
-    """Prove configured Make verbs share one native checkout lock."""
+    """Prove configured Make verbs share one native Git-repository lock."""
 
     _process_start_timeout_seconds = 30
 
-    def test_config_owns_relative_checkout_lock_and_serialized_verbs(self) -> None:
+    def test_config_owns_relative_repository_lock_and_serialized_verbs(self) -> None:
         """The typed SSOT owns path, timeout, and the exact protected verbs."""
         serialization = config.Infra.codegen.make.serialization
         make_config = config.Infra.codegen.make
@@ -477,6 +477,7 @@ class TestsFlextInfraMakeSerialization:
             ),
             encoding="utf-8",
         )
+        test_u.Tests.initialize_git_repo(engine_root)
         callers = (tmp_path / "caller-a", tmp_path / "caller-b")
         for caller in callers:
             caller.mkdir()
@@ -537,6 +538,42 @@ class TestsFlextInfraMakeSerialization:
             (engine_root / config.Infra.codegen.make.serialization.lock_path).is_file(),
             where=bool,
         )
+
+    def test_linked_worktree_uses_the_primary_repository_lock(
+        self, tmp_path: Path
+    ) -> None:
+        """Distinct worktree paths cannot create independent validation locks."""
+        validation_verb = config.Infra.codegen.make.serialized_verbs[0]
+        primary = tmp_path / "primary"
+        primary.mkdir()
+        makefile = primary / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            (
+                f".PHONY: _serialized_{validation_verb}\n"
+                f"_serialized_{validation_verb}:\n"
+                "\t@true\n"
+            ),
+            encoding="utf-8",
+        )
+        test_u.Tests.initialize_git_repo(primary)
+        linked = tmp_path / "linked"
+        tm.ok(
+            u.Infra.git_capture(
+                primary, ("worktree", "add", "-b", "linked-validation", str(linked))
+            )
+        )
+
+        service = FlextInfraMakeSerializationService.model_validate({
+            "workspace_root": linked,
+            "makefile": linked / c.Infra.MAKEFILE_FILENAME,
+            "verb": validation_verb,
+        })
+        process = tm.ok(service.execute())
+
+        lock_path = config.Infra.codegen.make.serialization.lock_path
+        tm.that(process.exit_code, eq=0)
+        tm.that((primary / lock_path).is_file(), where=bool)
+        tm.that((linked / lock_path).exists(), eq=False)
 
     def test_private_failure_reaches_cli_and_outer_make(self, tmp_path: Path) -> None:
         """A private nonzero status is never coerced into public success."""

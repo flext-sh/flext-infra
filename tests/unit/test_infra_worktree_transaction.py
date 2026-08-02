@@ -605,16 +605,7 @@ class TestsFlextInfraWorktreeTransaction:
         transaction_result = u.Infra.execute_worktree_transaction(
             m.Infra.WorktreeTransactionRequest(
                 workspace_root=workspace_root,
-                command=(
-                    "codegen",
-                    "conform",
-                    "--root",
-                    str(workspace_root),
-                    "--scope",
-                    "self",
-                    "--mode",
-                    "apply",
-                ),
+                command=("codegen", "py-typed", "--workspace", str(workspace_root)),
                 apply_patch=False,
                 validation_mode="structural",
                 timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
@@ -630,6 +621,12 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
         tm.that(_git_status(workspace_root), eq=before_status)
+        tm.that(
+            (
+                workspace_root / "src" / "transaction_fixture" / c.Infra.PY_TYPED
+            ).exists(),
+            eq=False,
+        )
         tm.that((workspace_root / "Makefile").exists(), eq=False)
 
     def test_public_transaction_fails_before_command_when_managed_tool_is_missing(
