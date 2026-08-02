@@ -227,18 +227,6 @@ class TestsFlextInfraWorktreeTransaction:
             if repository.relative_path == "nested-repository"
         )
         tm.ok(
-            u.Infra.git_capture(
-                worktree_root,
-                (
-                    "update-index",
-                    "--add",
-                    "--cacheinfo",
-                    "160000",
-                    nested.checkpoint_sha,
-                    nested.relative_path,
-                ),
-            )
-        )
 
         deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
@@ -273,6 +261,7 @@ class TestsFlextInfraWorktreeTransaction:
         """Keep synthetic validation worktrees independent of operator hooks."""
         source_root = tmp_path / "source"
         source_root.mkdir()
+        (source_root / "README.md").write_text("fixture\n", encoding="utf-8")
         u.Tests.initialize_git_repo(source_root)
         hooks_root = source_root / ".git" / "hooks"
         hooks_root.mkdir(exist_ok=True)
@@ -284,6 +273,7 @@ class TestsFlextInfraWorktreeTransaction:
         head = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
 
         tm.that(tm.ok(u.Infra.git_repository_head(worktree_root)), eq=head)
+
     def test_isolated_worktree_does_not_run_host_checkout_hooks(
         self, tmp_path: Path
     ) -> None:
