@@ -1393,7 +1393,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         patterns=overlay.extra_ignored_patterns,
                     ),
                 )
-            return r[p.Model].ok(m.Infra.GitignoreRenderSpec(gitignore_sections=sections))
+            return r[p.Model].ok(
+                m.Infra.GitignoreRenderSpec(gitignore_sections=sections)
+            )
         if destination == "sgconfig.yml":
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.

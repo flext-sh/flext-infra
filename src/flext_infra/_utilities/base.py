@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.typings import t
@@ -28,33 +27,24 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
-        """Resolve workspace root from explicit value or current working directory."""
+        """Resolve the root a verb operates on from its invocation point.
+
+        Scope follows where the verb is invoked: run it at the workspace and it
+        works on the whole active workspace; run it inside a project and it
+        works on that project alone. The checkout is therefore the root, and a
+        member is never escalated to its enclosing superproject.
+
+        Escalating inverted that rule. A verb invoked inside one member
+        resolved every relative path against the superproject shared by all
+        sibling worktrees, so `FILE=` selectors rejected files that exist and
+        `.reports/tests/latest.txt` -- the canonical evidence artifact -- was
+        written to the shared root, where each project's run overwrote the
+        previous one's result.
+        """
         target = workspace_root or Path.cwd()
         if target.is_file():
             target = target.parent
-        return FlextInfraUtilitiesBase.enclosing_workspace_root(target.resolve())
-
-    @staticmethod
-    def enclosing_workspace_root(repository_root: Path) -> Path:
-        """Return the superproject owning ``repository_root``, else itself.
-
-        A managed member (e.g. ``flext-infra``) is a Git submodule of the
-        workspace superproject. Every workspace-scoped derivation -- member
-        discovery, path-dependency search roots, manifest lookup -- is only
-        correct relative to that superproject. Defaulting to the current
-        working directory silently degrades those derivations to an empty
-        member set whenever a canonical verb runs from inside a member,
-        which strips sibling import roots from the type-checker search path.
-        """
-        resolved_root = repository_root.expanduser().resolve()
-        superproject = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
-            cwd=resolved_root,
-        )
-        if superproject.failure:
-            return resolved_root
-        declared = superproject.value.strip()
-        return Path(declared).resolve() if declared else resolved_root
+        return target.resolve()
 
     @staticmethod
     def normalize_optional_path(value: str | Path | None) -> Path | None:
