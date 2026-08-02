@@ -36,6 +36,102 @@ class FlextInfraConfigModels:
     # former model-less workspace/make dictionaries. YAML is accepted only at
     # the flext-cli loading boundary and is immediately model-validated here.
 
+    class GoInstallEnvironmentSpec(_ConfigContract):
+        """Environment required to resolve one immutable Go module revision."""
+
+        goproxy: Annotated[
+            Literal["direct"],
+            m.Field(description="Canonical Go module source resolution mode"),
+        ]
+        gonosumdb: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Module excluded from the public Go checksum database"),
+        ]
+
+    class BeadsSourceSpec(_ConfigContract):
+        """Immutable upstream source identity for the Beads executable."""
+
+        module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical upstream Go module"),
+        ]
+        package: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical Go package that builds the bd executable"),
+        ]
+        revision: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[0-9a-f]{40}$",
+                description="Exact upstream Git revision used by the resolved module",
+            ),
+        ]
+
+    class BeadsBuildSpec(_ConfigContract):
+        """Resolved Beads build identity and compatible storage schema."""
+
+        backend: Annotated[
+            Literal["go"],
+            m.Field(description="Mise backend used to build the executable"),
+        ]
+        resolved_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=(
+                    r"^v[0-9]+\.[0-9]+\.[0-9]+-0\."
+                    r"[0-9]{14}-[0-9a-f]{12}$"
+                ),
+                description="Exact Go pseudo-version resolved from the source revision",
+            ),
+        ]
+        reported_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$",
+                description="Version reported by the built bd executable",
+            ),
+        ]
+        schema_version: Annotated[
+            int,
+            m.Field(ge=1, description="Maximum Beads database schema supported"),
+        ]
+        checksum_policy: Annotated[
+            Literal["immutable-vcs-revision"],
+            m.Field(description="Integrity policy for the unreleased upstream build"),
+        ]
+        install_env: Annotated[
+            FlextInfraConfigModels.GoInstallEnvironmentSpec,
+            m.Field(description="Environment used only while Mise installs Beads"),
+        ]
+
+    class BeadsToolSpec(_ConfigContract):
+        """Canonical source and build contract for the Beads tool."""
+
+        source: Annotated[
+            FlextInfraConfigModels.BeadsSourceSpec,
+            m.Field(description="Immutable upstream source identity"),
+        ]
+        build: Annotated[
+            FlextInfraConfigModels.BeadsBuildSpec,
+            m.Field(description="Resolved executable and schema identity"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_build_identity(self) -> Self:
+            """Bind the package, module resolver, and pseudo-version to one source."""
+            if not self.source.package.startswith(f"{self.source.module}/"):
+                msg = "Beads package must belong to its canonical Go module"
+                raise ValueError(msg)
+            if self.build.install_env.gonosumdb != self.source.module:
+                msg = "Beads GONOSUMDB must equal its canonical Go module"
+                raise ValueError(msg)
+            if not self.build.resolved_version.endswith(
+                f"-{self.source.revision[:12]}"
+            ):
+                msg = "Beads pseudo-version must resolve its exact source revision"
+                raise ValueError(msg)
+            return self
+
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
 
@@ -92,9 +188,9 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
-        beads_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Compatible official gastownhall/beads version"),
+        beads: Annotated[
+            FlextInfraConfigModels.BeadsToolSpec,
+            m.Field(description="Canonical Beads source and build identity"),
         ]
 
         @m.computed_field()

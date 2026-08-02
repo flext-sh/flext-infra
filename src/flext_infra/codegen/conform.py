@@ -258,31 +258,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
-        if self.initial_workspace is None:
-            effective_selected: list[m.Infra.RepositoryRef] = []
-            for repository in selected:
-                repository_root = self._repository_root(
-                    workspace_root, workspace, repository
-                )
-                overlay = config_spec.project_overlays.get(repository.name)
-                beads_result = FlextInfraWorkspaceDetector.validate_beads_namespace(
-                    repository_root, repository, overlay
-                )
-                if beads_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        beads_result.error
-                        or f"Beads namespace validation failed for {repository.name}"
-                    )
-                effective_result = FlextInfraWorkspaceDetector.effective_repository(
-                    repository_root, repository, overlay
-                )
-                if effective_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        effective_result.error
-                        or f"effective topology failed for {repository.name}"
-                    )
-                effective_selected.append(effective_result.value)
-            selected = tuple(effective_selected)
         contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []

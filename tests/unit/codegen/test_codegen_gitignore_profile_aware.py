@@ -108,12 +108,24 @@ class TestsCodegenGitignoreProfileAware:
         tm.that(beads_config["issue-prefix"], eq=repository.name)
         dolt = u.Cli.json_as_mapping(beads_config["dolt"])
         tm.that(dolt["database"], eq=repository.name.replace("-", "_"))
+        beads = config.Infra.codegen.toolchain.beads
         tm.that(
             by_path[".mise.toml"],
             has=(
-                '"github:gastownhall/beads" = '
-                f'"{config.Infra.codegen.toolchain.beads_version}"'
+                f'"{beads.build.backend}:{beads.source.package}" = '
+                f'{{ version = "{beads.build.resolved_version}", '
+                "install_env = "
+                f'{{ GOPROXY = "{beads.build.install_env.goproxy}", '
+                f'GONOSUMDB = "{beads.build.install_env.gonosumdb}" }} }}'
             ),
+        )
+        tm.that(
+            beads.build.resolved_version,
+            has=beads.source.revision[:12],
+        )
+        tm.that(
+            beads.build.install_env.gonosumdb,
+            eq=beads.source.module,
         )
         tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
 

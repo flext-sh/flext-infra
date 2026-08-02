@@ -13,5 +13,5 @@ ast-grep = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
 tokei = "{{ tokei_version }}"
 {% if beads_enabled -%}
-"github:gastownhall/beads" = "{{ beads_version }}"
+"{{ beads.build.backend }}:{{ beads.source.package }}" = { version = "{{ beads.build.resolved_version }}", install_env = { GOPROXY = "{{ beads.build.install_env.goproxy }}", GONOSUMDB = "{{ beads.build.install_env.gonosumdb }}" } }
 {% endif -%}

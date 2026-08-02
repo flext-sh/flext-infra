@@ -1,3 +1,6 @@
+# IGNORE: Beads is disabled by runtime topology policy.
+.beads/
+
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
 !.agents/skills/
@@ -191,12 +194,7 @@ secrets.yml
 # --- workspace-migrate: required ignores (auto-managed) ---
 !base.mk
 
-# FINAL BEADS TRACKING POLICY
-!.beads/
-.beads/*
-.beads/.*
-!.beads/config.yaml
-.beads/proxieddb/
+# FINAL LOCAL STATE POLICY
 .dolt/
 *.db
 .beads-credential-key
