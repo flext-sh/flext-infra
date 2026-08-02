@@ -45,6 +45,15 @@ class FlextInfraExtraPathsManager(
 
     def _dep_paths(self, payload: t.JsonMapping, *, project_dir: Path) -> t.StrSequence:
         """Resolve only productive dependency import roots to relative paths."""
+        if project_dir.name in self._workspace_project_names:
+            # mro-m2z3: uv installs every workspace member into the shared
+            # environment, so a sibling already resolves through site-packages.
+            # Emitting `../<sibling>/src` here made this project's type checker
+            # walk the neighbours' source trees: flext-tests reported 57 pyright
+            # findings of which only 8 were its own, and the stage took 307s.
+            # External consumers keep their import roots through the uv-source
+            # and workspace-member producers, which resolve nothing otherwise.
+            return ()
         project_table = payload.get(c.Infra.PROJECT)
         current_project_name = (
             project_table.get(c.NAME) if isinstance(project_table, Mapping) else None

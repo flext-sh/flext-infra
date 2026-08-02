@@ -50,7 +50,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
-        tm.that(result, eq=[".", "src"])
+        tm.that(result, eq=["src", "."])
 
     def test_pyrefly_search_paths_include_project_root_for_tests_package(
         self, tmp_path: Path
@@ -70,7 +70,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
-        tm.that(result, eq=[".", "src"])
+        tm.that(result, eq=["src", "."])
 
     def test_pyrefly_search_paths_ignore_non_path_dependencies_at_root(
         self, tmp_path: Path
@@ -97,7 +97,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=[".", "src"])
+        tm.that(result, eq=["src", "."])
 
     def test_pyrefly_search_paths_include_workspace_dependency_src_dirs_at_root(
         self, tmp_path: Path
@@ -135,7 +135,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=[".", "flext-core/src", "flext-tests/src", "src"])
+        tm.that(result, eq=["src", ".", "flext-core/src", "flext-tests/src"])
 
     def test_pyrefly_search_paths_exclude_dependency_venv_dirs_at_root(
         self, tmp_path: Path
@@ -170,4 +170,43 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=[".", "flext-core/src", "src"])
+        tm.that(result, eq=["src", ".", "flext-core/src"])
+
+    def test_pyrefly_search_paths_omit_sibling_sources_for_workspace_member(
+        self, tmp_path: Path
+    ) -> None:
+        """Omit sibling source roots when the analysed project is a member."""
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "pyproject.toml").write_text(
+            (
+                "[project]\n"
+                "name = 'flext'\n"
+                "[tool.uv.workspace]\n"
+                "members = ['flext-core', 'flext-tests']\n"
+            ),
+            encoding="utf-8",
+        )
+        for dep_name, package_name in (
+            ("flext-core", "flext_core"),
+            ("flext-tests", "flext_tests"),
+        ):
+            dep_root = tmp_path / dep_name
+            dep_root.mkdir()
+            (dep_root / ".git").mkdir()
+            (dep_root / "Makefile").write_text("", encoding="utf-8")
+            dep_src = dep_root / "src" / package_name
+            dep_src.mkdir(parents=True)
+            (dep_src / "__init__.py").write_text("", encoding="utf-8")
+        member_dir = tmp_path / "flext-tests"
+        (member_dir / "pyproject.toml").write_text(
+            ("[project]\nname = 'flext-tests'\ndependencies = ['flext-core']\n"),
+            encoding="utf-8",
+        )
+
+        manager = ExtraPathsTestSupport.manager(tmp_path)
+        result = manager.pyrefly_search_paths(project_dir=member_dir, is_root=False)
+
+        # uv installs sibling members into the shared workspace environment, so
+        # `../flext-core/src` only adds the neighbour's unchecked source tree to
+        # this project's gate.
+        tm.that(result, eq=["src", "."])
