@@ -5,7 +5,7 @@ FROM fedora:41
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN dnf install -y \
-      bash ca-certificates curl git make gcc gcc-c++ libatomic \
+      bash ca-certificates curl git make gcc gcc-c++ libatomic nodejs \
     && dnf clean all
 
 # uv is an environment-provided executable, intentionally without a project

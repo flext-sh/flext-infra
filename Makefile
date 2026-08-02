@@ -34,6 +34,10 @@ PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
+PYTEST_SHARD_REPORTS_DIR ?= .reports/ci-shards
+PYTEST_SHARD_COVERAGE_CONFIG ?= config/coverage-shard.toml
+PYTEST_SHARD_COVERAGE_OUTPUT ?= .reports/ci-shards/coverage.xml
+PYTEST_SHARD_SUMMARY_OUTPUT ?= .reports/ci-shards/summary.json
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -185,6 +189,8 @@ _BUILTIN_HANDLERS := \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
+	_builtin_test_shard \
+	_builtin_test_aggregate \
 	_builtin_fmt_check \
 	_builtin_fmt_apply \
 	_builtin_run_default \
@@ -481,7 +487,11 @@ _builtin_test_all: _builtin_require_environment
 	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
 	_coverage_required=1; \
 	_coverage_value="$$coverage_file"; \
-	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
+	if [ "$(WHAT)" = "shard" ]; then \
+		_coverage_args="--cov --cov-config=$(PYTEST_SHARD_COVERAGE_CONFIG) --cov-report="; \
+		_coverage_required=0; \
+		_coverage_value="deferred-to-shard-union"; \
+	elif [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
 		[ "$$_pytest_run" != "$(PROJECT_ROOT)/tests" ]; then \
 		_coverage_args="--no-cov"; \
 		_coverage_required=0; \
@@ -562,6 +572,15 @@ _builtin_test_all: _builtin_require_environment
 		"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
 	exit "$$rc"
 
+
+_builtin_test_shard: _builtin_test_all
+
+_builtin_test_aggregate: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) validate pytest-shards \
+		--workspace "$(PROJECT_ROOT)" \
+		--manifests-dir "$(PYTEST_SHARD_REPORTS_DIR)" \
+		--coverage-output "$(PYTEST_SHARD_COVERAGE_OUTPUT)" \
+		--summary-output "$(PYTEST_SHARD_SUMMARY_OUTPUT)"
 
 _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 from flext_infra import c, t
@@ -105,6 +105,78 @@ class FlextInfraModelsCore:
         slow_entries: Annotated[
             t.StrSequence, m.Field(description="Slow test entries")
         ] = m.Field(default_factory=tuple)
+
+    class PytestShardManifest(m.ContractModel):
+        """One external pytest shard's collection and completion evidence."""
+
+        schema_version: Annotated[
+            Literal[1], m.Field(description="Shard manifest schema version")
+        ] = 1
+        assignment: Annotated[
+            Literal["sha256-mod-v1"],
+            m.Field(description="Stable nodeid assignment algorithm"),
+        ]
+        shard_index: Annotated[
+            t.NonNegativeInt, m.Field(description="Zero-based external shard index")
+        ]
+        shard_count: Annotated[
+            int, m.Field(ge=2, le=64, description="Total external shard count")
+        ]
+        max_workers: Annotated[
+            int, m.Field(ge=1, le=16, description="Configured xdist worker ceiling")
+        ]
+        worker_count: Annotated[
+            int, m.Field(ge=1, le=16, description="Observed xdist worker collections")
+        ]
+        full_collection: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Complete unfiltered pytest nodeid collection"),
+        ]
+        selected_nodeids: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Nodeids assigned to this external shard"),
+        ]
+        completed_nodeids: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Nodeids whose runtest protocol completed"),
+        ]
+        outcomes: Annotated[
+            t.MappingKV[
+                t.NonEmptyStr,
+                Literal["passed", "failed", "skipped", "xfailed", "xpassed", "error"],
+            ],
+            m.Field(
+                description="Final pytest outcome recorded for each selected nodeid"
+            ),
+        ]
+        validation_errors: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Fail-closed plugin validation errors"),
+        ] = ()
+
+    class PytestShardUnionSummary(m.ContractModel):
+        """Verified exact union of every external pytest shard."""
+
+        schema_version: Annotated[
+            Literal[1], m.Field(description="Shard union summary schema version")
+        ] = 1
+        assignment: Annotated[
+            Literal["sha256-mod-v1"],
+            m.Field(description="Verified stable nodeid assignment algorithm"),
+        ]
+        shard_count: Annotated[
+            int, m.Field(ge=2, le=64, description="Verified shard count")
+        ]
+        collected_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Complete collection size")
+        ]
+        completed_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Exact completed union size")
+        ]
+        coverage_files: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Coverage data files combined across shards"),
+        ] = ()
 
     class DiagResult(m.ArbitraryTypesModel):
         """Internal container for extracted diagnostics.

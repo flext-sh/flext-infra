@@ -36,9 +36,25 @@ class TestsCodegenWorkspaceRootFanout:
         tm.that(rendered, has="MAKE_PROFILE := workspace-root")
         tm.that(rendered, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
 
+    def test_workspace_root_ci_preserves_fanout_and_required_context(
+        self, tmp_path: Path
+    ) -> None:
+        """Workspace CI stays topology-aware while preserving required job `ci`."""
+        rendered = _render_root_artifact(tmp_path, ".github/workflows/ci.yml")
+
+        tm.that(rendered, has="\n  ci:\n    name: ci\n")
+        tm.that(rendered, has="run: make test")
+        tm.that(rendered, lacks="test-shards:")
+        tm.that(rendered, lacks="--flext-shard-count")
+
 
 def _render_root_makefile(tmp_path: Path) -> str:
     """Render base/Makefile.j2 from a typed workspace-root fixture."""
+    return _render_root_artifact(tmp_path, c.Infra.MAKEFILE_FILENAME)
+
+
+def _render_root_artifact(tmp_path: Path, destination: str) -> str:
+    """Render one typed workspace-root artifact from the canonical conform plan."""
     repository = next(
         item
         for item in config.Infra.codegen.repositories
@@ -69,9 +85,14 @@ def _render_root_makefile(tmp_path: Path) -> str:
         ),
     )
     workspace_root = tmp_path / "workspace"
+    surface = (
+        c.Infra.CodegenConformSurface.MAKEFILE
+        if destination == c.Infra.MAKEFILE_FILENAME
+        else c.Infra.CodegenConformSurface.ALL
+    )
     request = m.Infra.CodegenConformRequest(
         root=workspace_root,
-        what=c.Infra.CodegenConformSurface.MAKEFILE,
+        what=surface,
         scope=c.Infra.CodegenConformScope.SELF,
         mode=c.Infra.CodegenConformMode.CHECK,
     )
@@ -80,11 +101,13 @@ def _render_root_makefile(tmp_path: Path) -> str:
             workspace_root=workspace_root, request=request, initial_workspace=workspace
         ).plan(request)
     )
-    makefile_plans = tuple(
-        fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME
+    matching_plans = tuple(
+        file
+        for file in plan.files
+        if file.path.relative_to(workspace_root).as_posix() == destination
     )
-    tm.that(makefile_plans, len=1)
-    rendered: str = makefile_plans[0].rendered
+    tm.that(matching_plans, len=1)
+    rendered: str = matching_plans[0].rendered
     return rendered
 
 

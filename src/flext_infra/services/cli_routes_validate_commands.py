@@ -17,6 +17,7 @@ from flext_infra.validate.metadata_discipline import (
 )
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+from flext_infra.validate.pytest_shards import FlextInfraPytestShardValidator
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
@@ -60,6 +61,14 @@ class ValidationCommandRoutes(CliRouteBase):
                 "Extract pytest diagnostics",
                 FlextInfraPytestDiagExtractor,
                 lambda params, mc=FlextInfraPytestDiagExtractor: mc.execute_command(
+                    params
+                ),
+            ),
+            (
+                "pytest-shards",
+                "Verify exact pytest shard union and combine coverage",
+                FlextInfraPytestShardValidator,
+                lambda params, mc=FlextInfraPytestShardValidator: mc.execute_command(
                     params
                 ),
             ),

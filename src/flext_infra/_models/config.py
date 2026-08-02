@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -128,6 +128,109 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class CiPytestSpec(_ConfigContract):
+        """Deterministic external pytest shards used by generated blocking CI."""
+
+        shard_count: Annotated[
+            int,
+            m.Field(
+                ge=2,
+                le=64,
+                description="External CI shard count covering one complete collection",
+            ),
+        ]
+        max_workers_per_shard: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=16,
+                description="Fixed pytest-xdist worker ceiling per external shard",
+            ),
+        ]
+        distribution: Annotated[
+            Literal["worksteal"],
+            m.Field(
+                description=(
+                    "pytest-xdist scheduler that preserves complete collection "
+                    "coverage while balancing uneven test durations"
+                )
+            ),
+        ]
+        assignment: Annotated[
+            Literal["sha256-mod-v1"],
+            m.Field(description="Stable nodeid-to-external-shard assignment algorithm"),
+        ]
+        reports_dir: Annotated[
+            PurePosixPath,
+            m.Field(description="Repository-relative shard evidence directory"),
+        ]
+        collection_config: Annotated[
+            PurePosixPath,
+            m.Field(description="Repository-relative data-only coverage config"),
+        ]
+        coverage_output: Annotated[
+            PurePosixPath,
+            m.Field(description="Repository-relative combined coverage XML path"),
+        ]
+        summary_output: Annotated[
+            PurePosixPath,
+            m.Field(description="Repository-relative verified union summary path"),
+        ]
+
+        @m.field_validator(
+            "reports_dir", "collection_config", "coverage_output", "summary_output"
+        )
+        @classmethod
+        def _validate_repository_relative_path(
+            cls, value: PurePosixPath
+        ) -> PurePosixPath:
+            """Keep every CI shard artifact within its owning repository."""
+            if value.is_absolute() or not value.parts or ".." in value.parts:
+                msg = "CI pytest artifact paths must be repository-relative"
+                raise ValueError(msg)
+            if any(
+                not all(
+                    character.isascii() and (character.isalnum() or character in "._-")
+                    for character in part
+                )
+                for part in value.parts
+            ):
+                msg = "CI pytest artifact paths must use shell-safe path segments"
+                raise ValueError(msg)
+            return value
+
+        @u.model_validator(mode="after")
+        def _validate_artifact_layout(self) -> Self:
+            """Keep aggregate outputs distinct and inside the shard evidence root."""
+            if self.coverage_output == self.summary_output:
+                msg = "CI pytest coverage and summary outputs must be distinct"
+                raise ValueError(msg)
+            expected_suffixes = (
+                (self.collection_config, ".toml"),
+                (self.coverage_output, ".xml"),
+                (self.summary_output, ".json"),
+            )
+            for output, expected_suffix in expected_suffixes:
+                if output.suffix != expected_suffix:
+                    msg = (
+                        "CI pytest artifact path has invalid suffix: "
+                        f"{output} requires {expected_suffix}"
+                    )
+                    raise ValueError(msg)
+            for output in (self.coverage_output, self.summary_output):
+                if not output.is_relative_to(self.reports_dir):
+                    msg = "CI pytest aggregate outputs must remain inside reports_dir"
+                    raise ValueError(msg)
+            return self
+
+    class CiSpec(_ConfigContract):
+        """Canonical generated CI execution policy."""
+
+        pytest: Annotated[
+            FlextInfraConfigModels.CiPytestSpec,
+            m.Field(description="Blocking pytest partition policy"),
+        ]
+
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
@@ -138,9 +241,17 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
+        make_profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile,
+            m.Field(description="Repository Make profile rendered by the workflow"),
+        ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
+        ]
+        ci: Annotated[
+            FlextInfraConfigModels.CiSpec,
+            m.Field(description="Canonical generated CI execution policy"),
         ]
 
     class DistroDockerRenderSpec(_ConfigContract):
@@ -720,6 +831,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
+        ci: Annotated[
+            FlextInfraConfigModels.CiSpec,
+            m.Field(description="Canonical generated CI execution policy"),
+        ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(description="Repository-specific public Make verbs"),
@@ -1158,6 +1273,10 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
+        ]
+        ci: Annotated[
+            FlextInfraConfigModels.CiSpec,
+            m.Field(description="Canonical generated CI execution policy"),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],

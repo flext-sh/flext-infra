@@ -35,6 +35,10 @@ PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
+PYTEST_SHARD_REPORTS_DIR ?= {{ ci.pytest.reports_dir }}
+PYTEST_SHARD_COVERAGE_CONFIG ?= {{ ci.pytest.collection_config }}
+PYTEST_SHARD_COVERAGE_OUTPUT ?= {{ ci.pytest.coverage_output }}
+PYTEST_SHARD_SUMMARY_OUTPUT ?= {{ ci.pytest.summary_output }}
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -174,6 +178,8 @@ _BUILTIN_HANDLERS := \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
+	_builtin_test_shard \
+	_builtin_test_aggregate \
 	_builtin_fmt_check \
 	_builtin_fmt_apply \
 	_builtin_run_default \
@@ -410,6 +416,15 @@ _builtin_test_all: _builtin_require_environment
     "$(PROJECT_ROOT)/tests",
 ) }}
 {% endif %}
+
+_builtin_test_shard: _builtin_test_all
+
+_builtin_test_aggregate: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) validate pytest-shards \
+		--workspace "$(PROJECT_ROOT)" \
+		--manifests-dir "$(PYTEST_SHARD_REPORTS_DIR)" \
+		--coverage-output "$(PYTEST_SHARD_COVERAGE_OUTPUT)" \
+		--summary-output "$(PYTEST_SHARD_SUMMARY_OUTPUT)"
 
 _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)

@@ -5,7 +5,7 @@ FROM archlinux:base
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN pacman -Syu --noconfirm --needed \
-      bash ca-certificates curl git make base-devel \
+      bash ca-certificates curl git make base-devel nodejs \
     && pacman -Scc --noconfirm
 
 # uv is an environment-provided executable, intentionally without a project

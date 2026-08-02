@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, t, u
+import pytest
+from flext_infra import c, config, m, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -80,6 +81,118 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has=install)
         tm.that(workflow.index(install), lt=workflow.index("run: make setup"))
 
+    def test_blocking_ci_runs_complete_suite_as_typed_xdist_shards(
+        self, tmp_path: Path
+    ) -> None:
+        """Blocking CI partitions the full collection and verifies its exact union."""
+        root = self._render_project(tmp_path / "external")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        pytest_policy = config.Infra.codegen.ci.pytest
+        matrix = ", ".join(str(index) for index in range(pytest_policy.shard_count))
+        expected_args = (
+            f"--flext-shard-count {pytest_policy.shard_count}",
+            f"--flext-shard-max-workers {pytest_policy.max_workers_per_shard}",
+            f"--flext-shard-assignment {pytest_policy.assignment}",
+            f"--dist={pytest_policy.distribution}",
+        )
+
+        tm.that(workflow, has=f"shard: [{matrix}]")
+        for expected in expected_args:
+            tm.that(workflow, has=expected)
+        tm.that(workflow, has=f"-n {pytest_policy.max_workers_per_shard}")
+        tm.that(workflow, has="--flext-shard-manifest")
+        tm.that(workflow, has="-p flext_infra.pytest_shard")
+        tm.that(workflow, has="PYTEST_DISABLE_PLUGIN_AUTOLOAD=1")
+        tm.that(workflow, has="-p xdist.plugin")
+        tm.that(workflow, has="-p pytest_cov.plugin")
+        tm.that(workflow, has="-p pytest_timeout")
+        tm.that(
+            workflow,
+            has=f"PYTEST_REPORTS_DIR: {pytest_policy.reports_dir}/test-reports/shard-",
+        )
+        tm.that(workflow, has="make test WHAT=shard")
+        tm.that(workflow, has="run: make test WHAT=aggregate")
+        tm.that(workflow, has="\n  ci:\n    name: ci\n")
+        tm.that(workflow, has="merge-multiple: true")
+        tm.that(workflow, has="include-hidden-files: true")
+        tm.that(workflow.count("run: make test"), eq=1)
+        tm.that(workflow, lacks="FILE=")
+        tm.that(workflow, lacks="FILES=")
+        tm.that(workflow, lacks="MATCH=")
+        tm.that(workflow, lacks="--no-cov")
+        tm.that(workflow, lacks="--cov-fail-under=0")
+        tm.that(workflow, lacks=".venv/bin/python")
+
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile, has="_builtin_test_shard")
+        tm.that(makefile, has="_builtin_test_aggregate")
+        tm.that(makefile, has="validate pytest-shards")
+        tm.that(
+            makefile,
+            has=f"PYTEST_SHARD_COVERAGE_CONFIG ?= {pytest_policy.collection_config}",
+        )
+
+        coverage_config = (root / pytest_policy.collection_config).read_text(
+            encoding="utf-8"
+        )
+        for source in config.Infra.tooling.tools.coverage.source:
+            tm.that(coverage_config, has=f'"{source}"')
+        for omitted in config.Infra.tooling.tools.coverage.omit:
+            tm.that(coverage_config, has=f'"{omitted}"')
+        tm.that(coverage_config, lacks="fail_under")
+        tm.that(coverage_config, lacks="[report]")
+
+    def test_ci_pytest_policy_rejects_serial_or_unsupported_schedulers(self) -> None:
+        """Typed CI policy cannot regress to serial or duplicate-suite execution."""
+        pytest_policy = config.Infra.codegen.ci.pytest
+
+        with pytest.raises(ValueError, match="shard_count"):
+            m.Infra.CiPytestSpec.model_validate({
+                "shard_count": 1,
+                "max_workers_per_shard": pytest_policy.max_workers_per_shard,
+                "distribution": pytest_policy.distribution,
+                "assignment": pytest_policy.assignment,
+                "reports_dir": pytest_policy.reports_dir,
+                "collection_config": pytest_policy.collection_config,
+                "coverage_output": pytest_policy.coverage_output,
+                "summary_output": pytest_policy.summary_output,
+            })
+        with pytest.raises(ValueError, match="distribution"):
+            m.Infra.CiPytestSpec.model_validate({
+                "shard_count": pytest_policy.shard_count,
+                "max_workers_per_shard": pytest_policy.max_workers_per_shard,
+                "distribution": "each",
+                "assignment": pytest_policy.assignment,
+                "reports_dir": pytest_policy.reports_dir,
+                "collection_config": pytest_policy.collection_config,
+                "coverage_output": pytest_policy.coverage_output,
+                "summary_output": pytest_policy.summary_output,
+            })
+        with pytest.raises(ValueError, match="assignment"):
+            m.Infra.CiPytestSpec.model_validate({
+                "shard_count": pytest_policy.shard_count,
+                "max_workers_per_shard": pytest_policy.max_workers_per_shard,
+                "distribution": pytest_policy.distribution,
+                "assignment": "python-hash",
+                "reports_dir": pytest_policy.reports_dir,
+                "collection_config": pytest_policy.collection_config,
+                "coverage_output": pytest_policy.coverage_output,
+                "summary_output": pytest_policy.summary_output,
+            })
+        with pytest.raises(ValueError, match="repository-relative"):
+            m.Infra.CiPytestSpec.model_validate({
+                "shard_count": pytest_policy.shard_count,
+                "max_workers_per_shard": pytest_policy.max_workers_per_shard,
+                "distribution": pytest_policy.distribution,
+                "assignment": pytest_policy.assignment,
+                "reports_dir": pytest_policy.reports_dir,
+                "collection_config": pytest_policy.collection_config,
+                "coverage_output": "../coverage.xml",
+                "summary_output": pytest_policy.summary_output,
+            })
+
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
         root = self._render_project(tmp_path / "external")
@@ -91,7 +204,7 @@ class TestCodegenCiMatrix:
     def test_distro_bootstrap_is_fail_closed_and_provisions_uv(
         self, tmp_path: Path
     ) -> None:
-        """Every distro provisions uv and runs the canonical bootstrap fail-closed."""
+        """Every distro provisions uv, Node, and canonical bootstrap fail-closed."""
         root = self._render_project(tmp_path / "external")
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             content = (root / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
@@ -100,13 +213,14 @@ class TestCodegenCiMatrix:
             tm.that(content, has="UV_UNMANAGED_INSTALL=/usr/local/bin")
             tm.that(content, has="RUN uv python install 3.13")
             tm.that(content, has="RUN make setup")
+            tm.that(content, has="nodejs")
+            tm.that(content.index("nodejs"), lt=content.index("RUN make setup"))
             tm.that(content, lacks="mise install")
             tm.that(content, lacks="set +e")
             tm.that(content, lacks="soft-pass")
             tm.that(content, lacks="EXTERNAL BLOCKER")
             if distro == "alpine":
                 tm.that(content, has="coreutils")
-                tm.that(content, has="nodejs")
                 tm.that(content, has="util-linux-misc")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(

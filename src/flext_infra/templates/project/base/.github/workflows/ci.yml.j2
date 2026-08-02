@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    name: ci
+  check:
+    name: check
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -44,5 +44,145 @@ jobs:
       - name: Check (blocking)
         run: make check
 
-      - name: Test (blocking)
+{% if make_profile != "workspace-root" %}
+  test-shards:
+    name: test-shard-{% raw %}${{ matrix.shard }}{% endraw %}
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [{% for shard in range(ci.pytest.shard_count) %}{{ shard }}{% if not loop.last %}, {% endif %}{% endfor %}]
+    steps:
+      - name: Checkout
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }} # {{ github_actions["setup-python"].version }}
+        with:
+          python-version: "{{ python_version }}"
+
+      - name: Install uv
+        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }} # {{ github_actions["setup-uv"].version }}
+        with:
+          enable-cache: true
+
+      - name: Install declared toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
+
+      - name: Setup (blocking)
+        run: make setup
+
+      - name: Test deterministic shard (blocking)
+        env:
+          COVERAGE_FILE: {{ ci.pytest.reports_dir }}/.coverage.shard-{% raw %}${{ matrix.shard }}{% endraw %}
+          PYTEST_REPORTS_DIR: {{ ci.pytest.reports_dir }}/test-reports/shard-{% raw %}${{ matrix.shard }}{% endraw %}
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: >-
+          make test WHAT=shard
+          PYTEST_ARGS="-p xdist.plugin -p pytest_cov.plugin
+          -p pytest_timeout -p pytest_markdown_docs.plugin
+          -p flext_tests.conftest_plugin -p flext_tests._fixtures.enforcement
+          -p flext_infra.pytest_shard
+          -n {{ ci.pytest.max_workers_per_shard }} --dist={{ ci.pytest.distribution }}
+          --flext-shard-count {{ ci.pytest.shard_count }}
+          --flext-shard-index {% raw %}${{ matrix.shard }}{% endraw %}
+          --flext-shard-max-workers {{ ci.pytest.max_workers_per_shard }}
+          --flext-shard-assignment {{ ci.pytest.assignment }}
+          --flext-shard-manifest
+          {{ ci.pytest.reports_dir }}/shard-{% raw %}${{ matrix.shard }}{% endraw %}.json"
+
+      - name: Upload shard evidence
+        if: {% raw %}${{ always() }}{% endraw %}
+        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }} # {{ github_actions["upload-artifact"].version }}
+        with:
+          name: pytest-shard-{% raw %}${{ matrix.shard }}{% endraw %}
+          path: |
+            {{ ci.pytest.reports_dir }}/shard-{% raw %}${{ matrix.shard }}{% endraw %}.json
+            {{ ci.pytest.reports_dir }}/.coverage.shard-{% raw %}${{ matrix.shard }}{% endraw %}
+            {{ ci.pytest.reports_dir }}/test-reports/shard-{% raw %}${{ matrix.shard }}{% endraw %}/**
+          if-no-files-found: error
+          include-hidden-files: true
+
+  ci:
+    name: ci
+    needs: test-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }} # {{ github_actions["setup-python"].version }}
+        with:
+          python-version: "{{ python_version }}"
+
+      - name: Install uv
+        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }} # {{ github_actions["setup-uv"].version }}
+        with:
+          enable-cache: true
+
+      - name: Install declared toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
+
+      - name: Setup (blocking)
+        run: make setup
+
+      - name: Download shard evidence
+        uses: {{ github_actions["download-artifact"].repository }}@{{ github_actions["download-artifact"].sha }} # {{ github_actions["download-artifact"].version }}
+        with:
+          pattern: pytest-shard-*
+          path: {{ ci.pytest.reports_dir }}
+          merge-multiple: true
+
+      - name: Verify exact shard union and combine coverage
+        run: make test WHAT=aggregate
+
+      - name: Upload combined test evidence
+        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }} # {{ github_actions["upload-artifact"].version }}
+        with:
+          name: pytest-shard-union
+          path: |
+            {{ ci.pytest.coverage_output }}
+            {{ ci.pytest.summary_output }}
+          if-no-files-found: error
+{% else %}
+  ci:
+    name: ci
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }} # {{ github_actions["setup-python"].version }}
+        with:
+          python-version: "{{ python_version }}"
+
+      - name: Install uv
+        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }} # {{ github_actions["setup-uv"].version }}
+        with:
+          enable-cache: true
+
+      - name: Install declared toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
+
+      - name: Setup (blocking)
+        run: make setup
+
+      - name: Test workspace projects (blocking)
         run: make test
+{% endif %}

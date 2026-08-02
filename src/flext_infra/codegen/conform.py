@@ -1102,7 +1102,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dist=dist,
                     repository_branch=repository.branch,
                     python_version=codegen.toolchain.python_version,
+                    make_profile=c.Infra.MakeProfile(repository.profile),
                     github_actions=codegen.github_actions,
+                    ci=codegen.ci,
                 )
             )
         destination_path = Path(destination)
@@ -1139,6 +1141,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_content_only=tuple(workspace.content_only),
                     uv_link_mode=codegen.toolchain.uv_link_mode,
                     make=codegen.make,
+                    ci=codegen.ci,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
                     orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,

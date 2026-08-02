@@ -19,3 +19,7 @@ COMPLEXITY_MAX ?= 10
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORTS_DIR ?= .reports/tests
+PYTEST_SHARD_REPORTS_DIR ?= {{ ci.pytest.reports_dir }}
+PYTEST_SHARD_COVERAGE_CONFIG ?= {{ ci.pytest.collection_config }}
+PYTEST_SHARD_COVERAGE_OUTPUT ?= {{ ci.pytest.coverage_output }}
+PYTEST_SHARD_SUMMARY_OUTPUT ?= {{ ci.pytest.summary_output }}

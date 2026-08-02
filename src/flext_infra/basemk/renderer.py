@@ -11,7 +11,7 @@ from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
@@ -89,7 +89,15 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def _render_template(
         template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: (
+            t.JsonPayload
+            | t.SequenceOf[t.JsonValue]
+            | t.StrPairSequence
+            | t.SequenceOf[t.StrSequencePair]
+            | t.SequenceOf[t.StrPairSequencePair]
+            | t.JsonMapping
+            | type
+        ),
     ) -> str:
         """Render template."""
         rendered: str = template.render(**kwargs)
@@ -108,6 +116,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                 rendered = self._render_template(
                     template,
                     settings=active_config,
+                    ci=config.Infra.codegen.ci,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -128,7 +137,15 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: (
+            t.JsonPayload
+            | t.SequenceOf[t.JsonValue]
+            | t.StrPairSequence
+            | t.SequenceOf[t.StrSequencePair]
+            | t.SequenceOf[t.StrPairSequencePair]
+            | t.JsonMapping
+            | type
+        ),
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

@@ -328,6 +328,13 @@ test: ## Run pytest only
 	$(call _run_verb_hooks,post,test,$(WHAT))
 
 _test_impl:
+ifeq ($(WHAT),aggregate)
+	$(Q)$(PROJECT_INFRA_VALIDATE) pytest-shards \
+		--workspace "$(PROJECT_ROOT)" \
+		--manifests-dir "$(PYTEST_SHARD_REPORTS_DIR)" \
+		--coverage-output "$(PYTEST_SHARD_COVERAGE_OUTPUT)" \
+		--summary-output "$(PYTEST_SHARD_SUMMARY_OUTPUT)"
+else
 {{ test_report_recipe(
     "$(VENV_PYTHON) -m pytest",
     "$(PROJECT_INFRA_VALIDATE)",
@@ -335,6 +342,7 @@ _test_impl:
     "$(TESTS_DIR)",
     "$(Q)",
 ) }}
+endif
 
 val: ## Run validate gates (VALIDATE_GATES={{ make.PROJECT_VALIDATE_GATES_ALLOWED }} to select, FIX=1)
 	$(call _run_verb_hooks,pre,val,$(WHAT))

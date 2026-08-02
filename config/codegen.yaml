@@ -38,10 +38,31 @@ Infra:
         repository: jdx/mise-action
         version: v4.1.0
         sha: dba19683ed58901619b14f395a24841710cb4925
+      upload-artifact:
+        repository: actions/upload-artifact
+        version: v7.0.1
+        sha: 043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      download-artifact:
+        repository: actions/download-artifact
+        version: v8.0.1
+        sha: 3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       kind:
         repository: helm/kind-action
         version: v1.14.0
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
+
+    ci:
+      pytest:
+        # External shards use a stable nodeid digest. Each shard then uses the
+        # same bounded worker count so CI concurrency cannot expand implicitly.
+        shard_count: 8
+        max_workers_per_shard: 4
+        distribution: worksteal
+        assignment: sha256-mod-v1
+        reports_dir: .reports/ci-shards
+        collection_config: config/coverage-shard.toml
+        coverage_output: .reports/ci-shards/coverage.xml
+        summary_output: .reports/ci-shards/summary.json
 
     uv_exclude_dependencies:
       - project: flext-infra
@@ -791,6 +812,11 @@ Infra:
         - source: base/.github/workflows/ci.yml.j2
           destination: .github/workflows/ci.yml
           profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/config/coverage-shard.toml.j2
+          destination: config/coverage-shard.toml
+          profiles: [workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/README.md.j2

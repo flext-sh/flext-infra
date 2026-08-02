@@ -39,7 +39,11 @@
 	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
 	_coverage_required=1; \
 	_coverage_value="$$coverage_file"; \
-	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
+	if [ "$(WHAT)" = "shard" ]; then \
+		_coverage_args="--cov --cov-config=$(PYTEST_SHARD_COVERAGE_CONFIG) --cov-report="; \
+		_coverage_required=0; \
+		_coverage_value="deferred-to-shard-union"; \
+	elif [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
 		[ "$$_pytest_run" != "{{ coverage_default_target }}" ]; then \
 		_coverage_args="--no-cov"; \
 		_coverage_required=0; \
