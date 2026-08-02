@@ -244,7 +244,51 @@ class TestsMakeTestSelector:
         tm.that(reporter, has='_all_pytest_args="$(PYTEST_ARGS)"')
         tm.that(reporter, has='if [ -n "$(MATCH)" ]')
         tm.that(reporter, has='if [ -n "$(FILE)" ]')
-        tm.that(reporter, has='if [ "$(FAIL_FAST)" = "1" ]')
+        tm.that(reporter, has='_pytest_run="$$_files"')
+        tm.that(
+            template,
+            has='--make-arg "FILE=$(FILE_RELATIVE)"',
+        )
+        truthy = config.Infra.codegen.make.apply_value
+        tm.that(
+            reporter,
+            has=(
+                'if [ "$(FAIL_FAST)" = "1" ] || '
+                f'[ "$(FAIL_FAST)" = "{truthy}" ]'
+            ),
+        )
+        tm.that(reporter, has='_all_pytest_args="$$_all_pytest_args -x"')
+        tm.that(reporter, has="PYTEST_RUN_TIMEOUT_SECONDS")
+        tm.that(
+            reporter,
+            has="--session-timeout=$(PYTEST_RUN_TIMEOUT_SECONDS)",
+        )
+        tm.that(reporter, has="PYTEST_TIMEOUT_EXIT_CODE")
+        tm.that(reporter, has="PYTEST_TIMEOUT_COMMAND")
+        tm.that(reporter, has='-p "$(PYTEST_ENFORCEMENT_PLUGIN)"')
+        tm.that(reporter, has="PYTEST_ADDOPTS cannot override")
+        tm.that(reporter, has="--config-file")
+        tm.that(reporter, has="--disable-plugin-autoload")
+        tm.that(reporter, has="no:$(PYTEST_ENFORCEMENT_PLUGIN)")
+        tm.that(reporter, has="-p=no:$(PYTEST_ENFORCEMENT_PLUGIN)")
+        tm.that(reporter, has='*" -c"?*')
+        tm.that(reporter, has="PYTEST_DISABLE_PLUGIN_AUTOLOAD")
+        tm.that(reporter, has='2>&1 | tee "$$log_file"')
+        tm.that(reporter, lacks=["pytest-run", "pytest_policy", "command.argv"])
+        tm.that(
+            reporter,
+            has=(
+                """_parallel_args="-n $(PYTEST_PARALLEL_WORKERS) """
+                """--dist $(PYTEST_PARALLEL_DISTRIBUTION)\""""
+            ),
+        )
+        tm.that(
+            reporter,
+            has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _parallel_args="-n0"',
+        )
+        tm.that(reporter, has="-n0")
+        tm.that(reporter, has="run_state=TIMED_OUT")
+        tm.that(reporter, has='"$$status_file"')
         tm.that(template, has='"$(PYTEST_TARGETS)"')
 
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:

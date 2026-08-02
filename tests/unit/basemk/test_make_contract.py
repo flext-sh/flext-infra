@@ -6,6 +6,7 @@ import os
 import stat
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 from tests import m, p, u
@@ -478,6 +479,53 @@ class TestsFlextInfraBasemkMakeContract:
             rendered, has='_coverage_args="--cov --cov-report=xml:$$coverage_file";'
         )
         tm.that(rendered, lacks='_coverage_args="--cov=$(SRC_DIR)')
+
+    def test_rendered_base_mk_uses_typed_pytest_deadlines(self) -> None:
+        """Render both pytest limits from the typed configuration owner."""
+        policy = config.Infra.tooling.tools.pytest
+        rendered = _render_base_mk()
+
+        tm.that(
+            rendered,
+            has=[
+                f"override PYTEST_CASE_TIMEOUT_SECONDS := {policy.case_timeout_seconds}",
+                f"override PYTEST_RUN_TIMEOUT_SECONDS := {policy.run_timeout_seconds}",
+                f"--timeout={policy.case_timeout_seconds}",
+                f"--session-timeout={policy.run_timeout_seconds}",
+                f"override PYTEST_ENFORCEMENT_PLUGIN := {policy.enforcement_plugin}",
+                '-p "$(PYTEST_ENFORCEMENT_PLUGIN)"',
+                "PYTEST_TIMEOUT_COMMAND :=",
+                '2>&1 | tee "$$log_file"',
+                f"override PYTEST_PARALLEL_DISTRIBUTION := {policy.parallel_distribution}",
+                f'_parallel_args="-n {policy.parallel_workers} '
+                f'--dist {policy.parallel_distribution}"',
+                '_parallel_args="-n0"',
+            ],
+        )
+
+    def test_make_test_rejects_timeout_weakening_argument(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail before pytest when a caller attempts to weaken its deadline."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+        )
+
+        result = _run_make(
+            tmp_path,
+            "test",
+            "MATCH=contract",
+            "PYTEST_ARGS=--timeout=999",
+        )
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            result.stdout + result.stderr,
+            has="PYTEST_ARGS cannot override configured pytest time limits",
+        )
 
     def test_full_test_fails_when_coverage_artifact_is_missing(
         self, tmp_path: Path

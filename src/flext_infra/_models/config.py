@@ -695,6 +695,10 @@ class FlextInfraConfigModels:
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        pytest: Annotated[
+            FlextInfraModelsDepsToolSettings.PytestConfig,
+            m.Field(description="Typed pytest execution and reporting policy"),
+        ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -755,6 +759,9 @@ class FlextInfraConfigModels:
         ]
         mypy_timeout_exit_code: Annotated[
             int, m.Field(gt=0, description="Wall-time limiter timeout exit code")
+        ]
+        process_timeout_exit_code: Annotated[
+            int, m.Field(gt=0, description="Canonical process timeout exit code")
         ]
         mypy_signal_exit_offset: Annotated[
             int, m.Field(gt=0, description="Shell signal exit-code offset")
@@ -838,6 +845,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
+        pytest: Annotated[
+            FlextInfraModelsDepsToolSettings.PytestConfig,
+            m.Field(description="Typed pytest execution and reporting policy"),
+        ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
         ]
@@ -846,6 +857,9 @@ class FlextInfraConfigModels:
         ]
         mypy_timeout_exit_code: Annotated[
             int, m.Field(gt=0, description="Wall-time limiter timeout exit code")
+        ]
+        process_timeout_exit_code: Annotated[
+            int, m.Field(gt=0, description="Canonical process timeout exit code")
         ]
         mypy_signal_exit_offset: Annotated[
             int, m.Field(gt=0, description="Shell signal exit-code offset")

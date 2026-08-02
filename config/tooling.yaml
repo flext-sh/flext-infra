@@ -137,8 +137,9 @@ Infra:
             # Test suites: structural pytest idioms that are correct-by-design
             # are exempted GLOBALLY at the codegen SSOT (operator P0, per-rule
             # justified per UNIVERSAL_CORE r19 — never a blanket mask).
-            # Executable assertions use flext-tests matchers and receive no
-            # Ruff exemption.
+            #  - assert (S101): pytest's native assertion rewriting is an
+            #    intentional test idiom. This exemption is limited to test
+            #    files and does not weaken production, examples, or scripts.
             #  - undocumented-public-method/-function/-class: test methods,
             #    helper functions, and TestsXxx container classes are structural,
             #    not public API, so docstrings add no value.
@@ -151,6 +152,7 @@ Infra:
             # (PLC2701) and private-member-access (SLF001) — tests must exercise the
             # PUBLIC facade only (flext test public-only law).
             "**/tests/**":
+              - assert
               - undocumented-public-method
               - undocumented-public-function
               - undocumented-public-class
@@ -476,6 +478,15 @@ Infra:
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
+        case-timeout-seconds: 10
+        run-timeout-seconds: 60
+        termination-grace-seconds: 2
+        enforcement-plugin: flext_tests_enforcement
+        progress-args: [--verbose]
+        parallel-workers: auto
+        parallel-distribution: worksteal
+        profile-sort: cumulative
+        profile-limit: 50
         min-version: "8.0"
         python-classes: ["Test*"]
         python-files: ["*_test.py", "*_tests.py", "test_*.py"]
@@ -507,9 +518,6 @@ Infra:
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          # operator law 2026-07-20: any test over 10s is a grave test defect,
-          # surfaced as an explicit TIMEOUT failure (never accommodated).
-          - --timeout=60
       tomlsort:
         all: true
         in_place: true

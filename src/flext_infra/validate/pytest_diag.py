@@ -36,6 +36,14 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     log_path: Annotated[Path, m.Field(description="Pytest log path")] = m.Field(
         alias="log"
     )
+    case_timeout_seconds: Annotated[
+        int,
+        m.Field(
+            alias="case-timeout-seconds",
+            gt=0,
+            description="Configured maximum passing duration for one test item",
+        ),
+    ]
     failed: Annotated[
         Path | None, m.Field(description="Path to write failed cases")
     ] = None
@@ -164,6 +172,15 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         lines = log_text_result.value.splitlines()
         diag = _DiagResult()
         xml_parsed = self._parse_xml(junit_path, diag)
+        if xml_parsed:
+            for entry in diag.slow_entries:
+                duration_text, _, label = entry.partition("s | ")
+                if float(duration_text) > self.case_timeout_seconds:
+                    diag.failed_cases.append(
+                        "DURATION BUDGET EXCEEDED: "
+                        f"{label} took {duration_text}s "
+                        f"(limit {self.case_timeout_seconds}s)"
+                    )
         if not xml_parsed:
             self._parse_log_into_diag(lines, diag)
         self._extract_warnings(lines, diag)

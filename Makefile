@@ -34,6 +34,15 @@ PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
+override PYTEST_CASE_TIMEOUT_SECONDS := 10
+override PYTEST_RUN_TIMEOUT_SECONDS := 60
+override PYTEST_TERMINATION_GRACE_SECONDS := 2
+override PYTEST_TIMEOUT_EXIT_CODE := 124
+override PYTEST_PROGRESS_ARGS := --verbose
+override PYTEST_PARALLEL_WORKERS := auto
+override PYTEST_PARALLEL_DISTRIBUTION := worksteal
+override PYTEST_PROFILE_SORT := cumulative
+override PYTEST_PROFILE_LIMIT := 50
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -158,6 +167,7 @@ SELECTED_PROJECTS := $(if $(strip $(FILE)),$(FILE_PROJECT),$(if $(strip $(REQUES
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FILE)),--make-arg "FILE=$(FILE_RELATIVE)") $(if $(strip $(MATCH)),--make-arg "MATCH=$(MATCH)") $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
+WORKSPACE_PROFILE_ARGS := $(WORKSPACE_TEST_ARGS) --make-arg "WHAT=profile"
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS := build check clean docs scan test val
 
@@ -185,6 +195,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
+	_builtin_test_profile \
 	_builtin_fmt_check \
 	_builtin_fmt_apply \
 	_builtin_run_default \
@@ -465,6 +476,29 @@ _builtin_test_all: _builtin_require_environment
 	if [ -n "$(MATCH)" ]; then _all_pytest_args="$$_all_pytest_args -k $(MATCH)"; fi; \
 	if [ "$(FAIL_FAST)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -x"; fi; \
 	if [ "$(VERBOSE)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -vv -s"; fi; \
+	case " $$_all_pytest_args " in \
+		*" --timeout "*|*" --timeout="*|*" --session-timeout "*|\
+		*" --session-timeout="*|*" --timeout-method "*|\
+		*" --timeout-method="*|*" --timeout-disable "*|\
+		*" --timeout-func-only "*|*" --override-ini "*|\
+		*" --override-ini="*|*" -o "*|*" -p no:timeout "*|*" -pno:timeout "*) \
+			printf 'ERROR: PYTEST_ARGS cannot override configured pytest time limits\n' >&2; \
+			exit 2 ;; \
+	esac; \
+	case "$(PYTEST_CASE_TIMEOUT_SECONDS):$(PYTEST_RUN_TIMEOUT_SECONDS):$(PYTEST_TERMINATION_GRACE_SECONDS)" in \
+		*[!0-9:]*|:*|*::*|*:) \
+			printf 'ERROR: configured pytest time limits must be positive integers\n' >&2; \
+			exit 2 ;; \
+	esac; \
+	if [ "$(PYTEST_CASE_TIMEOUT_SECONDS)" -le 0 ] || \
+		[ "$(PYTEST_CASE_TIMEOUT_SECONDS)" -ge "$(PYTEST_RUN_TIMEOUT_SECONDS)" ] || \
+		[ "$(PYTEST_TERMINATION_GRACE_SECONDS)" -le 0 ] || \
+		[ "$(PYTEST_TERMINATION_GRACE_SECONDS)" -ge "$(PYTEST_RUN_TIMEOUT_SECONDS)" ]; then \
+		printf 'ERROR: invalid pytest limits: case=%ss run=%ss grace=%ss\n' \
+			"$(PYTEST_CASE_TIMEOUT_SECONDS)" "$(PYTEST_RUN_TIMEOUT_SECONDS)" \
+			"$(PYTEST_TERMINATION_GRACE_SECONDS)" >&2; \
+		exit 2; \
+	fi; \
 	run_id=$$(date -u +%Y%m%dT%H%M%SZ)-$$$$; \
 	report_dir="$(PYTEST_REPORTS_DIR)/$$run_id"; \
 	mkdir -p "$$report_dir"; \
@@ -478,6 +512,11 @@ _builtin_test_all: _builtin_require_environment
 	slowest_file="$$report_dir/slowest-tests.txt"; \
 	skips_file="$$report_dir/skipped-tests.txt"; \
 	command_file="$$report_dir/command.txt"; \
+	argv_file="$$report_dir/command.argv"; \
+	status_file="$$report_dir/pytest.exit"; \
+	runtime_file="$$report_dir/runtime.json"; \
+	profile_file="$$report_dir/profile.pstats"; \
+	profile_report="$$report_dir/profile.txt"; \
 	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
 	_coverage_required=1; \
 	_coverage_value="$$coverage_file"; \
@@ -487,18 +526,52 @@ _builtin_test_all: _builtin_require_environment
 		_coverage_required=0; \
 		_coverage_value="not-generated"; \
 	fi; \
-	printf '%s\n' '$(UV_RUN) python -m pytest' \
-		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
-		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
-	$(UV_RUN) python -m pytest $$_pytest_run \
-		$(PYTEST_REPORT_ARGS) \
-		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
-		-p no:metadata \
-		--junitxml="$$junit_file" \
-		$$_coverage_args \
-		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
-	rc=$$?; \
-	cat "$$log_file"; \
+	if [ "$(WHAT)" = "profile" ]; then \
+		if [ -z "$(FILE)" ]; then \
+			printf 'ERROR: make test WHAT=profile requires FILE=<nodeid-or-path>\n' >&2; exit 2; \
+		fi; \
+		_coverage_args="--no-cov"; \
+		_coverage_required=0; \
+		_coverage_value="not-generated"; \
+		set -- $(UV_RUN) python -m cProfile -o "$$profile_file" -m pytest \
+			$$_pytest_run $(PYTEST_REPORT_ARGS) \
+			$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
+			-p no:metadata -p timeout -p flext_infra.validate.pytest_policy \
+			--junitxml="$$junit_file" $$_coverage_args $$_all_pytest_args \
+			$(PYTEST_PROGRESS_ARGS) --timeout="$(PYTEST_CASE_TIMEOUT_SECONDS)" \
+			--session-timeout="$(PYTEST_RUN_TIMEOUT_SECONDS)" -n0; \
+	else \
+		set -- $(UV_RUN) python -m pytest $$_pytest_run $(PYTEST_REPORT_ARGS) \
+			$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
+			-p no:metadata -p timeout -p flext_infra.validate.pytest_policy \
+			--junitxml="$$junit_file" $$_coverage_args $$_all_pytest_args \
+			$(PYTEST_PROGRESS_ARGS) --timeout="$(PYTEST_CASE_TIMEOUT_SECONDS)" \
+			--session-timeout="$(PYTEST_RUN_TIMEOUT_SECONDS)" \
+			-n "$(PYTEST_PARALLEL_WORKERS)" \
+			--dist "$(PYTEST_PARALLEL_DISTRIBUTION)"; \
+	fi; \
+	printf '%s\0' "$$@" > "$$argv_file"; \
+	printf '%s\n' "$$@" > "$$command_file"; \
+	if $(PROJECT_FLEXT_INFRA) validate pytest-run --workspace "." \
+		--argv "$$argv_file" --timeout-seconds "$(PYTEST_RUN_TIMEOUT_SECONDS)" \
+		--grace-seconds "$(PYTEST_TERMINATION_GRACE_SECONDS)" \
+		--log "$$log_file" --metadata "$$runtime_file"; then \
+		rc=0; \
+	else \
+		rc=$$?; \
+	fi; \
+	printf '%s\n' "$$rc" > "$$status_file"; \
+	if [ "$(WHAT)" = "profile" ] && [ "$$rc" -eq 0 ]; then \
+		if ! $(PROJECT_FLEXT_INFRA) validate cprofile-report --workspace "." \
+			--profile "$$profile_file" --output "$$profile_report" \
+			--sort "$(PYTEST_PROFILE_SORT)" --limit "$(PYTEST_PROFILE_LIMIT)"; then \
+			rc=$$?; \
+		fi; \
+	fi; \
+	if [ "$$rc" -eq "$(PYTEST_TIMEOUT_EXIT_CODE)" ]; then \
+		_coverage_required=0; \
+		_coverage_value="invalid-timeout"; \
+	fi; \
 	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
 		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
 			"$$coverage_file" >&2; \
@@ -514,16 +587,17 @@ _builtin_test_all: _builtin_require_environment
 		skipped=$${skipped:-0}; duration=$${duration:-0}; \
 		passed=$$((tests - failures - errors - skipped)); \
 		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
-		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
-			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
-			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
+		printf 'junit=%s\ncoverage=%s\nruntime=%s\nexit_status=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
+			"$$junit_file" "$$_coverage_value" "$$runtime_file" "$$status_file" "$$tests" "$$passed" \
+			"$$failures" "$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
 	else \
-		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
-			"$$_coverage_value" > "$$summary_file"; \
+		printf 'junit=not-generated\ncoverage=%s\nruntime=%s\nexit_status=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
+			"$$_coverage_value" "$$runtime_file" "$$status_file" > "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
 	if $(PROJECT_FLEXT_INFRA) validate pytest-diag \
 		--junit "$$junit_file" --log "$$log_file" \
+		--case-timeout-seconds "$(PYTEST_CASE_TIMEOUT_SECONDS)" \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
 		--skips "$$skips_file" > "$$counts_file"; then \
@@ -533,7 +607,12 @@ _builtin_test_all: _builtin_require_environment
 		printf 'ERROR: pytest diagnostic extraction failed (exit=%s)\n' \
 			"$$counts_status" >&2; \
 		cat "$$counts_file" >&2; \
-		exit "$$counts_status"; \
+		if [ "$$rc" -eq "$(PYTEST_TIMEOUT_EXIT_CODE)" ] || [ "$$rc" -eq 137 ]; then \
+			printf 'failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0\n' \
+				> "$$counts_file"; \
+		else \
+			exit "$$counts_status"; \
+		fi; \
 	fi; \
 	if ! awk ' \
 		BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
@@ -553,6 +632,9 @@ _builtin_test_all: _builtin_require_environment
 	if [ "$(DIAG)" = "1" ]; then \
 		run_state=COMPLETED; \
 		if [ "$$rc" -eq 130 ]; then run_state=INTERRUPTED; fi; \
+		if [ "$$rc" -eq "$(PYTEST_TIMEOUT_EXIT_CODE)" ] || [ "$$rc" -eq 137 ]; then \
+			run_state=TIMED_OUT; \
+		fi; \
 		printf 'DIAG %s | failed=%s errors=%s warnings=%s skipped=%s\n' \
 			"$$run_state" "$$failed_count" "$$error_count" \
 			"$$warning_count" "$$skipped_count" >&2; \
@@ -561,6 +643,8 @@ _builtin_test_all: _builtin_require_environment
 	printf 'Reports: %s (latest: %s/latest)\n' \
 		"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
 	exit "$$rc"
+
+_builtin_test_profile: _builtin_test_all
 
 
 _builtin_fmt_check: _builtin_require_environment

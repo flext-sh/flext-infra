@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_tests import tm
 from tests import m
@@ -27,6 +28,7 @@ def _extractor(
     return FlextInfraPytestDiagExtractor(
         junit=junit,
         log_path=log,
+        case_timeout_seconds=config.Infra.tooling.tools.pytest.case_timeout_seconds,
         failed=failed,
         errors=errors,
         warnings=warnings,
@@ -130,6 +132,31 @@ class TestPytestDiagExtractorBehavior:
             _extractor(slow_xml, log).extract(slow_xml, log)
         )
         tm.that(slow_report.slow_entries, length_gt=0)
+
+    def test_extract_classifies_duration_over_budget_as_failure(
+        self, tmp_path: Path
+    ) -> None:
+        pytest_config = config.Infra.tooling.tools.pytest
+        junit = tmp_path / "junit.xml"
+        junit.write_text(
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1">'
+            f'<testcase classname="TC" name="test_slow" '
+            f'time="{pytest_config.case_timeout_seconds + 0.001}"/>'
+            "</testsuite></testsuites>"
+        )
+        log = tmp_path / "log.txt"
+        log.write_text("")
+
+        report = tm.ok(_extractor(junit, log).extract(junit, log))
+
+        duration = pytest_config.case_timeout_seconds + 0.001
+        expected = (
+            "DURATION BUDGET EXCEEDED: "
+            f"TC::test_slow took {duration:.6f}s "
+            f"(limit {pytest_config.case_timeout_seconds}s)"
+        )
+        tm.that(report.failed_count, eq=1)
+        tm.that(report.failed_cases, contains=expected)
 
     def test_extract_missing_log_is_graceful(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"

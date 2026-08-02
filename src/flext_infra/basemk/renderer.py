@@ -11,7 +11,7 @@ from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
@@ -89,7 +89,10 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def _render_template(
         template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig
+        | m.Infra.PytestConfig
+        | t.Infra.InfraValue
+        | type,
     ) -> str:
         """Render template."""
         rendered: str = template.render(**kwargs)
@@ -110,9 +113,11 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     settings=active_config,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
+                    pytest=config.Infra.tooling.tools.pytest,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                     mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                     mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                    process_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                     mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
                     prlimit_command=c.Infra.PRLIMIT_COMMAND,
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
@@ -128,7 +133,10 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig
+        | m.Infra.PytestConfig
+        | t.Infra.InfraValue
+        | type,
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

@@ -26,6 +26,15 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
     return result
 
 
+def _expected_addopts() -> set[str]:
+    policy = config.Infra.tooling.tools.pytest
+    return {
+        *policy.standard_addopts,
+        f"--timeout={policy.case_timeout_seconds}",
+        f"--session-timeout={policy.run_timeout_seconds}",
+    }
+
+
 class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
@@ -39,16 +48,14 @@ class TestsFlextInfraDepsModernizerPytest:
         ini = _mapping(
             _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
         )
-        tm.that(ini["minversion"], eq="8.0")
-        tm.that(list(_strings(ini["python_classes"])), eq=["Test*"])
+        policy = tool_config.tools.pytest
+        tm.that(ini["minversion"], eq=policy.min_version)
+        tm.that(tuple(_strings(ini["python_classes"])), eq=policy.python_classes)
         tm.that(
             set(_strings(ini["python_files"])),
-            eq={"*_test.py", "*_tests.py", "test_*.py"},
+            eq=set(policy.python_files),
         )
-        tm.that(
-            set(_strings(ini["addopts"])),
-            eq=set(tool_config.tools.pytest.standard_addopts),
-        )
+        tm.that(set(_strings(ini["addopts"])), eq=_expected_addopts())
         tm.that(
             set(_strings(ini["markers"])),
             eq=set(tool_config.tools.pytest.standard_markers),
@@ -73,16 +80,17 @@ markers = ["custom: custom marker"]
         ini = _mapping(
             _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
         )
-        tm.that(ini["minversion"], eq="8.0")
-        tm.that(set(_strings(ini["python_classes"])), eq={"Spec*", "Test*"})
+        policy = tool_config.tools.pytest
+        tm.that(ini["minversion"], eq=policy.min_version)
+        tm.that(
+            set(_strings(ini["python_classes"])),
+            eq={"Spec*", *policy.python_classes},
+        )
         tm.that(
             set(_strings(ini["python_files"])),
-            eq={"spec_*.py", "*_test.py", "*_tests.py", "test_*.py"},
+            eq={"spec_*.py", *policy.python_files},
         )
-        tm.that(
-            set(_strings(ini["addopts"])),
-            eq=set(tool_config.tools.pytest.standard_addopts),
-        )
+        tm.that(set(_strings(ini["addopts"])), eq=_expected_addopts())
         tm.that(
             set(_strings(ini["markers"])),
             eq={"custom: custom marker", *tool_config.tools.pytest.standard_markers},

@@ -1127,6 +1127,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.MakefileRenderSpec(
                     dist=dist,
                     infra_cli=config.Infra.name,
+                    pytest=config.Infra.tooling.tools.pytest,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
@@ -1149,6 +1150,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                     mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                     mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                    process_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                     mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
                     prlimit_command=c.Infra.PRLIMIT_COMMAND,
                     prlimit_address_space_option=(c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION),
@@ -1186,9 +1188,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 make=codegen.make,
+                pytest=config.Infra.tooling.tools.pytest,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                process_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
                 prlimit_command=c.Infra.PRLIMIT_COMMAND,
                 prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
@@ -1290,12 +1294,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 scaffold=codegen.scaffold,
+                pytest=config.Infra.tooling.tools.pytest,
                 gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                process_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
                 prlimit_command=c.Infra.PRLIMIT_COMMAND,
                 prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,

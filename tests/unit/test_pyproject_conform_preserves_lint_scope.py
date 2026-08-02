@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import config
@@ -44,9 +45,37 @@ def _ssot_per_file_ignores() -> frozenset[str]:
     return frozenset(ruff.lint.per_file_ignores)
 
 
+def _live_per_file_ignore_rules() -> Mapping[str, frozenset[str]]:
+    """Return every governed pattern and its generated Ruff rule set."""
+    payload = tomllib.loads(
+        (_workspace_root() / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    per_file_ignores = payload["tool"]["ruff"]["lint"]["per-file-ignores"]
+    return {
+        pattern: frozenset(rules) for pattern, rules in per_file_ignores.items()
+    }
+
+
+def _ssot_per_file_ignore_rules() -> Mapping[str, frozenset[str]]:
+    """Return the same rule mapping from the typed tooling owner."""
+    configured = config.Infra.tooling.tools.ruff.lint.per_file_ignores
+    return {pattern: frozenset(rules) for pattern, rules in configured.items()}
+
+
 class TestsFlextInfraPyprojectConformPreservesLintScope:
     def test_ssot_declares_every_governed_per_file_ignore(self) -> None:
         """No governed lint exemption is missing from the tooling SSOT."""
         missing = _live_per_file_ignores() - _ssot_per_file_ignores()
 
         tm.that(missing, eq=frozenset())
+
+    def test_governed_rules_equal_their_typed_ssot_values(self) -> None:
+        """Round-trip every governed rule without duplicating config values."""
+        live = _live_per_file_ignore_rules()
+        configured = _ssot_per_file_ignore_rules()
+        governed_patterns = live.keys() & configured.keys()
+
+        tm.that(
+            {pattern: live[pattern] for pattern in governed_patterns},
+            eq={pattern: configured[pattern] for pattern in governed_patterns},
+        )
