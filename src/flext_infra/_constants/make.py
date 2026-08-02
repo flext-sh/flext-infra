@@ -123,9 +123,10 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_ENV_PATH_SEPARATOR: Final[str] = ":"
     ORCHESTRATOR_ENV_MISE_SHIMS: Final[str] = "MISE_SHIMS"
     ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
+    TEST_DEADLINE_OWNER_ENV: Final[str] = "FLEXT_TEST_DEADLINE_OWNER"
+    "Inherited marker proving one outer serialized test runner owns the deadline."
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
-        ("PYTEST_TARGETS", "tests"),
         ("DIAG", "0"),
         (CHECK_GATES_VARIABLE, ""),
         ("VALIDATE_GATES", ""),
@@ -156,7 +157,6 @@ class FlextInfraConstantsMake:
         ("PROJECTS", ""),
         ("WHAT", ""),
         ("PYTEST_ARGS", ""),
-        ("PYTEST_TARGETS", "tests"),
         ("VALIDATE_SCOPE", "all"),
         ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),
@@ -211,7 +211,7 @@ class FlextInfraConstantsMake:
         ("scan", "Run all security checks"),
         ("fmt", "Run all formatting"),
         ("docs", "Build docs (DOCS_PHASE= to select)"),
-        ("test", "Run pytest (PYTEST_ARGS= for options)"),
+        ("test", "Run bounded pytest (FILE=/MATCH= selectors)"),
         ("val", "Run validate gates (FIX=1 to auto-fix)"),
         ("clean", "Clean build/test/type artifacts"),
     )
@@ -227,13 +227,12 @@ class FlextInfraConstantsMake:
         f"MYPY_TIMEOUT_SECONDS={MYPY_TIMEOUT_SECONDS_DEFAULT}  Mypy wall-time cap",
         f"VALIDATE_GATES={PROJECT_VALIDATE_GATES_ALLOWED}",
         "FILE=src/foo.py             Single file for check/fmt/test",
-        'FILES="a.py b.py"          Multiple files for check/fmt/test',
+        'FILES="a.py b.py"          Multiple files for check/fmt; test rejects it',
         "CHANGED_ONLY=1              Git-changed Python files for check",
         "CHECK_ONLY=1                Dry-run format/check (no writes)",
         'RUFF_ARGS="--select E501"   Extra args for ruff check',
         'PYRIGHT_ARGS="--level basic" Extra args for pyright',
-        'PYTEST_ARGS="-k expr"       Extra pytest args',
-        'PYTEST_TARGETS="tests/unit" Pytest collection targets',
+        "PYTEST_ARGS=<value>         Rejected until typed argv runner is active",
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",
         "DIAG=1                      Emit extended pytest diagnostics",
@@ -321,9 +320,7 @@ class FlextInfraConstantsMake:
         ("FIX", FORWARD_MODE_ENABLED),
     )
     TEST_FORWARD_ARGS: Final[t.StrPairSequence] = (
-        ("PYTEST_ARGS", FORWARD_MODE_VALUE),
         ("FILE", FORWARD_MODE_VALUE),
-        ("FILES", FORWARD_MODE_VALUE),
         ("MATCH", FORWARD_MODE_VALUE),
         ("VERBOSE", FORWARD_MODE_ENABLED),
     )

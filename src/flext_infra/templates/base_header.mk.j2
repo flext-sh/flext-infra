@@ -5,6 +5,8 @@
 # Silent by default. Use VERBOSE=1 for detailed output.
 # =============================================================================
 
+override SHELL := /bin/sh
+
 # === CONFIGURATION (override before include) ===
 PROJECT_NAME ?= {{ settings.project_name }}
 PYTHON_VERSION ?= {{ settings.python_version }}
@@ -16,6 +18,22 @@ COMPLEXITY_MAX ?= 10
 {{ variable_name }} ?={% if default_value %} {{ default_value }}{% endif %}
 {% endfor %}
 
-PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
+override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
+override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORTS_DIR ?= .reports/tests
+override PYTEST_CASE_TIMEOUT_SECONDS := {{ pytest.case_timeout_seconds }}
+override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}
+override PYTEST_TIMEOUT_EXIT_CODE := {{ process_timeout_exit_code }}
+override PYTEST_ENFORCEMENT_PLUGIN := {{ pytest.enforcement_plugin }}
+override PYTEST_PROGRESS_ARGS :={% for item in pytest.progress_args %} {{ item }}{% endfor %}
+override PYTEST_PARALLEL_WORKERS := {{ pytest.parallel_workers }}
+override PYTEST_PARALLEL_DISTRIBUTION := {{ pytest.parallel_distribution }}
+override PYTEST_PROFILE_SORT := {{ pytest.profile_sort }}
+override PYTEST_PROFILE_LIMIT := {{ pytest.profile_limit }}
+override export FLEXT_PYTEST_ARGS_RAW := $(value PYTEST_ARGS)
+override export FLEXT_PYTEST_FILE_RAW := $(value FILE)
+override export FLEXT_PYTEST_FILES_RAW := $(value FILES)
+override export FLEXT_PYTEST_MATCH_RAW := $(value MATCH)
+override export FLEXT_PYTEST_TARGET_RAW := {{ settings.tests_dir }}
+override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
+override SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))

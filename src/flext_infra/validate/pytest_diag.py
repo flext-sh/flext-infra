@@ -51,6 +51,22 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     skips: Annotated[
         Path | None, m.Field(description="Path to write skipped cases")
     ] = None
+    case_timeout_seconds: Annotated[
+        int | None,
+        m.Field(
+            alias="case-timeout-seconds",
+            gt=0,
+            le=10,
+            description="Optional explicit hard ceiling for one pytest item",
+        ),
+    ] = None
+    require_junit: Annotated[
+        bool,
+        m.Field(
+            alias="require-junit",
+            description="Fail when the requested JUnit artifact is absent or malformed",
+        ),
+    ] = False
 
     @staticmethod
     def _extract_slow_from_log(lines: t.StrSequence, diag: _DiagResult) -> None:
@@ -104,6 +120,31 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
                 if c.Infra.PYTEST_BLOCK_END_RE.match(line):
                     break
         diag.error_traces = block
+
+    def _enforce_case_timeout(self, diag: _DiagResult) -> None:
+        """Classify every duration beyond the typed item ceiling as a failure."""
+        case_timeout_seconds = self.case_timeout_seconds
+        if case_timeout_seconds is None:
+            from flext_infra import config
+
+            case_timeout_seconds = (
+                config.Infra.tooling.tools.pytest.case_timeout_seconds
+            )
+        for entry in diag.slow_entries:
+            match = c.Infra.PYTEST_DURATION_ENTRY_RE.match(entry)
+            if match is None:
+                continue
+            seconds = float(match.group("seconds"))
+            if seconds <= case_timeout_seconds:
+                continue
+            label = match.group("label")
+            if label not in diag.failed_cases:
+                diag.failed_cases.append(label)
+            diag.error_traces.append(
+                "=== TIMEOUT: "
+                f"{label} ===\n{seconds:.6f}s exceeded "
+                f"{case_timeout_seconds}s item ceiling"
+            )
 
     def extract(
         self, junit_path: Path, log_path: Path
@@ -164,11 +205,16 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         lines = log_text_result.value.splitlines()
         diag = _DiagResult()
         xml_parsed = self._parse_xml(junit_path, diag)
+        if self.require_junit and not xml_parsed:
+            return r[m.Infra.PytestDiagnostics].fail(
+                f"required JUnit XML is absent or malformed: {junit_path}"
+            )
         if not xml_parsed:
             self._parse_log_into_diag(lines, diag)
         self._extract_warnings(lines, diag)
         if not diag.slow_entries:
             self._extract_slow_from_log(lines, diag)
+        self._enforce_case_timeout(diag)
         return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @override
@@ -191,11 +237,13 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
                 for value in getattr(result.value, attr_name, [])
                 if isinstance(value, str)
             ]
-            u.write_file(
-                output_path,
-                separator.join(items) + "\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+            written = u.Cli.atomic_write_text_file(
+                output_path, separator.join(items) + "\n"
             )
+            if written.failure:
+                return r[bool].fail(
+                    written.error or f"failed to write pytest report: {output_path}"
+                )
         sys.stdout.write(
             f"failed_count={result.value.failed_count}\n"
             f"error_count={result.value.error_count}\n"

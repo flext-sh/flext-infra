@@ -59,9 +59,14 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             runner: TestsFlextInfraInfraWorkspaceOrchestrator.ProjectRunner,
             *,
             verb: str = "check",
+            workspace: Path | None = None,
+            file: str | None = None,
         ) -> None:
             """Initialize the orchestrator with a typed project runner."""
-            super().__init__(verb=verb)
+            if workspace is None:
+                super().__init__(verb=verb, file=file)
+            else:
+                super().__init__(verb=verb, workspace=workspace, file=file)
             self._runner = runner
 
         @override
@@ -77,14 +82,19 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             self,
             runner: TestsFlextInfraInfraWorkspaceOrchestrator.ProjectRunner,
             project: m.Infra.ProjectInfo,
+            *,
+            additional_projects: t.SequenceOf[m.Infra.ProjectInfo] = (),
+            verb: str = "check",
+            workspace: Path | None = None,
+            file: str | None = None,
         ) -> None:
             """Initialize an executable orchestrator for one resolved project."""
-            super().__init__(runner, verb="check")
-            self._project = project
+            super().__init__(runner, verb=verb, workspace=workspace, file=file)
+            self._projects = (project, *additional_projects)
 
         @override
         def _resolved_projects(self) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([self._project])
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(self._projects)
 
         @staticmethod
         @override
@@ -193,8 +203,12 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             timeout: int | None = None,
             env: t.StrMapping | None = None,
             remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            live: bool = False,
+            deadline: p.Cli.ProcessDeadline | None = None,
         ) -> p.Result[int]:
-            _ = cmd, cwd, timeout, env
+            _ = cmd, cwd, timeout, env, input_data, live, deadline
             Path(output_file).parent.mkdir(parents=True, exist_ok=True)
             Path(output_file).write_text("", encoding="utf-8")
             observed_remove_keys.append(tuple(remove_env_keys))
@@ -227,6 +241,102 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         )
 
         tm.ok(orchestrator.execute(), eq=True)
+
+    def test_test_selectors_become_exact_make_argv_elements(self) -> None:
+        """Materialize typed FILE and MATCH values without shell reparsing."""
+        service = FlextInfraOrchestratorService(
+            verb="test",
+            file="tests/unit/sample test.py::TestsSample::test exact",
+            match="exact name and not slow",
+            what="profile",
+        )
+
+        tm.that(
+            service.make_args,
+            eq=(
+                "FILE=tests/unit/sample test.py::TestsSample::test exact",
+                "MATCH=exact name and not slow",
+                "WHAT=profile",
+            ),
+        )
+
+    @pytest.mark.parametrize(
+        "make_arg",
+        [
+            "FILE=tests/unit/test_sample.py",
+            "FILES=tests/a.py tests/b.py",
+            "MATCH=sample",
+            "PYTEST_ARGS=-k sample",
+            " CHECK_GATES=lint",
+            "SHELL=/bin/sh",
+            "FLEXT_PYTEST_FILE_RAW=tests/unit/test_sample.py",
+        ],
+    )
+    def test_test_verb_rejects_every_generic_make_arg_route(
+        self, make_arg: str
+    ) -> None:
+        """Prevent generic strings from competing with typed test fields."""
+        with pytest.raises(c.ValidationError, match="generic make-arg is forbidden"):
+            FlextInfraOrchestratorService(verb="test", make_arg=(make_arg,))
+
+    @pytest.mark.parametrize(
+        "file",
+        [
+            "/outside/test_sample.py",
+            "../test_sample.py",
+            "tests/../test_sample.py",
+            r"tests\test_sample.py",
+            "::TestsSample::test_sample",
+        ],
+    )
+    def test_test_file_rejects_non_relative_or_empty_prefix(self, file: str) -> None:
+        """Reject FILE nodeids whose filesystem prefix escapes the repository."""
+        with pytest.raises(
+            c.ValidationError,
+            match="file must have a normalized repository-relative path prefix",
+        ):
+            FlextInfraOrchestratorService(verb="test", file=file)
+
+    def test_selectors_are_test_only(self) -> None:
+        """Reject pytest selectors on unrelated workspace verbs."""
+        with pytest.raises(
+            c.ValidationError,
+            match="file, match, and what selectors are only valid for the test verb",
+        ):
+            FlextInfraOrchestratorService(verb="check", match="sample")
+
+    def test_workspace_file_routes_to_most_specific_project(
+        self, tmp_path: Path
+    ) -> None:
+        """Route one workspace FILE to its owner through public execution."""
+        member_root = tmp_path / "member project"
+        target = member_root / "tests" / "sample % test.py"
+        target.parent.mkdir(parents=True)
+        target.write_text("", encoding="utf-8")
+        root_project = m.Infra.ProjectInfo(name="root", path=tmp_path, stack="python")
+        member_project = m.Infra.ProjectInfo(
+            name="member", path=member_root, stack="python"
+        )
+        observed_projects: t.MutableSequenceOf[str] = []
+        observed_make_args: t.MutableSequenceOf[t.StrSequence] = []
+        service = self.PreparedOrchestrator(
+            self.ProjectRunner(
+                {}, calls=observed_projects, observed_make_args=observed_make_args
+            ),
+            root_project,
+            additional_projects=(member_project,),
+            verb="test",
+            workspace=tmp_path,
+            file=("member project/tests/sample % test.py::TestsSample::test exact"),
+        )
+
+        tm.ok(service.execute(), eq=True)
+
+        tm.that(observed_projects, len=1)
+        tm.that(
+            observed_make_args,
+            eq=[("FILE=tests/sample % test.py::TestsSample::test exact",)],
+        )
 
     def test_empty_project_list(
         self, orchestrator: FlextInfraOrchestratorService

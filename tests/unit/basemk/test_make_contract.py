@@ -6,6 +6,9 @@ import os
 import stat
 from typing import TYPE_CHECKING
 
+import pytest
+
+from flext_infra import config
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 from tests import m, p, u
@@ -25,6 +28,7 @@ _MAKE_TEST_ENV_KEYS = (
     "BASH_ENV",
     "FILE",
     "FILES",
+    "WHAT",
     "CHANGED_ONLY",
     "CHECK_GATES",
     "VALIDATE_GATES",
@@ -42,6 +46,13 @@ _MAKE_TEST_ENV_KEYS = (
     "MAKELEVEL",
     "GNUMAKEFLAGS",
     "FLEXT_INFRA_PYTHON",
+    "FLEXT_PYTEST_ARGS_RAW",
+    "FLEXT_PYTEST_FILE_RAW",
+    "FLEXT_PYTEST_FILES_RAW",
+    "FLEXT_PYTEST_MATCH_RAW",
+    "FLEXT_PYTEST_TARGET_RAW",
+    "FLEXT_PYTEST_WHAT_RAW",
+    "SHELL",
     "UV",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
@@ -111,21 +122,52 @@ def _write_managed_python_stub(path: Path, log_path: Path) -> None:
 
 
 def _write_pytest_diag_python_stub(
-    project_root: Path, *, payload: str, exit_code: int
+    project_root: Path,
+    *,
+    payload: str,
+    exit_code: int,
+    pytest_argv_output: Path | None = None,
+    write_junit: bool = True,
 ) -> None:
     venv_bin = project_root / ".venv" / "bin"
     venv_bin.mkdir(parents=True, exist_ok=True)
     body = (
         "#!/usr/bin/env bash\n"
         "junit_file=''\n"
+        "diag_junit_file=''\n"
+        "previous=''\n"
         'for argument in "$@"; do\n'
         '  case "$argument" in --junitxml=*) junit_file="${argument#--junitxml=}" ;; esac\n'
+        '  if [ "$previous" = "--junit" ]; then diag_junit_file="$argument"; fi\n'
+        '  previous="$argument"\n'
         "done\n"
+        'if [[ "$*" == *"-m flext_infra workspace serialize-make"* ]]; then\n'
+        "  exec make --no-print-directory _serialized_test\n"
+        "fi\n"
+        'if [[ "$*" == *"-m flext_infra validate pytest-selector"* ]]; then\n'
+        "  exit 0\n"
+        "fi\n"
         'if [[ "$*" == *"-m pytest"* ]]; then\n'
-        '  printf \'<testsuite tests="1" failures="0" errors="0" skipped="0" time="0.1"/>\\n\' > "$junit_file"\n'
+        + (
+            f'  printf "%s\\n" "$@" > "{pytest_argv_output}"\n'
+            if pytest_argv_output is not None
+            else ""
+        )
+        + (
+            '  printf \'<testsuite tests="1" failures="0" errors="0" skipped="0" time="0.1"/>\\n\' > "$junit_file"\n'
+            if write_junit
+            else ""
+        )
+        "  exit 0\n"
+        "fi\n"
+        'if [[ "$*" == *"-m flext_infra validate cprofile-report"* ]]; then\n'
         "  exit 0\n"
         "fi\n"
         'if [[ "$*" == *"-m flext_infra validate pytest-diag"* ]]; then\n'
+        '  if [[ "$*" == *"--require-junit"* ]] && [ ! -s "$diag_junit_file" ]; then\n'
+        "    echo 'required JUnit XML is absent or malformed' >&2\n"
+        "    exit 2\n"
+        "  fi\n"
         "  cat <<'FLEXT_PYTEST_DIAG_COUNTS'\n"
         f"{payload.rstrip()}\n"
         "FLEXT_PYTEST_DIAG_COUNTS\n"
@@ -211,10 +253,10 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(pre_at >= 0 and post_at >= 0, eq=True)
         tm.that(pre_at < post_at, eq=True)
 
-    def test_make_verb_runs_what_scoped_and_verb_wide_hooks_in_order(
+    def test_make_test_runs_scoped_and_verb_wide_hooks_around_launcher(
         self, tmp_path: Path
     ) -> None:
-        """pre/post hooks run verb-wide and WHAT-scoped, ordered around the body."""
+        """Run additive test hooks in order without replacing the launcher."""
         _write_project(tmp_path)
         (tmp_path / "Makefile").write_text(
             "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
@@ -226,25 +268,20 @@ class TestsFlextInfraBasemkMakeContract:
             exit_code=0,
         )
         (tmp_path / "custom.mk").write_text(
-            ".PHONY: pre-test post-test pre-test-contract post-test-contract\n"
+            ".PHONY: pre-test post-test pre-test-all post-test-all\n"
             "pre-test:\n\t@echo H_PRE_TEST\n"
-            "pre-test-contract:\n\t@echo H_PRE_TEST_CONTRACT\n"
-            "post-test-contract:\n\t@echo H_POST_TEST_CONTRACT\n"
+            "pre-test-all:\n\t@echo H_PRE_TEST_ALL\n"
+            "post-test-all:\n\t@echo H_POST_TEST_ALL\n"
             "post-test:\n\t@echo H_POST_TEST\n",
             encoding="utf-8",
         )
-        result = _run_make(
-            tmp_path, "test", "DIAG=1", "MATCH=contract", "WHAT=contract"
-        )
+        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract", "WHAT=all")
         tm.that(result.exit_code, eq=0)
-        # The pytest body reports DIAG on stderr; the four hooks print on stdout.
-        # Assert the hook ordering on stdout (verb-wide before WHAT-scoped for pre,
-        # WHAT-scoped before verb-wide for post) and that the body actually ran.
         stdout = result.stdout
         order = [
             stdout.find("H_PRE_TEST"),
-            stdout.find("H_PRE_TEST_CONTRACT"),
-            stdout.find("H_POST_TEST_CONTRACT"),
+            stdout.find("H_PRE_TEST_ALL"),
+            stdout.find("H_POST_TEST_ALL"),
             stdout.find("H_POST_TEST"),
         ]
         tm.that(all(position >= 0 for position in order), eq=True)
@@ -252,24 +289,21 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.stdout + result.stderr, has="DIAG COMPLETED")
 
     def test_make_verbs_dispatch_custom_what_handlers(self, tmp_path: Path) -> None:
-        """Every verb runs _custom_<verb>_<what> from custom.mk for a custom WHAT."""
+        """Non-test verbs retain their explicit custom WHAT extension point."""
         _write_project(tmp_path)
         (tmp_path / "Makefile").write_text(
             "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
             encoding="utf-8",
         )
         (tmp_path / "custom.mk").write_text(
-            ".PHONY: _custom_build_proto _custom_test_dbt _custom_docs_dbt "
-            "_custom_run_x\n"
+            ".PHONY: _custom_build_proto _custom_docs_dbt _custom_run_x\n"
             "_custom_build_proto:\n\t@echo CUSTOM_BUILD_PROTO\n"
-            "_custom_test_dbt:\n\t@echo CUSTOM_TEST_DBT\n"
             "_custom_docs_dbt:\n\t@echo CUSTOM_DOCS_DBT\n"
             "_custom_run_x:\n\t@echo CUSTOM_RUN_X\n",
             encoding="utf-8",
         )
         for verb, what, marker in (
             ("build", "proto", "CUSTOM_BUILD_PROTO"),
-            ("test", "dbt", "CUSTOM_TEST_DBT"),
             ("docs", "dbt", "CUSTOM_DOCS_DBT"),
             ("run", "x", "CUSTOM_RUN_X"),
         ):
@@ -277,6 +311,36 @@ class TestsFlextInfraBasemkMakeContract:
             output = result.stdout + result.stderr
             tm.that(result.exit_code, eq=0)
             tm.that(output, has=marker)
+
+    def test_make_test_custom_what_cannot_replace_launcher(
+        self, tmp_path: Path
+    ) -> None:
+        """A custom test target cannot replace the policy-owned pytest launcher."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text(
+            ".PHONY: _custom_test_profile\n"
+            "_custom_test_profile:\n\t@echo CUSTOM_TEST_PROFILE\n",
+            encoding="utf-8",
+        )
+        selected = tmp_path / "tests" / "selected.py"
+        selected.write_text("", encoding="utf-8")
+        argv_output = tmp_path / "pytest-argv.txt"
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            pytest_argv_output=argv_output,
+        )
+
+        result = _run_make(tmp_path, "test", "WHAT=profile", "FILE=tests/selected.py")
+
+        tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
+        tm.that(result.stdout + result.stderr, lacks="CUSTOM_TEST_PROFILE")
+        tm.that(argv_output.exists(), eq=True)
 
     def test_make_run_verb_requires_and_validates_what(self, tmp_path: Path) -> None:
         """Run needs WHAT and fails clearly when the custom handler is absent."""
@@ -328,10 +392,11 @@ class TestsFlextInfraBasemkMakeContract:
             has=[
                 "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells",
                 "FILE=src/foo.py             Single file for check/fmt/test",
-                'FILES="a.py b.py"          Multiple files for check/fmt/test',
+                'FILES="a.py b.py"          Multiple files for check/fmt; test rejects it',
                 "CHANGED_ONLY=1              Git-changed Python files for check",
                 "CHECK_ONLY=1                Dry-run format/check (no writes)",
                 'PYRIGHT_ARGS="--level basic" Extra args for pyright',
+                "PYTEST_ARGS=<value>         Rejected until typed argv runner is active",
                 "DIAG=1                      Emit extended pytest diagnostics",
                 "FIX=1                       Auto-fix supported gates",
             ],
@@ -464,8 +529,8 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             rendered,
             has=[
-                'if [ -n "$$_files" ] || [ -n "$(MATCH)" ] ||',
-                '[ "$$_pytest_run" != "$(TESTS_DIR)" ]; then',
+                'if [ -n "$$_file" ] || [ -n "$$_match" ] ||',
+                '[ "$$_pytest_target" != "$(TESTS_DIR)" ]; then',
                 '_coverage_args="--no-cov";',
                 '_coverage_value="not-generated";',
             ],
@@ -500,7 +565,7 @@ class TestsFlextInfraBasemkMakeContract:
 
     def test_focused_runs_report_coverage_not_generated(self, tmp_path: Path) -> None:
         """Record truthful coverage state for every supported focused selector."""
-        for selector in ("FILE=tests", "MATCH=contract", "PYTEST_TARGETS=tests/unit"):
+        for selector in ("FILE=tests", "MATCH=contract"):
             project_root = tmp_path / selector.split("=", maxsplit=1)[0].lower()
             _write_project(project_root)
             (project_root / "tests" / "unit").mkdir(exist_ok=True)
@@ -513,12 +578,213 @@ class TestsFlextInfraBasemkMakeContract:
             )
 
             result = _run_make(project_root, "test", selector)
-            summary = (
-                project_root / ".reports" / "tests" / "latest" / "summary.txt"
-            ).read_text(encoding="utf-8")
+            reports_root = project_root / ".reports" / "tests"
+            latest_id = (
+                (reports_root / "latest.txt").read_text(encoding="utf-8").strip()
+            )
+            summary = (reports_root / latest_id / "summary.txt").read_text(
+                encoding="utf-8"
+            )
 
             tm.that(result.exit_code, eq=0)
             tm.that(summary, has="coverage=not-generated")
+
+    def test_make_test_preserves_exact_file_nodeid_and_match_argv(
+        self, tmp_path: Path
+    ) -> None:
+        """Append FILE path::nodeid and MATCH as distinct exact argv elements."""
+        _write_project(tmp_path)
+        test_path = tmp_path / "tests" / "unit" / "sample test.py"
+        test_path.parent.mkdir(parents=True)
+        test_path.write_text("", encoding="utf-8")
+        argv_output = tmp_path / "pytest-argv.txt"
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            pytest_argv_output=argv_output,
+        )
+        nodeid = "tests/unit/sample test.py::TestsSample::test exact"
+        match = "exact name and not slow"
+
+        result = _run_make(tmp_path, "test", f"FILE={nodeid}", f"MATCH={match}")
+
+        tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
+        argv = argv_output.read_text(encoding="utf-8").splitlines()
+        tm.that(nodeid in argv, eq=True)
+        match_index = argv.index("-k")
+        tm.that(argv[match_index + 1], eq=match)
+        tm.that("-n0" in argv, eq=True)
+
+    def test_make_test_ignores_direct_private_and_shell_overrides(
+        self, tmp_path: Path
+    ) -> None:
+        """Direct Make assignments cannot replace launcher-owned policy fields."""
+        _write_project(tmp_path)
+        selected = tmp_path / "tests" / "selected.py"
+        selected.write_text("", encoding="utf-8")
+        argv_output = tmp_path / "pytest-argv.txt"
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            pytest_argv_output=argv_output,
+        )
+        match = "selected and not slow"
+
+        result = _run_make(
+            tmp_path,
+            "test",
+            "FILE=tests/selected.py",
+            f"MATCH={match}",
+            "SHELL=/bin/true",
+            "FLEXT_PYTEST_ARGS_RAW=--collect-only",
+            "FLEXT_PYTEST_FILE_RAW=--maxfail=0",
+            "FLEXT_PYTEST_FILES_RAW=tests/other.py",
+            "FLEXT_PYTEST_MATCH_RAW=injected",
+            "FLEXT_PYTEST_TARGET_RAW=outside",
+            "FLEXT_PYTEST_WHAT_RAW=profile",
+        )
+
+        tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
+        argv = argv_output.read_text(encoding="utf-8").splitlines()
+        tm.that("tests/selected.py" in argv, eq=True)
+        tm.that(argv[argv.index("-k") + 1], eq=match)
+        tm.that(
+            argv,
+            lacks=[
+                "--collect-only",
+                "--maxfail=0",
+                "tests/other.py",
+                "injected",
+                "outside",
+                "-m cProfile",
+            ],
+        )
+
+    def test_make_test_never_expands_selector_make_functions(
+        self, tmp_path: Path
+    ) -> None:
+        """FILE, MATCH, and WHAT cross Make as literal data without side effects."""
+        literal_results: dict[str, p.Cli.CommandOutput] = {}
+        literal_argv: dict[str, list[str]] = {}
+        for field in ("FILE", "MATCH", "WHAT"):
+            project_root = tmp_path / field.lower()
+            _write_project(project_root)
+            marker = project_root / "make-function-ran"
+            literal = f"$(shell touch {marker})"
+            argv_output = project_root / "pytest-argv.txt"
+            _write_pytest_diag_python_stub(
+                project_root,
+                payload=(
+                    "failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"
+                ),
+                exit_code=0,
+                pytest_argv_output=argv_output,
+            )
+
+            result = _run_make(project_root, "test", f"{field}={literal}")
+
+            tm.that(marker.exists(), eq=False)
+            literal_results[field] = result
+            if argv_output.exists():
+                literal_argv[field] = argv_output.read_text(
+                    encoding="utf-8"
+                ).splitlines()
+
+        tm.that(literal_results["FILE"].exit_code, ne=0)
+        tm.that(literal_results["WHAT"].exit_code, ne=0)
+        tm.that(literal_results["MATCH"].exit_code, eq=0)
+        tm.that(
+            f"$(shell touch {tmp_path / 'match' / 'make-function-ran'})"
+            in literal_argv["MATCH"],
+            eq=True,
+        )
+
+    def test_make_test_normal_and_profile_modes_share_policy_argv(
+        self, tmp_path: Path
+    ) -> None:
+        """Normal and profile modes apply identical timeout and plugin policy."""
+        policy = config.Infra.tooling.tools.pytest
+        mode_argv: dict[str, list[str]] = {}
+        for mode in ("normal", "profile"):
+            project_root = tmp_path / mode
+            _write_project(project_root)
+            selected = project_root / "tests" / "selected.py"
+            selected.write_text("", encoding="utf-8")
+            argv_output = project_root / "pytest-argv.txt"
+            _write_pytest_diag_python_stub(
+                project_root,
+                payload=(
+                    "failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"
+                ),
+                exit_code=0,
+                pytest_argv_output=argv_output,
+            )
+            args = ["test", "FILE=tests/selected.py"]
+            if mode == "profile":
+                args.append("WHAT=profile")
+
+            result = _run_make(project_root, *args)
+
+            tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
+            mode_argv[mode] = argv_output.read_text(encoding="utf-8").splitlines()
+
+        required = (
+            "-p",
+            "timeout",
+            policy.enforcement_plugin,
+            f"--timeout={policy.case_timeout_seconds}",
+            f"--session-timeout={policy.run_timeout_seconds}",
+            "--no-cov",
+            "-n0",
+            *policy.progress_args,
+        )
+        for argument in required:
+            tm.that(argument in mode_argv["normal"], eq=True)
+            tm.that(argument in mode_argv["profile"], eq=True)
+        tm.that("cProfile" in mode_argv["normal"], eq=False)
+        tm.that("cProfile" in mode_argv["profile"], eq=True)
+
+    @pytest.mark.parametrize("selector", ["PYTEST_ARGS=-k unsafe", "FILES=tests/a.py"])
+    def test_make_test_fails_closed_for_textual_argv_routes(
+        self, tmp_path: Path, selector: str
+    ) -> None:
+        """Reject selectors whose whitespace form cannot preserve exact argv."""
+        _write_project(tmp_path)
+        marker = tmp_path / "must-not-run"
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            pytest_argv_output=marker,
+        )
+
+        result = _run_make(tmp_path, "test", selector)
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(result.stdout + result.stderr, has="disabled")
+        tm.that(marker.exists(), eq=False)
+
+    def test_make_test_ignores_caller_collection_target_override(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep the collection target managed while allowing exact MATCH selection."""
+        _write_project(tmp_path)
+        argv_output = tmp_path / "pytest-argv.txt"
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            pytest_argv_output=argv_output,
+        )
+
+        result = _run_make(tmp_path, "test", "MATCH=contract", "PYTEST_TARGETS=outside")
+
+        tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
+        argv = argv_output.read_text(encoding="utf-8").splitlines()
+        tm.that("tests" in argv, eq=True)
+        tm.that("outside" not in argv, eq=True)
 
     def test_make_pytest_diag_accepts_exact_numeric_counts(
         self, tmp_path: Path
@@ -536,7 +802,10 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, eq=0)
         tm.that(
             result.stdout + result.stderr,
-            has="DIAG COMPLETED | failed=0 errors=0 warnings=0 skipped=0",
+            has=(
+                "DIAG COMPLETED | raw=0 final=0 diag=0 profile=0 "
+                "failed=0 errors=0 warnings=0 skipped=0"
+            ),
         )
 
     def test_make_pytest_diag_preserves_producer_failure(self, tmp_path: Path) -> None:
@@ -552,6 +821,50 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, ne=0)
         tm.that(output, has="pytest diagnostic extraction failed (exit=23)")
         tm.that(output, has="diagnostic producer failed")
+
+    def test_make_test_fails_when_requested_junit_is_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """A zero pytest exit without its requested JUnit artifact is red."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            write_junit=False,
+        )
+
+        result = _run_make(tmp_path, "test", "MATCH=contract")
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            result.stdout + result.stderr,
+            has="required JUnit XML is absent or malformed",
+        )
+
+    def test_make_pytest_diag_never_replaces_an_earlier_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """Coverage failure remains primary when later diagnostics also fail."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path, payload="diagnostic producer failed", exit_code=23
+        )
+
+        result = _run_make(tmp_path, "test")
+
+        reports_root = tmp_path / ".reports" / "tests"
+        latest_id = (reports_root / "latest.txt").read_text(encoding="utf-8").strip()
+        report_dir = reports_root / latest_id
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            (report_dir / "pytest.final.exit").read_text(encoding="utf-8").strip(),
+            eq="2",
+        )
+        tm.that(
+            (report_dir / "pytest.diag.exit").read_text(encoding="utf-8").strip(),
+            eq="23",
+        )
 
     def test_make_pytest_diag_rejects_payload_before_sourcing(
         self, tmp_path: Path

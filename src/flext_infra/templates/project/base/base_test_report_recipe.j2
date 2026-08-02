@@ -1,28 +1,44 @@
 {% macro test_report_recipe(
 	runner,
+	profile_runner,
 	validator,
-	default_target,
 	coverage_default_target,
+	apply_value,
 	command_prefix="@"
 ) %}
-	{{ command_prefix }}_files="$(strip $(FILES))"; \
-	if [ -n "$(FILE)" ]; then \
-		case "$(FILE)" in /*|..|../*|*/../*|*/..) \
-			printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
-		esac; \
-		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
+	{{ command_prefix }}_file="$${FLEXT_PYTEST_FILE_RAW:-}"; \
+	_files="$${FLEXT_PYTEST_FILES_RAW:-}"; \
+	_match="$${FLEXT_PYTEST_MATCH_RAW:-}"; \
+	_pytest_args="$${FLEXT_PYTEST_ARGS_RAW:-}"; \
+	_pytest_target="$${FLEXT_PYTEST_TARGET_RAW:-}"; \
+	_what="$${FLEXT_PYTEST_WHAT_RAW:-}"; \
+	if [ -n "$$_pytest_args" ]; then \
+		printf 'ERROR: PYTEST_ARGS is disabled until the typed structured-argv runner is active\n' >&2; \
+		exit 2; \
 	fi; \
-	_pytest_run="{{ default_target }}"; \
-	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
-	for target in $$_pytest_run; do \
-		if [ ! -e "$$target" ]; then \
-			printf 'ERROR: test target does not exist: %s\n' "$$target" >&2; exit 2; \
-		fi; \
-	done; \
-	_all_pytest_args="$(PYTEST_ARGS)"; \
-	if [ -n "$(MATCH)" ]; then _all_pytest_args="$$_all_pytest_args -k $(MATCH)"; fi; \
-	if [ "$(FAIL_FAST)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -x"; fi; \
-	if [ "$(VERBOSE)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -vv -s"; fi; \
+	if [ -n "$$_files" ]; then \
+		printf 'ERROR: FILES is disabled because whitespace-delimited selectors cannot preserve argv\n' >&2; \
+		exit 2; \
+	fi; \
+	if [ -n "$${PYTEST_ADDOPTS:-}" ] || [ -n "$${PYTEST_PLUGINS:-}" ] || \
+		[ -n "$${PYTEST_DISABLE_PLUGIN_AUTOLOAD:-}" ] || \
+		[ -n "$${PYTEST_TIMEOUT:-}" ] || \
+		[ -n "$${PYTEST_TIMEOUT_METHOD:-}" ] || \
+		[ -n "$${PYTEST_TIMEOUT_FUNC_ONLY:-}" ]; then \
+		printf 'ERROR: pytest policy environment overrides are forbidden\n' >&2; \
+		exit 2; \
+	fi; \
+	set -- {{ validator }} pytest-selector --workspace "."; \
+	if [ -n "$$_file" ]; then set -- "$$@" --file "$$_file"; fi; \
+	if [ -n "$$_match" ]; then set -- "$$@" --match "$$_match"; fi; \
+	if [ -n "$$_what" ]; then set -- "$$@" --what "$$_what"; fi; \
+	if ! "$$@"; then \
+		printf 'ERROR: typed pytest selector validation failed\n' >&2; exit 2; \
+	fi; \
+	if [ -z "$$_file" ] && { [ -z "$$_pytest_target" ] || [ ! -e "$$_pytest_target" ]; }; then \
+		printf 'ERROR: configured pytest target does not exist: %s\n' "$$_pytest_target" >&2; \
+		exit 2; \
+	fi; \
 	run_id=$$(date -u +%Y%m%dT%H%M%SZ)-$$$$; \
 	report_dir="$(PYTEST_REPORTS_DIR)/$$run_id"; \
 	mkdir -p "$$report_dir"; \
@@ -36,27 +52,94 @@
 	slowest_file="$$report_dir/slowest-tests.txt"; \
 	skips_file="$$report_dir/skipped-tests.txt"; \
 	command_file="$$report_dir/command.txt"; \
+	argv_file="$$report_dir/command.argv"; \
+	raw_status_file="$$report_dir/pytest.raw.exit"; \
+	final_status_file="$$report_dir/pytest.final.exit"; \
+	diag_status_file="$$report_dir/pytest.diag.exit"; \
+	profile_status_file="$$report_dir/pytest.profile.exit"; \
+	profile_file="$$report_dir/profile.pstats"; \
+	profile_report="$$report_dir/profile.txt"; \
 	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
 	_coverage_required=1; \
 	_coverage_value="$$coverage_file"; \
-	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
-		[ "$$_pytest_run" != "{{ coverage_default_target }}" ]; then \
+	if [ -n "$$_file" ] || [ -n "$$_match" ] || \
+		[ "$$_pytest_target" != "{{ coverage_default_target }}" ]; then \
 		_coverage_args="--no-cov"; \
 		_coverage_required=0; \
 		_coverage_value="not-generated"; \
 	fi; \
-	printf '%s\n' '{{ runner }}' \
-		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
-		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
-	{{ runner }} $$_pytest_run \
-		$(PYTEST_REPORT_ARGS) \
-		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
-		-p no:metadata \
-		--junitxml="$$junit_file" \
-		$$_coverage_args \
-		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
-	rc=$$?; \
-	cat "$$log_file"; \
+	if [ "$$_what" = "profile" ]; then \
+		if [ -z "$$_file" ]; then \
+			printf 'ERROR: make test WHAT=profile requires FILE=<nodeid-or-path>\n' >&2; exit 2; \
+		fi; \
+		_coverage_args="--no-cov"; \
+		_coverage_required=0; \
+		_coverage_value="not-generated"; \
+		set -- {{ profile_runner }} -o "$$profile_file" -m pytest "$$_file" \
+			$(PYTEST_REPORT_ARGS) \
+			$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
+			-p no:metadata -p timeout -p "$(PYTEST_ENFORCEMENT_PLUGIN)" \
+			--junitxml="$$junit_file" $$_coverage_args \
+			$(PYTEST_PROGRESS_ARGS) --timeout="$(PYTEST_CASE_TIMEOUT_SECONDS)" \
+			--session-timeout="$(PYTEST_RUN_TIMEOUT_SECONDS)" -n0; \
+	else \
+		if [ -n "$$_file" ]; then \
+			set -- {{ runner }} "$$_file"; \
+		else \
+			set -- {{ runner }} "$$_pytest_target"; \
+		fi; \
+		set -- "$$@" $(PYTEST_REPORT_ARGS) \
+			$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
+			-p no:metadata -p timeout -p "$(PYTEST_ENFORCEMENT_PLUGIN)" \
+			--junitxml="$$junit_file" $$_coverage_args \
+			$(PYTEST_PROGRESS_ARGS) --timeout="$(PYTEST_CASE_TIMEOUT_SECONDS)" \
+			--session-timeout="$(PYTEST_RUN_TIMEOUT_SECONDS)"; \
+		if [ -n "$$_file" ] || [ -n "$$_match" ]; then \
+			set -- "$$@" -n0; \
+		else \
+			set -- "$$@" -n "$(PYTEST_PARALLEL_WORKERS)" \
+				--dist "$(PYTEST_PARALLEL_DISTRIBUTION)"; \
+		fi; \
+	fi; \
+	if [ -n "$$_match" ]; then set -- "$$@" -k "$$_match"; fi; \
+	if [ "$(FAIL_FAST)" = "1" ] || [ "$(FAIL_FAST)" = "{{ apply_value }}" ]; then \
+		set -- "$$@" -x; \
+	fi; \
+	if [ "$(VERBOSE)" = "1" ]; then set -- "$$@" -vv -s; fi; \
+	printf '%s\0' "$$@" > "$$argv_file"; \
+	printf '%s\n' "$$@" > "$$command_file"; \
+	env -u PYTEST_ADDOPTS -u PYTEST_DISABLE_PLUGIN_AUTOLOAD \
+		-u PYTEST_PLUGINS -u PYTEST_TIMEOUT -u PYTEST_TIMEOUT_METHOD \
+		-u PYTEST_TIMEOUT_FUNC_ONLY PYTHONUNBUFFERED=1 \
+		"$$@" > "$$log_file" 2>&1; \
+	raw_rc=$$?; \
+	if ! command cat "$$log_file"; then \
+		printf 'ERROR: pytest durable log could not be replayed\n' >&2; \
+		if [ "$$raw_rc" -eq 0 ]; then raw_rc=125; fi; \
+	fi; \
+	printf '%s\n' "$$raw_rc" > "$$raw_status_file"; \
+	rc=$$raw_rc; \
+	profile_status=0; \
+	if [ "$$_what" = "profile" ] && [ "$$raw_rc" -eq 0 ]; then \
+		if {{ validator }} cprofile-report --workspace "." \
+			--profile "$$profile_file" --output "$$profile_report" \
+			--sort "$(PYTEST_PROFILE_SORT)" --limit "$(PYTEST_PROFILE_LIMIT)"; then \
+			:; \
+		else \
+			profile_status=$$?; \
+			rc=$$profile_status; \
+		fi; \
+	fi; \
+	printf '%s\n' "$$profile_status" > "$$profile_status_file"; \
+	if [ "$$raw_rc" -eq "$(PYTEST_TIMEOUT_EXIT_CODE)" ] || \
+		[ "$$raw_rc" -eq 137 ]; then \
+		_coverage_required=0; \
+		_coverage_value="invalid-timeout"; \
+		printf 'ERROR: pytest invocation reached the configured hard wall %ss (exit=%s)\n' \
+			"$(PYTEST_RUN_TIMEOUT_SECONDS)" "$$raw_rc" >> "$$log_file"; \
+		printf 'ERROR: pytest invocation reached the configured hard wall %ss (exit=%s)\n' \
+			"$(PYTEST_RUN_TIMEOUT_SECONDS)" "$$raw_rc" >&2; \
+	fi; \
 	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
 		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
 			"$$coverage_file" >&2; \
@@ -72,51 +155,64 @@
 		skipped=$${skipped:-0}; duration=$${duration:-0}; \
 		passed=$$((tests - failures - errors - skipped)); \
 		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
-		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
-			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
-			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
+		printf 'junit=%s\ncoverage=%s\nraw_exit_status=%s\nfinal_exit_status=%s\ndiag_exit_status=%s\nprofile_exit_status=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
+			"$$junit_file" "$$_coverage_value" "$$raw_status_file" "$$final_status_file" \
+			"$$diag_status_file" "$$profile_status_file" "$$tests" "$$passed" \
+			"$$failures" "$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
 	else \
-		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
-			"$$_coverage_value" > "$$summary_file"; \
+		printf 'junit=not-generated\ncoverage=%s\nraw_exit_status=%s\nfinal_exit_status=%s\ndiag_exit_status=%s\nprofile_exit_status=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
+			"$$_coverage_value" "$$raw_status_file" "$$final_status_file" \
+			"$$diag_status_file" "$$profile_status_file" > "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
-	if {{ validator }} pytest-diag \
+	counts_contract_valid=0; \
+	diag_status=0; \
+	if {{ validator }} pytest-diag --require-junit \
 		--junit "$$junit_file" --log "$$log_file" \
+		--case-timeout-seconds "$(PYTEST_CASE_TIMEOUT_SECONDS)" \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
 		--skips "$$skips_file" > "$$counts_file"; then \
-		:; \
+		if awk ' \
+			BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
+			$$0 !~ /^(failed_count|error_count|warning_count|skipped_count)=[0-9]+$$/ { invalid=1; next } \
+			{ split($$0, fields, "="); if (seen[fields[1]]++) invalid=1 } \
+			END { if (NR != 4) invalid=1; for (key in required) if (seen[key] != 1) invalid=1; exit invalid } \
+		' "$$counts_file"; then \
+			counts_contract_valid=1; \
+		else \
+			printf 'ERROR: invalid pytest diagnostic counts contract\n' >&2; \
+			diag_status=2; \
+		fi; \
 	else \
-		counts_status=$$?; \
+		diag_status=$$?; \
 		printf 'ERROR: pytest diagnostic extraction failed (exit=%s)\n' \
-			"$$counts_status" >&2; \
-		cat "$$counts_file" >&2; \
-		exit "$$counts_status"; \
+			"$$diag_status" >&2; \
 	fi; \
-	if ! awk ' \
-		BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
-		$$0 !~ /^(failed_count|error_count|warning_count|skipped_count)=[0-9]+$$/ { invalid=1; next } \
-		{ split($$0, fields, "="); if (seen[fields[1]]++) invalid=1 } \
-		END { if (NR != 4) invalid=1; for (key in required) if (seen[key] != 1) invalid=1; exit invalid } \
-	' "$$counts_file"; then \
-		echo "ERROR: invalid pytest diagnostic counts contract" >&2; \
-		cat "$$counts_file" >&2; \
-		exit 2; \
-	fi; \
-	. "$$counts_file"; \
-	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
-		[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
-		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
+	printf '%s\n' "$$diag_status" > "$$diag_status_file"; \
+	if [ "$$rc" -eq 0 ] && [ "$$diag_status" -ne 0 ]; then rc=$$diag_status; fi; \
+	if [ "$$counts_contract_valid" -eq 1 ]; then \
+		. "$$counts_file"; \
+		if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
+			[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
+			if [ "$$rc" -eq 0 ]; then rc=1; fi; \
+		fi; \
 	fi; \
 	if [ "$(DIAG)" = "1" ]; then \
 		run_state=COMPLETED; \
 		if [ "$$rc" -eq 130 ]; then run_state=INTERRUPTED; fi; \
-		printf 'DIAG %s | failed=%s errors=%s warnings=%s skipped=%s\n' \
-			"$$run_state" "$$failed_count" "$$error_count" \
-			"$$warning_count" "$$skipped_count" >&2; \
+		if [ "$$raw_rc" -eq "$(PYTEST_TIMEOUT_EXIT_CODE)" ] || \
+			[ "$$raw_rc" -eq 137 ]; then run_state=TIMED_OUT; fi; \
+		printf 'DIAG %s | raw=%s final=%s diag=%s profile=%s failed=%s errors=%s warnings=%s skipped=%s\n' \
+			"$$run_state" "$$raw_rc" "$$rc" "$$diag_status" "$$profile_status" \
+			"$${failed_count:-0}" "$${error_count:-0}" \
+			"$${warning_count:-0}" "$${skipped_count:-0}" >&2; \
 	fi; \
-	ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
-	printf 'Reports: %s (latest: %s/latest)\n' \
+	printf '%s\n' "$$rc" > "$$final_status_file"; \
+	latest_tmp="$(PYTEST_REPORTS_DIR)/.latest.txt.$$$$"; \
+	printf '%s\n' "$$run_id" > "$$latest_tmp"; \
+	mv "$$latest_tmp" "$(PYTEST_REPORTS_DIR)/latest.txt"; \
+	printf 'Reports: %s (latest id: %s/latest.txt)\n' \
 		"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
 	exit "$$rc"
 {%- endmacro %}

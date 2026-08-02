@@ -106,6 +106,97 @@ class TestsFlextInfraMakeSerialization:
         tm.that(signal_exit, eq=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9)
         tm.that(u.Infra.classify_process_exit(-9), eq="signal=9")
 
+    def test_test_serialization_uses_one_absolute_live_runner(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Wrap the complete private test target in one canonical deadline."""
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            ".PHONY: _serialized_test\n_serialized_test:\n\t@true\n",
+            encoding="utf-8",
+        )
+        test_u.Tests.initialize_git_repo(tmp_path)
+        calls: list[
+            tuple[
+                t.StrSequence,
+                bool,
+                p.Cli.ProcessDeadline | None,
+                t.StrMapping,
+            ]
+        ] = []
+
+        def fake_run_to_file(
+            command: t.StrSequence,
+            output_file: str | Path,
+            **kwargs: object,
+        ) -> p.Result[int]:
+            Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+            Path(output_file).write_text("", encoding="utf-8")
+            calls.append((
+                command,
+                bool(kwargs.get("live")),
+                kwargs.get("deadline")
+                if isinstance(kwargs.get("deadline"), p.Cli.ProcessDeadline)
+                else None,
+                kwargs.get("env") if isinstance(kwargs.get("env"), dict) else {},
+            ))
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", fake_run_to_file)
+        started = time.monotonic()
+        result = FlextInfraMakeSerializationService(
+            workspace=tmp_path, makefile=makefile, verb="test"
+        ).execute()
+
+        tm.ok(result)
+        tm.that(calls, len=1)
+        command, live, deadline, env = calls[0]
+        tm.that(command[-1], eq="_serialized_test")
+        tm.that(live, eq=True)
+        tm.that(env.get(c.Infra.TEST_DEADLINE_OWNER_ENV), eq="1")
+        tm.that(deadline, is_=p.Cli.ProcessDeadline)
+        typed_deadline = tm.not_none(deadline)
+        policy = config.Infra.tooling.tools.pytest
+        tm.that(
+            typed_deadline.expires_at_monotonic - started,
+            le=policy.run_timeout_seconds,
+        )
+        tm.that(
+            typed_deadline.termination_grace_seconds,
+            eq=policy.termination_grace_seconds,
+        )
+
+    def test_test_serialization_hardwall_bounds_complete_private_target(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Terminate a stuck private lifecycle without waiting for its child."""
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            ".PHONY: _serialized_test\n_serialized_test:\n\t@sleep 5\n",
+            encoding="utf-8",
+        )
+        test_u.Tests.initialize_git_repo(tmp_path)
+        deadline = m.Cli.ProcessDeadline(
+            expires_at_monotonic=time.monotonic() + 0.5,
+            termination_grace_seconds=0.2,
+            timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+        )
+        monkeypatch.setattr(
+            FlextInfraMakeSerializationService,
+            "_test_deadline",
+            staticmethod(lambda: deadline),
+        )
+
+        started = time.monotonic()
+        result = FlextInfraMakeSerializationService(
+            workspace=tmp_path, makefile=makefile, verb="test"
+        ).execute()
+        elapsed = time.monotonic() - started
+
+        tm.fail(result)
+        tm.that(elapsed, lt=2.0)
+        tm.that(result.error or "", has="timeout")
+
     def test_fingerprint_distinguishes_index_from_worktree_content(
         self, tmp_path: Path
     ) -> None:

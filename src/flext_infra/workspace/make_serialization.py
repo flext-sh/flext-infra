@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from typing import Annotated, override
 
@@ -53,20 +54,61 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
 
     @classmethod
     def _run_make(
-        cls, checkout: Path, command: t.StrSequence, *, failure_context: str
+        cls,
+        checkout: Path,
+        command: t.StrSequence,
+        *,
+        failure_context: str,
+        deadline: p.Cli.ProcessDeadline | None = None,
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one private Make phase and retain its process semantics."""
-        result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
-        if result.failure:
-            return cls._process_failure(
-                int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context
+        log_path: Path | None = None
+        if deadline is None:
+            raw_result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
+            if raw_result.failure:
+                return cls._process_failure(
+                    int(c.Infra.ScriptExitCode.INFRA),
+                    raw_result.error or failure_context,
+                )
+            raw_exit_code = raw_result.value.exit_code
+        else:
+            log_path = u.Cli.resolve_report_path(
+                checkout,
+                c.Infra.RK_WORKSPACE,
+                "test",
+                "serialized-make.log",
             )
-        output = result.value
-        if output.exit_code != 0:
+            result = u.Cli.run_to_file(
+                command,
+                log_path,
+                cwd=checkout,
+                env={c.Infra.TEST_DEADLINE_OWNER_ENV: "1"},
+                live=True,
+                deadline=deadline,
+            )
+            if result.failure:
+                exit_code = (
+                    deadline.timeout_exit_code
+                    if time.monotonic()
+                    >= (
+                        deadline.expires_at_monotonic
+                        - deadline.termination_grace_seconds
+                    )
+                    else int(c.Infra.ScriptExitCode.INFRA)
+                )
+                return cls._process_failure(
+                    exit_code, result.error or failure_context
+                )
+            raw_exit_code = result.value
+            if raw_exit_code != 0:
+                child_exit = u.Infra.extract_make_child_exit_code(log_path)
+                if child_exit is not None:
+                    raw_exit_code = child_exit
+        if raw_exit_code != 0:
             outcome = m.Infra.ProcessExit(
-                exit_code=u.Infra.normalize_process_exit_code(output.exit_code),
-                raw_exit_code=output.exit_code,
-                classification=u.Infra.classify_process_exit(output.exit_code),
+                exit_code=u.Infra.normalize_process_exit_code(raw_exit_code),
+                raw_exit_code=raw_exit_code,
+                classification=u.Infra.classify_process_exit(raw_exit_code),
             )
             return r[m.Infra.ProcessExit].fail(
                 (
@@ -102,12 +144,25 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         paths = u.Infra.workspace_fingerprint_changes(before, after)
         return ", ".join(paths) or "HEAD/index"
 
+    @classmethod
+    def _deadline_failure_if_exhausted(
+        cls, deadline: p.Cli.ProcessDeadline | None, *, phase: str
+    ) -> p.Result[m.Infra.ProcessExit] | None:
+        """Fail before another phase when the shared absolute budget is gone."""
+        if deadline is None or time.monotonic() < deadline.expires_at_monotonic:
+            return None
+        return cls._process_failure(
+            deadline.timeout_exit_code,
+            f"test deadline exhausted {phase}",
+        )
+
     def _execute_locked(
         self,
         checkout: Path,
         serialization: m.Infra.MakeSerializationSpec,
         *,
         makefile: Path,
+        deadline: p.Cli.ProcessDeadline | None = None,
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one read-only validation and reject any checkout mutation."""
         before_result = self._capture_fingerprint(
@@ -119,6 +174,10 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 before_result.error
                 or "failed to fingerprint workspace before serialized Make",
             )
+        if expired := self._deadline_failure_if_exhausted(
+            deadline, phase="during the pre-run fingerprint"
+        ):
+            return expired
         primary = self._run_make(
             checkout,
             (
@@ -129,7 +188,14 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"_serialized_{self.verb}",
             ),
             failure_context=f"serialized Make {self.verb} failed",
+            deadline=deadline,
         )
+        if primary.failure:
+            return primary
+        if expired := self._deadline_failure_if_exhausted(
+            deadline, phase="before the post-run fingerprint"
+        ):
+            return expired
         after_result = self._capture_fingerprint(
             checkout, serialization, phase="after serialized Make"
         )
@@ -139,6 +205,10 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 after_result.error
                 or "failed to fingerprint workspace after serialized Make",
             )
+        if expired := self._deadline_failure_if_exhausted(
+            deadline, phase="during the post-run fingerprint"
+        ):
+            return expired
         after = after_result.value
         changed_paths = self._changed_paths(before_result.value, after)
         if changed_paths is not None:
@@ -147,7 +217,45 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"workspace changed during serialized Make {self.verb}: "
                 f"{changed_paths}",
             )
+        if (
+            deadline is not None
+            and time.monotonic() >= deadline.expires_at_monotonic
+        ):
+            return self._process_failure(
+                deadline.timeout_exit_code,
+                f"serialized Make {self.verb} exhausted its absolute deadline",
+            )
         return primary
+
+    @staticmethod
+    def _test_deadline() -> m.Cli.ProcessDeadline:
+        """Create the one absolute wall shared by the complete test lifecycle."""
+        policy = config.Infra.tooling.tools.pytest
+        return m.Cli.ProcessDeadline(
+            expires_at_monotonic=time.monotonic() + policy.run_timeout_seconds,
+            termination_grace_seconds=policy.termination_grace_seconds,
+            timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+        )
+
+    @classmethod
+    def _remaining_lock_timeout(
+        cls,
+        deadline: p.Cli.ProcessDeadline | None,
+        configured_timeout_seconds: int,
+    ) -> p.Result[int]:
+        """Reserve termination grace while bounding lock acquisition."""
+        if deadline is None:
+            return r[int].ok(configured_timeout_seconds)
+        remaining = (
+            deadline.expires_at_monotonic
+            - time.monotonic()
+            - deadline.termination_grace_seconds
+        )
+        if remaining <= 0:
+            return r[int].fail("test deadline exhausted before lock acquisition")
+        return r[int].ok(
+            min(configured_timeout_seconds, max(0, int(remaining)))
+        )
 
     def _execute_transaction_owned_mutation(
         self,
@@ -295,6 +403,15 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
 
         checkout = self.root.resolve()
+        deadline = self._test_deadline() if self.verb == "test" else None
+        lock_timeout = self._remaining_lock_timeout(
+            deadline, serialization.timeout_seconds
+        )
+        if lock_timeout.failure:
+            return self._process_failure(
+                c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                lock_timeout.error or "test deadline exhausted before lock acquisition",
+            )
         selected_makefile = self.makefile.resolve()
         if not selected_makefile.is_file():
             return r[m.Infra.ProcessExit].fail(
@@ -320,9 +437,12 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         return FlextInfraSerializationLockOwner.execute(
             (lock_path,),
-            serialization.timeout_seconds,
+            lock_timeout.value,
             lambda: self._execute_locked(
-                checkout, serialization, makefile=selected_makefile
+                checkout,
+                serialization,
+                makefile=selected_makefile,
+                deadline=deadline,
             ),
             timeout_failure=self._lock_timeout_failure,
             acquisition_failure=self._lock_acquisition_failure,

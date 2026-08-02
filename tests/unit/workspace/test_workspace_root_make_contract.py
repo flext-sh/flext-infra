@@ -77,7 +77,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
 
 def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
     (project_root / "Makefile").write_text(
-        "SHELL := /bin/sh\n"
+        "override SHELL := /bin/sh\n"
         ".PHONY: setup check test\n"
         "setup:\n"
         "\t@true\n"
@@ -139,7 +139,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has='--make-arg "CHECK_GATES=lint,pyrefly"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
 
-    def test_generated_make_routes_file_and_match_only_to_owning_project(
+    def test_generated_make_delegates_file_and_match_routing_to_typed_boundary(
         self, tmp_path: Path
     ) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
@@ -162,10 +162,11 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has='--file "${FLEXT_PYTEST_FILE_RAW}"')
+        tm.that(output, has='--match "${FLEXT_PYTEST_MATCH_RAW}"')
+        tm.that(output, lacks=['--make-arg "FILE=', '--make-arg "MATCH='])
         tm.that(output, has=f"--projects {owner}")
-        tm.that(output, has='--make-arg "FILE=tests/unit/test_selected.py"')
-        tm.that(output, has='--make-arg "MATCH=selected_case"')
-        tm.that(output, lacks=f"--projects {project_names[1]}")
+        tm.that(output, has=f"--projects {project_names[1]}")
 
     def test_generated_make_routes_root_file_only_to_workspace_root(
         self, tmp_path: Path
@@ -190,9 +191,9 @@ class TestsWorkspaceRootMakeContract:
 
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--projects .")
-        tm.that(output, has=f'--make-arg "FILE={selected}"')
+        tm.that(output, has='--file "${FLEXT_PYTEST_FILE_RAW}"')
         for project_name in project_names:
-            tm.that(output, lacks=f"--projects {project_name}")
+            tm.that(output, has=f"--projects {project_name}")
 
     def test_generated_make_default_test_includes_root_and_every_member(
         self, tmp_path: Path

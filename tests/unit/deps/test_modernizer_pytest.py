@@ -30,10 +30,18 @@ class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
     def test_tooling_policy_enforces_case_and_session_timeouts(self) -> None:
-        addopts = set(config.Infra.tooling.tools.pytest.standard_addopts)
+        """Derive both pytest signals from the typed execution policy."""
+        policy = config.Infra.tooling.tools.pytest
+        doc = tomlkit.document()
 
-        tm.that(addopts, has="--timeout=10")
-        tm.that(addopts, has="--session-timeout=60")
+        _ = FlextInfraEnsurePytestConfigPhase(config.Infra.tooling).apply(doc)
+
+        ini = _mapping(
+            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
+        )
+        addopts = set(_strings(ini["addopts"]))
+        tm.that(addopts, has=f"--timeout={policy.case_timeout_seconds}")
+        tm.that(addopts, has=f"--session-timeout={policy.run_timeout_seconds}")
 
     def test_apply_sets_expected_ini_options(self) -> None:
         """Populate every canonical pytest option in an empty document."""
@@ -53,7 +61,11 @@ class TestsFlextInfraDepsModernizerPytest:
         )
         tm.that(
             set(_strings(ini["addopts"])),
-            eq=set(tool_config.tools.pytest.standard_addopts),
+            eq={
+                *tool_config.tools.pytest.standard_addopts,
+                f"--timeout={tool_config.tools.pytest.case_timeout_seconds}",
+                f"--session-timeout={tool_config.tools.pytest.run_timeout_seconds}",
+            },
         )
         tm.that(
             set(_strings(ini["markers"])),
@@ -87,7 +99,11 @@ markers = ["custom: custom marker"]
         )
         tm.that(
             set(_strings(ini["addopts"])),
-            eq=set(tool_config.tools.pytest.standard_addopts),
+            eq={
+                *tool_config.tools.pytest.standard_addopts,
+                f"--timeout={tool_config.tools.pytest.case_timeout_seconds}",
+                f"--session-timeout={tool_config.tools.pytest.run_timeout_seconds}",
+            },
         )
         tm.that(
             set(_strings(ini["markers"])),

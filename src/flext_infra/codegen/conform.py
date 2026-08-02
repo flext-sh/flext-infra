@@ -1125,6 +1125,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
+                    pytest=config.Infra.tooling.tools.pytest,
                     dist=dist,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
@@ -1154,6 +1155,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     prlimit_address_space_option=(c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION),
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+                    process_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                    test_deadline_owner_env=c.Infra.TEST_DEADLINE_OWNER_ENV,
                 )
             )
         if project_context is not None:
@@ -1185,6 +1188,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
+                pytest=config.Infra.tooling.tools.pytest,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1194,6 +1198,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+                process_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                test_deadline_owner_env=c.Infra.TEST_DEADLINE_OWNER_ENV,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
@@ -1292,6 +1298,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 scaffold=codegen.scaffold,
                 gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,
+                pytest=config.Infra.tooling.tools.pytest,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1301,6 +1308,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+                process_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                test_deadline_owner_env=c.Infra.TEST_DEADLINE_OWNER_ENV,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,

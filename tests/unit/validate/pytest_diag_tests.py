@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_tests import tm
 from tests import m
@@ -23,15 +24,18 @@ def _extractor(
     warnings: Path | None = None,
     slowest: Path | None = None,
     skips: Path | None = None,
+    require_junit: bool = False,
 ) -> FlextInfraPytestDiagExtractor:
     return FlextInfraPytestDiagExtractor(
         junit=junit,
         log_path=log,
+        case_timeout_seconds=config.Infra.tooling.tools.pytest.case_timeout_seconds,
         failed=failed,
         errors=errors,
         warnings=warnings,
         slowest=slowest,
         skips=skips,
+        require_junit=require_junit,
     )
 
 
@@ -71,6 +75,22 @@ class TestPytestDiagExtractorBehavior:
             _extractor(bad_xml, log).extract(bad_xml, log)
         )
         tm.that(invalid_report.failed_cases, length_gt=0)
+
+    def test_required_junit_rejects_absent_and_malformed_artifacts(
+        self, tmp_path: Path
+    ) -> None:
+        """A requested machine artifact can never degrade into zero-count green."""
+        log = tmp_path / "log.txt"
+        log.write_text("pytest completed", encoding="utf-8")
+        missing = tmp_path / "missing.xml"
+        malformed = tmp_path / "malformed.xml"
+        malformed.write_text("<testsuite>", encoding="utf-8")
+
+        for junit in (missing, malformed):
+            result = _extractor(
+                junit, log, require_junit=True
+            ).extract(junit, log)
+            tm.fail(result, has="required JUnit XML is absent or malformed")
 
     def test_extract_failed_and_error_tests_from_xml(self, tmp_path: Path) -> None:
         log = tmp_path / "log.txt"
@@ -130,6 +150,24 @@ class TestPytestDiagExtractorBehavior:
             _extractor(slow_xml, log).extract(slow_xml, log)
         )
         tm.that(slow_report.slow_entries, length_gt=0)
+
+    def test_item_over_typed_timeout_is_classified_as_failure(
+        self, tmp_path: Path
+    ) -> None:
+        cap = config.Infra.tooling.tools.pytest.case_timeout_seconds
+        junit = tmp_path / "junit.xml"
+        junit.write_text(
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1">'
+            f'<testcase name="too_slow" classname="TC" time="{cap + 0.25}"/>'
+            "</testsuite></testsuites>"
+        )
+        log = tmp_path / "log.txt"
+        log.write_text("")
+
+        report = tm.ok(_extractor(junit, log).extract(junit, log))
+
+        tm.that(report.failed_cases, has="TC::too_slow")
+        tm.that(report.error_traces, length_gt=0)
 
     def test_extract_missing_log_is_graceful(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
@@ -207,6 +245,22 @@ class TestPytestDiagExtractorBehavior:
         )
 
         tm.that(report.slow_entries, length_gt=0)
+
+    def test_log_duration_over_typed_timeout_is_classified_as_failure(
+        self, tmp_path: Path
+    ) -> None:
+        cap = config.Infra.tooling.tools.pytest.case_timeout_seconds
+        junit = tmp_path / "missing.xml"
+        log = tmp_path / "log.txt"
+        log.write_text(
+            "=== slowest durations ===\n"
+            f"{cap + 0.25:.2f}s call     test_case.py::test_too_slow\n"
+            "=== 1 passed ===\n"
+        )
+
+        report = tm.ok(_extractor(junit, log).extract(junit, log))
+
+        tm.that(report.failed_cases, has="test_case.py::test_too_slow")
 
     def test_execute_writes_selected_output_files(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"

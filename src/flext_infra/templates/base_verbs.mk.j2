@@ -50,9 +50,9 @@ define _run_custom_what
 	$(MAKE) --no-print-directory "$$target"
 endef
 
-# Verb body dispatch: if custom.mk defines _custom_<verb>_<what> for the current
-# WHAT, run that custom handler; otherwise run the builtin implementation. This
-# lets every verb accept project-specific WHATs while preserving builtin WHATs.
+# Non-test verb body dispatch: if custom.mk defines _custom_<verb>_<what> for the
+# current WHAT, run that custom handler; otherwise run the builtin implementation.
+# Test bypasses this seam and always reaches the policy-owned launcher.
 # $(1)=verb, $(2)=builtin impl target.
 define _run_verb_body
 	@verb="$(1)"; impl="$(2)"; what="$(WHAT)"; \
@@ -62,6 +62,27 @@ define _run_verb_body
 		if [ "$$rc" -ne 2 ]; then exec $(MAKE) --no-print-directory "$$custom"; fi; \
 	fi; \
 	exec $(MAKE) --no-print-directory "$$impl"
+endef
+
+define _run_test_dispatch
+	@what="$${FLEXT_PYTEST_WHAT_RAW:-all}"; \
+	set -- $(PROJECT_INFRA_VALIDATE) pytest-selector --workspace "." --what "$$what"; \
+	if [ -n "$${FLEXT_PYTEST_FILE_RAW:-}" ]; then \
+		set -- "$$@" --file "$${FLEXT_PYTEST_FILE_RAW}"; \
+	fi; \
+	if [ -n "$${FLEXT_PYTEST_MATCH_RAW:-}" ]; then \
+		set -- "$$@" --match "$${FLEXT_PYTEST_MATCH_RAW}"; \
+	fi; \
+	"$$@" || exit $$?; \
+	for hook in "pre-test" "pre-test-$$what"; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done; \
+	$(MAKE) --no-print-directory _test_impl || exit $$?; \
+	for hook in "post-test-$$what" "post-test"; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done
 endef
 
 help: ## Show commands
@@ -95,6 +116,7 @@ help: ## Show commands
 	$(Q)echo "  Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>"
 	$(Q)echo "  in custom.mk to run extra steps at the start or end of any verb, for"
 	$(Q)echo "  all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT."
+	$(Q)echo "  Test always uses the canonical launcher; pre/post-test[-<what>] hooks are additive."
 	$(Q)if [ -f custom.mk ]; then \
 		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
@@ -323,16 +345,23 @@ _docs_serve_impl:
 	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
 
 test: ## Run pytest only
-	$(call _run_verb_hooks,pre,test,$(WHAT))
-	$(call _run_verb_body,test,_test_impl)
-	$(call _run_verb_hooks,post,test,$(WHAT))
+	$(Q)if [ "$${{{ make.TEST_DEADLINE_OWNER_ENV }}:-}" = "1" ]; then \
+		$(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)" _serialized_test; \
+	else \
+		$(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_WORKSPACE }} serialize-make \
+			--workspace "$(CURDIR)" --makefile "$(SELF_MAKEFILE)" --verb test; \
+	fi
+
+_serialized_test:
+	$(call _run_test_dispatch)
 
 _test_impl:
 {{ test_report_recipe(
     "$(VENV_PYTHON) -m pytest",
+    "$(VENV_PYTHON) -m cProfile",
     "$(PROJECT_INFRA_VALIDATE)",
-    "$(PYTEST_TARGETS)",
     "$(TESTS_DIR)",
+    apply_value,
     "$(Q)",
 ) }}
 

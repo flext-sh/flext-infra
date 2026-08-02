@@ -7,6 +7,10 @@ from typing import ClassVar
 from flext_infra import m
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+from flext_infra.validate.cprofile_report import (
+    FlextInfraCProfileReport,
+    FlextInfraCProfileRun,
+)
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
 from flext_infra.validate.inventory import FlextInfraInventoryService
@@ -17,6 +21,7 @@ from flext_infra.validate.metadata_discipline import (
 )
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidator
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
@@ -40,6 +45,18 @@ class ValidationCommandRoutes(CliRouteBase):
                 lambda params, mc=FlextInfraBaseMkValidator: mc.execute_command(params),
             ),
             (
+                "cprofile-report",
+                "Render a bounded cProfile report",
+                FlextInfraCProfileReport,
+                lambda params, mc=FlextInfraCProfileReport: mc.execute_command(params),
+            ),
+            (
+                "cprofile-run",
+                "Profile an exact Python module invocation including cold imports",
+                FlextInfraCProfileRun,
+                lambda params, mc=FlextInfraCProfileRun: mc.execute_command(params),
+            ),
+            (
                 "inventory",
                 "Generate scripts inventory",
                 FlextInfraInventoryService,
@@ -60,6 +77,14 @@ class ValidationCommandRoutes(CliRouteBase):
                 "Extract pytest diagnostics",
                 FlextInfraPytestDiagExtractor,
                 lambda params, mc=FlextInfraPytestDiagExtractor: mc.execute_command(
+                    params
+                ),
+            ),
+            (
+                "pytest-selector",
+                "Validate exact pytest selectors",
+                FlextInfraPytestSelectorValidator,
+                lambda params, mc=FlextInfraPytestSelectorValidator: mc.execute_command(
                     params
                 ),
             ),

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, u
 from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (
     FlextInfraModelsDepsToolConfigLinters,
@@ -64,6 +64,87 @@ class FlextInfraModelsDepsToolSettings(
         """Pytest baseline settings loaded from YAML."""
 
         # mro-j47u (codex): every rendered pytest value is validated config data.
+        case_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="case-timeout-seconds",
+                gt=0,
+                le=10,
+                description="Hard maximum runtime for one pytest item.",
+            ),
+        ]
+        run_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="run-timeout-seconds",
+                gt=0,
+                le=60,
+                description="Hard wall-clock maximum for one pytest invocation.",
+            ),
+        ]
+        termination_grace_seconds: Annotated[
+            int,
+            m.Field(
+                alias="termination-grace-seconds",
+                gt=0,
+                description="Grace period reserved inside the invocation deadline.",
+            ),
+        ]
+        enforcement_plugin: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="enforcement-plugin",
+                description="Required pytest11 enforcement plugin loaded by Make.",
+            ),
+        ]
+        progress_args: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                alias="progress-args",
+                min_length=1,
+                description="Pytest arguments that expose each item and live progress.",
+            ),
+        ]
+        parallel_workers: Annotated[
+            Literal["auto"],
+            m.Field(
+                alias="parallel-workers",
+                description="Pytest-xdist worker policy for unselected full runs.",
+            ),
+        ]
+        parallel_distribution: Annotated[
+            Literal["worksteal"],
+            m.Field(
+                alias="parallel-distribution",
+                description="Pytest-xdist scheduler for unselected full runs.",
+            ),
+        ]
+        profile_sort: Annotated[
+            Literal[
+                "calls",
+                "cumulative",
+                "filename",
+                "line",
+                "name",
+                "nfl",
+                "pcalls",
+                "stdname",
+                "time",
+            ],
+            m.Field(
+                alias="profile-sort",
+                description="Sort key for focused cProfile reports.",
+            ),
+        ]
+        profile_limit: Annotated[
+            int,
+            m.Field(
+                alias="profile-limit",
+                gt=0,
+                le=1000,
+                description="Maximum cProfile rows rendered for focused runs.",
+            ),
+        ]
         min_version: Annotated[
             t.NonEmptyStr,
             m.Field(alias="min-version", description="Minimum pytest version."),
@@ -111,6 +192,32 @@ class FlextInfraModelsDepsToolSettings(
                 description="Standard pytest addopts enforced by modernizer.",
             ),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_execution_limits(self) -> Self:
+            """Keep item and termination budgets inside the hard invocation cap."""
+            if self.case_timeout_seconds >= self.run_timeout_seconds:
+                msg = "pytest case timeout must be less than run timeout"
+                raise ValueError(msg)
+            if self.termination_grace_seconds >= self.run_timeout_seconds:
+                msg = "pytest termination grace must be less than run timeout"
+                raise ValueError(msg)
+            if (
+                self.case_timeout_seconds + self.termination_grace_seconds
+                > self.run_timeout_seconds
+            ):
+                msg = "pytest run timeout must include item and termination budgets"
+                raise ValueError(msg)
+            if "--verbose" not in self.progress_args:
+                msg = "pytest progress args must expose verbose item progress"
+                raise ValueError(msg)
+            derived_options = ("--timeout", "--session-timeout")
+            if any(
+                option.startswith(derived_options) for option in self.standard_addopts
+            ):
+                msg = "pytest timeout options are derived from typed deadline fields"
+                raise ValueError(msg)
+            return self
 
     class TomlsortConfig(m.ArbitraryTypesModel):
         """tomlsort baseline settings loaded from YAML."""

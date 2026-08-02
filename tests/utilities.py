@@ -177,14 +177,20 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                live: bool = False,
+                deadline: p.Cli.ProcessDeadline | None = None,
             ) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
+                _ = live, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
                     timeout=timeout,
                     env=env,
                     remove_env_keys=remove_env_keys,
+                    input_data=input_data,
                 )
                 if result.failure:
                     return r[int].fail(result.error or "Command failed")

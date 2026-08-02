@@ -490,6 +490,12 @@ class FlextInfraConstantsSourceCode:
     "Regex: pytest 'slowest durations' section header."
     PYTEST_SECTION_DIVIDER_RE: Final[t.RegexPattern] = re.compile(r"^=+")
     "Regex: pytest section divider line (``===...``)."
+    PYTEST_DURATION_ENTRY_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?P<seconds>\d+(?:\.\d+)?)s"
+        r"(?:\s+\|\s+|\s+(?:setup|call|teardown)\s+)"
+        r"(?P<label>.+?)\s*$"
+    )
+    "Regex: normalized JUnit or pytest-log duration entry."
     PYTEST_WARNINGS_HEADER_RE: Final[t.RegexPattern] = re.compile(
         r"^=+ warnings summary =+"
     )

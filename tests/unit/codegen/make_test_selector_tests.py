@@ -164,8 +164,10 @@ class TestsMakeTestSelector:
             ],
         )
 
-    def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
-        """A focused target is the pytest target, not an appendix to tests/."""
+    def test_caller_target_cannot_replace_the_configured_suite(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep the config-owned suite target immutable at the Make boundary."""
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
         test_u.Tests.write_executable(
@@ -211,7 +213,9 @@ class TestsMakeTestSelector:
                 [
                     "--no-print-directory",
                     "test",
+                    "SHELL=/bin/true",
                     f"PYTEST_TARGETS={selected}",
+                    "FLEXT_PYTEST_FILE_RAW=--maxfail=0",
                     f"UV={uv}",
                 ],
                 cwd=tmp_path,
@@ -224,16 +228,12 @@ class TestsMakeTestSelector:
             msg=f"stdout:\n{executed.stdout}\nstderr:\n{executed.stderr}",
         )
         arguments = invocation_log.read_text(encoding="utf-8")
-        tm.that(arguments, has=selected)
-        tm.that(str(tmp_path / "tests") not in arguments, where=bool)
+        tm.that(selected not in arguments, eq=True)
+        tm.that("--maxfail=0" not in arguments, eq=True)
+        tm.that(str(tmp_path / "tests") in arguments, eq=True)
 
-    def test_generated_test_recipe_forwards_pytest_args(self) -> None:
-        """Forward both supported pytest selectors through the local recipe.
-
-        Without this, a targeted run is impossible through `make`, and the only
-        way to filter is to call pytest directly -- exactly the loose command the
-        canonical-command law forbids.
-        """
+    def test_generated_test_recipe_uses_structured_selectors(self) -> None:
+        """Keep FILE and MATCH exact while arbitrary argument text fails closed."""
         template_path = _makefile_template()
         template = template_path.read_text(encoding="utf-8")
         reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
@@ -241,11 +241,68 @@ class TestsMakeTestSelector:
         )
 
         tm.that(template, has="test_report_recipe(")
-        tm.that(reporter, has='_all_pytest_args="$(PYTEST_ARGS)"')
-        tm.that(reporter, has='if [ -n "$(MATCH)" ]')
-        tm.that(reporter, has='if [ -n "$(FILE)" ]')
+        tm.that(reporter, has="PYTEST_ARGS is disabled")
+        tm.that(reporter, has="FILES is disabled")
+        tm.that(reporter, has='set -- "$$@" -k "$$_match"')
+        tm.that(reporter, has='set -- {{ runner }} "$$_file"')
+        tm.that(reporter, lacks=["_all_pytest_args", "pytest-run", "pytest_policy"])
         tm.that(reporter, has='if [ "$(FAIL_FAST)" = "1" ]')
-        tm.that(template, has='"$(PYTEST_TARGETS)"')
+        tm.that(reporter, has='[ "$(FAIL_FAST)" = "{{ apply_value }}" ]')
+        tm.that(
+            template,
+            has="override export FLEXT_PYTEST_TARGET_RAW := $(PROJECT_ROOT)/tests",
+        )
+        tm.that(template, has='--file "$${FLEXT_PYTEST_FILE_RAW}"')
+        tm.that(template, has='--match "$${FLEXT_PYTEST_MATCH_RAW}"')
+        tm.that(template, has="override SHELL := /bin/sh")
+        tm.that(template, has="define _dispatch_test")
+        tm.that(
+            template,
+            has=[
+                "$${{{ test_deadline_owner_env }}:-}",
+                "$(SELF_MAKE) _serialized_test",
+            ],
+        )
+        tm.that(
+            template,
+            has=[
+                '"pre-test" "pre-test-$$what"',
+                '"post-test-$$what" "post-test"',
+            ],
+        )
+        tm.that(template, lacks="$(call _dispatch,test)")
+        tm.that(
+            template, lacks=["FILE_MEMBER :=", "FILE_PROJECT :=", "FILE_RELATIVE :="]
+        )
+
+    def test_generated_test_modes_follow_typed_execution_policy(self) -> None:
+        """Focused, full, and profiling modes remain explicit and deterministic."""
+        template_path = _makefile_template()
+        template = template_path.read_text(encoding="utf-8")
+        reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(template, has="_builtin_test_profile")
+        tm.that(template, has='--what "$${FLEXT_PYTEST_WHAT_RAW}"')
+        tm.that(template, has="$(filter 1 {{ make.apply_value }},$(FAIL_FAST))")
+        tm.that(reporter, has='if [ -n "$$_file" ] || [ -n "$$_match" ]')
+        tm.that(reporter, has='set -- "$$@" -n0')
+        tm.that(reporter, has="$(PYTEST_PARALLEL_WORKERS)")
+        tm.that(reporter, has="$(PYTEST_PARALLEL_DISTRIBUTION)")
+        tm.that(reporter, has='if [ "$$_what" = "profile" ]')
+        tm.that(template, has="python -m cProfile")
+        tm.that(reporter, has="$(PYTEST_PROFILE_SORT)")
+        tm.that(reporter, has="$(PYTEST_PROFILE_LIMIT)")
+        tm.that(reporter, has="pytest-diag --require-junit")
+        tm.that(
+            reporter,
+            lacks=["PYTEST_TIMEOUT_COMMAND", "--kill-after=", "| tee"],
+        )
+        tm.that(
+            reporter,
+            has='if [ "$$rc" -eq 0 ] && [ "$$diag_status" -ne 0 ]',
+        )
 
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
         """Codegen and base.mk generation remain explicit canonical operations."""

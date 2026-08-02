@@ -771,6 +771,10 @@ class FlextInfraConfigModels:
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
+        test_deadline_owner_env: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Inherited marker for the outer test deadline owner"),
+        ]
 
     class GitignoreRenderSpec(_ConfigContract):
         """Typed, profile-filtered input for the generated Git ignore file."""
@@ -861,6 +865,10 @@ class FlextInfraConfigModels:
         ]
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
+        test_deadline_owner_env: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Inherited marker for the outer test deadline owner"),
         ]
         tooling_runtime: Annotated[
             FlextInfraModelsDepsToolSettings.ToolingRuntimeContext,
