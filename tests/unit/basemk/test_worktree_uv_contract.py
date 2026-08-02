@@ -112,5 +112,54 @@ class TestsFlextInfraBasemkWorktreeUvContract:
         tm.that("lane" in runtime_lines, eq=True)
         tm.that("canonical" in runtime_lines, eq=False)
 
+    def test_shared_base_keeps_workspace_environment_but_uses_lane_metadata(
+        self, tmp_path: Path
+    ) -> None:
+        """A shared base never redirects a lane command to the primary project."""
+        canonical_root = tmp_path / "canonical"
+        lane_root = canonical_root / "lanes" / "consumer-feature"
+        canonical_root.mkdir()
+        lane_root.mkdir(parents=True)
+        (canonical_root / "pyproject.toml").write_text(
+            "[dependency-groups]\ninvalid = { malformed = true }\n", encoding="utf-8"
+        )
+        (lane_root / "pyproject.toml").write_text(
+            '[project]\nname = "lane-probe"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        rendered = tm.ok(FlextInfraBaseMkGenerator().generate_basemk())
+        (canonical_root / "base.mk").write_text(rendered, encoding="utf-8")
+        (lane_root / "Makefile").write_text(
+            "include ../../base.mk\n"
+            "print-uv-roots:\n"
+            '\t@printf \'%s\\n%s\\n\' "$(UV_PROJECT)" "$(UV_PROJECT_ENVIRONMENT)"\n',
+            encoding="utf-8",
+        )
+
+        active_env = os.environ.copy()
+        inherited_keys = (
+            "FLEXT_ROOT",
+            "FLEXT_STANDALONE",
+            "FLEXT_WORKSPACE_ROOT",
+            "UV_PROJECT",
+            "UV_PROJECT_ENVIRONMENT",
+            "VIRTUAL_ENV",
+            "WORKSPACE_ROOT",
+        )
+        for key in inherited_keys:
+            active_env.pop(key, None)
+        result = u.Cli.run_raw(
+            ["make", "print-uv-roots"],
+            cwd=lane_root,
+            env=active_env,
+            remove_env_keys=inherited_keys,
+        )
+
+        output = [
+            line
+            for line in tm.ok(result).stdout.splitlines()
+            if line.startswith(str(tmp_path))
+        ]
+        tm.that(output, eq=[str(lane_root), str(canonical_root / ".venv")])
+
 
 __all__: tuple[str, ...] = ()

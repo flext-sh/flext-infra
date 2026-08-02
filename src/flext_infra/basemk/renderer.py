@@ -56,6 +56,8 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
             ],
             test_item_timeout_seconds=make_spec.test_item_timeout_seconds,
             test_session_timeout_seconds=make_spec.test_session_timeout_seconds,
+            test_shard_count=make_spec.test_shard_count,
+            test_shard_parallelism=make_spec.test_shard_parallelism,
         )
 
     @staticmethod
@@ -125,6 +127,8 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     test_session_timeout_seconds=(
                         active_config.test_session_timeout_seconds
                     ),
+                    test_shard_count=active_config.test_shard_count,
+                    test_shard_parallelism=active_config.test_shard_parallelism,
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

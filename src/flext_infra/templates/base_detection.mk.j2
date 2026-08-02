@@ -34,7 +34,10 @@ WORKSPACE_ROOT := $(PROJECT_ROOT)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
 endif
 
-override UV_PROJECT := $(WORKSPACE_ROOT)
+# The shared workspace environment is reusable, but uv must parse the active
+# lane's own project metadata.  Resolving dependencies against WORKSPACE_ROOT
+# would silently redirect a worktree command to the primary checkout.
+override UV_PROJECT := $(PROJECT_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
 override VIRTUAL_ENV := $(ACTIVE_VENV)
 MISE := $(shell command -v mise 2>/dev/null)

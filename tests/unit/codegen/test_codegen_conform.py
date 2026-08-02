@@ -380,9 +380,12 @@ class TestCodegenConform:
             for item in second.files
             if item.path.name == c.Infra.PYPROJECT_FILENAME
         )
-        report = tomllib.loads(first_pyproject.rendered)["tool"]["coverage"]["report"]
+        rendered_tooling = tomllib.loads(first_pyproject.rendered)["tool"]
+        report = rendered_tooling["coverage"]["report"]
+        addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
 
         tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
+        tm.that(addopts, eq=set(config.Infra.tooling.tools.pytest.standard_addopts))
         tm.that(
             report["fail_under"],
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,

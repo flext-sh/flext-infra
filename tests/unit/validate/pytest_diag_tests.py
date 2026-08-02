@@ -39,6 +39,90 @@ def _extractor(
 
 
 class TestPytestDiagExtractorBehavior:
+    def test_combine_junit_emits_flattened_aggregate_consumer_artifact(
+        self, tmp_path: Path
+    ) -> None:
+        """The public diagnostic command writes one valid aggregate JUnit root."""
+        first = tmp_path / "first.xml"
+        second = tmp_path / "second.xml"
+        combined = tmp_path / "combined.xml"
+        first.write_text(
+            '<testsuite tests="1" failures="1" errors="0" skipped="0" time="0.1">'
+            '<testcase classname="T" name="failed"><failure/></testcase></testsuite>',
+            encoding="utf-8",
+        )
+        second.write_text(
+            '<testsuites><testsuite tests="1" failures="0" errors="0" skipped="1" time="0.2">'
+            '<testcase classname="T" name="skipped"><skipped/></testcase></testsuite></testsuites>',
+            encoding="utf-8",
+        )
+
+        result = tm.ok(
+            u.Cli.run_raw([
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "validate",
+                "pytest-diag",
+                "--combine-junit",
+                str(combined),
+                "--junit",
+                str(first),
+                "--junit",
+                str(second),
+            ])
+        )
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(combined.is_file(), eq=True)
+        artifact = combined.read_text(encoding="utf-8")
+        tm.that(
+            artifact,
+            has='tests="2" failures="1" errors="0" skipped="1" time="0.3"',
+            lacks="<testsuites><testsuites>",
+        )
+
+    def test_fast_path_aggregates_matching_shard_artifact_pairs(
+        self, tmp_path: Path
+    ) -> None:
+        """Aggregate every shard without accepting mismatched inputs."""
+        first_junit = tmp_path / "first.xml"
+        second_junit = tmp_path / "second.xml"
+        first_log = tmp_path / "first.log"
+        second_log = tmp_path / "second.log"
+        first_junit.write_text(
+            '<testsuite><testcase classname="T" name="bad">'
+            '<failure message="bad">trace</failure></testcase></testsuite>',
+            encoding="utf-8",
+        )
+        second_junit.write_text(
+            '<testsuite><testcase classname="T" name="ok"/></testsuite>',
+            encoding="utf-8",
+        )
+        first_log.write_text("", encoding="utf-8")
+        second_log.write_text("", encoding="utf-8")
+
+        result = tm.ok(
+            u.Cli.run_raw([
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "validate",
+                "pytest-diag",
+                "--junit",
+                str(first_junit),
+                "--log",
+                str(first_log),
+                "--junit",
+                str(second_junit),
+                "--log",
+                str(second_log),
+            ])
+        )
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stdout, has="failed_count=1")
+
     def test_fresh_process_fast_path_stays_within_item_budget(
         self, tmp_path: Path
     ) -> None:

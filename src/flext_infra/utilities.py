@@ -50,6 +50,7 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities.pytest_shard import FlextInfraUtilitiesPytestShard
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
@@ -134,6 +135,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesGithubPr,
         FlextInfraUtilitiesPyproject,
+        FlextInfraUtilitiesPytestShard,
         FlextInfraUtilitiesNamespaceConfig,
         FlextInfraUtilitiesDependencies,
         FlextInfraUtilitiesGitScope,

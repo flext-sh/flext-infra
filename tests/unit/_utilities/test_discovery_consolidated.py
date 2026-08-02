@@ -22,7 +22,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
     def test_discover_project_roots_from_tmp_workspace(self, tmp_path: Path) -> None:
         project = tmp_path / "demo-project"
-        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (project / c.Infra.DEFAULT_SRC_DIR / "alpha").mkdir(parents=True)
         (project / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
         (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "[tool.poetry]\nname='demo'\n", encoding="utf-8"
@@ -357,6 +357,13 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             "[project]\nname='alpha'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
+
+        (project / c.Infra.DEFAULT_SRC_DIR / "alpha" / "__init__.py").touch()
+        (project / c.Infra.DIR_TESTS / "__init__.py").touch()
+        self._init_git_repo(tmp_path)
+        tracked = u.Cli.run_raw(["git", "add", "alpha"], cwd=tmp_path)
+        tm.ok(tracked)
+        tm.that(tracked.value.exit_code, eq=0)
 
         result = u.Infra.discover_projects(tmp_path)
 

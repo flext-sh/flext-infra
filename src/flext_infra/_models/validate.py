@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Self
 
-from flext_cli import m
+from flext_cli import m, u
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -105,6 +105,63 @@ class FlextInfraModelsCore:
         slow_entries: Annotated[
             t.StrSequence, m.Field(description="Slow test entries")
         ] = m.Field(default_factory=tuple)
+
+    class PytestShardPlan(m.ContractModel):
+        """Validated, module-isolated execution plan for one pytest run."""
+
+        nodeids: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Original full collection node IDs"),
+        ]
+        collection_digest: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="SHA-256 digest binding the original collection"),
+        ]
+        shards: Annotated[
+            tuple[tuple[t.NonEmptyStr, ...], ...],
+            m.Field(min_length=1, description="Exact node IDs assigned to each shard"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_complete_nonempty_partition(self) -> Self:
+            """Reject incomplete or overlapping plans before any worker runs."""
+            nodeids = tuple(nodeid for shard in self.shards for nodeid in shard)
+            if any(not shard for shard in self.shards):
+                msg = "pytest shard plan contains an empty shard"
+                raise ValueError(msg)
+            if len(set(nodeids)) != len(nodeids):
+                msg = "pytest shard plan contains duplicate node ids"
+                raise ValueError(msg)
+            if set(nodeids) != set(self.nodeids):
+                msg = "pytest shard plan does not cover the original collection"
+                raise ValueError(msg)
+            return self
+
+    class PytestShardManifest(m.ContractModel):
+        """Validated worker ownership record for one planned pytest shard."""
+
+        shard_index: Annotated[
+            t.NonNegativeInt, m.Field(description="Owning planned shard index")
+        ]
+        nodeids: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Exact node IDs owned by the worker"),
+        ]
+        digest: Annotated[
+            t.NonEmptyStr, m.Field(description="SHA-256 digest of the node-id manifest")
+        ]
+        collection_digest: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="SHA-256 digest binding the original collection"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_unique_nodeids(self) -> Self:
+            """Keep the execution manifest an exact ownership statement."""
+            if len(set(self.nodeids)) != len(self.nodeids):
+                msg = "pytest shard manifest contains duplicate node ids"
+                raise ValueError(msg)
+            return self
 
     class DiagResult(m.ArbitraryTypesModel):
         """Internal container for extracted diagnostics.

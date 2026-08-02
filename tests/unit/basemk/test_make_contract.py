@@ -120,20 +120,66 @@ def _write_pytest_diag_python_stub(
     exit_code: int,
     pytest_exit_code: int = 0,
     pytest_output: str = "",
+    write_coverage: bool = False,
+    expected_test_target: str | None = None,
 ) -> None:
     venv_bin = project_root / ".venv" / "bin"
     venv_bin.mkdir(parents=True, exist_ok=True)
     body = (
         "#!/usr/bin/env bash\n"
         "junit_file=''\n"
+        "plan_dir=''\n"
+        "shard_count=''\n"
+        "source_manifest=''\n"
+        "actual_manifest=''\n"
+        "coverage_output=''\n"
+        "test_target=''\n"
+        "previous=''\n"
         'for argument in "$@"; do\n'
-        '  case "$argument" in --junitxml=*) junit_file="${argument#--junitxml=}" ;; esac\n'
+        '  case "$argument" in\n'
+        '    --junitxml=*) junit_file="${argument#--junitxml=}" ;;\n'
+        '    --flext-shard-plan-dir=*) plan_dir="${argument#*=}" ;;\n'
+        '    --flext-shard-count=*) shard_count="${argument#*=}" ;;\n'
+        '    --flext-shard-source-manifest=*) source_manifest="${argument#*=}" ;;\n'
+        '    --flext-shard-manifest=*) actual_manifest="${argument#*=}" ;;\n'
+        '    tests/*) test_target="$argument" ;;\n'
+        "  esac\n"
+        '  if [ "$previous" = "-o" ]; then coverage_output="$argument"; fi\n'
+        '  previous="$argument"\n'
         "done\n"
+        'if [[ "$*" == *"-m coverage combine"* ]]; then exit 0; fi\n'
+        'if [[ "$*" == *"-m coverage xml"* ]]; then\n'
+        + (
+            "  printf '<coverage/>\\n' > \"$coverage_output\"\n"
+            if write_coverage
+            else ""
+        )
+        + "  exit 0\nfi\n"
         'if [[ "$*" == *"-m pytest"* ]]; then\n'
-        '  printf \'<testsuite tests="1" failures="0" errors="0" skipped="0" time="0.1"/>\\n\' > "$junit_file"\n'
-        f"  printf '%s\\n' {pytest_output!r}\n"
-        f"  exit {pytest_exit_code}\n"
-        "fi\n"
+        '  if [[ "$*" == *"--collect-only"* ]]; then\n'
+        '    mkdir -p "$plan_dir"\n'
+        '    : > "$plan_dir/all-items.txt"\n'
+        "    index=0\n"
+        '    while [ "$index" -lt "$shard_count" ]; do\n'
+        '      nodeid="tests/test_contract.py::test_shard_${index}"\n'
+        '      printf \'%s\\n\' "$nodeid" >> "$plan_dir/all-items.txt"\n'
+        '      printf \'%s\\n\' "$nodeid" > "$plan_dir/shard-${index}.expected.txt"\n'
+        "      index=$((index + 1))\n"
+        "    done\n"
+        "    exit 0\n"
+        "  fi\n"
+        '  if [ -n "$source_manifest" ]; then cp "$source_manifest" "$actual_manifest"; fi\n'
+        '  printf \'<testsuite tests="1" failures="0" errors="0" skipped="0" time="0.1"><testcase classname="%s" name="shard"/></testsuite>\\n\' "$test_target" > "$junit_file"\n'
+        + (
+            '  if [ "$test_target" != "'
+            + expected_test_target
+            + '"; then exit 89; fi\n'
+            if expected_test_target is not None
+            else ""
+        )
+        + f"  printf '%s\\n' {pytest_output!r}\n"
+        + f"  exit {pytest_exit_code}\n"
+        + "fi\n"
         'if [[ "$*" == *"-m flext_infra validate pytest-diag"* ]]; then\n'
         "  cat <<'FLEXT_PYTEST_DIAG_COUNTS'\n"
         f"{payload.rstrip()}\n"
@@ -343,6 +389,14 @@ class TestsFlextInfraBasemkMakeContract:
                 'PYRIGHT_ARGS="--level basic" Extra args for pyright',
                 "DIAG=1                      Emit extended pytest diagnostics",
                 "FIX=1                       Auto-fix supported gates",
+                (
+                    "TEST_ITEM_TIMEOUT_SECONDS="
+                    f"{config.Infra.codegen.make.test_item_timeout_seconds}"
+                ),
+                (
+                    "TEST_SESSION_TIMEOUT_SECONDS="
+                    f"{config.Infra.codegen.make.test_session_timeout_seconds}"
+                ),
             ],
         )
         tm.that(result.stdout, lacks="check-fast")
@@ -474,7 +528,7 @@ class TestsFlextInfraBasemkMakeContract:
             rendered,
             has=[
                 'if [ -n "$$_files" ] || [ -n "$(MATCH)" ] ||',
-                '[ "$$_pytest_run" != "$(TESTS_DIR)" ]; then',
+                '[ -n "$$_pytest_targets" ]; then',
                 '_coverage_args="--no-cov";',
                 '_coverage_value="not-generated";',
             ],
@@ -528,6 +582,141 @@ class TestsFlextInfraBasemkMakeContract:
 
             tm.that(result.exit_code, eq=0)
             tm.that(summary, has="coverage=not-generated")
+
+    def test_file_selector_executes_only_the_requested_test_path(
+        self, tmp_path: Path
+    ) -> None:
+        """A focused Make run cannot silently substitute a stale test target."""
+        _write_project(tmp_path)
+        requested = "tests/unit/test_requested.py"
+        stale = "tests/unit/test_stale.py"
+        requested_path = tmp_path / requested
+        stale_path = tmp_path / stale
+        requested_path.parent.mkdir(parents=True)
+        requested_path.write_text("", encoding="utf-8")
+        stale_path.write_text("", encoding="utf-8")
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            expected_test_target=requested,
+        )
+
+        result = _run_make(tmp_path, "test", f"FILE={requested}")
+        report_dir = tmp_path / ".reports" / "tests" / "latest"
+        command = (report_dir / "command.txt").read_text(encoding="utf-8")
+        junit = (report_dir / "junit.xml").read_text(encoding="utf-8")
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(command, has=requested, lacks=stale)
+        tm.that(junit, has=f'classname="{requested}"', lacks=stale)
+
+    def test_file_selector_rejects_a_nonexistent_requested_path(
+        self, tmp_path: Path
+    ) -> None:
+        """No focused target may silently fall through to another test file."""
+        _write_project(tmp_path)
+
+        result = _run_make(tmp_path, "test", "FILE=tests/unit/test_missing.py")
+
+        tm.that(result.exit_code, eq=2)
+        tm.that(
+            result.stdout + result.stderr,
+            has="ERROR: test target does not exist: tests/unit/test_missing.py",
+        )
+
+    def test_test_boundary_rejects_conflicting_pytest_controls(
+        self, tmp_path: Path
+    ) -> None:
+        """Make owns timeout, plugin, and collection controls for every run."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+        )
+
+        timeout_override = _run_make(tmp_path, "test", "PYTEST_ARGS=--timeout=999")
+        mixed_selector = _run_make(tmp_path, "test", "FILE=tests", "FILES=tests")
+
+        tm.that(timeout_override.exit_code, eq=2)
+        tm.that(
+            timeout_override.stdout + timeout_override.stderr,
+            has="PYTEST_ARGS may not override Make test controls: --timeout=999",
+        )
+        tm.that(mixed_selector.exit_code, eq=2)
+        tm.that(
+            mixed_selector.stdout + mixed_selector.stderr,
+            has="FILE and FILES cannot be combined",
+        )
+
+    def test_configured_default_target_runs_the_full_shard_contract(
+        self, tmp_path: Path
+    ) -> None:
+        """An empty selector delegates full collection to pytest testpaths."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            write_coverage=True,
+        )
+
+        result = _run_make(tmp_path, "test")
+        report_dir = tmp_path / ".reports" / "tests" / "latest"
+        summary = (report_dir / "summary.txt").read_text(encoding="utf-8")
+        make_spec = config.Infra.codegen.make
+        expected = tuple(
+            report_dir / "shard-plan" / f"shard-{index}.expected.txt"
+            for index in range(make_spec.test_shard_count)
+        )
+        actual = tuple(
+            report_dir / "shard-plan" / f"shard-{index}.actual.txt"
+            for index in range(make_spec.test_shard_count)
+        )
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(summary, lacks="coverage=not-generated")
+        tm.that((report_dir / "coverage.xml").is_file(), eq=True)
+        tm.that(
+            all(path.is_file() and path.stat().st_size > 0 for path in expected),
+            eq=True,
+        )
+        tm.that(
+            all(path.is_file() and path.stat().st_size > 0 for path in actual), eq=True
+        )
+        tm.that(
+            tuple(
+                (report_dir / f"junit-shard-{index}.xml").is_file()
+                for index in range(make_spec.test_shard_count)
+            ),
+            eq=(True,) * make_spec.test_shard_count,
+        )
+
+    def test_failed_shard_never_reports_the_collection_plan_as_passed(
+        self, tmp_path: Path
+    ) -> None:
+        """A partial run is explicit instead of publishing fabricated pass counts."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            pytest_exit_code=1,
+        )
+
+        result = _run_make(tmp_path, "test")
+        summary = (
+            tmp_path / ".reports" / "tests" / "latest" / "summary.txt"
+        ).read_text(encoding="utf-8")
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(summary, has="status=incomplete")
+        tm.that(summary, has="total=0")
+        tm.that(summary, has="passed=0")
+        tm.that(
+            summary, lacks="total=" + str(config.Infra.codegen.make.test_shard_count)
+        )
 
     def test_make_pytest_diag_accepts_exact_numeric_counts(
         self, tmp_path: Path
@@ -619,6 +808,31 @@ class TestsFlextInfraBasemkMakeContract:
         )
         tm.that(rendered, has='--timeout="$(TEST_ITEM_TIMEOUT_SECONDS)"')
         tm.that(rendered, has='"$(TEST_SESSION_TIMEOUT_SECONDS)s"')
+
+    def test_rendered_full_suite_uses_complete_isolated_shard_contract(self) -> None:
+        """Plan once, restrict each worker, and reconcile coverage and manifests."""
+        rendered = _render_base_mk()
+        make_spec = config.Infra.codegen.make
+
+        tm.that(rendered, has=f"TEST_SHARD_COUNT ?= {make_spec.test_shard_count}")
+        tm.that(
+            rendered,
+            has=f"TEST_SHARD_PARALLELISM ?= {make_spec.test_shard_parallelism}",
+        )
+        for required in (
+            "--collect-only -q --no-cov",
+            "-p no:metadata -p flext_infra.pytest_shard",
+            '--flext-shard-plan-dir="$$plan_dir"',
+            '--flext-shard-source-manifest="$$expected"',
+            '--basetemp="$$report_dir/pytest-shard-$$shard_index-tmp"',
+            'cache_dir="$$report_dir/pytest-shard-$$shard_index-cache"',
+            'COVERAGE_FILE="$$shard_coverage"',
+            "duplicate pytest node ids across shards",
+            "pytest shard manifests do not cover the collection plan",
+            "coverage combine",
+            "coverage xml",
+        ):
+            tm.that(rendered, has=required)
 
     def test_make_rejects_item_budget_above_configured_critical_limit(
         self, tmp_path: Path

@@ -21,6 +21,7 @@ ARGS ?=
 CHECK_GATES ?=
 FAIL_FAST ?= 0
 FILE ?=
+FILES ?=
 FIX ?= 0
 MATCH ?=
 PROJECT ?=
@@ -31,12 +32,14 @@ BRANCH ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
-PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
+PYTEST_TARGETS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
 TEST_ITEM_TIMEOUT_SECONDS ?= {{ make.test_item_timeout_seconds }}
 TEST_SESSION_TIMEOUT_SECONDS ?= {{ make.test_session_timeout_seconds }}
+TEST_SHARD_COUNT ?= {{ make.test_shard_count }}
+TEST_SHARD_PARALLELISM ?= {{ make.test_shard_parallelism }}
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -50,6 +53,7 @@ DOCS_PHASES :={% for phase in make.docs_phases %} {{ phase }}{% endfor %}
 SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
 SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+FMT_PATHS := $(if $(strip $(FILES) $(FILE)),$(strip $(FILES) $(FILE)),$(RUFF_PATHS))
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 UV ?= uv
 UV_REQUESTED := $(UV)
@@ -116,7 +120,9 @@ $(error Required uv executable not found: $(UV_REQUESTED))
 endif
 override UV := $(RESOLVED_UV)
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
-override UV_PROJECT := $(RUNTIME_ROOT)
+# A workspace member shares RUNTIME_VENV with its workspace, while dependency
+# resolution remains anchored to this lane's checked-out project metadata.
+override UV_PROJECT := $(PROJECT_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
@@ -147,7 +153,7 @@ WORKSPACE_TEST_ARGS := $(if $(strip $(FILE)),--make-arg "FILE=$(FILE_RELATIVE)")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
-UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(PROJECT_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
@@ -294,6 +300,10 @@ _builtin_help_usage:
 {% endfor %}
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
+	@printf '  %s\n' 'TEST_ITEM_TIMEOUT_SECONDS=$(TEST_ITEM_TIMEOUT_SECONDS)  Per-item pytest deadline';
+	@printf '  %s\n' 'TEST_SESSION_TIMEOUT_SECONDS=$(TEST_SESSION_TIMEOUT_SECONDS)  Whole pytest process deadline';
+	@printf '  %s\n' 'TEST_SHARD_COUNT=$(TEST_SHARD_COUNT)  Deterministic full-suite partitions';
+	@printf '  %s\n' 'TEST_SHARD_PARALLELISM=$(TEST_SHARD_PARALLELISM)  Concurrent full-suite partitions';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
@@ -409,22 +419,24 @@ _builtin_test_all: _builtin_require_environment
     "$(UV_RUN) python -m pytest",
     "$(PROJECT_FLEXT_INFRA) validate",
     "$(PYTEST_TARGETS)",
-    "$(PROJECT_ROOT)/tests",
     make.test_item_timeout_seconds,
     make.test_session_timeout_seconds,
+    make.test_shard_count,
+    make.test_shard_parallelism,
+    "$(RUNTIME_PYTHON) -m coverage",
     timeout_command,
     timeout_kill_after_seconds,
 ) }}
 {% endif %}
 
 _builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --no-fix $(FMT_PATHS)
+	@$(UV_RUN) ruff format --check $(FMT_PATHS)
 
 _builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --fix $(FMT_PATHS)
+	@$(UV_RUN) ruff format $(FMT_PATHS)
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)

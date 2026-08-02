@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -88,6 +88,33 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(detail or f"failed to inspect Git ref: {reference}")
         return r.ok(checked.value.exit_code == 0)
 
+    @staticmethod
+    def _rollback_failed_add(
+        primary_root: Path,
+        lane: Path,
+        branch: str,
+        *,
+        created_branch: bool,
+        phase: str,
+        detail: str,
+    ) -> p.Result[str]:
+        """Remove a failed lane and any branch created for that transaction."""
+        cleanup = u.Infra.git_remove_worktree(primary_root, lane)
+        if cleanup.failure:
+            return r.fail(
+                f"worktree {phase} failed: {detail}; "
+                f"cleanup failed: {cleanup.error or 'unknown cleanup failure'}"
+            )
+        if created_branch:
+            branch_cleanup = u.Infra.git_capture(primary_root, ("branch", "-D", branch))
+            if branch_cleanup.failure:
+                return r.fail(
+                    f"worktree {phase} failed: {detail}; "
+                    "created branch cleanup failed: "
+                    f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
+                )
+        return r.fail(f"worktree {phase} failed: {detail}")
+
     def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
         """Create and set up one branch worktree transactionally."""
         if not self.apply_changes:
@@ -135,23 +162,34 @@ class FlextInfraWorktreeService(s[str]):
             if not setup_error:
                 setup_error = f"make setup exited {setup.value.exit_code}"
         if setup_error:
-            cleanup = u.Infra.git_remove_worktree(primary_root, lane)
-            if cleanup.failure:
-                return r.fail(
-                    f"worktree setup failed: {setup_error}; "
-                    f"cleanup failed: {cleanup.error or 'unknown cleanup failure'}"
-                )
-            if not local.value:
-                branch_cleanup = u.Infra.git_capture(
-                    primary_root, ("branch", "-D", branch)
-                )
-                if branch_cleanup.failure:
-                    return r.fail(
-                        f"worktree setup failed: {setup_error}; "
-                        "created branch cleanup failed: "
-                        f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
-                    )
-            return r.fail(f"worktree setup failed: {setup_error}")
+            return self._rollback_failed_add(
+                primary_root,
+                lane,
+                branch,
+                created_branch=not local.value,
+                phase="setup",
+                detail=setup_error,
+            )
+        validation = config.Infra.codegen.make.worktree_validation
+        smoke = u.Cli.run_raw(
+            (c.Infra.MAKE, validation.verb, *validation.arguments), cwd=lane
+        )
+        smoke_error = ""
+        if smoke.failure:
+            smoke_error = smoke.error or "worktree validation execution failed"
+        elif smoke.value.exit_code != 0:
+            smoke_error = (smoke.value.stderr or smoke.value.stdout).strip()
+            if not smoke_error:
+                smoke_error = f"make {validation.verb} exited {smoke.value.exit_code}"
+        if smoke_error:
+            return self._rollback_failed_add(
+                primary_root,
+                lane,
+                branch,
+                created_branch=not local.value,
+                phase="validation",
+                detail=smoke_error,
+            )
         return r.ok(str(lane))
 
     def _remove(self, primary_root: Path, branch: str) -> p.Result[str]:

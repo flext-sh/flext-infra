@@ -56,6 +56,7 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
         """Stub composed utilities facade."""
 
     def test_mro_resolver_accepts_expected_order(self) -> None:
+        """Resolve every facade family when its base chain follows policy order."""
         resolutions = FlextInfraRefactorMROResolver.resolve(
             family_classes={
                 c.Infra.FacadeFamily.C: self.DemoMigrationConstants,
@@ -79,6 +80,7 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
         )
 
     def test_mro_resolver_rejects_wrong_order(self) -> None:
+        """Reject a facade family whose declared base chain reverses policy order."""
         raised = False
         try:
             FlextInfraRefactorMROResolver.resolve(

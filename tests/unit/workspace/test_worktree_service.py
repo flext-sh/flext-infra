@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorktreeService, c
+from flext_infra import FlextInfraWorktreeService, c, config
 from tests import u
 
 if TYPE_CHECKING:
@@ -17,12 +17,28 @@ class TestsFlextInfraWorktreeService:
     """The typed service owns the complete safe lane lifecycle."""
 
     @staticmethod
+    def _materializing_makefile() -> str:
+        """Render a fixture whose configured smoke proves setup materialization."""
+        validation = config.Infra.codegen.make.worktree_validation
+        return (
+            ".PHONY: setup "
+            f"{validation.verb}\n"
+            "setup:\n"
+            "\t@mkdir -p .venv/bin\n"
+            "\t@printf '#!/bin/sh\\nexit 0\\n' > .venv/bin/python\n"
+            "\t@chmod +x .venv/bin/python\n"
+            f"{validation.verb}:\n"
+            "\t@test -x .venv/bin/python\n"
+        )
+
+    @staticmethod
     def _repository(tmp_path: Path) -> Path:
         repository = tmp_path / "repository"
         repository.mkdir()
         (repository / "README.md").write_text("fixture\n", encoding="utf-8")
+        (repository / ".gitignore").write_text(".venv/\n", encoding="utf-8")
         (repository / "Makefile").write_text(
-            ".PHONY: setup\nsetup:\n\t@:\n", encoding="utf-8"
+            TestsFlextInfraWorktreeService._materializing_makefile(), encoding="utf-8"
         )
         u.Tests.initialize_git_repo(repository)
         return repository
@@ -64,6 +80,7 @@ class TestsFlextInfraWorktreeService:
             tm.ok(u.Infra.git_capture(repository, ("worktree", "list", "--porcelain"))),
             has=f"worktree {lane}",
         )
+        tm.that((lane / ".venv" / "bin" / "python").is_file(), eq=True)
 
         removed = tm.ok(
             FlextInfraWorktreeService(
@@ -144,6 +161,39 @@ class TestsFlextInfraWorktreeService:
 
         tm.fail(result, has="requires --base")
 
+    def test_add_removes_lane_when_configured_runtime_smoke_fails(
+        self, tmp_path: Path
+    ) -> None:
+        """A setup-only success cannot publish a runtime-broken worktree."""
+        repository = self._repository(tmp_path)
+        validation = config.Infra.codegen.make.worktree_validation
+        (repository / "Makefile").write_text(
+            ".PHONY: setup "
+            f"{validation.verb}\n"
+            "setup:\n\t@:\n"
+            f"{validation.verb}:\n\t@exit 23\n",
+            encoding="utf-8",
+        )
+        tm.ok(u.Infra.git_capture(repository, ("add", "Makefile")))
+        tm.ok(
+            u.Infra.git_capture(
+                repository, ("commit", "-m", "test: install broken smoke fixture")
+            )
+        )
+        branch = "feature/broken-runtime"
+        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch=branch,
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="worktree validation failed")
+        tm.that(lane.exists(), eq=False)
+
     def test_attached_submodule_uses_one_primary_local_container(
         self, tmp_path: Path
     ) -> None:
@@ -151,8 +201,9 @@ class TestsFlextInfraWorktreeService:
         child_source = tmp_path / "child-source"
         child_source.mkdir()
         (child_source / "README.md").write_text("child\n", encoding="utf-8")
+        (child_source / ".gitignore").write_text(".venv/\n", encoding="utf-8")
         (child_source / "Makefile").write_text(
-            ".PHONY: setup\nsetup:\n\t@:\n", encoding="utf-8"
+            self._materializing_makefile(), encoding="utf-8"
         )
         u.Tests.initialize_git_repo(child_source)
         super_root = tmp_path / "super"

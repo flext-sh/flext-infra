@@ -57,6 +57,7 @@ class TestsFlextInfraIntegrationDocsServeE2e:
     """Real serve: a governed scope with mkdocs.yml answers HTTP requests."""
 
     def test_serve_scope_serves_site_over_http(self, tmp_path: Path) -> None:
+        """Serve a generated documentation scope through a real HTTP request."""
         (tmp_path / "docs").mkdir()
         (tmp_path / "docs/index.md").write_text(
             "# Demo\n\nHello from the real dev server.\n", encoding="utf-8"

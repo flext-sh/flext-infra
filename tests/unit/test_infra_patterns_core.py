@@ -10,52 +10,62 @@ class TestsFlextInfraInfraPatternsCore:
     """Tests for tooling-related regex patterns."""
 
     def test_mypy_hint_pattern_matches_valid_hint(self) -> None:
+        """Match the canonical pip-install hint emitted by Mypy."""
         text = 'note: Hint: "python3 -m pip install types-requests"'
         match = c.Infra.MYPY_HINT_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="types-requests")
 
     def test_mypy_hint_pattern_captures_package_name(self) -> None:
+        """Capture the dependency name from a Mypy installation hint."""
         text = 'note: Hint: "python3 -m pip install mypy-extensions"'
         match = c.Infra.MYPY_HINT_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="mypy-extensions")
 
     def test_mypy_hint_pattern_matches_stub_package_wording(self) -> None:
+        """Match Mypy's alternate missing-stub package wording."""
         text = "note: hint: install stub package `types-requests`"
         match = c.Infra.MYPY_HINT_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="types-requests")
 
     def test_mypy_hint_pattern_no_match_without_hint(self) -> None:
+        """Ignore Mypy output that contains no installation hint."""
         text = "some other mypy output"
         match = c.Infra.MYPY_HINT_RE.search(text)
         tm.that(match, none=True)
 
     def test_mypy_stub_pattern_matches_missing_stubs(self) -> None:
+        """Match Mypy's missing-library-stubs diagnostic."""
         text = 'Library stubs not installed for "requests"'
         match = c.Infra.MYPY_STUB_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="requests")
 
     def test_mypy_stub_pattern_captures_library_name(self) -> None:
+        """Capture the library name from a missing-stubs diagnostic."""
         text = 'Library stubs not installed for "django"'
         match = c.Infra.MYPY_STUB_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="django")
 
     def test_mypy_stub_pattern_no_match_without_message(self) -> None:
+        """Ignore text that does not report missing library stubs."""
         text = "stubs are installed"
         match = c.Infra.MYPY_STUB_RE.search(text)
         tm.that(match, none=True)
 
     def test_internal_prefixes_contains_flext(self) -> None:
+        """Include the FLEXT namespace in the internal import prefixes."""
         tm.that(c.Infra.INTERNAL_PREFIXES, has="flext_")
 
     def test_internal_prefixes_is_tuple(self) -> None:
+        """Expose internal import prefixes as an immutable tuple."""
         tm.that(c.Infra.INTERNAL_PREFIXES, is_=tuple)
 
     def test_markdown_link_pattern_matches_link(self) -> None:
+        """Match a Markdown link and expose its label and destination."""
         text = "[Click here](https://example.com)"
         match = c.Infra.MARKDOWN_LINK_RE.search(text)
         match = tm.not_none(match)
@@ -63,6 +73,7 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(match.group(2), eq="https://example.com")
 
     def test_markdown_link_pattern_captures_text_and_url(self) -> None:
+        """Capture labels and relative destinations from Markdown links."""
         text = "[Documentation](./docs/README.md)"
         match = c.Infra.MARKDOWN_LINK_RE.search(text)
         match = tm.not_none(match)
@@ -70,6 +81,7 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(match.group(2), eq="./docs/README.md")
 
     def test_markdown_link_pattern_multiple_matches(self) -> None:
+        """Find every Markdown link in a line containing multiple links."""
         text = "[Link1](url1) and [Link2](url2)"
         matches = c.Infra.MARKDOWN_LINK_RE.findall(text)
         tm.that(len(matches), eq=2)
@@ -77,30 +89,35 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(matches[1], eq=("Link2", "url2"))
 
     def test_markdown_link_url_pattern_captures_url_only(self) -> None:
+        """Capture only the destination from a Markdown link."""
         text = "[Click here](https://example.com)"
         match = c.Infra.MARKDOWN_LINK_URL_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="https://example.com")
 
     def test_markdown_link_url_pattern_ignores_text(self) -> None:
+        """Exclude link labels when extracting Markdown destinations."""
         text = "[Some text](path/to/file.md)"
         match = c.Infra.MARKDOWN_LINK_URL_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="path/to/file.md")
 
     def test_heading_pattern_matches_h1(self) -> None:
+        """Match and capture the title of a level-one heading."""
         text = "# Main Title"
         match = c.Infra.HEADING_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="Main Title")
 
     def test_heading_pattern_matches_h6(self) -> None:
+        """Match and capture the title of a level-six heading."""
         text = "###### Small Heading"
         match = c.Infra.HEADING_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(1), eq="Small Heading")
 
     def test_heading_pattern_multiline(self) -> None:
+        """Find headings across multiple Markdown lines."""
         text = "# Title 1\nSome content\n## Title 2"
         matches = c.Infra.HEADING_RE.findall(text)
         tm.that(len(matches), eq=2)
@@ -108,6 +125,7 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(matches, has="Title 2")
 
     def test_heading_h2_h3_pattern_matches_h2(self) -> None:
+        """Match a level-two heading with its marker and title."""
         text = "## Section Title"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
         match = tm.not_none(match)
@@ -115,6 +133,7 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(match.group(2), eq="Section Title")
 
     def test_heading_h2_h3_pattern_matches_h3(self) -> None:
+        """Match a level-three heading with its marker and title."""
         text = "### Subsection"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
         match = tm.not_none(match)
@@ -122,16 +141,19 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(match.group(2), eq="Subsection")
 
     def test_heading_h2_h3_pattern_ignores_h1(self) -> None:
+        """Ignore level-one headings in the level-two-or-three pattern."""
         text = "# Title"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
         tm.that(match, none=True)
 
     def test_heading_h2_h3_pattern_ignores_h4(self) -> None:
+        """Ignore level-four headings in the level-two-or-three pattern."""
         text = "#### Deep Heading"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
         tm.that(match, none=True)
 
     def test_anchor_link_pattern_matches_anchor(self) -> None:
+        """Match an in-document Markdown anchor link."""
         text = "[Go to section](#section-name)"
         match = c.Infra.ANCHOR_LINK_RE.search(text)
         match = tm.not_none(match)
@@ -139,6 +161,7 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(match.group(2), eq="section-name")
 
     def test_anchor_link_pattern_captures_text_and_anchor(self) -> None:
+        """Capture the label and fragment from an anchor link."""
         text = "[Back to top](#top)"
         match = c.Infra.ANCHOR_LINK_RE.search(text)
         match = tm.not_none(match)
@@ -146,12 +169,14 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(match.group(2), eq="top")
 
     def test_inline_code_pattern_matches_backticks(self) -> None:
+        """Match inline code enclosed by backticks."""
         text = "Use `function_name()` in your code"
         match = c.Infra.INLINE_CODE_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(0), eq="`function_name()`")
 
     def test_inline_code_pattern_multiple_matches(self) -> None:
+        """Find every inline-code span in one line."""
         text = "Use `foo()` and `bar()` together"
         matches = c.Infra.INLINE_CODE_RE.findall(text)
         tm.that(len(matches), eq=2)
@@ -159,6 +184,7 @@ class TestsFlextInfraInfraPatternsCore:
         tm.that(matches, has="`bar()`")
 
     def test_inline_code_pattern_empty_code(self) -> None:
+        """Accept an empty inline-code span as a complete token."""
         text = "Empty code: ``"
         match = c.Infra.INLINE_CODE_RE.search(text)
         match = tm.not_none(match)

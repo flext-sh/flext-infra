@@ -81,6 +81,11 @@ Infra:
       apply_value: Y
       test_item_timeout_seconds: 10
       test_session_timeout_seconds: 60
+      test_shard_count: 16
+      test_shard_parallelism: 2
+      worktree_validation:
+        verb: fmt
+        arguments: [CHECK_ONLY=1]
       docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock

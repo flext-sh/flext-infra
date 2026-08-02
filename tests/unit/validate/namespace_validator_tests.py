@@ -48,6 +48,7 @@ class TestFlextInfraNamespaceValidator:
     def test_public_project_layout_uses_flext_for_core_exception(
         self, tmp_path: Path
     ) -> None:
+        """Use the Flext class stem for the canonical flext-core project."""
         project_root = tmp_path / "flext-core"
         package_dir = project_root / "src" / "flext_core"
         package_dir.mkdir(parents=True)
@@ -57,6 +58,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(layout.class_stem, eq="Flext")
 
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:
+        """Accept a namespace module with one correctly named outer class."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -69,6 +71,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.violations, empty=True)
 
     def test_validate_tracked_git_files(self, tmp_path: Path) -> None:
+        """Validate namespace modules discovered from tracked Git files."""
         validator = FlextInfraNamespaceValidator()
         project_root = tmp_path / "project"
         package_dir = project_root / "src" / "flext_test"
@@ -104,6 +107,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.violations, empty=True)
 
     def test_rule0_multiple_classes_detected(self, tmp_path: Path) -> None:
+        """Report multiple outer classes in a governed namespace module."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -119,6 +123,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule0_no_class_detected(self, tmp_path: Path) -> None:
+        """Report a governed namespace module that declares no outer class."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -133,6 +138,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule0_wrong_prefix_detected(self, tmp_path: Path) -> None:
+        """Report an outer namespace class whose project prefix is incorrect."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -151,6 +157,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule0_loose_items_detected(self, tmp_path: Path) -> None:
+        """Report loose executable declarations outside the namespace class."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -169,6 +176,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule1_valid_constants_passes(self, tmp_path: Path) -> None:
+        """Accept nested constants declared beneath the canonical facade class."""
         validator = FlextInfraNamespaceValidator()
         module_source = "from __future__ import annotations\n\nclass FlextTestConstants(Constants):\n    class Limits:\n        MAX_RETRIES = 3\n"
         root = _make_project_with_module(
@@ -179,6 +187,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.passed, eq=True)
 
     def test_rule1_loose_constant_detected(self, tmp_path: Path) -> None:
+        """Report a Final constant declared outside its constants namespace."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -193,6 +202,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule1_loose_enum_detected(self, tmp_path: Path) -> None:
+        """Report an enum that creates a second outer namespace class."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -208,6 +218,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule1_method_in_constants_detected(self, tmp_path: Path) -> None:
+        """Reject behavioral methods declared in the constants facade."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -226,6 +237,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule1_magic_number_detected(self, tmp_path: Path) -> None:
+        """Report a loose collection constant containing an unexplained number."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -241,6 +253,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule2_valid_types_passes(self, tmp_path: Path) -> None:
+        """Accept a TypeVar paired with the canonical typings facade."""
         validator = FlextInfraNamespaceValidator()
         module_source = 'from __future__ import annotations\nfrom typing import TypeVar\n\nT = TypeVar("T")\n\nclass FlextTestTypes(Types):\n    pass\n'
         root = _make_project_with_module(
@@ -282,6 +295,7 @@ class TestFlextInfraNamespaceValidator:
         module_name: str,
         expected_violation_substr: str,
     ) -> None:
+        """Report direct runtime imports that bypass namespaced facade aliases."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name=module_name
@@ -300,6 +314,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_utilities_facade_import_remains_allowed(
         self, tmp_path: Path
     ) -> None:
+        """Allow the public utilities facade to assemble its private owner class."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
@@ -319,6 +334,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.passed, eq=True)
 
     def test_rule3_models_facade_import_remains_allowed(self, tmp_path: Path) -> None:
+        """Allow the public models facade to assemble its private owner class."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n"
@@ -340,6 +356,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule0_does_not_flag_non_namespace_runtime_module(
         self, tmp_path: Path
     ) -> None:
+        """Exclude ordinary runtime modules from namespace-layout rule zero."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
@@ -362,6 +379,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule2_typevar_in_class_detected(self, tmp_path: Path) -> None:
+        """Report a TypeVar placed inside a class instead of the typings module."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -377,6 +395,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule2_typevar_wrong_module_detected(self, tmp_path: Path) -> None:
+        """Report a TypeVar declared in a non-typings facade module."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -395,6 +414,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule2_composite_type_loose_detected(self, tmp_path: Path) -> None:
+        """Report a loose composite alias declared outside typings.py."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -413,6 +433,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule2_protocol_in_types_detected(self, tmp_path: Path) -> None:
+        """Report protocol classes nested under the typings facade."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -431,6 +452,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_exempt_files_skipped(self, tmp_path: Path) -> None:
+        """Skip private, package-init, and test modules exempt from namespace rules."""
         validator = FlextInfraNamespaceValidator()
         project_root = tmp_path / "project"
         package_dir = project_root / "src" / "flext_test"
@@ -451,6 +473,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.summary, has="0 files checked")
 
     def test_validate_returns_report(self, tmp_path: Path) -> None:
+        """Return a typed validation report for a successfully scanned project."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -463,6 +486,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.summary, has="files checked")
 
     def test_violation_message_format(self, tmp_path: Path) -> None:
+        """Format every namespace violation with the canonical identifier pattern."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
             tmp_path,
@@ -476,6 +500,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(c.Infra.VIOLATION_PATTERN.search(first), none=False)
 
     def test_rule0_allows_type_checking_block(self, tmp_path: Path) -> None:
+        """Allow declaration-only TYPE_CHECKING blocks at namespace module scope."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n"
@@ -501,6 +526,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule0_allows_annotated_dunder_assign(self, tmp_path: Path) -> None:
+        """Allow the annotated __all__ declaration beside a namespace facade."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
@@ -526,6 +552,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule1_skips_enum_detection_inside_private_constants_dir(
         self, tmp_path: Path
     ) -> None:
+        """Allow enum ownership inside the private constants package."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n"
@@ -552,6 +579,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule2_skips_typealias_detection_inside_private_typings_dir(
         self, tmp_path: Path
     ) -> None:
+        """Allow local aliases inside the private typings package."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\ntype LocalAlias = str | int\n"
@@ -576,6 +604,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_skips_direct_imports_inside_private_dirs(
         self, tmp_path: Path
     ) -> None:
+        """Exclude private implementation packages from public facade import rules."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n"
@@ -616,6 +645,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_test_namespace_runtime_reverse_import_detected(
         self, tmp_path: Path, module_path: str, module_source: str
     ) -> None:
+        """Report runtime reverse imports between governed test facade families."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module_path(
             tmp_path, module_source=module_source, module_path=module_path
@@ -633,6 +663,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_test_namespace_type_checking_reverse_import_allowed(
         self, tmp_path: Path
     ) -> None:
+        """Allow reverse test-facade imports confined to TYPE_CHECKING."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module_path(
             tmp_path,
@@ -661,6 +692,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_test_facade_importing_test_support_detected(
         self, tmp_path: Path, forbidden_module: str
     ) -> None:
+        """Report public test facades importing runtime test-support modules."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module_path(
             tmp_path,
@@ -696,6 +728,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_test_facade_forward_owner_assembly_allowed(
         self, tmp_path: Path, module_path: str, module_source: str
     ) -> None:
+        """Allow each test facade to assemble only earlier facade families."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module_path(
             tmp_path, module_source=module_source, module_path=module_path
@@ -712,6 +745,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_test_facade_matching_private_family_assembly_allowed(
         self, tmp_path: Path
     ) -> None:
+        """Allow a test facade to assemble its matching private family owner."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module_path(
             tmp_path,
@@ -732,6 +766,7 @@ class TestFlextInfraNamespaceValidator:
     def test_rule3_test_private_family_runtime_reverse_import_detected(
         self, tmp_path: Path
     ) -> None:
+        """Report a private test family that imports a later family at runtime."""
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module_path(
             tmp_path,

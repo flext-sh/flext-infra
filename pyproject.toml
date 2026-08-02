@@ -486,12 +486,7 @@ root = "tests"
 
 # [MANAGED] pytest
 [tool.pytest.ini_options]
-addopts = [
-  "--durations=10",
-  "--markdown-docs",
-  "--strict-markers",
-  "--timeout=60",
-]
+addopts = ["--durations=10", "--markdown-docs", "--strict-markers"]
 enable_assertion_pass_hook = true
 filterwarnings = [
   "error",
@@ -678,13 +673,6 @@ split-on-trailing-comma = false
   "undefined-local-with-import-star-usage",
   "undocumented-public-init",
   "unused-import",
-]
-"**/tests/**" = [
-  "compare-to-empty-string",
-  "magic-value-comparison",
-  "undocumented-public-class",
-  "undocumented-public-function",
-  "undocumented-public-method",
 ]
 "scripts/cmd/**/*.py" = ["invalid-module-name"]
 

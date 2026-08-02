@@ -20,6 +20,7 @@ ARGS ?=
 CHECK_GATES ?=
 FAIL_FAST ?= 0
 FILE ?=
+FILES ?=
 FIX ?= 0
 MATCH ?=
 PROJECT ?=
@@ -30,12 +31,14 @@ BRANCH ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
-PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
+PYTEST_TARGETS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
 TEST_ITEM_TIMEOUT_SECONDS ?= 10
 TEST_SESSION_TIMEOUT_SECONDS ?= 60
+TEST_SHARD_COUNT ?= 16
+TEST_SHARD_PARALLELISM ?= 2
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -49,6 +52,7 @@ DOCS_PHASES := generate fix audit build validate
 SERIALIZED_VERBS := check test codegen
 SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
+FMT_PATHS := $(if $(strip $(FILES) $(FILE)),$(strip $(FILES) $(FILE)),$(RUFF_PATHS))
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 UV ?= uv
 UV_REQUESTED := $(UV)
@@ -132,7 +136,9 @@ $(error Required uv executable not found: $(UV_REQUESTED))
 endif
 override UV := $(RESOLVED_UV)
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
-override UV_PROJECT := $(RUNTIME_ROOT)
+# A workspace member shares RUNTIME_VENV with its workspace, while dependency
+# resolution remains anchored to this lane's checked-out project metadata.
+override UV_PROJECT := $(PROJECT_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
@@ -163,7 +169,7 @@ WORKSPACE_TEST_ARGS := $(if $(strip $(FILE)),--make-arg "FILE=$(FILE_RELATIVE)")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS := build check clean docs scan test val
 
-UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(PROJECT_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
@@ -346,6 +352,10 @@ _builtin_help_usage:
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
+	@printf '  %s\n' 'TEST_ITEM_TIMEOUT_SECONDS=$(TEST_ITEM_TIMEOUT_SECONDS)  Per-item pytest deadline';
+	@printf '  %s\n' 'TEST_SESSION_TIMEOUT_SECONDS=$(TEST_SESSION_TIMEOUT_SECONDS)  Whole pytest process deadline';
+	@printf '  %s\n' 'TEST_SHARD_COUNT=$(TEST_SHARD_COUNT)  Deterministic full-suite partitions';
+	@printf '  %s\n' 'TEST_SHARD_PARALLELISM=$(TEST_SHARD_PARALLELISM)  Concurrent full-suite partitions';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
@@ -456,6 +466,12 @@ _builtin_test_all: _builtin_require_environment
 	case "$(TEST_SESSION_TIMEOUT_SECONDS)" in ""|*[!0-9]*) \
 		printf 'ERROR: TEST_SESSION_TIMEOUT_SECONDS must be a positive integer\n' >&2; exit 2 ;; \
 	esac; \
+	case "$(TEST_SHARD_COUNT)" in ""|*[!0-9]*) \
+		printf 'ERROR: TEST_SHARD_COUNT must be a positive integer\n' >&2; exit 2 ;; \
+	esac; \
+	case "$(TEST_SHARD_PARALLELISM)" in ""|*[!0-9]*) \
+		printf 'ERROR: TEST_SHARD_PARALLELISM must be a positive integer\n' >&2; exit 2 ;; \
+	esac; \
 	if [ "$(TEST_ITEM_TIMEOUT_SECONDS)" -le 0 ] || \
 		[ "$(TEST_ITEM_TIMEOUT_SECONDS)" -gt 10 ]; then \
 		printf 'ERROR: TEST_ITEM_TIMEOUT_SECONDS must be between 1 and 10\n' >&2; exit 2; \
@@ -467,17 +483,32 @@ _builtin_test_all: _builtin_require_environment
 	if [ "$(TEST_ITEM_TIMEOUT_SECONDS)" -ge "$(TEST_SESSION_TIMEOUT_SECONDS)" ]; then \
 		printf 'ERROR: TEST_ITEM_TIMEOUT_SECONDS must be less than TEST_SESSION_TIMEOUT_SECONDS\n' >&2; exit 2; \
 	fi; \
+	if [ "$(TEST_SHARD_COUNT)" -le 0 ] || \
+		[ "$(TEST_SHARD_COUNT)" -gt 16 ]; then \
+		printf 'ERROR: TEST_SHARD_COUNT must be between 1 and 16\n' >&2; exit 2; \
+	fi; \
+	if [ "$(TEST_SHARD_PARALLELISM)" -le 0 ] || \
+		[ "$(TEST_SHARD_PARALLELISM)" -gt 2 ]; then \
+		printf 'ERROR: TEST_SHARD_PARALLELISM must be between 1 and 2\n' >&2; exit 2; \
+	fi; \
+	if [ "$(TEST_SHARD_PARALLELISM)" -gt "$(TEST_SHARD_COUNT)" ]; then \
+		printf 'ERROR: TEST_SHARD_PARALLELISM must not exceed TEST_SHARD_COUNT\n' >&2; exit 2; \
+	fi; \
 	command -v timeout >/dev/null 2>&1 || { \
 		printf 'ERROR: required executable not found: timeout\n' >&2; exit 2; \
 	}; \
 	session_started_epoch=$$(date +%s); \
 	if [ -n "$(FILE)" ]; then \
+		if [ -n "$$_files" ]; then \
+			printf 'ERROR: FILE and FILES cannot be combined\n' >&2; exit 2; \
+		fi; \
 		case "$(FILE)" in /*|..|../*|*/../*|*/..) \
 			printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
 		esac; \
-		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
+		_files="$(FILE)"; \
 	fi; \
-	_pytest_run="$(PYTEST_TARGETS)"; \
+	_pytest_targets="$(PYTEST_TARGETS)"; \
+	_pytest_run="$$_pytest_targets"; \
 	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
 	for target in $$_pytest_run; do \
 		if [ ! -e "$$target" ]; then \
@@ -485,6 +516,21 @@ _builtin_test_all: _builtin_require_environment
 		fi; \
 	done; \
 	_all_pytest_args="$(PYTEST_ARGS)"; \
+	_pytest_arg_value=0; \
+	for _pytest_arg in $$_all_pytest_args; do \
+		if [ "$$_pytest_arg_value" -eq 1 ]; then _pytest_arg_value=0; continue; fi; \
+		case "$$_pytest_arg" in \
+			--timeout|--timeout=*|--timeout-method|--timeout-method=*|--junitxml|--junitxml=*|--cov|--cov=*|--no-cov|--collect-only|--basetemp|--basetemp=*|--ignore|--ignore=*|--deselect|--deselect=*|-p|-p*|--override-ini|--override-ini=*|-m|--markers|--lf|--last-failed|--ff|--failed-first|--new-first) \
+				printf 'ERROR: PYTEST_ARGS may not override Make test controls: %s\n' "$$_pytest_arg" >&2; exit 2 ;; \
+			-k|--keyword|--tb|--maxfail|--capture) _pytest_arg_value=1 ;; \
+			--keyword=*|--tb=*|--maxfail=*|--capture=*|-v|-vv|-q|-x|--exitfirst|--disable-warnings|--show-capture=*) : ;; \
+			-*) : ;; \
+			*) printf 'ERROR: PYTEST_ARGS may not add test targets: %s\n' "$$_pytest_arg" >&2; exit 2 ;; \
+		esac; \
+	done; \
+	if [ "$$_pytest_arg_value" -eq 1 ]; then \
+		printf 'ERROR: PYTEST_ARGS option requires a value\n' >&2; exit 2; \
+	fi; \
 	if [ -n "$(MATCH)" ]; then _all_pytest_args="$$_all_pytest_args -k $(MATCH)"; fi; \
 	if [ "$(FAIL_FAST)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -x"; fi; \
 	if [ "$(VERBOSE)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -vv -s"; fi; \
@@ -505,39 +551,230 @@ _builtin_test_all: _builtin_require_environment
 	_coverage_required=1; \
 	_coverage_value="$$coverage_file"; \
 	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
-		[ "$$_pytest_run" != "$(PROJECT_ROOT)/tests" ]; then \
+		[ -n "$$_pytest_targets" ]; then \
 		_coverage_args="--no-cov"; \
 		_coverage_required=0; \
 		_coverage_value="not-generated"; \
 	fi; \
-	printf '%s\n' '$(UV_RUN) python -m pytest' \
-		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
-		"--timeout=$(TEST_ITEM_TIMEOUT_SECONDS) --timeout-method=signal" \
-		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
-	timeout --signal=TERM \
-		--kill-after=5s \
-		"$(TEST_SESSION_TIMEOUT_SECONDS)s" \
-		$(UV_RUN) python -m pytest $$_pytest_run \
-		$(PYTEST_REPORT_ARGS) \
-		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
-		-p no:metadata \
-		--junitxml="$$junit_file" \
-		--timeout="$(TEST_ITEM_TIMEOUT_SECONDS)" \
-		--timeout-method=signal \
-		$$_coverage_args \
-		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
-	rc=$$?; \
-	cat "$$log_file"; \
-	if [ "$$rc" -eq 124 ]; then \
-		printf 'ERROR: pytest session exceeded %ss\n' \
-			"$(TEST_SESSION_TIMEOUT_SECONDS)" >&2; \
+	_diag_inputs=""; \
+	_junit_inputs=""; \
+	if [ "$$_coverage_required" -eq 1 ]; then \
+		plan_dir="$$report_dir/shard-plan"; \
+		plan_log="$$report_dir/pytest-plan.log"; \
+		mkdir -p "$$plan_dir"; \
+		printf '%s\n' '$(UV_RUN) python -m pytest' \
+			"$$_pytest_run --collect-only -p flext_infra.pytest_shard" \
+			"--flext-shard-count=$(TEST_SHARD_COUNT) --flext-shard-plan-dir=$$plan_dir" \
+			"--timeout=$(TEST_ITEM_TIMEOUT_SECONDS) --timeout-method=signal" \
+			"$$_all_pytest_args" > "$$command_file"; \
+		timeout --signal=TERM \
+			--kill-after=5s \
+			"$(TEST_SESSION_TIMEOUT_SECONDS)s" \
+			$(UV_RUN) python -m pytest $$_pytest_run --collect-only -q --no-cov \
+			-p no:metadata -p flext_infra.pytest_shard \
+			--flext-shard-count="$(TEST_SHARD_COUNT)" \
+			--flext-shard-plan-dir="$$plan_dir" \
+			--basetemp="$$report_dir/pytest-plan-tmp" \
+			-o cache_dir="$$report_dir/pytest-plan-cache" \
+			--timeout="$(TEST_ITEM_TIMEOUT_SECONDS)" \
+			--timeout-method=signal $$_all_pytest_args > "$$plan_log" 2>&1; \
+		rc=$$?; \
+		cat "$$plan_log"; \
+		if [ "$$rc" -eq 124 ]; then \
+			printf 'ERROR: pytest collection plan exceeded %ss\n' \
+				"$(TEST_SESSION_TIMEOUT_SECONDS)" >&2; \
+		fi; \
+		if [ "$$rc" -ne 0 ] || [ ! -s "$$plan_dir/all-items.txt" ]; then \
+			printf 'ERROR: pytest shard plan failed or produced no items\n' >&2; \
+			duration=$$(( $$(date +%s) - session_started_epoch )); \
+			printf 'status=incomplete\njunit=not-combined\ncoverage=not-generated\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=%s\n' "$$duration" > "$$summary_file"; \
+			ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
+			exit "$${rc:-2}"; \
+		fi; \
+		effective_shard_count=$$(find "$$plan_dir" -maxdepth 1 -type f -name 'shard-*.expected.txt' | wc -l | tr -d ' '); \
+		case "$$effective_shard_count" in ""|*[!0-9]*) \
+			printf 'ERROR: pytest shard plan has an invalid effective count\n' >&2; exit 2 ;; \
+		esac; \
+		if [ "$$effective_shard_count" -le 0 ] || \
+			[ "$$effective_shard_count" -gt "$(TEST_SHARD_COUNT)" ]; then \
+			printf 'ERROR: pytest shard plan has an invalid effective count: %s\n' "$$effective_shard_count" >&2; exit 2; \
+		fi; \
+		effective_shard_parallelism="$(TEST_SHARD_PARALLELISM)"; \
+		if [ "$$effective_shard_parallelism" -gt "$$effective_shard_count" ]; then \
+			effective_shard_parallelism="$$effective_shard_count"; \
+		fi; \
+		shard_index=0; \
+		while [ "$$shard_index" -lt "$$effective_shard_count" ]; do \
+			expected="$$plan_dir/shard-$$shard_index.expected.txt"; \
+			if [ ! -s "$$expected" ]; then \
+				printf 'ERROR: pytest shard plan is missing or empty: %s\n' \
+					"$$expected" >&2; \
+				duration=$$(( $$(date +%s) - session_started_epoch )); \
+				printf 'status=incomplete\njunit=not-combined\ncoverage=not-generated\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=%s\n' "$$duration" > "$$summary_file"; \
+				ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; exit 2; \
+			fi; \
+			shard_index=$$((shard_index + 1)); \
+		done; \
+		: > "$$log_file"; \
+		rc=0; \
+		batch_start=0; \
+		while [ "$$batch_start" -lt "$$effective_shard_count" ]; do \
+			batch_end=$$((batch_start + effective_shard_parallelism)); \
+			if [ "$$batch_end" -gt "$$effective_shard_count" ]; then \
+				batch_end="$$effective_shard_count"; \
+			fi; \
+			shard_index="$$batch_start"; \
+			pids=""; \
+			while [ "$$shard_index" -lt "$$batch_end" ]; do \
+				expected="$$plan_dir/shard-$$shard_index.expected.txt"; \
+				actual="$$plan_dir/shard-$$shard_index.actual.txt"; \
+				shard_log="$$report_dir/pytest-shard-$$shard_index.log"; \
+				shard_junit="$$report_dir/junit-shard-$$shard_index.xml"; \
+				shard_status="$$report_dir/shard-$$shard_index.status"; \
+				shard_coverage="$$report_dir/.coverage.combined.$$shard_index"; \
+				( \
+					COVERAGE_FILE="$$shard_coverage" \
+					timeout --signal=TERM \
+						--kill-after=5s \
+						"$(TEST_SESSION_TIMEOUT_SECONDS)s" \
+						$(UV_RUN) python -m pytest $$_pytest_run \
+						$(PYTEST_REPORT_ARGS) \
+						$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
+						-p no:metadata -p flext_infra.pytest_shard \
+						--flext-shard-count="$$effective_shard_count" \
+						--flext-shard-index="$$shard_index" \
+						--flext-shard-source-manifest="$$expected" \
+						--flext-shard-manifest="$$actual" \
+						--basetemp="$$report_dir/pytest-shard-$$shard_index-tmp" \
+						-o cache_dir="$$report_dir/pytest-shard-$$shard_index-cache" \
+						--junitxml="$$shard_junit" \
+						--timeout="$(TEST_ITEM_TIMEOUT_SECONDS)" \
+						--timeout-method=signal \
+						--cov --cov-report= \
+						$(if $(filter 1,$(DIAG)),-vv,-q) \
+						$$_all_pytest_args > "$$shard_log" 2>&1; \
+					printf '%s\n' "$$?" > "$$shard_status"; \
+				) & \
+				pids="$$pids $$!"; \
+				shard_index=$$((shard_index + 1)); \
+			done; \
+			for pid in $$pids; do wait "$$pid" || :; done; \
+			shard_index="$$batch_start"; \
+			while [ "$$shard_index" -lt "$$batch_end" ]; do \
+				shard_log="$$report_dir/pytest-shard-$$shard_index.log"; \
+				shard_junit="$$report_dir/junit-shard-$$shard_index.xml"; \
+				shard_status="$$report_dir/shard-$$shard_index.status"; \
+				printf '\n=== pytest shard %s ===\n' "$$shard_index" | tee -a "$$log_file"; \
+				cat "$$shard_log" | tee -a "$$log_file"; \
+				if [ ! -s "$$shard_status" ]; then \
+					printf 'ERROR: pytest shard %s produced no status\n' \
+						"$$shard_index" >&2; child_rc=2; \
+				else \
+					child_rc=$$(cat "$$shard_status"); \
+				fi; \
+				if [ "$$child_rc" -eq 124 ]; then \
+					printf 'ERROR: pytest shard %s exceeded %ss\n' \
+						"$$shard_index" "$(TEST_SESSION_TIMEOUT_SECONDS)" >&2; \
+				fi; \
+				if [ "$$child_rc" -ne 0 ] && [ "$$rc" -eq 0 ]; then rc="$$child_rc"; fi; \
+				if [ ! -s "$$shard_junit" ]; then \
+					printf 'ERROR: pytest shard %s JUnit is missing or empty: %s\n' \
+						"$$shard_index" "$$shard_junit" >&2; rc=2; \
+				fi; \
+				_junit_inputs="$$_junit_inputs --junit $$shard_junit"; \
+				shard_index=$$((shard_index + 1)); \
+			done; \
+			if [ "$$rc" -ne 0 ]; then break; fi; \
+			batch_start="$$batch_end"; \
+		done; \
+		if [ "$$rc" -eq 0 ]; then \
+			actual_all="$$plan_dir/all-items.actual.txt"; \
+			: > "$$actual_all"; \
+			shard_index=0; \
+			while [ "$$shard_index" -lt "$$effective_shard_count" ]; do \
+				actual="$$plan_dir/shard-$$shard_index.actual.txt"; \
+				if [ ! -s "$$actual" ]; then \
+					printf 'ERROR: pytest shard result is missing or empty: %s\n' \
+						"$$actual" >&2; rc=2; break; \
+				fi; \
+				cat "$$actual" >> "$$actual_all"; \
+				shard_index=$$((shard_index + 1)); \
+			done; \
+			if [ "$$rc" -eq 0 ]; then \
+				LC_ALL=C sort "$$plan_dir/all-items.txt" > "$$plan_dir/all-items.sorted.txt"; \
+				LC_ALL=C sort "$$actual_all" > "$$plan_dir/all-items.actual.sorted.txt"; \
+				if [ -s "$$actual_all" ] && \
+					[ "$$(wc -l < "$$actual_all")" -ne \
+						"$$(LC_ALL=C sort -u "$$actual_all" | wc -l)" ]; then \
+					printf 'ERROR: duplicate pytest node ids across shards\n' >&2; rc=2; \
+				elif ! cmp -s "$$plan_dir/all-items.sorted.txt" \
+					"$$plan_dir/all-items.actual.sorted.txt"; then \
+					printf 'ERROR: pytest shard manifests do not cover the collection plan\n' \
+						>&2; rc=2; \
+				fi; \
+			fi; \
+		fi; \
+		if [ "$$rc" -eq 0 ]; then \
+			$(RUNTIME_PYTHON) -m coverage combine \
+				--data-file="$$report_dir/.coverage.combined" --keep "$$report_dir"; \
+			rc=$$?; \
+			if [ "$$rc" -eq 0 ]; then \
+				$(RUNTIME_PYTHON) -m coverage xml \
+					--data-file="$$report_dir/.coverage.combined" \
+					-o "$$coverage_file"; \
+				rc=$$?; \
+			fi; \
+		fi; \
+		if [ "$$rc" -eq 0 ]; then \
+			env $(PROJECT_FLEXT_INFRA) validate pytest-diag --combine-junit "$$junit_file" $$_junit_inputs; \
+			rc=$$?; \
+			if [ "$$rc" -eq 0 ]; then _diag_inputs="--junit $$junit_file --log $$log_file"; fi; \
+		fi; \
+	else \
+		printf '%s\n' '$(UV_RUN) python -m pytest' \
+			"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
+			"--timeout=$(TEST_ITEM_TIMEOUT_SECONDS) --timeout-method=signal" \
+			"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
+		timeout --signal=TERM \
+			--kill-after=5s \
+			"$(TEST_SESSION_TIMEOUT_SECONDS)s" \
+			$(UV_RUN) python -m pytest $$_pytest_run \
+			$(PYTEST_REPORT_ARGS) \
+			$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
+			-p no:metadata \
+			--junitxml="$$junit_file" \
+			--timeout="$(TEST_ITEM_TIMEOUT_SECONDS)" \
+			--timeout-method=signal \
+			$$_coverage_args \
+			$(if $(filter 1,$(DIAG)),-vv,-q) \
+			$$_all_pytest_args > "$$log_file" 2>&1; \
+		rc=$$?; \
+		cat "$$log_file"; \
+		if [ "$$rc" -eq 124 ]; then \
+			printf 'ERROR: pytest session exceeded %ss\n' \
+				"$(TEST_SESSION_TIMEOUT_SECONDS)" >&2; \
+		fi; \
+		_diag_inputs="--junit $$junit_file --log $$log_file"; \
 	fi; \
 	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
 		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
 			"$$coverage_file" >&2; \
 		if [ "$$rc" -eq 0 ]; then rc=2; fi; \
 	fi; \
-	if [ -f "$$junit_file" ]; then \
+	if [ "$$_coverage_required" -eq 1 ] && [ "$$rc" -ne 0 ]; then \
+		duration=$$(( $$(date +%s) - session_started_epoch )); \
+		printf 'status=incomplete\njunit=not-combined\ncoverage=not-generated\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=%s\n' \
+			"$$duration" > "$$summary_file"; \
+		ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
+		printf 'Reports: %s (latest: %s/latest)\n' \
+			"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
+		exit "$$rc"; \
+	fi; \
+	if [ "$$_coverage_required" -eq 1 ]; then \
+		tests=$$(wc -l < "$$plan_dir/all-items.txt"); \
+		duration=$$(( $$(date +%s) - session_started_epoch )); \
+		failures=0; errors=0; skipped=0; passed="$$tests"; \
+	elif [ -f "$$junit_file" ]; then \
 		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		failures=$$(grep -Eo 'failures="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		errors=$$(grep -Eo 'errors="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
@@ -547,25 +784,28 @@ _builtin_test_all: _builtin_require_environment
 		skipped=$${skipped:-0}; duration=$${duration:-0}; \
 		passed=$$((tests - failures - errors - skipped)); \
 		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
-		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
-			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
-			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
 	else \
-		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
-			"$$_coverage_value" > "$$summary_file"; \
+		tests=0; failures=0; errors=0; skipped=0; passed=0; duration=0; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
 	elapsed_seconds=$$(( $$(date +%s) - session_started_epoch )); \
-	remaining_seconds=$$(( $(TEST_SESSION_TIMEOUT_SECONDS) - elapsed_seconds )); \
+	if [ "$$_coverage_required" -eq 1 ]; then \
+		remaining_seconds="$(TEST_SESSION_TIMEOUT_SECONDS)"; \
+	else \
+		remaining_seconds=$$(( $(TEST_SESSION_TIMEOUT_SECONDS) - elapsed_seconds )); \
+	fi; \
 	if [ "$$remaining_seconds" -le 0 ]; then \
 		printf 'ERROR: test session exhausted %ss before diagnostic extraction\n' \
 			"$(TEST_SESSION_TIMEOUT_SECONDS)" >&2; \
+		duration=$$(( $$(date +%s) - session_started_epoch )); \
+		printf 'status=incomplete\njunit=not-combined\ncoverage=not-generated\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=%s\n' "$$duration" > "$$summary_file"; \
+		ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
 		exit 124; \
 	fi; \
 	if timeout --signal=TERM \
 		--kill-after=5s "$${remaining_seconds}s" \
-		$(PROJECT_FLEXT_INFRA) validate pytest-diag \
-		--junit "$$junit_file" --log "$$log_file" \
+		env $(PROJECT_FLEXT_INFRA) validate pytest-diag \
+		$$_diag_inputs \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
 		--skips "$$skips_file" > "$$counts_file"; then \
@@ -575,6 +815,9 @@ _builtin_test_all: _builtin_require_environment
 		printf 'ERROR: pytest diagnostic extraction failed (exit=%s)\n' \
 			"$$counts_status" >&2; \
 		cat "$$counts_file" >&2; \
+		duration=$$(( $$(date +%s) - session_started_epoch )); \
+		printf 'status=incomplete\njunit=not-combined\ncoverage=not-generated\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=%s\n' "$$duration" > "$$summary_file"; \
+		ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
 		exit "$$counts_status"; \
 	fi; \
 	if ! awk ' \
@@ -585,13 +828,27 @@ _builtin_test_all: _builtin_require_environment
 	' "$$counts_file"; then \
 		echo "ERROR: invalid pytest diagnostic counts contract" >&2; \
 		cat "$$counts_file" >&2; \
+		duration=$$(( $$(date +%s) - session_started_epoch )); \
+		printf 'status=incomplete\njunit=not-combined\ncoverage=not-generated\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=%s\n' "$$duration" > "$$summary_file"; \
+		ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
 		exit 2; \
 	fi; \
 	. "$$counts_file"; \
+	if [ "$$_coverage_required" -eq 1 ]; then \
+		failures="$${failed_count:-0}"; errors="$${error_count:-0}"; \
+		skipped="$${skipped_count:-0}"; \
+		passed=$$((tests - failures - errors - skipped)); \
+		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
+	fi; \
 	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
 		[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
 		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
 	fi; \
+	summary_status=complete; \
+	if [ "$$rc" -ne 0 ]; then summary_status=incomplete; fi; \
+	printf 'status=%s\njunit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
+		"$$summary_status" "$$junit_file" "$$_coverage_value" "$$tests" "$$passed" \
+		"$$failures" "$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
 	if [ "$(DIAG)" = "1" ]; then \
 		run_state=COMPLETED; \
 		if [ "$$rc" -eq 130 ]; then run_state=INTERRUPTED; fi; \
@@ -606,13 +863,13 @@ _builtin_test_all: _builtin_require_environment
 
 
 _builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --no-fix $(FMT_PATHS)
+	@$(UV_RUN) ruff format --check $(FMT_PATHS)
 
 _builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --fix $(FMT_PATHS)
+	@$(UV_RUN) ruff format $(FMT_PATHS)
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)

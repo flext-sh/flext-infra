@@ -26,6 +26,7 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(len(result.value.splitlines()), gt=_MIN_RENDERED_LINES)
 
     def test_bootstrap_setup_is_self_contained_and_branch_aware(self) -> None:
+        """Render bootstrap setup with branch checks and no ambient tool fallback."""
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer.render_bootstrap_include())
 
         for required in (
@@ -91,12 +92,28 @@ class TestsFlextInfraBasemkRenderer:
             lint_gates=["lint", "mypy"],
             test_item_timeout_seconds=make_spec.test_item_timeout_seconds,
             test_session_timeout_seconds=make_spec.test_session_timeout_seconds,
+            test_shard_count=make_spec.test_shard_count,
+            test_shard_parallelism=make_spec.test_shard_parallelism,
         )
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings)
 
         tm.ok(result)
         tm.that(result.value, has="PROJECT_NAME ?= sample-project")
+
+    def test_render_all_accepts_arbitrary_valid_shard_configuration(self) -> None:
+        """Render config-owned shard values without freezing today's defaults."""
+        base = FlextInfraBaseMkTemplateRenderer.default_config()
+        settings = m.Infra.BaseMkConfig.model_validate({
+            **base.model_dump(),
+            "test_shard_count": 7,
+            "test_shard_parallelism": 3,
+        })
+
+        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all(settings))
+
+        tm.that(rendered, has="TEST_SHARD_COUNT ?= 7")
+        tm.that(rendered, has="TEST_SHARD_PARALLELISM ?= 3")
 
     def test_render_single_missing_template_fails(self) -> None:
         """Reject a template name outside the canonical inventory."""

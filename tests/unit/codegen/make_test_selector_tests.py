@@ -68,6 +68,19 @@ class TestsMakeTestSelector:
             eq=calls_before_retired,
         )
 
+    def test_generated_fmt_honors_the_canonical_file_selector(self) -> None:
+        """A disjoint worker can format only its owned path through Make."""
+        template = _makefile_template().read_text(encoding="utf-8")
+
+        tm.that(
+            template,
+            has="FMT_PATHS := $(if $(strip $(FILES) $(FILE)),$(strip $(FILES) $(FILE)),$(RUFF_PATHS))",
+        )
+        tm.that(template, has="ruff check --no-fix $(FMT_PATHS)")
+        tm.that(template, has="ruff format --check $(FMT_PATHS)")
+        tm.that(template, has="ruff check --fix $(FMT_PATHS)")
+        tm.that(template, has="ruff format $(FMT_PATHS)")
+
     def test_recursive_dispatch_preserves_explicit_makefile(
         self, tmp_path: Path
     ) -> None:

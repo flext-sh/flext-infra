@@ -351,6 +351,21 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+    class WorktreeValidationSpec(_ConfigContract):
+        """Canonical non-mutating Make smoke check for a materialized worktree."""
+
+        verb: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Public Make verb executed after worktree setup"),
+        ]
+        arguments: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default_factory=tuple,
+                description="Make variable assignments for the non-mutating smoke run",
+            ),
+        ]
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -374,6 +389,21 @@ class FlextInfraConfigModels:
             m.Field(
                 gt=0, description="Maximum wall time for one complete test session"
             ),
+        ]
+        test_shard_count: Annotated[
+            int,
+            m.Field(gt=0, description="Deterministic full-suite pytest shard count"),
+        ]
+        test_shard_parallelism: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description="Maximum concurrently executing full-suite pytest shards",
+            ),
+        ]
+        worktree_validation: Annotated[
+            FlextInfraConfigModels.WorktreeValidationSpec,
+            m.Field(description="Post-setup worktree runtime smoke validation"),
         ]
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
@@ -411,6 +441,9 @@ class FlextInfraConfigModels:
                     "test_session_timeout_seconds"
                 )
                 raise ValueError(msg)
+            if self.test_shard_parallelism > self.test_shard_count:
+                msg = "make test_shard_parallelism must not exceed test_shard_count"
+                raise ValueError(msg)
             return self
 
         @u.model_validator(mode="after")
@@ -427,6 +460,15 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             if "setup" in serialized:
                 msg = "make setup cannot require the managed validation environment"
+                raise ValueError(msg)
+            if self.worktree_validation.verb not in declared:
+                msg = (
+                    "make worktree_validation verb is not declared public: "
+                    f"{self.worktree_validation.verb}"
+                )
+                raise ValueError(msg)
+            if self.worktree_validation.verb == "setup":
+                msg = "make worktree_validation cannot recursively execute setup"
                 raise ValueError(msg)
             return self
 

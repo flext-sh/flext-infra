@@ -24,6 +24,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
     """Behavior contract for test_generator_edge_cases."""
 
     def test_generator_write_handles_file_path_failure(self, tmp_path: Path) -> None:
+        """Return a failure when the output parent is an occupied file."""
         blocked_parent = tmp_path / "readonly"
         blocked_parent.write_text("occupied", encoding="utf-8")
 
@@ -35,6 +36,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         tm.that(result.error, empty=False)
 
     def test_generator_write_to_stream_handles_oserror(self) -> None:
+        """Translate an output stream OSError into the generator failure contract."""
         result = FlextInfraBaseMkGenerator().write(
             "all:\n\t@echo 'test'\n", stream=_FailingStream()
         )
@@ -43,6 +45,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         tm.that((result.error or ""), has="stdout write failed")
 
     def test_generator_write_to_closed_stream_fails(self) -> None:
+        """Reject writes to a closed output stream without raising to the caller."""
         stream = io.StringIO()
         stream.close()
 

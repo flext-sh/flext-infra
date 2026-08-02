@@ -351,6 +351,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_accepts_workspace_before_subcommand(
         self, tmp_path: Path
     ) -> None:
+        """Accept the workspace option before the census subcommand."""
         workspace = self._build_basic_workspace(tmp_path)[0]
         result = self._refactor_main("--workspace", str(workspace), "census")
         tm.that(result, eq=0)
@@ -358,6 +359,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_fixes_missing_runtime_alias(
         self, tmp_path: Path
     ) -> None:
+        """Add a missing runtime facade alias during census apply."""
         workspace, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -382,6 +384,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_reports_duplicate_runtime_alias(
         self, tmp_path: Path
     ) -> None:
+        """Report duplicate runtime aliases without mutating the workspace."""
         workspace, _ = self._build_runtime_alias_duplicate_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
@@ -405,6 +408,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_rewrites_duplicate_runtime_alias(
         self, tmp_path: Path
     ) -> None:
+        """Rewrite duplicate runtime aliases to their canonical declaration."""
         workspace, module_path = self._build_runtime_alias_duplicate_workspace(tmp_path)
 
         result = self._refactor_main(
@@ -421,6 +425,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(source.count("m = FlextDemoModels"), eq=1)
 
     def test_refactor_census_reports_manual_typing_alias(self, tmp_path: Path) -> None:
+        """Report a manually declared typing alias owned by the canonical facade."""
         workspace, _ = self._build_basic_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
@@ -443,6 +448,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].description, has="typings scope")
 
     def test_refactor_census_reports_compatibility_alias(self, tmp_path: Path) -> None:
+        """Report a compatibility alias that preserves a superseded public path."""
         workspace, _ = self._build_compatibility_alias_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
@@ -465,6 +471,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].description, has="should use 'NewThing' directly")
 
     def test_refactor_census_reports_mro_completeness(self, tmp_path: Path) -> None:
+        """Report facade MRO chains that omit required family members."""
         workspace = self._build_mro_incomplete_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
@@ -524,6 +531,7 @@ class TestsFlextInfraRefactorMainCli:
         rules: t.StrSequence,
         expected_kind: str,
     ) -> None:
+        """Exclude detector-only rules from the removal candidate inventory."""
         builder = getattr(self, builder_name)
         built_workspace = builder(tmp_path)
         workspace = (
@@ -560,6 +568,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_mro_completeness_skips_irrelevant_modules(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Skip MRO checks for modules outside facade ownership."""
         workspace = self._build_mro_incomplete_workspace(tmp_path)
         service_path = workspace / "src" / "flext_demo" / "service.py"
         self._write(
@@ -607,6 +616,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_rewrites_manual_typing_alias(
         self, tmp_path: Path
     ) -> None:
+        """Replace a manual typing alias with its canonical facade reference."""
         workspace, service_file = self._build_basic_workspace(tmp_path)
         typings_file = service_file.parent / "typings.py"
 
@@ -630,6 +640,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_rewrites_compatibility_alias(
         self, tmp_path: Path
     ) -> None:
+        """Remove a compatibility alias through the census apply surface."""
         workspace, module_path = self._build_compatibility_alias_workspace(tmp_path)
 
         result = self._refactor_main(
@@ -649,6 +660,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_rewrites_mro_completeness(
         self, tmp_path: Path
     ) -> None:
+        """Complete an incomplete facade MRO chain during census apply."""
         workspace = self._build_mro_incomplete_workspace(tmp_path)
         module_path = workspace / "src" / "flext_demo" / "models.py"
 
@@ -669,6 +681,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_flags_unused_when_only_tests_reference_source(
         self, tmp_path: Path
     ) -> None:
+        """Treat a source symbol referenced only by tests as unused production code."""
         workspace = self._build_test_only_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
@@ -703,6 +716,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_keeps_facade_members_out_of_removal_candidates(
         self, tmp_path: Path
     ) -> None:
+        """Preserve public facade members from the removal candidate set."""
         workspace, _module_path = self._build_facade_member_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
@@ -721,6 +735,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_removes_unused_source_without_touching_tests(
         self, tmp_path: Path
     ) -> None:
+        """Remove unused production source while leaving test consumers unchanged."""
         workspace = self._build_test_only_workspace(tmp_path)
         service_file = workspace / "src" / "sample_pkg" / "service.py"
         test_file = workspace / "tests" / "test_service.py"
@@ -759,6 +774,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_cascades_through_init_lazy_map_and_all(
         self, tmp_path: Path
     ) -> None:
+        """Cascade removals through package imports, lazy maps, and __all__."""
         workspace, helpers_file, init_path = self._build_lazy_init_cascade_workspace(
             tmp_path
         )
@@ -804,6 +820,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_removes_decorated_unused_function(
         self, tmp_path: Path
     ) -> None:
+        """Remove an unused decorated function without leaving its decorator."""
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
         self._write(
@@ -852,6 +869,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(_parse_source_ast(service_source), none=False)
 
     def test_refactor_census_strip_module_all_entry_multi_line(self) -> None:
+        """Remove one symbol from a multiline module __all__ declaration."""
         source = (
             "from __future__ import annotations\n\n"
             "__all__: list[str] = [\n"
@@ -868,6 +886,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_against_cloned_flext_layout(
         self, tmp_path: Path
     ) -> None:
+        """Apply census changes inside a cloned FLEXT workspace layout."""
         origin, origin_helpers, origin_init = self._build_lazy_init_cascade_workspace(
             tmp_path
         )
@@ -909,6 +928,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_removes_unused_top_level_and_cleans_imports(
         self, tmp_path: Path
     ) -> None:
+        """Remove unused top-level source and clean imports made obsolete."""
         workspace, service_file = (
             self._build_unused_top_level_workspace_with_source_import(tmp_path)
         )
@@ -945,6 +965,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_dry_run_validates_candidate_after_import_cleanup(
         self, tmp_path: Path
     ) -> None:
+        """Validate a dry-run candidate after simulating import cleanup."""
         workspace, service_file = self._build_test_only_workspace_with_source_import(
             tmp_path
         )
@@ -968,6 +989,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_dry_run_does_not_mutate_files(
         self, tmp_path: Path
     ) -> None:
+        """Keep source files unchanged when apply executes in dry-run mode."""
         workspace = self._build_test_only_workspace(tmp_path)
         service_file = workspace / "src" / "sample_pkg" / "service.py"
         test_file = workspace / "tests" / "test_service.py"
@@ -1031,6 +1053,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_dry_run_excludes_unsupported_method_candidate(
         self, tmp_path: Path
     ) -> None:
+        """Exclude unsupported method removals from dry-run candidates."""
         self._assert_dry_run_one_violation_no_candidate(
             self._build_test_only_method_workspace(tmp_path),
             impact_map_path=tmp_path / "method-impact-map.json",
@@ -1043,6 +1066,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_dry_run_excludes_unsupported_nested_unused_function(
         self, tmp_path: Path
     ) -> None:
+        """Exclude nested unused functions unsupported by the removal engine."""
         self._assert_dry_run_one_violation_no_candidate(
             self._build_unused_nested_function_workspace(tmp_path),
             impact_map_path=tmp_path / "nested-unused-impact-map.json",
@@ -1055,6 +1079,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_dry_run_validates_unused_candidate_after_import_cleanup(
         self, tmp_path: Path
     ) -> None:
+        """Validate an unused candidate after planned import cleanup."""
         workspace, service_file = (
             self._build_unused_top_level_workspace_with_source_import(tmp_path)
         )
@@ -1098,6 +1123,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_dry_run_excludes_unsupported_local_unused_object(
         self, tmp_path: Path
     ) -> None:
+        """Exclude unsupported local objects from dry-run removals."""
         self._assert_dry_run_one_violation_no_candidate(
             self._build_unused_local_workspace(tmp_path),
             impact_map_path=tmp_path / "local-unused-impact-map.json",
@@ -1110,6 +1136,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_writes_impact_map_for_removal_candidates(
         self, tmp_path: Path
     ) -> None:
+        """Write an impact map containing every planned removal candidate."""
         workspace = self._build_test_only_workspace(tmp_path)
         impact_map_path = tmp_path / "impact-map.json"
 
@@ -1142,6 +1169,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_cli_writes_impact_map_for_removal_candidates(
         self, tmp_path: Path
     ) -> None:
+        """Expose the removal impact map through the public census CLI."""
         workspace = self._build_test_only_workspace(tmp_path)
         impact_map_path = tmp_path / "cli-impact-map.json"
 
@@ -1169,6 +1197,7 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_preserves_impact_map_plan(
         self, tmp_path: Path
     ) -> None:
+        """Preserve the pre-apply impact plan after removal execution."""
         workspace = self._build_test_only_workspace(tmp_path)
         impact_map_path = tmp_path / "apply-impact-map.json"
 

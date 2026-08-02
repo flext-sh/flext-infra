@@ -84,6 +84,10 @@ help: ## Show commands
 {% for help_line in make.PROJECT_OPTION_LINES %}
 	$(Q)echo "  {{ help_line | replace('"', '\\"') }}"
 {% endfor %}
+	$(Q)echo "  TEST_ITEM_TIMEOUT_SECONDS=$(TEST_ITEM_TIMEOUT_SECONDS)  Per-item pytest deadline"
+	$(Q)echo "  TEST_SESSION_TIMEOUT_SECONDS=$(TEST_SESSION_TIMEOUT_SECONDS)  Whole pytest process deadline"
+	$(Q)echo "  TEST_SHARD_COUNT=$(TEST_SHARD_COUNT)  Deterministic full-suite partitions"
+	$(Q)echo "  TEST_SHARD_PARALLELISM=$(TEST_SHARD_PARALLELISM)  Concurrent full-suite partitions"
 	$(Q)echo ""
 	$(Q)echo "PR variables:"
 {% for help_line in make.PROJECT_PR_OPTION_LINES %}
@@ -332,9 +336,11 @@ _test_impl:
     "$(VENV_PYTHON) -m pytest",
     "$(PROJECT_INFRA_VALIDATE)",
     "$(PYTEST_TARGETS)",
-    "$(TESTS_DIR)",
     test_item_timeout_seconds,
     test_session_timeout_seconds,
+    test_shard_count,
+    test_shard_parallelism,
+    "$(VENV_PYTHON) -m coverage",
     timeout_command,
     timeout_kill_after_seconds,
     "$(Q)",

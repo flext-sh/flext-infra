@@ -125,7 +125,7 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
-        ("PYTEST_TARGETS", "tests"),
+        ("PYTEST_TARGETS", ""),
         ("DIAG", "0"),
         (CHECK_GATES_VARIABLE, ""),
         ("VALIDATE_GATES", ""),
@@ -156,7 +156,7 @@ class FlextInfraConstantsMake:
         ("PROJECTS", ""),
         ("WHAT", ""),
         ("PYTEST_ARGS", ""),
-        ("PYTEST_TARGETS", "tests"),
+        ("PYTEST_TARGETS", ""),
         ("VALIDATE_SCOPE", "all"),
         ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),

@@ -14,6 +14,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
     """Behavior contract for FlextInfraRefactorProjectAliasMigrator."""
 
     def test_migrates_owned_aliases_to_local_facades(self) -> None:
+        """Move project-owned core aliases to their local facade modules."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import c, m, t, u\n\n"
@@ -31,6 +32,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(len(changes), eq=4)
 
     def test_keeps_unowned_aliases_in_flext_core(self) -> None:
+        """Keep aliases not owned by the project imported from flext_core."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import c, r\n\n"
@@ -46,6 +48,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(len(changes), eq=1)
 
     def test_migrates_parenthesized_multiline_import(self) -> None:
+        """Migrate owned aliases from a parenthesized multiline import."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import (\n"
@@ -66,6 +69,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(len(changes), eq=2)
 
     def test_no_change_when_project_owns_no_aliases(self) -> None:
+        """Leave source unchanged when the project owns no imported aliases."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import c, t\n\n"
@@ -80,6 +84,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(changes, eq=[])
 
     def test_migrates_long_name_aliased_to_canonical(self) -> None:
+        """Replace an owned long-name alias with its canonical facade import."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import FlextConstants as c\n\n"
@@ -94,6 +99,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(len(changes), eq=1)
 
     def test_keeps_non_canonical_alias_bound_name(self) -> None:
+        """Preserve imports bound to a noncanonical local alias name."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import c as constants_ns\n\n"
@@ -107,6 +113,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(changes, eq=[])
 
     def test_removes_flext_core_import_when_all_aliases_migrated(self) -> None:
+        """Remove an empty flext_core import after migrating every alias."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import c\n\n"
@@ -121,6 +128,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(len(changes), eq=1)
 
     def test_no_change_without_flext_core_import(self) -> None:
+        """Leave source without flext_core imports unchanged."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_infra.constants import c\n\n"
@@ -134,6 +142,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(changes, eq=[])
 
     def test_migrates_submodule_alias_import(self) -> None:
+        """Migrate a long-name alias imported from a flext_core submodule."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core.utilities import FlextUtilities as u\n\n"
@@ -148,6 +157,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(len(changes), eq=1)
 
     def test_preserves_existing_local_alias(self) -> None:
+        """Reuse an existing local facade import without duplicating it."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core.utilities import FlextUtilities as u\n"
@@ -163,6 +173,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(len(changes), eq=1)
 
     def test_skips_type_checking_imports(self) -> None:
+        """Preserve flext_core aliases nested under TYPE_CHECKING."""
         source = (
             "from __future__ import annotations\n\n"
             "from typing import TYPE_CHECKING\n\n"
@@ -178,6 +189,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(changes, eq=[])
 
     def test_skip_alias_source_packages(self) -> None:
+        """Skip migration when processing the package that owns the aliases."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import c\n\n"
@@ -191,6 +203,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(changes, eq=[])
 
     def test_keeps_core_aliases_inside_private_facade_implementation(self) -> None:
+        """Preserve core aliases required by a private facade implementation."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import m, t\n\n"
@@ -205,6 +218,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         tm.that(changes, eq=[])
 
     def test_keeps_core_aliases_inside_public_facade_file(self) -> None:
+        """Preserve core aliases used to compose a public facade class."""
         source = (
             "from __future__ import annotations\n\n"
             "from flext_core import c\n\n"
