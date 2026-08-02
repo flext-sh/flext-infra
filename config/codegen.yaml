@@ -697,6 +697,9 @@ Infra:
       - path: ci/docker/ubuntu.Dockerfile
         owner: codegen
         policy: full
+      - path: .github/workflows/ci-matrix.yml
+        owner: codegen
+        policy: full
       - path: .github/workflows/ci.yml
         owner: codegen
         policy: full
@@ -1212,6 +1215,13 @@ Infra:
         - source: base/.github/scripts/install-git-hooks.sh.j2
           destination: .github/scripts/install-git-hooks.sh
           profiles: [workspace-root]
+          delegate: render
+          overwrite: false
+        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
+        # clean-machine images validating bootstrap and make verbs everywhere.
+        - source: base/.github/workflows/ci-matrix.yml.j2
+          destination: .github/workflows/ci-matrix.yml
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/workflows/ci.yml.j2
