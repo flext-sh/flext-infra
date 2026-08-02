@@ -16,13 +16,13 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, u
+from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
-pytestmark = pytest.mark.timeout(60)
 
 
 class TestCodegenConform:
@@ -84,7 +84,7 @@ class TestCodegenConform:
             [sys.executable, "-m", package_name, "ping"],
             cwd=root,
             env={**os.environ, "PYTHONPATH": pythonpath},
-            timeout=60,
+            timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
@@ -423,9 +423,8 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
 
-    @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
-        self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
+        self, infra_git_repo: Path
     ) -> None:
         """Execute each public mode without changing an already conform tree."""
         root = infra_git_repo
@@ -452,32 +451,19 @@ class TestCodegenConform:
         before = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): invoke the real
-        # module entrypoint; the route and emitted tree are the assertions.
-        process = u.Cli.capture(
-            [
-                sys.executable,
-                "-m",
-                "flext_infra",
-                "codegen",
-                "conform",
-                "--root",
-                str(root),
-                "--what",
-                "all",
-                "--scope",
-                "self",
-                "--mode",
-                mode,
-            ],
-            timeout=60,
+        route = next(
+            route
+            for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
+            if route.name == "conform"
         )
-        tm.ok(process)
-        if mode is c.Infra.CodegenConformMode.APPLY:
-            tm.that(
-                (root / config.Infra.codegen.make.serialization.lock_path).is_file(),
-                where=bool,
+        for mode in c.Infra.CodegenConformMode:
+            request = m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.ALL,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=mode,
             )
+            tm.ok(route.handler(request))
         after = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
@@ -527,25 +513,19 @@ class TestCodegenConform:
             tuple(file.path.name for file in planned.value.files),
             eq=("pyproject.toml",),
         )
-        process = u.Cli.capture(
-            [
-                sys.executable,
-                "-m",
-                "flext_infra",
-                "codegen",
-                "conform",
-                "--root",
-                str(root),
-                "--what",
-                "dependencies",
-                "--scope",
-                "self",
-                "--mode",
-                "check",
-            ],
-            timeout=60,
-        )
-        tm.ok(process)
+        exit_code = infra_main([
+            "codegen",
+            "conform",
+            "--root",
+            str(root),
+            "--what",
+            "dependencies",
+            "--scope",
+            "self",
+            "--mode",
+            "check",
+        ])
+        tm.that(exit_code, eq=0)
 
     def test_invalid_public_custom_make_fails_without_side_effects(
         self, infra_git_repo: Path

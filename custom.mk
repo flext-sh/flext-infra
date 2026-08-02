@@ -8,7 +8,8 @@
 .PHONY: \
 	_custom_basemk_generate \
 	_custom_run_cprofile-import \
-	_custom_run_cprofile-report
+	_custom_run_cprofile-report \
+	_custom_run_cprofile-test
 _custom_basemk_generate:
 	@set -eu; \
 	output="$(strip $(OUTPUT))"; \
@@ -35,8 +36,34 @@ _custom_run_cprofile-import:
 _custom_run_cprofile-report:
 	@set -eu; \
 	target="$(strip $(PROFILE_TARGET))"; \
-	env FLEXT_CPROFILE_ACTION=report FLEXT_CPROFILE_TARGET="$$target" \
-		FLEXT_CPROFILE_WORKSPACE="$(PROJECT_ROOT)" \
-		FLEXT_CPROFILE_SORT="$(PYTEST_PROFILE_SORT)" \
-		FLEXT_CPROFILE_LIMIT="$(PYTEST_PROFILE_LIMIT)" \
-		"$(RUNTIME_PYTHON)" -m flext_infra._cprofile_entry
+	if [ -n "$$target" ]; then \
+		env FLEXT_CPROFILE_ACTION=report FLEXT_CPROFILE_TARGET="$$target" \
+			FLEXT_CPROFILE_WORKSPACE="$(PROJECT_ROOT)" \
+			FLEXT_CPROFILE_SORT="$(PYTEST_PROFILE_SORT)" \
+			FLEXT_CPROFILE_LIMIT="$(PYTEST_PROFILE_LIMIT)" \
+			"$(RUNTIME_PYTHON)" -m flext_infra._cprofile_entry; \
+	else \
+		"$(RUNTIME_PYTHON)" -m flext_infra._cprofile_entry; \
+	fi
+
+_custom_run_cprofile-test:
+	@set -eu; \
+	file="$(strip $(FILE))"; \
+	if [ -z "$$file" ]; then \
+		printf 'ERROR: FILE is required for run WHAT=cprofile-test\n' >&2; \
+		exit 2; \
+	fi; \
+	case "$$file" in /*|..|../*|*/../*|*/..) \
+		printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
+	esac; \
+	path="$${file%%::*}"; \
+	if [ ! -f "$$path" ]; then \
+		printf 'ERROR: cProfile test target does not exist: %s\n' "$$path" >&2; \
+		exit 2; \
+	fi; \
+	report_dir="$(PROJECT_ROOT)/.reports/cprofile"; \
+	mkdir -p "$$report_dir"; \
+	"$(RUNTIME_PYTHON)" -m cProfile -o "$$report_dir/pytest.pstats" \
+		-m pytest "$$file" --no-cov -p no:metadata \
+		-n=0 \
+		$(if $(strip $(MATCH)),-k "$(strip $(MATCH))",)

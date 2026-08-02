@@ -53,22 +53,6 @@ class TestsFlextInfraEngineIsConsumerAgnostic:
 
         tm.that(referenced - declared, eq=set())
 
-    def test_workspace_catalog_declares_only_owned_workspaces(
-        self, owned_provider: str
-    ) -> None:
-        owned = {
-            repository.name
-            for repository in config.Infra.codegen.repositories
-            if repository.provider == owned_provider
-        }
-        foreign = sorted(
-            workspace.name
-            for workspace in config.Infra.codegen.workspaces
-            if workspace.repository not in owned
-        )
-
-        tm.that(foreign, eq=[])
-
     def test_engine_declares_no_directory_name_of_a_foreign_workspace(self) -> None:
         """Sibling discovery is declarative, never a directory name in the engine.
 

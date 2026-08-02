@@ -140,19 +140,53 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 )
             git_dir = Path(git_dir_result.value.strip()).resolve()
             if git_dir != common_dir:
-                return r[Path].fail(
-                    "cannot derive primary worktree for a linked checkout without "
-                    f"core.worktree: {repository_path}"
+                listed_result = cls.git_capture(
+                    repository_path, ("worktree", "list", "--porcelain")
                 )
-            caller_top_level = cls.git_capture(
-                repository_path, ("rev-parse", "--show-toplevel")
-            )
-            if caller_top_level.failure:
-                return r[Path].fail(
-                    caller_top_level.error
-                    or f"cannot derive primary worktree from {common_dir}"
+                if listed_result.failure:
+                    return r[Path].fail(
+                        listed_result.error
+                        or "failed to inspect Git's canonical worktree registry"
+                    )
+                registered = tuple(
+                    Path(line.removeprefix("worktree ").strip()).resolve()
+                    for line in listed_result.value.splitlines()
+                    if line.startswith("worktree ")
                 )
-            primary_root = Path(caller_top_level.value.strip()).resolve()
+                if not registered:
+                    return r[Path].fail(
+                        f"Git worktree registry is empty for {repository_path}"
+                    )
+                primary_root = registered[0]
+                registered_top_level = cls.git_capture(
+                    primary_root, ("rev-parse", "--show-toplevel")
+                )
+                if registered_top_level.failure:
+                    caller_top_level = cls.git_capture(
+                        repository_path, ("rev-parse", "--show-toplevel")
+                    )
+                    if caller_top_level.failure:
+                        return r[Path].fail(
+                            caller_top_level.error
+                            or f"cannot derive a usable worktree from {common_dir}"
+                        )
+                    caller_root = Path(caller_top_level.value.strip()).resolve()
+                    if caller_root not in registered:
+                        return r[Path].fail(
+                            "current worktree is absent from Git's canonical registry: "
+                            f"{caller_root}"
+                        )
+                    primary_root = caller_root
+            else:
+                caller_top_level = cls.git_capture(
+                    repository_path, ("rev-parse", "--show-toplevel")
+                )
+                if caller_top_level.failure:
+                    return r[Path].fail(
+                        caller_top_level.error
+                        or f"cannot derive primary worktree from {common_dir}"
+                    )
+                primary_root = Path(caller_top_level.value.strip()).resolve()
         top_level = cls.git_capture(primary_root, ("rev-parse", "--show-toplevel"))
         if top_level.failure:
             return r[Path].fail(

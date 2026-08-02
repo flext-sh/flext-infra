@@ -132,6 +132,8 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE: Final[str] = ".gitignore"
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
+    GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
+    "Heading of the trailing .gitignore section that re-allows managed files."
     MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
     "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"

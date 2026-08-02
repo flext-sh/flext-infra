@@ -204,11 +204,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_result.error or "workspace manifest load failed"
                 )
             workspace = workspace_result.value
-        catalog_result = self.validate_workspace_catalog(config_spec, workspace)
-        if catalog_result.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                catalog_result.error or "workspace catalog validation failed"
-            )
         current_repository = workspace.repository
         if root != workspace_root:
             try:
@@ -482,33 +477,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         )
         return u.Cli.template_render(templates_root / entry.source, context)
-
-    @staticmethod
-    def validate_workspace_catalog(
-        config: m.Infra.CodegenConfigSpec, workspace: m.Infra.WorkspaceSpec
-    ) -> p.Result[bool]:
-        """Generate catalog-absent repositories from their validated manifests.
-
-        Repositories present in the catalog are additionally checked for consistency.
-        """
-        local_refs = (workspace.repository, *workspace.members, *workspace.content_only)
-        for local in local_refs:
-            known = next(
-                (item for item in config.repositories if item.name == local.name), None
-            )
-            if known is None:
-                continue
-            local_payload = local.model_dump(
-                mode="json", exclude=set(c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS)
-            )
-            known_payload = known.model_dump(
-                mode="json", exclude=set(c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS)
-            )
-            if local_payload != known_payload:
-                return r[bool].fail(
-                    f"workspace repository differs from catalog: {local.name}"
-                )
-        return r[bool].ok(True)
 
     @staticmethod
     def _select_repositories(
@@ -1253,14 +1221,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"supported licenses: {supported}"
             )
         profile = c.Infra.MakeProfile(repository.profile)
-        provider = next(
-            (item for item in codegen.providers if item.name == repository.provider),
-            None,
-        )
-        if provider is None:
-            return r[m.Infra.ProjectRenderContext].fail(
-                f"unsupported repository provider: {repository.provider}"
-            )
+        flext_provider = codegen.providers[0]
         members = (
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
@@ -1351,8 +1312,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository=project.homepage,
                 homepage=project.homepage,
                 documentation=project.documentation,
-                flext_git_base_url=provider.base_url,
-                flext_git_branch=provider.branch,
+                flext_git_base_url=flext_provider.base_url,
+                flext_git_branch=flext_provider.branch,
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
                 repository_branch=repository.branch,

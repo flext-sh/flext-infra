@@ -268,6 +268,14 @@ class FlextInfraConfigModels:
         lock_path: Annotated[
             Path, m.Field(description="Repository-relative native process-lock path")
         ]
+        single_flight_lock_path: Annotated[
+            Path,
+            m.Field(
+                description=(
+                    "Repository-relative lock around one complete Make operation"
+                )
+            ),
+        ]
         mutation_fixed_points: Annotated[
             Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, t.NonEmptyStr]],
             m.Field(
@@ -301,12 +309,12 @@ class FlextInfraConfigModels:
             ),
         ]
 
-        @m.field_validator("lock_path")
+        @m.field_validator("lock_path", "single_flight_lock_path")
         @classmethod
         def _validate_lock_path(cls, value: Path) -> Path:
             """Keep every validation lock within its owning checkout."""
             if value.is_absolute() or not value.parts or ".." in value.parts:
-                msg = "make serialization lock_path must be repository-relative"
+                msg = "make serialization lock paths must be repository-relative"
                 raise ValueError(msg)
             return value
 
@@ -328,8 +336,16 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_lock_excluded_from_snapshot(self) -> Self:
             """Require the native lock artifact to remain outside fingerprints."""
-            if self.lock_path not in self.snapshot_excludes:
-                msg = "make serialization lock_path must be snapshot-excluded"
+            lock_paths = (self.single_flight_lock_path, self.lock_path)
+            if len(set(lock_paths)) != len(lock_paths):
+                msg = "make serialization lock paths must be distinct"
+                raise ValueError(msg)
+            missing_excludes = set(lock_paths) - set(self.snapshot_excludes)
+            if missing_excludes:
+                msg = (
+                    "make serialization lock paths must be snapshot-excluded: "
+                    f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
+                )
                 raise ValueError(msg)
             invalid = set(self.mutation_fixed_points) - set(self.verbs)
             if invalid:
@@ -1101,17 +1117,6 @@ class FlextInfraConfigModels:
             m.Field(description="Ordered paths deliberately excluded from inventory"),
         ] = ()
 
-    class WorkspaceCatalogRef(_ConfigContract):
-        """Global pointer to a local workspace topology manifest."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        repository: Annotated[
-            t.NonEmptyStr, m.Field(description="Root repository catalog key")
-        ]
-        manifest: Annotated[
-            Path, m.Field(description="Repository-relative manifest path")
-        ]
-
     # NOTE (mro-jnm1.1 / mro-jnm1.4): the artifact list is the SINGLE SSOT for
     # ephemeral/generated resources; VS Code excludes and source_scan ignores
     # are derived projections, never re-declared in YAML.
@@ -1169,7 +1174,7 @@ class FlextInfraConfigModels:
         ] = ()
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
-            m.Field(description="Ordered Git providers"),
+            m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
         ]
         profiles: Annotated[
             tuple[FlextInfraConfigModels.ProfileSpec, ...],
@@ -1260,6 +1265,27 @@ class FlextInfraConfigModels:
                 for section in scaffold_sections
                 for pattern in section.patterns
             }
+            managed_allowed: t.MutableSequenceOf[str] = []
+            declared_patterns = {
+                pattern for section in scaffold_sections for pattern in section.patterns
+            }
+            for managed in self.managed_files:
+                if (
+                    managed.policy
+                    == FlextInfraConstantsSharedInfra.MANAGED_FILE_POLICY_DELEGATED
+                ):
+                    continue
+                parts = managed.path.parts
+                candidates = [
+                    *(f"!{'/'.join(parts[:depth])}/" for depth in range(1, len(parts))),
+                    f"!{managed.path.as_posix()}",
+                ]
+                managed_allowed.extend(
+                    candidate
+                    for candidate in candidates
+                    if candidate not in declared_patterns
+                    and candidate not in managed_allowed
+                )
             derived: t.MutableSequenceOf[str] = []
             for pattern in self.gitignore_artifact_patterns:
                 if pattern not in governed and pattern not in derived:
@@ -1281,6 +1307,13 @@ class FlextInfraConfigModels:
                     FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
                         name=FlextInfraConstantsSharedInfra.GITIGNORE_DERIVED_SECTION_NAME,
                         patterns=tuple(derived),
+                    )
+                )
+            if managed_allowed:
+                sections.append(
+                    FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
+                        name=FlextInfraConstantsSharedInfra.GITIGNORE_MANAGED_SECTION_NAME,
+                        patterns=tuple(managed_allowed),
                     )
                 )
             return tuple(sections)
@@ -1310,10 +1343,6 @@ class FlextInfraConfigModels:
         repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Ordered repository catalog"),
-        ]
-        workspaces: Annotated[
-            tuple[FlextInfraConfigModels.WorkspaceCatalogRef, ...],
-            m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
     # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source

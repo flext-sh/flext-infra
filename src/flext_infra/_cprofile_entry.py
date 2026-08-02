@@ -1,8 +1,4 @@
-"""Source-live cProfile target imported before the flext-infra CLI can load.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Render canonical pytest and cold-import cProfile artifacts."""
 
 from __future__ import annotations
 
@@ -56,25 +52,19 @@ def _required_environment(name: str) -> str:
     return value
 
 
-def _artifact_paths() -> tuple[Path, Path]:
+def _cold_import_artifact_paths() -> tuple[Path, Path]:
     workspace = Path(_required_environment(_ENV_WORKSPACE)).resolve()
     target = ProfileTarget(_required_environment(_ENV_TARGET))
     report_root = workspace / ".reports" / "cprofile-import"
     return report_root / f"{target.value}.pstats", report_root / f"{target.value}.txt"
 
 
-def _import_target() -> None:
-    target = ProfileTarget(_required_environment(_ENV_TARGET))
-    _ = importlib.import_module(target.module)
-
-
-def _render_report() -> None:
-    profile_path, output_path = _artifact_paths()
-    sort = _required_environment(_ENV_SORT)
+def _render(
+    profile_path: Path, output_path: Path, *, sort: str, limit: int
+) -> None:
     if sort not in _SORT_KEYS:
         msg = f"invalid cProfile sort key: {sort}"
         raise ValueError(msg)
-    limit = int(_required_environment(_ENV_LIMIT))
     if limit <= 0 or limit > _MAX_PROFILE_LIMIT:
         msg = "cProfile limit must be between 1 and 1000"
         raise ValueError(msg)
@@ -90,14 +80,45 @@ def _render_report() -> None:
     temporary.replace(output_path)
 
 
+def _import_target() -> None:
+    target = ProfileTarget(_required_environment(_ENV_TARGET))
+    _ = importlib.import_module(target.module)
+
+
+def _render_cold_import_report() -> None:
+    profile_path, output_path = _cold_import_artifact_paths()
+    _render(
+        profile_path,
+        output_path,
+        sort=_required_environment(_ENV_SORT),
+        limit=int(_required_environment(_ENV_LIMIT)),
+    )
+
+
+def _render_pytest_report() -> None:
+    from flext_infra import config
+
+    report_root = Path.cwd().resolve() / ".reports" / "cprofile"
+    policy = config.Infra.tooling.tools.pytest
+    _render(
+        report_root / "pytest.pstats",
+        report_root / "pytest.txt",
+        sort=policy.profile_sort,
+        limit=policy.profile_limit,
+    )
+
+
 def main() -> int:
-    """Execute the selected source-live cProfile action."""
-    action = _required_environment(_ENV_ACTION)
+    """Execute the selected cProfile action."""
+    action = os.environ.get(_ENV_ACTION, "").strip()
+    if not action:
+        _render_pytest_report()
+        return 0
     if action == "import":
         _import_target()
         return 0
     if action == "report":
-        _render_report()
+        _render_cold_import_report()
         return 0
     msg = f"invalid cProfile action: {action}"
     raise ValueError(msg)
