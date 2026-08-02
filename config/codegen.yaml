@@ -178,7 +178,10 @@ Infra:
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_verbs: [gen, fmt, fix]
+        # Every apply-guarded verb mutates the checkout, so every one of them is
+        # serialized: deps/clean/worktree became guarded once their recipes were
+        # found to call _require_apply, and the two lists must stay equal.
+        mutation_verbs: [gen, fmt, fix, deps, clean, worktree]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -186,7 +189,9 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen, fmt, fix]
+        # Serialized surface: the read-only validators plus every mutation verb,
+        # so no two lanes mutate one checkout concurrently.
+        verbs: [check, test, gen, fmt, fix, deps, clean, worktree]
       verbs:
         - name: help
           default_what: usage
@@ -199,7 +204,11 @@ Infra:
         - name: deps
           default_what: check
           whats: [check, lock, upgrade]
-          apply_guarded: false
+          # `lock` and `upgrade` rewrite the lockfile and call _require_apply,
+          # so declaring the verb unguarded made them unreachable: the dispatch
+          # rejected APPLY=Y while the recipe demanded it.
+          apply_guarded: true
+          apply_what: upgrade
         - name: build
           default_what: artifacts
           whats: [artifacts]
@@ -237,7 +246,9 @@ Infra:
         - name: clean
           default_what: generated
           whats: [generated]
-          apply_guarded: false
+          # `clean generated` deletes generated output and calls _require_apply.
+          apply_guarded: true
+          apply_what: generated
         - name: release
           default_what: status
           whats: [status]
@@ -250,7 +261,10 @@ Infra:
         - name: worktree
           default_what: list
           whats: [list, add, update, remove]
-          apply_guarded: false
+          # `add`/`update`/`remove` mutate worktrees and call _require_apply;
+          # only `list` is read-only, so it stays the default WHAT.
+          apply_guarded: true
+          apply_what: update
       custom_handler_policy:
         filename: custom.mk
         # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
