@@ -11,10 +11,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 
 _ROOT = Path(__file__).resolve().parents[3].parent
 _WORKSPACE_ONLY_MARKERS = ("!flext-*/", "!/config/workspace.yaml", "!flext-*/**")

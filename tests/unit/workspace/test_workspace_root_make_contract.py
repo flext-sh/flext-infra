@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra import c, config, m, u
@@ -15,6 +14,7 @@ from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from flext_cli import p as cli_p
