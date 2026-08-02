@@ -198,13 +198,7 @@ project-excludes = [
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
-search-path = [
-  ".",
-  "../flext-cli/src",
-  "../flext-core/src",
-  "../flext-tests/src",
-  "src",
-]
+search-path = [".", "src"]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -355,7 +349,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = ".."
+venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
