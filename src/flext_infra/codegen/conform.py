@@ -381,6 +381,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 config_spec,
                 contract,
                 profile=target.make_profile,
+                workspace=workspace,
             )
             if governed.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -438,6 +439,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: SurfaceContract,
         *,
         profile: c.Infra.MakeProfile,
+        workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Attach ownership metadata and represent every governed root artifact.
 
@@ -510,7 +512,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # ONE render mechanism derived from the artifact SSOT.
                 # Per-project exception fields land with mro-jnm1.3.
                 rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
-                    codegen, profile=profile, project_name=root.name
+                    codegen,
+                    profile=profile,
+                    project_name=root.name,
+                    workspace=workspace,
                 )
                 if rendered_gitignore.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -572,6 +577,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         *,
         profile: c.Infra.MakeProfile,
         project_name: str | None = None,
+        workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
@@ -602,6 +608,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
         ]
+        # The deny-all root policy (`/*` + `/*/`) would swallow every governed
+        # member directory, so the whitelist for them is DERIVED from the
+        # workspace manifest instead of hardcoded name globs: declaring a member
+        # in `config/workspace.yaml` is the single source that makes it
+        # trackable here. Nested paths need every ancestor unignored, otherwise
+        # git never descends far enough to see the member itself.
+        member_patterns: list[str] = []
+        if workspace is not None:
+            for member in workspace.members:
+                parts = member.path.as_posix().strip("/").split("/")
+                for depth in range(1, len(parts) + 1):
+                    pattern = "!/" + "/".join(parts[:depth]) + "/"
+                    if pattern not in member_patterns:
+                        member_patterns.append(pattern)
+        if member_patterns:
+            sections.append(
+                m.Infra.ScaffoldGitignoreSectionSpec(
+                    name="WHITELIST: governed workspace members (derived)",
+                    patterns=tuple(member_patterns),
+                )
+            )
         if project_name is not None:
             override = codegen.layout.project_overrides.get(project_name)
             if override is not None and override.gitignore_additions:

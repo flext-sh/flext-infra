@@ -744,10 +744,11 @@ Infra:
             - "/*"
             - "/*/"
             - "!/LICENSE"
-        - name: "Allow all FLEXT ecosystem project directories"
-          profiles: [workspace-root]
-          patterns:
-            - "!flext-*/"
+        # NOTE: governed member directories are NOT declared here. They are
+        # derived from `config/workspace.yaml` members by
+        # conform._render_gitignore, so declaring a member in the workspace
+        # manifest is the single source that makes it trackable. A hardcoded
+        # name glob here would be a second, silently-diverging source.
         - name: "WHITELIST: Workspace Directories"
           profiles: [workspace-root]
           patterns:

@@ -17,7 +17,8 @@ from pathlib import Path
 import flext_infra
 from flext_tests import tm
 
-from flext_infra import c, config, u
+from flext_infra import c, config, m, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
@@ -44,14 +45,13 @@ def _ssot_patterns() -> tuple[str, ...]:
     )
 
 
-def _is_allowed_by_policy(relative_path: str) -> bool:
-    """Return whether git would track *relative_path* under the SSOT policy.
+def _is_tracked_under(rendered: str, relative_path: str) -> bool:
+    """Return whether git would track *relative_path* under *rendered*.
 
     Ignore semantics are subtle (ordering, negation, directory prefixes), so
     the check is delegated to git itself against a throwaway repository seeded
     with the rendered policy, never reimplemented here.
     """
-    rendered = "\n".join(_ssot_patterns()) + "\n"
     with tempfile.TemporaryDirectory() as raw_root:
         root = Path(raw_root)
         tm.ok(u.Cli.run_checked(["git", "init", "-q", str(root)]))
@@ -65,6 +65,11 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
             u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
         )
     return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+
+
+def _is_allowed_by_policy(relative_path: str) -> bool:
+    """Return whether the shipped SSOT policy keeps *relative_path* trackable."""
+    return _is_tracked_under("\n".join(_ssot_patterns()) + "\n", relative_path)
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:
@@ -89,6 +94,42 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             item.path.as_posix()
             for item in committed
             if not _is_allowed_by_policy(item.path.as_posix())
+        )
+
+        tm.that(blocked, eq=())
+
+    def test_declared_members_are_trackable_under_the_rendered_policy(
+        self,
+    ) -> None:
+        """A member declared in the manifest is trackable in the rendered body.
+
+        The workspace-root policy denies every top-level directory (``/*`` and
+        ``/*/``), so a governed member only becomes trackable if the whitelist
+        is DERIVED from the manifest. This exercises arbitrary member paths —
+        including a nested one, whose every ancestor must be unignored — so it
+        stays valid for any manifest instead of freezing today's members.
+        """
+        members = ("probe-member", "nested/probe-member")
+        workspace = m.Infra.WorkspaceSpec(
+            repository=m.Infra.RepositoryRef(name="probe-root", path=Path(".")),
+            members=tuple(
+                m.Infra.RepositoryRef(name=Path(item).name, path=Path(item))
+                for item in members
+            ),
+        )
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                project_name="probe-root",
+                workspace=workspace,
+            )
+        )
+
+        blocked = tuple(
+            member
+            for member in members
+            if not _is_tracked_under(rendered, f"{member}/pyproject.toml")
         )
 
         tm.that(blocked, eq=())
