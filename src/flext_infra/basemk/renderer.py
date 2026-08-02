@@ -108,7 +108,9 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         )
         if docs_verb is None:
             return r[str].fail("codegen SSOT declares no 'docs' verb")
-        docs_whats = list(docs_verb.whats)
+        # Annotated as the kwargs contract's own member type: a bare
+        # list[str] is not assignable to list[JsonValue] under invariance.
+        docs_whats: t.JsonValueList = list(docs_verb.whats)
         docs_default_what = docs_verb.default_what
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
