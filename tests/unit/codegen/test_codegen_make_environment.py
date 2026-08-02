@@ -334,6 +334,108 @@ class TestsCodegenMakeEnvironment:
             has=["missing environment interpreter", "make setup creates it"],
         )
 
+    def test_every_verb_what_help_is_side_effect_free(self, tmp_path: Path) -> None:
+        """Introspection discovers choices before hooks, locks, or environment."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        marker = project_root / "unexpected-mutation"
+        custom_lines = [
+            ".PHONY: "
+            + " ".join(
+                f"_custom_{verb.name}_probe pre-{verb.name}"
+                for verb in config.Infra.codegen.make.verbs
+            )
+        ]
+        for verb in config.Infra.codegen.make.verbs:
+            custom_lines.extend((
+                f"_custom_{verb.name}_probe:",
+                f"\t@touch '{marker}'",
+                f"pre-{verb.name}:",
+                f"\t@touch '{marker}'",
+            ))
+        (project_root / "custom.mk").write_text(
+            "\n".join(custom_lines) + "\n", encoding="utf-8"
+        )
+
+        for verb in config.Infra.codegen.make.verbs:
+            process = tm.ok(
+                u.Cli.run_raw(
+                    [
+                        c.Infra.MAKE,
+                        "--no-print-directory",
+                        verb.name,
+                        f"{config.Infra.codegen.make.selector}=help",
+                    ],
+                    cwd=project_root,
+                    remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                )
+            )
+            tm.that(
+                process.exit_code,
+                eq=0,
+                msg=process.stderr or process.stdout or f"{verb.name} help failed",
+            )
+            tm.that(
+                process.stdout,
+                has=[
+                    f"make {verb.name} WHAT=<choice>",
+                    f"default: {verb.default_what}",
+                    "probe",
+                ],
+            )
+
+        tm.that(marker.exists(), eq=False)
+        tm.that((project_root / ".venv").exists(), eq=False)
+        tm.that((project_root / ".state").exists(), eq=False)
+
+    def test_invalid_what_and_project_fail_before_mutation(
+        self, tmp_path: Path
+    ) -> None:
+        """Invalid selectors and projects report the exact rejected boundary."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        marker = project_root / "unexpected-hook"
+        (project_root / "custom.mk").write_text(
+            f"pre-deps:\n\t@touch '{marker}'\n", encoding="utf-8"
+        )
+
+        invalid_what = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "deps", "WHAT=missing"],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+        tm.that(invalid_what.exit_code, ne=0)
+        tm.that(
+            invalid_what.stdout + invalid_what.stderr,
+            has=["unknown WHAT 'missing' for make deps", "deps WHAT=help"],
+        )
+
+        invalid_project = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    "WHAT=check",
+                    "PROJECT=undeclared",
+                ],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+        tm.that(invalid_project.exit_code, ne=0)
+        tm.that(
+            invalid_project.stdout + invalid_project.stderr,
+            has="undeclared project undeclared",
+        )
+        tm.that(marker.exists(), eq=False)
+        tm.that((project_root / ".venv").exists(), eq=False)
+        tm.that((project_root / ".state").exists(), eq=False)
+
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE

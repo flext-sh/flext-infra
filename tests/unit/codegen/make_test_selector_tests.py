@@ -30,11 +30,11 @@ class TestsMakeTestSelector:
         )
         tm.that(matches, len=1)
 
-    def test_fmt_is_the_only_public_formatting_verb(self, tmp_path: Path) -> None:
-        """The generated Makefile runs canonical fmt and rejects its retired name."""
+    def test_format_is_the_only_public_formatting_verb(self, tmp_path: Path) -> None:
+        """The generated Makefile runs canonical format and rejects its old alias."""
         public_verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
-        tm.that("fmt" in public_verbs, where=bool)
-        tm.that("format" not in public_verbs, where=bool)
+        tm.that("format" in public_verbs, where=bool)
+        tm.that("fmt" not in public_verbs, where=bool)
 
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
@@ -49,7 +49,8 @@ class TestsMakeTestSelector:
 
         canonical = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "fmt", "WHAT=check", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "format", "WHAT=check", f"UV={uv}"],
+                cwd=tmp_path,
             )
         )
         tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)
@@ -59,7 +60,7 @@ class TestsMakeTestSelector:
 
         retired = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "format", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "fmt", f"UV={uv}"], cwd=tmp_path
             )
         )
         tm.that(retired.exit_code, ne=0)
@@ -97,8 +98,8 @@ class TestsMakeTestSelector:
                     "--no-print-directory",
                     "-f",
                     str(selected_makefile),
-                    "worktree",
-                    "WHAT=list",
+                    "run",
+                    "WHAT=worktree-list",
                     f"WORKSPACE={target_root}",
                     f"UV={uv}",
                 ],
@@ -256,7 +257,9 @@ class TestsMakeTestSelector:
             if repository.name == "flext-infra"
         )
         extra_verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
+        custom = tm.ok(u.Cli.files_read_text(Path("custom.mk")))
 
         tm.that(template, has="_builtin_codegen_apply")
-        tm.that(extra_verbs, eq={"basemk": "generate"})
+        tm.that(extra_verbs, eq={})
+        tm.that(custom, has="_custom_codegen_basemk:")
         tm.that(template, lacks="_builtin_build_gen")

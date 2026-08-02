@@ -56,7 +56,7 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 {% include "base_mypy_limit.mk.j2" %}
 
-{% for verb in make.verbs if verb.name != "setup" -%}
+{% for verb in make.verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor -%}
 {% for verb in extra_verbs -%}
@@ -168,15 +168,20 @@ _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% en
 
 _BUILTIN_HANDLERS := \
 	_builtin_help_usage \
+	_builtin_setup_environment \
 	_builtin_deps_check \
 	_builtin_deps_lock \
 	_builtin_deps_upgrade \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
-	_builtin_fmt_check \
-	_builtin_fmt_apply \
+	_builtin_format_check \
+	_builtin_format_apply \
 	_builtin_run_default \
+	_builtin_run_worktree-list \
+	_builtin_run_worktree-add \
+	_builtin_run_worktree-update \
+	_builtin_run_worktree-remove \
 	_builtin_status_diagnostics \
 	_builtin_docs_check \
 	_builtin_docs_all \
@@ -186,11 +191,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_clean_generated \
 	_builtin_release_status \
 	_builtin_codegen_check \
-	_builtin_codegen_apply \
-	_builtin_worktree_list \
-	_builtin_worktree_add \
-	_builtin_worktree_update \
-	_builtin_worktree_remove
+	_builtin_codegen_apply
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
@@ -202,39 +203,77 @@ define _dispatch
 	esac; \
 	builtin="_builtin_$(1)_$$what"; \
 	custom="_custom_$(1)_$$what"; \
+	if [ "$$what" = help ]; then \
+		prefix="_builtin_$(1)_"; \
+		choices=$$({ \
+			for target in $(_BUILTIN_HANDLERS); do \
+				case "$$target" in "$$prefix"*) printf '%s\n' "$${target#"$$prefix"}" ;; esac; \
+			done; \
+			custom_file="$(PROJECT_ROOT)/{{ make.custom_handler_policy.filename }}"; \
+			if [ -f "$$custom_file" ]; then \
+				sed -n 's/^_custom_$(1)_\([a-z0-9][a-z0-9-]*\):.*/\1/p' "$$custom_file"; \
+			fi; \
+{%- if script_dispatch %}
+			for root in $(_SCRIPT_DISPATCH_ROOTS); do \
+				script_dir="$(PROJECT_ROOT)/$$root/$(1)"; \
+				[ -d "$$script_dir" ] || continue; \
+				for script in "$$script_dir"/*.py "$$script_dir"/*.sh; do \
+					[ -f "$$script" ] || continue; \
+					name=$${script##*/}; printf '%s\n' "$${name%.*}"; \
+				done; \
+			done; \
+{%- endif %}
+		} | LC_ALL=C sort -u); \
+		printf 'make %s WHAT=<choice> (default: %s)\n' "$(1)" "$(_DEFAULT_$(1))"; \
+		for choice in $$choices; do printf '  %s\n' "$$choice"; done; \
+		exit 0; \
+	fi; \
+	requested="$(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))"; \
+	for project in $$requested; do \
+		case " $(ALLOWED_PROJECTS) " in \
+			*" $$project "*) ;; \
+			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
+		esac; \
+	done; \
+	route=''; \
+	case " $(_BUILTIN_HANDLERS) " in \
+		*" $$builtin "*) route=builtin ;; \
+	esac; \
+	if [ -z "$$route" ]; then \
+		$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
+		if [ "$$custom_rc" -ne 2 ]; then route=custom; fi; \
+	fi; \
+{%- if script_dispatch %}
+	script=''; script_what=''; \
+	if [ -z "$$route" ]; then \
+		what_norm=$$(printf '%s' "$$what" | tr '-' '_'); \
+		for root in $(_SCRIPT_DISPATCH_ROOTS); do \
+			for cand in "$$what_norm" "$$what"; do \
+				for ext in py sh; do \
+					if [ -z "$$script" ] && [ -f "$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext" ]; then \
+						script="$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext"; script_what="$$cand"; \
+					fi; \
+				done; \
+			done; \
+		done; \
+		if [ -n "$$script" ]; then route=script; fi; \
+	fi; \
+{%- endif %}
+	if [ -z "$$route" ]; then \
+		printf "ERROR: unknown WHAT '%s' for make %s; run make %s WHAT=help\n" "$$what" "$(1)" "$(1)" >&2; \
+		exit 2; \
+	fi; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
+	case "$$route" in \
+		builtin) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+		custom) $(SELF_MAKE) "$$custom" || exit $$? ;; \
 {%- if script_dispatch %}
-	what_norm=$$(printf '%s' "$$what" | tr '-' '_'); \
-	script=''; script_what=''; \
-	for root in $(_SCRIPT_DISPATCH_ROOTS); do \
-		for cand in "$$what_norm" "$$what"; do \
-			for ext in py sh; do \
-				if [ -z "$$script" ] && [ -f "$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext" ]; then \
-					script="$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext"; script_what="$$cand"; \
-				fi; \
-			done; \
-		done; \
-	done; \
-	$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
-	if [ "$$custom_rc" -ne 2 ]; then \
-		$(SELF_MAKE) "$$custom" || exit $$?; \
-	elif [ -n "$$script" ]; then \
-		WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
-	else \
-		case " $(_BUILTIN_HANDLERS) " in \
-			*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-			*) WHAT="$$what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$? ;; \
-		esac; \
-	fi; \
-{%- else %}
-	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
-	esac; \
+		script) WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$? ;; \
 {%- endif %}
+	esac; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -263,21 +302,22 @@ endef
 
 .PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
-$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+$(filter-out $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 {% for verb in make.serialization.verbs %}
+ifeq ($(strip $(WHAT)),help)
+{{ verb }}:
+	$(call _dispatch,{{ verb }})
+else
 {{ verb }}: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}"
+endif
 
 _serialized_{{ verb }}:
 	$(call _dispatch,{{ verb }})
 
 {% endfor %}
-
-setup:
-	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
-	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
@@ -411,17 +451,32 @@ _builtin_test_all: _builtin_require_environment
 ) }}
 {% endif %}
 
-_builtin_fmt_check: _builtin_require_environment
+_builtin_format_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_fmt_apply: _builtin_require_environment
+_builtin_format_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
+
+_builtin_run_worktree-list:
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
+
+_builtin_run_worktree-add:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_run_worktree-update:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_run_worktree-remove:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply
 
 _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
@@ -484,18 +539,3 @@ _builtin_codegen_check: _builtin_require_environment
 _builtin_codegen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-
-_builtin_worktree_list:
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
-
-_builtin_worktree_add:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
-
-_builtin_worktree_update:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
-
-_builtin_worktree_remove:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply

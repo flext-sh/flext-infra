@@ -5,8 +5,8 @@
 # FLEXT verbs in base.mk own those. Add project-specific actions as
 # `_custom_<verb>_<what>` (e.g. run WHAT=<what>) or wrap a verb with a hook.
 
-.PHONY: _custom_basemk_generate
-_custom_basemk_generate:
+.PHONY: _custom_codegen_basemk
+_custom_codegen_basemk:
 	@set -eu; \
 	output="$(strip $(OUTPUT))"; \
 	if [ -z "$$output" ]; then output="base.mk"; fi; \

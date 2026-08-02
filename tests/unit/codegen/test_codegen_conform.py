@@ -887,6 +887,50 @@ class TestScriptDispatchMakefile:
         tm.that("tr '-' '_'" in rendered, eq=False)
         tm.that("scripts/dispatch.py" in rendered, eq=False)
 
+    def test_script_dispatch_help_discovers_real_choices_without_execution(
+        self, tmp_path: Path
+    ) -> None:
+        """WHAT=help scans configured roots without running hooks or dispatchers."""
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(m.Infra.MakeVerbSpec(name="charts", default_what="all"),),
+            script_dispatch=m.Infra.ScriptDispatchSpec(
+                dispatcher="scripts/dispatch.py", roots=("scripts",)
+            ),
+        )
+        root = tmp_path / "demo-root"
+        scripts = root / "scripts" / "charts"
+        scripts.mkdir(parents=True)
+        marker = root / "unexpected-execution"
+        (scripts / "all.py").write_text(
+            f"from pathlib import Path\nPath({str(marker)!r}).touch()\n",
+            encoding="utf-8",
+        )
+        (root / "scripts" / "dispatch.py").write_text(
+            f"from pathlib import Path\nPath({str(marker)!r}).touch()\n",
+            encoding="utf-8",
+        )
+        (root / "custom.mk").write_text(
+            f"pre-charts:\n\t@touch '{marker}'\n", encoding="utf-8"
+        )
+        (root / "Makefile").write_text(rendered, encoding="utf-8")
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "charts", "WHAT=help"],
+                cwd=root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            process.stdout, has=["make charts WHAT=<choice> (default: all)", "  all"]
+        )
+        tm.that(marker.exists(), eq=False)
+        tm.that((root / ".venv").exists(), eq=False)
+        tm.that((root / ".state").exists(), eq=False)
+
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
     # declares extra_verbs/script_dispatch in its OWN config/workspace.yaml. The

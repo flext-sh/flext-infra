@@ -111,7 +111,7 @@ Infra:
         - name: test
           default_what: all
           apply_guarded: false
-        - name: fmt
+        - name: format
           default_what: check
           apply_guarded: true
         - name: run
@@ -132,12 +132,9 @@ Infra:
         - name: codegen
           default_what: check
           apply_guarded: true
-        - name: worktree
-          default_what: list
-          apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|codegen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|codegen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
+        target_pattern: "^(_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)(-[a-z0-9][a-z0-9-]*)?)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -1209,8 +1206,6 @@ Infra:
         package: true
         editable: true
         read_only: false
-        extra_verbs:
-          - { name: basemk, default_what: generate }
       - name: flext-ldap
         distribution: flext-ldap
         provider: flext-sh

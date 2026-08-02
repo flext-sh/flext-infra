@@ -83,8 +83,8 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
             encoding="utf-8"
         )
 
-        tm.that(verbs.get("basemk"), eq="generate")
-        tm.that(custom, has="_custom_basemk_generate:")
+        tm.that(verbs, eq={})
+        tm.that(custom, has="_custom_codegen_basemk:")
         tm.that(
             custom,
             has=(

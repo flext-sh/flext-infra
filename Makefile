@@ -40,7 +40,7 @@ PROJECT_ROOT := $(shell pwd -P)
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 WORKSPACE ?= $(PROJECT_ROOT)
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
+PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_PHASES := generate fix audit build validate
@@ -64,19 +64,18 @@ export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 
 
 _DEFAULT_help := usage
+_DEFAULT_setup := environment
 _DEFAULT_deps := check
 _DEFAULT_build := artifacts
 _DEFAULT_check := all
 _DEFAULT_test := all
-_DEFAULT_fmt := check
+_DEFAULT_format := check
 _DEFAULT_run := default
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := check
 _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
-_DEFAULT_worktree := list
-_DEFAULT_basemk := generate
 
 
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
@@ -179,15 +178,20 @@ endif
 
 _BUILTIN_HANDLERS := \
 	_builtin_help_usage \
+	_builtin_setup_environment \
 	_builtin_deps_check \
 	_builtin_deps_lock \
 	_builtin_deps_upgrade \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
-	_builtin_fmt_check \
-	_builtin_fmt_apply \
+	_builtin_format_check \
+	_builtin_format_apply \
 	_builtin_run_default \
+	_builtin_run_worktree-list \
+	_builtin_run_worktree-add \
+	_builtin_run_worktree-update \
+	_builtin_run_worktree-remove \
 	_builtin_status_diagnostics \
 	_builtin_docs_check \
 	_builtin_docs_all \
@@ -199,11 +203,7 @@ _builtin_docs_validate \
 _builtin_clean_generated \
 	_builtin_release_status \
 	_builtin_codegen_check \
-	_builtin_codegen_apply \
-	_builtin_worktree_list \
-	_builtin_worktree_add \
-	_builtin_worktree_update \
-	_builtin_worktree_remove
+	_builtin_codegen_apply
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
@@ -215,13 +215,47 @@ define _dispatch
 	esac; \
 	builtin="_builtin_$(1)_$$what"; \
 	custom="_custom_$(1)_$$what"; \
+	if [ "$$what" = help ]; then \
+		prefix="_builtin_$(1)_"; \
+		choices=$$({ \
+			for target in $(_BUILTIN_HANDLERS); do \
+				case "$$target" in "$$prefix"*) printf '%s\n' "$${target#"$$prefix"}" ;; esac; \
+			done; \
+			custom_file="$(PROJECT_ROOT)/custom.mk"; \
+			if [ -f "$$custom_file" ]; then \
+				sed -n 's/^_custom_$(1)_\([a-z0-9][a-z0-9-]*\):.*/\1/p' "$$custom_file"; \
+			fi; \
+		} | LC_ALL=C sort -u); \
+		printf 'make %s WHAT=<choice> (default: %s)\n' "$(1)" "$(_DEFAULT_$(1))"; \
+		for choice in $$choices; do printf '  %s\n' "$$choice"; done; \
+		exit 0; \
+	fi; \
+	requested="$(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))"; \
+	for project in $$requested; do \
+		case " $(ALLOWED_PROJECTS) " in \
+			*" $$project "*) ;; \
+			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
+		esac; \
+	done; \
+	route=''; \
+	case " $(_BUILTIN_HANDLERS) " in \
+		*" $$builtin "*) route=builtin ;; \
+	esac; \
+	if [ -z "$$route" ]; then \
+		$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
+		if [ "$$custom_rc" -ne 2 ]; then route=custom; fi; \
+	fi; \
+	if [ -z "$$route" ]; then \
+		printf "ERROR: unknown WHAT '%s' for make %s; run make %s WHAT=help\n" "$$what" "$(1)" "$(1)" >&2; \
+		exit 2; \
+	fi; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
-	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
+	case "$$route" in \
+		builtin) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+		custom) $(SELF_MAKE) "$$custom" || exit $$? ;; \
 	esac; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
@@ -251,35 +285,46 @@ endef
 
 .PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
-$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+$(filter-out $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
 
+ifeq ($(strip $(WHAT)),help)
+check:
+	$(call _dispatch,check)
+else
 check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check"
+endif
 
 _serialized_check:
 	$(call _dispatch,check)
 
 
+ifeq ($(strip $(WHAT)),help)
+test:
+	$(call _dispatch,test)
+else
 test: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test"
+endif
 
 _serialized_test:
 	$(call _dispatch,test)
 
 
+ifeq ($(strip $(WHAT)),help)
+codegen:
+	$(call _dispatch,codegen)
+else
 codegen: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "codegen"
+endif
 
 _serialized_codegen:
 	$(call _dispatch,codegen)
 
 
-
-setup:
-	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
-	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [standalone]' '';
@@ -309,7 +354,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check';
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'format' 'check';
 
 
 
@@ -335,12 +380,6 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check';
 
-
-
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
-
-
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
@@ -563,17 +602,32 @@ _builtin_test_all: _builtin_require_environment
 	exit "$$rc"
 
 
-_builtin_fmt_check: _builtin_require_environment
+_builtin_format_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_fmt_apply: _builtin_require_environment
+_builtin_format_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
+
+_builtin_run_worktree-list:
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
+
+_builtin_run_worktree-add:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_run_worktree-update:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_run_worktree-remove:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply
 
 _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
@@ -636,18 +690,3 @@ _builtin_codegen_check: _builtin_require_environment
 _builtin_codegen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-
-_builtin_worktree_list:
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
-
-_builtin_worktree_add:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
-
-_builtin_worktree_update:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
-
-_builtin_worktree_remove:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply
