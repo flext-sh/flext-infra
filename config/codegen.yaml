@@ -158,9 +158,13 @@ Infra:
         variable: CI
         value: Y
       workflow:
-        # `setup` provisions the environment and runs `git submodule`, which
-        # fails inside pre-commit: the hook framework has already moved the
-        # working tree, so git reports "cannot be used without a working tree".
+        # `setup` provisions the environment; it is invoked by the operator or
+        # the agent, never by a hook. A gate validates an already-provisioned
+        # checkout, so making the gate provision it inverts the dependency: the
+        # hook would run `make setup`, which the hook itself is supposed to
+        # validate. It also breaks mechanically -- `setup` runs `git submodule`
+        # after the hook framework moved the working tree, and git reports
+        # "cannot be used without a working tree".
         - { verb: setup, apply: false, contexts: [local, ci] }
         - { verb: gen, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
