@@ -435,9 +435,20 @@ _builtin_require_environment:
 # Profile routing: workspace-member delegates the environment to the
 # principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
 # standalone build their own environment locally.
+# The delegation only means something when the principal is another checkout.
+# An isolated `git worktree` of a member has no superproject, so WORKSPACE_ROOT
+# falls back to the worktree itself and RUNTIME_ROOT equals PROJECT_ROOT -- while
+# MAKE_PROFILE stays workspace-member, because it is fixed at generation time.
+# Delegating there re-entered Make on the same target, which Make treats as
+# already satisfied: setup exited 0 having created nothing, and the next verb
+# failed with "missing environment interpreter". Provision locally instead.
 ifeq ($(MAKE_PROFILE),workspace-member)
 _builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
+	@if [ "$(RUNTIME_ROOT)" = "$(PROJECT_ROOT)" ]; then \
+		$(SETUP_ENVIRONMENT_RECIPE); \
+	else \
+		$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment; \
+	fi
 else ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
