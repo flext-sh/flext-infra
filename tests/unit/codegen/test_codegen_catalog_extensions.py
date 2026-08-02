@@ -329,7 +329,7 @@ class TestsCodegenCatalogExtensions:
                     m.Infra.MakeVerbSpec(
                         name="audit",
                         default_what="all",
-                        whats=["all"],
+                        whats=("all",),
                         apply_what="all",
                     ),
                 ),

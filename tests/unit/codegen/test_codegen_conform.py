@@ -928,11 +928,11 @@ class TestScriptDispatchMakefile:
                 m.Infra.MakeVerbSpec(
                     name="incidente",
                     default_what="all",
-                    whats=["all"],
+                    whats=("all",),
                     apply_what="all",
                 ),
                 m.Infra.MakeVerbSpec(
-                    name="charts", default_what="all", whats=["all"], apply_what="all"
+                    name="charts", default_what="all", whats=("all",), apply_what="all"
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -1034,16 +1034,16 @@ class TestScriptDispatchMakefile:
             tmp_path,
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
-                    name="charts", default_what="all", whats=["all"], apply_what="all"
+                    name="charts", default_what="all", whats=("all",), apply_what="all"
                 ),
                 m.Infra.MakeVerbSpec(
                     name="chart-release",
                     default_what="all",
-                    whats=["all"],
+                    whats=("all",),
                     apply_what="all",
                 ),
                 m.Infra.MakeVerbSpec(
-                    name="bead", default_what="all", whats=["all"], apply_what="all"
+                    name="bead", default_what="all", whats=("all",), apply_what="all"
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
