@@ -326,6 +326,11 @@ class TestsWorkspaceRootMakeContract:
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
         docs = config.Infra.codegen.make.docs
+        # Selectors live on the docs verb: make.verbs[].whats is the single
+        # handler SSOT, so MakeDocsSpec no longer restates them.
+        docs_verb = next(
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == "docs"
+        )
         invocation_log = workspace_root / "docs.log"
         test_u.Tests.write_executable(
             workspace_root / ".venv" / "bin" / "python",
@@ -344,7 +349,7 @@ class TestsWorkspaceRootMakeContract:
         uv = workspace_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        for action in docs.actions:
+        for action in docs_verb.whats:
             invocation_log.write_text("", encoding="utf-8")
             process: cli_p.Cli.CommandOutput = tm.ok(
                 test_u.Tests.run_isolated_make(
@@ -362,8 +367,10 @@ class TestsWorkspaceRootMakeContract:
             tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
             output = invocation_log.read_text(encoding="utf-8")
             expected_actions = (
-                tuple(item for item in docs.actions if item != docs.default_action)
-                if action == docs.default_action
+                tuple(
+                    item for item in docs_verb.whats if item != docs_verb.default_what
+                )
+                if action == docs_verb.default_what
                 else (action,)
             )
             for expected_action in expected_actions:
@@ -393,7 +400,7 @@ class TestsWorkspaceRootMakeContract:
                 applied_output = invocation_log.read_text(encoding="utf-8")
                 tm.that(applied_output, has="--apply")
                 tm.that(applied_output, lacks="--check")
-            elif action != docs.default_action:
+            elif action != docs_verb.default_what:
                 tm.that(output, lacks="--apply")
                 tm.that(output, lacks="--check")
 

@@ -47,6 +47,9 @@ jobs:
       - name: setup (blocking)
         run: make setup
 
+      - name: gen (blocking)
+        run: make gen APPLY=Y
+
       - name: fmt (blocking)
         run: make fmt APPLY=Y
 

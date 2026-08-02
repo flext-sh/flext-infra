@@ -7,6 +7,6 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'make setup && make fmt APPLY=Y && make fix APPLY=Y && make check && make test'
+          'make gen APPLY=Y && make fmt APPLY=Y && make fix APPLY=Y && make check && make test'
         pass_filenames: false
         always_run: true

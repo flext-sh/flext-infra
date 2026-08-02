@@ -23,7 +23,9 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     @classmethod
     def transaction_route_key(cls, group: str, args: t.StrSequence) -> str | None:
         """Resolve one governed write route from unnormalized CLI arguments."""
-        route_names = {route.name for route in cls.group_commands[group]}
+        # Why: adopts the lane's per-group lazy route resolution (cli_routes.
+        # route_table_for); `group_commands` no longer exists after that cutover.
+        route_names = {route.name for route in cls.route_table_for(group)}
         command_name = next(
             (argument for argument in args if argument in route_names), None
         )

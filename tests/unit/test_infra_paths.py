@@ -57,7 +57,9 @@ class TestsFlextInfraInfraPaths:
         u.Cli.run_raw(
             ["git", "config", "user.email", "tests@flext.sh"], cwd=member
         ).unwrap()
-        u.Cli.run_raw(["git", "config", "user.name", "FLEXT Tests"], cwd=member).unwrap()
+        u.Cli.run_raw(
+            ["git", "config", "user.name", "FLEXT Tests"], cwd=member
+        ).unwrap()
         (member / "tracked.txt").write_text("fixture\n", encoding="utf-8")
         u.Cli.run_raw(["git", "add", "tracked.txt"], cwd=member).unwrap()
         u.Cli.run_raw(["git", "commit", "-q", "-m", "fixture"], cwd=member).unwrap()

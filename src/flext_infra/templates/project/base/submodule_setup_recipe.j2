@@ -5,10 +5,10 @@
 # Source: template (submodule_setup_recipe.j2)
 # Computed: workspace-root uses WORKSPACE_MEMBERS from config; standalone discovers
 #           submodules with flext-managed=true from .gitmodules at runtime.
-# Rule: all managed submodules are synced and initialized recursively before
-#       branch validation; unmanaged submodules are never touched. Local changes
-#       on the declared branch are preserved. Nested submodules inside managed
-#       trees are validated recursively.
+# Rule: setup VERIFIES governed gitlinks and never writes to a working tree.
+#       It is invoked automatically by every verb, so a checkout, pull, reset or
+#       submodule update on this path would run unattended against uncommitted
+#       work. Divergence is reported with the exact command to run by hand.
 # Free: no
 # End SECTION: submodule setup
 {{ target }}:
@@ -34,9 +34,11 @@
 	fi; \
 	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
 	if [ -z "$$managed" ]; then exit 0; fi; \
-	git -C "$$root" submodule sync --recursive --quiet; \
 	for child_path in $$managed; do \
-		git -C "$$root" submodule update --init --recursive -- "$$child_path"; \
+		if [ ! -e "$$root/$$child_path/.git" ]; then \
+			printf 'ERROR: governed gitlink is not initialized: %s; run `git submodule update --init --recursive -- %s` yourself (setup never writes a tree)\\n' "$$child_path" "$$child_path" >&2; \
+			exit 2; \
+		fi; \
 	done; \
 	validate_submodule() { \
 		superproject="$$1"; \
@@ -94,20 +96,13 @@
 			exit 1; \
 		fi; \
 		if [ -z "$$current" ]; then \
-			if git -C "$$child_root" rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
-				git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "refs/heads/$$branch" || { \
-					printf 'ERROR: %s: local branch %s diverges from gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
-					exit 1; \
-				}; \
-				git -C "$$child_root" checkout --quiet "$$branch"; \
-			else \
-				git -C "$$child_root" checkout --quiet -b "$$branch"; \
-			fi; \
-		fi; \
-		git -C "$$child_root" pull --ff-only --quiet origin "$$branch" || { \
-			printf 'ERROR: %s: fast-forward pull of origin/%s failed\n' "$$child_path" "$$branch" >&2; \
+			printf 'ERROR: %s: detached HEAD; check out %s yourself (setup never moves a tree)\\n' "$$child_path" "$$branch" >&2; \
 			exit 1; \
-		}; \
+		fi; \
+		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "refs/remotes/origin/$$branch"; then \
+			printf 'ERROR: %s: origin/%s diverges from recorded gitlink %s\\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+			exit 1; \
+		fi; \
 		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
 			printf 'ERROR: %s: branch %s diverges from recorded gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
 			exit 1; \

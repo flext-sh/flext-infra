@@ -158,8 +158,11 @@ Infra:
         variable: CI
         value: Y
       workflow:
-        - { verb: setup, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: gen, apply: true, contexts: [local] }
+        # `setup` provisions the environment and runs `git submodule`, which
+        # fails inside pre-commit: the hook framework has already moved the
+        # working tree, so git reports "cannot be used without a working tree".
+        - { verb: setup, apply: false, contexts: [local, ci] }
+        - { verb: gen, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_commit] }

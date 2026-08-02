@@ -925,8 +925,15 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="incidente", default_what="all"),
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="incidente",
+                    default_what="all",
+                    whats=["all"],
+                    apply_what="all",
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="charts", default_what="all", whats=["all"], apply_what="all"
+                ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
@@ -982,8 +989,8 @@ class TestScriptDispatchMakefile:
         # Serialization follows the rename: gen is serialized, codegen gone.
         tm.that("gen" in make_config.serialization.verbs, eq=True)
         tm.that("codegen" in make_config.serialization.verbs, eq=False)
-        tm.that("gen" in make_config.serialization.mutation_fixed_points, eq=True)
-        tm.that("codegen" in make_config.serialization.mutation_fixed_points, eq=False)
+        tm.that("gen" in make_config.serialization.mutation_verbs, eq=True)
+        tm.that("codegen" in make_config.serialization.mutation_verbs, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -1026,9 +1033,18 @@ class TestScriptDispatchMakefile:
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
-                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
-                m.Infra.MakeVerbSpec(name="chart-release", default_what="all"),
-                m.Infra.MakeVerbSpec(name="bead", default_what="all"),
+                m.Infra.MakeVerbSpec(
+                    name="charts", default_what="all", whats=["all"], apply_what="all"
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="chart-release",
+                    default_what="all",
+                    whats=["all"],
+                    apply_what="all",
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="bead", default_what="all", whats=["all"], apply_what="all"
+                ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py", roots=("scripts",)

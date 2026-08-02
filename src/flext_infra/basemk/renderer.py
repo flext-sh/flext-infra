@@ -108,7 +108,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         )
         if docs_verb is None:
             return r[str].fail("codegen SSOT declares no 'docs' verb")
-        docs_whats = tuple(docs_verb.whats)
+        docs_whats = list(docs_verb.whats)
         docs_default_what = docs_verb.default_what
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
