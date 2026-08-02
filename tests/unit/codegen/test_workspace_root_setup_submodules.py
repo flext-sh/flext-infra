@@ -130,7 +130,7 @@ class TestsWorkspaceRootSetupSubmodules:
         rendered = _render_workspace_root_makefile(tmp_path)
 
         sync_at = rendered.index("submodule sync --recursive")
-        update_at = rendered.index("submodule update --init --recursive")
+        update_at = rendered.index('initialize_declared_submodules "$$root"')
         uv_at = rendered.index("$(UV) sync")
 
         tm.that(sync_at < update_at < uv_at, eq=True)
@@ -153,11 +153,25 @@ class TestsWorkspaceRootSetupSubmodules:
             f'printf "%s\\n" "$*" >> "{probe_log}"\n'
             "exit 0\n",
         )
+        _write_executable(
+            bin_dir / "mise",
+            "#!/bin/sh\n"
+            "set -eu\n"
+            'if [ "$1" = "install" ]; then exit 0; fi\n'
+            'if [ "$1" = "exec" ]; then\n'
+            "  shift\n"
+            '  if [ "${1:-}" = "--" ]; then shift; fi\n'
+            '  exec "$@"\n'
+            "fi\n"
+            'printf "unsupported mise fixture command: %s\\n" "$*" >&2\n'
+            "exit 64\n",
+        )
         env = os.environ.copy()
+        env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
         outcome = u.Cli.run_raw(
-            ["make", "setup", f"UV={bin_dir / 'uv'}"], cwd=workspace, env=env
+            ["make", "setup", f"MISE={bin_dir / 'mise'}"], cwd=workspace, env=env
         )
         process = outcome.value
 

@@ -36,37 +36,58 @@ class FlextInfraConfigModels:
     # former model-less workspace/make dictionaries. YAML is accepted only at
     # the flext-cli loading boundary and is immediately model-validated here.
 
+    class MiseToolSpec(_ConfigContract):
+        """One exact mise backend selector distributed to every project."""
+
+        backend: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical mise backend key")
+        ]
+        version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact version or validated runtime release line"),
+        ]
+
+    class FormatterStepSpec(_ConfigContract):
+        """One ordered formatter invocation over Git-owned matching files."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Formatter step name")]
+        executable: Annotated[
+            t.NonEmptyStr, m.Field(description="Managed executable name")
+        ]
+        python_tool: Annotated[
+            bool, m.Field(description="Resolve executable from the governing .venv")
+        ] = False
+        includes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Git-relative include globs"),
+        ]
+        arguments: Annotated[
+            tuple[str, ...], m.Field(description="Arguments shared by both modes")
+        ] = ()
+        check_arguments: Annotated[
+            tuple[str, ...], m.Field(description="Read-only formatter arguments")
+        ] = ()
+        apply_arguments: Annotated[
+            tuple[str, ...], m.Field(description="Mutation formatter arguments")
+        ] = ()
+        reject_stdout: Annotated[
+            bool, m.Field(description="Treat non-empty check-mode stdout as drift")
+        ] = False
+
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
 
-        Only the Python minor line ``python_version`` (e.g. ``3.13``) is
-        declared for the language runtime. The environment resolves its newest
-        compatible patch. The PEP 440 family requirement is derived, so a
-        version-line bump touches exactly one value. uv is supplied by the caller
-        environment. Python linters/type-checkers are NOT here: their floors live
-        in pyproject and uv.lock owns the resolved versions. Native executables
-        required by canonical Make gates are declared here for reproducible
-        provisioning through mise.
+        ``mise_tools`` is the single native/runtime selector catalog. Python
+        developer tools are exact uv dependencies in the scaffold config and
+        therefore execute from the governing workspace ``.venv``.
         """
 
-        python_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                pattern=r"^[0-9]+\.[0-9]+$",
-                description="Python major.minor line, e.g. '3.13'",
-            ),
+        mise_tools: Annotated[
+            tuple[FlextInfraConfigModels.MiseToolSpec, ...],
+            m.Field(min_length=1, description="Ordered exact mise tool selectors"),
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
-        ]
-        kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
-        ]
-        helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm version, e.g. '3.19.4'")
-        ]
-        kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -80,18 +101,36 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
-        taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
-        ]
-        ast_grep_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
-        ]
-        gitleaks_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
-        ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
-        ]
+
+        @m.field_validator("mise_tools")
+        @classmethod
+        def _validate_mise_tools(
+            cls, value: tuple[FlextInfraConfigModels.MiseToolSpec, ...]
+        ) -> tuple[FlextInfraConfigModels.MiseToolSpec, ...]:
+            backends = tuple(tool.backend for tool in value)
+            if len(backends) != len(set(backends)):
+                msg = "mise tool backends must be unique"
+                raise ValueError(msg)
+            versions = {tool.backend: tool.version for tool in value}
+            python_version = versions.get("python", "")
+            major, separator, minor = python_version.partition(".")
+            if not separator or not major.isdigit() or not minor.isdigit():
+                msg = "mise python version must be a major.minor release line"
+                raise ValueError(msg)
+            return value
+
+        @property
+        def mise_versions(self) -> Mapping[str, str]:
+            """Immutable backend-to-version lookup derived from the ordered SSOT."""
+            return MappingProxyType({
+                tool.backend: tool.version for tool in self.mise_tools
+            })
+
+        @m.computed_field()
+        @property
+        def python_version(self) -> str:
+            """Configured compatible Python major.minor release line."""
+            return self.mise_versions["python"]
 
         @m.computed_field()
         @property
@@ -1035,26 +1074,9 @@ class FlextInfraConfigModels:
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
-        kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
-        ]
-        helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
-        ]
-        kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
-        ]
-        taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
-        ]
-        ast_grep_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
-        ]
-        gitleaks_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
-        ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        mise_tools: Annotated[
+            tuple[FlextInfraConfigModels.MiseToolSpec, ...],
+            m.Field(description="Ordered exact mise tool selectors"),
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -1189,6 +1211,10 @@ class FlextInfraConfigModels:
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),
+        ]
+        formatters: Annotated[
+            tuple[FlextInfraConfigModels.FormatterStepSpec, ...],
+            m.Field(min_length=1, description="Ordered multi-language format policy"),
         ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],

@@ -1,11 +1,10 @@
-<!-- TOC START -->
-- [Next Pages](#next-pages)
-<!-- TOC END -->
-
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 # FLEXT Infra API Overview
 
+<!-- TOC START -->
+- [Next Pages](#next-pages)
+<!-- TOC END -->
 - Package: `flext_infra`
 - Version: `0.12.0rc0`
 - Description: FLEXT Infrastructure Tooling - Build automation, code generation,

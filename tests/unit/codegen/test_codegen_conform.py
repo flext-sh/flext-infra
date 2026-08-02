@@ -15,12 +15,11 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, u
-from flext_infra import main as infra_main
+from flext_infra import c, config, m, main as infra_main, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
@@ -89,8 +88,8 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
-    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
-        """Generated Make delegates uv selection to the caller environment."""
+    def test_generated_make_uses_mise_managed_uv(self, tmp_path: Path) -> None:
+        """Generated Make resolves uv through the mise-managed toolchain."""
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -117,10 +116,10 @@ class TestCodegenConform:
         tm.that(selected_output, lacks="uv@")
         tm.that(selected_output, lacks="UV_VERSION")
         makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, has="MISE ?= mise")
+        tm.that(makefile, has="override UV := $(MISE) exec -- uv")
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
-        tm.that(makefile, lacks="mise exec")
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path

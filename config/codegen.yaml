@@ -4,22 +4,73 @@ Infra:
     version: 1
 
     toolchain:
-      # Single-source Python minor line. The environment resolves the newest
-      # compatible 3.13 patch; no patch is pinned in generated repositories.
-      # Derived as computed fields on ToolchainSpec:
-      #   python_required_version -> >=3.13,<3.14
-      # uv is supplied by the caller environment and is deliberately not pinned.
-      # Dependency floors live in pyproject; uv.lock owns resolved versions.
-      python_version: "3.13"
+      # Single-source mise catalog for every native/runtime executable used by
+      # generated Make surfaces. Python developer tools are exact uv-managed
+      # dependencies below and execute from the governing workspace .venv.
+      mise_tools:
+        - { backend: python, version: "3.13" }
+        - { backend: uv, version: "0.11.33" }
+        - { backend: go, version: "1.26.5" }
+        - { backend: rust, version: "1.97.1" }
+        - { backend: node, version: "26.5.1" }
+        - { backend: "npm:prettier", version: "3.9.6" }
+        - { backend: "github:gastownhall/beads", version: "1.1.2" }
+        - { backend: kubectl, version: "1.32.0" }
+        - { backend: helm, version: "3.19.4" }
+        - { backend: kind, version: "0.31.0" }
+        - { backend: taplo, version: "0.10.0" }
+        - { backend: ast-grep, version: "0.45.0" }
+        - { backend: gitleaks, version: "8.30.1" }
+        - { backend: tokei, version: "14.0.0" }
       uv_link_mode: copy
-      # Non-Python toolchain pins consumed by generated .mise.toml and CI.
-      kubectl_version: "1.32.0"
-      helm_version: "3.19.4"
-      kind_version: "0.31.0"
-      taplo_version: "0.10.0"
-      ast_grep_version: "0.45.0"
-      gitleaks_version: "8.30.1"
-      tokei_version: "14.0.0"
+
+    formatters:
+      - name: python-imports
+        executable: ruff
+        python_tool: true
+        includes: ["*.py", "**/*.py", "*.pyi", "**/*.pyi"]
+        arguments: [check, --select, I001]
+        check_arguments: [--no-fix]
+        apply_arguments: [--fix]
+      - name: python-format
+        executable: ruff
+        python_tool: true
+        includes: ["*.py", "**/*.py", "*.pyi", "**/*.pyi"]
+        arguments: [format]
+        check_arguments: [--check]
+      - name: markdown
+        executable: rumdl
+        python_tool: true
+        includes: ["*.md", "**/*.md"]
+        arguments: [check, --no-cache, --deny-config-warnings, --color, never]
+        apply_arguments: [--fix]
+      - name: go
+        executable: gofmt
+        includes: ["*.go", "**/*.go"]
+        check_arguments: [-d]
+        apply_arguments: [-w]
+        reject_stdout: true
+      - name: rust
+        executable: rustfmt
+        includes: ["*.rs", "**/*.rs"]
+        check_arguments: [--check]
+      - name: react
+        executable: prettier
+        includes:
+          - "*.js"
+          - "**/*.js"
+          - "*.jsx"
+          - "**/*.jsx"
+          - "*.ts"
+          - "**/*.ts"
+          - "*.tsx"
+          - "**/*.tsx"
+          - "*.css"
+          - "**/*.css"
+          - "*.scss"
+          - "**/*.scss"
+        check_arguments: [--check]
+        apply_arguments: [--write]
 
     github_actions:
       checkout:
@@ -343,7 +394,7 @@ Infra:
         policy: create-only
       - path: .envrc
         owner: environment
-        policy: create-only
+        policy: delegated
       - path: .gitignore
         owner: codegen
         policy: merge
@@ -352,7 +403,7 @@ Infra:
         policy: full
       - path: .mise.toml
         owner: environment
-        policy: merge
+        policy: delegated
       - path: .pre-commit-config.yaml
         owner: pre-commit
         policy: full
@@ -401,17 +452,16 @@ Infra:
           - "Typing :: Typed"
         keywords: [clean-architecture, flext, integration, typed]
         dev:
-          - actionlint-py>=1.7.12.24
+          - actionlint-py==1.7.12.24
           - flext-tests
-          # Floors let uv select the newest compatible tools; no upper cap or
-          # exact tool version is imposed by generated project metadata.
-          - mypy>=2.3.0
-          - pyrefly>=1.1.1
-          - pyright>=1.1.411
-          - pytest>=9.0.3
-          - ruff>=0.15.12
-          - vulture>=2.16
-          - yamlfix>=1.19.1
+          - mypy==2.3.0
+          - pyrefly==1.1.1
+          - pyright==1.1.411
+          - pytest==9.0.3
+          - ruff==0.16.0
+          - rumdl==0.2.43
+          - vulture==2.16
+          - yamlfix==1.19.1
         dependency_profiles:
           # NOTE: a workspace manifest may declare an upstream distribution;
           # conformance must model that upstream relationship generically.
@@ -813,6 +863,11 @@ Infra:
           overwrite: false
         - source: base/env.example.j2
           destination: .env.example
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/envrc.sh.j2
+          destination: .envrc
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

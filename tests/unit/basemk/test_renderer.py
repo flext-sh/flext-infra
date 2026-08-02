@@ -32,14 +32,16 @@ class TestsFlextInfraBasemkRenderer:
             "SETUP_ROOT := $(shell git rev-parse --show-toplevel)",
             "SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)",
             'UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"',
-            "SETUP_UV ?= uv",
+            "SETUP_MISE ?= mise",
+            "SETUP_UV ?= $(SETUP_MISE) exec -- uv",
+            '"$(SETUP_MISE)" install',
             "$(SETUP_UV) venv --clear",
             "$(SETUP_UV) sync --project",
-            "git submodule update --init --recursive",
-            'test -z "$$(git status --porcelain)"',
-            'test "$$(git rev-parse HEAD)" = "$$sha1"',
-            "refs/heads/$(SETUP_BRANCH)",
-            'git checkout --quiet -b "$(SETUP_BRANCH)"',
+            'git -C "$$superproject" submodule update --init -- "$$child_path"',
+            '[ -n "$$(git status --porcelain)" ]',
+            '"$$(git rev-parse HEAD)" != "$$sha1"',
+            "refs/heads/$$branch",
+            'git checkout --quiet -b "$$branch"',
             "$(SETUP_PYTHON) -m flext_infra",
         ):
             tm.that(rendered, has=required)
@@ -48,7 +50,6 @@ class TestsFlextInfraBasemkRenderer:
             "pip install",
             "poetry",
             "UV_VERSION",
-            "mise exec",
             "uv@",
             "$(PYTHON_CMD) -c 'import flext_infra'",
         ):
@@ -76,7 +77,7 @@ class TestsFlextInfraBasemkRenderer:
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
         tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
-        tm.that(rendered, has="UV ?= uv")
+        tm.that(rendered, has="UV ?= $(MISE) exec -- uv")
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")
 

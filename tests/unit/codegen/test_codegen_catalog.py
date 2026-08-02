@@ -80,9 +80,19 @@ def test_toolchain_rejects_exact_patch_selectors() -> None:
     """Keep runtime selectors on compatible major.minor release lines."""
     toolchain = config.Infra.codegen.toolchain
     payload = toolchain.model_dump()
-    payload["python_version"] = f"{toolchain.python_version}.0"
+    payload["mise_tools"] = [
+        {
+            **tool,
+            "version": (
+                f"{toolchain.python_version}.0"
+                if tool["backend"] == "python"
+                else tool["version"]
+            ),
+        }
+        for tool in payload["mise_tools"]
+    ]
 
-    with pytest.raises(ValueError, match="python_version"):
+    with pytest.raises(ValueError, match="mise python version"):
         m.Infra.ToolchainSpec.model_validate(payload)
 
 
@@ -90,12 +100,9 @@ def test_scaffold_dependencies_delegate_upper_bounds_to_uv() -> None:
     """Keep library requirements floor-only and let uv own concrete resolution."""
     project = config.Infra.codegen.scaffold.project
     requirements = [
-        *project.dev,
-        *(
-            requirement
-            for profile in project.dependency_profiles
-            for requirement in (*profile.runtime, *profile.codegen)
-        ),
+        requirement
+        for profile in project.dependency_profiles
+        for requirement in (*profile.runtime, *profile.codegen)
     ]
     forbidden = {"<", "<=", "==", "===", "~="}
 

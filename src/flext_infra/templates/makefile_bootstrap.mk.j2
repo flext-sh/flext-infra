@@ -22,7 +22,8 @@ SETUP_ROOT := $(shell git rev-parse --show-toplevel)
 SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 SETUP_VENV := $(SETUP_ROOT)/.venv
 SETUP_PYTHON := $(SETUP_VENV)/bin/python
-SETUP_UV ?= uv
+SETUP_MISE ?= mise
+SETUP_UV ?= $(SETUP_MISE) exec -- uv
 SETUP_UV_ENV := env -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT \
 	UV_PROJECT="$(SETUP_ROOT)" UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"
 FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
@@ -34,11 +35,13 @@ FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
 {{ submodule_setup_recipe("_bootstrap_setup_submodules", "$(SETUP_ROOT)") }}
 
 venv: ## Create the checkout-local virtual environment from the lock
+	@cd "$(SETUP_ROOT)" && "$(SETUP_MISE)" install
 	@$(SETUP_UV_ENV) $(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 
 setup: _bootstrap_setup_submodules ## Create a clean local environment and branch-aware submodules
 	@test -n "$(SETUP_BRANCH)" && test "$(SETUP_BRANCH)" != HEAD || { \
 		echo "ERROR: setup requires a named git branch"; exit 1; }
+	@cd "$(SETUP_ROOT)" && "$(SETUP_MISE)" install
 	@$(SETUP_UV_ENV) $(SETUP_UV) venv --clear "$(SETUP_VENV)"
 	@$(SETUP_UV_ENV) $(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 	@$(SETUP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \

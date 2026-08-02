@@ -72,7 +72,7 @@ class FlextInfraProjectMigratorPyprojectMixin:
                 document.as_string(),
                 path=pyproject_path,
                 toolchain_root=self.workspace_root,
-                taplo_version=config.Infra.codegen.toolchain.taplo_version,
+                taplo_version=config.Infra.codegen.toolchain.mise_versions["taplo"],
             )
             if formatted.failure:
                 return r[str].fail(formatted.error or "pyproject format failed")

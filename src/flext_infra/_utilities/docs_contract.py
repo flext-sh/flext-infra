@@ -6,10 +6,10 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,19 +23,24 @@ class FlextInfraUtilitiesDocsContract:
         """Normalize the managed table of contents in Markdown content."""
         toc = FlextInfraUtilitiesDocsContract.docs_build_toc(content)
         if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
-            updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
-            return (updated, int(updated != content))
-        lines = content.splitlines()
-        if lines and lines[0].startswith("# "):
-            insert_at = 1
-            while insert_at < len(lines) and (not lines[insert_at].strip()):
+            normalized_content = c.Infra.TOC_BLOCK_RE.sub("", content, count=1).lstrip(
+                "\n"
+            )
+        else:
+            normalized_content = content
+        lines = normalized_content.splitlines()
+        heading_index = next(
+            (index for index, line in enumerate(lines) if line.startswith("# ")), None
+        )
+        if heading_index is not None:
+            insert_at = heading_index + 1
+            while insert_at < len(lines) and not lines[insert_at].strip():
                 insert_at += 1
-            lines.insert(insert_at, "")
-            lines.insert(insert_at + 1, toc)
-            lines.insert(insert_at + 2, "")
+            lines[heading_index + 1 : insert_at] = ["", toc, ""]
             updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
-            return (updated, 1)
-        return (toc + "\n\n" + content, 1)
+        else:
+            updated = toc + "\n\n" + normalized_content
+        return (updated, int(updated != content))
 
     @staticmethod
     def docs_anchorize(text: str) -> str:

@@ -1,10 +1,10 @@
-<!-- TOC START -->
-- No sections found
-<!-- TOC END -->
-
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 # flext_infra.base_selection
+
+<!-- TOC START -->
+- No sections found
+<!-- TOC END -->
 
 ::: flext_infra.base_selection
     options:

@@ -79,11 +79,11 @@ from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-from flext_infra._utilities.worktree_transaction import (
-    FlextInfraUtilitiesWorktreeTransaction,
-)
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
+)
+from flext_infra._utilities.worktree_transaction import (
+    FlextInfraUtilitiesWorktreeTransaction,
 )
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 

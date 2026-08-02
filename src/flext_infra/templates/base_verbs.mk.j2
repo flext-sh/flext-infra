@@ -15,6 +15,7 @@ PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_R
 PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_GITHUB }}
 PROJECT_INFRA_REFACTOR := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_REFACTOR }}
 PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_VALIDATE }}
+PROJECT_INFRA_WORKSPACE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_WORKSPACE }}
 
 # Verb hook seam: custom.mk may define pre-<verb>, post-<verb>, pre-<verb>-<what>,
 # and post-<verb>-<what> targets to append work at the start or end of any verb,
@@ -109,6 +110,7 @@ boot: ## Complete setup
 	$(call _run_verb_hooks,post,boot,$(WHAT))
 
 _boot_impl:
+	$(Q)cd "$(WORKSPACE_ROOT)" && "$(MISE)" install
 	$(Q)$(UV) sync --all-extras --all-groups
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)$(UV) lock
@@ -238,45 +240,16 @@ fmt: ## Run code formatting (ruff + rumdl on tracked files)
 	$(call _run_verb_hooks,post,fmt,$(WHAT))
 
 _fmt_impl:
-	$(Q)_fmt_target="."; \
-	_fmt_files=""; \
+	$(Q)_fmt_files=""; \
 	if [ -n "$(FILES)" ]; then _fmt_files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
 		if [ -n "$$_fmt_files" ]; then _fmt_files="$$_fmt_files $(FILE)"; \
 		else _fmt_files="$(FILE)"; fi; \
 	fi; \
-	if [ -n "$$_fmt_files" ]; then _fmt_target="$$_fmt_files"; fi; \
-	if [ "$(CHECK_ONLY)" = "1" ]; then \
-		$(UV) run ruff format $$_fmt_target --check; \
-	else \
-		$(UV) run ruff format $$_fmt_target --quiet; \
-	fi
-	$(Q)if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ] && [ -n "$(ALL_PROJECTS)" ]; then \
-		md_roots=". $(ALL_PROJECTS)"; \
-	else \
-		md_roots="."; \
-	fi; \
-	md_files=$$(for md_root in $$md_roots; do \
-		[ -d "$$md_root" ] || continue; \
-		if git -C "$$md_root" rev-parse --git-dir >/dev/null 2>&1; then \
-			md_prefix=""; \
-			if [ "$$md_root" != "." ]; then md_prefix="$$md_root/"; fi; \
-			git -C "$$md_root" ls-files -- '*.md' ':!vendor/' | sed "s#^#$$md_prefix#"; \
-			git -C "$$md_root" ls-files --others --exclude-standard -- '*.md' ':!vendor/' | sed "s#^#$$md_prefix#"; \
-		else \
-			find "$$md_root" -type f -name '*.md' ! -path '*/.git/*' ! -path '*/.reports/*' ! -path '*/.venv/*' ! -path '*/vendor/*' ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/build/*'; \
-		fi; \
-	done); \
-	md_files=$$(printf '%s\n' "$$md_files" | awk 'NF' | while IFS= read -r f; do [ -f "$$f" ] && printf '%s\n' "$$f"; done | sort -u); \
-	if [ -n "$$md_files" ]; then \
-		md_config=""; \
-		if [ -f "$(WORKSPACE_ROOT)/.markdownlint.json" ]; then \
-			md_config="--config $(WORKSPACE_ROOT)/.markdownlint.json"; \
-		elif [ -f ".markdownlint.json" ]; then \
-			md_config="--config .markdownlint.json"; \
-		fi; \
-		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --no-cache --deny-config-warnings --color never $$md_config; \
-	fi
+	file_args=""; \
+	for file in $$_fmt_files; do file_args="$$file_args --files $$file"; done; \
+	$(PROJECT_INFRA_WORKSPACE) format --workspace "$(CURDIR)" \
+		$$file_args $(if $(filter 1,$(CHECK_ONLY)),,--apply)
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
 docs: ## Build docs

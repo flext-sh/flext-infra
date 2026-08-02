@@ -29,6 +29,22 @@ class FlextInfraModelsWorkspace:
             Path, m.Field(alias="workspace", description="Workspace root path")
         ]
 
+    class WorkspaceFormatRequest(mm.WriteMixin, m.ContractModel):
+        """Typed request for Git-scoped multi-language formatting."""
+
+        files: Annotated[
+            t.StrSequence, m.Field(description="Repository-relative file selectors")
+        ] = ()
+
+        @m.field_validator("files", mode="before")
+        @classmethod
+        def _parse_files(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
+            if value is None:
+                return ()
+            if isinstance(value, str):
+                return tuple(part for part in value.split() if part)
+            return tuple(part for part in value if part)
+
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""
 

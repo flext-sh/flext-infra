@@ -1,3 +1,7 @@
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
+
+# flext-infra
+
 <!-- TOC START -->
 - [Purpose](#purpose)
 - [Module Map](#module-map)
@@ -7,10 +11,6 @@
 - [Quality Gates](#quality-gates)
 - [Governance Pointer](#governance-pointer)
 <!-- TOC END -->
-
-<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext-infra
 
 **Version**: `0.12.0rc0` | **Python**: 3.13+ | **Project class**: `infra`
 

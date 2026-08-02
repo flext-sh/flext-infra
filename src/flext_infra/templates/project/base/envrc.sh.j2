@@ -4,20 +4,33 @@
 
 strict_env
 
-WORKSPACE_ROOT="${PWD}"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "${PWD}")"
+SUPERPROJECT_ROOT="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+if [[ -n "${SUPERPROJECT_ROOT}" && -f "${SUPERPROJECT_ROOT}/config/workspace.yaml" ]]; then
+  WORKSPACE_ROOT="${SUPERPROJECT_ROOT}"
+else
+  WORKSPACE_ROOT="${PROJECT_ROOT}"
+fi
 VENV_DIR="${WORKSPACE_ROOT}/.venv"
 MISE_SHIMS="${WORKSPACE_MISE_SHIMS:-${MISE_SHIMS:-${HOME}/.local/share/mise/shims}}"
 PYPROJECT_FILE="${WORKSPACE_ROOT}/pyproject.toml"
+CALLER_VIRTUAL_ENV="${VIRTUAL_ENV:-}"
 
 export WORKSPACE_ROOT
+export PROJECT_ROOT
 export WORKSPACE_MISE_SHIMS="${MISE_SHIMS}"
 export MISE_SHIMS
 export PYTHON_KEYRING_BACKEND="keyring.backends.null.Keyring"
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONUNBUFFERED=1
 
+if [[ -n "${CALLER_VIRTUAL_ENV}" && "${CALLER_VIRTUAL_ENV}" != "${VENV_DIR}" ]]; then
+  PATH_rm "${CALLER_VIRTUAL_ENV}/bin"
+fi
+PATH_rm "${MISE_SHIMS}"
+
 if command -v mise >/dev/null 2>&1; then
-  eval "$(mise activate bash --shims)"
+  eval "$(mise env -s bash)"
 fi
 
 path_prepend_once() {
@@ -37,13 +50,11 @@ if [[ -d "{{ extra_path }}" ]]; then
 fi
 {% endfor %}
 
-path_prepend_once "${MISE_SHIMS}"
-
 if [[ -f "${PYPROJECT_FILE}" && -d "${VENV_DIR}" ]]; then
   export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
   export VIRTUAL_ENV="${VENV_DIR}"
   path_prepend_once "${VENV_DIR}/bin"
-  PYTHON_VERSION="$(python -c 'import sys; u.Cli.print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+  PYTHON_VERSION="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
   export PYTHON_VERSION
   log_status "workspace activated (python ${PYTHON_VERSION:-?}, venv ${VENV_DIR})"
 elif [[ -f "${PYPROJECT_FILE}" ]]; then

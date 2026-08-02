@@ -9,9 +9,9 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
+MAKE_PROFILE := standalone
 WORKSPACE_ROOT_REL := .
-WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
+WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
 
@@ -40,7 +40,7 @@ PROJECT_ROOT := $(shell pwd -P)
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 WORKSPACE ?= $(PROJECT_ROOT)
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_PHASES := generate fix audit build validate
@@ -48,8 +48,7 @@ SERIALIZED_VERBS := check test codegen
 SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
-UV ?= uv
-UV_REQUESTED := $(UV)
+MISE ?= mise
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
@@ -78,19 +77,19 @@ _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
 _DEFAULT_worktree := list
+_DEFAULT_basemk := generate
 
 
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
-ifeq ($(MAKE_PROFILE),workspace-member)
-DECLARED_WORKSPACE_ROOT := $(shell cd "$(PROJECT_ROOT)/$(WORKSPACE_ROOT_REL)" 2>/dev/null && pwd -P)
 SUPERPROJECT_ROOT_RAW := $(shell git rev-parse --show-superproject-working-tree 2>/dev/null)
 SUPERPROJECT_ROOT := $(shell test -n "$(SUPERPROJECT_ROOT_RAW)" && cd "$(SUPERPROJECT_ROOT_RAW)" 2>/dev/null && pwd -P)
-ifeq ($(SUPERPROJECT_ROOT),$(DECLARED_WORKSPACE_ROOT))
+ifneq ($(strip $(SUPERPROJECT_ROOT)),)
+ifneq ($(wildcard $(SUPERPROJECT_ROOT)/config/workspace.yaml),)
 ATTACHED_MEMBER := Y
-RUNTIME_ROOT := $(DECLARED_WORKSPACE_ROOT)
+RUNTIME_ROOT := $(SUPERPROJECT_ROOT)
 else
 ATTACHED_MEMBER := N
 RUNTIME_ROOT := $(PROJECT_ROOT)
@@ -125,11 +124,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)" 2>/dev/null)
-ifeq ($(strip $(RESOLVED_UV)),)
-$(error Required uv executable not found: $(UV_REQUESTED))
-endif
-override UV := $(RESOLVED_UV)
+override UV := $(MISE) exec -- uv
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
@@ -258,7 +253,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS) _builtin_setup_submodules
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -291,7 +286,7 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' '';
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
@@ -349,6 +344,8 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
 
 
+	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
+
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
@@ -363,18 +360,18 @@ _builtin_help_usage:
 		fi; \
 	fi
 
-# A project owns the sources it declares. Setup makes the tree exactly what the
-# manifest declares, using nothing outside the tree: every declared submodule is
-# initialised recursively at its recorded gitlink and placed on the branch
-# declared in .gitmodules. It is a no-op when the project declares no
-# submodules, and it converges on re-run. It never moves a branch that holds
-# work the superproject does not record: that is an error, never a warning, so
-# setup can never report success over a tree that is not what it declares.
+# A project owns the sources declared by its manifest. The generated setup
+# reconciler validates every initialized checkout before mutation, initializes
+# only missing modules, and preserves declared branches that fix forward beyond
+# the recorded gitlink.
+.PHONY: _builtin_setup_submodules
+
 _builtin_setup_submodules:
 	@set -eu; \
-	if [ ! -f "$(PROJECT_ROOT)/.gitmodules" ]; then exit 0; fi; \
-	git -C "$(PROJECT_ROOT)" submodule sync --recursive --quiet; \
-	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+	root="$(PROJECT_ROOT)"; \
+	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	git -C "$$root" submodule sync --recursive --quiet; \
+	git -C "$$root" submodule foreach --recursive --quiet ' \
 		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
 		current=$$(git branch --show-current); \
 		if [ -n "$$(git status --porcelain)" ]; then \
@@ -384,6 +381,10 @@ _builtin_setup_submodules:
 		if [ -z "$$branch" ]; then \
 			if [ -n "$$current" ]; then \
 				printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
+				exit 1; \
+			fi; \
+			if [ "$$(git rev-parse HEAD)" != "$$sha1" ]; then \
+				printf "ERROR: %s: detached HEAD diverges from recorded gitlink %s\n" "$$displaypath" "$$(git rev-parse --short "$$sha1")" >&2; \
 				exit 1; \
 			fi; \
 			exit 0; \
@@ -403,12 +404,30 @@ _builtin_setup_submodules:
 			printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
 			exit 1; \
 		fi; \
-		if [ -n "$$current" ] && [ "$$(git rev-parse HEAD)" != "$$sha1" ]; then \
+		if [ -z "$$current" ] && [ "$$(git rev-parse HEAD)" != "$$sha1" ]; then \
+			printf "ERROR: %s: detached HEAD diverges from recorded gitlink %s\n" "$$displaypath" "$$(git rev-parse --short "$$sha1")" >&2; \
+			exit 1; \
+		fi; \
+		if [ -n "$$current" ] && ! git merge-base --is-ancestor "$$sha1" HEAD; then \
 			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short "$$sha1")" >&2; \
 			exit 1; \
 		fi'; \
-	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
-	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+	initialize_declared_submodules() { \
+		superproject="$$1"; \
+		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
+		git -C "$$superproject" submodule sync --quiet; \
+		keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+		for key in $$keys; do \
+			child_path=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
+			state=$$(git -C "$$superproject" submodule status -- "$$child_path"); \
+			case "$$state" in \
+				-*) git -C "$$superproject" submodule update --init -- "$$child_path" ;; \
+			esac; \
+			initialize_declared_submodules "$$superproject/$$child_path"; \
+		done; \
+	}; \
+	initialize_declared_submodules "$$root"; \
+	git -C "$$root" submodule foreach --recursive --quiet ' \
 		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
 		if [ -z "$$branch" ]; then exit 0; fi; \
 		if [ "$$branch" = "." ]; then \
@@ -430,10 +449,10 @@ _builtin_setup_submodules:
 		fi; \
 		if ! git rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
 			git checkout --quiet -b "$$branch"; \
-		elif [ "$$(git rev-parse "refs/heads/$$branch")" = "$$(git rev-parse HEAD)" ]; then \
+		elif git merge-base --is-ancestor "$$sha1" "refs/heads/$$branch"; then \
 			git checkout --quiet "$$branch"; \
 		else \
-			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short HEAD)" >&2; \
+			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short "$$sha1")" >&2; \
 			exit 1; \
 		fi'
 
@@ -443,15 +462,12 @@ _builtin_require_environment:
 		exit 2; \
 	fi
 
-_builtin_setup_conform: _builtin_setup_submodules
+_builtin_setup_tools:
+	@cd "$(PROJECT_ROOT)" && "$(MISE)" install
+
+_builtin_setup_conform: _builtin_setup_tools _builtin_setup_submodules
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
-ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment: _builtin_setup_conform
-	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
-	@$(UV) pip check --python "$(RUNTIME_VENV)"
-else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment: _builtin_setup_conform
 	@$(SELF_MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
@@ -459,11 +475,7 @@ else
 _builtin_setup_environment: _builtin_setup_conform
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
-endif
-else
-_builtin_setup_environment: _builtin_setup_conform
-	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip check --python "$(RUNTIME_VENV)"
 endif
 
 _builtin_deps_check: _builtin_require_environment
@@ -623,13 +635,13 @@ _builtin_test_all: _builtin_require_environment
 
 
 _builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) workspace format --workspace "$(PROJECT_ROOT)" \
+		$(if $(strip $(FILE)),--files "$(FILE)")
 
 _builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) workspace format --workspace "$(PROJECT_ROOT)" \
+		--apply $(if $(strip $(FILE)),--files "$(FILE)")
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)

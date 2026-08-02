@@ -36,6 +36,22 @@ def test_update_toc_replaces_existing_block() -> None:
     tm.that(updated, has="Section")
 
 
+def test_update_toc_keeps_generated_heading_before_managed_toc() -> None:
+    """Generated comments never displace the required first level-one heading."""
+    content = (
+        "<!-- TOC START -->\n- stale\n<!-- TOC END -->\n\n"
+        "<!-- AUTO-GENERATED -->\n\n"
+        "# Generated\n\n"
+        "## Section\n"
+    )
+
+    updated, changed = u.Infra.update_toc(content)
+
+    tm.that(changed, eq=1)
+    tm.that(updated.index("# Generated"), lt=updated.index("<!-- TOC START -->"))
+    tm.that(updated, has="[Section](#section)")
+
+
 def test_generated_markdown_is_toc_normalized_before_write(tmp_path: Path) -> None:
     generated = tmp_path / "generated.md"
 

@@ -1,7 +1,17 @@
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
 VENV_PYTHON := $(ACTIVE_VENV)/bin/python
-UV ?= uv
+VENV_BIN := $(ACTIVE_VENV)/bin
+ACTIONLINT := $(VENV_BIN)/actionlint
+MYPY := $(VENV_BIN)/mypy
+PYREFLY := $(VENV_BIN)/pyrefly
+PYRIGHT := $(VENV_BIN)/pyright
+PYTEST := $(VENV_BIN)/pytest
+RUFF := $(VENV_BIN)/ruff
+RUMDL := $(VENV_BIN)/rumdl
+VULTURE := $(VENV_BIN)/vulture
+YAMLFIX := $(VENV_BIN)/yamlfix
+UV ?= $(MISE) exec -- uv
 FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
 export FLEXT_INFRA_PYTHON
 

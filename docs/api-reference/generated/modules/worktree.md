@@ -1,10 +1,10 @@
-<!-- TOC START -->
-- No sections found
-<!-- TOC END -->
-
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 # flext_infra.worktree
+
+<!-- TOC START -->
+- No sections found
+<!-- TOC END -->
 
 ::: flext_infra.worktree
     options:

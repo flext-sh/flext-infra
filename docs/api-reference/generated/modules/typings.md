@@ -1,10 +1,10 @@
-<!-- TOC START -->
-- No sections found
-<!-- TOC END -->
-
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 # flext_infra.typings
+
+<!-- TOC START -->
+- No sections found
+<!-- TOC END -->
 
 ::: flext_infra.typings
     options:

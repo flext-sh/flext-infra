@@ -63,10 +63,24 @@ class TestsCodegenSetupSubmodules:
             encoding="utf-8",
         )
         (bin_dir / "uv").chmod(0o755)
+        (bin_dir / "mise").write_text(
+            "#!/bin/sh\n"
+            "set -eu\n"
+            'if [ "$1" = "install" ]; then exit 0; fi\n'
+            'if [ "$1" = "exec" ]; then\n'
+            "  shift\n"
+            '  if [ "${1:-}" = "--" ]; then shift; fi\n'
+            '  exec "$@"\n'
+            "fi\n"
+            'printf "unsupported mise fixture command: %s\\n" "$*" >&2\n'
+            "exit 64\n",
+            encoding="utf-8",
+        )
+        (bin_dir / "mise").chmod(0o755)
         environment = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
-            "UV": str(bin_dir / "uv"),
+            "MISE": str(bin_dir / "mise"),
             "UV_LOG": str(root / "uv.log"),
             "GIT_ALLOW_PROTOCOL": "file",
         }

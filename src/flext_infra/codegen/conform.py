@@ -1104,7 +1104,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             )
-        if destination in {".mise.toml", ".python-version"}:
+        if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination in {
             ".github/workflows/ci.yml",
@@ -1372,13 +1372,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 version=project.version,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
-                kubectl_version=codegen.toolchain.kubectl_version,
-                helm_version=codegen.toolchain.helm_version,
-                kind_version=codegen.toolchain.kind_version,
-                taplo_version=codegen.toolchain.taplo_version,
-                ast_grep_version=codegen.toolchain.ast_grep_version,
-                gitleaks_version=codegen.toolchain.gitleaks_version,
-                tokei_version=codegen.toolchain.tokei_version,
+                mise_tools=codegen.toolchain.mise_tools,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,

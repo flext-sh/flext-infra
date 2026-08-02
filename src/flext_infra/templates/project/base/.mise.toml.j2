@@ -3,12 +3,6 @@
 # Python dependencies and uv are resolved by the caller-provided environment.
 
 [tools]
-python = "{{ python_version }}"
-# Native toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
-kubectl = "{{ kubectl_version }}"
-helm = "{{ helm_version }}"
-kind = "{{ kind_version }}"
-taplo = "{{ taplo_version }}"
-ast-grep = "{{ ast_grep_version }}"
-gitleaks = "{{ gitleaks_version }}"
-tokei = "{{ tokei_version }}"
+{% for tool in mise_tools -%}
+"{{ tool.backend }}" = "{{ tool.version }}"
+{% endfor -%}

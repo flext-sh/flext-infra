@@ -110,6 +110,11 @@ class TestsCodegenMakeEnvironment:
                 "fixture workspace\n", encoding="utf-8"
             )
             test_u.Tests.initialize_git_repo(workspace_root)
+            workspace_config = (
+                workspace_root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
+            )
+            workspace_config.parent.mkdir()
+            workspace_config.write_text("version: 1\n", encoding="utf-8")
             tm.ok(
                 u.Cli.run_checked(
                     [
@@ -335,7 +340,8 @@ class TestsCodegenMakeEnvironment:
         tm.that(
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
         )
-        tm.that("UV ?= uv" in makefile, eq=True)
+        tm.that("MISE ?= mise" in makefile, eq=True)
+        tm.that("override UV := $(MISE) exec -- uv" in makefile, eq=True)
         tm.that(
             (
                 "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
@@ -379,16 +385,17 @@ class TestsCodegenMakeEnvironment:
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
         for required in (
-            "UV ?= uv",
+            "MISE ?= mise",
+            "override UV := $(MISE) exec -- uv",
+            '_builtin_setup_tools:\n\t@cd "$(PROJECT_ROOT)" && "$(MISE)" install',
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
+            'initialize_declared_submodules "$$root"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (
-            "mise exec -- uv",
             "uv@",
             "define _setup_submodules",
             "SETUP_BRANCH :=",

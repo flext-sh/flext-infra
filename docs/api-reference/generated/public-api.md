@@ -1,10 +1,10 @@
-<!-- TOC START -->
-- No sections found
-<!-- TOC END -->
-
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 # flext-infra Public API
+
+<!-- TOC START -->
+- No sections found
+<!-- TOC END -->
 
 ::: flext_infra
     options:

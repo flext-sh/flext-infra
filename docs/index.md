@@ -1,3 +1,7 @@
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
+
+# flext-infra Documentation
+
 <!-- TOC START -->
 - [Start Here](#start-here)
 - [Public Surface Summary](#public-surface-summary)
@@ -5,11 +9,6 @@
 - [Quality Gates](#quality-gates)
 - [Governance Pointer](#governance-pointer)
 <!-- TOC END -->
-
-<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext-infra Documentation
-
 - Version: `0.12.0rc0`
 - Project class: `infra`
 - Package: `flext_infra`

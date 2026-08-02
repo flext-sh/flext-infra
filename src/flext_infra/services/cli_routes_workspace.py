@@ -12,6 +12,7 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
+from flext_infra.workspace.formatter import FlextInfraWorkspaceFormatter
 from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
@@ -35,6 +36,15 @@ class WorkspaceRoutes(RefactorRoutes):
             ),
         ),
         c.Infra.CLI_GROUP_WORKSPACE: (
+            m.Cli.ResultCommandRoute(
+                name="format",
+                help_text="Format Git-owned files with configured tools",
+                model_cls=m.Infra.WorkspaceFormatRequest,
+                handler=lambda params: FlextInfraWorkspaceFormatter.execute_request(
+                    params
+                ).map(CliRouteBase.as_route_value),
+                success_message="workspace formatting completed",
+            ),
             m.Cli.ResultCommandRoute(
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",

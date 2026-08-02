@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, config, m, p, t, u
 from flext_infra.base import s
 from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner

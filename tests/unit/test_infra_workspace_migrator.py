@@ -65,9 +65,14 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that((project_root / "base.mk").exists(), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
+        python_tool = next(
+            tool
+            for tool in config.Infra.codegen.toolchain.mise_tools
+            if tool.backend == "python"
+        )
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),
-            has=f'python = "{config.Infra.codegen.toolchain.python_version}"',
+            has=f'"{python_tool.backend}" = "{python_tool.version}"',
         )
 
     def test_migrator_handles_missing_pyproject_gracefully(

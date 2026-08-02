@@ -11,11 +11,11 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra.constants import c
 from flext_infra._utilities.pyproject import (
     FlextInfraUtilitiesPyproject,
     _validate_infra_payload,
 )
+from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from pathlib import Path

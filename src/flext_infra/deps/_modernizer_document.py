@@ -101,7 +101,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             rendered,
             path=path,
             toolchain_root=self.root,
-            taplo_version=config.Infra.codegen.toolchain.taplo_version,
+            taplo_version=config.Infra.codegen.toolchain.mise_versions["taplo"],
         )
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
