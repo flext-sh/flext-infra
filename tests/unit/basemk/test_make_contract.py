@@ -47,8 +47,10 @@ _MAKE_TEST_ENV_KEYS = (
 )
 
 
-def _render_base_mk() -> str:
-    result = FlextInfraBaseMkGenerator().generate_basemk()
+def _render_base_mk(project_root: Path | None = None) -> str:
+    result = FlextInfraBaseMkGenerator(
+        workspace_root=project_root or Path.cwd()
+    ).generate_basemk()
     rendered: str = tm.ok(result)
     return rendered
 
@@ -140,11 +142,13 @@ def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
     (project_root / "tests").mkdir(parents=True, exist_ok=True)
     if include_parent:
         (project_root.parent / "base.mk").write_text(
-            _render_base_mk(), encoding="utf-8"
+            _render_base_mk(project_root), encoding="utf-8"
         )
         makefile_content = "PROJECT_NAME := demo-project\ninclude ../base.mk\n"
     else:
-        (project_root / "base.mk").write_text(_render_base_mk(), encoding="utf-8")
+        (project_root / "base.mk").write_text(
+            _render_base_mk(project_root), encoding="utf-8"
+        )
         makefile_content = "PROJECT_NAME := demo-project\ninclude base.mk\n"
     (project_root / "Makefile").write_text(makefile_content, encoding="utf-8")
 
@@ -882,3 +886,41 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(log_lines.index(initial_sync) < log_lines.index(extra_paths), eq=True)
         tm.that(log_lines.index(extra_paths) < log_lines.index(lock), eq=True)
         tm.that(log_lines.index(lock) < log_lines.index(reinstall_sync), eq=True)
+
+    def test_make_boot_targets_git_dependencies_and_preserves_other_pins(
+        self, tmp_path: Path
+    ) -> None:
+        log_path = tmp_path / "tool.log"
+        bin_dir = tmp_path / "bin"
+        _write_stubs(bin_dir, log_path)
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "fixture-project"\nversion = "0.1.0"\n'
+            'dependencies = [\n'
+            '  "moving-one @ git+https://example.invalid/one.git@main",\n'
+            '  "moving-two @ git+https://example.invalid/two.git@next",\n'
+            '  "unrelated-pin==7.4.2",\n'
+            ']\n',
+            encoding="utf-8",
+        )
+        _write_project(tmp_path)
+
+        result = _run_make(
+            tmp_path,
+            "boot",
+            f"UV={bin_dir / 'uv'}",
+            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+        )
+
+        tm.that(result.exit_code, eq=0, msg=result.stderr or result.stdout)
+        log_lines = log_path.read_text(encoding="utf-8").splitlines()
+        tm.that(
+            log_lines,
+            has=(
+                "uv lock --upgrade-package moving-one "
+                "--upgrade-package moving-two"
+            ),
+        )
+        tm.that(
+            any("--upgrade-package unrelated-pin" in line for line in log_lines),
+            eq=False,
+        )

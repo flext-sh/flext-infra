@@ -79,6 +79,46 @@ class TestsFlextInfraBasemkGenerator:
         tm.ok(result)
         tm.that(result.value, has="PROJECT_NAME ?= test-proj")
 
+    def test_generator_targets_declared_direct_git_dependencies(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "fixture-project"\nversion = "0.1.0"\n'
+            'dependencies = [\n'
+            '  "Branch_Alpha @ git+https://example.invalid/alpha.git@main",\n'
+            '  "branch-beta[cli] @ git+ssh://git@example.invalid/beta.git@develop",\n'
+            '  "stable-registry>=1.2",\n'
+            ']\n',
+            encoding="utf-8",
+        )
+
+        result = FlextInfraBaseMkGenerator(workspace_root=tmp_path).generate_basemk()
+
+        tm.ok(result)
+        tm.that(
+            result.value,
+            has=(
+                "$(UV) lock --upgrade-package branch-alpha "
+                "--upgrade-package branch-beta"
+            ),
+        )
+        tm.that(result.value, lacks="--upgrade-package stable-registry")
+
+    def test_generator_keeps_plain_lock_without_direct_git_dependencies(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "fixture-project"\nversion = "0.1.0"\n'
+            'dependencies = ["stable-registry>=1.2"]\n',
+            encoding="utf-8",
+        )
+
+        result = FlextInfraBaseMkGenerator(workspace_root=tmp_path).generate_basemk()
+
+        tm.ok(result)
+        tm.that(result.value, has="\t$(Q)$(UV) lock\n")
+        tm.that(result.value, lacks="--upgrade-package")
+
     def test_generator_generate_with_invalid_mapping_fails(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(
             settings={"invalid_key": "x"}
