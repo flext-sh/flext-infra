@@ -371,4 +371,103 @@ class TestsCodegenMakeEnvironment:
 
         tm.that(makefile, has="deps modernize")
         tm.that(makefile, has="--rewrite-constraints")
+        dependency_profile = next(
+            item
+            for item in config.Infra.codegen.scaffold.project.dependency_profiles
+            if item.upstream == "flext_cli"
+        )
+        catalog = {
+            repository.distribution for repository in config.Infra.codegen.repositories
+        }
+        expected_dependencies: set[str] = set()
+        for requirement in (
+            *dependency_profile.runtime,
+            *dependency_profile.codegen,
+            *config.Infra.codegen.scaffold.project.dev,
+        ):
+            dependency = u.Infra.dep_name(requirement)
+            if dependency is not None and dependency in catalog:
+                expected_dependencies.add(dependency)
+        tm.that(
+            makefile,
+            has=(
+                "MANAGED_GIT_DEPENDENCIES :="
+                + "".join(f" {item}" for item in sorted(expected_dependencies))
+            ),
+        )
+        tm.that(
+            makefile,
+            has=(
+                "GIT_REFRESH_DEPENDENCIES := "
+                "$(if $(filter workspace-root,$(MAKE_PROFILE)),,"
+                "$(if $(filter Y,$(ATTACHED_MEMBER)),,"
+                "$(MANAGED_GIT_DEPENDENCIES)))"
+            ),
+        )
+        tm.that(
+            makefile,
+            has=(
+                "--upgrade "
+                "$(foreach dependency,$(GIT_REFRESH_DEPENDENCIES),"
+                '--upgrade-package "$(dependency)")'
+            ),
+        )
         tm.that(makefile, lacks="--constraint-policy")
+
+    def test_dependency_upgrade_refreshes_each_managed_git_head(
+        self, tmp_path: Path
+    ) -> None:
+        """Execute the generated refresh with one explicit uv package selector."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        tools = tmp_path / "managed-tools"
+        uv_log = tmp_path / "uv.log"
+        fake_uv = tools / "uv"
+        fake_infra = tools / "flext-infra"
+        test_u.Tests.write_executable(
+            fake_uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\n"
+        )
+        test_u.Tests.write_executable(fake_infra, "#!/bin/sh\nexit 0\n")
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "_builtin_deps_upgrade",
+                    "APPLY=Y",
+                    f"UV={fake_uv}",
+                    f"PROJECT_FLEXT_INFRA={fake_infra}",
+                ],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        lock_commands = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(lock_commands, of_length=2)
+        dependency_profile = next(
+            item
+            for item in config.Infra.codegen.scaffold.project.dependency_profiles
+            if item.upstream == "flext_cli"
+        )
+        catalog = {
+            repository.distribution for repository in config.Infra.codegen.repositories
+        }
+        expected: set[str] = set()
+        for requirement in (
+            *dependency_profile.runtime,
+            *dependency_profile.codegen,
+            *config.Infra.codegen.scaffold.project.dev,
+        ):
+            dependency = u.Infra.dep_name(requirement)
+            if dependency is not None and dependency in catalog:
+                expected.add(dependency)
+        tm.that(lock_commands[0], has="--upgrade")
+        for dependency in expected:
+            tm.that(lock_commands[0], has=f"--upgrade-package {dependency}")
+        tm.that(lock_commands[1], lacks="--upgrade-package")

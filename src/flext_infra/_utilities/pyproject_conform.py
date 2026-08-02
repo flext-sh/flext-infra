@@ -101,6 +101,7 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
+        uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Conform only internal requirements and their root workspace overlay."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -142,6 +143,8 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
+        if workspace_mode is c.Infra.WorkspaceMode.STANDALONE:
+            cls._remove_pyrefly_interpreter_path(source)
         sources_result = (
             r[bool].ok(True)
             if attached_workspace_root
@@ -150,6 +153,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 project_name=project_name,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
+                exclude_dependencies=uv_exclude_dependencies,
             )
         )
         if sources_result.failure:
@@ -483,8 +487,8 @@ class FlextInfraUtilitiesPyprojectConform:
             if not tuple(flext):
                 u.Cli.toml_remove_key_if_present(tool, "flext")
 
-    @staticmethod
-    def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
+    @classmethod
+    def _sync_typecheck_paths(cls, document: t.Cli.TomlDocument) -> p.Result[bool]:
         """Remove checkout- and interpreter-specific type checker paths."""
         # NOTE (multi-agent, mro-wkii.17 / agent: codex): port the 0.20
         # canonical path policy so all generated 0.12 projects are portable.
@@ -494,7 +498,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
             u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
-            u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
+            cls._remove_pyrefly_interpreter_path(document)
         mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
         if mypy is not None:
             u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
@@ -526,6 +530,16 @@ class FlextInfraUtilitiesPyprojectConform:
                 pyright, "executionEnvironments", normalized_environments
             )
         return r[bool].ok(True)
+
+    @staticmethod
+    def _remove_pyrefly_interpreter_path(document: t.Cli.TomlDocument) -> None:
+        """Remove the deprecated checkout-relative interpreter override."""
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            return
+        pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
+        if pyrefly is not None:
+            u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
 
     @classmethod
     def _sync_uv_sources(

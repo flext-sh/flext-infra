@@ -94,6 +94,9 @@ members = ["flext-core"]
 
 [tool.uv.sources.flext-core]
 workspace = true
+
+[tool.pyrefly]
+python-interpreter-path = "../.venv/bin/python"
 """
 
 
@@ -115,12 +118,17 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         tm.that(group, eq=["flext-core"])
         tm.that(runtime, eq=["flext-core"])
+        tm.that(
+            document["tool"]["pyrefly"]["python-interpreter-path"],
+            eq="../.venv/bin/python",
+        )
 
     def test_external_consumer_keeps_remote_branch_source(self) -> None:
         workspace = _workspace()
         external = (
             '[project]\nname = "cosmos-main"\nversion = "0.1.0"\n'
             'dependencies = ["flext-core"]\n'
+            '\n[tool.pyrefly]\npython-interpreter-path = "../.venv/bin/python"\n'
         )
 
         result = u.Infra.pyproject_dependencies_conform(
@@ -139,6 +147,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             document["project"]["dependencies"],
             eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
+        tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
 
     def test_publishable_member_keeps_catalog_git_provenance(self) -> None:
         workspace = _workspace_with_consumer()

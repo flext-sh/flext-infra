@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import tomllib
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorktreeService, c
+from flext_infra import FlextInfraWorktreeService, c, config, m
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
 
 if TYPE_CHECKING:
@@ -135,6 +137,96 @@ class TestsFlextInfraWorktreeService:
             (lane / "pyproject.toml").read_text(encoding="utf-8"),
             has='description = "A standard PEP 621 description string"',
         )
+
+    def test_add_projects_remote_flext_sources_before_setup(
+        self, tmp_path: Path
+    ) -> None:
+        """A clean governed lane bootstraps only after Git source conformance."""
+        repository = self._repository(tmp_path)
+        branch = "bugfix/remote-bootstrap"
+        lane = self._lane(repository, repository, branch)
+        governed = {
+            item.distribution: item
+            for item in config.Infra.codegen.repositories
+            if item.distribution
+            in {"flext-cli", "flext-core", "flext-infra", "flext-tests"}
+        }
+        (repository / "pyproject.toml").write_text(
+            """[project]
+name = "flext-cli"
+version = "0.1.0"
+description = "Governed standalone fixture"
+dependencies = ["flext-core"]
+
+[dependency-groups]
+codegen = ["flext-infra"]
+dev = ["flext-tests"]
+
+[tool.coverage.run]
+source = ["fixture_source"]
+
+[tool.pyright]
+include = ["fixture_source"]
+
+[tool.pyrefly]
+python-interpreter-path = "../.venv/bin/python"
+""",
+            encoding="utf-8",
+        )
+        expected = {
+            name: f"{name} @ git+{reference.url}@{reference.branch}"
+            for name, reference in governed.items()
+            if name != "flext-cli"
+        }
+        (repository / "Makefile").write_text(
+            ".PHONY: setup\n"
+            "setup:\n"
+            + "".join(
+                f"\t@grep -Fq '{requirement}' pyproject.toml\n"
+                for requirement in expected.values()
+            )
+            + "\t@! grep -Fq 'python-interpreter-path' pyproject.toml\n",
+            encoding="utf-8",
+        )
+        self._commit_fixture(repository, "test: seed bare standalone dependencies")
+
+        added = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(added, eq=str(lane))
+        document = tomllib.loads((lane / "pyproject.toml").read_text(encoding="utf-8"))
+        tm.that(document["project"]["dependencies"], eq=[expected["flext-core"]])
+        tm.that(document["dependency-groups"]["codegen"], eq=[expected["flext-infra"]])
+        tm.that(document["dependency-groups"]["dev"], eq=[expected["flext-tests"]])
+        tm.that(document["tool"]["coverage"]["run"]["source"], eq=["fixture_source"])
+        tm.that(document["tool"]["pyright"]["include"], eq=["fixture_source"])
+        tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
+        exclusions = [
+            item.model_dump(mode="json", exclude_none=True)
+            for item in config.Infra.codegen.uv_exclude_dependencies
+            if item.project == "flext-cli"
+        ]
+        tm.that(document["tool"]["uv"]["exclude-dependencies"], eq=exclusions)
+        rendered = (lane / "pyproject.toml").read_text(encoding="utf-8")
+        tm.that(rendered, lacks=["file://", "workspace = true", "editable = true"])
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=lane,
+                    what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
+            )
+        )
+        tm.that((lane / "pyproject.toml").read_text(encoding="utf-8"), eq=rendered)
 
     def test_add_escapes_a_dirty_outer_project_ancestor(self, tmp_path: Path) -> None:
         """The lane container sits outside every project uv could discover."""

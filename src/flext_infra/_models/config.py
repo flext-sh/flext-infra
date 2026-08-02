@@ -695,6 +695,15 @@ class FlextInfraConfigModels:
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        managed_git_dependencies: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Declared FLEXT dependencies whose permitted Git branch "
+                    "head is refreshed explicitly"
+                )
+            ),
+        ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -868,6 +877,15 @@ class FlextInfraConfigModels:
         ]
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        managed_git_dependencies: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Declared FLEXT dependencies whose permitted Git branch "
+                    "head is refreshed explicitly"
+                )
+            ),
+        ]
 
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor tool value")

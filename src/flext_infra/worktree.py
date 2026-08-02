@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.base import s
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -140,6 +141,26 @@ class FlextInfraWorktreeService(s[str]):
                 )
         return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
 
+    @staticmethod
+    def _conform_lane_pyproject(lane: Path, project_name: str) -> p.Result[bool]:
+        """Project standalone dependency provenance before lane bootstrap."""
+        governed = any(
+            repository.distribution == project_name
+            for repository in config.Infra.codegen.repositories
+        )
+        if not governed:
+            return r[bool].ok(True)
+        request = m.Infra.CodegenConformRequest(
+            root=lane,
+            what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        conformed = FlextInfraCodegenConform.execute_request(request)
+        if conformed.failure:
+            return r[bool].fail(conformed.error or "lane dependency conformance failed")
+        return r[bool].ok(True)
+
     def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
         """Create and set up one branch worktree transactionally."""
         if not self.apply_changes:
@@ -198,6 +219,15 @@ class FlextInfraWorktreeService(s[str]):
                 branch,
                 created_branch_oid,
                 metadata.error or "invalid lane project metadata",
+            )
+        conformed = self._conform_lane_pyproject(lane, metadata.value.project.name)
+        if conformed.failure:
+            return self._rollback_new_lane(
+                primary_root,
+                lane,
+                branch,
+                created_branch_oid,
+                conformed.error or "lane dependency conformance failed",
             )
         setup = u.Cli.run_live(
             (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),

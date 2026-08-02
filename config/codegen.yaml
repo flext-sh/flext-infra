@@ -44,6 +44,10 @@ Infra:
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
 
     uv_exclude_dependencies:
+      - project: flext-cli
+        package:
+          name: flext-infra
+        dependencies: [flext-cli]
       - project: flext-infra
         package:
           name: flext-tests

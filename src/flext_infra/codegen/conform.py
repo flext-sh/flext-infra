@@ -724,6 +724,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
+                managed_git_dependencies=context.managed_git_dependencies,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -859,6 +860,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repositories=codegen.repositories,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
+                uv_exclude_dependencies=uv_exclude_dependencies,
             )
             if dependency_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -896,6 +898,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace=workspace,
                 codegen=codegen,
                 tooling_runtime=tooling_context.value,
+                pyproject_content=pyproject_read.value,
                 contract=contract,
             )
         prepared_result = u.Infra.pyproject_conform(
@@ -939,6 +942,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace=workspace,
             codegen=codegen,
             tooling_runtime=tooling_context.value,
+            pyproject_content=tooling_result.value,
             contract=contract,
         )
         if managed_result.failure:
@@ -965,6 +969,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        pyproject_content: str,
         contract: SurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
@@ -976,6 +981,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
+        managed_git_dependencies = self._managed_git_dependencies(
+            pyproject_content, codegen
+        )
         planned: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
             if (
@@ -1033,6 +1041,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
+                managed_git_dependencies=managed_git_dependencies,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1078,6 +1087,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
+        managed_git_dependencies: t.StrSequence = (),
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
@@ -1126,6 +1136,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     dist=dist,
+                    managed_git_dependencies=tuple(managed_git_dependencies),
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
@@ -1175,6 +1186,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         *,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        managed_git_dependencies: t.StrSequence = (),
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = c.Infra.MakeProfile(repository.profile)
@@ -1196,6 +1208,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
+                managed_git_dependencies=tuple(managed_git_dependencies),
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
@@ -1264,6 +1277,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
+        managed_git_dependencies = FlextInfraCodegenConform._managed_git_dependencies(
+            "\n".join((
+                *dependency_profile.runtime,
+                *dependency_profile.codegen,
+                *codegen.scaffold.project.dev,
+            )),
+            codegen,
+            requirements_only=True,
+        )
         packaged_data_dirs = (
             tuple(
                 data_dir
@@ -1303,6 +1325,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
+                managed_git_dependencies=managed_git_dependencies,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
@@ -1360,6 +1383,30 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_exclusions=tuple(workspace.exclusions),
             )
         )
+
+    @staticmethod
+    def _managed_git_dependencies(
+        source: str,
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        requirements_only: bool = False,
+    ) -> t.StrSequence:
+        """Return declared catalog dependencies requiring explicit Git refresh."""
+        if requirements_only:
+            declared = {
+                dependency
+                for requirement in source.splitlines()
+                if (dependency := u.Infra.dep_name(requirement)) is not None
+            }
+        else:
+            document = u.Cli.toml_parse_text(source)
+            declared = (
+                set(u.Infra.declared_dependency_names(document))
+                if document is not None
+                else set()
+            )
+        catalog = {repository.distribution for repository in codegen.repositories}
+        return tuple(sorted(declared & catalog))
 
     @classmethod
     def _validate_initial_manifest(
