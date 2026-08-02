@@ -11,7 +11,7 @@ import os
 import hashlib
 from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, Literal, override
 
 from flext_core import r
 from flext_infra import config, p
@@ -1233,6 +1233,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return "."
 
     @staticmethod
+    def _profile_setup_scope(
+        codegen: m.Infra.CodegenConfigSpec, profile: c.Infra.MakeProfile
+    ) -> Literal["root-and-members", "self"]:
+        """Resolve setup scope from the single exhaustive profile registry."""
+        return next(
+            item.setup_scope for item in codegen.profiles if item.name == profile
+        )
+
+    @staticmethod
     def _merge_gitmodules(
         current: str, managed: str, *, managed_paths: frozenset[str]
     ) -> str:
@@ -1401,10 +1410,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dist=dist,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
+                    setup_scope=self._profile_setup_scope(codegen, profile),
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_members=tuple(
-                        item.path.as_posix() for item in members
-                    ),
+                    workspace_members=tuple(item.path.as_posix() for item in members),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
@@ -1479,6 +1487,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
+                setup_scope=FlextInfraCodegenConform._profile_setup_scope(
+                    codegen, profile
+                ),
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1591,6 +1602,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
+                setup_scope=FlextInfraCodegenConform._profile_setup_scope(
+                    codegen, profile
+                ),
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
@@ -1599,9 +1613,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_members=tuple(
-                    item.path.as_posix() for item in members
-                ),
+                workspace_members=tuple(item.path.as_posix() for item in members),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
@@ -1723,18 +1735,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         allowed_verbs: t.StrSequence,
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
-        target_re = re.compile(
-            r"^(?P<phase>pre|post)-(?P<verb>[a-z][a-z0-9-]*)"
-            r"(?:-[a-z0-9][a-z0-9-]*)?$"
-        )
-        custom_target_re = re.compile(
-            r"^_custom_(?P<verb>[a-z][a-z0-9_]*)_[a-z0-9][a-z0-9_-]*$"
-        )
+        target_re = re.compile(r"^(?:pre|post)-[a-z][a-z0-9-]*$")
+        custom_target_re = re.compile(r"^_custom_[a-z][a-z0-9_]*_[a-z0-9][a-z0-9_-]*$")
         declared_verbs = frozenset(allowed_verbs)
 
         def is_declared_hook(target: str) -> bool:
-            match = target_re.fullmatch(target) or custom_target_re.fullmatch(target)
-            return match is not None and match.group("verb") in declared_verbs
+            if target_re.fullmatch(target):
+                hook_name = target.split("-", 1)[1]
+                return any(
+                    hook_name == verb or hook_name.startswith(f"{verb}-")
+                    for verb in declared_verbs
+                )
+            if not custom_target_re.fullmatch(target):
+                return False
+            custom_name = target.removeprefix("_custom_")
+            return any(
+                custom_name.startswith(f"{verb.replace('-', '_')}_")
+                for verb in declared_verbs
+            )
 
         in_define = False
         # Collapse backslash continuation lines before validating so that

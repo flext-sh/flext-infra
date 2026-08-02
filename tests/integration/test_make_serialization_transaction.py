@@ -71,8 +71,7 @@ class TestsMakeSerializationTransaction:
             encoding="utf-8",
         )
         (infra_git_repo / ".gitignore").write_text(
-            f"{make_config.serialization.lock_path.parts[0]}/\n",
-            encoding="utf-8",
+            f"{make_config.serialization.lock_path.parts[0]}/\n", encoding="utf-8"
         )
         tm.that(u.Cli.process_env().get(marker), eq=None)
 
@@ -91,8 +90,7 @@ class TestsMakeSerializationTransaction:
 
         tm.that(outer_make.exit_code, eq=0, msg=outer_make.stderr)
         tm.that(
-            outer_make.stdout + outer_make.stderr,
-            has="transaction-marker=<absent>",
+            outer_make.stdout + outer_make.stderr, has="transaction-marker=<absent>"
         )
         tm.that(artifact.exists(), eq=False)
 

@@ -121,10 +121,18 @@ class FlextInfraPyprojectModernizer(
         flext.add("docs", docs)
         tool.add("flext", flext)
         seed.add(c.Infra.TOOL, tool)
+        source = u.Cli.toml_dumps(seed)
+        if path.is_file():
+            existing = u.Cli.files_read_text(path)
+            if existing.failure:
+                return r[m.Infra.ToolingRuntimeContext].fail(
+                    existing.error or f"tooling source read failed: {path}"
+                )
+            source = existing.value
         # NOTE(mro-p68a.5, agent codex): resolve from the declared future roots
         # so first generation and post-write conformance are the same fixed point.
         conformed = self.conform_source(
-            u.Cli.toml_dumps(seed),
+            source,
             path=path,
             declared_python_dirs=declared_python_dirs,
             project_kind=project_kind,

@@ -509,6 +509,7 @@ class TestCodegenConform:
             dist=context.dist,
             infra_cli=context.infra_cli,
             make_profile=context.make_profile,
+            setup_scope=context.setup_scope,
             workspace_members=context.workspace_members,
             workspace_repositories=context.workspace_repositories,
             workspace_gitlinks=context.workspace_gitlinks,
@@ -548,16 +549,59 @@ class TestCodegenConform:
         tm.that(
             help_process.exit_code, eq=0, msg=help_process.stdout + help_process.stderr
         )
-        tm.that(
-            help_process.stdout,
-            has=f"{make.apply_variable}={make.apply_value}",
-        )
+        tm.that(help_process.stdout, has=f"{make.apply_variable}={make.apply_value}")
         tm.that(
             help_process.stdout,
             lacks=(
                 f"{config.Infra.codegen.make.apply_variable}="
                 f"{config.Infra.codegen.make.apply_value}"
             ),
+        )
+
+        invocation_log = root / "public-dispatch.log"
+        test_u.Tests.write_executable(
+            root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON,
+            (
+                "#!/bin/sh\n"
+                "verb=''\nselector=''\napply=''\nmakefile=''\nprevious=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  if [ "$previous" = "--selector-value" ]; then '
+                'selector="$argument"; fi\n'
+                '  if [ "$previous" = "--apply-token" ]; then '
+                'apply="$argument"; fi\n'
+                '  if [ "$previous" = "--makefile" ]; then makefile="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then\n'
+                '  exec make --no-print-directory -f "$makefile" '
+                '"_serialized_${verb}" '
+                f'"{make.selector}=$selector" "{make.apply_variable}=$apply"\n'
+                "fi\n"
+                f'printf "%s\\n" "$*" >> "{invocation_log}"\n'
+            ),
+        )
+        fake_uv = root / "bin" / "uv"
+        test_u.Tests.write_executable(fake_uv, "#!/bin/sh\nexit 0\n")
+        public_dispatch = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "worktree",
+                    f"{make.selector}=list",
+                    f"UV={fake_uv}",
+                ],
+                cwd=root,
+            )
+        )
+        tm.that(
+            public_dispatch.exit_code,
+            eq=0,
+            msg=public_dispatch.stdout + public_dispatch.stderr,
+        )
+        tm.that(
+            invocation_log.read_text(encoding="utf-8"),
+            has=["workspace worktree", "--operation list"],
         )
 
         pre_commit = tm.ok(
@@ -568,9 +612,7 @@ class TestCodegenConform:
         entry = pre_commit.split("'", 2)[1]
         expected_commands = [
             f"make {step.verb}"
-            + (
-                f" {make.apply_variable}={make.apply_value}" if step.apply else ""
-            )
+            + (f" {make.apply_variable}={make.apply_value}" if step.apply else "")
             for step in make.workflow
             if "pre_commit" in step.contexts
         ]
@@ -1118,20 +1160,26 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
+        tm.that(gen_check_body.count("deps modernize"), eq=1)
+        tm.that(gen_check_body.count("codegen conform"), eq=1)
         tm.that(
-            gen_check_body.index("deps extra-paths")
+            gen_check_body.index("deps modernize")
             < gen_check_body.index("codegen conform"),
             eq=True,
         )
+        tm.that(gen_check_body, lacks="deps extra-paths")
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_apply_body, eq=True)
         tm.that("--mode apply" in gen_apply_body, eq=True)
         tm.that("_require_apply" in gen_apply_body, eq=True)
+        tm.that(gen_apply_body.count("deps modernize"), eq=1)
+        tm.that(gen_apply_body.count("codegen conform"), eq=1)
         tm.that(
-            gen_apply_body.index("deps extra-paths")
+            gen_apply_body.index("deps modernize")
             < gen_apply_body.index("codegen conform"),
             eq=True,
         )
+        tm.that(gen_apply_body, lacks="deps extra-paths")
         # The regeneration contract published on every projection speaks gen.
         make = config.Infra.codegen.make
         tm.that(

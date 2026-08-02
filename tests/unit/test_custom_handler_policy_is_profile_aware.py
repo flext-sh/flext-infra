@@ -21,12 +21,44 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, config
+import pytest
+
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 
 
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
+    def test_profile_registry_covers_the_closed_runtime_vocabulary(self) -> None:
+        """Every runtime profile has exactly one typed scope row."""
+        names = tuple(profile.name for profile in config.Infra.codegen.profiles)
+
+        tm.that(len(names), eq=len(set(names)))
+        tm.that(set(names), eq=set(c.Infra.MakeProfile))
+
+    def test_profile_registry_rejects_missing_and_duplicate_rows(self) -> None:
+        """Profile coverage cannot silently drift from the closed enum."""
+        payload = config.Infra.codegen.model_dump(
+            mode="python", exclude_computed_fields=True
+        )
+        payload["uv_exclude_dependencies"] = [
+            {**exclusion.model_dump(mode="python"), "project": exclusion.project}
+            for exclusion in config.Infra.codegen.uv_exclude_dependencies
+        ]
+        profiles = list(payload["profiles"])
+        for invalid in (profiles[:-1], [*profiles, profiles[0]]):
+            invalid_payload = {**payload, "profiles": invalid}
+            with pytest.raises(ValueError, match="profile"):
+                m.Infra.CodegenConfigSpec.model_validate(invalid_payload)
+
+    def test_profile_scopes_reject_unimplemented_values(self) -> None:
+        """Scope fields are closed literals consumed directly by templates."""
+        payload = config.Infra.codegen.profiles[0].model_dump(mode="python")
+        payload["setup_scope"] = "fleet"
+
+        with pytest.raises(ValueError, match="setup_scope"):
+            m.Infra.ProfileSpec.model_validate(payload)
+
     def test_every_declared_profile_has_a_custom_handler_policy(self) -> None:
         """Each Make profile declares the contract for its own custom surface."""
         declared = frozenset(

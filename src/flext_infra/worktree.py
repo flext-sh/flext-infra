@@ -201,11 +201,7 @@ class FlextInfraWorktreeService(s[str]):
             )
         make_config = config.Infra.codegen.make
         setup = u.Cli.run_live(
-            (
-                c.Infra.MAKE,
-                "setup",
-                f"WORKSPACE={lane}",
-            ),
+            (c.Infra.MAKE, "setup", f"WORKSPACE={lane}"),
             cwd=lane,
             remove_env_keys=(
                 *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,

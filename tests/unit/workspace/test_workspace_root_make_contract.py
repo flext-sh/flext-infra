@@ -135,6 +135,40 @@ def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
     )
 
 
+def _prepare_setup_hook_repositories(
+    workspace_root: Path,
+    project_names: tuple[str, ...],
+    *,
+    missing_config: str | None = None,
+) -> tuple[Path, ...]:
+    """Materialize independent governed Git roots for setup-hook runtime tests."""
+    repositories = (workspace_root, *(workspace_root / name for name in project_names))
+    for repository in repositories[1:]:
+        test_u.Tests.initialize_git_repo(repository)
+    for repository in repositories:
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "--local", "core.hooksPath", ""], cwd=repository
+            )
+        )
+        if repository.name == missing_config:
+            continue
+        (repository / ".pre-commit-config.yaml").write_text(
+            "repos: []\n", encoding="utf-8"
+        )
+    return repositories
+
+
+def _logged_uv(tmp_path: Path) -> tuple[Path, Path]:
+    """Return a fake uv that records both repository cwd and one command."""
+    log = tmp_path / "setup-uv.log"
+    executable = tmp_path / "bin" / "uv"
+    test_u.Tests.write_executable(
+        executable, f'#!/bin/sh\nprintf "%s\\t%s\\n" "$PWD" "$*" >> "{log}"\n'
+    )
+    return executable, log
+
+
 class TestsWorkspaceRootMakeContract:
     def test_workspace_root_make_template_is_owned_by_typed_config(
         self, tmp_path: Path
@@ -163,11 +197,14 @@ class TestsWorkspaceRootMakeContract:
         rendered = (workspace_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8"
         )
-        tm.that(
-            f"UV_SYNC_FLAGS := --{config.Infra.codegen.make.setup.lock_mode}"
-            in rendered,
-            eq=True,
-        )
+        setup = config.Infra.codegen.make.setup
+        expected_sync_flags = " ".join((
+            "--all-packages",
+            f"--{setup.lock_mode}",
+            f"--{setup.extras}-extras",
+            f"--{setup.dependency_groups}-groups",
+        ))
+        tm.that(rendered, has=f"UV_SYNC_FLAGS := {expected_sync_flags}")
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.
@@ -248,8 +285,103 @@ class TestsWorkspaceRootMakeContract:
         )
 
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        commands = uv_log.read_text(encoding="utf-8")
         tm.that(hook_log.exists(), eq=False)
-        tm.that(uv_log.read_text(encoding="utf-8"), lacks="pre-commit install")
+        tm.that(commands.count("sync --project"), eq=1)
+        tm.that(commands, lacks="pre-commit install")
+
+    def test_local_setup_syncs_once_and_installs_root_and_member_hooks(
+        self, tmp_path: Path
+    ) -> None:
+        """Root setup installs serially in every governed repository after one sync."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+        repositories = _prepare_setup_hook_repositories(workspace_root, project_names)
+        fake_uv, uv_log = _logged_uv(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "setup", f"UV={fake_uv}"],
+                cwd=workspace_root,
+            )
+        )
+
+        output = process.stdout + process.stderr
+        tm.that(process.exit_code, eq=0, msg=output)
+        records = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(sum("sync --project" in record for record in records), eq=1)
+        installs = tuple(
+            record for record in records if record.endswith("pre-commit install")
+        )
+        tm.that(len(installs), eq=len(repositories))
+        tm.that(
+            tuple(record.split("\t", 1)[0] for record in installs),
+            eq=tuple(str(repository) for repository in repositories),
+        )
+
+    def test_local_setup_preserves_explicit_member_hooks_path(
+        self, tmp_path: Path
+    ) -> None:
+        """A repository-owned core.hooksPath is never overwritten by setup."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+        repositories = _prepare_setup_hook_repositories(workspace_root, project_names)
+        preserved = repositories[1]
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "--local", "core.hooksPath", ".custom-hooks"],
+                cwd=preserved,
+            )
+        )
+        fake_uv, uv_log = _logged_uv(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "setup", f"UV={fake_uv}"],
+                cwd=workspace_root,
+            )
+        )
+
+        output = process.stdout + process.stderr
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has=[str(preserved), "core.hooksPath=.custom-hooks"])
+        records = uv_log.read_text(encoding="utf-8").splitlines()
+        installs = tuple(
+            record for record in records if record.endswith("pre-commit install")
+        )
+        tm.that(len(installs), eq=len(repositories) - 1)
+        tm.that(
+            tuple(record.split("\t", 1)[0] for record in installs), lacks=str(preserved)
+        )
+
+    def test_local_setup_fails_when_governed_member_lacks_hook_config(
+        self, tmp_path: Path
+    ) -> None:
+        """Missing generated hook policy fails with the canonical repair command."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+        _prepare_setup_hook_repositories(
+            workspace_root, project_names, missing_config=project_names[-1]
+        )
+        fake_uv, uv_log = _logged_uv(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "setup", f"UV={fake_uv}"],
+                cwd=workspace_root,
+            )
+        )
+
+        output = process.stdout + process.stderr
+        make = config.Infra.codegen.make
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            output,
+            has=[
+                project_names[-1],
+                ".pre-commit-config.yaml",
+                f"make gen {make.apply_variable}={make.apply_value}",
+            ],
+        )
+        records = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(sum("sync --project" in record for record in records), eq=1)
 
     def test_generated_make_selects_manifest_projects_and_forwards_gates(
         self, tmp_path: Path

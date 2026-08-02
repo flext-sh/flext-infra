@@ -13,6 +13,5 @@ def execute_cli_routes_inside_governed_transaction(
 ) -> None:
     """Exercise command behavior without repeating the integration transaction."""
     monkeypatch.setenv(
-        c.Infra.WORKTREE_TRANSACTION_ENV,
-        c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE,
+        c.Infra.WORKTREE_TRANSACTION_ENV, c.Infra.WORKTREE_TRANSACTION_ACTIVE_VALUE
     )

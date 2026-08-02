@@ -22,6 +22,7 @@ MAKE_PROFILE := $(if $(strip $(shell git rev-parse --show-superproject-working-t
 # governance; standalone projects discover managed submodules at runtime from
 # .gitmodules (flext-managed=true).
 WORKSPACE_MEMBERS :=
+SETUP_HOOK_PROJECTS := .
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -101,9 +102,9 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and its computed registry projections.
 PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen worktree
-CHECK_GATES_ALLOWED := lint pyrefly mypy pyright silent-failure security markdown smells
+CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright silent-failure security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright silent-failure security markdown smells
-CHECK_GATES_FAST := lint pyrefly mypy pyright
+CHECK_GATES_FAST := lint format pyrefly mypy pyright
 DOCS_ACTIONS := generate fix audit build validate
 SERIALIZED_VERBS := deps check test fmt fix docs clean gen worktree
 SERIALIZED_TARGETS := _serialized_deps _serialized_check _serialized_test _serialized_fmt _serialized_fix _serialized_docs _serialized_clean _serialized_gen _serialized_worktree
@@ -746,17 +747,30 @@ endif
 _builtin_setup_hooks: _builtin_setup_environment
 	@if [ "$(strip $(CI))" = "Y" ]; then \
 		printf 'INFO: skipping pre-commit install in CI\n'; \
-	elif git -C "$(PROJECT_ROOT)" rev-parse --git-dir >/dev/null 2>&1; then \
-		hooks_path=$$(git -C "$(PROJECT_ROOT)" config --get --default '' core.hooksPath); \
-		if [ -n "$$hooks_path" ]; then \
-			printf 'INFO: skipping pre-commit install (core.hooksPath=%s)\n' "$$hooks_path"; \
-		elif [ -f "$(PROJECT_ROOT)/.pre-commit-config.yaml" ] || [ -f "$(PROJECT_ROOT)/.pre-commit-config.yml" ]; then \
-			cd "$(PROJECT_ROOT)" && $(UV_RUN) pre-commit install; \
-		else \
-			printf 'INFO: skipping pre-commit install (no pre-commit config)\n'; \
-		fi; \
 	else \
-		printf 'INFO: skipping pre-commit install (no git repository)\n'; \
+		set -eu; \
+		for project in $(SETUP_HOOK_PROJECTS); do \
+			if [ "$$project" = "." ]; then repository="$(PROJECT_ROOT)"; \
+			else repository="$(PROJECT_ROOT)/$$project"; fi; \
+			repository=$$(cd "$$repository" 2>/dev/null && pwd -P) || { \
+				printf 'ERROR: governed setup hook target is missing: %s\n' "$$repository" >&2; exit 2; \
+			}; \
+			git_root=$$(git -C "$$repository" rev-parse --show-toplevel 2>/dev/null) || { \
+				printf 'ERROR: governed setup hook target is not a Git repository: %s\n' "$$repository" >&2; exit 2; \
+			}; \
+			git_root=$$(cd "$$git_root" && pwd -P); \
+			if [ "$$git_root" != "$$repository" ]; then \
+				printf 'ERROR: governed setup hook target is not a Git repository root: %s\n' "$$repository" >&2; exit 2; \
+			fi; \
+			hooks_path=$$(git -C "$$repository" config --get --default '' core.hooksPath); \
+			if [ -n "$$hooks_path" ]; then \
+				printf 'INFO: skipping pre-commit install for %s (core.hooksPath=%s)\n' "$$repository" "$$hooks_path"; \
+			elif [ ! -f "$$repository/.pre-commit-config.yaml" ] && [ ! -f "$$repository/.pre-commit-config.yml" ]; then \
+				printf 'ERROR: governed repository %s lacks .pre-commit-config.yaml; run make gen APPLY=Y\n' "$$repository" >&2; exit 2; \
+			else \
+				cd "$$repository" && $(UV_RUN) pre-commit install; \
+			fi; \
+		done; \
 	fi
 
 _builtin_deps_all: _builtin_require_environment
@@ -910,12 +924,12 @@ _builtin_release_all: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
 _builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(WORKSPACE_ROOT)" --check
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE_ROOT)" --check
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(WORKSPACE_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_help_usage: _builtin_help_all

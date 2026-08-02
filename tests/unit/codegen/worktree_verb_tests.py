@@ -162,9 +162,7 @@ class TestsCodegenWorktreeVerb:
         setup_log = tmp_path / "setup.log"
         fake_uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(
-            fake_uv,
-            "#!/bin/sh\n"
-            f'printf "%s\\t%s\\n" "$PWD" "$*" >> "{setup_log}"\n',
+            fake_uv, f'#!/bin/sh\nprintf "%s\\t%s\\n" "$PWD" "$*" >> "{setup_log}"\n'
         )
         branch = "feature/public-setup"
         common_arguments = [
@@ -176,12 +174,7 @@ class TestsCodegenWorktreeVerb:
         ]
         added = tm.ok(
             test_u.Tests.run_isolated_make(
-                [
-                    *common_arguments,
-                    f"{make.selector}=add",
-                    "BASE=HEAD",
-                ],
-                cwd=repository,
+                [*common_arguments, f"{make.selector}=add", "BASE=HEAD"], cwd=repository
             )
         )
         tm.that(added.exit_code, eq=0, msg=added.stdout + added.stderr)

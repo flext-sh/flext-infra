@@ -137,11 +137,14 @@ class TestsFlextInfraDepsExtraPathsSync:
             eq=0,
         )
 
-        payload = u.Cli.toml_mapping_from_text(pyproject.read_text(encoding="utf-8"))
-        tool = u.Cli.json_as_mapping(payload[c.Infra.TOOL])
-        mypy = u.Cli.json_as_mapping(tool[c.Infra.MYPY])
-        tm.that(mypy["mypy_path"][0], eq=source_dir)
-        tm.that(mypy["mypy_path"], has=f"../dependency/{source_dir}")
+        payload = u.Tests.toml_mapping(
+            u.Cli.toml_mapping_from_text(pyproject.read_text(encoding="utf-8"))
+        )
+        tool = u.Tests.toml_mapping(payload[c.Infra.TOOL])
+        mypy = u.Tests.toml_mapping(tool[c.Infra.MYPY])
+        mypy_path = u.Tests.toml_strings(mypy["mypy_path"])
+        tm.that(mypy_path[0], eq=source_dir)
+        tm.that(mypy_path, has=f"../dependency/{source_dir}")
 
     @pytest.mark.parametrize(
         ("mode", "argv", "expected_exit"),

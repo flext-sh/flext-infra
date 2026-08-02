@@ -581,8 +581,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @staticmethod
     def _configured_lock_paths(
-        repository_roots: t.SequenceOf[Path],
-        relative_lock_paths: t.SequenceOf[Path],
+        repository_roots: t.SequenceOf[Path], relative_lock_paths: t.SequenceOf[Path]
     ) -> p.Result[t.SequenceOf[Path]]:
         """Resolve every configured Make lock for the supplied repositories."""
         lock_paths: set[Path] = set()
@@ -632,10 +631,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         serialization = config.Infra.codegen.make.serialization
         lock_paths_result = cls._configured_lock_paths(
             tuple(repository.worktree_root for repository in repositories),
-            (
-                serialization.single_flight_lock_path,
-                serialization.lock_path,
-            ),
+            (serialization.single_flight_lock_path, serialization.lock_path),
         )
         if lock_paths_result.failure:
             return r[bool].fail(
@@ -665,7 +661,9 @@ class FlextInfraUtilitiesWorktreeTransaction:
             return head_preflight
         patches = tuple(delta for delta in deltas if delta.patch)
         ordered = sorted(
-            patches, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
+            patches,
+            key=lambda delta: len(Path(delta.relative_path).parts),
+            reverse=True,
         )
         for delta in ordered:
             result = FlextInfraUtilitiesGitScope.git_apply_patch(delta)

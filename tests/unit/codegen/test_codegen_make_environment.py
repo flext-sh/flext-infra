@@ -17,6 +17,31 @@ class TestsCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
     @staticmethod
+    def _write_serializing_runtime(project_root: Path) -> None:
+        """Emulate the public serializer while preserving configured tokens."""
+        make = config.Infra.codegen.make
+        test_u.Tests.write_executable(
+            project_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON,
+            (
+                "#!/bin/sh\n"
+                "verb=''\nselector=''\napply=''\nprevious=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  if [ "$previous" = "--selector-value" ]; then '
+                'selector="$argument"; fi\n'
+                '  if [ "$previous" = "--apply-token" ]; then '
+                'apply="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then\n'
+                '  exec make --no-print-directory "_serialized_${verb}" '
+                f'"{make.selector}=$selector" "{make.apply_variable}=$apply"\n'
+                "fi\n"
+                "exit 0\n"
+            ),
+        )
+
+    @staticmethod
     def _render_makefile(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
@@ -126,6 +151,12 @@ class TestsCodegenMakeEnvironment:
             project_root.mkdir(parents=True)
             test_u.Tests.initialize_git_repo(project_root)
         tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "config", "--local", "core.hooksPath", ".fixture-hooks"],
+                cwd=project_root,
+            )
+        )
+        tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
         return project_root, workspace_root
@@ -158,8 +189,8 @@ class TestsCodegenMakeEnvironment:
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
         (project_root / "custom.mk").write_text(
-            ".PHONY: pre-status-diagnostics\n"
-            "pre-status-diagnostics:\n"
+            ".PHONY: pre-status-all\n"
+            "pre-status-all:\n"
             "\t@printf '%s\\n' "
             "'MAKE_PROFILE=$(MAKE_PROFILE)' "
             "'RUNTIME_ROOT=$(RUNTIME_ROOT)'\n"
@@ -177,14 +208,11 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
             "WORKSPACE_ROOT": str(tmp_path / "hostile-workspace"),
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
+            "UV": "/bin/true",
         }
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "status",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "status"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -196,9 +224,7 @@ class TestsCodegenMakeEnvironment:
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
-        expected_profile = (
-            c.Infra.MakeProfile.WORKSPACE_MEMBER if attached else profile
-        )
+        expected_profile = c.Infra.MakeProfile.WORKSPACE_MEMBER if attached else profile
         tm.that(output[0], eq=f"MAKE_PROFILE={expected_profile.value}")
         tm.that(output[1], eq=f"RUNTIME_ROOT={runtime_root}")
         tm.that(output[2], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
@@ -215,9 +241,7 @@ class TestsCodegenMakeEnvironment:
             tmp_path / "detached", c.Infra.MakeProfile.STANDALONE
         )
         attached_root, _ = self._render_makefile(
-            tmp_path / "attached",
-            c.Infra.MakeProfile.STANDALONE,
-            attached=True,
+            tmp_path / "attached", c.Infra.MakeProfile.STANDALONE, attached=True
         )
 
         tm.that(
@@ -326,21 +350,17 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv --clear")
         setup = config.Infra.codegen.make.setup
-        expected_sync_flags = " ".join(
-            (
-                *(
-                    ("--all-packages",)
-                    if profile == c.Infra.MakeProfile.WORKSPACE_ROOT
-                    else ()
-                ),
-                f"--{setup.lock_mode}",
-                f"--{setup.extras}-extras",
-                f"--{setup.dependency_groups}-groups",
-            )
-        )
-        tm.that(
-            commands[1], has=f"sync --project {project_root} {expected_sync_flags}"
-        )
+        expected_sync_flags = " ".join((
+            *(
+                ("--all-packages",)
+                if profile == c.Infra.MakeProfile.WORKSPACE_ROOT
+                else ()
+            ),
+            f"--{setup.lock_mode}",
+            f"--{setup.extras}-extras",
+            f"--{setup.dependency_groups}-groups",
+        ))
+        tm.that(commands[1], has=f"sync --project {project_root} {expected_sync_flags}")
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
 
@@ -462,8 +482,7 @@ class TestsCodegenMakeEnvironment:
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
-        runtime_python = project_root / ".venv" / "bin" / "python"
-        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        self._write_serializing_runtime(project_root)
         uv_log = tmp_path / "uv.log"
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(
@@ -503,8 +522,7 @@ class TestsCodegenMakeEnvironment:
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
-        runtime_python = project_root / ".venv" / "bin" / "python"
-        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        self._write_serializing_runtime(project_root)
         uv_log = tmp_path / "uv.log"
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(
@@ -569,7 +587,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$$root" submodule update --init --recursive -- "$$child_path"',
+            'git -C "$$superproject" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
@@ -581,6 +599,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "pip install",
+            "submodule update --init --recursive",
         ):
             tm.that(makefile, lacks=forbidden)
 

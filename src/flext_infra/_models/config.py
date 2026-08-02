@@ -349,16 +349,18 @@ class FlextInfraConfigModels:
             m.Field(description="Closed Make profile name"),
         ]
         environment_scope: Annotated[
-            t.NonEmptyStr, m.Field(description="uv environment ownership")
+            Literal["root", "self"], m.Field(description="uv environment ownership")
         ]
         setup_scope: Annotated[
-            t.NonEmptyStr, m.Field(description="setup orchestration scope")
+            Literal["root-and-members", "self"],
+            m.Field(description="setup orchestration scope"),
         ]
         execution_scope: Annotated[
-            t.NonEmptyStr, m.Field(description="check/test runtime scope")
+            Literal["root", "self"], m.Field(description="check/test runtime scope")
         ]
         discovery_scope: Annotated[
-            t.NonEmptyStr, m.Field(description="repository discovery policy")
+            Literal["manifest", "none", "parent"],
+            m.Field(description="repository discovery policy"),
         ]
 
     class MakeHandlerSpec(_ConfigContract):
@@ -1219,6 +1221,10 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+        setup_scope: Annotated[
+            Literal["root-and-members", "self"],
+            m.Field(description="Profile-owned hook installation scope"),
+        ]
         workspace_members: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace member paths")
         ] = ()
@@ -1463,6 +1469,10 @@ class FlextInfraConfigModels:
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
+        ]
+        setup_scope: Annotated[
+            Literal["root-and-members", "self"],
+            m.Field(description="Profile-owned hook installation scope"),
         ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr,
@@ -2045,6 +2055,25 @@ class FlextInfraConfigModels:
         # of projects it serves is NOT its knowledge — each repository declares
         # its own topology in config/workspace.yaml, and standalone checkouts
         # are derived from their own metadata plus live Git.
+
+        @u.model_validator(mode="after")
+        def _validate_profile_registry(self) -> Self:
+            """Require one typed execution row for every closed Make profile."""
+            names = tuple(profile.name for profile in self.profiles)
+            if len(set(names)) != len(names):
+                msg = "codegen Make profile names must be unique"
+                raise ValueError(msg)
+            expected = set(FlextInfraConstantsCodegenProject.MakeProfile)
+            actual = set(names)
+            if actual != expected:
+                missing = sorted(profile.value for profile in expected - actual)
+                extra = sorted(profile.value for profile in actual - expected)
+                msg = (
+                    "codegen Make profiles must cover the closed profile enum: "
+                    f"missing={missing}, extra={extra}"
+                )
+                raise ValueError(msg)
+            return self
 
         @u.model_validator(mode="after")
         def _validate_github_artifact_ownership(self) -> Self:

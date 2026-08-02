@@ -37,9 +37,7 @@ class TestCodegenCiMatrix:
         tm.ok(result)
         return root
 
-    def test_checkout_submodule_policy_is_typed_and_project_routed(
-        self,
-    ) -> None:
+    def test_checkout_submodule_policy_is_typed_and_project_routed(self) -> None:
         """Reject unknown modes and render override/default values from one SSOT."""
         codegen = config.Infra.codegen
         project, override = next(
@@ -75,6 +73,7 @@ class TestCodegenCiMatrix:
                 python_version=codegen.toolchain.python_version,
                 github_actions=codegen.github_actions,
                 make=codegen.make,
+                workspace_repositories=(),
                 checkout_submodules=mode,
             )
             return tm.ok(u.Cli.template_render(template, context))

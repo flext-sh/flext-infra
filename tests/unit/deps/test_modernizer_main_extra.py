@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_tests import tm
 from tests import c, u
@@ -16,6 +17,47 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDepsModernizerMainExtra:
     """Validate edge cases through the public modernizer API."""
+
+    def test_tooling_context_keeps_reachable_path_dependency_roots(
+        self, tmp_path: Path
+    ) -> None:
+        """Existing dependency metadata reaches generated analyzer paths."""
+        source_dir = config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+        dependency = tmp_path / "dependency"
+        dependency_package = dependency / source_dir / "fixture_dependency"
+        dependency_package.mkdir(parents=True)
+        (dependency_package / "__init__.py").write_text("", encoding="utf-8")
+        (dependency / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "fixture-dependency"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        project = tmp_path / "project"
+        (project / source_dir / "fixture_project").mkdir(parents=True)
+        pyproject = project / c.Infra.PYPROJECT_FILENAME
+        pyproject.write_text(
+            (
+                '[project]\nname = "fixture-project"\nversion = "0.1.0"\n'
+                'dependencies = ["fixture-dependency"]\n'
+                "[tool.uv.sources]\n"
+                'fixture-dependency = { path = "../dependency", editable = true }\n'
+            ),
+            encoding="utf-8",
+        )
+
+        runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=project, skip_check=True
+            ).resolve_tooling_context(
+                project_name="fixture-project",
+                package_name="fixture_project",
+                path=pyproject,
+                declared_python_dirs=(source_dir,),
+            )
+        )
+
+        dependency_root = f"../dependency/{source_dir}"
+        tm.that(runtime.pyrefly_search_path, has=dependency_root)
+        tm.that(runtime.mypy_path, has=dependency_root)
 
     @pytest.mark.parametrize(
         ("content", "expected"),
