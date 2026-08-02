@@ -299,11 +299,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload, project_kind=resolved_project_kind
             )
         )
-        changes.extend(
-            paths_manager.sync_payload(
-                payload, project_dir=path.parent, is_root=is_root
+        if effective_paths_manager is not None:
+            changes.extend(
+                effective_paths_manager.sync_payload(
+                    payload, project_dir=path.parent, is_root=is_root
+                )
             )
-        )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
         self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
