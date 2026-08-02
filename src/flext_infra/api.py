@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, t
+from flext_core import r
+from flext_infra import t
 from flext_infra.base import s
-from flext_infra.services._workspace.environment import (
-    FlextInfraWorkspaceEnvironmentMixin,
-)
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
@@ -17,7 +15,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
+class FlextInfra(s[t.JsonDict]):
     """Thin public MRO facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"

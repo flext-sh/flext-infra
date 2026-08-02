@@ -1,575 +1,73 @@
-{% from "base_test_report_recipe.j2" import test_report_recipe -%}
-{% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
 # @flext-managed: continuous
 # @flext-regenerate: make gen APPLY=Y
 # @flext-ssot: config/codegen.yaml + templates/project/base/base.mk.j2
-# @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
+# @flext-maintenance: edit the SSOT, never a generated projection
 # {{ dist }} — generated project interface.
-# Managed by flext-infra codegen conform for new and existing repositories.
-# === SECTION: header (managed) ===
-# Source: template (base/base.mk.j2)
-# Free: no
-# End SECTION: header
 
-SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
-# === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Identity and topology are rendered from the typed repository target.
 PROJECT_NAME := {{ dist }}
-MAKE_PROFILE := {{ make_profile }}
-WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
-# === SECTION: workspace members (managed) ===
-# Source: config:workspace_members (list), config:workspace_repositories (list)
-# Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
-# governance; standalone projects discover managed submodules at runtime from
-# .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS :={% for member in workspace_members %} {{ member }}{% endfor %}
-MANAGED_GITLINKS :={% if make_profile == "workspace-root" %}$(WORKSPACE_MEMBERS){% endif %}
-WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
-UV_LINK_MODE := {{ uv_link_mode }}
-# End SECTION: project identity
-
-# === SECTION: user overrides (managed) ===
-# Source: template (canonical public knobs declared by this generated interface)
-# Free: no — values are caller-supplied each invocation, not preserved in the file.
-{{ make.apply_variable }} ?= {{ make.apply_absent_value }}
-# The seeded absent value means "not applying", so every guard compares against
-# APPLYING and a plain read-only run never trips the write-enable check.
-APPLYING := $(if $(filter-out {{ make.apply_absent_value }},$(strip $({{ make.apply_variable }}))),$(strip $({{ make.apply_variable }})))
-ARGS ?=
-CHECK_GATES ?=
-DEPENDENCY ?=
-FAIL_FAST ?= 0
-FILE ?=
-MATCH ?=
-PROJECT ?=
-PROJECTS ?=
-BASE ?=
-BRANCH ?=
-PYTEST_ARGS ?=
-PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
-PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
-# mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
-# MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
-PYTEST_BOUNDED = {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
-PYTEST_REPORTS_DIR ?= .reports/tests
-override PYTEST_CASE_TIMEOUT_SECONDS := {{ pytest.case_timeout_seconds }}
-override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}
-override PYTEST_TERMINATION_GRACE_SECONDS := {{ pytest.termination_grace_seconds }}
-override PYTEST_TIMEOUT_EXIT_CODE := {{ mypy_timeout_exit_code }}
-override PYTEST_ENFORCEMENT_PLUGIN := {{ pytest.enforcement_plugin }}
-override PYTEST_PROGRESS_ARGS :={% for item in pytest.progress_args %} {{ item }}{% endfor %}
-override PYTEST_REPORT_ARGS :={% for item in pytest.report_args %} {{ item }}{% endfor %}
-override PYTEST_DIAG_ARGS :={% for item in pytest.diagnostic_args %} {{ item }}{% endfor %}
-override PYTEST_PARALLEL_WORKERS := {{ pytest.parallel_workers }}
-override PYTEST_PARALLEL_DISTRIBUTION := {{ pytest.parallel_distribution }}
-override PYTEST_PROFILE_SORT := {{ pytest.profile_sort }}
-override PYTEST_PROFILE_LIMIT := {{ pytest.profile_limit }}
-override PROCESS_TIMEOUT_COMMAND := {{ timeout_command }}
-override export FLEXT_PYTEST_ARGS_RAW := $(value PYTEST_ARGS)
-override export FLEXT_PYTEST_FILE_RAW := $(value FILE)
-override export FLEXT_PYTEST_FILES_RAW := $(value FILES)
-override export FLEXT_PYTEST_MATCH_RAW := $(value MATCH)
-override export FLEXT_PYTEST_DIAG_RAW := $(value DIAG)
-override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
-override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
-override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
-override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
-WHAT ?=
-# End SECTION: user overrides
-
-# === SECTION: derived paths (managed) ===
-# Source: computed (git rev-parse, pwd, abspath)
-PROJECT_ROOT := $(shell pwd -P)
-override export FLEXT_PYTEST_TARGET_RAW := tests
+MAKE_PROFILE := {{ profile.name }}
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
-WORKSPACE ?= $(PROJECT_ROOT)
-# === SECTION: WORKSPACE_ROOT isolation (managed) ===
-# Source: computed (rule: derive from current checkout unless caller overrides)
-# Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
-# caller passed it on the command line or via an override origin. An inherited
-# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
-# must never redirect verbs to another working tree.
-ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
-WORKSPACE_ROOT := $(shell root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || pwd -P; fi)
-endif
-# End SECTION: WORKSPACE_ROOT isolation
-
-# === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
-#        config:make.check_gates_default, config:make.serialization.verbs
-PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
-BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
-SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
-{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %}
-{% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %}
-{% endfor %}
-CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
-CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
-DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
-SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
-SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
-# End SECTION: verb dispatch
-
-# === SECTION: lint/type paths (managed) ===
-# Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
-MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
-# End SECTION: lint/type paths
-
-# === SECTION: infra bootstrap (managed) ===
-# Source: config:infra_repository.*, config:infra_source_root_rel, template (UV default)
+PROJECT_ROOT := $(MAKEFILE_ROOT)
+WORKSPACE_ROOT := $(abspath $(PROJECT_ROOT)/{{ workspace_root_rel }})
 UV ?= uv
-UV_REQUESTED := $(UV)
-CALLER_PATH := $(PATH)
-CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
-FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@{{ infra_repository_branch }}
-FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
-UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dependency_groups }}-groups --{{ make.bootstrap.extras }}-extras
-# End SECTION: infra bootstrap
+{{ make.selector }} ?=
+{{ make.apply_variable }} ?= {{ make.apply_absent_value }}
+override export {{ make.ci.variable }} := $(value {{ make.ci.variable }})
 
-{% include "base_mypy_limit.mk.j2" %}
-
-{% for verb in make.verbs if verb.name != "setup" -%}
-_DEFAULT_{{ verb.name }} := {{ verb.default_what }}
-{% endfor -%}
-{# APPLY=Y alone must mutate: an apply-guarded verb defaults to `check`, so
-   `make gen APPLY=Y` used to run the read-only pass and silently change
-   nothing. With APPLY set and no explicit WHAT, the verb resolves to its
-   mutating selector instead. #}
-{% for verb in make.verbs if verb.apply_guarded -%}
-_APPLY_WHAT_{{ verb.name }} := {{ verb.apply_what | default("apply") }}
-{% endfor -%}
-{% for verb in extra_verbs -%}
-_DEFAULT_{{ verb.name }} := {{ verb.default_what }}
-{% endfor %}
-
-# === SECTION: profile routing (managed) ===
-# Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
-# Rule: workspace-member delegates runtime to the principal (RUNTIME_ROOT is
-# the governing workspace root); workspace-root and standalone own their
-# runtime locally. An attached member is never promoted to a local runtime.
-ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
-$(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
+# Reject every undeclared command-line assignment before handler selection.
+# The allowlist is projected only from the typed Make contract.
+ALLOWED_COMMAND_VARIABLES := {{ make.selector }} {{ make.apply_variable }} {{ make.ci.variable }}{% for input in make.inputs %}{% for variable in input.variables %} {{ variable }}{% endfor %}{% endfor %}
+COMMAND_VARIABLES := $(foreach variable,$(.VARIABLES),$(if $(filter command line,$(origin $(variable))),$(variable)))
+UNKNOWN_COMMAND_VARIABLES := $(filter-out $(ALLOWED_COMMAND_VARIABLES),$(COMMAND_VARIABLES))
+ifneq ($(strip $(UNKNOWN_COMMAND_VARIABLES)),)
+$(error undeclared Make variable(s): $(UNKNOWN_COMMAND_VARIABLES))
 endif
 
-ifeq ($(MAKE_PROFILE),workspace-member)
+# Every optional public input is declared once in config and transported once.
+# Parsing and conflict detection happen at the typed Python boundary.
+{% for input in make.inputs -%}
+{% for variable in input.variables -%}
+override export {{ make.input_environment_prefix }}{{ variable }} := $(value {{ variable }})
+{% endfor -%}
+{% endfor %}
+
+# The configured profile decides who owns the environment. No verb carries a
+# workspace/root/standalone recipe variant.
+{% if profile.environment_scope == "root" -%}
 RUNTIME_ROOT := $(WORKSPACE_ROOT)
-else
+{% else -%}
 RUNTIME_ROOT := $(PROJECT_ROOT)
-endif
-# End SECTION: profile routing
-
-RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
-FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
+{% endif %}
+RUNTIME_VENV := $(RUNTIME_ROOT)/{{ runtime_environment_dir }}
 ifeq ($(OS),Windows_NT)
-RUNTIME_BIN := $(RUNTIME_VENV)/Scripts
-RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe
-FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/Scripts/python.exe
-NORMALIZED_CALLER_PATH := $(shell cygpath --path "$(CALLER_PATH)" 2>/dev/null)
-NORMALIZED_CALLER_VIRTUAL_ENV := $(shell cygpath --unix "$(CALLER_VIRTUAL_ENV)" 2>/dev/null)
-CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/Scripts
+RUNTIME_PYTHON := $(RUNTIME_VENV)/Scripts/python.exe
 else
-RUNTIME_BIN := $(RUNTIME_VENV)/bin
-RUNTIME_PYTHON := $(RUNTIME_BIN)/python
-FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/bin/python
-NORMALIZED_CALLER_PATH := $(CALLER_PATH)
-NORMALIZED_CALLER_VIRTUAL_ENV := $(CALLER_VIRTUAL_ENV)
-CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/bin
-endif
-SANITIZED_CALLER_PATH := $(NORMALIZED_CALLER_PATH)
-ifneq ($(strip $(NORMALIZED_CALLER_VIRTUAL_ENV)),)
-SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV_BIN):,,$(SANITIZED_CALLER_PATH))
-SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV_BIN),,$(SANITIZED_CALLER_PATH))
-ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
-SANITIZED_CALLER_PATH :=
-endif
-endif
-RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)" 2>/dev/null)
-ifeq ($(strip $(RESOLVED_UV)),)
-$(error Required uv executable not found: $(UV_REQUESTED))
-endif
-override UV := $(RESOLVED_UV)
-override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
-override UV_PROJECT := $(RUNTIME_ROOT)
-override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
-override VIRTUAL_ENV := $(RUNTIME_VENV)
-override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
-export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
-
-ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
-FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
-else
-FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
 endif
 
-ifeq ($(MAKE_PROFILE),workspace-root)
-CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
-else
-CODEGEN_SCOPE := self
-ALLOWED_PROJECTS := .
-endif
+# Bootstrap operations work before setup. Runtime operations use the one
+# environment selected by the profile; the executor validates its capability.
+FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@{{ infra_repository_branch }}
+UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dependency_groups }}-groups --{{ make.bootstrap.extras }}-extras
+{% if infra_source_root_rel -%}
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(abspath $(PROJECT_ROOT)/{{ infra_source_root_rel }})" python -m flext_infra
+{% else -%}
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+{% endif -%}
+PROJECT_FLEXT_INFRA := test -x "$(RUNTIME_PYTHON)" || { printf 'ERROR: missing managed environment %s; run make setup\n' "$(RUNTIME_PYTHON)" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH "$(RUNTIME_PYTHON)" -m flext_infra
 
-# Workspace-root gate verbs fan out across declared members through the generic
-# `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
-# from the constants SSOT, never hardcoded here). Members and standalone projects
-# run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
-REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-# A workspace root owns no local gate implementation: its verbs fan out to the
-# declared members. Selecting the root here would make it orchestrate itself.
-DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS){% if make_profile != "workspace-root" %} .{% endif %}
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
-WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
-WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
-DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
+PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
+BOOTSTRAP_VERBS :={% for verb in make.verbs %}{% for operation in make.operations if operation.name == verb.operation %}{% if operation.executor == "bootstrap" %} {{ verb.name }}{% endif %}{% endfor %}{% endfor %}
+MAKE_OPERATION_EXECUTOR = $(if $(filter $@,$(BOOTSTRAP_VERBS)),$(FLEXT_INFRA_BOOTSTRAP),$(PROJECT_FLEXT_INFRA))
 
-UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
-PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
-PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
-# mro-j47u (codex): scaffold dev tools live in the validated optional dev
-# profile; a fresh project must create its lock before later check-mode locks.
-UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif %} --all-extras --all-groups
+.PHONY: $(PUBLIC_VERBS)
 
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(strip $(PROJECTS)),)
-$(error {{ project_selection_conflict_error }})
-endif
-endif
-{% if script_dispatch %}
-# Script command framework: non-builtin verbs/WHATs route to scripts/<verb>/<what>.
-# A hyphenated WHAT (make check WHAT=no-fallbacks) maps to the underscore module
-# stem (scripts/check/no_fallbacks.py) so PEP 8 module names stay valid.
-_SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
-{% endif %}
-
-{{ makefile_custom_include }}
-SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
-
-define _dispatch
-	@what="$(strip $(WHAT))"; \
-	applying="$(strip $(APPLYING))"; \
-	if [ -n "$$applying" ] && [ "$$applying" != "{{ make.apply_value }}" ]; then \
-		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
-	fi; \
-	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
-		printf 'ERROR: verb %s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" >&2; exit 2; \
-	fi; \
-	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
-		what="$(_APPLY_WHAT_$(1))"; \
-	fi; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
-	case "$$what" in \
-		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
-	esac; \
-	case " $(_ALLOWED_WHATS_$(1)) " in \
-		*" $$what "*) ;; \
-		*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
-	esac; \
-	builtin="_builtin_$(1)_$$what"; \
-	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done; \
-{%- if script_dispatch %}
-	what_norm=$$(printf '%s' "$$what" | tr '-' '_'); \
-	script=''; script_what=''; \
-	for root in $(_SCRIPT_DISPATCH_ROOTS); do \
-		for cand in "$$what_norm" "$$what"; do \
-			for ext in py sh; do \
-				if [ -z "$$script" ] && [ -f "$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext" ]; then \
-					script="$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext"; script_what="$$cand"; \
-				fi; \
-			done; \
-		done; \
-	done; \
-	case " $(BUILTIN_VERBS) " in \
-	*" $(1) "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
-	*) if [ -n "$$script" ]; then \
-		WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
-	else printf 'ERROR: declared handler script is missing for %s WHAT=%s\n' "$(1)" "$$what" >&2; exit 2; fi ;; \
-	esac; \
-{%- else %}
-	$(SELF_MAKE) "$$builtin" || exit $$?; \
-{%- endif %}
-	for hook in "post-$(1)-$$what" "post-$(1)"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
-endef
-
-define _require_apply
-	@if [ "$({{ make.apply_variable }})" != "{{ make.apply_value }}" ]; then \
-		printf 'ERROR: this action requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; \
-		exit 2; \
-	fi
-endef
-
-define _run_for_selected_projects
-	@set -eu; \
-	selected="$(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))"; \
-	if [ -z "$$selected" ]; then selected="."; fi; \
-	for project in $$selected; do \
-		case " $(ALLOWED_PROJECTS) " in \
-			*" $$project "*) ;; \
-			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
-		esac; \
-		if [ "$$project" = "." ]; then project_root="$(PROJECT_ROOT)"; \
-		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		$(UV) lock --project "$$project_root" $(1); \
-	done
-endef
-
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
-
-$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
-	$(call _dispatch,$@)
-
-{% for verb in make.serialization.verbs %}
-{{ verb }}: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}" --selector-value "$({{ make.selector }})" --apply-token "$({{ make.apply_variable }})"
-
-_serialized_{{ verb }}:
-	$(call _dispatch,{{ verb }})
-
-{% endfor %}
-
-# `setup` keeps its own recipe (it must not require the environment it is about
-# to build), but it still runs the pre-/post-setup lifecycle hooks so a project
-# declaring them in the custom handler surface is actually honoured.
-setup:
-	@for hook in "pre-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
-	@$(SELF_MAKE) _builtin_setup_environment
-	@for hook in "post-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
-
-_builtin_help_usage:
-	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
-{% for verb in make.verbs %}
-{% if verb.name == "setup" %}
-	@printf '  %-10s\n' 'setup';
-{% else %}
-	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.whats | join('|') }}';
-{% endif %}
-{% endfor %}{% for verb in extra_verbs %}
-	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
-{% endfor %}
-	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
-	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
-	@printf '\n%s\n' 'Custom hooks (custom.mk):';
-	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
-	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
-	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*' custom.mk 2>/dev/null | sort -u); \
-		if [ -n "$$hooks" ]; then \
-			printf '  %s\n' 'Defined in this project:'; \
-			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
-		fi; \
-	fi
-
-# A project owns the sources declared by its manifest. The generated setup
-# reconciler validates every initialized checkout before mutation, initializes
-# only missing modules, and preserves declared branches that fix forward beyond
-# the recorded gitlink.
-{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
-
-_builtin_require_environment:
-	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
-		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_PYTHON)" >&2; \
-		exit 2; \
-	fi
-
-# === SECTION: setup environment (managed) ===
-# Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
-# Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
-# It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
-# is the single public conformance/generation surface.
-# Profile routing: workspace-member delegates the environment to the
-# principal (the uv workspace venv lives at RUNTIME_ROOT); workspace-root and
-# standalone build their own environment locally.
-ifeq ($(MAKE_PROFILE),workspace-member)
-_builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
-else ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment: _builtin_setup_submodules
-	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
-	@$(UV) pip check --python "$(RUNTIME_VENV)"
-else
-_builtin_setup_environment: _builtin_setup_submodules
-	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
-endif
-# End SECTION: setup environment
-
-_builtin_deps_check: _builtin_require_environment
-	$(call _run_for_selected_projects,--check)
-
-_builtin_deps_lock:
-	$(call _require_apply)
-	$(call _run_for_selected_projects,)
-
-_builtin_deps_upgrade: _builtin_require_environment
-	$(call _require_apply)
-	@dependency="$(strip $(DEPENDENCY))"; \
-	if [ -n "$$dependency" ]; then \
-		case "$$dependency" in \
-			[-._]*|*[!A-Za-z0-9._-]*) \
-				printf 'ERROR: DEPENDENCY must be one normalized distribution name\n' >&2; \
-				exit 2 ;; \
-		esac; \
-	fi
-	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade))
-	@set -eu; \
-	selected="$(strip $(PROJECTS))"; \
-	if [ -z "$$selected" ]; then selected="."; fi; \
-	set --; \
-	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
-	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
-		--apply --rewrite-constraints --skip-check "$$@"
-	$(call _run_for_selected_projects,)
-
-{% if make_profile == "workspace-root" %}
-_builtin_build_artifacts:
-	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-# Read-only by contract in every profile: mutation belongs to `make fix
-# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check.
-_builtin_check_all: _builtin_require_environment
-	@if [ -n "$(strip $(APPLY))" ]; then \
-		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
-	fi
-	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_CHECK_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_test_all: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_fmt_check: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_fix_check:
-	@printf 'ERROR: make fix requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; exit 2
-
-_builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-{% else %}
-_builtin_build_artifacts:
-	@$(UV) build --project "$(PROJECT_ROOT)"
-
-# `check` is read-only by contract: it never mutates the tree. Fixing is owned
-# by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
-# check. APPLY here made the same tools run twice with conflicting intents,
-# so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-_builtin_check_all: _builtin_require_environment
-	@set -eu; \
-	gates="$(strip $(CHECK_GATES))"; \
-	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
-	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
-	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
-			*) printf 'ERROR: unknown CHECK_GATES value: %s (allowed: %s)\n' "$$gate" "$(CHECK_GATES_ALLOWED)" >&2; exit 2 ;; \
-		esac; \
-	done; \
-	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
-
-_builtin_test_all: _builtin_require_environment
-{{ test_report_recipe(
-    "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
-) }}
-
-# One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
-# `fix` owns the mutating lint pass. Running ruff twice per gate was the
-# duplication this split removes.
-_builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
-
-_builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
-
-_builtin_fix_check:
-	@printf 'ERROR: make fix requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; exit 2
-
-_builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-{% endif %}
-
-_builtin_run_default: _builtin_require_environment
-	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
-
-_builtin_status_diagnostics: _builtin_require_environment
-	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@$(UV) --version
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
-	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
-		$(UV) pip check --python "$(RUNTIME_VENV)"; \
-	fi
-	@git -C "$(PROJECT_ROOT)" status --short
-
-_builtin_docs_all:
-	@set -eu; \
-	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check) ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}" $$mode $(DOCS_PROJECT_ARGS); \
-	done
-
-{% for action in make.handler_whats["docs"] if action != "all" %}
-_builtin_docs_{{ action }}:
-	@$(PROJECT_FLEXT_INFRA) docs {{ action }} --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}"{% if action in make.docs.mutable_actions %} $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check){% endif %} $(DOCS_PROJECT_ARGS)
-
-{% endfor %}
-
-_builtin_clean_generated:
-	$(call _require_apply)
-	@find "$(PROJECT_ROOT)" -type d \
-		\( -name __pycache__ -o -name .mypy_cache -o -name .pytest_cache -o -name .ruff_cache \) \
-		-prune -exec rm -rf {} +
-	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
-	@rm -f "$(PROJECT_ROOT)/.coverage"
-
-_builtin_release_status: _builtin_require_environment
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
-	@git -C "$(PROJECT_ROOT)" diff --quiet
-	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
-
-_builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)"
-
-_builtin_gen_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace generate --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --apply-token "$(APPLY)"
-
-_builtin_worktree_list:
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
-
-_builtin_worktree_add:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
-
-_builtin_worktree_update:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
-
-_builtin_worktree_remove:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply
+# One generated recipe executes every builtin and repository extension. The
+# runtime graph resolves operation, scope, capabilities, inputs, APPLY,
+# locking, and the existing implementation owner.
+$(PUBLIC_VERBS):
+	@$(MAKE_OPERATION_EXECUTOR) {{ make.executor.group }} {{ make.executor.route }} --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "$@" --selector-value "$(value {{ make.selector }})" --apply-token "$(value {{ make.apply_variable }})" --make-level "$(MAKELEVEL)"

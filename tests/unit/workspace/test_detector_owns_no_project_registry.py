@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, u
+from flext_infra import c, config, m, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
@@ -47,7 +47,9 @@ class TestsDetectorOwnsNoProjectRegistry:
         """A repository absent from any catalog still derives from itself."""
         root = _standalone(tmp_path / "totally-unknown-project", name="totally-unknown")
 
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        spec: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        )
 
         tm.that(spec.name, eq="totally-unknown")
         tm.that(spec.repository.name, eq="totally-unknown")
@@ -70,6 +72,7 @@ class TestsDetectorOwnsNoProjectRegistry:
                         "distribution": "manifested",
                         "provider": provider.name,
                         "url": f"https://github.com/{provider.name}/manifested.git",
+                        "branch": provider.branch,
                         "path": ".",
                         "role": "workspace-root",
                         "state": "active",
@@ -85,7 +88,9 @@ class TestsDetectorOwnsNoProjectRegistry:
             )
         )
 
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        spec: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        )
 
         tm.that(spec.name, eq="manifested")
         tm.that(spec.repository.distribution, eq="manifested")

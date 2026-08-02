@@ -413,12 +413,6 @@ class_nesting:
   target_name: FlextInfraSkillValidator
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraStubSupplyChain
-  current_file: flext-core/src/flext_infra/core/stub_chain.py
-  target_namespace: FlextCoreStubChain
-  target_name: FlextInfraStubSupplyChain
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraConstantsDeps
   current_file: flext-core/src/flext_infra/deps/_constants.py
   target_namespace: FlextDepsConstants
@@ -653,18 +647,6 @@ class_nesting:
   target_name: FlextInfraPrWorkspaceManager
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: SyncOperation
-  current_file: flext-core/src/flext_infra/github/workflows.py
-  target_namespace: FlextGithubWorkflows
-  target_name: SyncOperation
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraWorkflowSyncer
-  current_file: flext-core/src/flext_infra/github/workflows.py
-  target_namespace: FlextGithubWorkflows
-  target_name: FlextInfraWorkflowSyncer
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraPythonVersionEnforcer
   current_file: flext-core/src/flext_infra/maintenance/python_version.py
   target_namespace: FlextMaintenancePythonVersion
@@ -821,24 +803,6 @@ class_nesting:
   target_name: FlextInfraRefactorSignaturePropagationRule
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraRefactorSafetyRunner
-  current_file: flext-core/src/flext_infra/refactor/safety.py
-  target_namespace: FlextRefactorSafety
-  target_name: FlextInfraRefactorSafetyRunner
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraRefactorCheckpoint
-  current_file: flext-core/src/flext_infra/refactor/safety.py
-  target_namespace: FlextRefactorSafety
-  target_name: FlextInfraRefactorCheckpoint
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraRefactorSafetyManager
-  current_file: flext-core/src/flext_infra/refactor/safety.py
-  target_namespace: FlextRefactorSafety
-  target_name: FlextInfraRefactorSafetyManager
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraRefactorClassOccurrence
   current_file: flext-core/src/flext_infra/refactor/scanner.py
   target_namespace: FlextRefactorScanner
@@ -975,12 +939,6 @@ class_nesting:
   current_file: flext-core/src/flext_infra/workspace/detector.py
   target_namespace: FlextWorkspaceDetector
   target_name: FlextInfraWorkspaceDetector
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraOrchestratorService
-  current_file: flext-core/src/flext_infra/workspace/orchestrator.py
-  target_namespace: FlextWorkspaceOrchestrator
-  target_name: FlextInfraOrchestratorService
   confidence: medium
   reason: top_level_class_without_namespace_prefix
 - loose_name: TestsFlextServiceBase

@@ -20,8 +20,6 @@ class FlextInfraPyprojectModernizerRunMixin:
     if TYPE_CHECKING:
         audit: bool
         check_only: bool
-        skip_check: bool
-        skip_comments: bool
         rewrite_constraints: bool
 
         @property
@@ -45,33 +43,12 @@ class FlextInfraPyprojectModernizerRunMixin:
             *,
             canonical_dev: t.StrSequence,
             dry_run: bool,
-            skip_comments: bool,
             rewrite_constraints: bool = False,
             locked_versions: t.MappingKV[str, str] | None = None,
             internal_names: t.StrSequence = (),
             declared_python_dirs: t.StrSequence = (),
             analysis_exclusions: t.StrSequence = (),
         ) -> t.StrSequence: ...
-
-    def process_file(
-        self,
-        path: Path,
-        *,
-        canonical_dev: t.StrSequence,
-        dry_run: bool,
-        skip_comments: bool,
-    ) -> t.StrSequence:
-        """Process one pyproject.toml file and collect changes."""
-        document_state_result = self._read_document_state(path)
-        if document_state_result.failure:
-            return ["invalid TOML"]
-        return self._process_document_state(
-            document_state_result.value,
-            canonical_dev=canonical_dev,
-            dry_run=dry_run,
-            skip_comments=skip_comments,
-            rewrite_constraints=False,
-        )
 
     def run(self) -> int:
         """Run pyproject modernization for the workspace."""
@@ -250,7 +227,6 @@ class FlextInfraPyprojectModernizerRunMixin:
                     document_state,
                     canonical_dev=canonical_dev,
                     dry_run=dry_run,
-                    skip_comments=self.skip_comments,
                     rewrite_constraints=self.rewrite_constraints,
                     locked_versions=locked_versions,
                     internal_names=internal_names,
@@ -276,7 +252,7 @@ class FlextInfraPyprojectModernizerRunMixin:
                 u.Cli.info("(dry-run — no files modified)")
         if check_mode and total > 0:
             return 1
-        if not dry_run and (not self.skip_check):
+        if not dry_run:
             return self._run_build_check(document_states, invalid_paths=invalid_paths)
         return 0
 

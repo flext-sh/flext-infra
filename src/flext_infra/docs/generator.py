@@ -45,12 +45,20 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         self, scope: m.Infra.DocScope, *, request: m.Infra.DocsGenerateRequest
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope via the docs generator utilities and log the result."""
-        report: m.Infra.DocsPhaseReport = u.Infra.docs_generate_scope(
+        report_result = u.Infra.docs_generate_scope(
             scope,
             apply=request.apply,
             workspace_root=request.workspace_root,
             projects=request.projects,
         )
+        if report_result.failure:
+            report = u.Infra.docs_persistence_failure(
+                phase="generate",
+                scope=scope.name,
+                error=report_result.error,
+            )
+        else:
+            report = report_result.value
         self.logger.info(
             "docs_generate_scope_completed",
             project=scope.name,

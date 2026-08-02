@@ -76,12 +76,6 @@ class FlextInfraTypesBase:
 
     type TransformResult = t.StrSequencePair
     "Canonical (new_source, change_descriptions) from any source transformer."
-    type EditResult = tuple[bool, t.StrSequence]
-    "Validated edit outcome: (success, report_lines)."
-    type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]
-    "(success, descriptions, report_lines) — includes what was attempted."
-    type LintSnapshot = t.MappingKV[str, t.StrSequence]
-    "Lint errors per tool: {tool_name: [error_lines]}."
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."

@@ -3,7 +3,7 @@
 Guard 5: Abstraction-boundary + tier-whitelist enforcer. Flags runtime
 imports of flext-core-abstracted third-party libraries (pydantic,
 structlog, returns, orjson, pyyaml, dependency_injector) anywhere
-outside ``flext-core/src/``. Uses rope's semantic import resolution so
+outside their metadata-declared owning project. Uses rope's semantic import resolution so
 ``if TYPE_CHECKING:`` imports are exempt.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 from flext_tests import tf, tm
 from tests import m
@@ -84,14 +85,17 @@ class TestTierWhitelistAbstractionBoundary:
     def test_flext_core_src_is_allowlisted(
         self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
-        # Emulate a flext-core layout — bare pydantic is legal here.
-        src = tmp_path / "flext-core" / "src" / "flext_core"
-        src.mkdir(parents=True, exist_ok=True)
-        (src / "__init__.py").write_text("", encoding="utf-8")
+        project_root = tmp_path / "arbitrary-worktree-name"
+        (project_root / "pyproject.toml").parent.mkdir(parents=True)
+        (project_root / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-core'\nversion = '0.0.0'\n",
+            encoding="utf-8",
+        )
+        src = _seed_pkg(project_root, "flext_core")
         tf(base_dir=src).create(
             "from pydantic import BaseModel\nX = BaseModel\n", "abstractions.py"
         )
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(project_root))
         tm.that(report.passed, eq=True)
 
 
@@ -106,6 +110,27 @@ class TestTierWhitelistSummary:
         tf(base_dir=pkg).create("import structlog\n", "b.py")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="2")
+
+    def test_execute_and_gate_preserve_every_violation(self, tmp_path: Path) -> None:
+        pkg = _seed_pkg(tmp_path)
+        tf(base_dir=pkg).create("from pydantic import BaseModel\n", "a.py")
+        tf(base_dir=pkg).create("import structlog\n", "b.py")
+        validator = FlextInfraValidateTierWhitelist(workspace_root=tmp_path)
+
+        result = validator.execute()
+        tm.that(result.failure, eq=True)
+        error = tm.not_none(result.error)
+        tm.that(error, has="a.py")
+        tm.that(error, has="b.py")
+
+        execution = FlextInfraTierWhitelistGate(tmp_path).check(
+            tmp_path,
+            m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path / "reports"),
+        )
+        tm.that(execution.result.passed, eq=False)
+        tm.that(len(execution.issues), eq=2)
+        tm.that("\n".join(issue.message for issue in execution.issues), has="a.py")
+        tm.that("\n".join(issue.message for issue in execution.issues), has="b.py")
 
     def test_passing_summary_mentions_boundary(
         self, tmp_path: Path, v: FlextInfraValidateTierWhitelist

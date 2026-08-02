@@ -991,15 +991,28 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         package_dir = layout.package_dir
         with u.Infra.open_project(self._workspace_root) as rope_project:
             for file_path in file_paths:
-                resource = u.Infra.fetch_python_resource(
-                    rope_project, file_path, skip_protected=True, skip_settings=True
-                )
+                try:
+                    resource = u.Infra.fetch_python_resource(
+                        rope_project,
+                        file_path,
+                        skip_protected=True,
+                        skip_settings=True,
+                    )
+                except RuntimeError as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=str(exc),
+                        )
+                    )
+                    continue
                 if resource is None:
                     skipped.append(
                         fr.SkippedViolation(
                             rule_id=rule_id,
                             file_path=str(file_path),
-                            reason="rope resource not found",
+                            reason="excluded by Python resource policy",
                         )
                     )
                     continue

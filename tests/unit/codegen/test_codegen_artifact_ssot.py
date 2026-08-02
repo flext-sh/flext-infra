@@ -93,23 +93,19 @@ class TestsCodegenArtifactSsot:
     ) -> None:
         """Cover repository profiles through one generic template entry."""
         entries = tuple(
-            entry
-            for entry in codegen.templates.entries
-            if entry.destination == c.Infra.MAKEFILE_FILENAME
+            entry for entry in codegen.surfaces.entries if entry.make_role == "wrapper"
         )
         tm.that(entries, len=1)
-        declared_profiles = {
-            c.Infra.MakeProfile.WORKSPACE_ROOT,
-            c.Infra.MakeProfile.STANDALONE,
-        }
+        tm.that(entries[0].path, eq=codegen.surfaces.make_wrapper_path)
+        declared_profiles = set(c.Infra.MakeProfile)
         tm.that(set(entries[0].profiles), eq=declared_profiles)
 
     def test_rendered_vscode_document_consumes_projection_maps(
         self, tmp_path: Path, codegen: CodegenSpec
     ) -> None:
         """Validate the public renderer output instead of private implementation."""
-        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(tmp_path))
-        parsed = tm.ok(u.Cli.json_parse(rendered))
+        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(tmp_path))
+        parsed: t.JsonValue = tm.ok(u.Cli.json_parse(rendered))
         settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
         tm.that(settings["files.exclude"], eq=dict(codegen.vscode_files_exclude_map))
         tm.that(settings["search.exclude"], eq=dict(codegen.vscode_search_exclude_map))

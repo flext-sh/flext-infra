@@ -76,8 +76,6 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
                 "\n".join(rewritten_lines).rstrip() + "\n",
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(file_path)])
-            _ = u.Cli.run_checked(["ruff", "format", str(file_path)])
 
     @staticmethod
     def _rewrite_class_header(

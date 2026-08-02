@@ -21,7 +21,6 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
         self._config_path = config_path
         self._class_nesting_config = None
         self._class_nesting_policy_by_family = None
-        self._class_nesting_gate = None
 
     @override
     def _load_class_nesting_config(self) -> t.JsonMapping:

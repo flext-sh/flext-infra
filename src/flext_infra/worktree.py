@@ -99,70 +99,25 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(detail or f"failed to inspect Git ref: {reference}")
         return r.ok(checked.value.exit_code == 0)
 
-    @staticmethod
-    def _rollback_new_lane(
-        primary_root: Path,
-        lane: Path,
-        branch: str,
-        created_branch_oid: str | None,
-        setup_error: str,
-    ) -> p.Result[str]:
-        """Roll back only a clean lane created by the current add operation."""
-        status = u.Infra.git_capture(
-            lane, ("status", "--porcelain", "--untracked-files=all")
-        )
-        if status.failure:
-            return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
-                f"{status.error or 'cannot prove the new lane is clean'}"
-            )
-        if status.value.strip():
-            return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane} "
-                "because setup left worktree changes"
-            )
-        cleanup = u.Infra.git_remove_clean_worktree(primary_root, lane)
-        if cleanup.failure:
-            return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
-                f"{cleanup.error or 'clean lane rollback failed'}"
-            )
-        if created_branch_oid is not None:
-            branch_cleanup = u.Infra.git_capture(
-                primary_root,
-                ("update-ref", "-d", f"refs/heads/{branch}", created_branch_oid),
-            )
-            if branch_cleanup.failure:
-                return r.fail(
-                    f"worktree setup failed: {setup_error}; "
-                    "created branch cleanup failed: "
-                    f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
-                )
-        return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
-
-    def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
-        """Create and set up one branch worktree transactionally."""
+    def _require_apply(self) -> p.Result[bool]:
+        """Require the public mutation token for a worktree state change."""
         if not self.apply_changes:
-            return r.fail("worktree add requires --apply")
-        lane_result = self._lane_path(primary_root, branch)
-        if lane_result.failure:
-            return r.fail(lane_result.error or "invalid worktree lane path")
-        lane = lane_result.value
+            return r.fail(f"worktree {self.operation} requires --apply")
+        return r.ok(True)
+
+    @staticmethod
+    def _ensure_new_lane(lane: Path) -> p.Result[Path]:
+        """Create the parent for one lane only when its target is absent."""
         if lane.exists():
             return r.fail(f"worktree lane already exists: {lane}")
-        ensured = u.Cli.ensure_dir(lane.parent)
-        if ensured.failure:
-            return r.fail(ensured.error or f"failed to create {lane.parent}")
-        local = self._ref_exists(f"refs/heads/{branch}")
-        if local.failure:
-            return r.fail(local.error or "failed to inspect local branch")
-        if local.value:
-            arguments = ("worktree", "add", str(lane), branch)
-        else:
-            remote = self._ref_exists(f"refs/remotes/origin/{branch}")
-            if remote.failure:
-                return r.fail(remote.error or "failed to inspect remote branch")
-            arguments = (
+        return u.Cli.ensure_dir(lane.parent).map(lambda _: lane)
+
+    def _remote_add_arguments(
+        self, lane: Path, branch: str, base: str
+    ) -> p.Result[tuple[str, ...]]:
+        """Derive the add command for a branch absent from local refs."""
+        return self._ref_exists(f"refs/remotes/origin/{branch}").map(
+            lambda remote_exists: (
                 (
                     "worktree",
                     "add",
@@ -172,36 +127,48 @@ class FlextInfraWorktreeService(s[str]):
                     str(lane),
                     f"origin/{branch}",
                 )
-                if remote.value
+                if remote_exists
                 else ("worktree", "add", "-b", branch, str(lane), base)
             )
-        added = u.Infra.git_capture(self.workspace_root, arguments)
-        if added.failure:
-            return r.fail(added.error or f"failed to add worktree for {branch}")
-        created_branch_oid: str | None = None
-        if not local.value:
-            created_oid = u.Infra.git_capture(lane, ("rev-parse", "HEAD"))
-            if created_oid.failure:
-                return self._rollback_new_lane(
-                    primary_root,
-                    lane,
-                    branch,
-                    None,
-                    created_oid.error or "failed to retain created branch identity",
-                )
-            created_branch_oid = created_oid.value.strip()
-        metadata = u.read_project_metadata(lane)
-        if metadata.failure:
-            return self._rollback_new_lane(
-                primary_root,
-                lane,
-                branch,
-                created_branch_oid,
-                metadata.error or "invalid lane project metadata",
+        )
+
+    def _add_arguments(
+        self, lane: Path, branch: str, base: str
+    ) -> p.Result[tuple[str, ...]]:
+        """Derive one Git worktree-add command from canonical refs."""
+        return self._ref_exists(f"refs/heads/{branch}").flat_map(
+            lambda local_exists: (
+                r[tuple[str, ...]].ok(("worktree", "add", str(lane), branch))
+                if local_exists
+                else self._remote_add_arguments(lane, branch, base)
             )
-        setup = u.Cli.run_live(
+        )
+
+    def _create_lane(self, lane: Path, branch: str, base: str) -> p.Result[Path]:
+        """Register one prepared lane through Git's canonical worktree command."""
+        return self._add_arguments(lane, branch, base).flat_map(
+            lambda arguments: u.Infra.git_capture(
+                self.workspace_root, arguments
+            ).map(lambda _: lane)
+        )
+
+    @staticmethod
+    def _preserved_lane_error(lane: Path, setup_error: str) -> str:
+        """Describe a setup failure without discarding its fix-forward lane."""
+        return (
+            f"worktree setup failed: {setup_error}; preserving lane {lane} "
+            "and its branch for fix-forward recovery"
+        )
+
+    @classmethod
+    def _run_lane_setup(cls, lane: Path) -> p.Result[str]:
+        """Run canonical setup inside an already registered lane."""
+        return u.Cli.run_live(
             (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
             cwd=lane,
+            # Only this nested Make inherits the transaction marker: allowing
+            # it to re-enter the outer lock would deadlock its owning process.
+            env=u.Cli.process_env(overrides={c.Infra.WORKTREE_TRANSACTION_ENV: "1"}),
             remove_env_keys=(
                 "MAKEFLAGS",
                 "MAKELEVEL",
@@ -211,106 +178,135 @@ class FlextInfraWorktreeService(s[str]):
                 "UV_PROJECT_ENVIRONMENT",
                 "VIRTUAL_ENV",
             ),
+        ).map(lambda _: str(lane)).map_error(
+            lambda error: cls._preserved_lane_error(lane, error)
         )
-        if setup.failure:
-            return self._rollback_new_lane(
-                primary_root,
-                lane,
-                branch,
-                created_branch_oid,
-                setup.error or "make setup execution failed",
-            )
-        return r.ok(str(lane))
+
+    @classmethod
+    def _setup_lane(cls, lane: Path) -> p.Result[str]:
+        """Validate lane metadata before running its canonical setup."""
+        return u.read_project_metadata(lane).map_error(
+            lambda error: cls._preserved_lane_error(lane, error)
+        ).flat_map(lambda _: cls._run_lane_setup(lane))
+
+    def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
+        """Create and set up one branch worktree transactionally."""
+        return self._require_apply().flat_map(
+            lambda _: self._lane_path(primary_root, branch)
+        ).flat_map(self._ensure_new_lane).flat_map(
+            lambda lane: self._create_lane(lane, branch, base)
+        ).flat_map(self._setup_lane)
 
     def _remove(self, primary_root: Path, branch: str) -> p.Result[str]:
         """Remove one clean canonical lane without deleting its branch."""
-        if not self.apply_changes:
-            return r.fail("worktree remove requires --apply")
-        lane_result = self._registered_lane(primary_root, branch)
-        if lane_result.failure:
-            return r.fail(lane_result.error or "invalid worktree lane path")
-        lane = lane_result.value
-        removed = u.Infra.git_remove_clean_worktree(primary_root, lane)
-        if removed.failure:
-            return r.fail(removed.error or f"failed to remove worktree for {branch}")
-        return r.ok(str(lane))
-
-    def _update(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
-        """Merge-forward one clean canonical lane to the requested base."""
-        if not self.apply_changes:
-            return r.fail("worktree update requires --apply")
-        lane_result = self._registered_lane(primary_root, branch)
-        if lane_result.failure:
-            return r.fail(lane_result.error or "invalid worktree lane path")
-        lane = lane_result.value
-        if not lane.is_dir():
-            return r.fail(f"worktree lane does not exist: {lane}")
-        current_branch = u.Infra.git_capture(
-            lane, ("symbolic-ref", "--quiet", "--short", "HEAD")
+        return self._require_apply().flat_map(
+            lambda _: self._registered_lane(primary_root, branch)
+        ).flat_map(
+            lambda lane: u.Infra.git_remove_clean_worktree(primary_root, lane).map(
+                lambda _: str(lane)
+            )
         )
-        if current_branch.failure:
-            return r.fail(current_branch.error or f"failed to inspect lane {lane}")
-        if current_branch.value.strip() != branch:
+
+    @staticmethod
+    def _require_lane_branch(lane: Path, branch: str, current: str) -> p.Result[Path]:
+        """Require an existing lane to own the requested branch."""
+        current_branch = current.strip()
+        if current_branch != branch:
             return r.fail(
                 f"worktree lane branch mismatch: expected {branch}, "
-                f"found {current_branch.value.strip()}"
+                f"found {current_branch}"
             )
-        status = u.Infra.git_capture(
-            lane, ("status", "--porcelain", "--untracked-files=all")
-        )
-        if status.failure:
-            return r.fail(status.error or f"failed to inspect lane state: {lane}")
-        if status.value.strip():
+        return r.ok(lane)
+
+    @staticmethod
+    def _require_clean_lane(lane: Path, status: str) -> p.Result[Path]:
+        """Reject merge-forward when the selected lane contains uncommitted work."""
+        if status.strip():
             return r.fail(
                 "worktree update requires a clean lane; commit the owned WIP "
                 "before merge-forward"
             )
-        resolved_base = u.Infra.git_capture(
-            lane, ("rev-parse", "--verify", f"{base}^{{commit}}")
-        )
-        if resolved_base.failure:
-            return r.fail(resolved_base.error or f"cannot resolve update base: {base}")
-        base_oid = resolved_base.value.strip()
-        contains_base = u.Infra.git_run(
-            lane, ("merge-base", "--is-ancestor", base_oid, "HEAD")
-        )
-        if contains_base.failure:
-            return r.fail(contains_base.error or "failed to inspect update ancestry")
-        if contains_base.value.exit_code == 0:
-            return r.ok(str(lane))
-        updated = u.Infra.git_capture(lane, ("merge", "--no-edit", base_oid))
-        if updated.failure:
-            return r.fail(
-                updated.error
-                or f"worktree update cannot merge-forward {branch} to {base_oid}"
+        return r.ok(lane)
+
+    @classmethod
+    def _validate_update_lane(cls, lane: Path, branch: str) -> p.Result[Path]:
+        """Validate the physical lane, checked-out branch, and clean state."""
+        if not lane.is_dir():
+            return r.fail(f"worktree lane does not exist: {lane}")
+        return u.Infra.git_capture(
+            lane, ("symbolic-ref", "--quiet", "--short", "HEAD")
+        ).flat_map(
+            lambda current: cls._require_lane_branch(lane, branch, current)
+        ).flat_map(
+            lambda _: u.Infra.git_capture(
+                lane, ("status", "--porcelain", "--untracked-files=all")
             )
-        return r.ok(str(lane))
+        ).flat_map(lambda status: cls._require_clean_lane(lane, status))
+
+    @staticmethod
+    def _resolve_update_base(lane: Path, base: str) -> p.Result[tuple[Path, str]]:
+        """Resolve the requested merge-forward base to one immutable commit."""
+        return u.Infra.git_capture(
+            lane, ("rev-parse", "--verify", f"{base}^{{commit}}")
+        ).map(lambda base_oid: (lane, base_oid.strip()))
+
+    @staticmethod
+    def _merge_update_lane(lane: Path, base_oid: str) -> p.Result[str]:
+        """Merge-forward only when the resolved base is not already integrated."""
+        return u.Infra.git_run(
+            lane, ("merge-base", "--is-ancestor", base_oid, "HEAD")
+        ).flat_map(
+            lambda ancestry: (
+                r[str].ok(str(lane))
+                if ancestry.exit_code == 0
+                else u.Infra.git_capture(
+                    lane, ("merge", "--no-edit", base_oid)
+                ).map(lambda _: str(lane))
+            )
+        )
+
+    def _update(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
+        """Merge-forward one clean canonical lane to the requested base."""
+        return self._require_apply().flat_map(
+            lambda _: self._registered_lane(primary_root, branch)
+        ).flat_map(
+            lambda lane: self._validate_update_lane(lane, branch)
+        ).flat_map(
+            lambda lane: self._resolve_update_base(lane, base)
+        ).flat_map(
+            lambda resolved: self._merge_update_lane(resolved[0], resolved[1])
+        )
+
+    def _execute_branch_operation(
+        self, primary_root: Path, branch: str
+    ) -> p.Result[str]:
+        """Validate shared branch inputs and dispatch one mutating operation."""
+        if self.operation == c.Infra.WorktreeOperation.REMOVE:
+            return self._remove(primary_root, branch)
+        base = (self.base or "").strip()
+        if not base:
+            return r.fail(f"worktree {self.operation} requires --base")
+        operation = (
+            self._add
+            if self.operation == c.Infra.WorktreeOperation.ADD
+            else self._update
+        )
+        return operation(primary_root, branch, base)
 
     @override
     def execute(self) -> p.Result[str]:
         """Execute the selected worktree operation."""
-        primary = self._primary_root()
-        if primary.failure:
-            return r.fail(primary.error or "failed to resolve primary worktree")
-        if self.operation == c.Infra.WorktreeOperation.LIST:
-            return u.Infra.git_capture(
-                primary.value, ("worktree", "list", "--porcelain")
+        return self._primary_root().flat_map(
+            lambda primary_root: (
+                u.Infra.git_capture(
+                    primary_root, ("worktree", "list", "--porcelain")
+                )
+                if self.operation == c.Infra.WorktreeOperation.LIST
+                else self._validated_branch().flat_map(
+                    lambda branch: self._execute_branch_operation(primary_root, branch)
+                )
             )
-        branch = self._validated_branch()
-        if branch.failure:
-            return r.fail(branch.error or "invalid worktree branch")
-        base = (self.base or "").strip()
-        if (
-            self.operation
-            in {c.Infra.WorktreeOperation.ADD, c.Infra.WorktreeOperation.UPDATE}
-            and not base
-        ):
-            return r.fail(f"worktree {self.operation} requires --base")
-        if self.operation == c.Infra.WorktreeOperation.ADD:
-            return self._add(primary.value, branch.value, base)
-        if self.operation == c.Infra.WorktreeOperation.UPDATE:
-            return self._update(primary.value, branch.value, base)
-        return self._remove(primary.value, branch.value)
+        )
 
 
 __all__: list[str] = ["FlextInfraWorktreeService"]

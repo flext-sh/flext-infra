@@ -15,7 +15,6 @@ class _ConsolidatorFilePayload(cli_m.ContractModel):
     """Typed JSON row emitted by the consolidator command."""
 
     file: str = cli_m.Field(description="Relative file path")
-    status: str = cli_m.Field(description="File processing status")
     changes: t.StrSequence = cli_m.Field(description="Changes applied to the file")
 
 
@@ -24,7 +23,6 @@ class _ConsolidatorJsonPayload(cli_m.ContractModel):
 
     total_found: int = cli_m.Field(description="Total replacements found")
     total_applied: int = cli_m.Field(description="Total replacements applied")
-    total_failed: int = cli_m.Field(description="Total files that failed")
     files: t.SequenceOf[_ConsolidatorFilePayload] = cli_m.Field(
         description="Per-file consolidator results"
     )
@@ -163,7 +161,6 @@ def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
     payload = _consolidator_payload(result.value)
     tm.that(payload.total_found, eq=4)
     tm.that(payload.total_applied, eq=4)
-    tm.that(payload.total_failed, eq=0)
     tm.that(len(payload.files), eq=4)
     for consumer_path in (package_consumer_path, *wrapper_consumer_paths):
         updated_source = consumer_path.read_text(encoding="utf-8")
@@ -186,9 +183,7 @@ def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
     payload = _consolidator_payload(result.value)
     tm.that(payload.total_found, eq=1)
     tm.that(payload.total_applied, eq=1)
-    tm.that(payload.total_failed, eq=0)
     tm.that(len(payload.files), eq=1)
-    tm.that(payload.files[0].status, eq="applied")
 
 
 def test_execute_dry_run_json_output(tmp_path: Path) -> None:
@@ -203,7 +198,6 @@ def test_execute_dry_run_json_output(tmp_path: Path) -> None:
     payload = _consolidator_payload(result.value)
     tm.that(payload.total_found, eq=1)
     tm.that(payload.total_applied, eq=0)
-    tm.that(payload.total_failed, eq=0)
     tm.that(payload.files, eq=[])
 
 

@@ -83,7 +83,7 @@ class FlextInfraDocAuditor(
             params=params,
             docstring_coverage=docstring_coverage,
         )
-        self.write_audit_reports(
+        write_result = self.write_audit_reports(
             scope,
             issues,
             set(checks),
@@ -91,6 +91,13 @@ class FlextInfraDocAuditor(
             docstring_coverage=docstring_coverage,
             to_markdown_fn=u.Infra.docs_audit_markdown,
         )
+        if write_result.failure:
+            report = u.Infra.docs_persistence_failure(
+                phase="audit",
+                scope=scope.name,
+                error=write_result.error,
+                report=report,
+            )
         self.logger.info(
             "docs_audit_scope_completed",
             project=scope.name,

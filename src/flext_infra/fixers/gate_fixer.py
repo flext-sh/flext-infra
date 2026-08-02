@@ -12,6 +12,7 @@ from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
+from flext_infra.transformers.smells.base import smell_tag_for_code
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,7 +44,8 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         """Return whether this adapter handles ``fix_action``."""
         if fix_action.kind != self.kind:
             return False
-        gate_cls = self._registry().get(fix_action.target)
+        registry = self._registry()
+        gate_cls = registry.get(fix_action.target)
         return gate_cls is not None and gate_cls.can_fix
 
     @override
@@ -60,7 +62,8 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         fix_action = rule.fix_action
         if fix_action is None:
             return fr.ProjectFixResult(project=project_dir.name)
-        gate_cls = self._registry().get(fix_action.target)
+        registry = self._registry()
+        gate_cls = registry.get(fix_action.target)
         if gate_cls is None:
             return fr.ProjectFixResult(
                 project=project_dir.name,
@@ -102,12 +105,16 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 )
             reports_dir = reports_dir_result.value
+        gate_spec = registry.spec_for(fix_action.target)
         gate_ctx = m.Infra.GateContext(
             workspace=self._workspace_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=not ctx.apply,
             fail_fast=ctx.fail_fast,
+            gate_mode=gate_spec.mode,
+            gate_command=gate_spec.command,
+            gate_execution_scope=gate_spec.execution_scope,
         )
         try:
             execution = (
@@ -214,9 +221,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         if not smell_tag:
             return tuple(issues)
         return tuple(
-            issue
-            for issue in issues
-            if c.Infra.SMELLS_RULE_TAGS.get(issue.code, "") == smell_tag
+            issue for issue in issues if smell_tag_for_code(issue.code) == smell_tag
         )
 
 

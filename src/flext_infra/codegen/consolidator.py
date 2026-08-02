@@ -28,7 +28,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
         output_lines: t.MutableSequenceOf[str] = (
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )
-        found = applied = failed = 0
+        found = applied = 0
         file_results: t.MutableSequenceOf[m.Infra.ConsolidatorFileResult] = []
 
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
@@ -75,7 +75,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                             for symbol, ref, value in matches
                         )
                         continue
-                    ok, changes, lines = self._apply_and_validate(
+                    changes, lines = self._apply_changes(
                         rope.rope_project,
                         resource,
                         python_file,
@@ -87,28 +87,20 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                     output_lines.extend(lines)
                     file_results.append(
                         m.Infra.ConsolidatorFileResult(
-                            file=str(rel_path),
-                            status="applied" if ok else "reverted",
-                            changes=tuple(changes),
+                            file=str(rel_path), changes=tuple(changes)
                         )
                     )
-                    if ok:
-                        applied += len(changes)
-                    else:
-                        failed += 1
+                    applied += len(changes)
 
         summary = (
             f"Found {found} canonical matches across {len(selected_projects)} projects"
             if self.dry_run
-            else f"Applied {applied} replacements, {failed} files reverted"
+            else f"Applied {applied} replacements"
         )
         output_lines.extend(("", summary))
         if self.output_format == c.Cli.OutputFormats.JSON:
             report = m.Infra.ConsolidatorReport(
-                total_found=found,
-                total_applied=applied,
-                total_failed=failed,
-                files=tuple(file_results),
+                total_found=found, total_applied=applied, files=tuple(file_results)
             )
             return r[str].ok(report.model_dump_json())
         return r[str].ok("\n".join(output_lines))

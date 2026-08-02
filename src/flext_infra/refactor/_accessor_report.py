@@ -1,4 +1,4 @@
-"""Accessor per-file lint processing + report rendering — extracted concern."""
+"""Accessor per-file write and report rendering."""
 
 from __future__ import annotations
 
@@ -14,30 +14,16 @@ if TYPE_CHECKING:
 
 
 class FlextInfraAccessorMigrationReportMixin:
-    """Per-file lint snapshot/write and CLI report rendering.
+    """Per-file transactional write and CLI report rendering.
 
     Composed into FlextInfraAccessorMigrationOrchestrator via inheritance; the
-    facade provides ``dry_run`` / ``workspace_root`` / the gate-name properties
-    through MRO (declared below for static resolution).
+    facade provides ``dry_run`` and ``workspace_root`` through MRO (declared
+    below for static resolution).
     """
 
     if TYPE_CHECKING:
         dry_run: bool
         workspace_root: Path
-
-        @property
-        def gate_names(self) -> t.StrSequence: ...
-
-        @property
-        def lint_tool_names(self) -> t.StrSequence: ...
-
-    @staticmethod
-    def _accumulate_lint_totals(
-        totals: dict[str, int], snapshot: t.Infra.LintSnapshot
-    ) -> None:
-        """Accumulate lint totals."""
-        for tool, lines in snapshot.items():
-            totals[tool] = totals.get(tool, 0) + len(tuple(lines))
 
     def _process_file(
         self,
@@ -50,81 +36,21 @@ class FlextInfraAccessorMigrationReportMixin:
         include_preview: bool,
     ) -> m.Infra.AccessorMigrationFile:
         """Process file."""
-        lint_before: dict[str, t.StrSequence] = {}
-        lint_after: dict[str, t.StrSequence] = {}
-        new_lint_errors: dict[str, t.StrSequence] = {}
-        before: t.Infra.LintSnapshot = {}
-        after: t.Infra.LintSnapshot = {}
-        if automated_changes:
-            if self.dry_run and include_preview:
-                before, after = u.Infra.preview_source_lint(
-                    py_file,
-                    self.workspace_root,
-                    updated_source=updated_source,
-                    gates=self.gate_names,
-                )
-            elif not self.dry_run:
-                before = (
-                    u.Infra.lint_snapshot(
-                        py_file, self.workspace_root, gates=self.gate_names
-                    )
-                    if include_preview
-                    else {}
-                )
-                ok, report = u.Infra.protected_source_write(
-                    py_file,
-                    request=m.Infra.ProtectedSourceWriteRequest(
-                        workspace=self.workspace_root,
-                        updated_source=updated_source,
-                        gates=self.gate_names,
-                    ),
-                )
-                if not ok:
-                    warnings.append(
-                        m.Infra.AccessorMigrationChange(
-                            file=str(py_file),
-                            line=0,
-                            original_name="protected_write",
-                            replacement_name="",
-                            automated=False,
-                            reason=" ; ".join(report[:3]) or "protected write failed",
-                        )
-                    )
-                after = (
-                    u.Infra.lint_snapshot(
-                        py_file, self.workspace_root, gates=self.gate_names
-                    )
-                    if include_preview
-                    else {}
-                )
-            else:
-                before = {}
-                after = {}
-            if include_preview:
-                lint_before = self._freeze_lints(before)
-                lint_after = self._freeze_lints(after)
-                new_lint_errors = self._freeze_lints(
-                    u.Infra.lint_new_errors(before, after)
-                )
+        if automated_changes and not self.dry_run:
+            u.Infra.protected_source_write(
+                py_file,
+                request=m.Infra.ProtectedSourceWriteRequest(
+                    workspace=self.workspace_root, updated_source=updated_source
+                ),
+            )
         return m.Infra.AccessorMigrationFile(
             file=str(py_file),
-            lint_tools=tuple(self.lint_tool_names)
-            if automated_changes and include_preview
-            else (),
             automated_changes=tuple(automated_changes),
             warnings=tuple(warnings),
             diff=self._diff(py_file, source, updated_source)
             if automated_changes and include_preview
             else "",
-            lint_before=lint_before,
-            lint_after=lint_after,
-            new_lint_errors=new_lint_errors,
         )
-
-    @staticmethod
-    def _freeze_lints(snapshot: t.Infra.LintSnapshot) -> dict[str, t.StrSequence]:
-        """Freeze lints."""
-        return {tool: tuple(lines) for tool, lines in snapshot.items()}
 
     @staticmethod
     def _diff(py_file: Path, before: str, after: str) -> str:
@@ -151,12 +77,7 @@ class FlextInfraAccessorMigrationReportMixin:
             f"files_with_changes: {report.files_with_changes}",
             f"automated_changes: {report.automated_change_count}",
             f"warnings: {report.warning_count}",
-            f"lint_tools: {', '.join(report.lint_tools)}",
         ]
-        for tool in report.lint_tools:
-            lines.append(
-                f"lint-totals:{tool} before={report.lint_before_totals.get(tool, 0)} after={report.lint_after_totals.get(tool, 0)} new={report.new_lint_error_totals.get(tool, 0)}"
-            )
         for file_report in report.files:
             lines.append(f"\n{file_report.file}")
             for change in file_report.automated_changes:
@@ -171,19 +92,6 @@ class FlextInfraAccessorMigrationReportMixin:
                 )
                 lines.append(f"  warn:{warning.line} {warning.original_name}{target}")
                 lines.append(f"    {warning.reason}")
-            for tool in file_report.lint_tools:
-                issues = tuple(file_report.lint_after.get(tool, ()))
-                lines.append(f"  lint-after:{tool}")
-                if not issues:
-                    lines.append("    ok")
-                    continue
-                lines.extend(f"    {issue}" for issue in issues[:4])
-            for tool in file_report.lint_tools:
-                issues = tuple(file_report.new_lint_errors.get(tool, ()))
-                if not issues:
-                    continue
-                lines.append(f"  new-lint:{tool}")
-                lines.extend(f"    {issue}" for issue in issues[:4])
             if file_report.diff:
                 lines.append("  diff:")
                 lines.extend(

@@ -1,4 +1,4 @@
-"""Dependency detection and analysis service for deptry, pip-check, and typing stubs."""
+"""Dependency detection and analysis service for deptry and pip-check."""
 
 from __future__ import annotations
 
@@ -12,27 +12,14 @@ from flext_infra.deps.detection_analysis import FlextInfraDependencyDetectionAna
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):
-    """Runtime vs dev dependency detector using deptry, pip-check, and mypy stub analysis."""
+    """Runtime and development dependency detector using deptry and pip-check."""
 
     _log = u.fetch_logger(__name__)
 
     def __init__(self) -> None:
-        """Initialize the dependency detection service with selector, toml, and runner."""
+        """Initialize the dependency detection service with selector and runner."""
         self.selector: p.Infra.ProjectSelector | None = None
-        self.toml: p.Infra.TomlReader | None = None
         self.runner: p.Cli.CommandRunner | None = None
-
-    @override
-    def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
-        """Read plain."""
-        if self.toml is not None:
-            return self.toml.read_plain(path)
-        plain_result = u.Cli.toml_read_json(path)
-        if plain_result.failure:
-            return r[t.JsonMapping].fail(plain_result.error or f"failed to read {path}")
-        return r[t.JsonMapping].ok(
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value)
-        )
 
     @override
     def _run_raw(

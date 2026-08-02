@@ -92,12 +92,11 @@ class FlextInfraCodegenPipelineStagesMixin:
     def _stage_deps(
         self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Conform dependencies to reality via deptry + typing-stub detection.
+        """Conform dependency declarations to runtime import reality via deptry.
 
-        Reuses ``FlextInfraRuntimeDevDependencyDetector`` (deptry DEP001-004 +
-        ``types-*`` stub hints). In apply mode it adds missing typing packages
-        and applies detected fixes; in dry-run it reports only. No duplicate
-        detection logic in the pipeline.
+        Reuses ``FlextInfraRuntimeDevDependencyDetector`` for deptry DEP001-004.
+        Static/type tools are owned exclusively by the later canonical Make
+        ``check`` phase.
         """
 
         def _action() -> bool:
@@ -111,7 +110,6 @@ class FlextInfraCodegenPipelineStagesMixin:
             detector = FlextInfraRuntimeDevDependencyDetector(
                 workspace_root=ctx.workspace_root,
                 apply_changes=not dry_run,
-                apply_typings=not dry_run,
                 selected_projects=selected,
             )
             result = detector.execute()

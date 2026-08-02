@@ -9,12 +9,10 @@ from __future__ import annotations
 import ast
 import re
 import textwrap
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -24,20 +22,6 @@ _DOCSTRING_DELIMITER_COUNT = 2
 _CLASSVAR_DECLARATION_PATTERN = re.compile(
     r"^([A-Z][A-Z0-9_]*:\s*)ClassVar\[(.*)\](\s*=)", re.DOTALL
 )
-
-
-@dataclass(frozen=True)
-class ClassvarConstantAutofixPlan:
-    """Planned edits for one ENFORCE-079 autofix."""
-
-    class_module: str
-    class_name: str
-    constant_name: str
-    constants_module: str
-    source_resource: t.Infra.RopeResource
-    target_resource: t.Infra.RopeResource
-    declaration_line: str
-    class_lineno: int
 
 
 class FlextInfraRefactorClassvarConstantAutofix:
@@ -54,9 +38,9 @@ class FlextInfraRefactorClassvarConstantAutofix:
         class_full_name: str,
         constant_name: str,
         constants_module: str,
-    ) -> ClassvarConstantAutofixPlan:
+    ) -> m.Infra.ClassvarConstantAutofixPlan:
         """Build an autofix plan without touching disk."""
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
+        with u.Infra.open_project(workspace_root) as project:
             return FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
                 project, class_full_name, constant_name, constants_module
             )
@@ -67,7 +51,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         class_full_name: str,
         constant_name: str,
         constants_module: str,
-    ) -> ClassvarConstantAutofixPlan:
+    ) -> m.Infra.ClassvarConstantAutofixPlan:
         class_module, class_name = class_full_name.rsplit(".", maxsplit=1)
         source_mod = project.get_module(class_module, project.root)
         source_resource = source_mod.get_resource()
@@ -79,9 +63,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
             msg = f"{class_full_name} did not resolve to a class"
             raise TypeError(msg)
         source_text = source_resource.read()
-        class_lineno = _class_start_lineno(source_text, class_name)
         declaration_line = _extract_declaration_line(
-            source_text, class_name, constant_name, class_lineno
+            source_text, class_name, constant_name
         )
         target_resource = _target_resource_for_module(
             project,
@@ -89,7 +72,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
             class_module=class_module,
             source_resource=source_resource,
         )
-        return ClassvarConstantAutofixPlan(
+        return m.Infra.ClassvarConstantAutofixPlan(
             class_module=class_module,
             class_name=class_name,
             constant_name=constant_name,
@@ -97,7 +80,6 @@ class FlextInfraRefactorClassvarConstantAutofix:
             source_resource=source_resource,
             target_resource=target_resource,
             declaration_line=declaration_line,
-            class_lineno=class_lineno,
         )
 
     @staticmethod
@@ -110,19 +92,23 @@ class FlextInfraRefactorClassvarConstantAutofix:
         dry_run: bool = False,
     ) -> m.Infra.ClassvarConstantAutofixResult:
         """Move the constant and rewrite all internal references."""
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
+        with u.Infra.open_project(workspace_root) as project:
             plan = FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
                 project, class_full_name, constant_name, constants_module
             )
             return FlextInfraRefactorClassvarConstantAutofix._apply_with_project(
-                project, plan, dry_run=dry_run
+                project,
+                plan,
+                workspace_root=workspace_root,
+                dry_run=dry_run,
             )
 
     @staticmethod
     def _apply_with_project(
         project: t.Infra.RopeProject,
-        plan: ClassvarConstantAutofixPlan,
+        plan: m.Infra.ClassvarConstantAutofixPlan,
         *,
+        workspace_root: Path,
         dry_run: bool,
     ) -> m.Infra.ClassvarConstantAutofixResult:
         source_text = plan.source_resource.read()
@@ -132,10 +118,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
         constants_alias = plan.constants_module.split(".")[-1]
 
         # 1. Remove the ClassVar declaration from the class body.
-        new_source = _remove_declaration_line(
+        new_source = _remove_declaration_by_ast(
             source_text,
-            plan.declaration_line,
-            plan.class_lineno,
             plan.class_name,
             plan.constant_name,
         )
@@ -166,20 +150,26 @@ class FlextInfraRefactorClassvarConstantAutofix:
             project, plan.constant_name, pyname, imports=True, in_hierarchy=False
         )
         rewrites: dict[str, list[tuple[int, int, str]]] = {}
+        resources = tuple(project.get_python_files())
+        resource_modules: dict[str, str] = {}
         # Iterate over concrete project resources to avoid rope crashing when
         # an occurrence cannot be resolved to a resource (resource=None).
-        for resource in project.get_python_files():
+        for resource in resources:
+            resource_module = u.Infra.get_pymodule(project, resource).get_name()
+            if not resource_module:
+                msg = f"Rope produced no module identity for {resource.path}"
+                raise RuntimeError(msg)
+            resource_modules[resource.path] = resource_module
             for occurrence in finder.find_occurrences(resource=resource):
                 offset = occurrence.offset
                 source = resource.read()
                 prefix = _attribute_prefix(source, offset)
                 if _should_rewrite_prefix(prefix, plan.class_name):
-                    try:
-                        start, end = u.Infra.word_primary_range(source, offset)
-                    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
-                        start, end = occurrence.get_word_range()
+                    start, end = u.Infra.word_primary_range(source, offset)
                     replacement = (
-                        f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
+                        plan.constant_name
+                        if resource_module == plan.constants_module
+                        else f"{constants_alias}.{plan.constant_name}"
                     )
                     rewrites.setdefault(resource.path, []).append((
                         start,
@@ -214,32 +204,48 @@ class FlextInfraRefactorClassvarConstantAutofix:
         new_source = _ensure_constants_import(
             new_source, constants_alias, plan.class_module, plan.constants_module
         )
-        Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
+        # 6. Compute every remaining consumer rewrite before the first write.
+        updates: dict[Path, str] = {
+            Path(plan.source_resource.real_path): new_source,
+        }
         if new_target != target_text:
-            target_path.write_text(new_target, encoding="utf-8")
-
-        # 6. Apply remaining rewrites to other resources.
-        for resource in project.get_python_files():
+            updates[target_path] = new_target
+        for resource in resources:
             edits = rewrites.get(resource.path)
             if not edits:
                 continue
-            text = resource.read()
-            text = _apply_edits(text, edits)
-            Path(resource.real_path).write_text(text, encoding="utf-8")
+            resource_path = Path(resource.real_path)
+            text = (
+                new_target
+                if resource.path == plan.target_resource.path
+                else resource.read()
+            )
+            updated_text = _apply_edits(text, edits)
+            resource_module = resource_modules[resource.path]
+            if resource_module != plan.constants_module:
+                updated_text = _ensure_constants_import(
+                    updated_text,
+                    constants_alias,
+                    resource_module,
+                    plan.constants_module,
+                )
+            if updated_text != text:
+                updates[resource_path] = updated_text
+
+        for path, updated_text in updates.items():
+            u.Infra.get_string_module(project, updated_text).get_ast()
+
+        u.Infra.protected_source_writes(
+            updates,
+            request=m.Infra.ProtectedSourceWritesRequest(
+                workspace=workspace_root.resolve(),
+                post_write=lambda: project.validate(project.root),
+            ),
+        )
 
         return m.Infra.ClassvarConstantAutofixResult(
             touched_files=tuple(sorted(touched)), constant_module=plan.constants_module
         )
-
-
-def _class_start_lineno(source: str, class_name: str) -> int:
-    """Return the 1-based line where ``class class_name`` starts."""
-    for lineno, line in enumerate(source.splitlines(), start=1):
-        stripped = line.lstrip()
-        if stripped.startswith("class ") and class_name in stripped:
-            return lineno
-    msg = f"Could not locate class {class_name}"
-    raise ValueError(msg)
 
 
 def _target_resource_for_module(
@@ -290,35 +296,27 @@ def _target_resource_for_module(
 
 
 def _extract_declaration_line(
-    source: str, class_name: str, constant_name: str, class_lineno: int
+    source: str, class_name: str, constant_name: str
 ) -> str:
-    """Return the exact source line that declares the class-level constant."""
+    """Return the AST-owned declaration for one class-level constant."""
     try:
         tree = ast.parse(source)
-    except SyntaxError:
-        tree = None
-    if tree is not None:
-        for node in tree.body:
-            if not isinstance(node, ast.ClassDef) or node.name != class_name:
+    except SyntaxError as exc:
+        msg = f"class constant source is not parseable: {exc.msg}"
+        raise TypeError(msg) from exc
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for statement in node.body:
+            if not _statement_declares_name(statement, constant_name):
                 continue
-            for statement in node.body:
-                if not _statement_declares_name(statement, constant_name):
-                    continue
-                segment = ast.get_source_segment(source, statement)
-                if segment is not None:
-                    return _normalize_declaration_source(segment)
-                return _normalize_declaration_source(
-                    _statement_source_by_lines(source, statement)
-                )
-            break
-    lines = source.splitlines()
-    for idx in range(class_lineno, len(lines)):
-        line = lines[idx]
-        stripped = line.lstrip()
-        if stripped.startswith("class "):
-            break
-        if stripped.startswith((f"{constant_name}:", f"{constant_name} =")):
-            return line.rstrip()
+            segment = ast.get_source_segment(source, statement)
+            if segment is not None:
+                return _normalize_declaration_source(segment)
+            return _normalize_declaration_source(
+                _statement_source_by_lines(source, statement)
+            )
+        break
     msg = f"Could not find constant declaration for {constant_name} in {class_name}"
     raise ValueError(msg)
 
@@ -356,8 +354,9 @@ def _declaration_aliases_target_constant(
     """Return whether a class declaration points at the existing constants owner."""
     try:
         tree = ast.parse(textwrap.dedent(declaration_line).strip())
-    except SyntaxError:
-        return False
+    except SyntaxError as exc:
+        msg = f"class constant declaration is not parseable: {exc.msg}"
+        raise TypeError(msg) from exc
     if len(tree.body) != 1:
         return False
     value = _assignment_value(tree.body[0])
@@ -404,38 +403,16 @@ def _normalize_declaration_source(source: str) -> str:
     ))
 
 
-def _remove_declaration_line(
-    source: str,
-    declaration_line: str,
-    class_lineno: int,
-    class_name: str,
-    constant_name: str,
-) -> str:
-    """Remove the constant declaration from the class body, preserving layout."""
-    lines = source.splitlines(keepends=True)
-    ast_removed = _remove_declaration_by_ast(source, lines, class_name, constant_name)
-    if ast_removed is not None:
-        return ast_removed
-    for idx in range(class_lineno - 1, len(lines)):
-        if _declaration_block_matches(lines, declaration_line, idx):
-            # Also remove the blank line that typically precedes it, if any.
-            end_idx = idx + len(declaration_line.splitlines())
-            if idx > 0 and not lines[idx - 1].strip():
-                del lines[idx - 1 : end_idx]
-            else:
-                del lines[idx:end_idx]
-            return "".join(lines)
-    return source
-
-
 def _remove_declaration_by_ast(
-    source: str, lines: list[str], class_name: str, constant_name: str
-) -> str | None:
+    source: str, class_name: str, constant_name: str
+) -> str:
     """Remove a class-body declaration using AST line metadata."""
+    lines = source.splitlines(keepends=True)
     try:
         tree = ast.parse(source)
-    except SyntaxError:
-        return None
+    except SyntaxError as exc:
+        msg = f"class constant source is not parseable: {exc.msg}"
+        raise TypeError(msg) from exc
     for node in tree.body:
         if not isinstance(node, ast.ClassDef) or node.name != class_name:
             continue
@@ -451,21 +428,8 @@ def _remove_declaration_by_ast(
             )
             del lines[delete_start:end]
             return "".join(lines)
-    return None
-
-
-def _declaration_block_matches(
-    lines: t.SequenceOf[str], declaration_line: str, start: int
-) -> bool:
-    """Return whether source lines at ``start`` match the declaration block."""
-    declaration_lines = declaration_line.splitlines()
-    if not declaration_lines or start + len(declaration_lines) > len(lines):
-        return False
-    source_block = "".join(lines[start : start + len(declaration_lines)]).rstrip()
-    return source_block == declaration_line or (
-        textwrap.dedent(source_block).rstrip()
-        == textwrap.dedent(declaration_line).rstrip()
-    )
+    msg = f"Could not remove constant declaration for {constant_name} in {class_name}"
+    raise ValueError(msg)
 
 
 def _apply_edits(text: str, edits: t.SequenceOf[tuple[int, int, str]]) -> str:
@@ -553,10 +517,7 @@ def _attribute_prefix(source: str, offset: int) -> str:
     For ``cls.BAR`` returns ``"cls"``.  For ``self.__class__.BAR`` returns
     ``"self.__class__"``.  For bare ``BAR`` returns the empty string.
     """
-    try:
-        return u.Infra.word_primary_at(source, offset)
-    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
-        return ""
+    return u.Infra.word_primary_at(source, offset)
 
 
 def _should_rewrite_prefix(prefix: str, class_name: str) -> bool:
@@ -582,6 +543,17 @@ def _ensure_constants_import(
         if a != b:
             break
         common += 1
+    if common == 0:
+        parent_module = ".".join(constants_parts[:-1])
+        import_line = (
+            f"from {parent_module} import {constants_alias}\n"
+            if parent_module
+            else f"import {constants_alias}\n"
+        )
+        lines = source.splitlines(keepends=True)
+        if import_line.strip() not in {line.strip() for line in lines}:
+            _insert_local_import_line(lines, import_line)
+        return "".join(lines)
     ups = len(class_parts) - common - 1  # minus the source module itself
     rel_parts = constants_parts[common:]
     if ups == 0 and rel_parts == [constants_alias]:

@@ -15,7 +15,7 @@ class FlextInfraModelsGates:
     class GateContext(m.ContractModel):
         """Quality gate execution context and configuration."""
 
-        fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
+        fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid", arbitrary_types_allowed=True, populate_by_name=True
         )
@@ -36,6 +36,14 @@ class FlextInfraModelsGates:
                 description="Gate failure mode: error fails the pipeline, warn reports only"
             ),
         ] = "error"
+        gate_command: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Config-owned external command argv for this gate"),
+        ] = ()
+        gate_execution_scope: Annotated[
+            Literal["project", "workspace"],
+            m.Field(description="Configured command execution root"),
+        ] = "project"
         ruff_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Ruff")
         ] = ()

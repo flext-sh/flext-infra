@@ -59,19 +59,23 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         """Find rope occurrences for one module's symbols and merge into file_moves."""
         resource: t.Infra.RopeResource | None = rope_project.find_module(module_name)
         if resource is None:
-            return
+            msg = f"cannot resolve declared MRO source module: {module_name}"
+            raise RuntimeError(msg)
         facade_alias, symbol_paths = module_move
         for symbol_name, target_path in symbol_paths.items():
             offset = u.Infra.find_definition_offset(rope_project, resource, symbol_name)
             if offset is None:
-                continue
+                msg = f"cannot resolve declared MRO symbol: {module_name}.{symbol_name}"
+                raise RuntimeError(msg)
             for occurrence in u.Infra.find_occurrences(rope_project, resource, offset):
                 resource_like = getattr(occurrence, "resource", None)
                 if resource_like is None:
-                    continue
+                    msg = f"MRO occurrence has no resource: {module_name}.{symbol_name}"
+                    raise RuntimeError(msg)
                 real_path = getattr(resource_like, "real_path", None)
-                if real_path is None:
-                    continue
+                if not isinstance(real_path, str) or not real_path:
+                    msg = f"MRO occurrence has no path: {module_name}.{symbol_name}"
+                    raise RuntimeError(msg)
                 file_path = Path(str(real_path)).resolve()
                 per_file = module_file_moves.setdefault(file_path, {})
                 existing_move = per_file.get(module_name)
@@ -120,62 +124,34 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         """Iterate workspace Python files."""
         paths: list[Path] = []
         project_name_set: set[str] = set(project_names or ())
-        for project_root in u.Infra.discover_project_roots(
-            workspace_root=workspace_root
-        ):
-            if project_name_set and project_root.name not in project_name_set:
+        projects_result = u.Infra.projects(workspace_root)
+        if projects_result.failure:
+            error = projects_result.error
+            if error is None:
+                msg = "MRO project discovery failed without an error"
+                raise RuntimeError(msg)
+            raise RuntimeError(error)
+        projects = projects_result.value
+        if project_name_set:
+            missing = project_name_set - {project.name for project in projects}
+            if missing:
+                msg = f"unknown MRO projects: {', '.join(sorted(missing))}"
+                raise RuntimeError(msg)
+        for project in projects:
+            if project_name_set and project.name not in project_name_set:
                 continue
+            project_root = project.path
             iter_result = u.Infra.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(project_root,))
             )
             if iter_result.failure:
-                continue
+                error = iter_result.error
+                if error is None:
+                    msg = "Python source discovery failed without an error"
+                    raise RuntimeError(msg)
+                raise RuntimeError(error)
             paths.extend(iter_result.value)
         return paths
-
-    @staticmethod
-    def _protected_source_write(
-        *,
-        workspace_root: Path,
-        file_path: Path,
-        updated_source: str,
-        gates: t.StrSequence | None,
-    ) -> t.Infra.EditResult:
-        """Protected source write."""
-        result: t.Infra.EditResult = u.Infra.protected_source_write(
-            file_path,
-            request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=workspace_root,
-                updated_source=updated_source,
-                keep_backup=True,
-                gates=gates,
-            ),
-        )
-        return result
-
-    @classmethod
-    def _write_pending_sources(
-        cls,
-        *,
-        workspace_root: Path,
-        pending_sources: t.MappingKV[Path, str],
-        gates: t.StrSequence | None,
-    ) -> tuple[t.StrSequence, t.SequenceOf[Path]]:
-        """Write pending sources."""
-        errors: list[str] = []
-        failed_paths: list[Path] = []
-        for file_path, source in pending_sources.items():
-            ok, report = cls._protected_source_write(
-                workspace_root=workspace_root,
-                file_path=file_path,
-                updated_source=source,
-                gates=gates,
-            )
-            if ok:
-                continue
-            failed_paths.append(file_path)
-            errors.extend(f"{file_path}: {line.strip()}" for line in report[:10])
-        return (tuple(errors), tuple(failed_paths))
 
 
 __all__: list[str] = ["FlextInfraRefactorMROImportRewriterFileOpsMixin"]

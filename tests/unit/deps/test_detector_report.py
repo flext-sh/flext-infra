@@ -75,7 +75,6 @@ def _setup(tmp_path: Path, deps: _DepsStub) -> FlextInfraDependencyDetectorRunti
     return FlextInfraDependencyDetectorRuntime(
         detector=_DetectorStub(deps),
         workspace_report_factory=m.Infra.WorkspaceDependencyReport,
-        dependency_limits_factory=m.Infra.DependencyLimitsInfo,
         pip_check_factory=m.Infra.PipCheckReport,
     )
 

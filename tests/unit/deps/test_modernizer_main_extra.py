@@ -43,13 +43,10 @@ class TestsFlextInfraDepsModernizerMainExtra:
     ) -> None:
         """Reach a fixed point after one canonical apply."""
         apply_exit = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
-            apply_changes=True,
-            skip_comments=True,
-            skip_check=True,
+            workspace_root=modernizer_workspace, apply_changes=True
         ).run()
         audit_exit = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace, audit=True, skip_comments=True
+            workspace_root=modernizer_workspace, audit=True
         ).run()
         tm.that(apply_exit, eq=0)
         tm.that(audit_exit, eq=0)
@@ -63,10 +60,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         )
         selected_pyproject.write_text("[invalid", encoding="utf-8")
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace_with_projects,
-            apply_changes=True,
-            skip_comments=True,
-            skip_check=False,
+            workspace_root=modernizer_workspace_with_projects, apply_changes=True
         )
         tm.that(modernizer.run(), eq=1)
 
@@ -78,8 +72,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
             workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
         )
 
         tm.that(modernizer.run(), eq=2)
@@ -123,8 +115,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
             workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
         )
 
         tm.that(modernizer.run(), eq=2)
@@ -196,8 +186,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
             workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
         ).run()
 
         tm.that(exit_code, eq=0)
@@ -269,8 +257,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
             workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
         )
 
         tm.that(modernizer.run(), eq=0)
@@ -313,8 +299,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
             workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
         )
 
         tm.that(modernizer.run(), eq=0)
@@ -342,9 +326,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             encoding="utf-8",
         )
 
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=workspace, audit=True, skip_comments=True
-        )
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=workspace, audit=True)
 
         tm.that(modernizer.run(), eq=1)
         output = capsys.readouterr().out

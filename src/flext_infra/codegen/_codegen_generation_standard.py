@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-# mro-wkii.17.26 (codex): Keep lazy loading only at the public package root and
-# bind Ruff validation to each target project's real initializer path.
+# Keep lazy loading only at the public package root; templates own the exact
+# generated initializer bytes.
 class FlextInfraCodegenGenerationStandardMixin(
     FlextInfraCodegenGenerationRenderersMixin
 ):
@@ -99,9 +99,8 @@ class FlextInfraCodegenGenerationStandardMixin(
             (current_pkg, frozenset(plan.child_packages_for_lazy), True),
         )
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
-        # mro-wkii.17.26 (codex): public root re-exports are imported at runtime
-        # so they appear in __all__ without tripping Ruff TC004; the lazy map
-        # still provides the canonical install_lazy_exports contract.
+        # Public root re-exports are imported at runtime so ``__all__`` binds
+        # real attributes; the lazy map remains the canonical installation contract.
         public_runtime_imports = cls._type_checking_filtered(plan)
         compacted_public_runtime_imports = {
             name: (cls._compact_lazy_module_path(current_pkg, mod), attr)

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, p, u
+from flext_infra import c, config, p, u
 from flext_infra.deps._detector_runtime_steps import (
     FlextInfraDependencyDetectorRuntimeSteps,
 )
@@ -24,57 +24,35 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         self,
         detector: p.Infra.DetectorRuntime,
         workspace_report_factory: Callable[..., p.Infra.WorkspaceReport],
-        dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo],
         pip_check_factory: Callable[..., m.Infra.PipCheckReport],
     ) -> None:
         """Store runtime collaborators used by dependency detection orchestration."""
         self._detector = detector
         self._workspace_report_factory = workspace_report_factory
-        self._dependency_limits_factory = dependency_limits_factory
         self._pip_check_factory = pip_check_factory
 
     def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report (orchestrator)."""
         detector = self._detector
         root = params.workspace_path
-        venv_bin = root / c.Infra.VENV_BIN_REL
+        venv_bin = root / config.Infra.tooling.tools.pyright.path_rules.venv_bin_rel
         env_result = self._validate_environment(params, root, venv_bin)
         if env_result.failure:
             return r[bool].fail(env_result.error or "environment validation failed")
-        projects, limits_path = env_result.value
-        do_typings = params.typings or params.apply_typings
+        projects = env_result.value
         projects_report: MutableMapping[
             str, MutableMapping[str, t.Infra.InfraValue]
         ] = {}
         report_model = self._workspace_report_factory(
-            workspace=str(root),
-            projects=projects_report,
-            pip_check=None,
-            dependency_limits=None,
+            workspace=str(root), projects=projects_report, pip_check=None
         )
         deps_service = detector.deps
-        typing_deps = (
-            deps_service
-            if isinstance(deps_service, p.Infra.TypingsDepsService)
-            else None
-        )
-        if do_typings:
-            limits_setup = self._configure_typings_limits(
-                typing_deps, limits_path, report_model
-            )
-            if limits_setup.failure:
-                return r[bool].fail(
-                    limits_setup.error or "typings limits configuration failed"
-                )
         for project_path in projects:
             project_result = self._run_project_detection(
                 project_path,
                 deps_service=deps_service,
-                typing_deps=typing_deps,
                 venv_bin=venv_bin,
-                limits_path=limits_path,
                 params=params,
-                do_typings=do_typings,
                 projects_report=projects_report,
             )
             if project_result.failure:

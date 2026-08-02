@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 import time
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -14,8 +13,8 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraGate(ABC):
-    """Abstract template implementing common check/fix execution flow for gates."""
+class FlextInfraGate:
+    """Template implementing common check and fix execution flow for gates."""
 
     gate_id: ClassVar[str] = ""
     gate_name: ClassVar[str] = ""
@@ -124,20 +123,22 @@ class FlextInfraGate(ABC):
         _ = ctx
         return self._dirs_with_py(project_dir, self._existing_check_dirs(project_dir))
 
-    @abstractmethod
     def _build_check_command(
         self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
-        """Build the tool CLI command."""
-        ...
+        """Build the tool CLI command or fail when a gate omitted its contract."""
+        _ = project_dir, ctx, check_dirs
+        msg = f"Gate {self.gate_id} did not implement _build_check_command"
+        raise NotImplementedError(msg)
 
-    @abstractmethod
     # mro-r3r8: every gate override consumes the structural p.Cli process contract.
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Parse tool output into (passed, issues)."""
-        ...
+        """Parse tool output or fail when a gate omitted its contract."""
+        _ = result, project_dir, ctx
+        msg = f"Gate {self.gate_id} did not implement _parse_check_output"
+        raise NotImplementedError(msg)
 
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
         """Timeout for the check command. Override for long-running tools."""
@@ -223,9 +224,8 @@ class FlextInfraGate(ABC):
         raise NotImplementedError(msg)
 
     def _fix_raw_output(self, result: p.Cli.CommandOutput) -> str:
-        """Assemble raw output from fix result. Default: stderr only."""
-        stderr: str = result.stderr
-        return stderr
+        """Preserve diagnostics regardless of the stream selected by a tool."""
+        return self._raw_output(result)
 
     @staticmethod
     def _raw_output(result: p.Cli.CommandOutput) -> str:

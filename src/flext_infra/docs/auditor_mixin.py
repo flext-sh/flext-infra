@@ -120,7 +120,6 @@ class FlextInfraDocAuditorMixin:
                 "scope-boundary",
                 "generated-ownership",
                 "docstrings",
-                "python-codeblocks",
             }
         return checks
 
@@ -140,7 +139,7 @@ class FlextInfraDocAuditorMixin:
             ],
             t.StrSequence,
         ],
-    ) -> None:
+    ) -> p.Result[None]:
         """Persist JSON summary and markdown report to the scope report directory."""
         validated_checks = t.json_list_adapter().validate_python(sorted(checks))
         sorted_checks: t.JsonValueList = list(validated_checks)
@@ -166,10 +165,11 @@ class FlextInfraDocAuditorMixin:
             c.Infra.RK_SUMMARY: summary,
             "issues": issues_payload,
         }
-        _ = u.Cli.json_write(scope.report_dir / "audit-summary.json", summary_payload)
-        _ = u.Infra.write_markdown(
-            scope.report_dir / "audit-report.md",
-            to_markdown_fn(scope, issues, docstring_coverage),
+        return u.Infra.write_report_pair(
+            scope.report_dir,
+            stem="audit",
+            summary=summary_payload,
+            markdown=to_markdown_fn(scope, issues, docstring_coverage),
         )
 
 

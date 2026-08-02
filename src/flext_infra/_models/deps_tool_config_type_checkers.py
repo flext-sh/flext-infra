@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
@@ -167,12 +168,27 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
             venv_name: Annotated[
-                str,
+                t.NonEmptyStr,
                 m.Field(
                     alias="venv-name",
                     description="Virtualenv directory name shared across pyright configs.",
                 ),
             ]
+
+            @m.field_validator("venv_name")
+            @classmethod
+            def _validate_venv_name(cls, value: str) -> str:
+                """Require one relative directory name without path traversal."""
+                _ = cls
+                if value in {".", ".."} or "/" in value or "\\" in value:
+                    msg = "venv-name must be one relative directory name"
+                    raise ValueError(msg)
+                return value
+
+            @property
+            def venv_bin_rel(self) -> Path:
+                """Executable directory derived from the configured environment."""
+                return Path(self.venv_name) / "bin"
 
         strict_settings: Annotated[
             t.StrMapping,

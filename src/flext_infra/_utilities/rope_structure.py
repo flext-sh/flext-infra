@@ -20,6 +20,25 @@ class FlextInfraUtilitiesRopeStructure:
     """Expose one Rope-owned fact pass to every structural detector."""
 
     @staticmethod
+    def record_parse_failure(
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation] | None,
+        violation: m.Infra.ParseFailureViolation,
+        *,
+        cause: BaseException | None = None,
+    ) -> None:
+        """Record one typed parse failure or raise it when no collector exists."""
+        if parse_failures is not None:
+            parse_failures.append(violation)
+            return
+        msg = (
+            f"{violation.stage} detector could not parse "
+            f"{violation.file}: {violation.detail}"
+        )
+        if cause is None:
+            raise RuntimeError(msg)
+        raise RuntimeError(msg) from cause
+
+    @staticmethod
     def logical_statements(source: str) -> t.SequenceOf[m.Infra.LogicalStatement]:
         """Return Rope logical regions with scope and TYPE_CHECKING context."""
         if not source:
@@ -72,8 +91,6 @@ class FlextInfraUtilitiesRopeStructure:
         resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
             ctx.rope_project, ctx.file_path
         )
-        if resource is None:
-            return ()
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
                 ctx.rope_project, resource
@@ -82,15 +99,15 @@ class FlextInfraUtilitiesRopeStructure:
                 ctx.rope_project, pymodule
             )
         except (*FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),) as exc:
-            if ctx.parse_failures is None:
-                raise
-            ctx.parse_failures.append(
+            cls.record_parse_failure(
+                ctx.parse_failures,
                 m.Infra.ParseFailureViolation(
                     file=str(ctx.file_path),
                     stage="static_rules",
                     error_type=type(exc).__name__,
                     detail=str(exc),
-                )
+                ),
+                cause=exc,
             )
             return ()
         display_path = (

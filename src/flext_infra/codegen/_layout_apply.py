@@ -26,19 +26,12 @@ class FlextInfraCodegenLayoutApplyMixin(
     ) -> p.Result[m.Infra.LayoutProjectReport]:
         """Execute every planned finding and return the updated report."""
         findings: list[m.Infra.LayoutFinding] = []
-        gitignore_status: t.Infra.LayoutStatus = "noop"
-        gitignore_patterns = tuple(
-            finding.target
-            for finding in report.actionable
-            if finding.rule == "gitignore"
-        )
-        if gitignore_patterns:
-            applied = self._apply_gitignore(project_dir, gitignore_patterns)
-            if applied.failure:
-                return r[m.Infra.LayoutProjectReport].fail(
-                    applied.error or "gitignore update failed"
-                )
-            gitignore_status = applied.value
+        applied = self._apply_gitignore(project_dir)
+        if applied.failure:
+            return r[m.Infra.LayoutProjectReport].fail(
+                applied.error or "gitignore update failed"
+            )
+        gitignore_status: t.Infra.LayoutStatus = applied.value
         for finding in report.findings:
             if finding.rule == "review":
                 findings.append(finding)

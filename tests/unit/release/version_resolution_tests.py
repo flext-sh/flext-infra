@@ -122,7 +122,7 @@ class TestsFlextInfraReleaseVersionResolution:
             )
             before_root = root_pyproject.read_bytes()
             before_project = project_pyproject.read_bytes()
-            before_status = tm.ok(
+            before_status: bytes = tm.ok(
                 u.Infra.git_capture_bytes(workspace, ("status", "--porcelain=v1", "-z"))
             )
 
@@ -141,7 +141,7 @@ class TestsFlextInfraReleaseVersionResolution:
                 "--apply",
             )
 
-            after_status = tm.ok(
+            after_status: bytes = tm.ok(
                 u.Infra.git_capture_bytes(workspace, ("status", "--porcelain=v1", "-z"))
             )
             tm.that(result, eq=1)

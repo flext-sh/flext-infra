@@ -1,14 +1,10 @@
-"""Tests for gate registration of the new durissimas gates.
-
-`loc-cap`, `boundary`, and `canonical-alias` must be in the SSOT-derived
-ALLOWED_GATES and resolve through the registry.
-"""
+"""Tests for the config-owned workspace gate registry."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, r, u
+from flext_infra import config, m, p, r, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
 from flext_tests import tm
@@ -22,20 +18,21 @@ if TYPE_CHECKING:
 
 
 class TestGateRegistry:
-    def test_new_gates_in_allowed(self) -> None:
-        tm.that("loc-cap" in c.Infra.ALLOWED_GATES, eq=True)
-        tm.that("boundary" in c.Infra.ALLOWED_GATES, eq=True)
-        tm.that("canonical-alias" in c.Infra.ALLOWED_GATES, eq=True)
+    def test_registry_matches_configured_catalog(self) -> None:
+        registry = FlextInfraGateRegistry.default()
+        expected_gate_ids = config.Infra.codegen.make.check.gate_ids
+        tm.that(registry.gate_ids, eq=expected_gate_ids)
 
-    def test_registry_resolves_loc_cap(self) -> None:
-        tm.that(FlextInfraGateRegistry.default().get("loc-cap") is not None, eq=True)
-
-    def test_registry_resolves_boundary(self) -> None:
-        tm.that(FlextInfraGateRegistry.default().get("boundary") is not None, eq=True)
-
-    def test_registry_resolves_canonical_alias(self) -> None:
+    def test_registry_exposes_every_configured_gate(self) -> None:
+        registry = FlextInfraGateRegistry.default()
+        expected_gate_ids = config.Infra.codegen.make.check.gate_ids
         tm.that(
-            FlextInfraGateRegistry.default().get("canonical-alias") is not None, eq=True
+            tuple(
+                gate_id
+                for gate_id in expected_gate_ids
+                if registry.get(gate_id) is not None
+            ),
+            eq=expected_gate_ids,
         )
 
     def test_canonical_alias_fix_fails_on_read_error(

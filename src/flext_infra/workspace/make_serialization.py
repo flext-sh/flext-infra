@@ -1,323 +1,362 @@
-"""Portable per-checkout serialization for state-sensitive Make validation."""
+"""Capability-driven execution for the generated Make interface."""
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_infra import c, config, m, p, u
 from flext_infra.base import s
+from flext_infra.workspace._make_quality import FlextInfraMakeQualityMixin
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 
 
-class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
-    """Run one configured private Make target under a native process lock."""
+class FlextInfraMakeSerializationService(
+    FlextInfraMakeQualityMixin, s[m.Infra.ProcessExit]
+):
+    """Resolve and execute one typed Make operation through its existing owner."""
 
-    verb: Annotated[
-        str, m.Field(description="Configured public Make verb to serialize")
-    ]
+    verb: Annotated[str, m.Field(description="Configured public Make verb")]
     makefile: Annotated[
-        Path,
-        m.Field(
-            description=(
-                "Selected Make owner used for nested dispatch and lock ownership"
-            )
-        ),
+        Path, m.Field(description="Generated Make owner for the invoked operation")
     ]
     selector_value: Annotated[
-        str,
-        m.Field(
-            description="Caller selector value; empty resolves from the verb matrix"
-        ),
+        str, m.Field(description="Caller selector; empty resolves from the verb graph")
     ] = ""
     apply_token: Annotated[
-        str,
-        m.Field(
-            description="Caller mutation token validated against the Make contract"
-        ),
+        str, m.Field(description="Caller mutation token validated by the graph")
     ] = ""
+    make_level: Annotated[
+        int,
+        m.Field(ge=0, description="GNU Make recursion level at the public boundary"),
+    ]
 
-    def _serialized_command(
+    @staticmethod
+    def _profile(
+        target: m.Infra.RepositoryConformTarget,
+    ) -> p.Result[m.Infra.ProfileSpec]:
+        profiles = tuple(
+            item
+            for item in config.Infra.codegen.profiles
+            if item.name == target.make_profile
+        )
+        if len(profiles) != 1:
+            return r.fail(
+                f"Make profile must resolve exactly once: {target.make_profile}"
+            )
+        return r.ok(profiles[0])
+
+    def _eligible_targets(
         self,
-        makefile: Path,
-        make_config: m.Infra.MakeSpec,
-        *,
-        selected_what: str,
-        apply_value: str,
-    ) -> t.StrSequence:
-        """Build the nested command with validated public Make variables."""
-        return (
-            c.Infra.MAKE,
-            "--no-print-directory",
-            "-f",
-            str(makefile),
-            f"_serialized_{self.verb}",
-            *((f"{make_config.selector}={selected_what}",) if selected_what else ()),
-            *((f"{make_config.apply_variable}={apply_value}",) if apply_value else ()),
-        )
-
-    def _make_variables(self, make_config: m.Infra.MakeSpec) -> p.Result[t.StrMapping]:
-        """Resolve one caller request from the canonical verb matrix."""
-        verb_spec = next(
-            (item for item in make_config.verbs if item.name == self.verb), None
-        )
-        if verb_spec is None:
-            return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
-        # The generated Makefile seeds the absent value and forwards it on every
-        # read-only run, so it means "not applying", not an invalid token.
-        applying = self.apply_token not in {"", make_config.apply_absent_value}
-        if applying and self.apply_token != make_config.apply_value:
-            return r[t.StrMapping].fail(
-                f"{make_config.apply_variable} must be "
-                f"{make_config.apply_value} when set"
+        workspace_root: Path,
+        profile: m.Infra.ProfileSpec,
+        invocation: m.Infra.MakeInvocationSpec,
+        governed: tuple[m.Infra.MakeTargetSpec, ...],
+    ) -> tuple[m.Infra.MakeTargetSpec, ...]:
+        """Apply operation, environment, CI, and profile scope precedence."""
+        current = tuple(item for item in governed if item.root == self.root.resolve())
+        if invocation.operation.scope == "self":
+            return current
+        if invocation.operation.scope == "environment-owner":
+            return (
+                tuple(item for item in governed if item.root == workspace_root)
+                if profile.environment_scope == "root"
+                else current
             )
-        if applying and not verb_spec.apply_guarded:
-            return r[t.StrMapping].fail(
-                f"Make verb '{self.verb}' is read-only and does not accept "
-                f"{make_config.apply_variable}"
-            )
-        selected_what = self.selector_value or (
-            verb_spec.apply_what if applying else verb_spec.default_what
-        )
-        if selected_what not in verb_spec.whats:
-            allowed = ", ".join(verb_spec.whats)
-            return r[t.StrMapping].fail(
-                f"unsupported {self.verb} {make_config.selector}={selected_what} "
-                f"(allowed: {allowed})"
-            )
-        return r[t.StrMapping].ok({
-            make_config.selector: selected_what,
-            make_config.apply_variable: self.apply_token,
-        })
+        if invocation.target_scope == "self":
+            return current
+        return governed if profile.execution_scope == "root" else current
 
     @classmethod
-    def _process_failure(
-        cls, raw_exit_code: int, message: str
-    ) -> p.Result[m.Infra.ProcessExit]:
-        """Return one typed failure whose CLI boundary preserves process status."""
-        outcome = m.Infra.ProcessExit(
-            exit_code=u.Infra.normalize_process_exit_code(raw_exit_code),
-            raw_exit_code=raw_exit_code,
-            classification=u.Infra.classify_process_exit(raw_exit_code),
-        )
-        return r[m.Infra.ProcessExit].fail(
-            message, error_code=c.Infra.PROCESS_EXIT_ERROR_CODE, error_data=outcome
+    def _requested_targets(
+        cls,
+        eligible: tuple[m.Infra.MakeTargetSpec, ...],
+        requested: tuple[str, ...],
+    ) -> p.Result[tuple[m.Infra.MakeTargetSpec, ...]]:
+        """Resolve and stably deduplicate every external project selector."""
+        return r.traverse(
+            requested,
+            lambda selector: cls._requested_target(eligible, selector),
+        ).map(
+            lambda selected: tuple(
+                {target.root: target for target in selected}.values()
+            )
         )
 
     @staticmethod
-    def _success_exit() -> m.Infra.ProcessExit:
-        """Build the canonical successful process outcome."""
-        return m.Infra.ProcessExit(
-            exit_code=int(c.Infra.ScriptExitCode.PASS),
-            raw_exit_code=int(c.Infra.ScriptExitCode.PASS),
-            classification="success",
+    def _requested_target(
+        eligible: tuple[m.Infra.MakeTargetSpec, ...], selector: str
+    ) -> p.Result[m.Infra.MakeTargetSpec]:
+        """Resolve one external selector to exactly one governed target."""
+        matches = tuple(
+            item
+            for item in eligible
+            if selector
+            in {
+                item.repository.name,
+                item.repository.distribution,
+                item.repository.path.as_posix(),
+            }
+        )
+        if len(matches) != 1:
+            return r.fail(f"project selector must resolve exactly once: {selector}")
+        return r.ok(matches[0])
+
+    def _select_targets(
+        self,
+        workspace_root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        profile: m.Infra.ProfileSpec,
+        invocation: m.Infra.MakeInvocationSpec,
+    ) -> p.Result[tuple[m.Infra.MakeTargetSpec, ...]]:
+        """Select the operation's governed runtime targets."""
+        governed = self._governed_targets(workspace_root, workspace)
+        eligible = self._eligible_targets(
+            workspace_root, profile, invocation, governed
+        )
+        requested = self._input_values(invocation, "projects")
+        selected = (
+            self._requested_targets(eligible, requested)
+            if requested
+            else r[tuple[m.Infra.MakeTargetSpec, ...]].ok(eligible)
+        )
+        if selected.failure:
+            return selected
+        candidates = selected.value
+        if "package" in invocation.operation.requires:
+            candidates = tuple(item for item in candidates if item.repository.package)
+        if not candidates:
+            return r.fail(
+                f"Make operation {invocation.operation.name} resolved no targets"
+            )
+        return r.ok(candidates)
+
+    @staticmethod
+    def _is_managed_target(target: m.Infra.MakeTargetSpec) -> bool:
+        """Validate the managed repository boundary from typed and live state."""
+        repository = target.repository
+        root = target.root
+        return all(
+            (
+                not repository.read_only,
+                repository.state is c.Infra.RepositoryState.ACTIVE,
+                repository.codegen is not c.Infra.CodegenKind.NONE,
+                root.is_dir(),
+                (root / c.Infra.PYPROJECT_FILENAME).is_file(),
+            )
         )
 
     @classmethod
-    def _run_make(
-        cls, checkout: Path, command: t.StrSequence, *, failure_context: str
-    ) -> p.Result[m.Infra.ProcessExit]:
-        """Run one private Make phase and retain its process semantics."""
-        result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
-        if result.failure:
-            return cls._process_failure(
-                int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context
-            )
-        output = result.value
-        if output.exit_code != 0:
-            outcome = m.Infra.ProcessExit(
-                exit_code=u.Infra.normalize_process_exit_code(output.exit_code),
-                raw_exit_code=output.exit_code,
-                classification=u.Infra.classify_process_exit(output.exit_code),
-            )
-            return r[m.Infra.ProcessExit].fail(
-                (
-                    f"{failure_context} "
-                    f"({outcome.classification}, exit={outcome.exit_code})"
-                ),
-                error_code=c.Infra.PROCESS_EXIT_ERROR_CODE,
-                error_data=outcome,
-            )
-        return r[m.Infra.ProcessExit].ok(cls._success_exit())
+    def _validate_target_capability(
+        cls, selected: m.Infra.MakeTargetSpec, requirements: set[str]
+    ) -> p.Result[bool]:
+        """Validate one target against ordered operation requirements."""
+        repository = selected.repository
+        root = selected.root
+        checks = (
+            (
+                "managed",
+                cls._is_managed_target(selected),
+                f"repository is not managed: {repository.name}",
+            ),
+            (
+                "package",
+                repository.package,
+                f"repository is not a package: {repository.name}",
+            ),
+            (
+                "git",
+                (root / c.Infra.GIT_DIR).exists(),
+                f"repository has no Git metadata: {root}",
+            ),
+            (
+                "script",
+                repository.script_dispatch is not None,
+                f"repository has no script dispatcher: {repository.name}",
+            ),
+        )
+        failures = tuple(
+            message
+            for requirement, valid, message in checks
+            if all((requirement in requirements, not valid))
+        )
+        if failures:
+            return r.fail(failures[0])
+        return r.ok(True)
+
+    @classmethod
+    def _validate_target_capabilities(
+        cls, context: m.Infra.MakeExecutionContext, requirements: set[str]
+    ) -> p.Result[bool]:
+        """Validate every selected target through the same capability table."""
+        return r.traverse(
+            context.targets,
+            lambda selected: cls._validate_target_capability(
+                selected, requirements
+            ),
+        ).map(lambda _: True)
 
     @staticmethod
-    def _capture_fingerprint(
-        checkout: Path, serialization: m.Infra.MakeSerializationSpec, *, phase: str
-    ) -> p.Result[m.Infra.WorkspaceFingerprint]:
-        """Capture one checkout snapshot with phase-specific diagnostics."""
-        result = u.Infra.workspace_fingerprint(
-            checkout, excluded_paths=serialization.snapshot_excludes
-        )
-        if result.failure:
-            return r[m.Infra.WorkspaceFingerprint].fail(
-                result.error or f"failed to fingerprint workspace {phase}"
+    def _validate_environment_capability(
+        context: m.Infra.MakeExecutionContext, requirements: set[str]
+    ) -> p.Result[bool]:
+        """Require the profile-owned interpreter for environment operations."""
+        if "environment" not in requirements:
+            return r.ok(True)
+        environment = (
+            context.environment_root
+            / config.Infra.tooling.tools.pyright.path_rules.venv_name
+        ).absolute()
+        interpreter = Path(sys.executable).absolute()
+        if not interpreter.is_file() or not interpreter.is_relative_to(environment):
+            return r.fail(
+                "Make runtime is not using the profile-owned environment: "
+                f"{interpreter} (expected under {environment})"
             )
-        return result
+        return r.ok(True)
+
+    @classmethod
+    def _validate_capabilities(
+        cls, context: m.Infra.MakeExecutionContext
+    ) -> p.Result[bool]:
+        """Validate target and environment requirements before execution."""
+        requirements = set(context.invocation.operation.requires)
+        return cls._validate_target_capabilities(context, requirements).flat_map(
+            lambda _: cls._validate_environment_capability(context, requirements)
+        )
+
+    def _context_for_target(
+        self,
+        checkout: Path,
+        workspace_root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        target: m.Infra.RepositoryConformTarget,
+    ) -> p.Result[m.Infra.MakeExecutionContext]:
+        return u.Infra.repository_make_spec(
+            config.Infra.codegen.make, target.repository
+        ).flat_map(
+            lambda make_config: self._resolve_invocation(make_config).flat_map(
+                lambda invocation: self._profile(target).flat_map(
+                    lambda profile: self._select_targets(
+                        workspace_root, workspace, profile, invocation
+                    ).map(
+                        lambda targets: m.Infra.MakeExecutionContext(
+                            workspace_root=workspace_root,
+                            workspace=workspace,
+                            target=target,
+                            profile=profile,
+                            environment_root=(
+                                workspace_root
+                                if profile.environment_scope == "root"
+                                else checkout
+                            ),
+                            targets=targets,
+                            invocation=invocation,
+                            make=make_config,
+                        )
+                    )
+                )
+            )
+        )
+
+    def _resolve_context(
+        self, checkout: Path
+    ) -> p.Result[m.Infra.MakeExecutionContext]:
+        return FlextInfraWorkspaceDetector.resolve_workspace_root(checkout).flat_map(
+            lambda workspace_root: FlextInfraWorkspaceDetector.load_workspace_spec(
+                workspace_root
+            ).flat_map(
+                lambda workspace: FlextInfraWorkspaceDetector.conform_target(
+                    checkout, workspace
+                ).flat_map(
+                    lambda target: self._context_for_target(
+                        checkout, workspace_root, workspace, target
+                    )
+                )
+            )
+        )
+
+    def _selected_makefile(self, checkout: Path) -> p.Result[Path]:
+        selected = self.makefile.resolve()
+        if not selected.is_file():
+            return r.fail(f"selected Make owner does not exist: {selected}")
+        if selected.parent != checkout:
+            return r.fail(
+                f"selected Make owner must belong to the invoked checkout: {selected}"
+            )
+        return r.ok(selected)
 
     @staticmethod
-    def _changed_paths(
-        before: m.Infra.WorkspaceFingerprint, after: m.Infra.WorkspaceFingerprint
-    ) -> str | None:
-        """Render changed paths when two snapshots differ."""
-        if before.digest == after.digest:
-            return None
-        paths = u.Infra.workspace_fingerprint_changes(before, after)
-        return ", ".join(paths) or "HEAD/index"
+    def _lock_path(context: m.Infra.MakeExecutionContext) -> p.Result[Path]:
+        lock_path = (
+            context.workspace_root / context.make.serialization.lock_path
+        ).resolve()
+        if not lock_path.is_relative_to(context.workspace_root):
+            return r.fail(f"Make lock escapes governing root: {lock_path}")
+        return r.ok(lock_path)
 
-    def _execute_locked(
-        self,
-        checkout: Path,
-        serialization: m.Infra.MakeSerializationSpec,
-        make_config: m.Infra.MakeSpec,
-        make_variables: t.StrMapping,
-        *,
-        makefile: Path,
+    def _run_context(
+        self, context: m.Infra.MakeExecutionContext
     ) -> p.Result[m.Infra.ProcessExit]:
-        """Run one read-only validation and reject any checkout mutation."""
-        before_result = self._capture_fingerprint(
-            checkout, serialization, phase="before serialized Make"
-        )
-        if before_result.failure:
-            return self._process_failure(
-                int(c.Infra.ScriptExitCode.INFRA),
-                before_result.error
-                or "failed to fingerprint workspace before serialized Make",
-            )
-        primary = self._run_make(
-            checkout,
-            self._serialized_command(
-                makefile,
-                make_config,
-                selected_what=make_variables.get(make_config.selector, ""),
-                apply_value=make_variables.get(make_config.apply_variable, ""),
-            ),
-            failure_context=f"serialized Make {self.verb} failed",
-        )
-        after_result = self._capture_fingerprint(
-            checkout, serialization, phase="after serialized Make"
-        )
-        if after_result.failure:
-            return self._process_failure(
-                int(c.Infra.ScriptExitCode.INFRA),
-                after_result.error
-                or "failed to fingerprint workspace after serialized Make",
-            )
-        after = after_result.value
-        changed_paths = self._changed_paths(before_result.value, after)
-        if changed_paths is not None:
-            return self._process_failure(
-                int(c.Infra.ScriptExitCode.INFRA),
-                f"workspace changed during serialized Make {self.verb}: "
-                f"{changed_paths}",
-            )
-        return primary
+        def operation() -> p.Result[m.Infra.ProcessExit]:
+            return self._execute_operation(context)
 
-    def _execute_mutation_once(
-        self,
-        checkout: Path,
-        make_config: m.Infra.MakeSpec,
-        make_variables: t.StrMapping,
-        *,
-        makefile: Path,
-    ) -> p.Result[m.Infra.ProcessExit]:
-        """Run one mutation; the enclosing single-flight lock owns serialization."""
-        return self._run_make(
-            checkout,
-            self._serialized_command(
-                makefile,
-                make_config,
-                selected_what=make_variables.get(make_config.selector, ""),
-                apply_value=make_variables.get(make_config.apply_variable, ""),
-            ),
-            failure_context=f"serialized Make {self.verb} failed",
+        def guarded() -> p.Result[m.Infra.ProcessExit]:
+            return FlextInfraSerializationLockOwner.execute_guarded_make(
+                context, operation, self._process_failure
+            )
+
+        if context.invocation.operation.consistency == "none":
+            return guarded()
+        return self._lock_path(context).flat_map(
+            lambda lock_path: FlextInfraSerializationLockOwner.execute(
+                (lock_path,),
+                context.make.serialization.timeout_seconds,
+                guarded,
+                timeout_failure=self._lock_timeout_failure,
+                acquisition_failure=self._lock_acquisition_failure,
+            )
         )
+
+    def _execute_context(
+        self, checkout: Path, context: m.Infra.MakeExecutionContext
+    ) -> p.Result[m.Infra.ProcessExit]:
+        return self._validate_capabilities(context).flat_map(
+            lambda _: self._selected_makefile(checkout)
+        ).flat_map(lambda _: self._run_context(context))
 
     @classmethod
     def _lock_timeout_failure(
         cls, lock_path: Path, timeout_seconds: int
     ) -> p.Result[m.Infra.ProcessExit]:
-        """Preserve portable timeout process semantics at the CLI boundary."""
         return cls._process_failure(
             c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
-            (
-                "Timed out waiting for Make validation lock "
-                f"'{lock_path}' after {timeout_seconds}s"
-            ),
+            f"timed out waiting for Make lock {lock_path} after {timeout_seconds}s",
         )
 
     @classmethod
     def _lock_acquisition_failure(cls, error: str) -> p.Result[m.Infra.ProcessExit]:
-        """Preserve infrastructure process semantics for native lock failures."""
         return cls._process_failure(
-            int(c.Infra.ScriptExitCode.INFRA),
-            f"Make validation lock acquisition failed: {error}",
+            int(c.Infra.ScriptExitCode.INFRA), f"Make lock acquisition failed: {error}"
         )
 
     @override
     def execute(self) -> p.Result[m.Infra.ProcessExit]:
-        """Single-flight the complete operation while retaining mutation locks."""
-        serialization = config.Infra.codegen.make.serialization
-        make_config = config.Infra.codegen.make
-        if self.verb not in serialization.verbs:
-            allowed = ", ".join(serialization.verbs)
-            return r[m.Infra.ProcessExit].fail(
-                f"Make verb '{self.verb}' is not serialized (allowed: {allowed})"
+        if self.make_level != 0:
+            return self._process_failure(
+                int(c.Infra.ScriptExitCode.INFRA),
+                f"public Make reentry is forbidden at MAKELEVEL={self.make_level}",
             )
-        make_variables_result = self._make_variables(make_config)
-        if make_variables_result.failure:
-            return r[m.Infra.ProcessExit].fail(
-                make_variables_result.error or "invalid GNU Make variables"
-            )
-        make_variables = make_variables_result.value
-        is_mutation = self.verb in serialization.mutation_verbs and (
-            make_variables.get(make_config.apply_variable) == make_config.apply_value
-        )
-
         checkout = self.root.resolve()
-        selected_makefile = self.makefile.resolve()
-        if not selected_makefile.is_file():
-            return r[m.Infra.ProcessExit].fail(
-                f"Selected Make owner does not exist: {selected_makefile}"
+        context = self._resolve_context(checkout)
+        if context.failure:
+            return self._process_failure(
+                int(c.Infra.ScriptExitCode.INFRA), r.require_error(context)
             )
-        engine_root = selected_makefile.parent
-        mutation_lock_path = (engine_root / serialization.lock_path).resolve()
-        single_flight_lock_path = (
-            engine_root / serialization.single_flight_lock_path
-        ).resolve()
-        for lock_path in (single_flight_lock_path, mutation_lock_path):
-            try:
-                lock_path.relative_to(engine_root)
-            except ValueError:
-                return r[m.Infra.ProcessExit].fail(
-                    f"Make serialization lock escapes selected Make owner: {lock_path}"
-                )
-
-        def complete_operation() -> p.Result[m.Infra.ProcessExit]:
-            if is_mutation:
-                return self._execute_mutation_once(
-                    checkout, make_config, make_variables, makefile=selected_makefile
-                )
-            return u.Infra.serialization_lock_execute(
-                (mutation_lock_path,),
-                serialization.timeout_seconds,
-                lambda: self._execute_locked(
-                    checkout,
-                    serialization,
-                    make_config,
-                    make_variables,
-                    makefile=selected_makefile,
-                ),
-                timeout_failure=self._lock_timeout_failure,
-                acquisition_failure=self._lock_acquisition_failure,
-            )
-
-        return u.Infra.serialization_lock_execute(
-            (single_flight_lock_path,),
-            serialization.timeout_seconds,
-            complete_operation,
-            timeout_failure=self._lock_timeout_failure,
-            acquisition_failure=self._lock_acquisition_failure,
-        )
+        return self._execute_context(checkout, context.value)
 
 
 __all__: list[str] = ["FlextInfraMakeSerializationService"]

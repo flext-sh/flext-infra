@@ -9,13 +9,6 @@ from flext_tests import tm
 class TestsFlextInfraCliWhatSelector:
     """``--what <phase>`` reuses the gate/validator selection machinery."""
 
-    def test_check_what_loc_cap_runs_gate(self) -> None:
-        """``check --what loc-cap`` runs the gate (0/1), never a usage error."""
-        tm.that(
-            {0, 1},
-            has=main(["check", "--what", "loc-cap", "--projects", "flext-infra"]),
-        )
-
     def test_check_what_boundary_runs_gate(self) -> None:
         """``check --what boundary`` maps to the boundary gate selection."""
         tm.that(

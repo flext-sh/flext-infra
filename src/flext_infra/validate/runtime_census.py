@@ -13,14 +13,9 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
-from flext_core import r
-from flext_infra import c, config, m, u
-from flext_infra.base import s
-
-if TYPE_CHECKING:
-    from flext_infra import p, t
+from flext_infra import c, config, m, p, r, s, t, u
 
 
 class FlextInfraRuntimeCensusValidator(s[bool]):
@@ -32,66 +27,72 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
 
     def _selected_projects(
         self, projects: t.SequenceOf[p.Infra.ProjectInfo]
-    ) -> t.SequenceOf[p.Infra.ProjectInfo]:
-        """Apply comma-separated project filter when provided."""
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
+        """Resolve every requested project name against discovered projects."""
         if self.project_filter is None:
-            return projects
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(tuple(projects))
         selected = {
             item.strip() for item in self.project_filter.split(",") if item.strip()
         }
-        return [project for project in projects if project.name in selected]
+        discovered_names = {project.name for project in projects}
+        missing = sorted(selected - discovered_names)
+        if missing:
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
+                f"unknown runtime census projects: {', '.join(missing)}"
+            )
+        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(
+            tuple(project for project in projects if project.name in selected)
+        )
 
     @staticmethod
-    def _package_name_for_project(project: p.Infra.ProjectInfo) -> str | None:
-        """Resolve the importable package name for a project root."""
-        layout = u.Infra.layout(project.path, project=project)
-        if layout is not None:
-            package_name: str = layout.package_name
-            return package_name
-        src_dir = project.path / c.Infra.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return None
-        for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                child_name: str = child.name
-                return child_name
-        return None
+    def _package_name_for_project(project: p.Infra.ProjectInfo) -> p.Result[str]:
+        """Return the package identity already owned by project discovery."""
+        if not project.package_name:
+            return r[str].fail(
+                f"project discovery produced no package identity: {project.name}"
+            )
+        return r[str].ok(project.package_name)
 
     @staticmethod
     def _is_local_class(klass: type, module_name: str) -> bool:
         """Return True when ``klass`` is defined in ``module_name`` (not imported)."""
         return getattr(klass, "__module__", "") == module_name
 
-    @classmethod
-    def _walk_modules(cls, package_name: str) -> t.SequenceOf[str]:
-        """Return all importable module names under ``package_name``."""
+    @staticmethod
+    def _walk_modules(package_name: str) -> p.Result[t.SequenceOf[str]]:
+        """Return every importable module or one typed discovery failure."""
         try:
             package = importlib.import_module(package_name)
         except Exception as exc:
-            return [f"{package_name}: import failed: {exc}"]
+            return r[t.SequenceOf[str]].fail_op(
+                f"import runtime package {package_name}", exc
+            )
         prefix = package.__name__ + "."
         modules: list[str] = [package.__name__]
+        walk_failures: list[str] = []
         try:
             for _, modname, _ in pkgutil.walk_packages(
-                package.__path__, prefix=prefix, onerror=lambda _name: None
+                package.__path__, prefix=prefix, onerror=walk_failures.append
             ):
                 modules.append(modname)
         except Exception as exc:
-            modules.append(f"{package_name}: walk_packages failed: {exc}")
-        return modules
+            return r[t.SequenceOf[str]].fail_op(
+                f"walk runtime package {package_name}", exc
+            )
+        if walk_failures:
+            return r[t.SequenceOf[str]].fail(
+                f"runtime package discovery failed: {', '.join(walk_failures)}"
+            )
+        return r[t.SequenceOf[str]].ok(tuple(modules))
 
-    def _check_module(self, module_name: str) -> t.SequenceOf[m.Infra.ValidationReport]:
+    def _check_module(self, module_name: str) -> p.Result[m.Infra.ValidationReport]:
         """Import one module and run runtime enforcement on its local classes."""
         try:
             module = importlib.import_module(module_name)
         except Exception as exc:
-            return [
-                m.Infra.ValidationReport(
-                    passed=False,
-                    violations=(f"{module_name}: import failed: {exc}",),
-                    summary=f"{module_name}: import failed",
-                )
-            ]
+            return r[m.Infra.ValidationReport].fail_op(
+                f"import runtime module {module_name}", exc
+            )
         violations: list[str] = []
         for _name, obj in inspect.getmembers(module, inspect.isclass):
             if not self._is_local_class(obj, module.__name__):
@@ -111,7 +112,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     f"{file_part}{line_part}{obj.__qualname__}{rule_part}: "
                     f"{violation.message}"
                 )
-        return [
+        return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=not violations,
                 violations=tuple(violations),
@@ -121,25 +122,30 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     else f"{module_name}: clean"
                 ),
             )
-        ]
+        )
 
     def _project_report(self, project: p.Infra.ProjectInfo) -> m.Infra.ValidationReport:
         """Run the runtime census for one project and return a merged report."""
-        package_name = self._package_name_for_project(project)
-        if package_name is None:
+        package_result = self._package_name_for_project(project)
+        if package_result.failure:
+            error = package_result.error or f"{project.name}: package identity failed"
             return m.Infra.ValidationReport(
-                passed=True,
-                violations=(),
-                summary=f"{project.name}: no importable package found",
+                passed=False,
+                violations=(error,),
+                summary=f"{project.name}: package identity failed",
             )
-        module_names = self._walk_modules(package_name)
-        import_failures: list[str] = []
-        real_modules: list[str] = []
-        for name in module_names:
-            if ": " in name:
-                import_failures.append(name)
-            else:
-                real_modules.append(name)
+        package_name = package_result.value
+        module_names_result = self._walk_modules(package_name)
+        if module_names_result.failure:
+            error = module_names_result.error or (
+                f"{project.name}: runtime module discovery failed"
+            )
+            return m.Infra.ValidationReport(
+                passed=False,
+                violations=(error,),
+                summary=f"{project.name}: runtime module discovery failed",
+            )
+        real_modules = list(module_names_result.value)
         if self.target_module is not None:
             real_modules = [
                 name
@@ -147,6 +153,15 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 if name == self.target_module
                 or name.startswith(self.target_module + ".")
             ]
+            if not real_modules:
+                return m.Infra.ValidationReport(
+                    passed=False,
+                    violations=(
+                        f"{project.name}: unknown runtime target module "
+                        f"{self.target_module}",
+                    ),
+                    summary=f"{project.name}: runtime target module not found",
+                )
         real_modules = [
             name
             for name in real_modules
@@ -154,15 +169,32 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 name.split(".")
             )
         ]
-        all_reports: list[m.Infra.ValidationReport] = [
-            m.Infra.ValidationReport(
-                passed=False,
-                violations=tuple(import_failures),
-                summary=(f"{project.name}: {len(import_failures)} import failure(s)"),
+        if not real_modules:
+            reason = (
+                f"{project.name}: runtime target module {self.target_module} "
+                "is excluded by source scan policy"
+                if self.target_module is not None
+                else f"{project.name}: runtime module selection is empty after source scan policy"
             )
-        ]
+            return m.Infra.ValidationReport(
+                passed=False,
+                violations=(reason,),
+                summary=f"{project.name}: no governed runtime modules",
+            )
+        all_reports: list[m.Infra.ValidationReport] = []
         for module_name in real_modules:
-            all_reports.extend(self._check_module(module_name))
+            checked = self._check_module(module_name)
+            if checked.failure:
+                error = checked.error or f"{module_name}: runtime check failed"
+                all_reports.append(
+                    m.Infra.ValidationReport(
+                        passed=False,
+                        violations=(error,),
+                        summary=f"{module_name}: runtime check failed",
+                    )
+                )
+                continue
+            all_reports.append(checked.value)
         merged_violations = tuple(
             violation for report in all_reports for violation in report.violations
         )
@@ -183,14 +215,15 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             return r[m.Infra.ValidationReport].fail(
                 projects_result.error or "project discovery failed"
             )
-        projects = self._selected_projects(projects_result.unwrap())
+        selected_result = self._selected_projects(projects_result.value)
+        if selected_result.failure:
+            return r[m.Infra.ValidationReport].fail(
+                selected_result.error or "runtime census project selection failed"
+            )
+        projects = selected_result.value
         if not projects:
-            return r[m.Infra.ValidationReport].ok(
-                m.Infra.ValidationReport(
-                    passed=True,
-                    violations=(),
-                    summary="runtime census: no projects selected",
-                )
+            return r[m.Infra.ValidationReport].fail(
+                "runtime census project selection is empty"
             )
         merged_violations: list[str] = []
         for project in projects:

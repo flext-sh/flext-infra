@@ -19,9 +19,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import r
-from flext_infra import c, m, u
-from flext_infra.base import s
+from flext_infra import c, config, m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -58,43 +56,50 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         if verbose is not None:
             self.verbose = verbose
         root = self._resolve_workspace_root()
-        required_minor = self._read_required_minor(root)
+        required_version = config.Infra.codegen.toolchain.python_version
         discovered_projects = u.Infra.discover_projects(root)
         if discovered_projects.failure:
-            projects: tuple[Path, ...] = ()
-        else:
-            projects = tuple(
-                project.path
-                for project in discovered_projects.unwrap()
-                if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
+            return r[int].fail(
+                discovered_projects.error or "workspace project discovery failed"
             )
+        projects = tuple(
+            project.path
+            for project in discovered_projects.value
+            if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
+        )
         mode = "Checking" if self.check_only else "Enforcing"
         logger.info(
             "python_version_enforcement_started",
             mode=mode,
-            required_minor=required_minor,
+            required_version=required_version,
             project_count=len(projects),
         )
-        if not self._ensure_python_version_file(root, required_minor):
+        root_result = self._ensure_python_version_file(root, required_version)
+        if root_result.failure:
             logger.error(
                 "python_version_enforcement_failed",
                 reason="missing_enforcement",
-                required_minor=required_minor,
+                required_version=required_version,
             )
-            return r[int].fail("enforcement failed")
+            return r[int].fail(root_result.error or "root enforcement failed")
         for project in projects:
-            if not self._ensure_python_version_file(project, required_minor):
+            project_result = self._ensure_python_version_file(
+                project, required_version
+            )
+            if project_result.failure:
                 logger.error(
                     "python_version_enforcement_failed",
                     reason="missing_enforcement",
-                    required_minor=required_minor,
+                    required_version=required_version,
                     project=project.name,
                 )
-                return r[int].fail("enforcement failed")
+                return r[int].fail(
+                    project_result.error or f"project enforcement failed: {project}"
+                )
         logger.info(
             "python_version_enforcement_completed",
             project_count=len(projects),
-            required_minor=required_minor,
+            required_version=required_version,
         )
         return r[int].ok(0)
 
@@ -105,21 +110,28 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             return workspace_root.resolve()
         return self._workspace_root_from_file(__file__)
 
-    def _ensure_python_version_file(self, project: Path, required_minor: int) -> bool:
-        """Return True when project pyproject + runtime match required_minor."""
-        local_minor = self._read_required_minor(project)
-        if local_minor != required_minor:
+    def _ensure_python_version_file(
+        self, project: Path, required_version: str
+    ) -> p.Result[bool]:
+        """Validate project/runtime constraints and conform the selector file."""
+        local_result = self._read_declared_version(project)
+        if local_result.failure:
+            return r[bool].fail(
+                local_result.error or f"failed to read Python requirement: {project}"
+            )
+        local_version = local_result.value
+        if local_version != required_version:
             if self.check_only:
                 logger.error(
                     "python_version_pyproject_wrong",
-                    local_minor=local_minor,
+                    local_version=local_version,
                     project=project.name,
                 )
             else:
                 logger.error(
                     "python_version_pyproject_mismatch",
-                    local_minor=local_minor,
-                    required_minor=required_minor,
+                    local_version=local_version,
+                    required_version=required_version,
                     project=project.name,
                 )
                 logger.error(
@@ -127,49 +139,65 @@ class FlextInfraPythonVersionEnforcer(s[int]):
                     project=project.name,
                     file=f"{project.name}/pyproject.toml",
                 )
-            return False
-        runtime_minor = sys.version_info.minor
-        if runtime_minor != required_minor:
+            return r[bool].fail(
+                f"Python requirement mismatch for {project}: "
+                f"expected {required_version}, found {local_version}"
+            )
+        runtime_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        if runtime_version != required_version:
             logger.error(
-                "python_runtime_minor_mismatch",
-                runtime_minor=runtime_minor,
-                required_minor=required_minor,
+                "python_runtime_version_mismatch",
+                runtime_version=runtime_version,
+                required_version=required_version,
                 project=project.name,
             )
-            return False
-        if not self._conform_python_version_file(project, required_minor):
-            return False
+            return r[bool].fail(
+                f"Python runtime mismatch: expected {required_version}, "
+                f"found {runtime_version}"
+            )
+        conformed = self._conform_python_version_file(project, required_version)
+        if conformed.failure:
+            return r[bool].fail(
+                conformed.error or f"failed to conform Python version: {project}"
+            )
         if self.verbose:
             logger.info(
                 "python_version_validated",
-                required_minor=required_minor,
+                required_version=required_version,
                 project=project.name,
             )
-        return True
+        return r[bool].ok(True)
 
-    def _conform_python_version_file(self, project: Path, required_minor: int) -> bool:
-        """Write ``.python-version`` (``3.<minor>``) from the SSOT minor.
+    def _conform_python_version_file(
+        self, project: Path, required_version: str
+    ) -> p.Result[bool]:
+        """Write ``.python-version`` from the full SSOT major.minor selector.
 
         In check-only mode a missing/stale file is a validation failure; in
         apply mode the file is created/rewritten so pyenv/asdf/mise select the
         interpreter that matches the workspace SSOT.
         """
         version_file = project / c.Infra.PYTHON_VERSION_FILENAME
-        desired = f"3.{required_minor}\n"
-        current = (
-            u.Cli.files_read_text(version_file).unwrap_or("")
-            if version_file.is_file()
-            else ""
-        )
+        desired = f"{required_version}\n"
+        current = ""
+        if version_file.is_file():
+            read_result = u.Cli.files_read_text(version_file)
+            if read_result.failure:
+                return r[bool].fail(
+                    read_result.error or f"failed to read {version_file}"
+                )
+            current = read_result.value
         if current == desired:
-            return True
+            return r[bool].ok(True)
         if self.check_only:
             logger.error(
                 "python_version_file_out_of_sync",
                 project=project.name,
                 file=c.Infra.PYTHON_VERSION_FILENAME,
             )
-            return False
+            return r[bool].fail(
+                f"{version_file} is out of sync; expected {desired.strip()}"
+            )
         write_result = u.Cli.files_write_text(version_file, desired)
         if write_result.failure:
             logger.error(
@@ -177,24 +205,30 @@ class FlextInfraPythonVersionEnforcer(s[int]):
                 project=project.name,
                 error=write_result.error,
             )
-            return False
+            return r[bool].fail(
+                write_result.error or f"failed to write {version_file}"
+            )
         logger.info(
             "python_version_file_conformed",
             project=project.name,
             version=desired.strip(),
         )
-        return True
+        return r[bool].ok(True)
 
-    def _read_required_minor(self, workspace_root: Path) -> int:
-        """Read requires-python minor from pyproject; default 13 when absent."""
+    def _read_declared_version(self, workspace_root: Path) -> p.Result[str]:
+        """Read one generated project major.minor without an SSOT fallback."""
         pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
-            return 13
-        content = u.Cli.files_read_text(pyproject).unwrap()
-        match = c.Infra.REQUIRES_PYTHON_RE.search(content)
+            return r[str].fail(f"missing project metadata: {pyproject}")
+        content_result = u.Cli.files_read_text(pyproject)
+        if content_result.failure:
+            return r[str].fail(
+                content_result.error or f"failed to read {pyproject}"
+            )
+        match = c.Infra.REQUIRES_PYTHON_RE.search(content_result.value)
         if match is None:
-            return 13
-        return int(match.group(2))
+            return r[str].fail(f"requires-python is missing or invalid: {pyproject}")
+        return r[str].ok(f"{match.group(1)}.{match.group(2)}")
 
     def _workspace_root_from_file(self, file: str | Path) -> Path:
         """Walk up from ``file`` to the first dir with .git+Makefile+pyproject.

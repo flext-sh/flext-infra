@@ -225,8 +225,6 @@ class FlextInfraCompatibilityAliasDetector:
     ) -> t.SequenceOf[t.Infra.RopeFromImport]:
         """Return all ``from ... import ...`` descriptors in a module."""
         module_imports = u.Infra.get_module_imports(rope_project, resource)
-        if module_imports is None:
-            return ()
         import_statements = u.Infra.import_statements(module_imports)
         return tuple(
             import_stmt.import_info

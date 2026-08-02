@@ -1,4 +1,4 @@
-"""CLI integration tests for github commands against real workspaces."""
+"""CLI integration tests for GitHub pull-request commands."""
 
 from __future__ import annotations
 
@@ -10,45 +10,6 @@ from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-
-def test_workflows_subcommand_applies_templates(tmp_path: Path) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
-    )
-    report_path = tmp_path / "workflows.json"
-
-    result = main([
-        "github",
-        "workflows",
-        "--workspace",
-        str(workspace),
-        "--apply",
-        "--report",
-        str(report_path),
-    ])
-
-    tm.that(result, eq=0)
-    tm.that(report_path.is_file(), eq=True)
-    tm.that((workspace / "flext-a/.github/workflows/ci.yml").is_file(), eq=True)
-    tm.that((workspace / "flext-b/.github/workflows/ci.yml").is_file(), eq=True)
-
-
-def test_lint_subcommand_writes_report(tmp_path: Path) -> None:
-    workspace = u.Tests.create_github_workspace(tmp_path, project_names=("flext-a",))
-    report_path = tmp_path / "lint.json"
-
-    result = main([
-        "github",
-        "lint",
-        "--workspace",
-        str(workspace),
-        "--report",
-        str(report_path),
-    ])
-
-    tm.that(report_path.is_file(), eq=True)
-    tm.that(result, eq=0)
 
 
 def test_pr_subcommand_returns_nonzero_for_minimal_repo(tmp_path: Path) -> None:

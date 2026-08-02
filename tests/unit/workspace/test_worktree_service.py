@@ -11,6 +11,8 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
+
 
 class TestsFlextInfraWorktreeService:
     """The typed service owns the complete safe lane lifecycle."""
@@ -60,7 +62,7 @@ class TestsFlextInfraWorktreeService:
         """List is read-only and reports Git's canonical registry."""
         repository = self._repository(tmp_path)
 
-        listed = tm.ok(
+        listed: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
             ).execute()
@@ -74,7 +76,7 @@ class TestsFlextInfraWorktreeService:
         branch = "feature/example"
         lane = self._lane(repository, repository, branch)
 
-        added = tm.ok(
+        added: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -92,7 +94,7 @@ class TestsFlextInfraWorktreeService:
             has=f"worktree {lane}",
         )
 
-        removed = tm.ok(
+        removed: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.REMOVE,
@@ -103,6 +105,38 @@ class TestsFlextInfraWorktreeService:
 
         tm.that(removed, eq=str(lane))
         tm.that(not lane.exists(), where=bool)
+
+    def test_add_scopes_the_transaction_marker_to_child_make(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The child Make sees the lock marker without mutating parent state."""
+        repository = self._repository(tmp_path)
+        branch = "feature/transaction-marker"
+        lane = self._lane(repository, repository, branch)
+        marker_file = "transaction-marker.txt"
+        (repository / "Makefile").write_text(
+            ".PHONY: setup\n"
+            "setup:\n"
+            f'\t@printf "%s" "$${c.Infra.WORKTREE_TRANSACTION_ENV}" '
+            f"> {marker_file}\n",
+            encoding="utf-8",
+        )
+        self._commit_fixture(repository, "test: observe child Make environment")
+        monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV, raising=False)
+
+        added: str = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(added, eq=str(lane))
+        tm.that((lane / marker_file).read_text(encoding="utf-8"), eq="1")
+        tm.that(c.Infra.WORKTREE_TRANSACTION_ENV not in u.Cli.process_env(), where=bool)
 
     def test_add_reads_the_lane_instead_of_dirty_primary_metadata(
         self, tmp_path: Path
@@ -115,7 +149,7 @@ class TestsFlextInfraWorktreeService:
             '[dependency-groups]\ndescription = "dirty primary WIP"\n', encoding="utf-8"
         )
 
-        added = tm.ok(
+        added: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -148,7 +182,7 @@ class TestsFlextInfraWorktreeService:
         branch = "feature/outer-isolation"
         lane = self._lane(repository, outer_project, branch)
 
-        added = tm.ok(
+        added: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -325,10 +359,12 @@ class TestsFlextInfraWorktreeService:
                 repository, ("commit", "-m", "test: advance update base")
             )
         )
-        base = tm.ok(u.Infra.git_capture(repository, ("rev-parse", "HEAD"))).strip()
+        base: str = tm.ok(
+            u.Infra.git_capture(repository, ("rev-parse", "HEAD"))
+        ).strip()
         tm.that(tm.ok(u.Infra.git_primary_worktree_root(lane)), eq=repository.resolve())
 
-        updated = tm.ok(
+        updated: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=lane,
                 operation=c.Infra.WorktreeOperation.UPDATE,
@@ -422,10 +458,10 @@ class TestsFlextInfraWorktreeService:
             u.Infra.git_capture(linked, ("worktree", "remove", "--force", str(linked)))
         )
         branch = "feature/attached"
-        primary = tm.ok(u.Infra.git_primary_worktree_root(attached))
+        primary: Path = tm.ok(u.Infra.git_primary_worktree_root(attached))
         expected_lane = self._lane(primary, superproject, branch)
 
-        lane = tm.ok(
+        lane: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=attached,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -441,7 +477,7 @@ class TestsFlextInfraWorktreeService:
             where=bool,
         )
 
-        removed = tm.ok(
+        removed: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=attached,
                 operation=c.Infra.WorktreeOperation.REMOVE,

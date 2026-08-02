@@ -40,20 +40,3 @@ class TestsFlextInfraDepsDetectorDetectFailures:
             .execute()
         )
         tm.that("deptry failed" in error or "deptry run failed" in error, eq=True)
-
-    def test_run_with_typings_detection_failure(self, tmp_path: Path) -> None:
-        """Verify run with typings detection failure."""
-        (tmp_path / "proj-a" / "src").mkdir(parents=True)
-        deps = u.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
-        deps.typings_failure = "typing detection failed"
-        error = tm.fail(
-            u.Tests
-            .setup_detector_runtime(tmp_path, deps)
-            .model_copy(update={"typings": True, "no_pip_check": True})
-            .execute()
-        )
-        tm.that(
-            "typing detection failed" in error
-            or "typing dependency detection failed" in error,
-            eq=True,
-        )

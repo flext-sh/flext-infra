@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -13,6 +14,9 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+
 
 class FlextInfraUtilitiesDocsGenerate:
     """Reusable generation helpers exposed through ``u.Infra``."""
@@ -20,12 +24,9 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def _module_names(contract: t.JsonMapping) -> list[str]:
         """Extract normalized module names from one docs contract payload."""
-        try:
-            items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
-                contract.get("modules", [])
-            )
-        except c.ValidationError:
-            return []
+        items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
+            contract.get("modules", [])
+        )
         return [str(item) for item in items]
 
     @staticmethod
@@ -367,7 +368,7 @@ class FlextInfraUtilitiesDocsGenerate:
         apply: bool,
         workspace_root: Path,
         projects: t.StrSequence | None = None,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Result[m.Infra.DocsPhaseReport]:
         """Generate one scope and persist the standard reports."""
         files: t.MutableSequenceOf[m.Infra.GeneratedFile] = list(
             FlextInfraUtilitiesDocsGenerate.docs_root_generated_files(
@@ -398,19 +399,7 @@ class FlextInfraUtilitiesDocsGenerate:
             },
             "files": files_payload,
         })
-        _ = u.Cli.json_write(
-            scope.report_dir / "generate-summary.json", summary_payload
-        )
-        _ = FlextInfraUtilitiesDocs.write_markdown(
-            scope.report_dir / "generate-report.md",
-            [
-                "# Docs Generate Report",
-                "",
-                f"Scope: {scope.name}",
-                f"Generated files: {generated}",
-            ],
-        )
-        return m.Infra.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="generate",
             scope=scope.name,
             changed_files=changed,
@@ -431,6 +420,17 @@ class FlextInfraUtilitiesDocsGenerate:
             reason=f"changes:{changed}",
             passed=apply or changed == 0,
         )
+        return FlextInfraUtilitiesDocs.write_report_pair(
+            scope.report_dir,
+            stem="generate",
+            summary=summary_payload,
+            markdown=[
+                "# Docs Generate Report",
+                "",
+                f"Scope: {scope.name}",
+                f"Generated files: {generated}",
+            ],
+        ).map(lambda _: report)
 
     @staticmethod
     def docs_project_guide_content(

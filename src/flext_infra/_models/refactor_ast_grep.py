@@ -7,7 +7,6 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 
@@ -47,7 +46,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             int, m.Field(description="Reference replacements applied")
         ]
 
-    class MROMigrationReport(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
+    class MROMigrationReport(m.ArbitraryTypesModel):
         """End-to-end report for migrate-to-mro command execution."""
 
         workspace: Annotated[str, m.Field(description="Workspace root path")]
@@ -248,10 +247,6 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
-        lint_tools: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple,
-            description="Selected lint tools used for preview rendering",
-        )
         automated_changes: t.VariadicTuple[
             FlextInfraModelsRefactorGrep.AccessorMigrationChange
         ] = m.Field(
@@ -266,18 +261,6 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         diff: Annotated[
             str, m.Field(description="Unified diff preview for the file")
         ] = ""
-        lint_before: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(description="Lint output before the proposed rewrite"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
-        lint_after: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(description="Lint output after the proposed rewrite"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
-        new_lint_errors: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(description="Lint errors introduced by the proposed rewrite"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
     class AccessorMigrationReport(m.ArbitraryTypesModel):
         """Workspace-scale report for accessor migration orchestration.
@@ -303,22 +286,6 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             t.NonNegativeInt,
             m.Field(description="Total manual follow-up warnings detected"),
         ]
-        lint_tools: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple,
-            description="Canonical lint tool list used by this run",
-        )
-        lint_before_totals: Annotated[
-            t.IntMapping,
-            m.Field(description="Per-tool count of lint lines before rewrites"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
-        lint_after_totals: Annotated[
-            t.IntMapping,
-            m.Field(description="Per-tool count of lint lines after rewrites"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
-        new_lint_error_totals: Annotated[
-            t.IntMapping,
-            m.Field(description="Per-tool count of newly introduced lint lines"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         files: t.VariadicTuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile] = (
             m.Field(
                 default_factory=tuple,

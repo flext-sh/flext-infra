@@ -19,7 +19,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.LINT
     gate_name: ClassVar[str] = "Ruff Lint"
-    can_fix: ClassVar[bool] = False
+    can_fix: ClassVar[bool] = True
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][1]
 
@@ -87,6 +87,16 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             )
             return False, issues
         return result.exit_code == 0, issues
+
+    @override
+    def _build_fix_command(
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+    ) -> t.StrSequence:
+        """Build the sole mutating Ruff lint command owned by make fix."""
+        _ = project_dir, ctx
+        return self._python_module_command(
+            c.Infra.RUFF, c.Infra.VERB_CHECK, "--fix", *targets, "--quiet"
+        )
 
 
 __all__: list[str] = ["FlextInfraRuffLintGate"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
 from flext_infra.refactor.service import FlextInfraRefactorService
 
@@ -48,11 +48,7 @@ class FlextInfraCodegenFixerRefactorMixin(FlextInfraCodegenFixerResultsMixin):
                 module=project_path.name, rule="REFACTOR", line=0, message=load_error
             )
             return
-        refactor_results = tuple(
-            service.refactor_project(
-                project_path, dry_run=False, apply_safety=False, gates=(c.Infra.LINT,)
-            )
-        )
+        refactor_results = tuple(service.refactor_project(project_path, dry_run=False))
         ctx.files_modified |= {
             str(result.file_path) for result in refactor_results if result.success
         }

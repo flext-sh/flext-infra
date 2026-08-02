@@ -12,9 +12,6 @@ if TYPE_CHECKING:
 
     from flext_infra import t
 
-_log = u.fetch_logger(__name__)
-
-
 class FlextInfraCodegenFixerResultsMixin:
     """Private result and validation helpers for codegen fixer composition."""
 
@@ -42,26 +39,18 @@ class FlextInfraCodegenFixerResultsMixin:
 
     @staticmethod
     def _load_initial_violations(
-        ctx: m.Infra.FixContext, project_path: Path
+        project_path: Path,
     ) -> t.SequenceOf[m.Infra.CensusViolation]:
-        """Read the initial namespace violations and record skip reason on failure."""
+        """Read the initial namespace violations or fail the fixer run."""
         initial_violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate_project(project_path)
         )
         if initial_violations_result.failure:
-            _log.warning(
-                "namespace_validation_failed",
-                project=project_path.name,
-                error=str(initial_violations_result.error),
+            msg = (
+                initial_violations_result.error
+                or f"initial namespace validation failed: {project_path}"
             )
-            ctx.skip(
-                module=project_path.name,
-                rule="NAMESPACE",
-                line=0,
-                message=initial_violations_result.error
-                or "namespace validation failed",
-            )
-            return ()
+            raise RuntimeError(msg)
         return initial_violations_result.unwrap()
 
     @staticmethod
@@ -75,13 +64,11 @@ class FlextInfraCodegenFixerResultsMixin:
             FlextInfraNamespaceValidator().validate_project(project_path)
         )
         if remaining_result.failure:
-            ctx.skip(
-                module=project_path.name,
-                rule="NAMESPACE",
-                line=0,
-                message=remaining_result.error or "namespace validation failed",
+            msg = (
+                remaining_result.error
+                or f"remaining namespace validation failed: {project_path}"
             )
-            return
+            raise RuntimeError(msg)
         fixed, skipped = u.Infra.classify_violation_outcomes(
             project_path=project_path,
             initial_violations=initial_violations,

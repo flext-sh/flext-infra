@@ -236,15 +236,13 @@ class FlextInfraUtilitiesDocsBuild:
     @staticmethod
     def docs_write_build_reports(
         scope: m.Infra.DocScope, report: m.Infra.DocsPhaseReport
-    ) -> None:
+    ) -> p.Result[None]:
         """Persist the standard build summary and markdown report."""
-        _ = u.Cli.json_write(
-            scope.report_dir / "build-summary.json",
-            {c.Infra.RK_SUMMARY: report.model_dump()},
-        )
-        _ = FlextInfraUtilitiesDocs.write_markdown(
-            scope.report_dir / "build-report.md",
-            [
+        return FlextInfraUtilitiesDocs.write_report_pair(
+            scope.report_dir,
+            stem="build",
+            summary={c.Infra.RK_SUMMARY: report.model_dump()},
+            markdown=[
                 "# Docs Build Report",
                 "",
                 f"Scope: {report.scope}",

@@ -7,7 +7,7 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import FlextCliUtilities as u
+from flext_cli import u
 from flext_core.result import FlextResult as r
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies

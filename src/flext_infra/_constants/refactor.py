@@ -59,7 +59,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_CORE_ALIASES: Final[str] = "core_aliases"
     RK_CORE_PACKAGE: Final[str] = "core_package"
     RK_ALIAS_TO_SUBMODULE: Final[str] = "alias_to_submodule"
-    RK_QUALITY_GATES: Final[str] = "quality_gates"
     RK_EXPECTED_BASE_CHAIN: Final[str] = "expected_base_chain"
     RK_HELPER_NAME: Final[str] = "helper_name"
     RK_CONFIDENCE_THRESHOLD: Final[str] = "confidence_threshold"
@@ -68,7 +67,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_TARGET_NAME: Final[str] = "target_name"
     RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
     RK_MRO_VALID: Final[str] = "mro_valid"
-    RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
     CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
     CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (

@@ -186,9 +186,9 @@ class FlextInfraUtilitiesRefactorCensus:
         imported_name: str,
     ) -> tuple[int, ...]:
         """Return same-file occurrence lines for local aliases of ``imported_name``."""
-        resource = rope.resource(file_path)
-        if resource is None:
-            return ()
+        resource = FlextInfraUtilitiesRopeCore.require_python_resource(
+            rope.rope_project, file_path
+        )
         declared_imports = FlextInfraUtilitiesRopeAnalysis.get_declared_module_imports(
             rope.rope_project, resource
         )
@@ -336,17 +336,22 @@ class FlextInfraUtilitiesRefactorCensus:
         """Return simple alias names removed together with ``target_name``."""
         if not removed_ranges:
             return ()
-        resource = rope.resource(file_path)
-        if resource is None:
-            return ()
+        resource = FlextInfraUtilitiesRopeCore.require_python_resource(
+            rope.rope_project, file_path
+        )
         try:
             attributes = FlextInfraUtilitiesRopeCore.get_pymodule(
                 rope.rope_project, resource
             ).get_attributes()
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-            return ()
-        except (RecursionError, SyntaxError, ValueError, TypeError):
-            return ()
+        except (
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            RecursionError,
+            SyntaxError,
+            ValueError,
+            TypeError,
+        ) as exc:
+            msg = f"Rope alias inventory failed for {file_path}"
+            raise RuntimeError(msg) from exc
         target_pyname = attributes.get(target_name)
         if target_pyname is None or FlextInfraUtilitiesRopeRuntime.is_imported_name(
             target_pyname
@@ -354,8 +359,9 @@ class FlextInfraUtilitiesRefactorCensus:
             return ()
         try:
             target_object = target_pyname.get_object()
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-            return ()
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors() as exc:
+            msg = f"Rope target resolution failed for {target_name} in {file_path}"
+            raise RuntimeError(msg) from exc
         alias_names: set[str] = set()
         for name, pyname in attributes.items():
             if name == target_name or FlextInfraUtilitiesRopeRuntime.is_imported_name(
@@ -371,8 +377,9 @@ class FlextInfraUtilitiesRefactorCensus:
                 continue
             try:
                 alias_object = pyname.get_object()
-            except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-                continue
+            except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors() as exc:
+                msg = f"Rope alias resolution failed for {name} in {file_path}"
+                raise RuntimeError(msg) from exc
             if id(alias_object) == id(target_object):
                 alias_names.add(name)
         return tuple(sorted(alias_names))
@@ -623,11 +630,8 @@ class FlextInfraUtilitiesRefactorCensus:
         try:
             rope.rope_project.validate()
         except RecursionError as exc:
-            _log.warning(
-                "rope_validate_recursion_limit",
-                candidate=candidate.file_path,
-                error=str(exc),
-            )
+            msg = f"Rope validation failed for {candidate.file_path}"
+            raise RuntimeError(msg) from exc
         cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
             rope.rope_project, file_paths=file_paths
         )
@@ -638,16 +642,14 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def preview_simple_removal_candidate(
         rope: p.Infra.RopeWorkspaceDsl,
-        workspace: Path,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        gates: t.StrSequence,
         source_cache: dict[Path, str] | None = None,
     ) -> p.Result[bool]:
-        """Preview one simple removal candidate, requiring clean gates.
+        """Preview one simple removal candidate without retaining mutations.
 
-        ``r.ok(True)`` when the simulated removal cleared the gate
-        snapshot. ``r.ok(False)`` when the candidate is outside the
+        ``r.ok(True)`` when the simulated removal completed and restored its
+        sources. ``r.ok(False)`` when the candidate is outside the
         simple-removal contract. ``r.fail(...)`` when planning or
         ``preview_source_writes`` failed — the message lists the reason.
         """
@@ -674,8 +676,8 @@ class FlextInfraUtilitiesRefactorCensus:
             )
 
         try:
-            applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
-                updates, workspace=workspace, gates=gates, post_write=_post_write
+            FlextInfraUtilitiesProtectedEdit.preview_source_writes(
+                updates, post_write=_post_write
             )
         except RuntimeError as exc:
             _log.warning(
@@ -687,11 +689,7 @@ class FlextInfraUtilitiesRefactorCensus:
             return r[bool].fail(str(exc))
         finally:
             rope.refresh(preserve_indexes=True, validate_project=False)
-        if applied:
-            return r[bool].ok(True)
-        return r[bool].fail(
-            "; ".join(reports) if reports else "preview gates rejected removal"
-        )
+        return r[bool].ok(True)
 
     @staticmethod
     def apply_simple_removal_candidate(
@@ -699,18 +697,16 @@ class FlextInfraUtilitiesRefactorCensus:
         workspace: Path,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        gates: t.StrSequence,
         post_apply_hook: _CensusCallable[[Path], None] | None = None,
     ) -> p.Result[bool]:
-        """Apply one simple removal candidate permanently, gates-validated.
+        """Apply one simple removal candidate transactionally.
 
         ``post_apply_hook`` is executed **after** sources are written and rope
-        imports are organised, but **before** the gate snapshot runs. Callers
+        imports are organised. Callers
         that need to regenerate governance artefacts (e.g. ``__init__.py``
         lazy maps via ``FlextInfraCodegenLazyInit``) pass the regeneration
         routine here. This keeps ``flext_infra._utilities.census`` outside
-        the ``flext_infra.codegen.lazy_init`` import cycle while still
-        giving gates a chance to verify post-cascade correctness.
+        the ``flext_infra.codegen.lazy_init`` import cycle.
         """
         if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
             candidate
@@ -736,21 +732,14 @@ class FlextInfraUtilitiesRefactorCensus:
             if post_apply_hook is not None:
                 post_apply_hook(workspace)
 
-        applied, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+        FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=workspace,
-                gates=gates,
-                post_write=_post_write,
-                skip_pytest=True,
+                workspace=workspace, post_write=_post_write
             ),
         )
         rope.reload()
-        if applied:
-            return r[bool].ok(True)
-        return r[bool].fail(
-            "; ".join(reports) if reports else "apply gates rejected removal"
-        )
+        return r[bool].ok(True)
 
     @staticmethod
     def apply_line_ranges(source: str, ranges: t.SequenceOf[t.IntPair]) -> str:

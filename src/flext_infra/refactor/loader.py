@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-from flext_infra import c, t
+from flext_infra import c, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -104,23 +103,29 @@ class FlextInfraRefactorRuleLoader:
         ]
 
     @staticmethod
-    def print_rules_table(rows: t.SequenceOf[t.FeatureFlagMapping]) -> None:
+    def print_rules_table(
+        rows: t.SequenceOf[t.FeatureFlagMapping],
+    ) -> p.Result[None]:
         """Render and print one rules table using the shared CLI table helpers."""
         data_result = u.Cli.tables_normalize_data(rows)
         if data_result.failure:
-            u.Cli.error(data_result.error or "failed to normalize rules table")
-            return
+            return r[None].fail(
+                data_result.error or "failed to normalize rules table"
+            )
         settings_result = u.Cli.tables_resolve_config(
             headers=list(c.Infra.RULE_TABLE_HEADERS)
         )
         if settings_result.failure:
-            u.Cli.error(settings_result.error or "failed to resolve table settings")
-            return
+            return r[None].fail(
+                settings_result.error or "failed to resolve table settings"
+            )
         rendered_result = u.Cli.tables_render(data_result.value, settings_result.value)
         if rendered_result.failure:
-            u.Cli.error(rendered_result.error or "failed to render rules table")
-            return
+            return r[None].fail(
+                rendered_result.error or "failed to render rules table"
+            )
         u.Cli.emit_raw(rendered_result.value)
+        return r[None].ok(None)
 
 
 __all__: list[str] = ["FlextInfraRefactorRuleLoader"]

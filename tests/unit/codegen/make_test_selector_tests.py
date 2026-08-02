@@ -4,24 +4,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
-from flext_infra import c, config, u
+from flext_infra import config, p, u
 from flext_tests import tm
 from tests import u as test_u
 
 
-def _makefile_template() -> Path:
-    """Locate the generated-Makefile template for the checkout in use."""
-    marker = Path("src/flext_infra/templates/project/base/Makefile.j2")
-    for candidate in Path(__file__).resolve().parents:
-        if (candidate / marker).is_file():
-            return candidate / marker
-    msg = f"no ancestor of {Path(__file__).resolve()} provides {marker}"
-    raise FileNotFoundError(msg)
-
-
 class TestsMakeTestSelector:
     """The generated `test` recipe honours the documented argument knob."""
+
+    @staticmethod
+    def _write_generated_make(root: Path) -> Path:
+        """Copy the config-owned wrapper and engine into an isolated checkout."""
+        checkout_root = Path(__file__).resolve().parents[3]
+        surfaces = config.Infra.codegen.surfaces
+        wrapper_source = checkout_root / surfaces.make_wrapper_path
+        engine_source = checkout_root / surfaces.make_engine_path
+        wrapper = root / surfaces.make_wrapper_path
+        engine = root / surfaces.make_engine_path
+        engine.parent.mkdir(parents=True, exist_ok=True)
+        wrapper.write_text(wrapper_source.read_text(encoding="utf-8"), encoding="utf-8")
+        engine.write_text(engine_source.read_text(encoding="utf-8"), encoding="utf-8")
+        return wrapper
 
     def test_test_verb_is_canonical(self) -> None:
         """`test` is part of the canonical verb surface every project exposes."""
@@ -36,30 +39,29 @@ class TestsMakeTestSelector:
         tm.that("fmt" in public_verbs, where=bool)
         tm.that("format" not in public_verbs, where=bool)
 
-        makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
-        (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
+        self._write_generated_make(tmp_path)
+        invocation_log = tmp_path / "python-args.log"
         test_u.Tests.write_executable(
-            tmp_path / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
-        )
-        invocation_log = tmp_path / "uv-args.log"
-        uv = tmp_path / "bin" / "uv"
-        test_u.Tests.write_executable(
-            uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n'
+            tmp_path / ".venv" / "bin" / "python",
+            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n',
         )
 
-        canonical = tm.ok(
+        canonical: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "fmt", "WHAT=check", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "fmt", "WHAT=check"], cwd=tmp_path
             )
         )
         tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)
         invocations = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocations, has=["ruff check --no-fix", "ruff format --check"])
+        tm.that(
+            invocations,
+            has=["workspace serialize-make", "--verb fmt", "--selector-value check"],
+        )
         calls_before_retired = invocations.splitlines()
 
-        retired = tm.ok(
+        retired: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "format", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "format"], cwd=tmp_path
             )
         )
         tm.that(retired.exit_code, ne=0)
@@ -78,20 +80,20 @@ class TestsMakeTestSelector:
         target_root.mkdir()
         engine_root = tmp_path / "engine"
         engine_root.mkdir()
-        selected_makefile = engine_root / "canonical.mk"
-        selected_makefile.write_text(
-            tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
-        )
+        self._write_generated_make(engine_root)
+        selected_makefile = engine_root / config.Infra.codegen.surfaces.make_engine_path
         (caller_root / "Makefile").write_text("all:\n\t@exit 99\n", encoding="utf-8")
         invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
             engine_root / ".venv" / "bin" / "python",
-            (f'#!/bin/sh\nprintf "%s\\n" "$PYTHONPATH" "$*" > "{invocation_log}"\n'),
+            (
+                "#!/bin/sh\n"
+                f'printf "workspace=%s\\nargs=%s\\n" '
+                f'"$FLEXT_MAKE_INPUT_WORKSPACE" "$*" > "{invocation_log}"\n'
+            ),
         )
-        uv = caller_root / "bin" / "uv"
-        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        executed = tm.ok(
+        executed: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
                 [
                     "--no-print-directory",
@@ -100,7 +102,6 @@ class TestsMakeTestSelector:
                     "worktree",
                     "WHAT=list",
                     f"WORKSPACE={target_root}",
-                    f"UV={uv}",
                 ],
                 cwd=caller_root,
             )
@@ -110,10 +111,12 @@ class TestsMakeTestSelector:
         tm.that(
             invocation_log.read_text(encoding="utf-8"),
             has=[
-                str(engine_root / "src"),
-                "-m flext_infra workspace worktree",
-                f"--workspace {target_root}",
-                "--operation list",
+                f"workspace={target_root}",
+                "-m flext_infra workspace serialize-make",
+                f"--workspace {engine_root}",
+                f"--makefile {selected_makefile}",
+                "--verb worktree",
+                "--selector-value list",
             ],
         )
 
@@ -125,10 +128,8 @@ class TestsMakeTestSelector:
         caller_root.mkdir()
         engine_root = tmp_path / "engine"
         engine_root.mkdir()
-        selected_makefile = engine_root / "canonical.mk"
-        selected_makefile.write_text(
-            tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
-        )
+        self._write_generated_make(engine_root)
+        selected_makefile = engine_root / config.Infra.codegen.surfaces.make_engine_path
         invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
             engine_root / ".venv" / "bin" / "python",
@@ -137,18 +138,9 @@ class TestsMakeTestSelector:
         test_u.Tests.write_executable(
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
         )
-        uv = caller_root / "bin" / "uv"
-        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
-
-        executed = tm.ok(
+        executed: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                [
-                    "--no-print-directory",
-                    "-f",
-                    str(selected_makefile),
-                    "test",
-                    f"UV={uv}",
-                ],
+                ["--no-print-directory", "-f", str(selected_makefile), "test"],
                 cwd=caller_root,
             )
         )
@@ -158,7 +150,7 @@ class TestsMakeTestSelector:
             invocation_log.read_text(encoding="utf-8"),
             has=[
                 "-m flext_infra workspace serialize-make",
-                f"--workspace {caller_root}",
+                f"--workspace {engine_root}",
                 f"--makefile {selected_makefile}",
                 "--verb test",
             ],
@@ -166,38 +158,13 @@ class TestsMakeTestSelector:
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
         """A focused target is the pytest target, not an appendix to tests/."""
-        makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
-        (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
+        self._write_generated_make(tmp_path)
+        invocation_log = tmp_path / "python-args.log"
         test_u.Tests.write_executable(
             tmp_path / ".venv" / "bin" / "python",
             (
                 "#!/bin/sh\n"
-                "verb=''\n"
-                "mode=''\n"
-                "previous=''\n"
-                'for argument in "$@"; do\n'
-                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
-                '  if [ "$argument" = "validate" ]; then mode="validate"; fi\n'
-                '  previous="$argument"\n'
-                "done\n"
-                'if [ -n "$verb" ]; then\n'
-                '  exec make --no-print-directory "_serialized_${verb}"\n'
-                "fi\n"
-                'if [ "$mode" = "validate" ]; then\n'
-                "  printf '%s\\n' failed_count=0 error_count=0 "
-                "warning_count=0 skipped_count=0\n"
-                "  exit 0\n"
-                "fi\n"
-                "exit 2\n"
-            ),
-        )
-        invocation_log = tmp_path / "uv-args.log"
-        uv = tmp_path / "bin" / "uv"
-        test_u.Tests.write_executable(
-            uv,
-            (
-                "#!/bin/sh\n"
-                f'printf "file=%s\\nargs=%s\\n" "$FLEXT_PYTEST_FILE_RAW" "$*" '
+                f'printf "file=%s\\nargs=%s\\n" "$FLEXT_MAKE_INPUT_FILE" "$*" '
                 f'> "{invocation_log}"\n'
             ),
         )
@@ -211,10 +178,9 @@ class TestsMakeTestSelector:
             encoding="utf-8",
         )
 
-        executed = tm.ok(
+        executed: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "test", f"FILE={selected}", f"UV={uv}"],
-                cwd=tmp_path,
+                ["--no-print-directory", "test", f"FILE={selected}"], cwd=tmp_path
             )
         )
 
@@ -225,11 +191,7 @@ class TestsMakeTestSelector:
         )
         arguments = invocation_log.read_text(encoding="utf-8")
         tm.that(arguments, has=f"file={selected}")
-        # The contract is that the explicit FILE reaches the typed runner
-        # through uv. Which uv flags the generated Makefile uses is template
-        # policy (it moved from --offline to --project/--no-sync), so freezing
-        # them here breaks the test on a legitimate template change.
-        tm.that(arguments, has="python -m flext_infra._pytest_entry")
+        tm.that(arguments, has=["workspace serialize-make", "--verb test"])
 
     def test_generated_test_recipe_uses_one_typed_runner_boundary(self) -> None:
         """Forward supported selectors without reconstructing pytest in shell.
@@ -238,41 +200,58 @@ class TestsMakeTestSelector:
         way to filter is to call pytest directly -- exactly the loose command the
         canonical-command law forbids.
         """
-        template_path = _makefile_template()
-        template = template_path.read_text(encoding="utf-8")
-        reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
-            encoding="utf-8"
+        make = config.Infra.codegen.make
+        test_verb = next(verb for verb in make.verbs if verb.name == "test")
+        operation = next(
+            operation
+            for operation in make.operations
+            if operation.name == test_verb.operation
         )
-
-        tm.that(template, has="test_report_recipe(")
-        tm.that(template, has="python -m flext_infra._pytest_entry")
-        tm.that(
-            template,
-            has=[
-                "FLEXT_PYTEST_FILE_RAW",
-                "FLEXT_PYTEST_MATCH_RAW",
-                "FLEXT_PYTEST_WHAT_RAW",
-                "FLEXT_PYTEST_FAIL_FAST_RAW",
-            ],
-            lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
-        )
-        tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
-        tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
-
-    def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
-        """Gen (conform) and base.mk generation remain distinct operations.
-
-        The generated Makefile owns ``gen``; base.mk generation is a private
-        custom handler this project declares for itself. Reading an extra-verb
-        list off a repository reference asserted nothing about that split: the
-        verbs a project adds are its own config, never flext-infra's knowledge.
-        """
-        template = _makefile_template().read_text(encoding="utf-8")
-        custom = (
-            Path(flext_infra.__file__).resolve().parents[2]
-            / c.Infra.CUSTOM_MAKE_FILENAME
+        input_by_variable = {
+            variable: item.name for item in make.inputs for variable in item.variables
+        }
+        selector_variables = ("FILE", "MATCH", "FAIL_FAST")
+        selector_inputs = tuple(input_by_variable[name] for name in selector_variables)
+        checkout_root = Path(__file__).resolve().parents[3]
+        engine = (
+            checkout_root / config.Infra.codegen.surfaces.make_engine_path
         ).read_text(encoding="utf-8")
 
-        tm.that(template, has="_builtin_gen_apply")
-        tm.that(template, lacks="_builtin_build_gen")
-        tm.that(custom, has="_custom_basemk_generate:")
+        tm.that(operation.executor, eq="runtime")
+        tm.that(operation.inputs, has=selector_inputs)
+        tm.that(engine.count("workspace serialize-make"), eq=1)
+        tm.that(
+            engine, lacks=["pytest", "_pytest_entry", "grep ", "awk ", "PYTEST_TARGETS"]
+        )
+
+    def test_generated_make_owners_derive_from_the_typed_ssot(self) -> None:
+        """The wrapper and engine expose the one config-owned operation graph."""
+        codegen = config.Infra.codegen
+        make = codegen.make
+        generation_operations = tuple(
+            operation
+            for operation in make.operations
+            if operation.executor == "generation"
+        )
+        generation_verbs = tuple(
+            verb
+            for verb in make.verbs
+            if any(
+                operation.name == verb.operation for operation in generation_operations
+            )
+        )
+        tm.that(generation_operations, len=1)
+        tm.that(generation_verbs, len=1)
+
+        wrapper_path = Path(codegen.surfaces.make_wrapper_path)
+        engine_path = Path(codegen.surfaces.make_engine_path)
+        wrapper: str = tm.ok(u.Cli.files_read_text(wrapper_path))
+        engine: str = tm.ok(u.Cli.files_read_text(engine_path))
+        public_verbs = " ".join(verb.name for verb in make.verbs)
+
+        tm.that(wrapper, has=f"include {engine_path.as_posix()}")
+        tm.that(engine, has=f"PUBLIC_VERBS := {public_verbs}")
+        tm.that(
+            f"{wrapper}\n{engine}",
+            lacks=["custom.mk", "_custom_", "_builtin_gen_apply"],
+        )

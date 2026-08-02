@@ -79,22 +79,6 @@ class ValidationRoutes(ValidationCommandRoutes):
         ),
         c.Infra.CLI_GROUP_GITHUB: (
             m.Cli.ResultCommandRoute(
-                name="workflows",
-                help_text="Sync GitHub workflow files across workspace",
-                model_cls=m.Infra.GithubWorkflowSyncRequest,
-                handler=lambda params: u.Infra.sync_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.LINT_SECTION,
-                help_text="Lint GitHub workflow files",
-                model_cls=m.Infra.GithubWorkflowLintRequest,
-                handler=lambda params: u.Infra.lint_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
-            ),
-            m.Cli.ResultCommandRoute(
                 name=c.Infra.PR,
                 help_text="Manage pull requests for a single project",
                 model_cls=m.Infra.GithubPullRequestRequest,

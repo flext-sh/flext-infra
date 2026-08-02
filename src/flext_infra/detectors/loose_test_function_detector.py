@@ -16,8 +16,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -47,10 +45,11 @@ class FlextInfraLooseTestFunctionDetector:
     ) -> bool:
         """Return True when ``ctx.file_path`` sits under a configured test glob."""
         root = ctx.project_root or ctx.file_path.parent
-        try:
-            relative = ctx.file_path.resolve().relative_to(root.resolve())
-        except ValueError:
-            relative = ctx.file_path
+        resolved_file = ctx.file_path.resolve()
+        resolved_root = root.resolve()
+        if not resolved_file.is_relative_to(resolved_root):
+            return False
+        relative = resolved_file.relative_to(resolved_root)
         posix = relative.as_posix()
         return any(fnmatch(posix, glob) for glob in rules.test_dir_globs)
 
@@ -62,17 +61,12 @@ class FlextInfraLooseTestFunctionDetector:
         rules = cls._rules()
         if not cls._is_test_file(ctx, rules):
             return []
-        res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            ctx.rope_project, ctx.file_path
-        )
+        res = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if res is None:
             return []
-        try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
-        except u.Infra.rope_runtime_errors():
-            return []
+        pymodule = u.Infra.get_pymodule(ctx.rope_project, res)
         violations: list[m.Infra.LooseTestFunctionViolation] = []
-        for definition in FlextInfraUtilitiesRopeAnalysis.scope_definitions(pymodule):
+        for definition in u.Infra.scope_definitions(pymodule):
             if definition.kind != c.Infra.RopeScopeKind.FUNCTION:
                 continue
             if not definition.is_module_level:

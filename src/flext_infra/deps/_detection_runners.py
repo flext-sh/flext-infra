@@ -1,8 +1,7 @@
-"""Cohesive external-tool-runner mixin (deptry, mypy stubs, pip-check) for detection."""
+"""Cohesive external-tool-runner mixin for dependency detection."""
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
@@ -24,12 +23,6 @@ class FlextInfraDependencyDetectionRunnersMixin:
         def _to_toml_config(
             self, payload: t.MappingKV[str, t.Infra.InfraValue]
         ) -> t.JsonMapping: ...
-
-    def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
-        """Read plain; concrete analyzer supplies the real reader."""
-        _ = path
-        msg = "_read_plain must be implemented by the concrete analyzer"
-        raise NotImplementedError(msg)
 
     def _run_raw(
         self,
@@ -106,47 +99,6 @@ class FlextInfraDependencyDetectionRunnersMixin:
         return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok((
             issues,
             cmd_result.exit_code,
-        ))
-
-    def run_mypy_stub_hints(
-        self, project_path: Path
-    ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
-        """Run mypy via the command runner to detect missing stubs and hint packages."""
-        cmd = u.Infra.mypy_limited_command((
-            sys.executable,
-            "-m",
-            c.Infra.MYPY,
-            c.Infra.DEFAULT_SRC_DIR,
-            "--config-file",
-            c.Infra.PYPROJECT_FILENAME,
-            "--no-error-summary",
-        ))
-        result = self._run_raw(
-            cmd, cwd=project_path, timeout=u.Infra.mypy_runner_timeout()
-        )
-        if result.failure:
-            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
-                u.Infra.mypy_launch_failure_diagnostic(
-                    result.error or "Mypy process launch failed"
-                )
-            )
-        command_output: p.Cli.CommandOutput = result.value
-        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(command_output):
-            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(resource_diagnostic)
-        output = f"{command_output.stdout}\n{command_output.stderr}"
-        hinted = {
-            match.group(1).strip()
-            for match in c.Infra.MYPY_HINT_RE.finditer(output)
-            if match.group(1).strip()
-        }
-        missing = {
-            match.group(1).strip()
-            for match in c.Infra.MYPY_STUB_RE.finditer(output)
-            if match.group(1).strip()
-        }
-        return r[t.Pair[t.StrSequence, t.StrSequence]].ok((
-            sorted(hinted),
-            sorted(missing),
         ))
 
     def run_pip_check(

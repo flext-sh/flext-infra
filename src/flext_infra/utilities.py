@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import u
+from flext_cli import FlextCliUtilities
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -26,7 +26,6 @@ from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
-from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
@@ -78,7 +77,6 @@ from flext_infra._utilities.rope_patch.pep695_patch import (
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
-from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.serialization_lock import (
     FlextInfraUtilitiesSerializationLock,
 )
@@ -92,7 +90,7 @@ from flext_infra._utilities.worktree_transaction import (
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
-class FlextInfraUtilities(u):
+class FlextInfraUtilities(FlextCliUtilities):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
     Usage::
@@ -135,7 +133,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsRender,
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,
-        FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesGithubPr,
         FlextInfraUtilitiesPyproject,
         FlextInfraUtilitiesNamespaceConfig,
@@ -157,7 +154,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesRopeMroTransform,
-        FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesSerializationLock,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,

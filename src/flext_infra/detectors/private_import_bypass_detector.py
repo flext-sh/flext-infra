@@ -92,10 +92,9 @@ class FlextInfraPrivateImportBypassDetector:
     def _package_for_module(cls, module_name: str, family: str) -> str | None:
         """Return the owning package prefix before the private family."""
         parts = module_name.split(".")
-        try:
-            family_index = parts.index(family)
-        except ValueError:
+        if family not in parts:
             return None
+        family_index = parts.index(family)
         return ".".join(parts[:family_index])
 
     @classmethod
@@ -106,10 +105,7 @@ class FlextInfraPrivateImportBypassDetector:
         resource = rope_project.find_module(facade_module)
         if resource is None:
             return False
-        try:
-            pymodule = u.Infra.get_pymodule(rope_project, resource)
-        except Exception:
-            return False
+        pymodule = u.Infra.get_pymodule(rope_project, resource)
         return symbol in pymodule.get_attributes()
 
 

@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
-from pydantic import model_validator
 
 from flext_infra import c, config, m, u
 from flext_infra.base import s
@@ -39,8 +38,16 @@ class FlextInfraPytestRunner(s[int]):
         str | None, m.Field(default=None, description="Exact pytest execution mode.")
     ] = None
     target: Annotated[
-        str, m.Field(min_length=1, description="Default repository-relative test root.")
-    ]
+        str | None,
+        m.Field(
+            default=None,
+            min_length=1,
+            description=(
+                "Optional repository-relative test root; None consumes the "
+                "project's configured pytest testpaths"
+            ),
+        ),
+    ] = None
     reports: Annotated[
         str, m.Field(min_length=1, description="Repository-relative test report root.")
     ]
@@ -85,14 +92,14 @@ class FlextInfraPytestRunner(s[int]):
             file=cls._environment_value(c.Infra.PYTEST_ENV_FILE) or None,
             match=cls._environment_value(c.Infra.PYTEST_ENV_MATCH) or None,
             what=cls._environment_value(c.Infra.PYTEST_ENV_WHAT) or None,
-            target=cls._environment_value(c.Infra.PYTEST_ENV_TARGET),
+            target=cls._environment_value(c.Infra.PYTEST_ENV_TARGET) or None,
             reports=cls._environment_value(c.Infra.PYTEST_ENV_REPORTS),
             fail_fast=cls._environment_flag(c.Infra.PYTEST_ENV_FAIL_FAST),
             verbose=cls._environment_flag(c.Infra.PYTEST_ENV_VERBOSE),
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
         )
 
-    @model_validator(mode="after")
+    @u.model_validator(mode="after")
     def _validate_paths_and_selectors(self) -> Self:
         """Reject selector and output paths that escape the active project."""
         selector = FlextInfraPytestSelectorValidator(
@@ -102,6 +109,8 @@ class FlextInfraPytestRunner(s[int]):
         if resolved_selector.failure:
             raise ValueError(resolved_selector.error or "invalid pytest selector")
         for field_name, value in (("target", self.target), ("reports", self.reports)):
+            if value is None:
+                continue
             path = Path(value)
             if (
                 path.is_absolute()
@@ -110,18 +119,19 @@ class FlextInfraPytestRunner(s[int]):
             ):
                 msg = f"{field_name} must be a normalized repository-relative path"
                 raise ValueError(msg)
-        target_result = FlextInfraPytestSelectorValidator.resolve_file(
-            self.root, self.target
-        )
-        if target_result.failure:
-            raise ValueError(target_result.error or "invalid pytest target")
+        if self.target is not None:
+            target_result = FlextInfraPytestSelectorValidator.resolve_file(
+                self.root, self.target
+            )
+            if target_result.failure:
+                raise ValueError(target_result.error or "invalid pytest target")
         return self
 
     def _report_directory(self) -> Path:
         """Create one collision-resistant report directory under the project."""
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
-        report_root = self.root / self.reports
-        report_dir = report_root / run_id
+        report_root: Path = self.root / self.reports
+        report_dir: Path = report_root / run_id
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 
@@ -129,7 +139,11 @@ class FlextInfraPytestRunner(s[int]):
         """Build the exact child argv from the typed tooling policy."""
         pytest = config.Infra.tooling.tools.pytest
         focused = self.file is not None or self.match is not None
-        target = self.file or self.target
+        targets = (
+            (self.file,)
+            if self.file is not None
+            else ((self.target,) if self.target is not None else ())
+        )
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
         coverage_args = (
             ("--no-cov",)
@@ -164,7 +178,7 @@ class FlextInfraPytestRunner(s[int]):
             str(report_dir / "pytest.pstats"),
             "-m",
             "pytest",
-            target,
+            *targets,
             *pytest.progress_args,
             *report_args,
             "-p",

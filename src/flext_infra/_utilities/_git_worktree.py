@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_core import r
@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesGitWorktreeMixin:
     """Extend the existing Git utility owner with isolated mutation primitives."""
+
+    _GIT_INDEX_ENTRY_FIELD_COUNT: ClassVar[int] = 4
 
     @staticmethod
     def git_run(
@@ -187,15 +189,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                         or f"cannot derive primary worktree from {common_dir}"
                     )
                 primary_root = Path(caller_top_level.value.strip()).resolve()
-        top_level = cls.git_capture(primary_root, ("rev-parse", "--show-toplevel"))
-        if top_level.failure:
+        if not primary_root.is_dir():
             return r[Path].fail(
-                top_level.error or f"invalid primary worktree: {primary_root}"
-            )
-        resolved_top_level = Path(top_level.value.strip()).resolve()
-        if resolved_top_level != primary_root:
-            return r[Path].fail(
-                f"Git primary worktree mismatch: {primary_root} != {resolved_top_level}"
+                f"configured primary worktree directory is missing: {primary_root}"
             )
         return r[Path].ok(primary_root)
 
@@ -283,6 +279,201 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         return r[t.SequenceOf[Path]].ok(
             tuple(sorted(paths, key=lambda path: (len(path.parts), path.as_posix())))
         )
+
+    @classmethod
+    def _git_merge_fix_forward(
+        cls, repository_root: Path, revision: str, *, context: str
+    ) -> p.Result[bool]:
+        """Merge one revision while preserving any conflict for fix-forward repair."""
+        merged = cls.git_run(repository_root, ("merge", "--no-edit", revision))
+        if merged.failure:
+            return r[bool].fail(merged.error or f"{context} merge execution failed")
+        output = merged.value
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).strip()
+            return r[bool].fail(
+                detail
+                or f"{context} merge requires fix-forward resolution in {repository_root}"
+            )
+        return r[bool].ok(True)
+
+    @classmethod
+    def git_reconcile_managed_submodules(
+        cls, repository_root: Path, gitlinks: t.SequenceOf[m.Infra.ManagedGitlinkSpec]
+    ) -> p.Result[int]:
+        """Initialize and fast-forward only topology-declared governed gitlinks."""
+        declared_result = cls.git_declared_submodule_paths(repository_root)
+        if declared_result.failure:
+            return r[int].fail(
+                declared_result.error or "failed to load Git submodule declarations"
+            )
+        declared = set(declared_result.value)
+        reconciled = 0
+        for gitlink in gitlinks:
+            relative = gitlink.repository.path
+            if relative not in declared:
+                return r[int].fail(
+                    "governed gitlink is absent from .gitmodules: "
+                    f"{relative.as_posix()}"
+                )
+            branch_check = cls.git_capture(
+                repository_root, ("check-ref-format", "--branch", gitlink.branch)
+            )
+            if branch_check.failure:
+                return r[int].fail(
+                    branch_check.error
+                    or f"invalid governed gitlink branch: {gitlink.branch}"
+                )
+            staged = cls.git_capture(
+                repository_root, ("ls-files", "--stage", "--", relative.as_posix())
+            )
+            if staged.failure:
+                return r[int].fail(
+                    staged.error
+                    or f"governed gitlink is absent from index: {relative.as_posix()}"
+                )
+            fields = staged.value.split()
+            if len(fields) != cls._GIT_INDEX_ENTRY_FIELD_COUNT or fields[0] != "160000":
+                return r[int].fail(
+                    f"governed gitlink index entry is invalid: {relative.as_posix()}"
+                )
+            recorded_head = fields[1]
+            synced = cls.git_capture(
+                repository_root,
+                ("submodule", "sync", "--quiet", "--", relative.as_posix()),
+            )
+            if synced.failure:
+                return r[int].fail(
+                    synced.error or f"failed to sync gitlink: {relative.as_posix()}"
+                )
+            child_root = (repository_root / relative).resolve()
+            if not (child_root / c.Infra.GIT_DIR).exists():
+                initialized = cls.git_capture(
+                    repository_root,
+                    (
+                        "submodule",
+                        "update",
+                        "--init",
+                        "--checkout",
+                        "--",
+                        relative.as_posix(),
+                    ),
+                )
+                if initialized.failure:
+                    return r[int].fail(
+                        initialized.error
+                        or f"failed to initialize gitlink: {relative.as_posix()}"
+                    )
+            clean = cls.git_capture(
+                child_root, ("status", "--porcelain=v1", "--untracked-files=all")
+            )
+            if clean.failure:
+                return r[int].fail(
+                    clean.error or f"failed to inspect gitlink: {relative.as_posix()}"
+                )
+            if clean.value.strip():
+                return r[int].fail(
+                    f"gitlink has uncommitted work to preserve: {relative.as_posix()}"
+                )
+            current = cls.git_run(
+                child_root, ("symbolic-ref", "--quiet", "--short", "HEAD")
+            )
+            if current.failure:
+                return r[int].fail(
+                    current.error
+                    or f"failed to inspect gitlink branch: {relative.as_posix()}"
+                )
+            current_output = current.value
+            if current_output.exit_code not in {0, 1}:
+                detail = (current_output.stderr or current_output.stdout).strip()
+                return r[int].fail(
+                    detail or f"failed to inspect gitlink branch: {relative.as_posix()}"
+                )
+            current_branch = current_output.stdout.strip()
+            head = cls.git_repository_head(child_root)
+            if head.failure:
+                return r[int].fail(
+                    head.error
+                    or f"failed to inspect gitlink HEAD: {relative.as_posix()}"
+                )
+            original_head = head.value
+            if current_branch != gitlink.branch:
+                local_branch = cls.git_run(
+                    child_root,
+                    ("show-ref", "--verify", "--quiet", f"refs/heads/{gitlink.branch}"),
+                )
+                if local_branch.failure:
+                    return r[int].fail(
+                        local_branch.error
+                        or f"failed to inspect gitlink branch: {gitlink.branch}"
+                    )
+                local_branch_output = local_branch.value
+                if local_branch_output.exit_code not in {0, 1}:
+                    detail = (
+                        local_branch_output.stderr or local_branch_output.stdout
+                    ).strip()
+                    return r[int].fail(
+                        detail or f"failed to inspect gitlink branch: {gitlink.branch}"
+                    )
+                checkout_args = (
+                    ("checkout", "--quiet", gitlink.branch)
+                    if local_branch_output.exit_code == 0
+                    else ("checkout", "--quiet", "-b", gitlink.branch)
+                )
+                checkout = cls.git_capture(child_root, checkout_args)
+                if checkout.failure:
+                    return r[int].fail(
+                        checkout.error
+                        or f"failed to attach gitlink branch: {relative.as_posix()}"
+                    )
+                preserved = cls._git_merge_fix_forward(
+                    child_root,
+                    original_head,
+                    context=f"gitlink {relative.as_posix()} local HEAD",
+                )
+                if preserved.failure:
+                    return r[int].fail(
+                        preserved.error
+                        or f"failed to preserve gitlink HEAD: {relative.as_posix()}"
+                    )
+            recorded = cls._git_merge_fix_forward(
+                child_root,
+                recorded_head,
+                context=f"gitlink {relative.as_posix()} recorded HEAD",
+            )
+            if recorded.failure:
+                return r[int].fail(
+                    recorded.error
+                    or f"failed to merge recorded gitlink HEAD: {relative.as_posix()}"
+                )
+            fetched = cls.git_capture(
+                child_root, ("fetch", "--quiet", "origin", gitlink.branch)
+            )
+            if fetched.failure:
+                return r[int].fail(
+                    fetched.error
+                    or f"failed to fetch origin/{gitlink.branch}: {relative.as_posix()}"
+                )
+            merged = cls._git_merge_fix_forward(
+                child_root,
+                "FETCH_HEAD",
+                context=f"gitlink {relative.as_posix()} origin/{gitlink.branch}",
+            )
+            if merged.failure:
+                return r[int].fail(
+                    merged.error
+                    or f"failed to merge governed gitlink branch: {relative.as_posix()}"
+                )
+            ancestry = cls.git_capture(
+                child_root, ("merge-base", "--is-ancestor", recorded_head, "HEAD")
+            )
+            if ancestry.failure:
+                return r[int].fail(
+                    ancestry.error
+                    or f"gitlink diverges from recorded commit: {relative.as_posix()}"
+                )
+            reconciled += 1
+        return r[int].ok(reconciled)
 
     @classmethod
     def git_add_detached_worktree(
@@ -454,7 +645,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             )
         else:
             stage_result = cls.git_capture(
-                worktree_root, ("add", "-A", "--", ".", *gitlink_exclusions)
+                worktree_root, ("add", "-A", "-f", "--", *gitlink_exclusions)
             )
         if stage_result.failure:
             return r[str].fail(stage_result.error or "failed to stage checkpoint")

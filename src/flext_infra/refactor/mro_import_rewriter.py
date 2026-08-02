@@ -27,11 +27,8 @@ class FlextInfraRefactorMROImportRewriter(
             arbitrary_types_allowed=True
         )
 
-        workspace_root: Path
         file_moves: t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]]
         pending_sources: t.MappingKV[Path, str]
-        apply: bool
-        gates: t.StrSequence | None = None
 
     @classmethod
     def migrate_workspace(
@@ -41,7 +38,6 @@ class FlextInfraRefactorMROImportRewriter(
         scan_results: t.SequenceOf[m.Infra.MROScanReport],
         apply: bool,
         project_names: t.StrSequence | None = None,
-        gates: t.StrSequence | None = None,
     ) -> t.Triple[
         t.SequenceOf[m.Infra.MROFileMigration],
         t.SequenceOf[m.Infra.MRORewriteResult],
@@ -51,14 +47,13 @@ class FlextInfraRefactorMROImportRewriter(
         errors: list[str] = []
         migrations: list[m.Infra.MROFileMigration] = []
         module_moves: MutableMapping[str, t.Pair[str, t.StrMapping]] = {}
-        module_source_paths: MutableMapping[str, Path] = {}
         pending_sources: MutableMapping[Path, str] = {}
         for scan_result in scan_results:
             try:
                 updated_source, migration, symbol_map = u.Infra.migrate_file(
                     scan_result=scan_result
                 )
-            except Exception as exc:
+            except OSError as exc:
                 errors.append(f"{scan_result.file}: {exc}")
                 continue
             if not migration.moved_symbols:
@@ -70,33 +65,14 @@ class FlextInfraRefactorMROImportRewriter(
                 scan_result.facade_alias or "c",
                 symbol_map,
             )
-            module_source_paths[scan_result.module] = source_path
-        if apply:
-            write_errors, failed_paths = cls._write_pending_sources(
-                workspace_root=workspace_root,
-                pending_sources=pending_sources,
-                gates=gates,
-            )
-            errors.extend(write_errors)
-            if failed_paths:
-                failed_set = frozenset(failed_paths)
-                migrations = [
-                    migration
-                    for migration in migrations
-                    if Path(migration.file).resolve() not in failed_set
-                ]
-                module_moves = {
-                    module_name: move
-                    for module_name, move in module_moves.items()
-                    if module_source_paths.get(module_name) not in failed_set
-                }
+        if apply and errors:
+            return (tuple(migrations), (), tuple(errors))
         rewrites, rewrite_errors = cls.rewrite_workspace(
             workspace_root=workspace_root,
             module_moves=module_moves,
             pending_sources=pending_sources,
             apply=apply,
             project_names=project_names,
-            gates=gates,
         )
         errors.extend(rewrite_errors)
         return (tuple(migrations), tuple(rewrites), tuple(errors))
@@ -110,39 +86,67 @@ class FlextInfraRefactorMROImportRewriter(
         pending_sources: t.MappingKV[Path, str],
         apply: bool,
         project_names: t.StrSequence | None = None,
-        gates: t.StrSequence | None = None,
     ) -> tuple[t.SequenceOf[m.Infra.MRORewriteResult], t.StrSequence]:
         """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
         if not module_moves:
             return ((), ())
-        file_moves = cls._collect_file_moves(
-            workspace_root=workspace_root,
-            module_moves=module_moves,
-            project_names=project_names,
-        )
-        return cls._rewrite_files(
-            request=cls.RewriteFilesInput(
+        try:
+            file_moves = cls._collect_file_moves(
                 workspace_root=workspace_root,
+                module_moves=module_moves,
+                project_names=project_names,
+            )
+        except RuntimeError as exc:
+            return ((), (str(exc),))
+        missing_owners = tuple(sorted(set(pending_sources) - set(file_moves)))
+        if missing_owners:
+            details = ", ".join(str(path) for path in missing_owners)
+            return (
+                (),
+                (f"MRO owners missing from consumer rewrite plan: {details}",),
+            )
+        rewrites, rewrite_errors, updates = cls._rewrite_files(
+            request=cls.RewriteFilesInput(
                 file_moves=file_moves,
                 pending_sources=pending_sources,
-                apply=apply,
-                gates=gates,
             )
         )
+        if rewrite_errors:
+            return ((), rewrite_errors)
+        if apply:
+            try:
+                u.Infra.protected_source_writes(
+                    {**pending_sources, **updates},
+                    request=m.Infra.ProtectedSourceWritesRequest(
+                        workspace=workspace_root
+                    ),
+                )
+            except OSError as exc:
+                return ((), (str(exc),))
+        return (rewrites, ())
 
     @classmethod
     def _rewrite_files(
         cls, *, request: RewriteFilesInput
-    ) -> tuple[t.SequenceOf[m.Infra.MRORewriteResult], t.StrSequence]:
+    ) -> tuple[
+        t.SequenceOf[m.Infra.MRORewriteResult],
+        t.StrSequence,
+        t.MappingKV[Path, str],
+    ]:
         """Rewrite files."""
         rewrites: list[m.Infra.MRORewriteResult] = []
         errors: list[str] = []
+        updates: MutableMapping[Path, str] = {}
         for file_path in sorted(request.file_moves):
             source = request.pending_sources.get(file_path)
             if source is None:
                 read = u.Cli.files_read_text(file_path)
                 if read.failure:
-                    errors.append(read.error or f"failed to read {file_path}")
+                    error = read.error
+                    if error is None:
+                        msg = f"source read failed without an error: {file_path}"
+                        raise RuntimeError(msg)
+                    errors.append(error)
                     continue
                 source = read.value
             transformer = FlextInfraRefactorMROSymbolPropagator(
@@ -151,22 +155,11 @@ class FlextInfraRefactorMROImportRewriter(
             updated_source, changes = transformer.rewrite_source(source)
             if updated_source == source:
                 continue
-            if request.apply:
-                ok, report = cls._protected_source_write(
-                    workspace_root=request.workspace_root,
-                    file_path=file_path,
-                    updated_source=updated_source,
-                    gates=request.gates,
-                )
-                if not ok:
-                    errors.extend(
-                        f"{file_path}: {line.strip()}" for line in report[:10]
-                    )
-                    continue
+            updates[file_path] = updated_source
             rewrites.append(
                 m.Infra.MRORewriteResult(file=str(file_path), replacements=len(changes))
             )
-        return (tuple(rewrites), tuple(errors))
+        return (tuple(rewrites), tuple(errors), dict(updates))
 
 
 __all__: list[str] = ["FlextInfraRefactorMROImportRewriter"]

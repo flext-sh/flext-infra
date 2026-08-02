@@ -42,31 +42,21 @@ class FlextInfraFutureAnnotationsDetector:
             TypeError,
             ValueError,
         ) as exc:
-            FlextInfraFutureAnnotationsDetector._record_parse_failure(ctx, exc)
+            u.Infra.record_parse_failure(
+                ctx.parse_failures,
+                m.Infra.ParseFailureViolation(
+                    file=str(ctx.file_path),
+                    stage="future-annotations",
+                    error_type=type(exc).__name__,
+                    detail=str(exc),
+                ),
+                cause=exc,
+            )
             return []
         if is_docstring_only:
             return []
         if c.Infra.FUTURE_ANNOTATIONS_RE.search(source):
             return []
         return [m.Infra.FutureAnnotationsViolation(file=str(file_path))]
-
-    @staticmethod
-    def _record_parse_failure(ctx: m.Infra.DetectorContext, exc: BaseException) -> None:
-        """Record a Rope parse failure, or fail loud without a collector."""
-        detail = str(exc)
-        if ctx.parse_failures is None:
-            msg = (
-                f"future-annotations detector could not parse {ctx.file_path}: {detail}"
-            )
-            raise RuntimeError(msg) from exc
-        ctx.parse_failures.append(
-            m.Infra.ParseFailureViolation(
-                file=str(ctx.file_path),
-                stage="future-annotations",
-                error_type=type(exc).__name__,
-                detail=detail,
-            )
-        )
-
 
 __all__: list[str] = ["FlextInfraFutureAnnotationsDetector"]

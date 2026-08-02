@@ -23,6 +23,13 @@ class FlextInfraExtraPathsSyncMixin:
         root: Path
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
+        pyrefly_search_paths: Callable[..., t.StrSequence]
+
+    def resolve_transitive_dependency_names(
+        self, direct_names: t.StrSequence
+    ) -> t.StrSequence:
+        """Return the transitive workspace path-dependency closure."""
+        return self._resolve_transitive_deps(direct_names)
 
     def _resolve_transitive_deps(
         self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
@@ -147,8 +154,13 @@ class FlextInfraExtraPathsSyncMixin:
     ) -> p.Result[int]:
         """Synchronize extraPaths and mypy_path across projects."""
         if project_dirs:
+            updated_selected = 0
             for project_dir in project_dirs:
                 pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+                if not pyproject.exists():
+                    if project_dir == self.root:
+                        return r[int].fail(f"Missing {pyproject}")
+                    continue
                 sync_result = self.sync_one(
                     pyproject, dry_run=dry_run, is_root=project_dir == self.root
                 )
@@ -157,17 +169,29 @@ class FlextInfraExtraPathsSyncMixin:
                         sync_result.error or f"sync failed for {pyproject}"
                     )
                 if sync_result.value and (not dry_run):
+                    updated_selected += 1
                     u.Cli.info(f"Updated {pyproject}")
-            return r[int].ok(0)
-        pyproject = self.root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject.exists():
-            return r[int].fail(f"Missing {pyproject}")
-        sync_result = self.sync_one(pyproject, dry_run=dry_run, is_root=True)
-        if sync_result.failure:
-            return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
-        if sync_result.value and (not dry_run):
-            u.Cli.info("Updated extraPaths and mypy_path from path dependencies.")
-        return r[int].ok(0)
+            return r[int].ok(updated_selected)
+        targets: t.MutableSequenceOf[Path] = [self.root]
+        targets.extend(
+            self.root / member for member in u.Infra.workspace_member_names(self.root)
+        )
+        updated = 0
+        for target in targets:
+            pyproject = target / c.Infra.PYPROJECT_FILENAME
+            if not pyproject.exists():
+                if target == self.root:
+                    return r[int].fail(f"Missing {pyproject}")
+                continue
+            sync_result = self.sync_one(
+                pyproject, dry_run=dry_run, is_root=target == self.root
+            )
+            if sync_result.failure:
+                return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
+            if sync_result.value and (not dry_run):
+                updated += 1
+                u.Cli.info(f"Updated {pyproject}")
+        return r[int].ok(updated)
 
 
 __all__: list[str] = ["FlextInfraExtraPathsSyncMixin"]

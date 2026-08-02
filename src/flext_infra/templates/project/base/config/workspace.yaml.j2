@@ -1,39 +1,57 @@
 # Generated initially by `flext-infra codegen new`; this manifest is the
 # handwritten topology SSOT consumed by `flext-infra codegen conform`.
-# NOTE (multi-agent, mro-wkii.17 / agent: codex): conform never overwrites this
-# input. Add members or exclusions here, then run `make gen`.
+# Conform never overwrites it. Add members or exclusions here, then run make gen.
+{% macro repository_fields(repository, indent) %}
+{{ indent }}name: {{ repository.name | tojson }}
+{{ indent }}distribution: {{ repository.distribution | tojson }}
+{{ indent }}provider: {{ repository.provider | tojson }}
+{{ indent }}branch: {{ repository.branch | tojson }}
+{{ indent }}url: {{ repository.url | tojson }}
+{{ indent }}path: {{ repository.path | tojson }}
+{{ indent }}role: {{ repository.role | tojson }}
+{{ indent }}state: {{ repository.state | tojson }}
+{{ indent }}checkout: {{ repository.checkout | tojson }}
+{{ indent }}codegen: {{ repository.codegen | tojson }}
+{{ indent }}package: {{ repository.package | tojson }}
+{{ indent }}editable: {{ repository.editable | tojson }}
+{{ indent }}read_only: {{ repository.read_only | tojson }}
+{% if repository.extra_verbs %}
+{{ indent }}extra_verbs:
+{% for verb in repository.extra_verbs %}
+{{ indent }}  - name: {{ verb.name | tojson }}
+{{ indent }}    operation: {{ verb.operation | tojson }}
+{{ indent }}    handlers:
+{% for handler in verb.handlers %}
+{{ indent }}      - what: {{ handler.what | tojson }}
+{% if handler.default %}
+{{ indent }}        default: true
+{% endif %}
+{% if handler.apply_policy != "never" %}
+{{ indent }}        apply_policy: {{ handler.apply_policy | tojson }}
+{% endif %}
+{% if handler.apply_default %}
+{{ indent }}        apply_default: true
+{% endif %}
+{% if handler.required_inputs %}
+{{ indent }}        required_inputs: {{ handler.required_inputs | tojson }}
+{% endif %}
+{% if handler.workflow %}
+{{ indent }}        workflow:
+{{ indent }}          order: {{ handler.workflow.order }}
+{{ indent }}          contexts: {{ handler.workflow.contexts | tojson }}
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% if repository.script_dispatch %}
+{{ indent }}script_dispatch:
+{{ indent }}  dispatcher: {{ repository.script_dispatch.dispatcher | tojson }}
+{% endif %}
+{% endmacro %}
 version: {{ workspace_manifest_version }}
-name: {{ dist }}
+name: {{ dist | tojson }}
 repository:
-  name: {{ dist }}
-  distribution: {{ dist }}
-  provider: {{ repository_provider }}
-  url: {{ repository_git_url }}
-  path: .
-  role: {{ workspace_repository.role | tojson }}
-  state: active
-  checkout: {{ workspace_repository.checkout | tojson }}
-  codegen: {{ workspace_repository.codegen | tojson }}
-  package: {{ workspace_repository.package | tojson }}
-  editable: {{ workspace_repository.editable | tojson }}
-  read_only: {{ workspace_repository.read_only | tojson }}
-{%- if workspace_repository.extra_verbs %}
-  extra_verbs:
-{%- for verb in workspace_repository.extra_verbs %}
-    - name: {{ verb.name | tojson }}
-      default_what: {{ verb.default_what | tojson }}
-      whats: {{ verb.whats | tojson }}
-      apply_guarded: {{ verb.apply_guarded | tojson }}
-{%- endfor %}
-{%- endif %}
-{%- if workspace_repository.script_dispatch %}
-  script_dispatch:
-    dispatcher: {{ workspace_repository.script_dispatch.dispatcher | tojson }}
-    roots:
-{%- for root in workspace_repository.script_dispatch.roots %}
-      - {{ root | tojson }}
-{%- endfor %}
-{%- endif %}
+{{ repository_fields(workspace_repository, "  ") }}
 project:
   package_name: {{ package_name | tojson }}
   class_stem: {{ class_stem | tojson }}
@@ -50,56 +68,32 @@ project:
   upstream: {{ upstream | tojson }}
   homepage: {{ homepage | tojson }}
   documentation: {{ documentation | tojson }}
-  workspace_root_rel: {{ workspace_root_rel | tojson }}
   year: {{ year }}
-# NOTE (multi-agent, mro-wkii.17 / agent: codex): the typed manifest context is
-# the sole topology owner; every declared member/exclusion round-trips here.
+{% if workspace_repositories %}
 members:
 {% for repository in workspace_repositories %}
-  - name: {{ repository.name | tojson }}
-    distribution: {{ repository.distribution | tojson }}
-    provider: {{ repository.provider | tojson }}
-    url: {{ repository.url | tojson }}
-    path: {{ repository.path | tojson }}
-    role: {{ repository.role | tojson }}
-    state: {{ repository.state | tojson }}
-    checkout: {{ repository.checkout | tojson }}
-    codegen: {{ repository.codegen | tojson }}
-    package: {{ repository.package | tojson }}
-    editable: {{ repository.editable | tojson }}
-    read_only: {{ repository.read_only | tojson }}
-{%- if repository.extra_verbs %}
-    extra_verbs:
-{%- for verb in repository.extra_verbs %}
-      - name: {{ verb.name | tojson }}
-        default_what: {{ verb.default_what | tojson }}
-        whats: {{ verb.whats | tojson }}
-        apply_guarded: {{ verb.apply_guarded | tojson }}
-{%- endfor %}
-{%- endif %}
-{%- if repository.script_dispatch %}
-    script_dispatch:
-      dispatcher: {{ repository.script_dispatch.dispatcher | tojson }}
-      roots:
-{%- for root in repository.script_dispatch.roots %}
-        - {{ root | tojson }}
-{%- endfor %}
-{%- endif %}
+  -
+{{ repository_fields(repository, "    ") }}
+{% endfor %}
 {% else %}
-  []
-{%- endfor %}
+members: []
+{% endif %}
+{% if workspace_policy_overlays %}
 repository_policy_overlays:
 {% for overlay in workspace_policy_overlays %}
   - project: {{ overlay.project | tojson }}
     beads_enabled: {{ overlay.beads_enabled | tojson }}
     ci_enabled: {{ overlay.ci_enabled | tojson }}
+{% endfor %}
 {% else %}
-  []
-{%- endfor %}
+repository_policy_overlays: []
+{% endif %}
+{% if workspace_exclusions %}
 exclusions:
 {% for exclusion in workspace_exclusions %}
   - path: {{ exclusion.path | tojson }}
     reason: {{ exclusion.reason | tojson }}
+{% endfor %}
 {% else %}
-  []
-{%- endfor %}
+exclusions: []
+{% endif %}

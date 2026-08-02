@@ -53,6 +53,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         # Consumer import rewritten: VALUE → c.VALUE with facade alias import.
         tm.that(consumer_source, has="from sample_pkg.constants import c")
         tm.that(consumer_source, has="result = c.VALUE")
+        tm.that(tuple(project_root.rglob("*.bak")), empty=True)
 
     def test_migrate_to_mro_inlines_alias_constant_into_constants_class(
         self, tmp_path: Path
@@ -293,9 +294,9 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
     def test_migrate_to_mro_is_idempotent_on_second_run(self, tmp_path: Path) -> None:
         """A second consecutive apply run must be a true no-op (census delta 0).
 
-        Regression for the all-or-nothing SafetyManager rollback: converged
-        files stay committed, so once a constant lives inside the facade class
-        it is no longer a candidate and re-running produces zero migrations.
+        Converged files stay applied, so once a constant lives inside the
+        facade class it is no longer a candidate and re-running produces zero
+        migrations.
         """
         project_root = tmp_path / "sample"
         src_pkg = project_root / "src" / "sample_pkg"

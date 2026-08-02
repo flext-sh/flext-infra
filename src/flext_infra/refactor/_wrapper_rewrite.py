@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from dataclasses import dataclass, field
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -17,31 +14,13 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-@dataclass(slots=True)
-class _WrapperRewriteAccumulator:
-    """Aggregates per-file rewrite stats across the wrapper-root verb run."""
-
-    updates: dict[Path, str] = field(default_factory=dict)
-    wrapper_candidates: list[Path] = field(default_factory=list)
-    changed_files: list[str] = field(default_factory=list)
-    total_replacements: int = 0
-    total_core_replacements: int = 0
-    import_rewrite_candidates: int = 0
-    per_project_changes: defaultdict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
-    per_project_replacements: defaultdict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
-
-
 class FlextInfraWrapperRootNamespaceRewriteMixin:
     """Detect ``Core.Tests`` chain rewrites + import candidates per file.
 
     Composed into FlextInfraWrapperRootNamespaceRefactor via inheritance;
     borrows workspace_root + the include-init / dry-run flags + the wrapper
     package set from the facade via MRO. ``module_ast`` is typed ``object`` to
-    mirror the rope-AST abstraction (FlextInfraUtilitiesRopeAnalysis), which
+    mirror the canonical rope-AST facade, which
     deliberately avoids ``import ast`` at the consumer layer (tracked: mro-6flt).
     """
 
@@ -57,16 +36,13 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         self,
         file_path: Path,
         *,
-        accumulator: _WrapperRewriteAccumulator,
+        accumulator: m.Infra.WrapperRewriteAccumulator,
         project_runtime_aliases: Mapping[str, frozenset[str]],
         wrapper_submodules: frozenset[str],
         metadata_runtime_aliases: frozenset[str],
     ) -> None:
         """Detect Core.Tests chain rewrites and import candidates for one file."""
-        try:
-            rel = file_path.relative_to(self.workspace_root)
-        except ValueError:
-            rel = file_path
+        rel = file_path.relative_to(self.workspace_root)
         project_name = rel.parts[0] if rel.parts else "."
         runtime_aliases = project_runtime_aliases.get(
             project_name, metadata_runtime_aliases
@@ -79,9 +55,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         if file_path.name == c.Infra.INIT_PY and (not self.include_init):
             return
         source = u.Cli.files_read_text(file_path).unwrap()
-        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        if pymodule is None:
-            return
+        pymodule = u.Infra.parse_string_module(source)
         module_ast = pymodule.get_ast()
         line_offsets = self._build_line_offsets(source)
         core_rewrites = self._collect_core_test_rewrites(
@@ -124,29 +98,29 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     ) -> list[tuple[int, int, str]]:
         """Find every ``<alias>.Core.Tests`` chain and emit ``(start, end, repl)``."""
         rewrites: list[tuple[int, int, str]] = []
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
+        for node in u.Infra.walk_ast_nodes(module_ast):
             if (
-                FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Attribute"
+                u.Infra.node_kind(node) != "Attribute"
                 or getattr(node, "attr", "") != "Tests"
             ):
                 continue
             parent_attr = getattr(node, "value", None)
             if (
                 parent_attr is None
-                or FlextInfraUtilitiesRopeAnalysis.node_kind(parent_attr) != "Attribute"
+                or u.Infra.node_kind(parent_attr) != "Attribute"
                 or getattr(parent_attr, "attr", "") != "Core"
             ):
                 continue
             base_name = getattr(parent_attr, "value", None)
             if (
                 base_name is None
-                or FlextInfraUtilitiesRopeAnalysis.node_kind(base_name) != "Name"
+                or u.Infra.node_kind(base_name) != "Name"
             ):
                 continue
             base_id = getattr(base_name, "id", "")
             if base_id not in runtime_aliases:
                 continue
-            line_col = FlextInfraUtilitiesRopeAnalysis.line_col_range(node)
+            line_col = u.Infra.line_col_range(node)
             if line_col is None:
                 continue
             lineno, col_offset, end_lineno, end_col_offset = line_col
@@ -163,8 +137,8 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         runtime_aliases: frozenset[str],
     ) -> bool:
         """Return whether any ``from wrapper.<sub> import <alias>`` exists."""
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "ImportFrom":
+        for node in u.Infra.walk_ast_nodes(module_ast):
+            if u.Infra.node_kind(node) != "ImportFrom":
                 continue
             module_name = getattr(node, "module", "") or ""
             parent, dot, child = module_name.partition(".")
@@ -194,7 +168,4 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         return updated
 
 
-__all__: list[str] = [
-    "FlextInfraWrapperRootNamespaceRewriteMixin",
-    "_WrapperRewriteAccumulator",
-]
+__all__: list[str] = ["FlextInfraWrapperRootNamespaceRewriteMixin"]

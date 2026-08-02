@@ -31,19 +31,9 @@ class _ToolchainStageHarness(FlextInfraCodegenPipelineStagesMixin):
         )
 
 
-@pytest.mark.parametrize(
-    ("dry_run", "expected_mode"),
-    [
-        (True, c.Infra.CodegenConformMode.CHECK),
-        (False, c.Infra.CodegenConformMode.APPLY),
-    ],
-)
+@pytest.mark.parametrize("dry_run", [True, False])
 def test_toolchain_stage_builds_full_workspace_conform_request(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    dry_run: bool,
-    expected_mode: c.Infra.CodegenConformMode,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, dry_run: bool
 ) -> None:
     captured: list[m.Infra.CodegenConformRequest] = []
 
@@ -76,7 +66,6 @@ def test_toolchain_stage_builds_full_workspace_conform_request(
                 root=tmp_path,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
-                mode=expected_mode,
             )
         ],
     )

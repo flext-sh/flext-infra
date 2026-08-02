@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -93,28 +92,26 @@ class FlextInfraRefactorLegacyTextOps:
     @classmethod
     def _remove_wrappers(cls, source: str) -> t.Infra.TransformResult:
         """Inline passthrough function wrappers via rope-located ranges."""
-        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        if pymodule is None:
-            return (source, list[str]())
+        pymodule = u.Infra.parse_string_module(source)
         ast_root = pymodule.get_ast()
         body = getattr(ast_root, "body", []) or []
         lines = source.splitlines(keepends=True)
         changes: t.MutableSequenceOf[str] = []
         replacements: list[tuple[int, int, str]] = []
         for node in body:
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "FunctionDef":
+            if u.Infra.node_kind(node) != "FunctionDef":
                 continue
             node_body = getattr(node, "body", []) or []
             if len(node_body) != 1:
                 continue
             return_stmt = node_body[0]
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(return_stmt) != "Return":
+            if u.Infra.node_kind(return_stmt) != "Return":
                 continue
             returned = getattr(return_stmt, "value", None)
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(returned) != "Call":
+            if u.Infra.node_kind(returned) != "Call":
                 continue
             call_func = getattr(returned, "func", None)
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(call_func) != "Name":
+            if u.Infra.node_kind(call_func) != "Name":
                 continue
             if not cls._is_passthrough_wrapper(node, returned):
                 continue
@@ -175,7 +172,7 @@ class FlextInfraRefactorLegacyTextOps:
         else:
             vararg_ok = (
                 len(remaining_args) == 1
-                and FlextInfraUtilitiesRopeAnalysis.node_kind(remaining_args[0])
+                and u.Infra.node_kind(remaining_args[0])
                 == "Starred"
                 and FlextInfraRefactorLegacyTextOps._is_name(
                     getattr(remaining_args[0], "value", None), vararg.arg
@@ -199,7 +196,7 @@ class FlextInfraRefactorLegacyTextOps:
     def _is_name(node: object | None, name: str) -> bool:
         """Whether ``node`` is an ``ast.Name`` whose ``id`` is ``name``."""
         return (
-            FlextInfraUtilitiesRopeAnalysis.node_kind(node) == "Name"
+            u.Infra.node_kind(node) == "Name"
             and getattr(node, "id", None) == name
         )
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -66,8 +66,6 @@ class _RopeImportBoundaryBase(s[bool]):
                 if file_path is None or not self._is_in_scope(file_path):
                     continue
                 module_imports = u.Infra.get_module_imports(project, resource)
-                if module_imports is None:
-                    continue
                 violations.extend(
                     self._violations_for_module(file_path, module_imports)
                 )
@@ -121,7 +119,14 @@ class _RopeImportBoundaryBase(s[bool]):
                 report_result.error or f"{self._VIOLATION_KIND} validation failed"
             )
         report = report_result.unwrap()
-        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+        if report.passed:
+            return r[bool].ok(True)
+        details = (
+            report.model_dump_json()
+            if self.output_format == c.Cli.OutputFormats.JSON
+            else "\n".join([report.summary, *report.violations])
+        )
+        return r[bool].fail(details)
 
 
 __all__: t.StrSequence = ("_RopeImportBoundaryBase",)

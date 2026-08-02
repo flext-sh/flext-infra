@@ -33,6 +33,11 @@ class FlextInfraExtraPathsManager(
             u.Infra.workspace_member_names(self.workspace_root)
         )
 
+    @property
+    def workspace_project_names(self) -> t.StrSequence:
+        """Managed member names used by dependency resolution."""
+        return tuple(sorted(self._workspace_project_names))
+
     @override
     def execute(self) -> p.Result[bool]:
         """Synchronize extra paths for the configured project slice."""
@@ -83,6 +88,7 @@ class FlextInfraExtraPathsManager(
         ]
         return sorted({rules.project_root, source_root, *typings_paths})
 
+    @override
     def pyrefly_search_paths(
         self, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
@@ -110,9 +116,10 @@ class FlextInfraExtraPathsManager(
                 paths.update(self._dep_paths(payload, project_dir=project_dir))
                 paths.update(self._uv_source_paths(payload, project_dir=project_dir))
             paths.update(self._workspace_member_source_paths(project_dir=project_dir))
-        if (project_dir / source_root).is_dir():
-            paths.add(source_root)
-        return sorted(paths)
+        has_source_root = (project_dir / source_root).is_dir()
+        paths.discard(source_root)
+        ordered = sorted(paths)
+        return [source_root, *ordered] if has_source_root else ordered
 
     def _workspace_member_source_paths(self, *, project_dir: Path) -> t.StrSequence:
         """Return `<member>/<source_dir>` search paths for uv workspace members.

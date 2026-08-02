@@ -53,19 +53,13 @@ class FlextInfraWorkspaceChecker(
             return list[str]()
         return [item for item in shlex.split(raw) if item]
 
-    @staticmethod
-    def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
+    @classmethod
+    def resolve_gates(cls, gates: t.StrSequence) -> p.Result[list[str]]:
         """Resolve and validate requested gate names."""
-        resolved: t.MutableSequenceOf[str] = []
-        for gate in gates:
-            name = gate.strip()
-            if not name:
-                continue
-            if name not in c.Infra.ALLOWED_GATES:
-                return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
-            if name not in resolved:
-                resolved.append(name)
-        return r[list[str]].ok(list(resolved))
+        resolved = FlextInfraGateRegistry.default().resolve(gates)
+        if resolved.failure:
+            return r[list[str]].fail(resolved.error or "invalid gates")
+        return r[list[str]].ok(list(resolved.value))
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -86,8 +80,7 @@ class FlextInfraWorkspaceChecker(
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,
-            apply_fixes=params.fix,
-            check_only=params.check_only,
+            fail_fast=params.fail_fast,
             ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
         )
@@ -138,18 +131,6 @@ class FlextInfraWorkspaceChecker(
             )
         return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(project_targets)
 
-    def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
-        """Run format checks for one project."""
-        return r[m.Infra.GateResult].ok(
-            self._run_gate(c.Infra.FORMAT, project_dir).result
-        )
-
-    def lint(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
-        """Run lint checks for one project."""
-        return r[m.Infra.GateResult].ok(
-            self._run_gate(c.Infra.LINT, project_dir).result
-        )
-
     def run_project(
         self, project: str, gates: t.StrSequence
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
@@ -166,7 +147,7 @@ class FlextInfraWorkspaceChecker(
         ctx: m.Infra.GateContext | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Run selected gates for multiple projects."""
-        resolved_gates_result = self.resolve_gates(gates)
+        resolved_gates_result = self._registry.resolve(gates)
         if resolved_gates_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates"
@@ -181,11 +162,20 @@ class FlextInfraWorkspaceChecker(
         effective_ctx = ctx or m.Infra.GateContext(
             workspace=self._workspace_root, reports_dir=report_base
         )
+        targets = self._project_targets(projects)
+        invalid = tuple(
+            target
+            for target in targets
+            if not target.path.is_dir()
+            or not (target.path / c.Infra.PYPROJECT_FILENAME).is_file()
+        )
+        if invalid:
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
+                "check targets require a project directory and pyproject.toml: "
+                + ", ".join(target.name for target in invalid)
+            )
         outcome = self._run_project_loop(
-            self._project_targets(projects),
-            resolved_gates,
-            effective_ctx,
-            fail_fast=fail_fast,
+            targets, resolved_gates, effective_ctx, fail_fast=fail_fast
         )
         return self._write_reports_and_summary(resolved_gates, report_base, outcome)
 

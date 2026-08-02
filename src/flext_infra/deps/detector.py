@@ -1,4 +1,4 @@
-"""Runtime vs dev dependency detector CLI with deptry, pip-check, and typing analysis."""
+"""Runtime versus development dependency detector CLI."""
 
 from __future__ import annotations
 
@@ -26,19 +26,9 @@ class FlextInfraRuntimeDevDependencyDetector(
     no_fail: Annotated[
         bool, m.Field(alias="no-fail", description="Exit successfully even with issues")
     ] = False
-    typings: Annotated[
-        bool, m.Field(False, description="Detect required typing packages")
-    ] = False
-    apply_typings: Annotated[
-        bool,
-        m.Field(alias="apply-typings", description="Install missing typing packages"),
-    ] = False
     no_pip_check: Annotated[
         bool, m.Field(alias="no-pip-check", description="Skip workspace pip check")
     ] = False
-    limits: Annotated[
-        str | None, m.Field(None, description="Dependency limits TOML")
-    ] = None
     deps: Annotated[
         p.Infra.DepsService,
         m.Field(exclude=True, description="Dependency analysis service"),
@@ -55,13 +45,6 @@ class FlextInfraRuntimeDevDependencyDetector(
             return None
         return Path(self.output).expanduser().resolve()
 
-    @property
-    def limits_path(self) -> Path | None:
-        """Resolved dependency limits path when provided."""
-        if self.limits is None:
-            return None
-        return Path(self.limits).expanduser().resolve()
-
     @override
     def execute(self) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report."""
@@ -72,10 +55,7 @@ class FlextInfraRuntimeDevDependencyDetector(
             "output": self.output,
             "quiet": self.quiet,
             "no-fail": self.no_fail,
-            "typings": self.typings,
-            "apply-typings": self.apply_typings,
             "no-pip-check": self.no_pip_check,
-            "limits": self.limits,
         }
         if self.selected_projects is not None:
             projects_list: t.JsonValueList = list(self.selected_projects)
@@ -84,7 +64,6 @@ class FlextInfraRuntimeDevDependencyDetector(
         runtime = FlextInfraDependencyDetectorRuntime(
             detector=self,
             workspace_report_factory=m.Infra.WorkspaceDependencyReport,
-            dependency_limits_factory=m.Infra.DependencyLimitsInfo,
             pip_check_factory=m.Infra.PipCheckReport,
         )
         return runtime.run(params)

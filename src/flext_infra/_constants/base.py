@@ -155,10 +155,6 @@ class FlextInfraConstantsBase(
     "Test dependency group name."
     TYPINGS: Final[DependencyGroup] = DependencyGroup.TYPINGS
     "Typing stubs dependency group name."
-    TYPING_LIBRARIES: Final[str] = "typing_libraries"
-    "Project limits typing_libraries key."
-    MODULE_TO_PACKAGE: Final[str] = "module_to_package"
-    "Typing libraries module_to_package mapping key."
     PYTHON: Final[str] = "python"
     "Python settings subsection key (in limits)."
 
@@ -266,9 +262,6 @@ class FlextInfraConstantsBase(
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
     SILENT_FAILURE: Final[str] = "silent-failure"
-    DEFAULT_CSV: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
-    )
 
     @unique
     class TomlMergeMode(StrEnum):
@@ -379,19 +372,9 @@ class FlextInfraConstantsBase(
         M = "m"
         U = "u"
 
-    SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,mypy,pyright,pyrefly"
-    "Default quality gates for post-transform validation."
-    ENFORCEMENT_ADVISORY_GATES: Final[frozenset[str]] = frozenset({
-        "runtime-census",
-        "namespace",
-        "tier-whitelist",
-        "silent-failure",
-    })
     "Gates that report violations as warnings rather than failing the pipeline."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
-    ENV_VAR_LINT_SNAPSHOT_GATES: Final[str] = "FLEXT_INFRA_LINT_SNAPSHOT_GATES"
-    "Optional override for lint-snapshot gate selection (comma-separated)."
 
     ENV_VAR_STANDALONE: Final[str] = "FLEXT_STANDALONE"
     ENV_VAR_WORKSPACE_ROOT: Final[str] = "FLEXT_WORKSPACE_ROOT"
@@ -402,19 +385,6 @@ class FlextInfraConstantsBase(
     ENV_DEFAULT_STANDALONE: Final[bool] = False
     ENV_DEFAULT_USE_HTTPS: Final[bool] = False
     ENV_DEFAULT_GITHUB_ACTIONS: Final[bool] = False
-
-    @unique
-    class ExecutionMode(StrEnum):
-        """Execution mode for commands that modify files."""
-
-        DRY_RUN = "dry-run"
-        "Preview changes without writing."
-        CHECK_ONLY = "check-only"
-        "Detect violations without fixing."
-        APPLY_SAFE = "apply-safe"
-        "Apply with backup, validate, rollback on failure."
-        APPLY_FORCE = "apply-force"
-        "Apply without post-validation."
 
 
 __all__: list[str] = ["FlextInfraConstantsBase"]

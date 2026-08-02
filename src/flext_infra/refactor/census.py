@@ -8,7 +8,7 @@ from typing import Annotated, override
 
 from flext_cli import cli
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._census_apply import FlextInfraRefactorCensusApplyMixin
 from flext_infra.refactor._census_collect import FlextInfraRefactorCensusCollectMixin
@@ -104,23 +104,6 @@ class FlextInfraRefactorCensus(
     def family_names(self) -> t.StrSequence | None:
         """Normalized family filters."""
         return u.Infra.normalize_sequence_values(self.families)
-
-    @property
-    @override
-    def dry_run_gate_names(self) -> t.StrSequence:
-        """Per-candidate gate set (``lint`` + ``pyrefly``).
-
-        Mypy and pyright perform transitive module analysis that flags
-        ``__init__.py`` lazy-import references to just-removed symbols
-        *before* ``FlextInfraCodegenLazyInit`` regenerates them at the
-        end of ``_apply_supported_fixes``. That would roll back every
-        safe candidate. The per-candidate gate therefore uses the two
-        fast tools that validate the actual file being modified
-        (``ruff`` E/F + ``pyrefly``); the session-level regen run + a
-        final ``ruff format/fix`` on every touched file guarantees
-        consistency afterwards.
-        """
-        return (c.Infra.LINT, c.Infra.PYREFLY)
 
     def _rope_root_for_selection(self) -> Path | None:
         """Return a project-scoped Rope root when exactly one project is selected.

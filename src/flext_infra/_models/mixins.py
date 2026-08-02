@@ -102,30 +102,12 @@ class FlextInfraModelsMixins:
             """Resolved output directory when provided."""
             return ub.normalize_optional_path(self.output_dir)
 
-    class WriteMixin(ScopeMixin):
-        """Canonical write contract — apply/dry-run + safety gates.
+    class GateSelectionMixin(ScopeMixin):
+        """Shared explicit gate-selection boundary for read and write commands."""
 
-        Gates are stored as ``t.StrSequence`` — CSV strings are parsed
-        by ``@field_validator`` so downstream consumers always see a
-        normalized list.
-        """
-
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply changes instead of running in dry-run mode",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
-                },
-            ),
-        ] = False
         gates: t.StrSequence = m.Field(
-            default_factory=lambda: tuple(
-                gate.strip()
-                for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
-                if gate.strip()
-            ),
-            description="Gate names for post-transform validation",
+            default_factory=tuple,
+            description="Explicit gate names; the runtime registry owns defaults",
         )
 
         @m.field_validator("gates", mode="before")
@@ -144,6 +126,19 @@ class FlextInfraModelsMixins:
                     token.strip() for token in part.split(",") if token.strip()
                 )
             return tuple(normalized)
+
+    class WriteMixin(ScopeMixin):
+        """Canonical write contract — scope plus explicit apply/dry-run state."""
+
+        apply: Annotated[
+            bool,
+            m.Field(
+                description="Apply changes instead of running in dry-run mode",
+                json_schema_extra={
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
+                },
+            ),
+        ] = False
 
         @m.computed_field()
         @property

@@ -22,8 +22,6 @@ from flext_infra.transformers.project_alias_migrator import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
-
 
 class FlextInfraCanonicalAliasGate(FlextInfraGate):
     """Detect and fix foreign canonical alias imports (ENFORCE-080)."""
@@ -152,7 +150,6 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                 raw_output=files_result.error or "canonical-alias fix failed",
             )
 
-        changed_files: list[Path] = []
         for file_path in files_result.value:
             transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
             read = u.Cli.files_read_text(file_path)
@@ -176,35 +173,6 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                     started=started,
                     ctx=ctx,
                 )
-            changed_files.append(file_path)
-
-        if changed_files:
-            format_result = u.Cli.run_raw(
-                ["ruff", "format", *[str(path) for path in changed_files]],
-                timeout=c.Infra.TIMEOUT_SHORT,
-            )
-            if format_result.failure:
-                return self._fix_failure_result(
-                    project_dir=project_dir,
-                    file_path=project_dir,
-                    message=format_result.error or "ruff format failed",
-                    started=started,
-                    ctx=ctx,
-                )
-            format_output = format_result.value
-            if format_output.exit_code != 0:
-                detail = (format_output.stderr or format_output.stdout).strip()
-                return self._fix_failure_result(
-                    project_dir=project_dir,
-                    file_path=project_dir,
-                    message=(
-                        f"ruff format failed ({format_output.exit_code}): "
-                        f"{detail or 'no output'}"
-                    ),
-                    started=started,
-                    ctx=ctx,
-                )
-
         return self.check(project_dir, ctx)
 
     def _fix_failure_result(
@@ -237,22 +205,6 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             raw_output=issue.message,
             ctx=ctx,
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — execution happens in ``check``."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — ``check`` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraCanonicalAliasGate"]

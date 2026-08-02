@@ -7,14 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_core import r
+from flext_cli import u
 from flext_infra.constants import c
 from flext_infra.typings import t
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesBase:
@@ -31,7 +27,20 @@ class FlextInfraUtilitiesBase:
         target = workspace_root or Path.cwd()
         if target.is_file():
             target = target.parent
-        return target.resolve()
+        return FlextInfraUtilitiesBase.enclosing_workspace_root(target.resolve())
+
+    @staticmethod
+    def enclosing_workspace_root(repository_root: Path) -> Path:
+        """Return the Git superproject governing a member, or the repository itself."""
+        resolved_root = repository_root.expanduser().resolve()
+        superproject = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
+            cwd=resolved_root,
+        )
+        if superproject.failure:
+            return resolved_root
+        declared = superproject.value.strip()
+        return Path(declared).resolve() if declared else resolved_root
 
     @staticmethod
     def normalize_optional_path(value: str | Path | None) -> Path | None:
@@ -83,25 +92,6 @@ class FlextInfraUtilitiesBase:
             )
             return normalized_exit_code
         return raw_exit_code
-
-    @staticmethod
-    def resolve_what(verb: str, phase: str) -> p.Result[t.StrSequence]:
-        """Resolve a ``WHAT=`` phase against ``c.Infra.WHAT_PHASES`` (single SSOT).
-
-        Empty ``phase`` expands to every phase of ``verb`` (sorted); a non-empty
-        unknown phase is a usage failure listing the valid phases. Shared by the
-        orchestrator, check and validate groups so WHAT resolution lives in one
-        place.
-        """
-        phases = c.Infra.WHAT_PHASES.get(verb, frozenset())
-        if not phase:
-            return r[t.StrSequence].ok(tuple(sorted(phases)))
-        if phase not in phases:
-            valid = ", ".join(sorted(phases)) or "(none)"
-            return r[t.StrSequence].fail(
-                f"unknown WHAT '{phase}' for verb '{verb}' (valid: {valid})"
-            )
-        return r[t.StrSequence].ok((phase,))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesBase"]

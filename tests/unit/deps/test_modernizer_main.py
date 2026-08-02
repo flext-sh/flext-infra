@@ -23,33 +23,24 @@ class TestsFlextInfraDepsModernizerMain:
         modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
         tm.that(modernizer.root, eq=modernizer_workspace)
 
-    def test_process_file_returns_invalid_toml(
-        self, modernizer_workspace: Path
-    ) -> None:
-        """Verify process file returns invalid toml."""
+    def test_run_rejects_invalid_root_toml(self, modernizer_workspace: Path) -> None:
+        """Reject invalid root TOML through the public modernization contract."""
         pyproject = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
         pyproject.write_text("invalid [[[", encoding="utf-8")
-        changes = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace
-        ).process_file(pyproject, canonical_dev=[], dry_run=True, skip_comments=False)
-        tm.that(changes, has="invalid TOML")
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
+        tm.that(modernizer.run(), eq=2)
 
     def test_run_apply_updates_root_pyproject(self, modernizer_workspace: Path) -> None:
         """Verify run apply updates root pyproject."""
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
-            apply_changes=True,
-            skip_comments=True,
-            skip_check=True,
+            workspace_root=modernizer_workspace, apply_changes=True
         )
         exit_code = modernizer.run()
         tm.that(exit_code, eq=0)
-        tm.that(
-            (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-                encoding="utf-8"
-            ),
-            has='build-backend = "hatchling.build"',
+        rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            encoding="utf-8"
         )
+        tm.that(rendered, has=['build-backend = "hatchling.build"', c.Infra.BANNER])
 
     def test_run_rejects_unknown_selected_project(
         self, modernizer_workspace: Path
@@ -71,7 +62,6 @@ class TestsFlextInfraDepsModernizerMain:
                 "--workspace",
                 str(modernizer_workspace),
                 "--audit",
-                "--skip-comments",
             ]),
             eq=1,
         )

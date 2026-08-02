@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, r, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
@@ -44,19 +44,18 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
             failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
 
-    def _run_adr_skill_check(self, workspace_root: Path) -> t.Pair[int, t.StrSequence]:
+    def _run_adr_skill_check(
+        self, workspace_root: Path
+    ) -> p.Result[t.StrSequence]:
         """Run the ADR skill validation check for the root docs scope."""
         required_result = u.Infra.docs_load_required_skills(workspace_root)
         if required_result.failure:
-            self.logger.warning(
-                "adr_skill_check_failed", error=required_result.error or ""
-            )
-            return (1, [])
-        required_skills = required_result.value or [
-            "rules-docs",
-            "scripts-maintenance",
-            "readme-standardization",
-        ]
+            error = required_result.error
+            if error is None:
+                msg = "ADR skill configuration failed without an error"
+                raise RuntimeError(msg)
+            return r[t.StrSequence].fail(error)
+        required_skills = required_result.value
         skills_root = workspace_root / ".agents/skills"
         missing: list[str] = []
         for skill_name in required_skills:
@@ -65,7 +64,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
                 u.Infra.docs_has_adr_reference(skill_path)
             ):
                 missing.append(skill_name)
-        return (0 if not missing else 1, missing)
+        return r[t.StrSequence].ok(tuple(missing))
 
     def _validate_scope(
         self, scope: m.Infra.DocScope, *, apply_mode: bool
@@ -73,18 +72,24 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         """Validate one docs scope and persist the standard reports."""
         status = c.Infra.ResultStatus.OK
         messages: list[str] = []
-        missing_adr_skills: t.StrSequence = []
-        config_exists = (
-            scope.path / "docs/architecture/architecture_config.json"
-        ).exists()
-        if scope.name == c.Infra.RK_ROOT and config_exists:
-            code, missing = self._run_adr_skill_check(scope.path)
-            missing_adr_skills = missing
-            if code != 0:
+        missing_adr_skills: t.StrSequence = ()
+        if scope.name == c.Infra.RK_ROOT:
+            adr_result = self._run_adr_skill_check(scope.path)
+            if adr_result.failure:
                 status = c.Infra.ResultStatus.FAIL
-                messages.append(
-                    f"missing adr references in skills: {', '.join(missing)}"
-                )
+                error = adr_result.error
+                if error is None:
+                    msg = "ADR skill validation failed without an error"
+                    raise RuntimeError(msg)
+                messages.append(error)
+            else:
+                missing_adr_skills = adr_result.value
+                if missing_adr_skills:
+                    status = c.Infra.ResultStatus.FAIL
+                    messages.append(
+                        "missing adr references in skills: "
+                        f"{', '.join(missing_adr_skills)}"
+                    )
         missing_paths = u.Infra.docs_missing_required_paths(scope)
         if missing_paths:
             status = c.Infra.ResultStatus.FAIL
@@ -93,10 +98,18 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         if contract_messages:
             status = c.Infra.ResultStatus.FAIL
             messages.extend(contract_messages)
+        todo_result = u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
+        if todo_result.failure:
+            status = c.Infra.ResultStatus.FAIL
+            error = todo_result.error
+            if error is None:
+                msg = "docs TODO write failed without an error"
+                raise RuntimeError(msg)
+            messages.append(error)
+            wrote_todo = False
+        else:
+            wrote_todo = todo_result.value
         message = "; ".join(messages) if messages else "validation passed"
-        wrote_todo = u.Infra.docs_write_todo(scope, apply_mode=apply_mode).unwrap_or(
-            False
-        )
         report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,
@@ -106,13 +119,20 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
             todo_written=wrote_todo,
             passed=status == c.Infra.ResultStatus.OK,
         )
-        u.Infra.docs_write_validate_reports(scope, report)
+        write_result = u.Infra.docs_write_validate_reports(scope, report)
+        if write_result.failure:
+            report = u.Infra.docs_persistence_failure(
+                phase="validate",
+                scope=scope.name,
+                error=write_result.error,
+                report=report,
+            )
         self.logger.info(
             "docs_validate_scope_completed",
             project=scope.name,
             phase=c.Infra.VERB_VALIDATE,
-            result=status,
-            reason=message,
+            result=report.result,
+            reason=report.message,
         )
         return report
 

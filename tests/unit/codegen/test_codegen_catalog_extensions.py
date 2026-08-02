@@ -29,6 +29,7 @@ def _repository(
         path=Path(path),
         role=role,
         state=state,
+        branch=provider.branch,
         checkout=(
             c.Infra.CheckoutKind.ROOT
             if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
@@ -171,8 +172,9 @@ class TestsCodegenCatalogExtensions:
         (beads_dir / "config.yaml").write_text(
             'issue-prefix: "mro"\ndolt:\n  database: mro\n', encoding="utf-8"
         )
-        declared = tm.ok(FlextInfraCodegenConform.beads_declaration(root))
-        tm.that(isinstance(declared, m.Infra.BeadsTrackerDeclaration), eq=True)
+        declared: m.Infra.BeadsTrackerDeclaration = tm.ok(
+            FlextInfraCodegenConform.beads_declaration(root)
+        )
         tm.that(declared.issue_prefix, eq="mro")
         # A repository without a committed tracker declares nothing; the
         # caller — not the reader — decides what that means.
@@ -187,45 +189,6 @@ class TestsCodegenCatalogExtensions:
         )
         tm.fail(FlextInfraCodegenConform.beads_declaration(broken))
 
-    def test_gitmodules_render_reaches_a_merge_fixed_point(self) -> None:
-        """The gitmodules projection must not grow on every merge pass.
-
-        The template's leading Jinja comment emitted a bare newline, and
-        ``_merge_gitmodules`` prepends a separator when the preserved prefix is
-        non-empty — so each apply added one more blank line and conform never
-        reached its post-apply fixed point on the workspace root.
-        """
-        template = (
-            Path(__file__).parents[3]
-            / "src"
-            / "flext_infra"
-            / "templates"
-            / "project"
-            / "base"
-            / "gitmodules.j2"
-        )
-        import jinja2
-
-        rendered = jinja2.Template(template.read_text(encoding="utf-8")).render(
-            workspace_gitlinks=[
-                {
-                    "repository": {
-                        "name": "demo-member",
-                        "path": "demo-member",
-                        "url": "https://github.com/flext-sh/demo-member.git",
-                    },
-                    "branch": "0.12.0-dev",
-                }
-            ]
-        )
-        tm.that(rendered.startswith("\n"), eq=False)
-        tm.that(rendered.startswith("[submodule"), eq=True)
-        managed = frozenset({"demo-member"})
-        merge = FlextInfraCodegenConform._merge_gitmodules  # ruff: ignore[private-member-access]
-        once = merge(rendered, rendered, managed_paths=managed)
-        twice = merge(once, rendered, managed_paths=managed)
-        tm.that(once, eq=twice)
-
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance.
 
@@ -234,22 +197,23 @@ class TestsCodegenCatalogExtensions:
         project code. gen/gen APPLY=Y is the single public conformance and
         generation surface, and no public ``conform`` verb exists.
         """
-        template = (
-            Path(__file__).parents[3]
-            / "src"
-            / "flext_infra"
-            / "templates"
-            / "project"
-            / "base"
-            / "Makefile.j2"
+        codegen = config.Infra.codegen
+        make = codegen.make
+        operations = {operation.name: operation for operation in make.operations}
+        generation_verbs = tuple(
+            verb
+            for verb in make.verbs
+            if operations[verb.operation].executor == "generation"
         )
-        content = template.read_text(encoding="utf-8")
-        tm.that("_builtin_setup_conform" in content, eq=False)
-        setup_env = content.split("_builtin_setup_environment:", 1)[1]
-        tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
-        tm.that("_builtin_gen_check:" in content, eq=True)
-        tm.that("_builtin_gen_apply:" in content, eq=True)
-        verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
+        setup = next(verb for verb in make.verbs if verb.name == "setup")
+        content = Path(codegen.surfaces.make_engine_path).read_text(encoding="utf-8")
+        verb_names = tuple(verb.name for verb in make.verbs)
+
+        tm.that(generation_verbs, len=1)
+        tm.that(operations[setup.operation].executor, ne="generation")
+        tm.that(content, has=f"PUBLIC_VERBS := {' '.join(verb_names)}")
+        tm.that(content, has="workspace serialize-make")
+        tm.that(content, lacks=["codegen conform", "_builtin_", "_custom_"])
         tm.that("conform" in verb_names, eq=False)
 
     def test_transaction_worktrees_skip_the_beads_lifecycle(
@@ -275,7 +239,7 @@ class TestsCodegenCatalogExtensions:
             canonical_prefix="mro",
             expected_version="1.1.0",
         )
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
+        verify = FlextInfraCodegenConform.verify_beads_plan
         tm.ok(verify(plan, allow_missing=False))
         # Outside a transaction the disabled-but-present guard still fails.
         plan_at_root = m.Infra.BeadsPlan(
@@ -310,7 +274,7 @@ class TestsCodegenCatalogExtensions:
             ledger_root=root,
         )
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
+        verify = FlextInfraCodegenConform.verify_beads_plan
         tm.ok(verify(plan, allow_missing=False))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
@@ -321,15 +285,31 @@ class TestsCodegenCatalogExtensions:
     def test_local_manifest_conforms_without_global_repository_rows(
         self, tmp_path: Path
     ) -> None:
+        script_operation = next(
+            operation
+            for operation in config.Infra.codegen.make.operations
+            if operation.executor == "script"
+        )
+        handler = (
+            m.Infra.MakeHandlerSpec(
+                what="all", default=True, apply_policy="required", apply_default=True
+            )
+            if script_operation.mutation == "apply"
+            else m.Infra.MakeHandlerSpec(what="all", default=True)
+        )
         root = _repository(
             "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
         ).model_copy(
             update={
                 "extra_verbs": (
-                    m.Infra.MakeVerbSpec(name="audit", default_what="all"),
+                    m.Infra.MakeVerbSpec(
+                        name="audit",
+                        operation=script_operation.name,
+                        handlers=(handler,),
+                    ),
                 ),
                 "script_dispatch": m.Infra.ScriptDispatchSpec(
-                    dispatcher="scripts/dispatch.py", roots=("scripts",)
+                    dispatcher="scripts/dispatch.py"
                 ),
             }
         )
@@ -484,16 +464,14 @@ class TestsCodegenCatalogExtensions:
                 manifest_path, workspace.model_dump(mode="json", exclude_none=True)
             )
         )
-        result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
-            m.Infra.CodegenConformRequest(
-                root=tmp_path,
-                what=c.Infra.CodegenConformSurface.ALL,
-                scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
+        request = m.Infra.CodegenConformRequest(
+            root=tmp_path,
+            what=c.Infra.CodegenConformSurface.ALL,
+            scope=c.Infra.CodegenConformScope.ALL,
         )
+        result = FlextInfraCodegenConform(initial_workspace=workspace).plan(request)
 
-        plan = tm.ok(result)
+        plan: m.Infra.CodegenPlan = tm.ok(result)
         tm.that(
             tuple(item.name for item in plan.repositories),
             eq=(root.name, "acme-charts"),
@@ -507,13 +485,14 @@ class TestsCodegenCatalogExtensions:
             eq=False,
         )
         tm.that(external_root.exists(), eq=False)
-        root_makefile = next(
+        root_make_engine = next(
             file
             for file in plan.files
-            if file.path == tmp_path.resolve() / c.Infra.MAKEFILE_FILENAME
+            if file.path
+            == tmp_path.resolve() / config.Infra.codegen.surfaces.make_engine_path
         )
-        tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
-        tm.that("acme-content" in root_makefile.rendered, eq=False)
+        tm.that(root_make_engine.rendered, has="WORKSPACE_MEMBERS := acme-charts")
+        tm.that("acme-content" in root_make_engine.rendered, eq=False)
         workflows = tuple(
             file for file in plan.files if ".github/workflows" in file.path.as_posix()
         )
@@ -522,33 +501,64 @@ class TestsCodegenCatalogExtensions:
         # planned workflow is one the config declares, and that none leaks the
         # content-only repository.
         declared_workflows = frozenset(
-            entry.destination
-            for entry in config.Infra.codegen.templates.entries
-            if ".github/workflows" in entry.destination
+            entry.path
+            for entry in config.Infra.codegen.surfaces.entries
+            if ".github/workflows" in entry.path
         )
         tm.that(workflows, empty=False)
         for workflow in workflows:
             tm.that(
                 any(
-                    workflow.path.as_posix().endswith(destination)
-                    for destination in declared_workflows
+                    workflow.path.as_posix().endswith(path)
+                    for path in declared_workflows
                 ),
                 eq=True,
                 msg=f"undeclared workflow planned: {workflow.path}",
             )
         for workflow in workflows:
             tm.that("acme-content" in workflow.rendered, eq=False)
-        gitmodules = next(
-            file.rendered for file in plan.files if file.path.name == ".gitmodules"
+        gitmodules_plan = next(
+            file for file in plan.files if file.path.name == c.Infra.GITMODULES
         )
+        gitmodules = gitmodules_plan.rendered
         tm.that(gitmodules, has='[submodule "acme-charts"]')
         tm.that("acme-content" in gitmodules, eq=False)
+        tm.ok(u.Cli.atomic_write_text_file(gitmodules_plan.path, gitmodules))
+        fixed_point: m.Infra.CodegenPlan = tm.ok(
+            FlextInfraCodegenConform(initial_workspace=workspace).plan(request)
+        )
+        fixed_gitmodules = next(
+            file for file in fixed_point.files if file.path.name == c.Infra.GITMODULES
+        )
+        tm.that(fixed_gitmodules.changed, eq=False)
+        tm.that(fixed_gitmodules.rendered, eq=gitmodules)
         mise = tomllib.loads(
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
         tm.that(
             mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
             eq=config.Infra.codegen.toolchain.beads.version,
+        )
+        qlty_tool = config.Infra.codegen.toolchain.qlty
+        tm.that(mise["tools"][qlty_tool.selector], eq=qlty_tool.version)
+        qlty = tomllib.loads(
+            next(
+                file.rendered
+                for file in plan.files
+                if file.path.as_posix().endswith(".qlty/qlty.toml")
+            )
+        )
+        qlty_policy = config.Infra.tooling.tools.qlty
+        tm.that(qlty["config_version"], eq=qlty_policy.config_version)
+        tm.that(
+            qlty["source"], eq=[source.model_dump() for source in qlty_policy.sources]
+        )
+        tm.that(
+            qlty["smells"],
+            eq={
+                smell.check: {"threshold": smell.threshold}
+                for smell in qlty_policy.smell_thresholds
+            },
         )
         pyproject = tomllib.loads(
             next(

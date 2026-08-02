@@ -70,7 +70,6 @@ class FlextInfraConstantsDeps:
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
-    DEPENDENCY_LIMITS_FILENAME: Final[str] = "limits.toml"
     """Packaged dependency-limit configuration resource."""
 
 

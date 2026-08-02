@@ -14,36 +14,6 @@ class FlextInfraConstantsDocs:
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
-    PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[t.StrSequence] = (
-        "D100",
-        "D101",
-        "D102",
-        "D103",
-        "PLR2004",
-        "S101",
-        "INP001",
-        "T201",
-        "T203",
-        "ANN001",
-        "ANN002",
-        "ANN003",
-        "ANN201",
-        "ANN202",
-        "ANN204",
-        "ANN205",
-        "PLC0415",
-    )
-    """Rules ignored for executable docs snippets that are not full modules/tests."""
-    PYTHON_FENCE_RE: Final[t.RegexPattern] = re.compile(
-        r"^```python\s*\n(?P<body>.*?)^```\s*$", re.MULTILINE | re.DOTALL
-    )
-    """Regex matching ``python`` fenced blocks; ``body`` group yields contents."""
-
-    PYTHON_FENCE_FIX_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<open>```python\s*\n)(?P<body>.*?)^```\s*$", re.MULTILINE | re.DOTALL
-    )
-    """Regex matching ``python`` fenced blocks for fix-in-place replacement."""
-
     FENCE_NOTEST_RE: Final[t.RegexPattern] = re.compile(
         r"^```(\S+)\s+notest\s*$", re.MULTILINE
     )

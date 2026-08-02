@@ -11,8 +11,9 @@ fixed-point verification stay owned by ``FlextInfraCodegenConform``.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
 from flext_infra import c, config, t, u
@@ -20,11 +21,19 @@ from flext_infra import c, config, t, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
+    from flext_infra import m, p
 
 
 class FlextInfraCodegenVscodeMixin:
     """Produce the canonical ``.vscode/settings.json`` document for one root."""
+
+    _JSON_STRING_PATTERN: ClassVar[str] = r'"(?:\\.|[^"\\])*"'
+    _JSONC_COMMENT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
+        rf"({_JSON_STRING_PATTERN})|//[^\r\n]*|/\*.*?\*/", re.DOTALL
+    )
+    _TRAILING_COMMA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
+        rf"({_JSON_STRING_PATTERN})|,(?=\s*[}}\]])"
+    )
 
     @classmethod
     def render_vscode_settings(cls, workspace_root: Path) -> p.Result[str]:
@@ -73,91 +82,19 @@ class FlextInfraCodegenVscodeMixin:
         return cls._remove_trailing_commas(cls._remove_jsonc_comments(content))
 
     @staticmethod
-    def _remove_jsonc_comments(content: str) -> str:
-        """Remove JSONC comments while preserving comment markers in strings."""
-        output: list[str] = []
-        in_string = False
-        escaped = False
-        in_line_comment = False
-        in_block_comment = False
-        index = 0
-        while index < len(content):
-            char = content[index]
-            next_char = content[index + 1] if index + 1 < len(content) else ""
-            if in_line_comment:
-                if char in "\r\n":
-                    in_line_comment = False
-                    output.append(char)
-                index += 1
-                continue
-            if in_block_comment:
-                if char == "*" and next_char == "/":
-                    in_block_comment = False
-                    index += 2
-                    continue
-                index += 1
-                continue
-            if in_string:
-                output.append(char)
-                if escaped:
-                    escaped = False
-                elif char == "\\":
-                    escaped = True
-                elif char == '"':
-                    in_string = False
-                index += 1
-                continue
-            if char == '"':
-                in_string = True
-                output.append(char)
-                index += 1
-                continue
-            if char == "/" and next_char == "/":
-                in_line_comment = True
-                index += 2
-                continue
-            if char == "/" and next_char == "*":
-                in_block_comment = True
-                index += 2
-                continue
-            output.append(char)
-            index += 1
-        return "".join(output)
+    def _preserve_json_string(match: re.Match[str]) -> str:
+        """Preserve JSON strings and erase the alternate lexical token."""
+        return match.group(1) or ""
 
-    @staticmethod
-    def _remove_trailing_commas(content: str) -> str:
+    @classmethod
+    def _remove_jsonc_comments(cls, content: str) -> str:
+        """Remove JSONC comments while preserving comment markers in strings."""
+        return cls._JSONC_COMMENT_PATTERN.sub(cls._preserve_json_string, content)
+
+    @classmethod
+    def _remove_trailing_commas(cls, content: str) -> str:
         """Remove commas before object or array closers outside strings."""
-        output: list[str] = []
-        in_string = False
-        escaped = False
-        index = 0
-        while index < len(content):
-            char = content[index]
-            if in_string:
-                output.append(char)
-                if escaped:
-                    escaped = False
-                elif char == "\\":
-                    escaped = True
-                elif char == '"':
-                    in_string = False
-                index += 1
-                continue
-            if char == '"':
-                in_string = True
-                output.append(char)
-                index += 1
-                continue
-            if char == ",":
-                next_index = index + 1
-                while next_index < len(content) and content[next_index].isspace():
-                    next_index += 1
-                if next_index < len(content) and content[next_index] in "}]":
-                    index += 1
-                    continue
-            output.append(char)
-            index += 1
-        return "".join(output)
+        return cls._TRAILING_COMMA_PATTERN.sub(cls._preserve_json_string, content)
 
     @classmethod
     def _apply_canonical_settings(
@@ -165,12 +102,7 @@ class FlextInfraCodegenVscodeMixin:
     ) -> bool:
         """Merge canonical codegen VS Code settings into one settings mapping."""
         spec = config.Infra.codegen.vscode
-        changed = cls._apply_enforced_settings(
-            settings,
-            scalar_settings=spec.scalar_settings,
-            list_settings=spec.list_settings,
-            workspace_root=workspace_root,
-        )
+        changed = cls._apply_enforced_settings(settings, spec, workspace_root)
         # The three exclude maps derive from the codegen artifact SSOT;
         # map_union_settings keeps only the remaining non-artifact keys.
         codegen = config.Infra.codegen
@@ -186,29 +118,35 @@ class FlextInfraCodegenVscodeMixin:
     def _apply_enforced_settings(
         cls,
         settings: t.MutableJsonMapping,
-        *,
-        scalar_settings: Mapping[str, str | bool],
-        list_settings: Mapping[str, tuple[str, ...]],
+        spec: m.Infra.CodegenVscodeSpec,
         workspace_root: Path,
     ) -> bool:
         """Enforce exact scalar and list VS Code keys from the codegen config."""
-        changed = False
-        for key, value in scalar_settings.items():
-            normalized = u.normalize_to_json_value(value)
-            if settings.get(key) == normalized:
-                continue
-            settings[key] = normalized
-            changed = True
-        for key, list_value in list_settings.items():
-            entries = cls._resolve_list_setting(
-                key, list_value, workspace_root=workspace_root
-            )
-            canonical: list[t.JsonValue] = [
-                u.normalize_to_json_value(entry) for entry in entries
+        enforced: t.MutableJsonMapping = {
+            key: u.normalize_to_json_value(value)
+            for key, value in spec.scalar_settings.items()
+        }
+        enforced.update({
+            key: [
+                u.normalize_to_json_value(entry)
+                for entry in cls._resolve_list_setting(
+                    key, entries, workspace_root=workspace_root
+                )
             ]
-            if settings.get(key) == canonical:
+            for key, entries in spec.list_settings.items()
+        })
+        return cls._apply_exact_settings(settings, enforced)
+
+    @staticmethod
+    def _apply_exact_settings(
+        settings: t.MutableJsonMapping, enforced: t.JsonMapping
+    ) -> bool:
+        """Apply fully resolved exact values to the settings document."""
+        changed = False
+        for key, value in enforced.items():
+            if settings.get(key) == value:
                 continue
-            settings[key] = canonical
+            settings[key] = value
             changed = True
         return changed
 
@@ -246,23 +184,20 @@ class FlextInfraCodegenVscodeMixin:
         """Resolve one canonical list, deriving extra globs from the topology."""
         if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
             return base_entries
-        derived = list(base_entries)
         manifest = (
             workspace_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
         )
-        if manifest.is_file():
-            loaded = u.Cli.yaml_safe_load(manifest)
-            if loaded.success:
-                members = loaded.value.get("members")
-                if isinstance(members, list):
-                    for member in members:
-                        if not isinstance(member, Mapping):
-                            continue
-                        path = member.get("path")
-                        if not isinstance(path, str) or path in {"", "."}:
-                            continue
-                        derived.append(f"./{path}/.venv")
-        return tuple(dict.fromkeys(derived))
+        loaded = u.Cli.yaml_safe_load(manifest)
+        members: t.SequenceOf[t.JsonMapping] = loaded.map_or(
+            (), lambda document: u.Cli.json_as_mapping_list(document.get("members"))
+        )
+        member_paths = (
+            path
+            for member in members
+            if isinstance(path := member.get("path"), str) and path not in {"", "."}
+        )
+        derived = (f"./{path}/.venv" for path in member_paths)
+        return tuple(dict.fromkeys((*base_entries, *derived)))
 
 
 __all__: list[str] = ["FlextInfraCodegenVscodeMixin"]

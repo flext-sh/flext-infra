@@ -14,10 +14,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, override
 
-from flext_core import r
-from flext_infra import c, m, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra.base import s
+from flext_infra import c, m, r, s, u
 from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
 
 if TYPE_CHECKING:
@@ -39,7 +36,11 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         """Execute namespace validation for the configured workspace root."""
         report_result = self.validate_project(self.workspace_root)
         if report_result.failure:
-            return r[bool].fail(report_result.error or "namespace validation failed")
+            error = report_result.error
+            if error is None:
+                msg = "namespace validation failed without an error"
+                raise RuntimeError(msg)
+            return r[bool].fail(error)
         report = report_result.unwrap()
         return r[bool].ok(report.passed)
 
@@ -51,28 +52,36 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
             m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         if files_result.failure:
-            return r[m.Infra.ValidationReport].fail(
-                files_result.error or "Namespace validation failed: discovery failed"
-            )
+            error = files_result.error
+            if error is None:
+                msg = "namespace file discovery failed without an error"
+                raise RuntimeError(msg)
+            return r[m.Infra.ValidationReport].fail(error)
         files = [
             py_file
             for py_file in files_result.value
             if not self._is_exempt_file(py_file)
         ]
         layout = u.Infra.layout(project_root)
-        prefix = layout.class_stem if layout is not None else ""
-        package_name = (
-            layout.package_dir.name
-            if layout is not None
-            else project_root.name.replace("-", "_")
-        )
+        if layout is None:
+            return r[m.Infra.ValidationReport].fail(
+                f"project layout not found: {project_root}"
+            )
+        prefix = layout.class_stem
+        package_name = layout.package_dir.name
         violations: t.MutableSequenceOf[str] = []
         with u.Infra.open_project(project_root) as rope_project:
             for filepath in files:
                 tree_result = self._parse_file(rope_project, filepath)
                 if tree_result.failure:
-                    continue
+                    error = tree_result.error
+                    if error is None:
+                        msg = "namespace parser returned failure without an error"
+                        raise RuntimeError(msg)
+                    return r[m.Infra.ValidationReport].fail(error)
                 tree = tree_result.value
+                if tree is None:
+                    continue
                 rel = filepath.relative_to(project_root)
                 is_test_file = self._is_test_file(rel)
                 if self._is_namespace_governed_file(rel):
@@ -124,26 +133,37 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
 
     def _parse_file(
         self, rope_project: t.Infra.RopeProject, path: Path
-    ) -> p.Result[ast.AST]:
+    ) -> p.Result[ast.AST | None]:
         """Return the AST module for ``path`` via rope.
 
-        ``r.ok(module)`` on success. ``r.fail(reason)`` when the resource
-        cannot be fetched, the module fails to parse, or rope returns no
-        ``PyModule``. Callers that want "skip silently" can collapse with
-        ``unwrap_or(None)`` or ``.failure``.
+        ``r.ok(module)`` on success, ``r.ok(None)`` for an intentional resource
+        policy skip, and ``r.fail(reason)`` for a resolution or parse failure.
         """
         try:
             resource = u.Infra.fetch_python_resource(rope_project, path)
+        except RuntimeError as exc:
+            return r[ast.AST | None].fail(str(exc))
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.AST].fail(f"fetch_python_resource raised: {exc!s}")
+            return r[ast.AST | None].fail(
+                f"fetch_python_resource raised: {exc!s}"
+            )
         if resource is None:
-            return r[ast.AST].fail(f"no rope resource for {path}")
+            return r[ast.AST | None].ok(None)
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except c.EXC_OS_SYNTAX as exc:
-            return r[ast.AST].fail(f"get_pymodule raised: {exc!s}")
-        ast_module = pymodule.get_ast()
-        return r[ast.AST].ok(ast_module)
+            pymodule = u.Infra.get_pymodule(rope_project, resource)
+            ast_module = pymodule.get_ast()
+        except (
+            *u.Infra.rope_runtime_errors(),
+            *u.Infra.rope_syntax_errors(),
+            TypeError,
+            ValueError,
+        ) as exc:
+            return r[ast.AST | None].fail(f"get_pymodule raised: {exc!s}")
+        if not isinstance(ast_module, ast.AST):
+            return r[ast.AST | None].fail(
+                f"Rope returned a non-AST module for {path}"
+            )
+        return r[ast.AST | None].ok(ast_module)
 
     @staticmethod
     def _is_namespace_governed_file(rel_path: Path) -> bool:

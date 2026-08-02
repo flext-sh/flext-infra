@@ -116,8 +116,6 @@ class FlextInfraValidateImportCycles(s[bool]):
                 module_name = module_name_result.value
                 graph.setdefault(module_name, set())
                 module_imports = u.Infra.get_module_imports(project, resource)
-                if module_imports is None:
-                    continue
                 for imported_name in self._iter_imported_modules(module_imports):
                     graph[module_name].add(imported_name)
         return graph

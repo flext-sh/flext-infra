@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
-from flext_infra import main, r
+from flext_infra import config, main, r
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_tests import tm
 from tests import u as test_u
@@ -74,27 +74,33 @@ class TestFlextInfraWorkspaceChecker:
             "--workspace",
             str(tmp_path),
             "--gates",
-            "lint",
+            config.Infra.codegen.make.check.gate_ids[0],
         ])
 
         tm.that(exit_code, eq=0)
 
     def test_resolve_gates_with_valid_gates(self) -> None:
         """Test that resolve_gates normalizes valid gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([
-            "lint",
-            "pyrefly",
-            "mypy",
-            "pyright",
-        ])
+        expected_gate_ids = list(config.Infra.codegen.make.check.gate_ids)
+        result = FlextInfraWorkspaceChecker.resolve_gates(expected_gate_ids)
         tm.ok(result)
-        tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
+        tm.that(result.value, eq=expected_gate_ids)
+
+    def test_resolve_gates_defaults_to_configured_catalog(self) -> None:
+        """Test that an empty selection resolves the complete typed catalog."""
+        expected_gate_ids = list(config.Infra.codegen.make.check.gate_ids)
+        result = FlextInfraWorkspaceChecker.resolve_gates([])
+        tm.that(result, is_=r)
+        tm.ok(result)
+        tm.that(result.value, eq=expected_gate_ids)
 
     def test_resolve_gates_deduplicates(self) -> None:
         """Test that resolve_gates removes duplicate gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
+        gate_ids = config.Infra.codegen.make.check.gate_ids
+        requested_gate_ids = [gate_ids[0], gate_ids[0], *gate_ids[1:2]]
+        result = FlextInfraWorkspaceChecker.resolve_gates(requested_gate_ids)
         tm.ok(result)
-        tm.that(result.value.count("lint"), eq=1)
+        tm.that(result.value, eq=list(dict.fromkeys(requested_gate_ids)))
 
     def test_resolve_gates_with_invalid_gate(self) -> None:
         """Test that resolve_gates fails on invalid gate name."""
@@ -102,32 +108,23 @@ class TestFlextInfraWorkspaceChecker:
         tm.fail(result)
 
     def test_run_projects_with_missing_projects(self, tmp_path: Path) -> None:
-        """Test that run_projects handles missing project directories gracefully."""
+        """Test that run_projects rejects missing project directories."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         result = checker.run_projects(
-            ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
+            ["nonexistent"],
+            config.Infra.codegen.make.check.gate_ids,
+            reports_dir=tmp_path / "reports",
         )
-        tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.fail(result)
+        tm.that(result.error, has="pyproject.toml")
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
-        result = checker.run_projects([], ["lint"], reports_dir=reports_dir)
+        result = checker.run_projects(
+            [], config.Infra.codegen.make.check.gate_ids, reports_dir=reports_dir
+        )
+        tm.that(result, is_=r)
         tm.ok(result)
         tm.that(reports_dir.exists(), eq=True)
-
-    def test_lint_returns_gate_result(self, tmp_path: Path) -> None:
-        """Test that lint() returns a GateResult."""
-        checker = FlextInfraWorkspaceChecker()
-        result = checker.lint(tmp_path)
-        tm.that(result, is_=r)
-        tm.ok(result)
-
-    def test_format_returns_gate_result(self, tmp_path: Path) -> None:
-        """Test that format() returns a GateResult."""
-        checker = FlextInfraWorkspaceChecker()
-        result = checker.format(tmp_path)
-        tm.that(result, is_=r)
-        tm.ok(result)

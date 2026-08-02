@@ -8,7 +8,7 @@ from typing import Annotated, Literal, Self
 from pydantic import model_validator
 
 from flext_cli import m
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models.deps_tool_config_linters import (
     FlextInfraModelsDepsToolConfigLinters,
 )
@@ -381,6 +381,78 @@ class FlextInfraModelsDepsToolSettings(
             description="Enable Vulture's internal scanner trace when requested."
         )
 
+    class QltySourceConfig(m.ArbitraryTypesModel):
+        """One Qlty plugin source."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Qlty source name")]
+        default: Annotated[
+            bool, m.Field(description="Whether this is Qlty's bundled default source")
+        ]
+
+    class QltySmellThresholdConfig(m.ArbitraryTypesModel):
+        """Map one Qlty smell check to one canonical FLEXT maximum."""
+
+        check: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[a-z][a-z0-9_]*$",
+                description="Qlty smell configuration table name",
+            ),
+        ]
+        maximum: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Key in the flext-core smell maximum catalog"),
+        ]
+
+        @m.computed_field()
+        @property
+        def threshold(self) -> int:
+            """Translate FLEXT's inclusive maximum to Qlty's failing threshold."""
+            return c.SMELL_THRESHOLDS[self.maximum] + 1
+
+    class QltyConfig(m.ArbitraryTypesModel):
+        """Qlty project configuration derived from canonical FLEXT policy."""
+
+        config_version: Annotated[
+            Literal["0"],
+            m.Field(alias="config-version", description="Qlty configuration schema"),
+        ]
+        sources: Annotated[
+            tuple[FlextInfraModelsDepsToolSettings.QltySourceConfig, ...],
+            m.Field(min_length=1, description="Qlty plugin sources"),
+        ]
+        smell_thresholds: Annotated[
+            tuple[FlextInfraModelsDepsToolSettings.QltySmellThresholdConfig, ...],
+            m.Field(
+                alias="smell-thresholds",
+                min_length=1,
+                description="Qlty checks mapped to canonical FLEXT maxima",
+            ),
+        ]
+
+        @model_validator(mode="after")
+        def _validate_qlty_catalog(self) -> Self:
+            """Require one default source and a complete one-to-one threshold map."""
+            source_names = tuple(source.name for source in self.sources)
+            if len(set(source_names)) != len(source_names):
+                msg = "Qlty source names must be unique"
+                raise ValueError(msg)
+            if sum(source.default for source in self.sources) != 1:
+                msg = "Qlty configuration requires exactly one default source"
+                raise ValueError(msg)
+            checks = tuple(item.check for item in self.smell_thresholds)
+            maximums = tuple(item.maximum for item in self.smell_thresholds)
+            expected_maximums = frozenset(c.SMELL_THRESHOLDS)
+            if len(set(checks)) != len(checks):
+                msg = "Qlty smell check names must be unique"
+                raise ValueError(msg)
+            if frozenset(maximums) != expected_maximums or len(maximums) != len(
+                expected_maximums
+            ):
+                msg = "Qlty smell checks must map every FLEXT maximum exactly once"
+                raise ValueError(msg)
+            return self
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
@@ -392,6 +464,9 @@ class FlextInfraModelsDepsToolSettings(
         )
         hatch: FlextInfraModelsDepsToolSettings.HatchConfig = m.Field(
             description="Hatch metadata settings"
+        )
+        qlty: FlextInfraModelsDepsToolSettings.QltyConfig = m.Field(
+            description="Qlty source and maintainability policy"
         )
         ruff: FlextInfraModelsDepsToolSettings.RuffConfig = m.Field(
             description="Ruff settings"

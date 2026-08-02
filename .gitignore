@@ -122,7 +122,6 @@ vendor/
 **/.tmp/
 
 # Build and quality tool artifacts inside allowed directories
-**/.qlty/
 **/.meltano/
 **/.serena/
 
@@ -188,9 +187,6 @@ secrets.yml
 .devcontainer/.env
 .github/*.rej
 
-# --- codegen conform: tracked owner inputs ---
-!base.mk
-
 # FINAL BEADS TRACKING POLICY
 !.beads/
 .beads/*
@@ -206,14 +202,13 @@ legado/
 # codegen module-standardizer reject artifacts (ADR-005 §9)
 *.tpl.rej
 
-# --- codegen conform: generated runtime ignores ---
+# --- generated runtime ignores ---
 .direnv/
 .reports/
 .venv/
 .bin/
 .tools/
 __pycache__/
-base.mk
 !.pre-commit-config.yaml
 
 # Derived build and tool artifacts
@@ -240,8 +235,10 @@ __pyrefly_virtual__/
 .turbo/
 .venv.*/
 *.egg-info/
+.coverage
 build/
 dist/
+htmlcov/
 node_modules/
 site/
 target/
@@ -256,96 +253,62 @@ skill-create-output/
 CLAUDE.local.md
 
 # Tracked managed artifacts
-!.github/ci-template/
-!.github/ci-template/ci.yml
 !.github/copilot-instructions.md
 !.github/dependabot.yml
 !.github/prompts/
 !.github/prompts/flext-aggressive-scale-refactor.prompt.md
 !.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-!.github/scripts/
-!.github/scripts/check-beads-policy.sh
-!.github/scripts/check-cqrs-compliance.sh
-!.github/scripts/flext-law-loop.sh
-!.github/scripts/install-git-hooks.sh
-!ci/
-!ci/docker/
-!ci/docker/alpine.Dockerfile
-!ci/docker/arch.Dockerfile
-!ci/docker/debian.Dockerfile
-!ci/docker/fedora.Dockerfile
-!ci/docker/ubuntu.Dockerfile
 !.github/workflows/
 !.github/workflows/ci.yml
-!.github/workflows/docs.yml
-!.github/workflows/release.yml
+!LICENSE
 !sgconfig.yml
 !.vscode/settings.json
-!LICENSE
+!.qlty/
+!.qlty/.gitignore
+!.qlty/qlty.toml
+!ci/
+!ci/docker/
+!ci/docker/ubuntu.Dockerfile
+!ci/docker/debian.Dockerfile
+!ci/docker/fedora.Dockerfile
+!ci/docker/alpine.Dockerfile
+!ci/docker/arch.Dockerfile
+!base.mk
 !config/
 !config/workspace.yaml
-!custom.mk
-
-# WHITELIST: governed workspace members (derived)
-!/flext-api/
-!/flext-api/**
-!/flext-auth/
-!/flext-auth/**
-!/flext-cli/
-!/flext-cli/**
-!/flext-core/
-!/flext-core/**
-!/flext-db-oracle/
-!/flext-db-oracle/**
-!/flext-dbt-ldap/
-!/flext-dbt-ldap/**
-!/flext-dbt-ldif/
-!/flext-dbt-ldif/**
-!/flext-dbt-oracle/
-!/flext-dbt-oracle/**
-!/flext-dbt-oracle-wms/
-!/flext-dbt-oracle-wms/**
-!/flext-grpc/
-!/flext-grpc/**
-!/flext-infra/
-!/flext-infra/**
-!/flext-ldap/
-!/flext-ldap/**
-!/flext-ldif/
-!/flext-ldif/**
-!/flext-meltano/
-!/flext-meltano/**
-!/flext-observability/
-!/flext-observability/**
-!/flext-oracle-oic/
-!/flext-oracle-oic/**
-!/flext-oracle-wms/
-!/flext-oracle-wms/**
-!/flext-plugin/
-!/flext-plugin/**
-!/flext-quality/
-!/flext-quality/**
-!/flext-tap-ldap/
-!/flext-tap-ldap/**
-!/flext-tap-ldif/
-!/flext-tap-ldif/**
-!/flext-tap-oracle/
-!/flext-tap-oracle/**
-!/flext-tap-oracle-oic/
-!/flext-tap-oracle-oic/**
-!/flext-tap-oracle-wms/
-!/flext-tap-oracle-wms/**
-!/flext-target-ldap/
-!/flext-target-ldap/**
-!/flext-target-ldif/
-!/flext-target-ldif/**
-!/flext-target-oracle/
-!/flext-target-oracle/**
-!/flext-target-oracle-oic/
-!/flext-target-oracle-oic/**
-!/flext-target-oracle-wms/
-!/flext-target-oracle-wms/**
-!/flext-tests/
-!/flext-tests/**
-!/flext-web/
-!/flext-web/**
+!src/{package_name}/
+!src/{package_name}/__init__.py
+!src/{package_name}/api.py
+!src/{package_name}/cli.py
+!src/{package_name}/__main__.py
+!src/{package_name}/base.py
+!src/{package_name}/models.py
+!src/{package_name}/typings.py
+!src/{package_name}/protocols.py
+!src/{package_name}/constants.py
+!src/{package_name}/utilities.py
+!src/{package_name}/_config.py
+!src/{package_name}/_settings.py
+!src/{package_name}/py.typed
+!src/{package_name}/services/
+!src/{package_name}/services/__init__.py
+!src/{package_name}/services/ping.py
+!config/{ns}.yaml
+!src/{package_name}/_models/
+!src/{package_name}/_models/__init__.py
+!src/{package_name}/_models/ping.py
+!src/{package_name}/_models/config.py
+!src/{package_name}/_models/settings.py
+!src/{package_name}/_constants/
+!src/{package_name}/_constants/__init__.py
+!src/{package_name}/_constants/config.py
+!src/{package_name}/_constants/settings.py
+!src/{package_name}/_protocols/
+!src/{package_name}/_protocols/__init__.py
+!src/{package_name}/_protocols/config.py
+!src/{package_name}/_protocols/ping.py
+!src/{package_name}/_protocols/settings.py
+!src/{package_name}/_typings/
+!src/{package_name}/_typings/__init__.py
+!src/{package_name}/_typings/base.py
+!tests/__init__.py

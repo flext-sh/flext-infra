@@ -86,9 +86,6 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
             t.NonNegativeInt, m.Field(description="Applied link fixes")
         ] = 0
         toc: Annotated[t.NonNegativeInt, m.Field(description="Applied TOC updates")] = 0
-        codeblocks: Annotated[
-            t.NonNegativeInt, m.Field(description="Applied python codeblock fixes")
-        ] = 0
         path: Annotated[str, m.Field(description="Generated file path")] = ""
         written: Annotated[bool, m.Field(description="Generated file write flag")] = (
             False

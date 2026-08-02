@@ -402,15 +402,15 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
         tm.that(init_content, lacks="_root_typing_parts")
-        ruff_ordered_aliases = ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x")
-        for alias_name in ruff_ordered_aliases:
+        canonical_aliases = ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x")
+        for alias_name in canonical_aliases:
             tm.that(exports_content, has=f'    "{alias_name}",')
         has_all, public_exports = u.Tests.extract_lazy_init_exports(exports_content)
         tm.that(has_all, eq=True)
-        # mro-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
-        # exclusively in the static facade imports.
+        # The public contract is deterministic; dependency order remains in the
+        # static facade imports.
         alias_positions = tuple(
-            public_exports.index(alias) for alias in ruff_ordered_aliases
+            public_exports.index(alias) for alias in canonical_aliases
         )
         tm.that(alias_positions, eq=tuple(sorted(alias_positions)))
         tm.that(

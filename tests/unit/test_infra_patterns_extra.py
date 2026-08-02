@@ -10,10 +10,8 @@ class TestsFlextInfraInfraPatternsExtra:
     """Tests for pattern type consistency."""
 
     def test_all_patterns_are_compiled_regex(self) -> None:
-        pattern_type = type(c.Infra.MYPY_HINT_RE)
+        pattern_type = type(c.Infra.MARKDOWN_LINK_RE)
         patterns = [
-            c.Infra.MYPY_HINT_RE,
-            c.Infra.MYPY_STUB_RE,
             c.Infra.MARKDOWN_LINK_RE,
             c.Infra.MARKDOWN_LINK_URL_RE,
             c.Infra.HEADING_RE,
@@ -25,11 +23,7 @@ class TestsFlextInfraInfraPatternsExtra:
             tm.that(pattern, is_=pattern_type)
 
     def test_patterns_are_string_patterns(self) -> None:
-        patterns = [
-            c.Infra.MYPY_HINT_RE,
-            c.Infra.MYPY_STUB_RE,
-            c.Infra.MARKDOWN_LINK_RE,
-        ]
+        patterns = [c.Infra.MARKDOWN_LINK_RE]
         for pattern in patterns:
             tm.that(pattern.pattern, is_=str)
 

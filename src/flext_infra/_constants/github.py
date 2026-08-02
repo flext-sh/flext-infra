@@ -16,26 +16,14 @@ class FlextInfraConstantsGithub:
         CREATE = "create"
         STATUS = "status"
 
-    @unique
-    class WorkflowLintStatus(StrEnum):
-        """GitHub workflow lint status enumeration (single source of truth).
-
-        DRY Pattern:
-            StrEnum is the single source of truth. Use WorkflowLintStatus.OK.value
-            or WorkflowLintStatus.OK directly - no base strings needed.
-
-        Represents all possible outcomes of GitHub workflow linting operations.
-        """
-
-        OK = "ok"
-        SKIPPED = "skipped"
-        FAIL = "fail"
-
     GH: Final[str] = "gh"
+    ACTIONLINT: Final[str] = "actionlint"
+    ACTIONLINT_JSON_FORMAT: Final[str] = "{{json .}}"
+    GITHUB_WORKFLOWS_DIR: Final[str] = ".github/workflows"
+    GITHUB_WORKFLOW_GLOBS: Final[tuple[str, str]] = ("*.yml", "*.yaml")
     PULL_REQUEST_JSON_FIELDS: Final[str] = (
         "number,title,state,baseRefName,headRefName,url,isDraft"
     )
-    MANAGED_FILES: Final[frozenset[str]] = frozenset({"ci.yml"})
 
 
 __all__: list[str] = ["FlextInfraConstantsGithub"]

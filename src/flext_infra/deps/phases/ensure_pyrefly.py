@@ -48,11 +48,12 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 if pyrefly_rules.path_rules.source_dir in declared_python_dirs
                 else ()
             )
-            expected_search = sorted({
+            merged_search = {
                 *expected_search,
                 *pyrefly_rules.path_rules.project_shared_search_paths,
-                *declared_import_roots,
-            })
+            }
+            merged_search.difference_update(declared_import_roots)
+            expected_search = [*declared_import_roots, *sorted(merged_search)]
             # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
             # project-includes; only import roots belong in search-path.
             expected_includes = tuple(
@@ -83,7 +84,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 c.Infra.IGNORE_ERRORS_IN_GENERATED,
                 pyrefly_rules.ignore_errors_in_generated_code,
             )
-            .list(c.Infra.SEARCH_PATH, expected_search)
+            .list(c.Infra.SEARCH_PATH, expected_search, sort=False)
             .list(c.Infra.PROJECT_INCLUDES, expected_includes)
             .value(
                 "disable-project-excludes-heuristics",

@@ -19,7 +19,10 @@ Infra:
       taplo_version: "0.10.0"
       ast_grep_version: "0.45.0"
       gitleaks_version: "8.30.1"
-      tokei_version: "14.0.0"
+      qlty:
+        selector: github:qltysh/qlty
+        version: "0.640.0"
+        reported_version: "0.640.0"
       mise_version: "2026.7.16"
       # The shared mro Dolt ledger is at schema v61; the newest official
       # gastownhall release (1.1.2) only knows v53 and fails preflight with
@@ -124,18 +127,16 @@ Infra:
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
         branch: develop
+    default_provider: flext-sh
     branch_policy:
+      production_branch: main
       technical_branch_patterns:
         - __dolt_remote_info__
         - dolt/*
         - gh-readonly-queue/*
-      # FLEXT branch model: main is the produced release (tagged + published to
-      # PyPI) and 0.20.0-dev is the future line on hold. Both must carry the
-      # current development line, so both are gated. Parked releases (0.10.0-dev,
-      # 0.11.0-dev), snapshots and lane branches are inventoried but never gated.
-      governed_branch_patterns:
-        - main
-        - 0.12.0-dev
+      # Extra governed lines only. Production and every provider integration
+      # branch are derived automatically from their owning rows above.
+      additional_governed_branch_patterns:
         - 0.20.0-dev
     profiles:
       - name: workspace-root
@@ -143,6 +144,11 @@ Infra:
         setup_scope: root-and-members
         execution_scope: root
         discovery_scope: manifest
+      - name: workspace-member
+        environment_scope: root
+        setup_scope: root
+        execution_scope: self
+        discovery_scope: root
       - name: standalone
         environment_scope: self
         setup_scope: self
@@ -150,115 +156,290 @@ Infra:
         discovery_scope: none
 
     make:
+      executor:
+        group: workspace
+        route: serialize-make
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
       apply_absent_value: N
+      input_environment_prefix: FLEXT_MAKE_INPUT_
       ci:
         variable: CI
         value: Y
-      workflow:
-        - { verb: setup, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: gen, apply: true, contexts: [local] }
-        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: test, apply: false, contexts: [local, ci, pre_commit] }
+        target_scope: self
       bootstrap:
         environment: isolated
         dependency_groups: all
         extras: all
       docs:
-        mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
+      test:
+        reports_dir: .reports/tests
+      check:
+        gates:
+          - { id: lint, profiles: [safe-execution] }
+          - { id: pyrefly, profiles: [safe-execution] }
+          - { id: mypy, profiles: [safe-execution] }
+          - { id: pyright, profiles: [safe-execution] }
+          - { id: silent-failure }
+          - { id: security }
+          - { id: markdown }
+          - { id: actionlint }
+          - { id: canonical-alias }
+          - { id: runtime-census }
+          - { id: namespace }
+          - { id: layout }
+          - { id: tier-whitelist }
+          - id: smells
+            execution_scope: workspace
+            command:
+              - qlty
+              - --no-upgrade-check
+              - smells
+              - --all
+              - --sarif
+              - --include-tests
+              - --no-snippets
+              - --quiet
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
-        single_flight_lock_path: .state/flext-infra/make-single-flight.lock
-        mutation_verbs: [gen, fmt, fix, worktree]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
-          - .state/flext-infra/make-single-flight.lock
           - .reports
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
-        verbs: [check, test, gen, fmt, fix, worktree]
+      inputs:
+        - { name: projects, variables: [PROJECT, PROJECTS], codec: project-selection }
+        - { name: gates, variables: [CHECK_GATES], codec: gate-selection }
+        - { name: fail-fast, variables: [FAIL_FAST], codec: boolean }
+        - { name: dependency, variables: [DEPENDENCY], codec: distribution-name }
+        - { name: branch, variables: [BRANCH], codec: branch }
+        - { name: base, variables: [BASE], codec: branch }
+        - { name: args, variables: [ARGS], codec: argv }
+        - { name: file, variables: [FILE], codec: path-nodeid }
+        - { name: match, variables: [MATCH], codec: expression }
+        - { name: workspace, variables: [WORKSPACE], codec: path }
+        - { name: diag, variables: [DIAG], codec: boolean }
+        - { name: verbose, variables: [VERBOSE], codec: boolean }
+      operations:
+        - { name: lifecycle.help, executor: bootstrap, scope: self, requires: [managed] }
+        - name: environment.setup
+          executor: bootstrap
+          scope: environment-owner
+          consistency: single-flight
+          mutation: always
+          requires: [managed, git]
+        - name: dependencies.manage
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          mutation: apply
+          requires: [managed, environment, package]
+          inputs: [projects, dependency]
+        - name: package.build
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          mutation: always
+          requires: [managed, environment, package]
+          inputs: [projects]
+        - name: quality.check
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          requires: [managed, environment]
+          inputs: [projects, gates, fail-fast]
+        - name: quality.test
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          requires: [managed, environment]
+          inputs: [projects, file, match, fail-fast, diag, verbose]
+        - name: quality.format
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          mutation: apply
+          requires: [managed, environment]
+          inputs: [projects]
+        - name: quality.fix
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          mutation: apply
+          requires: [managed, environment]
+          inputs: [projects]
+        - name: application.run
+          executor: runtime
+          scope: self
+          requires: [managed, environment, package]
+          inputs: [args]
+        - name: environment.status
+          executor: runtime
+          scope: self
+          requires: [managed, environment, git]
+        - name: documentation.manage
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          mutation: apply
+          requires: [managed, environment]
+          inputs: [projects]
+        - name: artifacts.clean
+          executor: bootstrap
+          scope: governed-selection
+          consistency: single-flight
+          mutation: apply
+          requires: [managed]
+        - name: release.status
+          executor: runtime
+          scope: self
+          consistency: single-flight
+          requires: [managed, environment, git]
+        - name: conformance.project
+          executor: runtime
+          scope: governed-selection
+          consistency: single-flight
+          requires: [managed, environment]
+        - name: generation.project
+          executor: generation
+          scope: governed-selection
+          consistency: single-flight
+          mutation: apply
+          requires: [managed, environment]
+        - name: worktree.manage
+          executor: runtime
+          scope: self
+          consistency: single-flight
+          mutation: apply
+          requires: [managed, git]
+          inputs: [workspace, branch, base]
+        - name: script.dispatch
+          executor: script
+          scope: self
+          consistency: single-flight
+          mutation: apply
+          requires: [managed, environment, script]
+          inputs: [args]
       verbs:
         - name: help
-          default_what: usage
-          whats: [usage]
-          apply_guarded: false
+          operation: lifecycle.help
+          handlers:
+            - what: usage
+              default: true
         - name: setup
-          default_what: environment
-          whats: [environment]
-          apply_guarded: false
+          operation: environment.setup
+          handlers:
+            - what: environment
+              default: true
+              workflow: { order: 1, contexts: [local, ci, pre_commit] }
         - name: deps
-          default_what: check
-          whats: [check, lock, upgrade]
-          apply_guarded: false
+          operation: dependencies.manage
+          handlers:
+            - what: check
+              default: true
+            - what: lock
+              apply_policy: required
+            - what: upgrade
+              apply_policy: required
         - name: build
-          default_what: artifacts
-          whats: [artifacts]
-          apply_guarded: false
+          operation: package.build
+          handlers:
+            - what: artifacts
+              default: true
         - name: check
-          default_what: all
-          whats: [all]
-          apply_guarded: false
+          operation: quality.check
+          handlers:
+            - what: all
+              default: true
+              workflow: { order: 5, contexts: [local, ci, pre_commit] }
         - name: test
-          default_what: all
-          whats: [all]
-          apply_guarded: false
+          operation: quality.test
+          handlers:
+            - what: all
+              default: true
+              workflow: { order: 6, contexts: [local, ci, pre_commit] }
         - name: fmt
-          default_what: check
-          whats: [check, all]
-          apply_guarded: true
-          apply_what: all
+          operation: quality.format
+          handlers:
+            - what: check
+              default: true
+            - what: all
+              apply_policy: required
+              apply_default: true
+              workflow: { order: 3, contexts: [local, ci, pre_commit] }
         - name: fix
-          default_what: check
-          whats: [check, all]
-          apply_guarded: true
-          apply_what: all
+          operation: quality.fix
+          handlers:
+            - what: all
+              default: true
+              apply_policy: required
+              apply_default: true
+              workflow: { order: 4, contexts: [local, ci, pre_commit] }
         - name: run
-          default_what: default
-          whats: [default]
-          apply_guarded: false
+          operation: application.run
+          handlers:
+            - what: default
+              default: true
         - name: status
-          default_what: diagnostics
-          whats: [diagnostics]
-          apply_guarded: false
+          operation: environment.status
+          handlers:
+            - what: diagnostics
+              default: true
         - name: docs
-          default_what: all
-          whats: [all, generate, fix, audit, build, validate]
-          apply_guarded: false
+          operation: documentation.manage
+          handlers:
+            - what: all
+              default: true
+              apply_policy: optional
+            - what: generate
+              apply_policy: optional
+            - what: fix
+              apply_policy: optional
+            - what: audit
+            - what: build
+            - what: validate
         - name: clean
-          default_what: generated
-          whats: [generated]
-          apply_guarded: false
+          operation: artifacts.clean
+          handlers:
+            - what: generated
+              default: true
+              apply_policy: required
         - name: release
-          default_what: status
-          whats: [status]
-          apply_guarded: false
+          operation: release.status
+          handlers:
+            - what: status
+              default: true
+        - name: conform
+          operation: conformance.project
+          handlers:
+            - what: all
+              default: true
         - name: gen
-          default_what: check
-          whats: [check, all]
-          apply_guarded: true
-          apply_what: all
+          operation: generation.project
+          handlers:
+            - what: all
+              default: true
+              apply_policy: required
+              apply_default: true
+              workflow: { order: 2, contexts: [local, ci, pre_commit] }
         - name: worktree
-          default_what: list
-          whats: [list, add, update, remove]
-          apply_guarded: true
-          apply_what: update
-      custom_handler_policy:
-        filename: custom.mk
-        target_pattern: "^(pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|worktree)(-[a-z0-9][a-z0-9-]*)?$"
-        allow_public_targets: false
-        allow_toolchain_declarations: false
-      custom_handler_profile_overrides:
-        workspace-root:
-          allow_public_targets: true
-          allow_toolchain_declarations: true
-
+          operation: worktree.manage
+          handlers:
+            - what: list
+              default: true
+            - what: add
+              apply_policy: required
+              required_inputs: [branch, base]
+            - what: update
+              apply_policy: required
+              required_inputs: [branch, base]
+            - what: remove
+              apply_policy: required
+              required_inputs: [branch]
     cli_transactions:
       - routes:
           - check:fix-enforcement
@@ -284,13 +465,14 @@ Infra:
           - refactor:namespace-enforce
           - refactor:wrapper-root-namespace
         apply_option: --apply
-        apply_value_source: presence
         check_options: [--check, --check-only]
         strip_options: [--check, --check-only, --dry-run]
-      - routes: [workspace:generate]
-        apply_option: --apply-token
-        apply_value_source: make
-
+        path_options:
+          - { name: --workspace, workspace_root: true }
+          - { name: --root, workspace_root: true, scope: true }
+          - { name: --output-root, scope: true }
+          - { name: --project, scope: true, relative_to: workspace }
+          - { name: --projects, scope: true, relative_to: workspace }
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
@@ -298,8 +480,8 @@ Infra:
     # computed fields. Add a tool cache/build dir here only — never in the
     # consuming projections. Ordering reproduces the historical derived maps.
     artifacts:
-      - { name: __pycache__, source_scan_ignore: true }
-      - { name: __pyrefly_virtual__ }
+      - { name: __pycache__, source_scan_ignore: true, cleanup: recursive }
+      - { name: __pyrefly_virtual__, cleanup: root }
       - { name: .agents }
       - { name: .beads }
       - { name: .benchmarks }
@@ -320,13 +502,13 @@ Infra:
       - { name: .doltcfg }
       - { name: .hypothesis }
       - { name: .git, gitignore: false, source_scan_ignore: true }
-      - { name: .mypy_cache, source_scan_ignore: true }
+      - { name: .mypy_cache, source_scan_ignore: true, cleanup: root }
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
-      - { name: .pytest_cache, source_scan_ignore: true }
+      - { name: .pytest_cache, source_scan_ignore: true, cleanup: root }
       - { name: .reports, source_scan_ignore: true }
       - { name: .ropeproject }
-      - { name: .ruff_cache, source_scan_ignore: true }
+      - { name: .ruff_cache, source_scan_ignore: true, cleanup: root }
       - { name: .scope }
       - { name: .serena }
       - { name: .sisyphus }
@@ -337,8 +519,10 @@ Infra:
       - { name: .venv, source_scan_ignore: true }
       - { name: .venv.* }
       - { name: "*.egg-info", vscode_exclude: false }
-      - { name: build, source_scan_ignore: true }
-      - { name: dist, source_scan_ignore: true }
+      - { name: .coverage, is_dir: false, cleanup: root }
+      - { name: build, source_scan_ignore: true, cleanup: root }
+      - { name: dist, source_scan_ignore: true, cleanup: root }
+      - { name: htmlcov, cleanup: root }
       - { name: node_modules, source_scan_ignore: true }
       - { name: site, watch_exclude: false }
       - { name: target }
@@ -347,6 +531,7 @@ Infra:
           vscode_exclude: false,
           watch_exclude: false,
           source_scan_ignore: true,
+          cleanup: root,
         }
       - {
           name: .tox,
@@ -486,7 +671,6 @@ Infra:
         - pyproject.toml
         - Makefile
         - base.mk
-        - custom.mk
         - README.md
         - LICENSE
         - CHANGELOG.md
@@ -663,112 +847,6 @@ Infra:
             - { source: models/reference.md, target: docs/reference.md }
           archive_empty_dirs:
             - models
-
-    managed_files:
-      - path: .github/ci-template/ci.yml
-        owner: codegen
-        policy: full
-      - path: .github/copilot-instructions.md
-        owner: codegen
-        policy: full
-      - path: .github/dependabot.yml
-        owner: codegen
-        policy: full
-      - path: .github/prompts/flext-aggressive-scale-refactor.prompt.md
-        owner: codegen
-        policy: full
-      - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-        owner: codegen
-        policy: full
-      - path: .github/scripts/check-beads-policy.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/check-cqrs-compliance.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/flext-law-loop.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/install-git-hooks.sh
-        owner: codegen
-        policy: full
-      - path: ci/docker/alpine.Dockerfile
-        owner: codegen
-        policy: full
-      - path: ci/docker/arch.Dockerfile
-        owner: codegen
-        policy: full
-      - path: ci/docker/debian.Dockerfile
-        owner: codegen
-        policy: full
-      - path: ci/docker/fedora.Dockerfile
-        owner: codegen
-        policy: full
-      - path: ci/docker/ubuntu.Dockerfile
-        owner: codegen
-        policy: full
-      - path: .github/workflows/ci.yml
-        owner: codegen
-        policy: full
-      - path: .github/workflows/docs.yml
-        owner: codegen
-        policy: full
-      - path: .github/workflows/release.yml
-        owner: codegen
-        policy: full
-      - path: .beads/config.yaml
-        owner: codegen
-        policy: full
-      - path: .env.example
-        owner: codegen
-        policy: create-only
-      - path: .envrc
-        owner: codegen
-        policy: full
-      # Why (ai-hub-qwoc): codegen owns the ast-grep contract end to end, so the
-      # rendered file is fully managed and never hand-edited.
-      - path: sgconfig.yml
-        owner: codegen
-        policy: full
-      - path: .gitignore
-        owner: codegen
-        policy: merge
-      - path: .gitmodules
-        owner: codegen
-        policy: merge
-      - path: .mise.toml
-        owner: codegen
-        policy: full
-      - path: .pre-commit-config.yaml
-        owner: pre-commit
-        policy: full
-      - path: .python-version
-        owner: codegen
-        policy: full
-      - path: .vscode/settings.json
-        owner: vscode
-        policy: merge
-      - path: LICENSE
-        owner: codegen
-        policy: create-only
-      - path: Makefile
-        owner: make
-        policy: full
-      - path: base.mk
-        owner: make
-        policy: full
-      - path: README.md
-        owner: codegen
-        policy: create-only
-      - path: config/workspace.yaml
-        owner: workspace
-        policy: manual
-      - path: custom.mk
-        owner: custom
-        policy: create-only
-      - path: pyproject.toml
-        owner: codegen
-        policy: merge
 
     scaffold:
       build:
@@ -1083,7 +1161,6 @@ Infra:
             - "**/.tmp/"
         - name: "Build and quality tool artifacts inside allowed directories"
           patterns:
-            - "**/.qlty/"
             - "**/.meltano/"
             - "**/.serena/"
         - name: "Backup files inside allowed directories"
@@ -1163,7 +1240,7 @@ Infra:
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
           patterns:
             - "*.tpl.rej"
-        - name: "--- codegen conform: generated runtime ignores ---"
+        - name: "--- generated runtime ignores ---"
           patterns:
             - ".direnv/"
             - ".reports/"
@@ -1172,383 +1249,291 @@ Infra:
             - ".tools/"
             - "__pycache__/"
             - "!.pre-commit-config.yaml"
-    templates:
+    surfaces:
       root: project
       entries:
-        - source: base/.github/ci-template/ci.yml.j2
-          destination: .github/ci-template/ci.yml
-          render_context: github
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
         - source: base/.github/copilot-instructions.md.j2
-          destination: .github/copilot-instructions.md
+          path: .github/copilot-instructions.md
+          owner: codegen
+          policy: full
           render_context: github
           profiles: [workspace-root]
-          delegate: render
-          overwrite: false
         - source: base/.github/dependabot.yml.j2
-          destination: .github/dependabot.yml
+          path: .github/dependabot.yml
+          owner: codegen
+          policy: full
           render_context: github
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2
-          destination: .github/prompts/flext-aggressive-scale-refactor.prompt.md
+          path: .github/prompts/flext-aggressive-scale-refactor.prompt.md
+          owner: codegen
+          policy: full
           render_context: github
           profiles: [workspace-root]
-          delegate: render
-          overwrite: false
         - source: base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2
-          destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+          path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+          owner: codegen
+          policy: full
           render_context: github
           profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/check-beads-policy.sh.j2
-          destination: .github/scripts/check-beads-policy.sh
-          render_context: github
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/check-cqrs-compliance.sh.j2
-          destination: .github/scripts/check-cqrs-compliance.sh
-          render_context: github
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/flext-law-loop.sh.j2
-          destination: .github/scripts/flext-law-loop.sh
-          render_context: github
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/install-git-hooks.sh.j2
-          destination: .github/scripts/install-git-hooks.sh
-          render_context: github
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
         - source: base/.github/workflows/ci.yml.j2
-          destination: .github/workflows/ci.yml
+          path: .github/workflows/ci.yml
+          owner: codegen
+          policy: full
           render_context: github
           requires_ci: true
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/.pre-commit-config.yaml.j2
-          destination: .pre-commit-config.yaml
+          path: .pre-commit-config.yaml
+          owner: pre-commit
+          policy: full
           render_context: make-workflow
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/README.md.j2
-          destination: README.md
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: README.md
+          owner: codegen
+          policy: create-only
         - source: base/LICENSE.j2
-          destination: LICENSE
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: LICENSE
+          owner: codegen
+          policy: create-only
         - source: base/gitignore.j2
-          destination: .gitignore
+          path: .gitignore
+          owner: codegen
+          policy: merge
           render_context: gitignore
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
         # required surface. Without a generator it was hand-written in one
         # repository and absent in another, so provider discovery failed closed
         # with "missing declared file: sgconfig.yml". Rendering it from the SSOT
         # gives every governed repository the same ast-grep contract.
         - source: base/sgconfig.yml.j2
-          destination: sgconfig.yml
+          path: sgconfig.yml
+          owner: codegen
+          policy: full
           render_context: sgconfig
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/python-version.j2
-          destination: .python-version
+          path: .python-version
+          owner: codegen
+          policy: full
           render_context: toolchain
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+        - path: .vscode/settings.json
+          owner: vscode
+          policy: merge
+          delegate: vscode-settings
         - source: base/env.example.j2
-          destination: .env.example
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: .env.example
+          owner: codegen
+          policy: create-only
         - source: base/.mise.toml.j2
-          destination: .mise.toml
+          path: .mise.toml
+          owner: codegen
+          policy: full
           render_context: toolchain
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+        - source: base/.qlty/.gitignore.j2
+          path: .qlty/.gitignore
+          owner: codegen
+          policy: full
+          render_context: tooling
+          profiles: [workspace-root, standalone]
+        - source: base/.qlty/qlty.toml.j2
+          path: .qlty/qlty.toml
+          owner: codegen
+          policy: full
+          render_context: tooling
+          profiles: [workspace-root, standalone]
         # Ledger routing config: rendered only for the workspace root (owned
         # ledger) and marker-attached standalones (routing-only); the engine
         # planner skips every other profile/class (mro-z89e governance).
         - source: base/beads-config.yaml.j2
-          destination: .beads/config.yaml
+          path: .beads/config.yaml
+          owner: codegen
+          policy: full
           render_context: beads
           requires_beads: true
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/.envrc.j2
-          destination: .envrc
+          path: .envrc
+          owner: codegen
+          policy: full
           render_context: toolchain
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/docs.yml.j2
-          destination: .github/workflows/docs.yml
-          render_context: github
-          requires_ci: true
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/release.yml.j2
-          destination: .github/workflows/release.yml
-          render_context: github
-          requires_ci: true
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
         - source: base/ci/docker/ubuntu.Dockerfile.j2
-          destination: ci/docker/ubuntu.Dockerfile
+          path: ci/docker/ubuntu.Dockerfile
+          owner: codegen
+          policy: full
           render_context: docker
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/ci/docker/debian.Dockerfile.j2
-          destination: ci/docker/debian.Dockerfile
+          path: ci/docker/debian.Dockerfile
+          owner: codegen
+          policy: full
           render_context: docker
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/ci/docker/fedora.Dockerfile.j2
-          destination: ci/docker/fedora.Dockerfile
+          path: ci/docker/fedora.Dockerfile
+          owner: codegen
+          policy: full
           render_context: docker
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/ci/docker/alpine.Dockerfile.j2
-          destination: ci/docker/alpine.Dockerfile
+          path: ci/docker/alpine.Dockerfile
+          owner: codegen
+          policy: full
           render_context: docker
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/ci/docker/arch.Dockerfile.j2
-          destination: ci/docker/arch.Dockerfile
+          path: ci/docker/arch.Dockerfile
+          owner: codegen
+          policy: full
           render_context: docker
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         # NOTE(mro-wkii.17.11, agent codex): workspace topology owns git submodules;
         # environment activation is owned by mise + the generated Makefile.
         - source: base/gitmodules.j2
-          destination: .gitmodules
+          path: .gitmodules
+          owner: codegen
+          policy: merge
           render_context: make
           surface: gitmodules
           merge_strategy: gitmodules
           profiles: [workspace-root]
-          delegate: render
-          overwrite: true
         - source: base/Makefile.j2
-          destination: Makefile
+          path: Makefile
+          owner: make
+          policy: full
           render_context: make
-          surface: makefile
-          operations: [generate]
           make_role: wrapper
-          # The generic conform engine is the single Makefile owner for every
-          # profile; workspace-root fan-out is selected inside this template.
-          # Fully generated (overwrite: true): a project never owns a verb.
-          # `overwrite: false` froze every existing Makefile at the shape it
-          # had when first written, so new builtin verbs never reached the
-          # fleet. Customisation lives exclusively in custom.mk, through
-          # pre-/post-verb hooks, and may not redefine a verb.
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: true
+          # One generated wrapper includes the one generated engine.
         - source: base/base.mk.j2
-          destination: base.mk
+          path: base.mk
+          owner: make
+          policy: full
           render_context: make
-          surface: makefile
-          operations: [generate]
           make_role: engine
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: true
-        - source: base/custom.mk.j2
-          destination: custom.mk
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/pyproject.toml.j2
-          destination: pyproject.toml
+          path: pyproject.toml
+          owner: codegen
+          policy: merge
           surface: pyproject
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
         - source: base/config/workspace.yaml.j2
-          destination: config/workspace.yaml
-          profiles: [workspace-root, workspace-member, standalone]
+          path: config/workspace.yaml
+          owner: workspace
+          policy: manual
+          profiles: [workspace-root, standalone]
           delegate: manifest
-          overwrite: false
         - source: base/src/__init__.py.j2
-          destination: "src/{package_name}/__init__.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/__init__.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/api.py.j2
-          destination: "src/{package_name}/api.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/api.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/cli.py.j2
-          destination: "src/{package_name}/cli.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/cli.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/__main__.py.j2
-          destination: "src/{package_name}/__main__.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/__main__.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/base.py.j2
-          destination: "src/{package_name}/base.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/base.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/models.py.j2
-          destination: "src/{package_name}/models.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/models.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/typings.py.j2
-          destination: "src/{package_name}/typings.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/typings.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/protocols.py.j2
-          destination: "src/{package_name}/protocols.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/protocols.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/constants.py.j2
-          destination: "src/{package_name}/constants.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/constants.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/utilities.py.j2
-          destination: "src/{package_name}/utilities.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/utilities.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_config.py.j2
-          destination: "src/{package_name}/_config.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_config.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_settings.py.j2
-          destination: "src/{package_name}/_settings.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_settings.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/py.typed.j2
-          destination: "src/{package_name}/py.typed"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/py.typed"
+          owner: codegen
+          policy: create-only
         - source: base/src/services/__init__.py.j2
-          destination: "src/{package_name}/services/__init__.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/services/__init__.py"
+          owner: codegen
+          policy: create-only
         # NOTE(codex, mro-j47u): domain behavior is generated in services, not base.py.
         - source: base/src/services/ping.py.j2
-          destination: "src/{package_name}/services/ping.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/services/ping.py"
+          owner: codegen
+          policy: create-only
         # NOTE (multi-agent, mro-wkii.19.1): runtime config is app-owned and loaded
         # by FlextConfig from the project-root config directory.
         - source: base/src/config/ns.yaml.j2
-          destination: "config/{ns}.yaml"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "config/{ns}.yaml"
+          owner: codegen
+          policy: create-only
         # NOTE (multi-agent, mro-wkii.19.1): config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
         - source: base/src/_models/__init__.py.j2
-          destination: "src/{package_name}/_models/__init__.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_models/__init__.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_models/ping.py.j2
-          destination: "src/{package_name}/_models/ping.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_models/ping.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_models/config.py.j2
-          destination: "src/{package_name}/_models/config.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_models/config.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_models/settings.py.j2
-          destination: "src/{package_name}/_models/settings.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_models/settings.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_constants/__init__.py.j2
-          destination: "src/{package_name}/_constants/__init__.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_constants/__init__.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_constants/config.py.j2
-          destination: "src/{package_name}/_constants/config.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_constants/config.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_constants/settings.py.j2
-          destination: "src/{package_name}/_constants/settings.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_constants/settings.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_protocols/__init__.py.j2
-          destination: "src/{package_name}/_protocols/__init__.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_protocols/__init__.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_protocols/config.py.j2
-          destination: "src/{package_name}/_protocols/config.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_protocols/config.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_protocols/ping.py.j2
-          destination: "src/{package_name}/_protocols/ping.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_protocols/ping.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_protocols/settings.py.j2
-          destination: "src/{package_name}/_protocols/settings.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_protocols/settings.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_typings/__init__.py.j2
-          destination: "src/{package_name}/_typings/__init__.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_typings/__init__.py"
+          owner: codegen
+          policy: create-only
         - source: base/src/_typings/base.py.j2
-          destination: "src/{package_name}/_typings/base.py"
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: "src/{package_name}/_typings/base.py"
+          owner: codegen
+          policy: create-only
         - source: base/tests/__init__.py.j2
-          destination: tests/__init__.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+          path: tests/__init__.py
+          owner: codegen
+          policy: create-only

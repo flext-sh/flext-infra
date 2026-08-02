@@ -16,8 +16,6 @@ from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
-
 
 class FlextInfraTierWhitelistGate(FlextInfraGate):
     """Enforce the tier-whitelist abstraction boundary per project."""
@@ -33,16 +31,18 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Run the tier-whitelist scan scoped to ``project_dir``."""
-        _ = ctx
         started = time.monotonic()
         validator = FlextInfraValidateTierWhitelist(workspace_root=project_dir)
-        result = validator.execute()
-        passed = result.success and result.value is True
-        errors: list[str] = []
-        if result.failure:
-            errors.append(result.error or "tier-whitelist validation failed")
-        elif not passed:
-            errors.append(result.error or "tier-whitelist violations found")
+        report_result = validator.build_report(project_dir)
+        if report_result.failure:
+            passed = False
+            errors = [report_result.error or "tier-whitelist validation failed"]
+            raw_output = errors[0]
+        else:
+            report = report_result.value
+            passed = report.passed
+            errors = list(report.violations) if not passed else []
+            raw_output = "\n".join([report.summary, *errors])
         issues = [
             m.Infra.Issue(
                 file=str(project_dir),
@@ -63,25 +63,9 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=issues,
-            raw_output="\n".join(errors),
+            raw_output=raw_output,
             ctx=ctx,
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — execution happens in ``check``."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — ``check`` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraTierWhitelistGate"]

@@ -125,10 +125,11 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def _is_src_file(cls, *, file_path: Path, project_root: Path) -> bool:
         """Return whether the path belongs to the project source tree."""
-        try:
-            relative_path = file_path.resolve().relative_to(project_root.resolve())
-        except ValueError:
+        resolved_file = file_path.resolve()
+        resolved_root = project_root.resolve()
+        if not resolved_file.is_relative_to(resolved_root):
             return False
+        relative_path = resolved_file.relative_to(resolved_root)
         return (
             bool(relative_path.parts)
             and relative_path.parts[0] == c.Infra.DEFAULT_SRC_DIR

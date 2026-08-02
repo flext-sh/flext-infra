@@ -84,6 +84,33 @@ class TestsDocstringCoverage:
 
             tm.that(u.Infra.docs_public_docstring_coverage(scope), none=True)
 
+        def test_assignment_docstrings_are_documented(self, tmp_path: Path) -> None:
+            package_root = tmp_path / "src" / "demo_pkg"
+            package_root.mkdir(parents=True, exist_ok=True)
+            (package_root / "__init__.py").write_text(
+                '"""Demo package."""\n', encoding="utf-8"
+            )
+            (package_root / "lazy.py").write_text(
+                '"""Lazy helpers for docs tests."""\n\n'
+                "from __future__ import annotations\n\n"
+                "class DemoLazy:\n"
+                '    """Simple lazy holder for docs tests."""\n\n'
+                "lazy = DemoLazy()\n"
+                '"""Shared lazy singleton."""\n',
+                encoding="utf-8",
+            )
+
+            issues = u.Infra.docstring_issues(
+                tmp_path,
+                {
+                    "package_name": "demo_pkg",
+                    "modules": ["demo_pkg.lazy"],
+                    "target_map": {"lazy": "demo_pkg.lazy"},
+                },
+            )
+
+            tm.that(issues, eq=[])
+
     class TestAuditReportIntegration:
         """audit_scope persists the coverage metric in markdown and JSON."""
 

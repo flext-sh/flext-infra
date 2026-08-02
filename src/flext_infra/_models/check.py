@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import FlextCliModels as m
+from flext_cli import m
 from flext_core import u
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
@@ -15,12 +15,11 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
 
-    class RunCommand(mm.WriteMixin, m.ContractModel):
+    class RunCommand(mm.GateSelectionMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check run``.
 
-        Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
-        ``apply``/``dry_run``, ``workspace``, ``projects``, ``fail_fast``,
-        ``verbose`` from ``WriteMixin``.
+        Inherits canonical ``gates`` (parsed to ``t.StrSequence``), ``workspace``,
+        ``projects``, ``fail_fast`` and ``verbose``. Check is always read-only.
         """
 
         reports_dir: Annotated[
@@ -29,16 +28,6 @@ class FlextInfraModelsCheck:
                 alias="reports-dir", description="Directory used to write check reports"
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
-        fix: Annotated[
-            bool, m.Field(False, description="Apply supported gate fixes before run")
-        ] = False
-        check_only: Annotated[
-            bool,
-            m.Field(
-                alias="check-only",
-                description="Enable check-only mode for supported tools",
-            ),
-        ] = False
         ruff_args: Annotated[
             str | None,
             m.Field(alias="ruff-args", description="Extra arguments forwarded to Ruff"),

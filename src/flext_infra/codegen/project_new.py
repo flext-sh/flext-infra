@@ -15,7 +15,9 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.codegen.conform import FlextInfraCodegenGenerate
+from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.publisher import FlextInfraCodegenPublisher
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -78,6 +80,35 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     upstream: Annotated[str, m.Field(description="Upstream facade module (flext_cli).")]
     year: Annotated[int, m.Field(ge=2025, description="Deterministic copyright year.")]
 
+    @staticmethod
+    def _with_workspace_registration(
+        planner: FlextInfraCodegenConform,
+        plan: m.Infra.CodegenPlan,
+        workspace_root: Path,
+        rendered_manifest: str | None,
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Include the handwritten parent-manifest update in one publication plan."""
+        if rendered_manifest is None:
+            return r[m.Infra.CodegenPlan].ok(plan)
+        relative_path = Path(
+            c.CONFIG_DIR_NAME, c.Infra.WORKSPACE_MANIFEST_FILENAME
+        ).as_posix()
+        manifest_plan = planner.plan_managed_file(
+            workspace_root, relative_path, rendered_manifest
+        )
+        if manifest_plan.failure:
+            return r[m.Infra.CodegenPlan].fail(
+                manifest_plan.error or "workspace member registration planning failed"
+            )
+        registered_file = manifest_plan.value
+        if any(item.path == registered_file.path for item in plan.files):
+            return r[m.Infra.CodegenPlan].fail(
+                f"workspace registration path is already planned: {registered_file.path}"
+            )
+        return r[m.Infra.CodegenPlan].ok(
+            plan.model_copy(update={"files": (*plan.files, registered_file)})
+        )
+
     @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Build one typed manifest and delegate all output to conform."""
@@ -112,54 +143,160 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 f"repository branch is required for provider: {self.provider}"
             )
         repository_page = repository_url.removesuffix(".git")
-        repository = m.Infra.RepositoryRef(
-            name=self.name,
-            distribution=self.name,
-            provider=self.provider,
-            url=repository_url,
-            path=Path(),
-            role=c.Infra.RepositoryRole.STANDALONE,
-            state=c.Infra.RepositoryState.ACTIVE,
-            checkout=c.Infra.CheckoutKind.INDEPENDENT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=False,
-            read_only=False,
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=self.name,
-            repository=repository,
-            project=m.Infra.ProjectSpec(
-                package_name=package_name,
-                class_stem=class_stem,
-                namespace=project_namespace,
-                constant_name=self.name,
-                namespace_attribute=alias,
-                alias=alias,
-                environment_prefix=f"{package_name.upper()}_",
-                description=(
-                    self.description
-                    or f"{class_stem} — FLEXT typed integration package"
-                ),
-                version=self.version,
-                license=self.license,
-                author_name=self.author_name,
-                author_email=self.author_email,
-                upstream=self.upstream,
-                homepage=repository_page,
-                documentation=repository_page,
-                workspace_root_rel=".",
-                year=self.year,
+        project = m.Infra.ProjectSpec(
+            package_name=package_name,
+            class_stem=class_stem,
+            namespace=project_namespace,
+            constant_name=self.name,
+            namespace_attribute=alias,
+            alias=alias,
+            environment_prefix=f"{package_name.upper()}_",
+            description=(
+                self.description or f"{class_stem} — FLEXT typed integration package"
             ),
+            version=self.version,
+            license=self.license,
+            author_name=self.author_name,
+            author_email=self.author_email,
+            upstream=self.upstream,
+            homepage=repository_page,
+            documentation=repository_page,
+            year=self.year,
         )
-        request = m.Infra.CodegenGenerateRequest(
-            root=self.output_root.expanduser().resolve(),
-            scope=c.Infra.CodegenConformScope.SELF,
-            apply_token=config.Infra.codegen.make.apply_value,
+        root = self.output_root.expanduser().resolve()
+        workspace_root = root
+        rendered_manifest: str | None = None
+        if self.kind is c.Infra.ProjectKind.INTERNAL:
+            workspace_root = self.workspace_root.expanduser().resolve()
+            try:
+                repository_path = root.relative_to(workspace_root)
+            except ValueError as exc:
+                return r[m.Infra.CodegenResult].fail_op(
+                    "internal project workspace relation", exc
+                )
+            if repository_path == Path():
+                return r[m.Infra.CodegenResult].fail(
+                    "internal project root must be below its workspace root"
+                )
+            repository = m.Infra.RepositoryRef(
+                name=self.name,
+                distribution=self.name,
+                provider=self.provider,
+                branch=provider.branch,
+                url=repository_url,
+                path=repository_path,
+                role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                state=c.Infra.RepositoryState.ACTIVE,
+                checkout=c.Infra.CheckoutKind.SUBMODULE,
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=True,
+                editable=True,
+                read_only=False,
+            )
+            registration = u.Infra.workspace_register_member(workspace_root, repository)
+            if registration.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    registration.error or "workspace member registration failed"
+                )
+            parent_workspace, rendered_manifest = registration.value
+            physical = FlextInfraWorkspaceDetector.validate_registered_member(
+                root, workspace_root, parent_workspace
+            )
+            if physical.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    physical.error
+                    or "internal project must be a registered Git submodule"
+                )
+            if physical.value is not c.Infra.WorkspaceMode.WORKSPACE_MEMBER:
+                return r[m.Infra.CodegenResult].fail(
+                    "internal project is not a governed workspace member"
+                )
+            workspace = parent_workspace.model_copy(update={"project": project})
+        else:
+            repository = m.Infra.RepositoryRef(
+                name=self.name,
+                distribution=self.name,
+                provider=self.provider,
+                branch=provider.branch,
+                url=repository_url,
+                path=Path(),
+                role=c.Infra.RepositoryRole.STANDALONE,
+                state=c.Infra.RepositoryState.ACTIVE,
+                checkout=c.Infra.CheckoutKind.INDEPENDENT,
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=True,
+                editable=False,
+                read_only=False,
+            )
+            workspace = m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=self.name,
+                repository=repository,
+                project=project,
+            )
+        request = m.Infra.CodegenConformRequest(
+            root=root, scope=c.Infra.CodegenConformScope.SELF
         )
-        return FlextInfraCodegenGenerate.execute_request(
-            request, initial_workspace=workspace
+        planner = FlextInfraCodegenConform(
+            workspace_root=request.root,
+            initial_workspace=workspace,
+            initial_workspace_root=workspace_root,
+            projection_operation="scaffold",
+        )
+        planned = planner.plan(request)
+        if planned.failure:
+            return r[m.Infra.CodegenResult].fail(
+                planned.error or "project scaffold planning failed"
+            )
+        complete_plan = self._with_workspace_registration(
+            planner, planned.value, workspace_root, rendered_manifest
+        )
+        if complete_plan.failure:
+            return r[m.Infra.CodegenResult].fail(
+                complete_plan.error or "project scaffold plan is incomplete"
+            )
+        valid = planner.validate_plan(complete_plan.value, allow_missing_beads=True)
+        if valid.failure:
+            return r[m.Infra.CodegenResult].fail(
+                valid.error or "project scaffold validation failed"
+            )
+        published = FlextInfraCodegenPublisher.apply(complete_plan.value)
+        if published.failure:
+            return r[m.Infra.CodegenResult].fail(
+                published.error or "project scaffold publication failed"
+            )
+        verified = planner.plan(request)
+        if verified.failure:
+            return r[m.Infra.CodegenResult].fail(
+                verified.error or "project scaffold verification failed"
+            )
+        verified_plan = self._with_workspace_registration(
+            planner, verified.value, workspace_root, rendered_manifest
+        )
+        if verified_plan.failure:
+            return r[m.Infra.CodegenResult].fail(
+                verified_plan.error or "project scaffold verification is incomplete"
+            )
+        if self.kind is c.Infra.ProjectKind.INTERNAL:
+            target = u.Infra.repository_conform_target(root)
+            if target.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    target.error or "generated workspace member is not attached"
+                )
+            if target.value.make_profile is not c.Infra.MakeProfile.WORKSPACE_MEMBER:
+                return r[m.Infra.CodegenResult].fail(
+                    "generated internal project did not resolve as a workspace member"
+                )
+        residual = tuple(item for item in verified_plan.value.files if item.changed)
+        if residual:
+            paths = ", ".join(str(item.path) for item in residual)
+            return r[m.Infra.CodegenResult].fail(
+                f"project scaffold did not reach a fixed point: {paths}"
+            )
+        return r[m.Infra.CodegenResult].ok(
+            m.Infra.CodegenResult(
+                plan=verified_plan.value, written_files=published.value
+            )
         )
 
 

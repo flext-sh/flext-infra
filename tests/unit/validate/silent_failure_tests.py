@@ -70,6 +70,119 @@ class TestSilentFailureDetector:
         tm.that(codes, has="silent-failure-except")
         tm.that(codes, has="silent-failure-unwrap-or")
 
+    def test_detect_file_distinguishes_typed_handlers_and_failure_results(
+        self, tmp_path: Path
+    ) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "from flext_core import r\n"
+            "from flext_infra import m\n\n"
+            "RUNTIME_ERRORS = (OSError,)\n\n"
+            "def tuple_sentinel():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except (ValueError, TypeError):\n"
+            "        return None\n\n"
+            "def starred_sentinel():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except (*RUNTIME_ERRORS, TypeError):\n"
+            "        return None\n\n"
+            "def result_failure():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception as exc:\n"
+            "        return r[bool].fail_op('run', exc)\n\n"
+            "def model_failure():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception as exc:\n"
+            "        return m.Infra.Result(success=False, error=str(exc))\n\n"
+            "def error_result(error):\n"
+            "    return m.Infra.Result(success=False, error=error)\n\n"
+            "def record_failure(ctx, exc):\n"
+            "    detail = str(exc)\n"
+            "    if ctx is None:\n"
+            "        raise RuntimeError(detail) from exc\n"
+            "    ctx.append(m.Infra.ParseFailureViolation(detail=detail))\n\n"
+            "def factory_failure():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception as exc:\n"
+            "        return error_result(str(exc))\n\n"
+            "def imported_factory_failure() -> m.Infra.Result:\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception as exc:\n"
+            "        return imported_error_result(str(exc))\n\n"
+            "def recorded_failure(ctx):\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except (*RUNTIME_ERRORS, TypeError) as exc:\n"
+            "        record_failure(ctx, exc)\n"
+            "        return []\n\n"
+            "def directly_recorded_failure(errors):\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception as exc:\n"
+            "        errors.append(str(exc))\n"
+            "        return []\n\n"
+            "def append_constant(container):\n"
+            "    container.append('constant')\n\n"
+            "def misleading_recorder():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception as exc:\n"
+            "        append_constant(exc)\n"
+            "        return False\n\n"
+            "def stringified_failure() -> str:\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception as exc:\n"
+            "        return str(exc)\n\n"
+            "def ignored_failure_value():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception:\n"
+            "        r[bool].fail('ignored')\n"
+            "        return False\n\n"
+            "def broad_sentinel():\n"
+            "    try:\n"
+            "        raise ValueError('boom')\n"
+            "    except Exception:\n"
+            "        return False\n"
+        )
+        project = u.Tests.create_codegen_project(
+            tmp_path=tmp_path,
+            name="flext-infra",
+            pkg_name="flext_infra",
+            files={"utilities.py": source},
+        )
+        file_path = project / "src" / "flext_infra" / "utilities.py"
+        rope_project = u.Infra.init_rope_project(project)
+        try:
+            issues = FlextInfraSilentFailureDetector.detect_file(
+                m.Infra.DetectorContext(
+                    file_path=file_path,
+                    project_root=project,
+                    rope_project=rope_project,
+                )
+            )
+        finally:
+            rope_project.close()
+
+        tm.that(
+            tuple(issue.code for issue in issues),
+            eq=(
+                "silent-failure-except",
+                "silent-failure-except",
+                "silent-failure-broad-except",
+                "silent-failure-broad-except",
+                "silent-failure-broad-except",
+                "silent-failure-broad-except",
+            ),
+        )
+
     def test_fix_silent_failure_sentinels_rewrites_deterministic_cases(
         self, tmp_path: Path
     ) -> None:

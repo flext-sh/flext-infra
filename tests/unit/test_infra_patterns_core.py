@@ -9,52 +9,6 @@ from tests import c
 class TestsFlextInfraInfraPatternsCore:
     """Tests for tooling-related regex patterns."""
 
-    def test_mypy_hint_pattern_matches_valid_hint(self) -> None:
-        text = 'note: Hint: "python3 -m pip install types-requests"'
-        match = c.Infra.MYPY_HINT_RE.search(text)
-        match = tm.not_none(match)
-        tm.that(match.group(1), eq="types-requests")
-
-    def test_mypy_hint_pattern_captures_package_name(self) -> None:
-        text = 'note: Hint: "python3 -m pip install mypy-extensions"'
-        match = c.Infra.MYPY_HINT_RE.search(text)
-        match = tm.not_none(match)
-        tm.that(match.group(1), eq="mypy-extensions")
-
-    def test_mypy_hint_pattern_matches_stub_package_wording(self) -> None:
-        text = "note: hint: install stub package `types-requests`"
-        match = c.Infra.MYPY_HINT_RE.search(text)
-        match = tm.not_none(match)
-        tm.that(match.group(1), eq="types-requests")
-
-    def test_mypy_hint_pattern_no_match_without_hint(self) -> None:
-        text = "some other mypy output"
-        match = c.Infra.MYPY_HINT_RE.search(text)
-        tm.that(match, none=True)
-
-    def test_mypy_stub_pattern_matches_missing_stubs(self) -> None:
-        text = 'Library stubs not installed for "requests"'
-        match = c.Infra.MYPY_STUB_RE.search(text)
-        match = tm.not_none(match)
-        tm.that(match.group(1), eq="requests")
-
-    def test_mypy_stub_pattern_captures_library_name(self) -> None:
-        text = 'Library stubs not installed for "django"'
-        match = c.Infra.MYPY_STUB_RE.search(text)
-        match = tm.not_none(match)
-        tm.that(match.group(1), eq="django")
-
-    def test_mypy_stub_pattern_no_match_without_message(self) -> None:
-        text = "stubs are installed"
-        match = c.Infra.MYPY_STUB_RE.search(text)
-        tm.that(match, none=True)
-
-    def test_internal_prefixes_contains_flext(self) -> None:
-        tm.that(c.Infra.INTERNAL_PREFIXES, has="flext_")
-
-    def test_internal_prefixes_is_tuple(self) -> None:
-        tm.that(c.Infra.INTERNAL_PREFIXES, is_=tuple)
-
     def test_markdown_link_pattern_matches_link(self) -> None:
         text = "[Click here](https://example.com)"
         match = c.Infra.MARKDOWN_LINK_RE.search(text)

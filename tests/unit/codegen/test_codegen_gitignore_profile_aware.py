@@ -31,7 +31,7 @@ class TestsCodegenGitignoreProfileAware:
         against the live checkout would read whatever topology this repository
         happens to have today and would race concurrent fixtures under xdist.
         """
-        rendered = tm.ok(
+        rendered: str = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
@@ -63,7 +63,7 @@ class TestsCodegenGitignoreProfileAware:
             members=(member,),
         )
 
-        rendered = tm.ok(
+        rendered: str = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
@@ -100,6 +100,27 @@ class TestsCodegenGitignoreProfileAware:
                 f'"{config.Infra.codegen.toolchain.beads.version}"'
             ),
         )
+        qlty_tool = config.Infra.codegen.toolchain.qlty
+        tm.that(
+            by_path[".mise.toml"], has=f'"{qlty_tool.selector}" = "{qlty_tool.version}"'
+        )
+        tm.that(".qlty/qlty.toml" in by_path, eq=True)
+        tm.that(".qlty/.gitignore" in by_path, eq=True)
+        tm.that(by_path[".qlty/.gitignore"], has="!qlty.toml")
+        tm.that("**/.qlty/" in by_path[c.Infra.GITIGNORE], eq=False)
+        qlty_profiles = tuple(
+            entry.profiles
+            for entry in config.Infra.codegen.surfaces.entries
+            if entry.path.startswith(".qlty/")
+        )
+        expected_profiles = (
+            c.Infra.MakeProfile.WORKSPACE_ROOT,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        tm.that(qlty_profiles, empty=False)
+        tm.that(
+            all(profiles == expected_profiles for profiles in qlty_profiles), eq=True
+        )
 
 
 def _plan_independent_overlay(
@@ -115,6 +136,7 @@ def _plan_independent_overlay(
         path=Path(),
         role=c.Infra.RepositoryRole.STANDALONE,
         state=c.Infra.RepositoryState.ACTIVE,
+        branch=provider.branch,
         checkout=c.Infra.CheckoutKind.INDEPENDENT,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=True,
@@ -147,11 +169,9 @@ def _plan_independent_overlay(
     )
     root = tmp_path / name
     request = m.Infra.CodegenConformRequest(
-        root=root,
-        scope=c.Infra.CodegenConformScope.SELF,
-        mode=c.Infra.CodegenConformMode.CHECK,
+        root=root, scope=c.Infra.CodegenConformScope.SELF
     )
-    plan = tm.ok(
+    plan: m.Infra.CodegenPlan = tm.ok(
         FlextInfraCodegenConform(
             workspace_root=root, request=request, initial_workspace=workspace
         ).plan(request)

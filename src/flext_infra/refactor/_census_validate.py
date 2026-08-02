@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING
 from flext_infra import u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 _log = u.fetch_logger(__name__)
 
 
 class FlextInfraRefactorCensusValidateMixin:
-    """Filter removal candidates through dry-run gates, surfacing rejections.
+    """Validate that removal candidates can be previewed transactionally.
 
     Parent of FlextInfraRefactorCensusCollectMixin (its ``_assemble_report``
     calls ``_validated_project_reports``); borrows root + dry-run flags + the
@@ -22,14 +22,8 @@ class FlextInfraRefactorCensusValidateMixin:
     """
 
     if TYPE_CHECKING:
-        dry_run: bool
         fail_fast: bool
 
-        @property
-        def root(self) -> Path: ...
-
-        @property
-        def dry_run_gate_names(self) -> t.StrSequence: ...
         @staticmethod
         def _raw_violation(
             *,
@@ -49,9 +43,9 @@ class FlextInfraRefactorCensusValidateMixin:
         rope: p.Infra.RopeWorkspaceDsl,
         project_reports: tuple[m.Infra.Census.ProjectReport, ...],
     ) -> tuple[m.Infra.Census.ProjectReport, ...]:
-        """Keep only removal candidates that pass the configured dry-run gates.
+        """Keep only removal candidates whose transactional preview succeeds.
 
-        Gate rejections are surfaced as explicit ``preview_rejected``
+        Preview failures are surfaced as explicit ``preview_rejected``
         violations so the census still completes with actionable output
         instead of aborting on the first rejected candidate.
         """
@@ -67,11 +61,7 @@ class FlextInfraRefactorCensusValidateMixin:
             validated_violations = list(report.violations)
             for candidate in report.removal_candidates:
                 preview_result = u.Infra.preview_simple_removal_candidate(
-                    rope,
-                    self.root,
-                    candidate,
-                    gates=self.dry_run_gate_names,
-                    source_cache=source_cache,
+                    rope, candidate, source_cache=source_cache
                 )
                 if preview_result.failure:
                     msg = preview_result.error or (
@@ -98,7 +88,7 @@ class FlextInfraRefactorCensusValidateMixin:
                         )
                     )
                     continue
-                if preview_result.unwrap_or(False):
+                if preview_result.value:
                     validated_candidates_list.append(candidate)
             validated_candidates = tuple(validated_candidates_list)
             validated_reports.append(

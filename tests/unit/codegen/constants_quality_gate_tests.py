@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+from flext_infra import c, main
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
 from flext_tests import tm
 from tests import u
@@ -83,7 +83,16 @@ class TestConstantsQualityGateVerdict:
         gate = FlextInfraCodegenQualityGate(workspace_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
-        tm.that(report_result.value, has="verdict")
+        report = report_result.value
+        tm.that(report, has="verdict")
+        checks = u.Cli.json_deep_mapping_list(report, "checks")
+        tm.that(
+            {u.Cli.json_pick_str(check, "name") for check in checks},
+            eq={
+                c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE,
+                c.Infra.QG_CHECK_DUPLICATION_REDUCTION,
+            },
+        )
 
     def test_build_report_uses_canonical_census_duplicates(
         self, tmp_path: Path

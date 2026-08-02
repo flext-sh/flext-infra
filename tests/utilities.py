@@ -197,27 +197,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 return r[int].ok(result.value.exit_code)
 
-        class TomlReaderSequence(p.Infra.TomlReader):
-            """Protocol-compatible TOML reader that replays typed results."""
-
-            def __init__(self, values: t.SequenceOf[p.Result[t.JsonMapping]]) -> None:
-                """Store the ordered TOML results for replay."""
-                self._values = list(values)
-                self._index = 0
-
-            @override
-            def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
-                del path
-                current = self._index
-                self._index = current + 1
-                if not self._values:
-                    return r[t.JsonMapping].fail("toml reader sequence is empty")
-                return (
-                    self._values[current]
-                    if current < len(self._values)
-                    else self._values[-1]
-                )
-
         class SequenceRunner(DeptryRunner):
             """Protocol-compatible runner that replays command results in order."""
 
@@ -354,6 +333,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 path=path if path is not None else Path(name) if is_member else Path(),
                 role=role,
                 provider=provider.name,
+                branch=provider.branch,
                 checkout=(
                     c.Infra.CheckoutKind.SUBMODULE
                     if is_member
@@ -606,17 +586,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_github_workspace(
-            root: Path,
-            *,
-            project_names: t.StrSequence = (),
-            source_workflow: str = "name: CI\n",
+            root: Path, *, project_names: t.StrSequence = ()
         ) -> Path:
-            """Create a GitHub workflow workspace fixture."""
+            """Create a minimal GitHub pull-request workspace fixture."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
-            workflow_dir = workspace / ".github/workflows"
-            workflow_dir.mkdir(parents=True, exist_ok=True)
-            (workflow_dir / "ci.yml").write_text(source_workflow, encoding="utf-8")
             for name in project_names:
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)
@@ -1276,7 +1250,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             runner: p.Infra.RunnerService | None = None,
         ) -> FlextInfraRuntimeDevDependencyDetector:
             """Provide the typed test helper `setup_detector_runtime`."""
-            deptry_path = tmp_path / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY
+            deptry_path = (
+                tmp_path
+                / config.Infra.tooling.tools.pyright.path_rules.venv_bin_rel
+                / c.Infra.DEPTRY
+            )
             deptry_path.parent.mkdir(parents=True, exist_ok=True)
             if deptry_exists:
                 deptry_path.write_text("", encoding="utf-8")
@@ -1464,7 +1442,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 """Return the dependency-report payload."""
                 return {"deptry": {"raw_count": self._raw_count}}
 
-        class DetectorDepsStub(p.Infra.DepsService, p.Infra.TypingsDepsService):
+        class DetectorDepsStub(p.Infra.DepsService):
             """Typed dependency service stub for detector tests."""
 
             def __init__(self, project_paths: t.SequenceOf[Path]) -> None:
@@ -1472,7 +1450,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self.project_paths = project_paths
                 self.discovery_failure: str | None = None
                 self.deptry_failure: str | None = None
-                self.typings_failure: str | None = None
 
             @override
             def discover_project_paths(
@@ -1503,28 +1480,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             ) -> TestsFlextInfraUtilities.Tests.DetectorReportStub:
                 del project_name, deptry_issues
                 return TestsFlextInfraUtilities.Tests.DetectorReportStub(0)
-
-            @override
-            def get_required_typings(
-                self,
-                project_path: Path,
-                limits_path: Path | None = None,
-                *,
-                include_mypy: bool = True,
-            ) -> p.Result[m.Infra.TypingsReport]:
-                del project_path, limits_path
-                del include_mypy
-                if self.typings_failure is not None:
-                    return r[m.Infra.TypingsReport].fail(self.typings_failure)
-                return r[m.Infra.TypingsReport].ok(m.Infra.TypingsReport(to_add=[]))
-
-            @override
-            def load_dependency_limits(
-                self, limits_path: Path | None = None
-            ) -> t.StrMapping:
-                del limits_path
-                limits: dict[str, str] = {}
-                return limits
 
 
 u = TestsFlextInfraUtilities

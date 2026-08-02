@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
@@ -68,51 +66,6 @@ class CliDispatchService(CliTransactionService):
         """Register one group's command routes."""
         self.register_result_routes(app, self.group_commands[group])
 
-    @staticmethod
-    def split_what(args: t.StrSequence) -> tuple[str | None, list[str]]:
-        """Extract the ``--what`` value and return the remaining arguments."""
-        remaining: list[str] = []
-        what: str | None = None
-        index = 0
-        items = list(args)
-        while index < len(items):
-            arg = items[index]
-            if arg == "--what" and index + 1 < len(items):
-                what = items[index + 1]
-                index += 2
-                continue
-            if arg.startswith("--what="):
-                what = arg.split("=", 1)[1]
-                index += 1
-                continue
-            remaining.append(arg)
-            index += 1
-        return what, remaining
-
-    def translate_what(self, group: str, args: t.StrSequence) -> p.Result[list[str]]:
-        """Map ``--what <phase>`` onto the canonical command selector."""
-        what, remaining = self.split_what(args)
-        if what is None:
-            return r[list[str]].ok(list(args))
-        if group == c.Infra.CLI_GROUP_CHECK:
-            gate_check = FlextInfraWorkspaceChecker.resolve_gates([what])
-            if gate_check.failure:
-                return r[list[str]].fail(gate_check.error or f"unknown gate '{what}'")
-            check_routes = {route.name for route in self.group_commands[group]}
-            has_subcommand = bool(remaining) and remaining[0] in check_routes
-            prefix = (
-                list(remaining) if has_subcommand else [c.Infra.VERB_RUN, *remaining]
-            )
-            return r[list[str]].ok([*prefix, "--gates", what])
-        if group == c.Infra.CLI_GROUP_VALIDATE:
-            valid_names = {route.name for route in self.group_commands[group]}
-            if what not in valid_names:
-                return r[list[str]].fail(f"unknown validator '{what}'")
-            return r[list[str]].ok([what, *remaining])
-        if group == c.Infra.CLI_GROUP_CODEGEN and remaining[:1] == ["conform"]:
-            return r[list[str]].ok([*remaining, "--what", what])
-        return r[list[str]].fail(f"--what is not supported for group '{group}'")
-
     def run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute one registered flext-cli command group."""
         app = self.create_app_with_common_params(
@@ -120,13 +73,7 @@ class CliDispatchService(CliTransactionService):
             help_text=c.Infra.CLI_GROUP_DESCRIPTIONS[group],
         )
         self.register_group_commands(group, app)
-        what_result = self.translate_what(group, args)
-        if what_result.failure:
-            self.display_message(
-                what_result.error or "invalid --what phase", c.Cli.MessageTypes.ERROR
-            )
-            return int(c.Infra.ScriptExitCode.USAGE)
-        normalized_args = self.normalize_group_args(what_result.value)
+        normalized_args = self.normalize_group_args(args)
         if not normalized_args:
             _ = self.execute_app(
                 app, prog_name=f"{self.app_name} {group}", args=["--help"]

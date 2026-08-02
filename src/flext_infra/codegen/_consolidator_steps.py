@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 
@@ -17,10 +17,6 @@ class FlextInfraCodegenConsolidatorStepsMixin:
     facade state), so the facade's ``execute`` orchestrator only sequences
     these workers across selected projects.
     """
-
-    _ALL_LINT_GATES: ClassVar[t.StrSequence] = tuple(
-        tool for tool, _ in c.Infra.LINT_TOOLS
-    )
 
     @classmethod
     def _build_value_map_from_constants_file(
@@ -112,7 +108,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         return tuple(matches)
 
     @classmethod
-    def _apply_and_validate(
+    def _apply_changes(
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -121,8 +117,8 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         pkg_name: str,
         backup: str,
         matches: t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
-    ) -> t.Infra.EditResultWithDescs:
-        """Apply and validate."""
+    ) -> tuple[t.StrSequence, t.StrSequence]:
+        """Apply one constants-consolidation change set transactionally."""
         src_lines = backup.splitlines(keepends=True)
         rel = py_file.relative_to(workspace)
         edits: t.MutableSequenceOf[tuple[int, int, str]] = []
@@ -143,13 +139,12 @@ class FlextInfraCodegenConsolidatorStepsMixin:
             ))
             descs.append(f"{symbol.name} = {value} -> {ref}")
         if not edits:
-            return (True, [], [])
+            return ((), ())
 
-        ok, report = u.Infra.protected_file_edit(
+        u.Infra.protected_file_edit(
             py_file,
             request=m.Infra.ProtectedFileEditRequest(
                 workspace=workspace,
-                before_source=backup,
                 edit_fn=lambda: (
                     u.Infra.rewrite_source_at_offsets(
                         rope_project, resource, edits, apply=True
@@ -161,12 +156,9 @@ class FlextInfraCodegenConsolidatorStepsMixin:
                 )[-1],
                 restore_fn=lambda: resource.write(backup),
                 keep_backup=True,
-                gates=cls._ALL_LINT_GATES,
             ),
         )
-        if ok:
-            return (True, list(descs), [f"  APPLIED {rel}: {item}" for item in descs])
-        return (False, list(descs), report)
+        return (tuple(descs), tuple(f"  APPLIED {rel}: {item}" for item in descs))
 
 
 __all__: list[str] = ["FlextInfraCodegenConsolidatorStepsMixin"]

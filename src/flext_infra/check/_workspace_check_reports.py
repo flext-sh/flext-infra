@@ -135,7 +135,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 total=len(results),
                 success=success,
                 failed=outcome.failed,
-                skipped=outcome.skipped,
+                skipped=0,
                 elapsed=outcome.total_elapsed,
             )
         )

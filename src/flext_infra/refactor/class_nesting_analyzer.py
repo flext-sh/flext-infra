@@ -6,8 +6,7 @@ from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 
 if TYPE_CHECKING:
@@ -120,10 +119,9 @@ class FlextInfraRefactorClassNestingAnalyzer:
         """Return the module path for a file."""
         src_dir = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
         resolved = file_path.resolve()
-        try:
-            relative = resolved.relative_to(src_dir)
-        except ValueError:
+        if not resolved.is_relative_to(src_dir):
             return None
+        relative = resolved.relative_to(src_dir)
         return relative.as_posix()
 
     @classmethod

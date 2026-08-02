@@ -11,10 +11,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra._utilities.pyproject import (
-    FlextInfraUtilitiesPyproject,
-    _validate_infra_payload,
-)
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
@@ -55,38 +52,32 @@ class FlextInfraUtilitiesDependencies:
         """Return normalized registry package versions from one ``uv.lock`` file."""
         result: t.MappingKV[str, str] = {}
         if lock_path.is_file():
-            try:
-                raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError:
-                pass
-            else:
-                payload_source = u.Cli.toml_mapping_from_text(raw_text)
-                if payload_source is not None:
-                    payload = _validate_infra_payload(payload_source)
-                    if payload is not None:
-                        raw_packages = payload.get("package")
-                        if isinstance(raw_packages, list):
-                            versions: dict[str, str] = {}
-                            for raw_package in raw_packages:
-                                if not isinstance(raw_package, Mapping):
-                                    continue
-                                raw_source = raw_package.get("source")
-                                if (
-                                    not isinstance(raw_source, Mapping)
-                                    or "registry" not in raw_source
-                                ):
-                                    continue
-                                raw_name = raw_package.get("name")
-                                raw_version = raw_package.get(c.Infra.VERSION)
-                                if not isinstance(raw_name, str) or not isinstance(
-                                    raw_version, str
-                                ):
-                                    continue
-                                dependency_name = cls.dep_name(raw_name)
-                                if dependency_name is None:
-                                    continue
-                                versions[dependency_name] = raw_version.strip()
-                            result = dict(versions)
+            payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
+                u.Cli.toml_read_json(lock_path).unwrap()
+            )
+            raw_packages = payload.get("package")
+            if isinstance(raw_packages, list):
+                versions: dict[str, str] = {}
+                for raw_package in raw_packages:
+                    if not isinstance(raw_package, Mapping):
+                        continue
+                    raw_source = raw_package.get("source")
+                    if (
+                        not isinstance(raw_source, Mapping)
+                        or "registry" not in raw_source
+                    ):
+                        continue
+                    raw_name = raw_package.get("name")
+                    raw_version = raw_package.get(c.Infra.VERSION)
+                    if not isinstance(raw_name, str) or not isinstance(
+                        raw_version, str
+                    ):
+                        continue
+                    dependency_name = cls.dep_name(raw_name)
+                    if dependency_name is None:
+                        continue
+                    versions[dependency_name] = raw_version.strip()
+                result = dict(versions)
         return result
 
     @classmethod
@@ -350,9 +341,7 @@ class FlextInfraUtilitiesDependencies:
         """Extract every declared ``flext-*`` dependency as a Python namespace."""
         # mro-j47u (codex): FLEXT dependencies are first-party contracts even
         # when their uv source declaration is owned by an enclosing workspace.
-        normalized = _validate_infra_payload(payload)
-        if normalized is None:
-            return ()
+        normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
         return tuple(
             sorted(
                 name.replace("-", "_")

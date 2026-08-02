@@ -7,7 +7,8 @@ transaction guard reports ``breakage=yes`` and refuses to apply -- so a missing
 SSOT entry blocks every other generated artifact from landing.
 
 Concretely: ``scripts/cmd`` intentionally uses hyphenated command filenames
-(``loc-cap.py``), which is a CLI naming convention, not a Python import path.
+(for example, a hyphenated command), which is a CLI naming convention rather
+than a Python import path.
 The ignore for that directory must live in the SSOT so the generator reproduces
 it instead of dropping it.
 

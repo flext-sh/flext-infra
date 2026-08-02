@@ -37,12 +37,6 @@ class FlextInfraPyprojectModernizer(
     audit: Annotated[
         bool, m.Field(False, description="Audit pyproject changes without writing")
     ] = False
-    skip_check: Annotated[
-        bool, m.Field(alias="skip-check", description="Skip post-write validation")
-    ] = False
-    skip_comments: Annotated[
-        bool, m.Field(alias="skip-comments", description="Skip managed comment updates")
-    ] = False
     rewrite_constraints: Annotated[
         bool,
         m.Field(
@@ -87,7 +81,6 @@ class FlextInfraPyprojectModernizer(
             state,
             canonical_dev=canonical_dev,
             dry_run=True,
-            skip_comments=False,
             declared_python_dirs=declared_python_dirs,
             project_kind=project_kind,
             analysis_exclusions=analysis_exclusions,

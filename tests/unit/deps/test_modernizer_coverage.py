@@ -96,15 +96,13 @@ class TestsFlextInfraDepsModernizerCoverage:
         thresholds = config.Infra.tooling.tools.coverage.fail_under
         root_path = tmp_path / "pyproject.toml"
         root_source = '[project]\nname = "arbitrary-root"\n'
-        root_modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
-        )
-        root_first = tm.ok(
+        root_modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+        root_first: str = tm.ok(
             root_modernizer.conform_source(
                 root_source, path=root_path, project_kind="platform"
             )
         )
-        root_second = tm.ok(
+        root_second: str = tm.ok(
             root_modernizer.conform_source(
                 root_first, path=root_path, project_kind="platform"
             )
@@ -115,10 +113,10 @@ class TestsFlextInfraDepsModernizerCoverage:
 name = "arbitrary-member"
 dependencies = ["flext-core", "flext-cli", "flext-ldap"]
 """
-        member_first = tm.ok(
+        member_first: str = tm.ok(
             root_modernizer.conform_source(member_source, path=member_path)
         )
-        member_second = tm.ok(
+        member_second: str = tm.ok(
             root_modernizer.conform_source(member_first, path=member_path)
         )
 

@@ -40,15 +40,9 @@ class FlextInfraBanditGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir, ctx
-        return [
-            c.Infra.BANDIT,
-            "-r",
-            *check_dirs,
-            "-f",
-            c.Infra.OUTPUT_JSON,
-            "-q",
-            "-ll",
-        ]
+        return self._python_module_command(
+            c.Infra.BANDIT, "-r", *check_dirs, "-f", c.Infra.OUTPUT_JSON, "-q", "-ll"
+        )
 
     @override
     def _parse_check_output(

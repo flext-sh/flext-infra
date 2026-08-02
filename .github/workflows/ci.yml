@@ -7,7 +7,7 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch; promotion is integration -> main only
+# Source: config:repository_branch + production_branch
 "on":
   pull_request:
     branches:
@@ -46,6 +46,9 @@ jobs:
 
       - name: setup (blocking)
         run: make setup
+
+      - name: gen (blocking)
+        run: make gen APPLY=Y
 
       - name: fmt (blocking)
         run: make fmt APPLY=Y

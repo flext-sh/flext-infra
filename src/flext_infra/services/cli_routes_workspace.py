@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import FlextInfraWorktreeService, c, m
-from flext_infra.codegen.conform import FlextInfraCodegenGenerate
+from flext_infra import FlextInfraWorktreeService, c, config, m
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
@@ -14,7 +13,6 @@ from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
 from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 
 class WorkspaceRoutes(RefactorRoutes):
@@ -33,14 +31,7 @@ class WorkspaceRoutes(RefactorRoutes):
                 success_message="Release completed successfully",
             ),
         ),
-        c.Infra.CLI_GROUP_WORKSPACE: (
-            m.Cli.ResultCommandRoute(
-                name="generate",
-                help_text="Apply the complete generated surface for canonical make gen",
-                model_cls=m.Infra.CodegenGenerateRequest,
-                handler=FlextInfraCodegenGenerate.execute_request,
-                success_message="generated surface applied",
-            ),
+        config.Infra.codegen.make.executor.group: (
             m.Cli.ResultCommandRoute(
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",
@@ -66,12 +57,7 @@ class WorkspaceRoutes(RefactorRoutes):
                         FlextInfraWorkspaceDetector,
                     ),
                     (
-                        "orchestrate",
-                        "Run make verb across projects",
-                        FlextInfraOrchestratorService,
-                    ),
-                    (
-                        "serialize-make",
+                        config.Infra.codegen.make.executor.route,
                         "Run one state-sensitive Make verb under its checkout lock",
                         FlextInfraMakeSerializationService,
                     ),

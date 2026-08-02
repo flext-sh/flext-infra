@@ -11,6 +11,7 @@ from flext_infra._utilities._docs_scope_build import (
 )
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -79,6 +80,64 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             return r[bool].ok(True)
         except OSError as exc:
             return r[bool].fail(f"markdown write error: {exc}")
+
+    @staticmethod
+    def write_report_pair(
+        report_dir: Path,
+        *,
+        stem: str,
+        summary: t.JsonMapping,
+        markdown: t.StrSequence,
+    ) -> p.Result[None]:
+        """Persist one JSON/Markdown report pair as one rollback-safe operation."""
+        serialized = u.Cli.json_dumps(summary, indent=2)
+        if serialized.failure:
+            error = serialized.error
+            if error is None:
+                msg = "report summary serialization failed without an error"
+                raise RuntimeError(msg)
+            return r[None].fail(error)
+        updates = {
+            report_dir / f"{stem}-summary.json": serialized.value + "\n",
+            report_dir / f"{stem}-report.md": "\n".join(markdown).rstrip() + "\n",
+        }
+        try:
+            FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+                updates,
+                request=m.Infra.ProtectedSourceWritesRequest(workspace=report_dir),
+            )
+        except (*c.EXC_OS_VALIDATION, UnicodeError) as exc:
+            return r[None].fail_op("persist docs report pair", exc)
+        return r[None].ok(None)
+
+    @staticmethod
+    def docs_persistence_failure(
+        *,
+        phase: str,
+        scope: str,
+        error: str | None,
+        report: m.Infra.DocsPhaseReport | None = None,
+    ) -> m.Infra.DocsPhaseReport:
+        """Represent one exact report-persistence error in the phase result."""
+        if error is None:
+            msg = f"{phase} report persistence failed without an error"
+            raise RuntimeError(msg)
+        failure = {
+            "result": c.Infra.ResultStatus.FAIL,
+            "reason": error,
+            "message": error,
+            "passed": False,
+        }
+        if report is not None:
+            return report.model_copy(update=failure)
+        return m.Infra.DocsPhaseReport(
+            phase=phase,
+            scope=scope,
+            result=c.Infra.ResultStatus.FAIL,
+            reason=error,
+            message=error,
+            passed=False,
+        )
 
     @staticmethod
     def anchorize(text: str) -> str:

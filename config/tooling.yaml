@@ -12,6 +12,17 @@ Infra:
       hatch:
         allow-direct-references: true
         packaged-data-dirs: [config, templates]
+      qlty:
+        config-version: "0"
+        sources:
+          - { name: default, default: true }
+        # Qlty fails at count >= threshold; flext-core owns the inclusive maxima.
+        smell-thresholds:
+          - { check: function_parameters, maximum: params }
+          - { check: return_statements, maximum: returns }
+          - { check: nested_control_flow, maximum: nesting }
+          - { check: function_complexity, maximum: fn_cx }
+          - { check: file_complexity, maximum: file_cx }
       ruff:
         # P0 law: lint covers every tracked Python surface. No excludes over
         # legado, examples, tests, or scripts code anywhere in this config.
@@ -141,8 +152,8 @@ Infra:
             "**/.vulture_whitelist.py": [ALL]
             "**/*_pb2*.py": [ALL]
             # Command surfaces are dispatched by FILE NAME, not imported as
-            # modules, so a hyphenated command (loc-cap.py) is the correct CLI
-            # spelling rather than an invalid module name. Scoped to the
+            # modules, so hyphenated command filenames are valid CLI spellings.
+            # Scoped to the
             # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
             # justified per rule, never a blanket mask).
             "scripts/cmd/**/*.py": [invalid-module-name, shebang-not-executable]

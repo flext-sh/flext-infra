@@ -1,11 +1,9 @@
-"""Docs-audit per-issue-type detectors (token/scope/ownership/docstring/codeblock)."""
+"""Docs-audit per-issue-type detectors (token/scope/ownership/docstring)."""
 
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING
 
-from flext_cli import u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
@@ -137,66 +135,6 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             scope.path, scope.package_name
         )
         return FlextInfraUtilitiesDocsApi.docstring_coverage(scope.path, contract)
-
-    @staticmethod
-    def docs_python_codeblock_issues(
-        scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Lint embedded ``python`` fenced blocks under one docs scope.
-
-        Captures every ``python`` fenced block via ``c.Infra.PYTHON_FENCE_RE``
-        and gates each block through ``ruff check --stdin-filename`` (piped
-        body bytes — no temp files). Failures land as ``m.Infra.AuditIssue``
-        records flowing through the standard audit report pipeline.
-        """
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
-            rel = md_file.relative_to(scope.path).as_posix()
-            content = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
-            )
-            for index, match in enumerate(c.Infra.PYTHON_FENCE_RE.finditer(content)):
-                # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
-                # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
-                outcome = u.Cli.run_raw(
-                    [
-                        sys.executable,
-                        "-m",
-                        c.Infra.RUFF,
-                        c.Infra.VERB_CHECK,
-                        "--no-fix",
-                        "--extend-ignore",
-                        ",".join(c.Infra.PYTHON_FENCE_RUFF_EXTEND_IGNORE),
-                        "--stdin-filename",
-                        f"{rel}#block{index}.py",
-                        "-",
-                    ],
-                    input_data=match.group("body").encode(),
-                )
-                if outcome.failure:
-                    detail = outcome.error
-                elif outcome.value.exit_code == 0:
-                    continue
-                else:
-                    # mro-o6h5 (agent: kimi) — ruff reports parse errors on stderr
-                    # only; indexing an empty stdout crashes with IndexError.
-                    stdout_lines = outcome.value.stdout.strip().splitlines()
-                    stderr_lines = outcome.value.stderr.strip().splitlines()
-                    detail_lines = stdout_lines or stderr_lines
-                    detail = (
-                        detail_lines[-1]
-                        if detail_lines
-                        else f"ruff exit {outcome.value.exit_code}"
-                    )
-                issues.append(
-                    m.Infra.AuditIssue(
-                        file=rel,
-                        issue_type="python_codeblock",
-                        severity="medium",
-                        message=f"block #{index}: {detail}",
-                    )
-                )
-        return issues
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsAuditDetectorsMixin"]

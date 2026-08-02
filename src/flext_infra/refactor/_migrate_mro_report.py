@@ -45,8 +45,6 @@ class FlextInfraRefactorMigrateMroReportMixin:
             f"Validation time: {report.validation_duration_seconds:.3f}s",
             f"Total time: {report.total_duration_seconds:.3f}s",
         ]
-        if report.checkpoint_ref:
-            lines.append(f"Rollback checkpoint: {report.checkpoint_ref}")
         if report.warnings:
             lines.append("Warnings:")
             lines.extend(f"- {warning}" for warning in report.warnings)
@@ -76,7 +74,7 @@ class FlextInfraRefactorMigrateMroReportMixin:
             changes.append(
                 f"{action} {rewrite.replacements} consumer references after MRO migration"
             )
-        return [
+        results = [
             m.Infra.Result(
                 file_path=file_path,
                 success=True,
@@ -89,6 +87,30 @@ class FlextInfraRefactorMigrateMroReportMixin:
                 per_file_changes.items(), key=lambda item: str(item[0])
             )
         ]
+        if failure := FlextInfraRefactorMigrateMroReportMixin._failure_message(report):
+            results.append(
+                m.Infra.Result(
+                    file_path=Path(report.workspace),
+                    success=False,
+                    modified=False,
+                    error=failure,
+                    changes=(),
+                    refactored_code=None,
+                )
+            )
+        return tuple(results)
+
+    @staticmethod
+    def _failure_message(report: m.Infra.MROMigrationReport) -> str | None:
+        """Return the exact incomplete apply state, if any."""
+        failures = list(report.errors)
+        if not report.dry_run and report.mro_failures:
+            failures.append(f"MRO validation failures: {report.mro_failures}")
+        if not report.dry_run and report.remaining_violations:
+            failures.append(
+                f"remaining MRO violations: {report.remaining_violations}"
+            )
+        return "; ".join(failures) if failures else None
 
 
 __all__: list[str] = ["FlextInfraRefactorMigrateMroReportMixin"]

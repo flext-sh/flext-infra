@@ -154,9 +154,7 @@ class TestsFlextInfraRefactorCensusPreview:
         )
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            preview = infra_u.Infra.preview_simple_removal_candidate(
-                rope, workspace_root, candidate, gates=("lint",)
-            )
+            preview = infra_u.Infra.preview_simple_removal_candidate(rope, candidate)
 
         tm.ok(preview)
         tm.that(module_path.read_text(encoding="utf-8"), eq=original_source)

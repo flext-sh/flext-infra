@@ -24,7 +24,6 @@ class FlextInfraMROCompletenessDetector:
         """Detect missing MRO bases: expected - declared = violations."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project
-        parse_failures = ctx.parse_failures
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None:
             return []
@@ -32,15 +31,6 @@ class FlextInfraMROCompletenessDetector:
             return []
         res = u.Infra.fetch_python_resource(rope_project, file_path)
         if res is None:
-            if parse_failures is not None:
-                parse_failures.append(
-                    m.Infra.ParseFailureViolation(
-                        file=str(file_path),
-                        stage="mro-completeness",
-                        error_type="ResourceNotFound",
-                        detail=f"Cannot resolve {file_path.name}",
-                    )
-                )
             return []
         # Resolve facade class from declared module classes.
         module_classes = tuple(u.Infra.get_module_classes(rope_project, res))
@@ -76,11 +66,11 @@ class FlextInfraMROCompletenessDetector:
             if f.is_file():
                 scan_paths.append(f)
         for path in scan_paths:
-            r = u.Infra.get_resource_from_path(rope_project, path)
-            if r is None:
+            resource = u.Infra.fetch_python_resource(rope_project, path)
+            if resource is None:
                 continue
-            source = r.read()
-            for ci in u.Infra.get_class_info(rope_project, r):
+            source = resource.read()
+            for ci in u.Infra.get_class_info(rope_project, resource):
                 class_bases = set(ci.bases)
                 class_bases.update(u.Infra.parse_class_bases(source, ci.name))
                 local_bases_by_class[ci.name] = class_bases
@@ -133,10 +123,9 @@ class FlextInfraMROCompletenessDetector:
         project_root = ctx.project_root
         if project_root is None:
             return True
-        try:
-            rel_path = ctx.file_path.relative_to(project_root)
-        except ValueError:
+        if not ctx.file_path.is_relative_to(project_root):
             return False
+        rel_path = ctx.file_path.relative_to(project_root)
         expected_depth: int = c.Infra.RUNTIME_ALIAS_SRC_DEPTH_EXACT
         return len(rel_path.parts) == expected_depth and rel_path.parts[0] == "src"
 

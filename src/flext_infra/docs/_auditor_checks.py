@@ -58,7 +58,6 @@ class FlextInfraDocAuditorChecksMixin:
             ("scope-boundary", u.Infra.docs_scope_boundary_issues),
             ("generated-ownership", u.Infra.docs_generated_ownership_issues),
             ("docstrings", u.Infra.docs_public_docstring_issues),
-            ("python-codeblocks", u.Infra.docs_python_codeblock_issues),
         )
         return tuple(
             issue

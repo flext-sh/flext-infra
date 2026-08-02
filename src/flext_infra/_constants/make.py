@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -45,53 +44,6 @@ class FlextInfraConstantsMake:
     PRLIMIT_ADDRESS_SPACE_OPTION: Final[str] = "--as"
     TIMEOUT_COMMAND: Final[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
-    CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
-    "Make variable carrying the gate selection."
-    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
-        "lint",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "security",
-        "markdown",
-        "smells",
-    )
-    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
-        "lint",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "security",
-        "markdown",
-        "smells",
-    )
-    PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
-        "lint",
-        "pyrefly",
-        "mypy",
-        "pyright",
-    )
-    PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
-        PROJECT_CHECK_GATES_ALLOWED_VALUES
-    )
-    PROJECT_CHECK_GATES_DEFAULT: Final[str] = ",".join(
-        PROJECT_CHECK_GATES_DEFAULT_VALUES
-    )
-    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = ",".join(
-        PROJECT_FAST_PATH_CHECK_GATE_VALUES
-    )
-    PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
-    ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
-        "build",
-        "check",
-        "clean",
-        "docs",
-        "fmt",
-        "fix",
-        "scan",
-        "test",
-        "val",
-    )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",
@@ -112,13 +64,10 @@ class FlextInfraConstantsMake:
         "VIRTUAL_ENV",
     )
     "Environment keys removed before project-level make orchestration."
-    ORCHESTRATOR_ENV_NO_COLOR: Final[str] = "NO_COLOR"
     ORCHESTRATOR_ENV_PATH: Final[str] = "PATH"
     ORCHESTRATOR_ENV_PYTHONPATH: Final[str] = "PYTHONPATH"
     ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: Final[str] = "PYTHONDONTWRITEBYTECODE"
     ORCHESTRATOR_ENV_PATH_SEPARATOR: Final[str] = ":"
-    ORCHESTRATOR_ENV_MISE_SHIMS: Final[str] = "MISE_SHIMS"
-    ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
     PYTEST_ENV_ARGS: Final[str] = "FLEXT_PYTEST_ARGS_RAW"
     PYTEST_ENV_DIAG: Final[str] = "FLEXT_PYTEST_DIAG_RAW"
     PYTEST_ENV_FAIL_FAST: Final[str] = "FLEXT_PYTEST_FAIL_FAST_RAW"
@@ -132,205 +81,6 @@ class FlextInfraConstantsMake:
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
-    )
-    PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
-        ("PYTEST_ARGS", ""),
-        ("DEPENDENCY", ""),
-        ("DIAG", "0"),
-        (CHECK_GATES_VARIABLE, ""),
-        ("VALIDATE_GATES", ""),
-        ("SCOPE", "project"),
-        ("NAMESPACE", ""),
-        ("GATES", ""),
-        ("PROPAGATE", ""),
-        ("FIX", ""),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
-        ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
-        ("FILE", ""),
-        ("FILES", ""),
-        ("CHANGED_ONLY", ""),
-        ("MATCH", ""),
-        ("RUFF_ARGS", ""),
-        ("PYRIGHT_ARGS", ""),
-        ("CHECK_ONLY", ""),
-        ("FAIL_FAST", ""),
-        ("VERBOSE", ""),
-    )
-    WORKSPACE_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
-        ("PROJECT", ""),
-        ("PROJECTS", ""),
-        ("WHAT", ""),
-        ("PYTEST_ARGS", ""),
-        ("DEPENDENCY", ""),
-        ("VALIDATE_SCOPE", "all"),
-        ("FAIL_FAST", ""),
-        ("JOBS", ""),
-        (CHECK_GATES_VARIABLE, ""),
-        ("MYPY_MEMORY_LIMIT_MB", str(MYPY_MEMORY_LIMIT_MB_DEFAULT)),
-        ("MYPY_TIMEOUT_SECONDS", str(MYPY_TIMEOUT_SECONDS_DEFAULT)),
-        ("VALIDATE_GATES", ""),
-        ("SCOPE", "project"),
-        ("NAMESPACE", ""),
-        ("GATES", ""),
-        ("PROPAGATE", ""),
-        ("FIX", ""),
-        ("FILE", ""),
-        ("FILES", ""),
-        ("CHANGED_ONLY", ""),
-        ("MATCH", ""),
-        ("RUFF_ARGS", ""),
-        ("PYRIGHT_ARGS", ""),
-        ("CHECK_ONLY", ""),
-        ("RELEASE_PHASE", "all"),
-        ("INTERACTIVE", "1"),
-        ("DRY_RUN", ""),
-        ("PUSH", ""),
-        ("VERSION", ""),
-        ("MESSAGE", ""),
-        ("TAG", ""),
-        ("BUMP", ""),
-        ("RELEASE_DEV_SUFFIX", "0"),
-        ("RELEASE_NEXT_DEV", "0"),
-        ("RELEASE_NEXT_BUMP", "minor"),
-        ("CREATE_BRANCHES", "1"),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
-        ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
-        ("PR_INCLUDE_ROOT", "1"),
-        ("PR_CHECKPOINT", "1"),
-        ("DEPS_REPORT", "1"),
-        ("VERBOSE", ""),
-    )
-    PROJECT_CORE_VERBS: Final[t.StrPairSequence] = (
-        ("boot", "Install dependencies and hooks"),
-        ("build", "Build distributable artifacts"),
-        ("check", "Run lint gates (CHECK_GATES= to select)"),
-        (
-            "fix-enforcement",
-            "Auto-fix enforcement violations (APPLY=1, PROJECTS=..., RULES=...)",
-        ),
-        ("scan", "Run all security checks"),
-        ("fmt", "Run all formatting"),
-        ("docs", "Run docs (WHAT= to select)"),
-        ("test", "Run bounded pytest (FILE=/MATCH= selectors)"),
-        ("val", "Run validate gates (FIX=1 to auto-fix)"),
-        ("clean", "Clean build/test/type artifacts"),
-    )
-    PROJECT_DAEMON_VERBS: Final[t.StrPairSequence] = (
-        ("daemon-start", "Start all daemons (mypy + pyright)"),
-        ("daemon-stop", "Stop all daemons"),
-        ("daemon-status", "Show status of all daemons"),
-        ("daemon-restart", "Restart all daemons"),
-    )
-    PROJECT_OPTION_LINES: Final[t.StrSequence] = (
-        f"CHECK_GATES={PROJECT_CHECK_GATES_ALLOWED}",
-        f"MYPY_MEMORY_LIMIT_MB={MYPY_MEMORY_LIMIT_MB_DEFAULT}  Mypy address-space cap",
-        f"MYPY_TIMEOUT_SECONDS={MYPY_TIMEOUT_SECONDS_DEFAULT}  Mypy wall-time cap",
-        f"VALIDATE_GATES={PROJECT_VALIDATE_GATES_ALLOWED}",
-        "FILE=src/foo.py             Single file for check/fmt/test",
-        'FILES="a.py b.py"          Multiple files for check/fmt; test rejects it',
-        "CHANGED_ONLY=1              Git-changed Python files for check",
-        "CHECK_ONLY=1                Dry-run format/check (no writes)",
-        'RUFF_ARGS="--select E501"   Extra args for ruff check',
-        'PYRIGHT_ARGS="--level basic" Extra args for pyright',
-        "PYTEST_ARGS=<value>         Rejected; use FILE, MATCH, or WHAT",
-        "DEPENDENCY=<distribution>   Select one package for deps WHAT=upgrade",
-        "MATCH=test_name             Alias for pytest -k",
-        "FAIL_FAST=1                 Add -x to pytest",
-        "DIAG=1                      Emit extended pytest diagnostics",
-        "FIX=1                       Auto-fix supported gates",
-        "APPLY=1                     Apply enforcement fixes (default dry-run)",
-        "PROJECTS=p1,p2              Scope fix-enforcement to projects",
-        "RULES=ENFORCE-XXX,...       Scope fix-enforcement to rules",
-        "VERBOSE=1                   Show executed commands",
-    )
-    PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (
-        "PR_ACTION=status|create",
-        "PR_BASE=<branch>  PR_HEAD=<branch>",
-        "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
-    )
-    # Phase-set per verb for legacy CLI helpers. Make routing is owned by
-    # the registry discovered from scripts/cmd through flext-tests.
-    WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
-        "boot": frozenset({"imp", "stat", "submodules", "sync", "venv"}),
-        "build": frozenset({
-            "constraints",
-            "docs",
-            "gen",
-            "mod",
-            "stubs",
-            "sync",
-            "up",
-        }),
-        "check": frozenset({
-            "boundary",
-            "coordination",
-            "cqrs",
-            "fmt",
-            "format",
-            "lint",
-            "loc-cap",
-            "markdown",
-            "mypy",
-            "pol",
-            "pyre",
-            "pyrefly",
-            "pyright",
-            "scan",
-            "silent-failure",
-            "types",
-        }),
-        "ship": frozenset({"pr", "push", "rel", "save", "tag"}),
-        "test": frozenset({"all"}),
-        "val": frozenset({"all", "project", "workspace"}),
-    })
-    STANDALONE_BOOTSTRAP_VERBS: Final[t.StrPairSequence] = (
-        ("venv", "Create virtual environment"),
-        ("setup", "Full standalone setup"),
-        ("help", "Show this help"),
-    )
-    STANDALONE_POST_SETUP_VERBS: Final[str] = (
-        "check, test, fmt, build, val, clean, docs, pr"
-    )
-    PROJECT_SELECTION_CONFLICT_ERROR: Final[str] = (
-        "ERROR: Cannot use PROJECT and PROJECTS together"
-    )
-    PROJECT_SELECTION_CONFLICT_HINT: Final[str] = (
-        'Use PROJECT=<name> or PROJECTS="proj-a proj-b"'
-    )
-    PROJECT_SELECTION_EMPTY_ERROR: Final[str] = "ERROR: no projects selected"
-    PROJECT_SELECTION_EMPTY_HINT: Final[str] = (
-        'Use PROJECT=<name> or PROJECTS="proj-a proj-b"'
-    )
-    WORKSPACE_BOOT_HINT: Final[str] = "make boot"
-    SAVE_USAGE: Final[str] = "make save MESSAGE='chore: your message'"
-    FORWARD_MODE_VALUE: Final[str] = "value"
-    FORWARD_MODE_ENABLED: Final[str] = "enabled"
-    CHECK_FORWARD_ARGS: Final[t.StrPairSequence] = (
-        ("CHECK_GATES", FORWARD_MODE_VALUE),
-        ("FILE", FORWARD_MODE_VALUE),
-        ("FILES", FORWARD_MODE_VALUE),
-        ("CHANGED_ONLY", FORWARD_MODE_ENABLED),
-        ("FIX", FORWARD_MODE_ENABLED),
-        ("RUFF_ARGS", FORWARD_MODE_VALUE),
-        ("PYRIGHT_ARGS", FORWARD_MODE_VALUE),
-        ("CHECK_ONLY", FORWARD_MODE_ENABLED),
-    )
-    TEST_FORWARD_ARGS: Final[t.StrPairSequence] = (
-        ("FILE", FORWARD_MODE_VALUE),
-        ("MATCH", FORWARD_MODE_VALUE),
-        ("VERBOSE", FORWARD_MODE_ENABLED),
-    )
-    VALIDATE_FORWARD_ARGS: Final[t.StrPairSequence] = (
-        ("FIX", FORWARD_MODE_ENABLED),
-        ("VALIDATE_GATES", FORWARD_MODE_VALUE),
     )
 
 

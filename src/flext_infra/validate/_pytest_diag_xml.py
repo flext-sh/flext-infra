@@ -1,7 +1,7 @@
 """JUnit-XML diagnostics parsing for the pytest-diag extractor (§3.1 split).
 
-Holds the ``_DiagResult`` container plus the JUnit-XML parsing cluster, composed
-into ``FlextInfraPytestDiagExtractor`` via MRO.
+Consumes the canonical mutable diagnostics model and composes the XML parsing
+cluster into ``FlextInfraPytestDiagExtractor`` via MRO.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,37 +9,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, p
+from flext_infra import c, m, p, r
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import t
-
-
-class _DiagResult:
-    """Internal container for extracted diagnostics."""
-
-    __slots__: ClassVar[tuple[str, ...]] = (
-        "error_cases",
-        "error_traces",
-        "failed_cases",
-        "skip_cases",
-        "slow_entries",
-        "warning_lines",
-    )
-
-    def __init__(self) -> None:
-        self.failed_cases: t.MutableSequenceOf[str] = []
-        self.error_cases: t.MutableSequenceOf[str] = []
-        self.error_traces: t.MutableSequenceOf[str] = []
-        self.skip_cases: t.MutableSequenceOf[str] = []
-        self.warning_lines: t.MutableSequenceOf[str] = []
-        self.slow_entries: t.MutableSequenceOf[str] = []
 
 
 class FlextInfraPytestDiagXmlMixin:
@@ -68,16 +47,13 @@ class FlextInfraPytestDiagXmlMixin:
 
     @staticmethod
     def _process_testcase(
-        case: p.Infra.XmlElementLike, diag: _DiagResult
+        case: p.Infra.XmlElementLike, diag: m.Infra.DiagResult
     ) -> t.Pair[float, str]:
         """Process a single testcase element; returns (seconds, label)."""
         classname = case.attrib.get("classname", "")
         name = case.attrib.get(c.Infra.NAME, "")
         label = f"{classname}::{name}" if classname else name
-        try:
-            secs = float(case.attrib.get("time", "0") or 0.0)
-        except ValueError:
-            secs = 0.0
+        secs = float(case.attrib.get("time", "0") or 0.0)
         if (failure := case.find("failure")) is not None:
             diag.failed_cases.append(label)
             diag.error_traces.append(
@@ -98,19 +74,19 @@ class FlextInfraPytestDiagXmlMixin:
         return secs, label
 
     @staticmethod
-    def _parse_xml(junit_path: Path, diag: _DiagResult) -> bool:
-        """Parse JUnit XML and populate diagnostics. Returns True on success."""
+    def _parse_xml(junit_path: Path, diag: m.Infra.DiagResult) -> p.Result[bool]:
+        """Parse JUnit XML, distinguishing absent input from invalid input."""
         if not junit_path.exists():
-            return False
+            return r[bool].ok(False)
         try:
             root_raw = DefusedET.parse(junit_path).getroot()
-        except DefusedET.ParseError:
-            return False
+        except DefusedET.ParseError as exc:
+            return r[bool].fail_op(f"parse JUnit XML {junit_path}", exc)
         if root_raw is None:
-            return False
+            return r[bool].fail(f"JUnit XML has no document root: {junit_path}")
         root = FlextInfraPytestDiagXmlMixin._as_xml_element(root_raw)
         if root is None:
-            return False
+            return r[bool].fail(f"JUnit XML root has an unsupported type: {junit_path}")
         slow_rows: t.MutableSequenceOf[t.Pair[float, str]] = []
         # NOTE (multi-agent, mro-f8vk / kimi): Element.iter() never yields
         # None; the dropped guard was dead code. _as_xml_element below stays
@@ -119,13 +95,19 @@ class FlextInfraPytestDiagXmlMixin:
             case = FlextInfraPytestDiagXmlMixin._as_xml_element(case_raw)
             if case is None:
                 continue
-            slow_rows.append(FlextInfraPytestDiagXmlMixin._process_testcase(case, diag))
+            try:
+                row = FlextInfraPytestDiagXmlMixin._process_testcase(case, diag)
+            except ValueError as exc:
+                return r[bool].fail_op(
+                    f"parse JUnit testcase duration from {junit_path}", exc
+                )
+            slow_rows.append(row)
         if slow_rows:
             diag.slow_entries = [
                 f"{secs:.6f}s | {label}"
                 for secs, label in sorted(slow_rows, reverse=True)
             ]
-        return True
+        return r[bool].ok(True)
 
 
-__all__: list[str] = ["FlextInfraPytestDiagXmlMixin", "_DiagResult"]
+__all__: list[str] = ["FlextInfraPytestDiagXmlMixin"]

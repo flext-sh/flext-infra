@@ -10,7 +10,6 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, t
@@ -19,23 +18,13 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
-    """Validate one plain mapping through the infra adapter.
-
-    Centralizes the repeated try/except so callers only decide what sentinel
-    to surface on failure.
-    """
-    try:
-        result: t.JsonMapping | None = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-            payload
-        )
-    except (c.ValidationError, ValueError):
-        return None
-    return result
-
-
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    @staticmethod
+    def validate_infra_payload(payload: object) -> t.JsonMapping:
+        """Validate one plain mapping through the canonical infra adapter."""
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
 
     @staticmethod
     def format_toml_source(
@@ -86,10 +75,9 @@ class FlextInfraUtilitiesPyproject:
         if not pyproject_path.is_file():
             return {}
         payload_result = u.Cli.toml_read_json(pyproject_path)
-        if payload_result.failure:
-            return {}
-        validated = _validate_infra_payload(payload_result.value)
-        return validated if validated is not None else {}
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(
+            payload_result.unwrap()
+        )
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
@@ -97,8 +85,7 @@ class FlextInfraUtilitiesPyproject:
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        validated = _validate_infra_payload(payload)
-        return validated if validated is not None else {}
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:
@@ -188,6 +175,28 @@ class FlextInfraUtilitiesPyproject:
         )
 
     @staticmethod
+    def project_console_script(project_root: Path, distribution: str) -> p.Result[str]:
+        """Resolve the project's default console script from its pyproject SSOT."""
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
+        payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject)
+        project = payload.get("project")
+        scripts = project.get("scripts") if isinstance(project, dict) else None
+        if not isinstance(scripts, dict):
+            return r[str].fail(f"{pyproject}: missing [project.scripts] table")
+        declared = tuple(
+            name.strip()
+            for name, target in scripts.items()
+            if name.strip() and isinstance(target, str) and target.strip()
+        )
+        if distribution in declared:
+            return r[str].ok(distribution)
+        if len(declared) == 1:
+            return r[str].ok(declared[0])
+        return r[str].fail(
+            f"{pyproject}: console entrypoint must match {distribution!r} or be unique"
+        )
+
+    @staticmethod
     @cache
     def workspace_member_names(workspace_root: Path) -> t.StrSequence:
         """Return configured workspace members from ``[tool.flext.workspace]`` or ``[tool.uv.workspace]``.
@@ -223,4 +232,4 @@ class FlextInfraUtilitiesPyproject:
         return ()
 
 
-__all__: list[str] = ["FlextInfraUtilitiesPyproject", "_validate_infra_payload"]
+__all__: list[str] = ["FlextInfraUtilitiesPyproject"]

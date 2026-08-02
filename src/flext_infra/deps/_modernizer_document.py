@@ -53,8 +53,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        @property
-        def tomlsort_sort_first(self) -> t.StrSequence: ...
+        tomlsort_sort_first: t.StrSequence
 
         def _reorder_document_inplace(
             self,
@@ -184,7 +183,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         *,
         canonical_dev: t.StrSequence,
         dry_run: bool,
-        skip_comments: bool,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
@@ -305,9 +303,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
         rendered = doc.as_string()
-        if not skip_comments:
-            rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
-            changes.extend(comment_changes)
+        rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        changes.extend(comment_changes)
         formatted_result = self._format_rendered_pyproject(path, rendered)
         if formatted_result.failure:
             return [formatted_result.error or "taplo format failed"]

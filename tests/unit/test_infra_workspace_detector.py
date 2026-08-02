@@ -26,6 +26,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             name=name,
             distribution=name,
             provider=provider.name,
+            branch=provider.branch,
             url=url or f"{provider.base_url}/{name}.git",
             path=Path(path),
             role=role,
@@ -360,7 +361,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             f'[project]\nname = "{declared.name}"\nversion = "0.0.0"\n',
             encoding="utf-8",
         )
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+        spec: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path)
+        )
         tm.that(spec.name, eq=declared.name)
         tm.that(spec.repository.role, eq=declared.role)
         tm.that(spec.version, eq=c.Infra.WORKSPACE_MANIFEST_VERSION)
@@ -373,7 +376,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
         u.Tests.initialize_git_repo(tmp_path)
 
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+        spec: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path)
+        )
 
         tm.that(spec.name, eq="not-a-declared-flext-project")
 
@@ -388,7 +393,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
         self._write_manifest(tmp_path, repository)
 
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+        spec: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path)
+        )
         tm.that(spec.name, eq="consumer-project")
         tm.that(spec.repository.name, eq="consumer-project")
 
@@ -475,7 +482,11 @@ class TestsFlextInfraInfraWorkspaceDetector:
             encoding="utf-8",
         )
         infra_repository = u.Tests.repository_ref(config.Infra.name)
-        toolchain_marker = project_root / infra_repository.path / c.Infra.BASE_MK
+        toolchain_marker = (
+            project_root
+            / infra_repository.path
+            / config.Infra.codegen.surfaces.make_engine_path
+        )
         toolchain_marker.parent.mkdir(parents=True, exist_ok=True)
         toolchain_marker.write_text("# toolchain marker\n", encoding="utf-8")
 
@@ -514,7 +525,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             ),
         )
 
-        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
+        target: m.Infra.RepositoryConformTarget = tm.ok(
+            FlextInfraWorkspaceDetector.conform_target(member_root)
+        )
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
         tm.that(target.beads_enabled, eq=False)
 
@@ -539,7 +552,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             ),
         )
 
-        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
+        target: m.Infra.RepositoryConformTarget = tm.ok(
+            FlextInfraWorkspaceDetector.conform_target(project_root)
+        )
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(target.beads_enabled, eq=True)
 
@@ -549,7 +564,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
         """Keep a manifest-declared member outside the routing-config class."""
         member_root = self._attached_member(tmp_path)
 
-        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
+        target: m.Infra.RepositoryConformTarget = tm.ok(
+            FlextInfraWorkspaceDetector.conform_target(member_root)
+        )
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
         tm.that(target.attached_standalone, eq=False)
         tm.that(target.beads_enabled, eq=False)
@@ -574,7 +591,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             ),
         )
 
-        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
+        target: m.Infra.RepositoryConformTarget = tm.ok(
+            FlextInfraWorkspaceDetector.conform_target(project_root)
+        )
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
         tm.that(target.attached_standalone, eq=True)
         tm.that(target.beads_enabled, eq=False)

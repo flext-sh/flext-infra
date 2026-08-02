@@ -7,11 +7,11 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch; promotion is integration -> main only
+# Source: config:repository_branch + production_branch
 "on":
   pull_request:
     branches:
-      - main
+      - {{ production_branch }}
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===

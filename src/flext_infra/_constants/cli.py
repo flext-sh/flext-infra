@@ -32,11 +32,7 @@ class FlextInfraConstantsCli:
         "--verbose",
         "--quiet",
         "--no-fail",
-        "--typings",
-        "--apply-typings",
         "--no-pip-check",
-        "--skip-check",
-        "--skip-comments",
         "--audit",
         "--rewrite-constraints",
     )
@@ -70,7 +66,7 @@ class FlextInfraConstantsCli:
         "validate": "Infrastructure validators and diagnostics",
         "deps": "Dependency detection and modernization",
         "docs": "Documentation audit, fix, build, generate, validate",
-        "github": "GitHub workflows, linting, and PR automation",
+        "github": "GitHub pull-request automation",
         "maintenance": "Python version enforcement",
         "refactor": "Declarative refactoring and modernization",
         "release": "Release orchestration",
@@ -82,20 +78,6 @@ class FlextInfraConstantsCli:
         "{repository}-transaction-{transaction_id}"
     )
     WORKTREE_TRANSACTION_TIMEOUT_SECONDS: Final[int] = 3600
-    WORKTREE_TRANSACTION_LINT_COMMANDS: Final[t.StrSequencePairTuple] = ()
-    """Empty by contract: one tool runs once, in the verb that owns it.
-
-    Why (ai-hub-qwoc): this ran `ruff check . --preview` inside the isolated
-    transaction worktree, which has neither the project's pyproject nor its
-    path scoping. Measured on ai-hub: `ruff check src/ tests/` reports zero
-    errors while the transaction reported 548 (189 SLF001, 70 PLC2701, 52
-    S108 ...), so a clean repository could not be conformed at all --
-    `make gen APPLY=Y` aborted before writing a single managed file.
-
-    Linting belongs to its own verb and runs exactly once: `ruff check` in
-    `make check`, `ruff format` in `make fmt`, `ruff check --fix` in
-    `make fix`. Conform owns structural conformance, never a second lint pass.
-    """
 
 
 __all__: tuple[str, ...] = ("FlextInfraConstantsCli",)

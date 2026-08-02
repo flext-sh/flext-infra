@@ -37,9 +37,6 @@ class TestsFlextInfraDepsDetectorInit:
             output=str(output_path),
             quiet=True,
             no_fail=True,
-            typings=True,
-            apply_typings=True,
-            limits="/custom/limits.toml",
         )
         tm.that(params.project_names, eq=["test"])
         tm.that(params.no_pip_check, eq=True)
@@ -48,9 +45,6 @@ class TestsFlextInfraDepsDetectorInit:
         tm.that(str(params.output_path), eq=str(output_path.resolve()))
         tm.that(params.quiet, eq=True)
         tm.that(params.no_fail, eq=True)
-        tm.that(params.typings, eq=True)
-        tm.that(params.apply_typings, eq=True)
-        tm.that(str(params.limits_path), eq=str(Path("/custom/limits.toml").resolve()))
 
     def test_detect_command_project_names_with_single_project(
         self, tmp_path: Path

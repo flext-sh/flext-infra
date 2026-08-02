@@ -121,7 +121,7 @@
         },
         "validation_requirements": {
           "type": "object",
-          "required": ["pre_checks", "post_checks", "quality_gates"],
+          "required": ["pre_checks", "post_checks"],
           "properties": {
             "pre_checks": {
               "type": "array",
@@ -133,13 +133,6 @@
             "post_checks": {
               "type": "array",
               "description": "Validation checks after transformation",
-              "items": {
-                "type": "string"
-              }
-            },
-            "quality_gates": {
-              "type": "array",
-              "description": "Quality criteria that must pass",
               "items": {
                 "type": "string"
               }

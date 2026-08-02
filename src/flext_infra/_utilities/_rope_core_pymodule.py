@@ -61,19 +61,14 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
     @staticmethod
     def get_module_imports(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> t.Infra.RopeModuleImports | None:
-        """Get module imports."""
-        try:
-            module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
-                rope_project,
-                FlextInfraUtilitiesRopeCorePyModuleMixin.get_pymodule(
-                    rope_project, resource
-                ),
-            )
-        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), TypeError):
-            return None
-        result: t.Infra.RopeModuleImports | None = module_imports
-        return result
+    ) -> t.Infra.RopeModuleImports:
+        """Return validated module imports or propagate the Rope failure."""
+        return FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
+            rope_project,
+            FlextInfraUtilitiesRopeCorePyModuleMixin.get_pymodule(
+                rope_project, resource
+            ),
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeCorePyModuleMixin"]

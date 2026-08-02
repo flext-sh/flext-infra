@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
@@ -28,13 +29,13 @@ class FlextInfraRefactorCensusInventoryMixin:
     @classmethod
     def _build_parent_inventory(
         cls, workspace_root: Path
-    ) -> t.MappingKV[str, t.StrSequence]:
+    ) -> tuple[t.MappingKV[str, t.StrSequence], t.StrMapping]:
         """Inventory governed-package alias top-level facade names.
 
         Discovers governed projects via ``u.Infra.projects(workspace_root)``
         (canonical workspace project discovery — SSOT). For each project
-        whose hyphenated name converts to a Python package, imports the
-        package and walks dynamic facade aliases at depth 1
+        with a discovered canonical import package, imports that package and
+        walks dynamic facade aliases at depth 1
         (top-level facade attributes such as ``flext_core.c.Result``).
 
         Returns ``{symbol_name: (parent_path, ...)}`` so a consumer-defined
@@ -49,22 +50,27 @@ class FlextInfraRefactorCensusInventoryMixin:
         flext package tree.
 
         Read-only runtime introspection — NO Rope, NO source-tree walking,
-        NO subprocess. Skips packages that fail to import (sub-repo
-        environments may not have every flext-* installed).
+        NO subprocess. Governed-package import failures fail the inventory.
         """
         projects_result = u.Infra.projects(workspace_root)
         if projects_result.failure:
-            return {}
+            msg = projects_result.error or "parent inventory project discovery failed"
+            raise RuntimeError(msg)
         inventory: dict[str, list[str]] = defaultdict(list)
+        package_by_project: dict[str, str] = {}
         for project in projects_result.unwrap():
-            pkg_name = project.name.replace("-", "_")
+            pkg_name = project.package_name
+            if not pkg_name:
+                msg = f"project discovery produced no package identity: {project.name}"
+                raise RuntimeError(msg)
+            package_by_project[project.name] = pkg_name
             try:
-                module = __import__(pkg_name)
-            except ImportError:
-                continue
-            import_name = pkg_name.replace("-", "_")
-            for alias_name, module_name, _ in u.lazy_alias_suffixes(import_name):
-                if module_name.split(".", 1)[0] != import_name:
+                module = importlib.import_module(pkg_name)
+            except ImportError as exc:
+                msg = f"failed to import governed package {pkg_name}"
+                raise RuntimeError(msg) from exc
+            for alias_name, module_name, _ in u.lazy_alias_suffixes(pkg_name):
+                if module_name.split(".", 1)[0] != pkg_name:
                     continue
                 alias = getattr(module, alias_name, None)
                 if alias is None:
@@ -82,7 +88,10 @@ class FlextInfraRefactorCensusInventoryMixin:
                     if not isinstance(nested, type):
                         continue
                     inventory[attr].append(f"{pkg_name}.{alias_name}.{attr}")
-        return {name: tuple(paths) for name, paths in inventory.items()}
+        return (
+            {name: tuple(paths) for name, paths in inventory.items()},
+            package_by_project,
+        )
 
     @classmethod
     def parent_alias_collisions(
@@ -112,10 +121,17 @@ class FlextInfraRefactorCensusInventoryMixin:
             no collisions are found.
 
         """
-        inventory = cls._build_parent_inventory(workspace_root)
+        inventory, package_by_project = cls._build_parent_inventory(workspace_root)
         collisions: list[tuple[m.Infra.Census.Object, t.StrSequence]] = []
         for project_report in report.projects:
-            self_pkg_prefix = f"{project_report.project.replace('-', '_')}."
+            package_name = package_by_project.get(project_report.project)
+            if package_name is None:
+                msg = (
+                    "parent inventory has no package identity for report project: "
+                    f"{project_report.project}"
+                )
+                raise RuntimeError(msg)
+            self_pkg_prefix = f"{package_name}."
             for obj in project_report.objects:
                 if obj.name.startswith("_"):
                     continue

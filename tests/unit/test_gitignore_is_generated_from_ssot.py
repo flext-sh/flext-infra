@@ -36,24 +36,17 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
     def test_every_managed_file_survives_the_ignore_policy(self) -> None:
         """No committed managed artifact is ignored by the shipped policy.
 
-        ``codegen conform`` creates every entry of ``managed_files`` and then
-        verifies the tree through git. A whitelist that blocks one of those
-        paths makes the artifact untrackable, so conform re-reports it as a new
-        file on every run and the whole transaction never converges.
-
-        ``delegated`` entries are the deliberate exception: they are generated
-        into each checkout rather than committed, so being ignored is correct.
-        The distinction is read from the managed-file policy, never hardcoded.
+        Generation creates every catalog entry whose lifecycle contains
+        ``generate`` and then verifies the tree through git. A whitelist that
+        blocks one of those paths makes the transaction non-convergent.
         """
         committed = tuple(
             item
-            for item in config.Infra.codegen.managed_files
-            if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
+            for item in config.Infra.codegen.surfaces.entries
+            if "generate" in item.operations
         )
         blocked = tuple(
-            item.path.as_posix()
-            for item in committed
-            if not _is_allowed_by_policy(item.path.as_posix())
+            item.path for item in committed if not _is_allowed_by_policy(item.path)
         )
 
         tm.that(blocked, eq=())
@@ -81,7 +74,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
                 for item in members
             ),
         )
-        rendered = tm.ok(
+        rendered: str = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.WORKSPACE_ROOT,

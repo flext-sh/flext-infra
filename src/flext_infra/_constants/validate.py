@@ -102,18 +102,6 @@ class FlextInfraConstantsSharedInfra:
     SKILL_FIXER_NAME_RE: Final[t.RegexPattern] = re.compile(
         r"^(fix|autofix|repair|correct|reorder|refactor|standardize)[-_]"
     )
-    MISSING_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"Cannot find module `([^`]+)` \[missing-import\]"
-    )
-    MYPY_HINT_RE: Final[t.RegexPattern] = re.compile(
-        r'note:\s+(?:hint|note):\s+(?:["`].*?\bpip\s+install\s+|install\s+stub\s+package\s+["`]?)'
-        r'([A-Za-z0-9][A-Za-z0-9_.-]*)["`]?',
-        re.IGNORECASE,
-    )
-    MYPY_STUB_RE: Final[t.RegexPattern] = re.compile(
-        r"Library stubs not installed for ['\"](\S+?)['\"]"
-    )
-    INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
     METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
         "flext-core/src/flext_core/_utilities/project_metadata.py",
@@ -194,9 +182,6 @@ class FlextInfraConstantsSharedInfra:
         DIR_EXAMPLES,
         DIR_SCRIPTS,
     })
-    TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: Final[frozenset[str]] = frozenset({
-        "pydantic_settings"
-    })
     DIR_TYPINGS: Final[str] = "typings"
     DIR_DOCS: Final[str] = "docs"
     DIR_BUILD: Final[str] = "build"
@@ -210,7 +195,6 @@ class FlextInfraConstantsSharedInfra:
     TIMEOUT_CI: Final[int] = 900
 
     # --- Path constants (was: class Paths) ---
-    VENV_BIN_REL: Final[str] = ".venv/bin"
     DEFAULT_SRC_DIR: Final[str] = "src"
 
 

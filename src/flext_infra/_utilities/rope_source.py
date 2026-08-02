@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from operator import itemgetter
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes
+from flext_infra._utilities.silent_failure_ast import _SilentFailureAstVisitor
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra._utilities.silent_failure_ast import _SilentFailureFinding
 
 
 class FlextInfraUtilitiesRopeSource:
@@ -22,6 +25,29 @@ class FlextInfraUtilitiesRopeSource:
 
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT: ClassVar[int] = 2
     "Triple-quote occurrences on a line that opens and closes a docstring."
+
+    @staticmethod
+    def collect_silent_failure_findings(
+        tree: ast.Module, source: str
+    ) -> list[_SilentFailureFinding]:
+        """Collect silent-failure findings from one Rope-backed module AST."""
+        return _SilentFailureAstVisitor(source).analyze(tree)
+
+    @staticmethod
+    def collect_silent_failure_fixes(
+        tree: ast.Module,
+        source: str,
+        *,
+        kinds: Collection[str] | None = None,
+    ) -> list[tuple[int, int, str]]:
+        """Return deterministic replacements for silent-failure sentinels."""
+        allowed = kinds if kinds is not None else frozenset()
+        return [
+            finding.replacement
+            for finding in _SilentFailureAstVisitor(source).analyze(tree)
+            if finding.replacement is not None
+            and (not allowed or finding.kind in allowed)
+        ]
 
     @staticmethod
     def matches_module_toplevel(file_path: Path) -> bool:
@@ -194,14 +220,11 @@ class FlextInfraUtilitiesRopeSource:
             }
             for item in raw_items
         ]
-        try:
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
-            return [
-                m.Infra.ImportModernizerRuleConfig.model_validate(item)
-                for item in typed_items
-            ]
-        except c.ValidationError:
-            return []
+        typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
+        return [
+            m.Infra.ImportModernizerRuleConfig.model_validate(item)
+            for item in typed_items
+        ]
 
     @staticmethod
     def collect_blocked_aliases(
@@ -391,7 +414,7 @@ class FlextInfraUtilitiesRopeSource:
         resource: t.Infra.RopeResource,
         *,
         apply: bool = True,
-        kinds: set[str] | frozenset[str] | None = None,
+        kinds: Collection[str] | None = None,
     ) -> t.Infra.TransformResult:
         """Fix silent failure sentinels using rope-backed AST detection.
 
@@ -410,7 +433,7 @@ class FlextInfraUtilitiesRopeSource:
                 f"silent failure sentinel AST collection returned {type(tree).__name__}"
             )
             raise TypeError(msg)
-        changes = collect_silent_failure_fixes(tree, source, kinds=kinds)
+        changes = cls.collect_silent_failure_fixes(tree, source, kinds=kinds)
         if not changes:
             return source, []
         updated = cls.rewrite_source_at_offsets(

@@ -5,16 +5,15 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from flext_cli import cli
-from flext_infra import c, m, p, r, t, u
-from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra.gates.actionlint import FlextInfraActionlintGate
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
 from flext_infra.gates.layout import FlextInfraLayoutGate
-from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.namespace import FlextInfraNamespaceGate
@@ -32,9 +31,30 @@ class FlextInfraGateRegistry:
 
     def __init__(self) -> None:
         """Build the gate-id to gate-class mapping used by check execution."""
-        self._gates: dict[str, type[FlextInfraGate]] = {
-            gate_cls.gate_id: gate_cls for gate_cls in self._gate_classes()
-        }
+        classes = self._gate_classes()
+        gate_ids = tuple(gate_cls.gate_id for gate_cls in classes)
+        if len(set(gate_ids)) != len(gate_ids):
+            msg = "workspace gate identifiers must be unique"
+            raise ValueError(msg)
+        missing_metadata = set(gate_ids) - set(c.Infra.SARIF_TOOL_INFO)
+        if missing_metadata:
+            msg = "workspace gates require SARIF metadata: " + ", ".join(
+                sorted(missing_metadata)
+            )
+            raise ValueError(msg)
+        implementations = dict(zip(gate_ids, classes, strict=True))
+        policy = config.Infra.codegen.make.check
+        if set(policy.gate_ids) != set(implementations):
+            missing = set(policy.gate_ids) - set(implementations)
+            undeclared = set(implementations) - set(policy.gate_ids)
+            msg = (
+                "configured and implemented check gates must match exactly; "
+                f"missing={','.join(sorted(missing)) or '-'}; "
+                f"undeclared={','.join(sorted(undeclared)) or '-'}"
+            )
+            raise ValueError(msg)
+        self._gates = {gate.id: implementations[gate.id] for gate in policy.gates}
+        self._policy = policy
 
     @staticmethod
     def _gate_classes() -> t.VariadicTuple[type[FlextInfraGate]]:
@@ -47,8 +67,7 @@ class FlextInfraGateRegistry:
             FlextInfraSilentFailureGate,
             FlextInfraBanditGate,
             FlextInfraMarkdownGate,
-            FlextInfraLocCapGate,
-            FlextInfraAbstractionBoundaryGate,
+            FlextInfraActionlintGate,
             FlextInfraCanonicalAliasGate,
             FlextInfraRuntimeCensusGate,
             FlextInfraNamespaceGate,
@@ -60,6 +79,38 @@ class FlextInfraGateRegistry:
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
         """Return the registered gate class for one gate id, when present."""
         return self._gates.get(gate_id)
+
+    @property
+    def gate_ids(self) -> tuple[str, ...]:
+        """The sole ordered catalog of executable check gates."""
+        return tuple(self._gates)
+
+    def resolve(self, requested: t.StrSequence) -> p.Result[tuple[str, ...]]:
+        """Normalize an explicit selection, or select every registered gate."""
+        normalized = tuple(
+            dict.fromkeys(item.strip() for item in requested if item.strip())
+        )
+        selected = normalized or self.gate_ids
+        unknown = tuple(item for item in selected if item not in self._gates)
+        if unknown:
+            return r[tuple[str, ...]].fail(f"ERROR: unknown gate '{unknown[0]}'")
+        return r[tuple[str, ...]].ok(selected)
+
+    def mode_for(self, gate_id: str) -> Literal["error", "warn"]:
+        """Return the config-owned failure posture for one registered gate."""
+        return self.spec_for(gate_id).mode
+
+    def spec_for(self, gate_id: str) -> m.Infra.MakeCheckGateSpec:
+        """Return the complete config-owned execution row for one gate."""
+        spec = self._policy.gate_for(gate_id)
+        if spec is None:
+            msg = f"workspace gate {gate_id!r} has no configured execution row"
+            raise ValueError(msg)
+        return spec
+
+    def profile_gate_ids(self, profile: str) -> tuple[str, ...]:
+        """Return one config-owned ordered reusable gate subset."""
+        return self._policy.profile_gate_ids(profile)
 
     def create(self, gate_id: str, workspace_root: Path) -> FlextInfraGate | None:
         """Instantiate one registered gate for ``workspace_root`` when available."""
@@ -82,7 +133,7 @@ class _LoopOutcome(m.ArbitraryTypesModel):
         description="Number of projects that failed one or more gates."
     )
     skipped: int = m.Field(
-        description="Number of projects that were skipped during execution."
+        description="Number of projects not executed after fail-fast."
     )
     total_elapsed: float = m.Field(
         description="Total time elapsed in seconds for the entire loop."
@@ -118,13 +169,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
         total: int,
         resolved_gates: t.StrSequence,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.ProjectResult | None:
-        """Check one project, returning None when the project should be skipped."""
+    ) -> m.Infra.ProjectResult:
+        """Check one previously validated project target."""
         project_dir = target.path
-        pyproject_path = project_dir / c.Infra.PYPROJECT_FILENAME
-        if not project_dir.is_dir() or not pyproject_path.exists():
-            u.Cli.progress(index, total, target.name, c.Infra.SeverityLevel.SKIP)
-            return None
         u.Cli.progress(index, total, target.name, c.Infra.VERB_CHECK)
         project_ctx = self._isolate_context(ctx, target)
         _ = u.Cli.ensure_dir(project_ctx.reports_dir)
@@ -153,15 +200,11 @@ class FlextInfraWorkspaceCheckGatesMixin:
         results: t.MutableSequenceOf[m.Infra.ProjectResult] = []
         total = len(projects)
         failed = 0
-        skipped = 0
         loop_start = time.monotonic()
         for index, target in enumerate(projects, 1):
             project_result = self._run_single_project(
                 target, index, total, resolved_gates, ctx
             )
-            if project_result is None:
-                skipped += 1
-                continue
             results.append(project_result)
             if not project_result.passed:
                 failed += 1
@@ -170,7 +213,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         return _LoopOutcome(
             results=tuple(results),
             failed=failed,
-            skipped=skipped,
+            skipped=total - len(results),
             total_elapsed=time.monotonic() - loop_start,
         )
 
@@ -179,6 +222,19 @@ class FlextInfraWorkspaceCheckGatesMixin:
         return m.Infra.GateContext(
             workspace=self._workspace_root,
             reports_dir=reports_dir or self._default_reports_dir,
+        )
+
+    def _configured_gate_context(
+        self, gate_id: str, ctx: m.Infra.GateContext
+    ) -> m.Infra.GateContext:
+        """Overlay one gate's typed execution row onto the shared context."""
+        spec = self._registry.spec_for(gate_id)
+        return ctx.model_copy(
+            update={
+                "gate_mode": spec.mode,
+                "gate_command": spec.command,
+                "gate_execution_scope": spec.execution_scope,
+            }
         )
 
     def _run_gate(
@@ -203,7 +259,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 issues=(),
                 raw_output=f"{gate_id} gate not registered",
             )
-        return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
+        base_ctx = ctx or self._gate_ctx(reports_dir)
+        return gate.check(project_dir, self._configured_gate_context(gate_id, base_ctx))
 
     def _check_project_with_ctx(
         self, project_dir: Path, gates: t.StrSequence, ctx: m.Infra.GateContext
@@ -216,6 +273,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._workspace_root)
             if gate_instance is None:
+                result.gates[gate_id] = self._run_gate(gate_id, project_dir, ctx=ctx)
                 continue
             stages.append(
                 cli.stage(
@@ -260,18 +318,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
             _pipeline_ctx: m.Cli.PipelineStageContext,
         ) -> p.Result[m.Cli.PipelineStageResult]:
             """Run the gate and record its execution in the sink."""
-            gate_ctx = m.Infra.GateContext(
-                workspace=ctx.workspace_root,
-                reports_dir=ctx.reports_dir,
-                apply_fixes=ctx.apply_fixes,
-                check_only=ctx.check_only,
-                fail_fast=ctx.fail_fast,
-                ruff_args=ctx.ruff_args,
-                pyright_args=ctx.pyright_args,
-                gate_mode="warn"
-                if gate_id in c.Infra.ENFORCEMENT_ADVISORY_GATES
-                else "error",
-            )
+            gate_ctx = self._configured_gate_context(gate_id, ctx)
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             gates_sink[gate_id] = execution
             self._gate_logger.debug(

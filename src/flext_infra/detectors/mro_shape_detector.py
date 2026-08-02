@@ -41,11 +41,6 @@ class FlextInfraMROShapeDetector:
             rope_project, file_path, skip_protected=True
         )
         if res is None:
-            FlextInfraMROShapeDetector._record_parse_failure(
-                ctx,
-                error_type="ResourceNotFound",
-                detail=f"Cannot resolve {file_path.name}",
-            )
             return ()
         try:
             pymodule = u.Infra.get_pymodule(rope_project, res)
@@ -56,8 +51,15 @@ class FlextInfraMROShapeDetector:
             AttributeError,
             ValueError,
         ) as exc:
-            FlextInfraMROShapeDetector._record_parse_failure(
-                ctx, error_type=type(exc).__name__, detail=str(exc)
+            u.Infra.record_parse_failure(
+                ctx.parse_failures,
+                m.Infra.ParseFailureViolation(
+                    file=str(file_path),
+                    stage="mro_shape",
+                    error_type=type(exc).__name__,
+                    detail=str(exc),
+                ),
+                cause=exc,
             )
             return ()
         tree = pymodule.get_ast()
@@ -110,35 +112,10 @@ class FlextInfraMROShapeDetector:
         return tuple(violations)
 
     @staticmethod
-    def _record_parse_failure(
-        ctx: m.Infra.DetectorContext, *, error_type: str, detail: str
-    ) -> None:
-        """Record MRO-shape parse failures, or fail loud without a collector."""
-        if ctx.parse_failures is None:
-            msg = f"mro_shape detector could not parse {ctx.file_path}: {detail}"
-            raise RuntimeError(msg)
-        ctx.parse_failures.append(
-            m.Infra.ParseFailureViolation(
-                file=str(ctx.file_path),
-                stage="mro_shape",
-                error_type=error_type,
-                detail=detail,
-            )
-        )
-
-    @staticmethod
     def _project_prefix(project_name: str) -> str:
         """Return the public class prefix for an installed or staged project."""
-        try:
-            class_stem: str = u.derive_class_stem(project_name)
-            return class_stem
-        except RuntimeError:
-            normalized_name = project_name.replace("-", "_").replace(".", "_")
-            return "".join(
-                part[:1].upper() + part[1:]
-                for part in normalized_name.split("_")
-                if part
-            )
+        class_stem: str = u.derive_class_stem(project_name)
+        return class_stem
 
     @classmethod
     def _valid_alias_suffixes(cls, package_name: str) -> tuple[str, ...]:
@@ -174,10 +151,7 @@ class FlextInfraMROShapeDetector:
         attributes = pymodule.get_attributes()
         if unparametrized not in attributes:
             return False
-        try:
-            obj = attributes[unparametrized].get_object()
-        except (TypeError, AttributeError, ValueError):
-            return False
+        obj = attributes[unparametrized].get_object()
         if not u.Infra.is_pyclass(obj):
             return False
         for superclass in obj.get_superclasses():
@@ -194,10 +168,7 @@ class FlextInfraMROShapeDetector:
         attributes = pymodule.get_attributes()
         if base_name not in attributes:
             return set()
-        try:
-            obj = attributes[base_name].get_object()
-        except (TypeError, AttributeError, ValueError):
-            return set()
+        obj = attributes[base_name].get_object()
         if not u.Infra.is_pyclass(obj):
             return set()
         ancestors = {
@@ -273,10 +244,7 @@ class FlextInfraMROShapeDetector:
         get_superclasses = getattr(pyclass, "get_superclasses", None)
         if not callable(get_superclasses):
             return ()
-        try:
-            raw_superclasses = get_superclasses()
-        except (TypeError, AttributeError, ValueError):
-            return ()
+        raw_superclasses = get_superclasses()
         direct: tuple[object, ...] = ()
         if isinstance(raw_superclasses, tuple):
             direct = raw_superclasses

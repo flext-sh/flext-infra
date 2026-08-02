@@ -36,28 +36,20 @@ class FlextInfraNamespaceEnforcer(
 
     @override
     def enforce(
-        self,
-        *,
-        apply: bool = False,
-        project_names: t.StrSequence | None = None,
-        gates: t.StrSequence | None = None,
+        self, *, apply: bool = False, project_names: t.StrSequence | None = None
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
 
         Args:
             apply: If True, auto-fix detected violations.
             project_names: If provided, only enforce these projects.
-            gates: If provided, only run these enforcement gates.
 
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
         project_reports: list[m.Infra.ProjectEnforcementReport] = []
         for project_root in project_roots:
             report = self._enforce_project(
-                project_root=project_root,
-                project_name=project_root.name,
-                apply=apply,
-                gates=gates,
+                project_root=project_root, project_name=project_root.name, apply=apply
             )
             project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(
@@ -150,7 +142,7 @@ class FlextInfraNamespaceEnforcer(
         """Execute namespace enforcement directly from the canonical payload."""
         enforcer = cls(workspace_root=params.workspace_path)
         report = enforcer.enforce(
-            apply=params.apply, project_names=params.project_names, gates=params.gates
+            apply=params.apply, project_names=params.project_names
         )
         cli.display_text(cls.render_text(report))
         if report.has_violations:

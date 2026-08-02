@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_cli import cli
-from flext_infra import c, m, p, r, t, u
+from flext_infra import m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._accessor_report import FlextInfraAccessorMigrationReportMixin
 from flext_infra.refactor._accessor_rewrite import (
@@ -24,22 +24,6 @@ class FlextInfraAccessorMigrationOrchestrator(
         int,
         m.Field(description="Maximum number of file previews to include in the report"),
     ] = 10
-    gates: Annotated[
-        str,
-        m.Field(description="Comma-separated lint gates for preview/apply validation"),
-    ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
-
-    @property
-    @override
-    def gate_names(self) -> t.StrSequence:
-        """Normalized lint gate names."""
-        return u.Infra.normalize_cli_values(self.gates)
-
-    @property
-    @override
-    def lint_tool_names(self) -> t.StrSequence:
-        """Selected lint tool names resolved from gate names."""
-        return u.Infra.selected_lint_tool_names(self.gate_names)
 
     @override
     def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:
@@ -64,9 +48,6 @@ class FlextInfraAccessorMigrationOrchestrator(
         files_with_changes = 0
         automated_change_count = 0
         warning_count = 0
-        lint_before_totals: dict[str, int] = {}
-        lint_after_totals: dict[str, int] = {}
-        new_lint_error_totals: dict[str, int] = {}
         with u.Infra.open_project(self.workspace_root) as rope_project:
             for py_file in iter_result.value:
                 read = u.Cli.files_read_text(py_file)
@@ -96,13 +77,6 @@ class FlextInfraAccessorMigrationOrchestrator(
                     previews
                 ) < self.preview_limit:
                     previews.append(file_report)
-                self._accumulate_lint_totals(
-                    lint_before_totals, file_report.lint_before
-                )
-                self._accumulate_lint_totals(lint_after_totals, file_report.lint_after)
-                self._accumulate_lint_totals(
-                    new_lint_error_totals, file_report.new_lint_errors
-                )
         return r[m.Infra.AccessorMigrationReport].ok(
             m.Infra.AccessorMigrationReport(
                 workspace=str(self.workspace_root),
@@ -111,10 +85,6 @@ class FlextInfraAccessorMigrationOrchestrator(
                 files_with_changes=files_with_changes,
                 automated_change_count=automated_change_count,
                 warning_count=warning_count,
-                lint_tools=tuple(self.lint_tool_names),
-                lint_before_totals=lint_before_totals,
-                lint_after_totals=lint_after_totals,
-                new_lint_error_totals=new_lint_error_totals,
                 files=tuple(previews),
             )
         )
@@ -132,7 +102,6 @@ class FlextInfraAccessorMigrationOrchestrator(
             target_module=params.module,
             target_namespace=params.namespace,
             preview_limit=params.preview_limit,
-            gates=",".join(params.gates),
         ).execute()
         if result.failure:
             return r[m.Infra.AccessorMigrationReport].fail(

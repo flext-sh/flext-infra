@@ -137,6 +137,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def branch(self) -> str:
+            """Repository-owned integration branch."""
+            ...
+
+        @property
         def checkout(self) -> str:
             """Physical checkout topology."""
             ...
@@ -374,8 +379,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def tokei_version(self) -> str:
-            """Exact Tokei analyzer version."""
+        def qlty(self) -> FlextInfraProtocolsBase.MiseToolSpec:
+            """Official Qlty CLI installed through mise."""
             ...
 
         @property
@@ -386,25 +391,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def beads(self) -> FlextInfraProtocolsBase.MiseToolSpec:
             """Official Beads CLI installed through mise."""
-            ...
-
-    @runtime_checkable
-    class TemplateEntrySpec(Protocol):
-        """Template-entry fields consumed by scaffold root selection."""
-
-        @property
-        def destination(self) -> str:
-            """Tokenized repository-relative destination."""
-            ...
-
-        @property
-        def profiles(self) -> t.StrSequence:
-            """Make profiles that consume the template."""
-            ...
-
-        @property
-        def delegate(self) -> str:
-            """Canonical template rendering delegate."""
             ...
 
     @classmethod
@@ -503,7 +489,6 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for workspace dependency report model contract."""
 
         pip_check: m.Infra.PipCheckReport | None
-        dependency_limits: m.Infra.DependencyLimitsInfo | None
 
         def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Serialize report model payload."""
@@ -550,26 +535,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class TypingsDepsService(Protocol):
-        """Service for typing-related dependency detection."""
-
-        def load_dependency_limits(
-            self, limits_path: Path | None = None
-        ) -> t.MappingKV[str, t.Infra.InfraValue]:
-            """Load dependency limits from TOML file."""
-            ...
-
-        def get_required_typings(
-            self,
-            project_path: Path,
-            limits_path: Path | None = None,
-            *,
-            include_mypy: bool = True,
-        ) -> p.Result[m.Infra.TypingsReport]:
-            """Get required typing libraries for a project."""
-            ...
-
-    @runtime_checkable
     class PipCheckDepsService(Protocol):
         """Service for pip-based dependency checking."""
 
@@ -612,21 +577,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class Orchestrator(Protocol):
-        """Contract for multi-project orchestration services."""
-
-        def orchestrate(
-            self,
-            projects: t.StrSequence,
-            verb: str,
-            *,
-            fail_fast: bool = False,
-            make_args: t.StrSequence = (),
-        ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
-            """Execute one make verb across multiple projects."""
-            ...
-
-    @runtime_checkable
     class CodegenFixer(Protocol):
         """Protocol for codegen namespace fixer services."""
 
@@ -642,7 +592,6 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             workspace_root: Path | None = None,
             *,
-            output_format: str = "json",
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
         ) -> t.SequenceOf[m.Infra.CensusReport]:
             """Run census and return typed reports."""
@@ -737,18 +686,6 @@ class FlextInfraProtocolsBase(Protocol):
     @runtime_checkable
     class GithubCliHandlers(Protocol):
         """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
-            ...
 
         def run_github_pull_request(
             self, params: m.Infra.GithubPullRequestRequest

@@ -26,9 +26,6 @@ from flext_infra.detectors.mro_completeness_detector import (
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.refactor._census_apply_formatting import (
-    FlextInfraRefactorCensusApplyFormattingMixin,
-)
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
@@ -36,15 +33,12 @@ from flext_infra.refactor.classvar_constant_autofix import (
 if TYPE_CHECKING:
     from flext_infra import m, p, t
 
-_log = u.fetch_logger(__name__)
-
-
-class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormattingMixin):
+class FlextInfraRefactorCensusApplyMixin:
     """Apply supported auto-fixes + removal candidates, then regenerate inits.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
-    detector-context / fix-key / runtime-alias-rewrite helpers + root +
-    dry_run_gate_names from the facade and sibling mixins via MRO.
+    detector-context / fix-key / runtime-alias-rewrite helpers and root from
+    the facade and sibling mixins via MRO.
     """
 
     if TYPE_CHECKING:
@@ -52,8 +46,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         @property
         def root(self) -> Path: ...
 
-        @property
-        def dry_run_gate_names(self) -> t.StrSequence: ...
         @staticmethod
         def _detector_context(
             rope: p.Infra.RopeWorkspaceDsl,
@@ -75,7 +67,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
     ) -> frozenset[str]:
         """Apply supported fixes."""
         applied: set[str] = set()
-        touched_paths: set[Path] = set()
         applied_actions: set[str] = set()
         requested_fixes: dict[tuple[Path, str], set[str]] = defaultdict(set)
         for project in report.projects:
@@ -120,7 +111,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     project_root=ctx.project_root,
                     violations=manual_typing_violations,
                     parse_failures=parse_failures,
-                    gates=self.dry_run_gate_names,
                 )
                 changed = True
             elif action == "rewrite_compatibility_alias":
@@ -229,41 +219,28 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             if not changed:
                 continue
             applied_actions.add(action)
-            touched_paths.add(file_path.resolve())
             applied.update(
                 self._fix_key(file_path, object_name, action)
                 for object_name in object_names
             )
         for candidate in report.removal_candidates:
             apply_result = u.Infra.apply_simple_removal_candidate(
-                rope, self.root, candidate, gates=self.dry_run_gate_names
+                rope, self.root, candidate
             )
             if apply_result.failure:
                 msg = apply_result.error or (
                     "simple removal apply failed for "
                     f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
                 )
-                _log.warning(
-                    "census_apply_candidate_rejected",
-                    candidate=candidate.file_path,
-                    object_name=candidate.object_name,
-                    error=msg,
-                )
-                continue
-            if apply_result.unwrap_or(False):
+                raise RuntimeError(msg)
+            if apply_result.value:
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
-                )
-                touched_paths.add(Path(candidate.file_path).resolve())
-                touched_paths.update(
-                    Path(site.file_path).resolve()
-                    for site in candidate.script_reference_sites
                 )
         stub_only = (
             applied_actions == {"remove_stub_file"} and not report.removal_candidates
         )
         if applied:
-            self._ruff_fix_touched_files(touched_paths)
             if not stub_only:
                 self._regenerate_inits_via_codegen()
             rope.reload()
@@ -299,11 +276,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         ]
         if not violations:
             return False
-        try:
-            pymodule = u.Infra.get_pymodule(rope.rope_project, resource)
-            tree = pymodule.get_ast()
-        except (*u.Infra.rope_runtime_errors(), TypeError):
-            return False
+        pymodule = u.Infra.get_pymodule(rope.rope_project, resource)
+        tree = pymodule.get_ast()
         if not isinstance(tree, ast.Module):
             return False
         source = rope.source(file_path)
@@ -329,10 +303,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             return False
         updated_lines = self._remove_line_ranges(lines, line_ranges_to_remove)
         new_source = "".join(updated_lines)
-        try:
-            compile(new_source, str(file_path), "exec")
-        except SyntaxError:
-            return False
+        compile(new_source, str(file_path), "exec")
         resource.write(new_source)
         for module_name, names in imports_to_add:
             if module_name:
@@ -371,19 +342,14 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         changed = False
         for violation in violations:
             class_full_name = f"{convention.module_name}.{violation.base_class}"
-            applied_one = False
-            try:
-                FlextInfraRefactorClassvarConstantAutofix.apply(
-                    workspace_root=ctx.project_root,
-                    class_full_name=class_full_name,
-                    constant_name=violation.name,
-                    constants_module=constants_module,
-                    dry_run=False,
-                )
-                applied_one = True
-            except Exception:
-                applied_one = False
-            changed = changed or applied_one
+            FlextInfraRefactorClassvarConstantAutofix.apply(
+                workspace_root=ctx.project_root,
+                class_full_name=class_full_name,
+                constant_name=violation.name,
+                constants_module=constants_module,
+                dry_run=False,
+            )
+            changed = True
         return changed
 
     def _apply_one_class_per_module(
@@ -448,34 +414,54 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         """Move a single top-level class from ``source_file`` to ``target_file``."""
         source_resource = rope.resource(source_file)
         if source_resource is None:
-            return False
+            msg = f"cannot resolve source resource for class move: {source_file}"
+            raise RuntimeError(msg)
         source = source_resource.read()
         prefix = f"class {class_name}"
         offset = source.find(prefix)
         if offset < 0:
-            return False
-        # Place the cursor on the class name, not on the ``class`` keyword.
-        offset += len("class ")
+            msg = f"cannot locate {class_name} in class-move source: {source_file}"
+            raise RuntimeError(msg)
+        target_source = (
+            target_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            if target_file.exists()
+            else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
+        )
 
-        target_file.parent.mkdir(parents=True, exist_ok=True)
-        if not target_file.exists():
-            target_file.write_text(
-                f"{c.Infra.FUTURE_ANNOTATIONS}\n", encoding=c.Cli.ENCODING_DEFAULT
-            )
+        def _apply_move() -> None:
+            """Move the class after both transaction baselines are protected."""
             rope.reload()
-
-        target_resource = rope.resource(target_file)
-        if target_resource is None:
-            return False
-        try:
-            mover = u.Infra.create_move(rope.rope_project, source_resource, offset)
-        except (*u.Infra.rope_runtime_errors(), TypeError):
-            return False
-        try:
-            changes = mover.get_changes(target_resource)
+            refreshed_source = rope.resource(source_file)
+            if refreshed_source is None:
+                msg = f"cannot resolve class-move source after staging: {source_file}"
+                raise RuntimeError(msg)
+            refreshed_target = rope.resource(target_file)
+            if refreshed_target is None:
+                msg = f"cannot resolve class-move target after staging: {target_file}"
+                raise RuntimeError(msg)
+            refreshed_text = refreshed_source.read()
+            refreshed_offset = refreshed_text.find(prefix)
+            if refreshed_offset < 0:
+                msg = f"cannot locate {class_name} after staging: {source_file}"
+                raise RuntimeError(msg)
+            mover = u.Infra.create_move(
+                rope.rope_project,
+                refreshed_source,
+                refreshed_offset + len("class "),
+            )
+            changes = mover.get_changes(refreshed_target)
             rope.rope_project.do(changes)
-        except Exception:
-            return False
+
+        try:
+            u.Infra.protected_source_writes(
+                {source_file: source, target_file: target_source},
+                request=m.Infra.ProtectedSourceWritesRequest(
+                    workspace=rope.workspace_root,
+                    post_write=_apply_move,
+                ),
+            )
+        finally:
+            rope.reload()
         return True
 
     @staticmethod

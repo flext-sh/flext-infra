@@ -7,10 +7,7 @@ from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.refactor._wrapper_rewrite import (
-    FlextInfraWrapperRootNamespaceRewriteMixin,
-    _WrapperRewriteAccumulator,
-)
+from flext_infra.refactor._wrapper_rewrite import FlextInfraWrapperRootNamespaceRewriteMixin
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -43,7 +40,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if scan.failure:
             return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
-        accumulator = _WrapperRewriteAccumulator()
+        accumulator = m.Infra.WrapperRewriteAccumulator()
         metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         for file_path in py_files:
             self._process_wrapper_file(
@@ -53,9 +50,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
                 wrapper_submodules=wrapper_submodules,
                 metadata_runtime_aliases=metadata_aliases,
             )
-        write_failure = self._persist_updates(accumulator.updates)
-        if write_failure is not None:
-            return r[t.JsonPayload].fail(write_failure)
+        self._persist_updates(accumulator.updates)
         if not self.effective_dry_run and accumulator.wrapper_candidates:
             for wrapper in self._WRAPPER_PACKAGES:
                 u.Infra.rewrite_import_violations(
@@ -101,22 +96,19 @@ class FlextInfraWrapperRootNamespaceRefactor(
             u.facade_module_names(c.Infra.PKG_INFRA_UNDERSCORE),
         ))
 
-    def _persist_updates(self, updates: Mapping[Path, str]) -> str | None:
-        """Write batched updates via the protected pipeline; ``None`` on success."""
+    def _persist_updates(self, updates: Mapping[Path, str]) -> None:
+        """Write batched updates transactionally."""
         if not updates:
-            return None
-        ok, report = u.Infra.protected_source_writes(
+            return
+        u.Infra.protected_source_writes(
             dict(updates),
-            request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=self.workspace_root, skip_pytest=True
-            ),
+            request=m.Infra.ProtectedSourceWritesRequest(workspace=self.workspace_root),
         )
-        if ok:
-            return None
-        return " ; ".join(report[:5]) or "protected write failed"
 
     def _build_report_payload(
-        self, files_scanned: int, accumulator: _WrapperRewriteAccumulator
+        self,
+        files_scanned: int,
+        accumulator: m.Infra.WrapperRewriteAccumulator,
     ) -> t.MutableJsonMapping:
         """Build the canonical JSON payload from the accumulated wrapper run state."""
         mode_value = (

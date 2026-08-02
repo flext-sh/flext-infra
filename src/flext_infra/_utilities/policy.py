@@ -58,9 +58,8 @@ class FlextInfraUtilitiesRefactorPolicy:
             resolved_path
         )
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
-        if loaded.failure:
-            return by_family
-        for raw in u.Cli.json_as_mapping_list(loaded.value.get("policy_matrix")):
+        document = loaded.unwrap()
+        for raw in u.Cli.json_as_mapping_list(document.get("policy_matrix")):
             policy = m.Infra.ClassNestingPolicy.model_validate(raw)
             by_family[policy.family_name] = policy
         return by_family
@@ -94,13 +93,10 @@ class FlextInfraUtilitiesRefactorPolicy:
         raw = policy_context.get(family)
         if raw is None:
             return None
-        try:
-            policy: m.Infra.ClassNestingPolicy = (
-                m.Infra.ClassNestingPolicy.model_validate(raw)
-            )
-            return policy
-        except c.ValidationError:
-            return None
+        policy: m.Infra.ClassNestingPolicy = (
+            m.Infra.ClassNestingPolicy.model_validate(raw)
+        )
+        return policy
 
     @staticmethod
     def target_allowed(

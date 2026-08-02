@@ -100,7 +100,6 @@ class FlextInfraRefactorCensusCollectMixin(
                 self._handle_rope_stage_failure(
                     file_path=module.file_path, stage="inventory", exc=exc
                 )
-                return
             objects = tuple(
                 item
                 for item in module_objects
@@ -132,7 +131,6 @@ class FlextInfraRefactorCensusCollectMixin(
             self._handle_rope_stage_failure(
                 file_path=module.file_path, stage="rules", exc=exc
             )
-            return
         report_projects.add(project)
         if not objects and not violations and not fixes:
             return

@@ -24,10 +24,11 @@ class FlextInfraCyclicImportDetector:
         *,
         project_root: Path,
         rope_project: t.Infra.RopeProject,
-        _parse_failures: t.SequenceOf[m.Infra.ParseFailureViolation] | None = None,
+        parse_failures: (
+            t.MutableSequenceOf[m.Infra.ParseFailureViolation] | None
+        ) = None,
     ) -> t.SequenceOf[m.Infra.CyclicImportViolation]:
         """Build import graph via rope and detect cycles with topological sort."""
-        del _parse_failures
         scan_dirs = [
             (project_root / d).resolve()
             for d in u.Infra.namespace_scan_dirs(project_root)
@@ -47,7 +48,17 @@ class FlextInfraCyclicImportDetector:
                 *u.Infra.rope_runtime_errors(),
                 *u.Infra.rope_syntax_errors(),
                 TypeError,
-            ):
+            ) as exc:
+                u.Infra.record_parse_failure(
+                    parse_failures,
+                    m.Infra.ParseFailureViolation(
+                        file=str(real_path),
+                        stage="cyclic-import",
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                    cause=exc,
+                )
                 continue
             if module_name:
                 module_resources.append((module_name, str(real_path), resource))

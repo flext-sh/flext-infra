@@ -43,7 +43,6 @@ class FlextInfraConstantsCodegenProject:
         ALL = "all"
         DEPENDENCIES = "dependencies"
         GITMODULES = "gitmodules"
-        MAKEFILE = "makefile"
         PYPROJECT = "pyproject"
 
     @unique
@@ -102,10 +101,8 @@ class FlextInfraConstantsCodegenProject:
         EXTERNAL = "external"
 
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
-    WORKSPACE_SCHEMA_FILENAME: Final[str] = "workspace.schema.json"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
-    CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
 

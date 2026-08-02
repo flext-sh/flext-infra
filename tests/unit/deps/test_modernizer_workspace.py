@@ -98,18 +98,13 @@ class TestsFlextInfraDepsModernizerWorkspace:
             'dev = ["pytest"]\n'
         )
         modernizer = (
-            FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True, skip_comments=True
-            )
+            FlextInfraPyprojectModernizer(workspace_root=tmp_path)
             if sort_first is None
             else FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path,
-                skip_check=True,
-                skip_comments=True,
-                tomlsort_sort_first=sort_first,
+                workspace_root=tmp_path, tomlsort_sort_first=sort_first
             )
         )
-        rendered = tm.ok(modernizer.conform_source(source, path=pyproject))
+        rendered: str = tm.ok(modernizer.conform_source(source, path=pyproject))
         tm.that(rendered.count("[project]"), eq=1)
         payload = u.Cli.toml_mapping_from_text(rendered)
         tm.that(payload, none=False)
@@ -143,9 +138,9 @@ class TestsFlextInfraDepsModernizerWorkspace:
             encoding="utf-8",
         )
         u.Tests.initialize_git_repo(source_repository)
-        standalone = tm.ok(
+        standalone: str = tm.ok(
             FlextInfraPyprojectModernizer(
-                workspace_root=source_repository, skip_check=True, skip_comments=True
+                workspace_root=source_repository
             ).conform_source(source, path=pyproject)
         )
 
@@ -167,10 +162,8 @@ class TestsFlextInfraDepsModernizerWorkspace:
             )
         )
         member = superproject / "member"
-        attached = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=member, skip_check=True, skip_comments=True
-            ).conform_source(
+        attached: str = tm.ok(
+            FlextInfraPyprojectModernizer(workspace_root=member).conform_source(
                 (member / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
                 path=member / c.Infra.PYPROJECT_FILENAME,
             )
@@ -195,7 +188,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 "--workspace",
                 str(modernizer_workspace_with_projects),
                 "--apply",
-                "--skip-check",
                 "--projects",
                 "selected",
             ]),
@@ -227,8 +219,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             workspace_root=workspace,
             selected_projects=["declared-name"],
             apply_changes=False,
-            skip_check=True,
-            skip_comments=True,
         )
 
         tm.that(modernizer.run(), eq=0)
@@ -251,8 +241,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             workspace_root=workspace,
             selected_projects=["member"],
             apply_changes=False,
-            skip_check=True,
-            skip_comments=True,
             rewrite_constraints=False,
         )
 
@@ -279,15 +267,11 @@ class TestsFlextInfraDepsModernizerWorkspace:
             workspace_root=workspace,
             selected_projects=["shared-name"],
             apply_changes=False,
-            skip_check=True,
-            skip_comments=True,
         )
         exact = FlextInfraPyprojectModernizer(
             workspace_root=workspace,
             selected_projects=["first-dir"],
             apply_changes=False,
-            skip_check=True,
-            skip_comments=True,
         )
 
         tm.that(ambiguous.run(), eq=2)
@@ -322,8 +306,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             workspace_root=modernizer_workspace,
             selected_projects=[selector],
             apply_changes=True,
-            skip_check=True,
-            skip_comments=True,
         )
 
         tm.that(modernizer.run(), eq=2)
@@ -347,8 +329,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             workspace_root=modernizer_workspace,
             selected_projects=[selector],
             apply_changes=True,
-            skip_check=True,
-            skip_comments=True,
         )
 
         tm.that(modernizer.run(), eq=2)

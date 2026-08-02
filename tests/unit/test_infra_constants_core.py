@@ -15,14 +15,10 @@ from tests import c
 class TestsFlextInfraInfraConstantsCore:
     """Tests for Paths namespace constants."""
 
-    def test_venv_bin_rel_constant(self) -> None:
-        tm.that(c.Infra.VENV_BIN_REL, eq=".venv/bin")
-
     def test_default_src_dir_constant(self) -> None:
         tm.that(c.Infra.DEFAULT_SRC_DIR, eq="src")
 
     def test_paths_constants_are_strings(self) -> None:
-        tm.that(c.Infra.VENV_BIN_REL, is_=str)
         tm.that(c.Infra.DEFAULT_SRC_DIR, is_=str)
 
     def test_pyproject_filename_constant(self) -> None:
@@ -31,13 +27,9 @@ class TestsFlextInfraInfraConstantsCore:
     def test_makefile_filename_constant(self) -> None:
         tm.that(c.Infra.MAKEFILE_FILENAME, eq="Makefile")
 
-    def test_base_mk_constant(self) -> None:
-        tm.that(c.Infra.BASE_MK, eq="base.mk")
-
     def test_files_constants_are_strings(self) -> None:
         tm.that(c.Infra.PYPROJECT_FILENAME, is_=str)
         tm.that(c.Infra.MAKEFILE_FILENAME, is_=str)
-        tm.that(c.Infra.BASE_MK, is_=str)
 
     def test_gate_constants_exist(self) -> None:
         tm.that(c.Infra.LINT, eq="lint")
@@ -47,20 +39,6 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(c.Infra.PYRIGHT, eq="pyright")
         tm.that(c.Infra.SECURITY, eq="security")
         tm.that(c.Infra.MARKDOWN, eq="markdown")
-
-    def test_default_csv_contains_gates(self) -> None:
-        csv = c.Infra.DEFAULT_CSV
-        tm.that(csv, contains="lint")
-        tm.that(csv, contains="format")
-        tm.that(csv, contains="mypy")
-        tm.that(csv, contains="pyright")
-
-    def test_default_csv_is_comma_separated(self) -> None:
-        csv = c.Infra.DEFAULT_CSV
-        gates = csv.split(",")
-        tm.that(gates, length_gt=0)
-        for g in gates:
-            tm.that(g, is_=str)
 
     def test_pass_status_constant(self) -> None:
         tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")

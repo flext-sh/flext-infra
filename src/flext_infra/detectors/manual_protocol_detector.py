@@ -30,10 +30,11 @@ class FlextInfraManualProtocolDetector:
         if ctx.file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
         file_path = ctx.file_path
-        try:
-            source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError:
-            return []
+        read_result = u.Cli.files_read_text(file_path)
+        if read_result.failure:
+            msg = read_result.error or f"failed to read protocol source: {file_path}"
+            raise RuntimeError(msg)
+        source = read_result.value
         return [
             m.Infra.ManualProtocolViolation(
                 file=str(file_path), line=ci.line, name=ci.name

@@ -51,6 +51,16 @@ class TestsFlextInfraModernizerPyrefly:
         )
         workspace = tmp_path / "workspace"
         workspace.mkdir()
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            (
+                "[project]\n"
+                "name = 'fixture-workspace'\n"
+                "version = '0.1.0'\n\n"
+                "[tool.uv.workspace]\n"
+                "members = ['attached']\n"
+            ),
+            encoding="utf-8",
+        )
         tm.ok(u.Cli.run_raw(["git", "init"], cwd=workspace))
         tm.ok(
             u.Cli.run_raw(
@@ -73,19 +83,16 @@ class TestsFlextInfraModernizerPyrefly:
             )
         )
         attached = workspace / "attached"
-        for project_dir in (attached, linked):
-            changes = FlextInfraPyprojectModernizer(
-                workspace_root=project_dir,
-                apply_changes=True,
-                skip_comments=True,
-                skip_check=True,
-            ).process_file(
-                project_dir / "pyproject.toml",
-                canonical_dev=(),
-                dry_run=False,
-                skip_comments=True,
-            )
-            tm.that(changes, lacks="failed to resolve")
+        attached_exit = FlextInfraPyprojectModernizer(
+            workspace_root=workspace,
+            selected_projects=("attached",),
+            apply_changes=True,
+        ).run()
+        linked_exit = FlextInfraPyprojectModernizer(
+            workspace_root=linked, apply_changes=True
+        ).run()
+        tm.that(attached_exit, eq=0)
+        tm.that(linked_exit, eq=0)
 
         attached_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             u.Cli.toml_mapping_from_text(

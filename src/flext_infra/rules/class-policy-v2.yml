@@ -35,8 +35,6 @@ policy_matrix:
         - no_models_symbol_rewritten_to_u_or_d_or_dispatcher
         - nested_class_path_resolves_from_m_alias
         - cross_file_symbol_references_updated_for_models
-      quality_gates:
-        - lsp_diagnostics_clean
   - family_name: _utilities
     module_patterns:
       - _utilities
@@ -70,8 +68,6 @@ policy_matrix:
         - helper_state_contract_preserved_or_explicitly_migrated
         - callable_signature_preserved_or_propagated
         - cross_project_references_rewritten_when_signature_changes
-      quality_gates:
-        - lsp_diagnostics_clean
   - family_name: _dispatcher
     module_patterns:
       - _dispatcher
@@ -102,8 +98,6 @@ policy_matrix:
         - dispatcher_references_propagated_across_projects
         - no_stale_dispatcher_imports_left_after_rewrite
         - dispatcher_callable_contracts_remain_resolvable
-      quality_gates:
-        - lsp_diagnostics_clean
   - family_name: _decorators
     module_patterns:
       - _decorators
@@ -135,8 +129,6 @@ policy_matrix:
         - callable_contract_preserved
         - decorator_invocation_sites_still_type_resolvable
         - references_rewritten_for_decorator_namespace
-      quality_gates:
-        - lsp_diagnostics_clean
   - family_name: _runtime
     module_patterns:
       - _runtime
@@ -169,8 +161,6 @@ policy_matrix:
         - transformed_symbols_match_whitelist_expectations
         - runtime_alias_access_remains_resolvable
         - no_non_whitelisted_runtime_changes_detected
-      quality_gates:
-        - lsp_diagnostics_clean
   - family_name: other_private
     module_patterns:
       - _*
@@ -186,8 +176,6 @@ policy_matrix:
         - module_family_explicit_policy_required
       post_checks:
         - no_transform_applied
-      quality_gates:
-        - lsp_diagnostics_clean
 runtime_whitelist:
   - transform_id: runtime_metadata_class_nesting
     source_module_pattern: models/base.py

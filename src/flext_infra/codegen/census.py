@@ -63,21 +63,18 @@ class FlextInfraCodegenCensus(s[str]):
         self,
         workspace_root: Path | None = None,
         *,
-        output_format: str = c.Cli.OutputFormats.JSON,
         projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
     ) -> t.SequenceOf[m.Infra.CensusReport]:
         """Run census on all projects in workspace.
 
         Args:
             workspace_root: Override workspace root (defaults to self.workspace_root).
-            output_format: Unused, kept for API compat.
             projects: Pre-discovered projects to skip redundant discovery.
 
         Returns:
             List of CensusReport models, one per scanned project.
 
         """
-        _ = output_format
         workspace = workspace_root or self.workspace_root
         return self._run_project_census(workspace, projects=projects)
 

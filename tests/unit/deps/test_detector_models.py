@@ -9,12 +9,6 @@ from tests import m
 class TestsFlextInfraDepsDetectorModels:
     """Test flext infra deps detector models behavior."""
 
-    def test_dependency_limits_info_creation(self) -> None:
-        """Verify dependency limits info creation."""
-        info = m.Infra.DependencyLimitsInfo(python_version=None, limits_path="")
-        tm.that(info.python_version, eq=None)
-        tm.that(info.limits_path, eq="")
-
     def test_pip_check_report_creation(self) -> None:
         """Verify pip check report creation."""
         report = m.Infra.PipCheckReport(ok=True, lines=[])
@@ -29,4 +23,3 @@ class TestsFlextInfraDepsDetectorModels:
         tm.that(report.workspace, eq="test-workspace")
         tm.that(report.projects, empty=True)
         tm.that(report.pip_check, eq=None)
-        tm.that(report.dependency_limits, eq=None)

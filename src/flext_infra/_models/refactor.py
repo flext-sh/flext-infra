@@ -272,9 +272,6 @@ class FlextInfraModelsRefactor(
         declaration_line: Annotated[
             str, m.Field(description="Exact source line that declares the constant")
         ]
-        class_lineno: Annotated[
-            int, m.Field(description="1-based line where the class starts")
-        ]
 
     class ClassvarConstantAutofixResult(m.ArbitraryTypesModel):
         """Outcome of one ENFORCE-079 ClassVar-constant autofix.

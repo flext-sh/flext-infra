@@ -21,21 +21,20 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         rope_project: t.Infra.RopeProject, file_path: Path
     ) -> t.Infra.RopeResource | None:
         """Return rope File for a filesystem Path, or None if outside project."""
-        try:
-            root_real_path = getattr(
-                getattr(rope_project, "root", None), "real_path", None
-            )
-            if not isinstance(root_real_path, str):
-                return None
-            relative_path = str(file_path.resolve().relative_to(Path(root_real_path)))
-            resource = rope_project.get_resource(relative_path)
-            return (
-                resource
-                if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
-                else None
-            )
-        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), ValueError):
+        root_real_path = getattr(
+            getattr(rope_project, "root", None), "real_path", None
+        )
+        if not isinstance(root_real_path, str):
             return None
+        project_root = Path(root_real_path).resolve()
+        resolved_path = file_path.resolve()
+        if not resolved_path.is_relative_to(project_root):
+            return None
+        relative_path = str(resolved_path.relative_to(project_root))
+        resource = rope_project.get_resource(relative_path)
+        return (
+            resource if FlextInfraUtilitiesRopeRuntime.is_resource(resource) else None
+        )
 
     @staticmethod
     def fetch_python_resource(
@@ -47,7 +46,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         skip_alias_modules: bool = False,
         skip_init_py: bool = False,
     ) -> t.Infra.RopeResource | None:
-        """Resolve a Python source as a Rope resource, or None when skipped."""
+        """Resolve a Python source, returning ``None`` only for policy skips."""
         if not FlextInfraUtilitiesRopeCoreResourcesMixin._python_resource_allowed(
             file_path,
             skip_protected=skip_protected,
@@ -56,9 +55,26 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
             skip_init_py=skip_init_py,
         ):
             return None
-        return FlextInfraUtilitiesRopeCoreResourcesMixin.get_resource_from_path(
+        resource = FlextInfraUtilitiesRopeCoreResourcesMixin.get_resource_from_path(
             rope_project, file_path
         )
+        if resource is None:
+            msg = f"Rope could not resolve Python resource: {file_path}"
+            raise RuntimeError(msg)
+        return resource
+
+    @staticmethod
+    def require_python_resource(
+        rope_project: t.Infra.RopeProject, file_path: Path
+    ) -> t.Infra.RopeResource:
+        """Resolve one required Python resource with no policy-skip contract."""
+        resource = FlextInfraUtilitiesRopeCoreResourcesMixin.fetch_python_resource(
+            rope_project, file_path
+        )
+        if resource is None:
+            msg = f"Required path is not a Python resource: {file_path}"
+            raise RuntimeError(msg)
+        return resource
 
     @staticmethod
     def _python_resource_allowed(

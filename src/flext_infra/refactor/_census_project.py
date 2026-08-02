@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Never
 
 from flext_infra import m, u
 
@@ -23,8 +23,6 @@ class FlextInfraRefactorCensusProjectMixin:
     """
 
     if TYPE_CHECKING:
-        fail_fast: bool
-
         @staticmethod
         def _include_rule(
             rule: str,
@@ -52,18 +50,17 @@ class FlextInfraRefactorCensusProjectMixin:
 
     def _handle_rope_stage_failure(
         self, *, file_path: Path, stage: str, exc: BaseException
-    ) -> None:
-        """Handle rope stage failure."""
+    ) -> Never:
+        """Raise one contextual error for a failed Rope census stage."""
         error = f"{type(exc).__name__}: {exc}"
-        _log.warning(
+        _log.error(
             "census_rope_stage_failed",
             stage=stage,
             file_path=str(file_path),
             error=error,
         )
-        if self.fail_fast:
-            msg = f"census rope {stage} failed for {file_path}: {error}"
-            raise RuntimeError(msg) from exc
+        msg = f"census rope {stage} failed for {file_path}: {error}"
+        raise RuntimeError(msg) from exc
 
     def _project_report(
         self,

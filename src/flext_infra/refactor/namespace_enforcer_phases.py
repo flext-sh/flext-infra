@@ -41,14 +41,10 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         raise NotImplementedError(msg)
 
     def enforce(
-        self,
-        *,
-        apply: bool = False,
-        project_names: t.StrSequence | None = None,
-        gates: t.StrSequence | None = None,
+        self, *, apply: bool = False, project_names: t.StrSequence | None = None
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Enforce namespace rules across the workspace."""
-        _ = apply, project_names, gates
+        _ = apply, project_names
         msg = "enforce must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
 

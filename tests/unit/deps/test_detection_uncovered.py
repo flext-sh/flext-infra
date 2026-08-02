@@ -10,8 +10,6 @@ from tests import t, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-
 
 class TestsFlextInfraDepsDetectionUncovered:
     """Test flext infra deps detection uncovered behavior."""
@@ -53,19 +51,3 @@ class TestsFlextInfraDepsDetectionUncovered:
         lines, exit_code = pip_check_result
         tm.that(list(lines), eq=[])
         tm.that(exit_code, eq=0)
-
-    def test_get_required_typings_with_limits_applied(self, tmp_path: Path) -> None:
-        """Verify get required typings with limits applied."""
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        (venv_bin / "mypy").write_text("", encoding="utf-8")
-        limits_path = tmp_path / "dependency_limits.toml"
-        limits_path.write_text("[python]\nversion = '3.13'\n", encoding="utf-8")
-        service = u.Tests.create_deptry_service(
-            command_output=u.Tests.create_command_output()
-        )
-        report: m.Infra.TypingsReport = tm.ok(
-            service.get_required_typings(tmp_path, limits_path=limits_path)
-        )
-        tm.that(report.limits_applied, eq=True)
-        tm.that(report.python_version, eq="3.13")

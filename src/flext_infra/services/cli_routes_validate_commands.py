@@ -11,7 +11,6 @@ from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFreshness
-from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
 )
@@ -21,7 +20,6 @@ from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 
 
@@ -86,12 +84,6 @@ class ValidationCommandRoutes(CliRouteBase):
                 ),
             ),
             (
-                "stub-validate",
-                "Validate stub supply chain",
-                FlextInfraStubSupplyChain,
-                lambda params, mc=FlextInfraStubSupplyChain: mc.execute_command(params),
-            ),
-            (
                 "fresh-import",
                 "Guard 7: fresh-process import smoke test",
                 FlextInfraValidateFreshImport,
@@ -137,14 +129,6 @@ class ValidationCommandRoutes(CliRouteBase):
                 FlextInfraValidateMetadataDiscipline,
                 lambda params, mc=FlextInfraValidateMetadataDiscipline: (
                     mc.execute_command(params)
-                ),
-            ),
-            (
-                "manual-cmd",
-                "Manual-command blocker (§5): pre-commit config drift gate",
-                FlextInfraManualCommandValidator,
-                lambda params, mc=FlextInfraManualCommandValidator: mc.execute_command(
-                    params
                 ),
             ),
         )

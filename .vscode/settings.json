@@ -56,7 +56,9 @@
     "**/.hypothesis": true,
     "**/.bin": true,
     "**/.tools": true,
-    "**/.bkp": true
+    "**/.bkp": true,
+    "**/.coverage": true,
+    "**/htmlcov": true
   },
   "files.watcherExclude": {
     "**/__pycache__/**": true,
@@ -97,7 +99,9 @@
     "**/.hypothesis/**": true,
     "**/.bin/**": true,
     "**/.tools/**": true,
-    "**/.bkp/**": true
+    "**/.bkp/**": true,
+    "**/.coverage/**": true,
+    "**/htmlcov/**": true
   },
   "search.exclude": {
     "**/__pycache__": true,
@@ -137,7 +141,9 @@
     "**/.hypothesis": true,
     "**/.bin": true,
     "**/.tools": true,
-    "**/.bkp": true
+    "**/.bkp": true,
+    "**/.coverage": true,
+    "**/htmlcov": true
   },
   "terminal.integrated.env.linux": {
     "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}",

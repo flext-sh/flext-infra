@@ -12,23 +12,6 @@ from flext_infra import t
 class FlextInfraModelsWorktree:
     """Declaration-only models for transactional fix and codegen execution."""
 
-    class LintSnapshot(m.ContractModel):
-        """Captured diagnostics from one lint tool invocation."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        tool: Annotated[t.NonEmptyStr, m.Field(description="Canonical tool name")]
-        exit_code: Annotated[int, m.Field(description="Tool process exit code")]
-        errors: Annotated[
-            t.NonNegativeInt, m.Field(description="Detected error count")
-        ] = 0
-        warnings: Annotated[
-            t.NonNegativeInt, m.Field(description="Detected warning count")
-        ] = 0
-        output: Annotated[str, m.Field(description="Combined captured tool output")] = (
-            ""
-        )
-
     class RepositoryDelta(m.ContractModel):
         """Operation-only patch for one repository in a workspace transaction."""
 
@@ -89,7 +72,7 @@ class FlextInfraModelsWorktree:
             bool, m.Field(description="Apply a validated operation patch to source")
         ] = False
         timeout_seconds: Annotated[
-            t.PositiveInt, m.Field(description="Command and lint timeout in seconds")
+            t.PositiveInt, m.Field(description="Isolated command timeout in seconds")
         ]
         scoped_paths: Annotated[
             t.SequenceOf[Path],
@@ -124,14 +107,6 @@ class FlextInfraModelsWorktree:
             m.Cli.CommandOutput,
             m.Field(description="Fresh public-package import probe output"),
         ]
-        lint_before: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorktree.LintSnapshot],
-            m.Field(description="Lint diagnostics at the dirty checkpoint"),
-        ] = ()
-        lint_after: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorktree.LintSnapshot],
-            m.Field(description="Lint diagnostics after isolated execution"),
-        ] = ()
         repositories: Annotated[
             t.VariadicTuple[FlextInfraModelsWorktree.RepositoryDelta],
             m.Field(description="Per-repository operation patches"),

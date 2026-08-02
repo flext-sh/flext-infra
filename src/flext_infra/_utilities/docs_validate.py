@@ -163,15 +163,13 @@ class FlextInfraUtilitiesDocsValidate:
     @staticmethod
     def docs_write_validate_reports(
         scope: m.Infra.DocScope, report: m.Infra.DocsPhaseReport
-    ) -> None:
+    ) -> p.Result[None]:
         """Persist the standard validate summary and markdown report."""
-        _ = u.Cli.json_write(
-            scope.report_dir / "validate-summary.json",
-            {c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
-        )
-        _ = FlextInfraUtilitiesDocs.write_markdown(
-            scope.report_dir / "validate-report.md",
-            [
+        return FlextInfraUtilitiesDocs.write_report_pair(
+            scope.report_dir,
+            stem="validate",
+            summary={c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
+            markdown=[
                 "# Docs Validate Report",
                 "",
                 f"Scope: {report.scope}",

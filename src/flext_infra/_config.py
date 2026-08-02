@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_cli import FlextCliConfig
+from flext_core import FlextConfig
 from flext_infra._models.config import FlextInfraConfigModels
 
 
-class _FlextInfraConfig(FlextCliConfig):
+class _FlextInfraConfig(FlextConfig):
     """Declarative flext-infra config loaded and validated once."""
 
     # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct

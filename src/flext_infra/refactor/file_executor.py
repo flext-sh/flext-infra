@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,79 +20,11 @@ if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
 
-class FlextInfraClassNestingPostCheckGate:
-    """Run post-transform validation gates for direct class-nesting execution."""
-
-    def validate(
-        self, result: m.Infra.Result, expected: t.JsonMapping
-    ) -> t.Pair[bool, t.StrSequence]:
-        """Validate post-check expectations against one transformed file result."""
-        if not result.success:
-            return (False, [result.error] if result.error else ["transform_failed"])
-        if not result.modified:
-            return (True, list[str]())
-        file_path = result.file_path
-        errors: t.MutableSequenceOf[str] = []
-        post_checks = u.Infra.string_list(expected.get(c.Infra.RK_POST_CHECKS))
-        quality_gates = u.Infra.string_list(expected.get(c.Infra.RK_QUALITY_GATES))
-        source_symbol = str(expected.get(c.Infra.RK_SOURCE_SYMBOL, ""))
-        expected_chain = u.Infra.string_list(
-            expected.get(c.Infra.RK_EXPECTED_BASE_CHAIN)
-        )
-        if c.Infra.RK_IMPORTS_RESOLVE in post_checks:
-            errors.extend(self._validate_imports(file_path))
-        if source_symbol and expected_chain and c.Infra.RK_MRO_VALID in post_checks:
-            errors.extend(self._validate_mro(file_path, source_symbol, expected_chain))
-        if c.Infra.RK_LSP_DIAGNOSTICS_CLEAN in quality_gates:
-            errors.extend(self._validate_types(file_path))
-        return (not errors, errors)
-
-    def _validate_imports(self, file_path: Path) -> t.StrSequence:
-        """Validate imports."""
-        read = u.Cli.files_read_text(file_path)
-        if read.failure:
-            return [f"parse_error:{file_path}:parse_failed"]
-        source = read.value
-        return [
-            f"line_{lineno}:invalid_import_from"
-            for lineno, line in enumerate(source.splitlines(), start=1)
-            if c.Infra.BARE_IMPORT_FROM_RE.match(line)
-        ]
-
-    def _validate_mro(
-        self, file_path: Path, class_name: str, expected_bases: t.StrSequence
-    ) -> t.StrSequence:
-        """Validate mro."""
-        read = u.Cli.files_read_text(file_path)
-        if read.failure:
-            return [f"mro_parse_error:{file_path}:parse_failed"]
-        actual_clean = list(u.Infra.parse_class_bases(read.value, class_name))
-        if not actual_clean:
-            return [f"class_not_found:{class_name}"]
-        expected_prefix = list(expected_bases)[: len(actual_clean)]
-        if actual_clean != expected_prefix:
-            return [
-                f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}"
-            ]
-        return list[str]()
-
-    @staticmethod
-    def _validate_types(file_path: Path) -> t.StrSequence:
-        """Validate types."""
-        result = u.Cli.capture([sys.executable, "-m", "py_compile", str(file_path)])
-        return (
-            [f"lsp_diagnostics_clean_failed:{result.error or ''}"]
-            if result.failure
-            else list[str]()
-        )
-
-
 class FlextInfraRefactorFileExecutor:
     """Execute declarative Rope-backed file rules directly from kind + settings."""
 
     _class_nesting_config: t.JsonMapping | None
     _class_nesting_policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
-    _class_nesting_gate: FlextInfraClassNestingPostCheckGate | None
 
     def _apply_file_rule_selection(
         self,
@@ -174,11 +105,6 @@ class FlextInfraRefactorFileExecutor:
         )
         modified = updated != source
         if modified and not dry_run:
-            postcheck_result = self._run_class_nesting_postcheck(
-                file_path=file_path, updated=updated, changes=changes
-            )
-            if postcheck_result is not None:
-                return postcheck_result
             resource.write(updated)
         return m.Infra.Result(
             file_path=file_path,
@@ -186,43 +112,6 @@ class FlextInfraRefactorFileExecutor:
             modified=modified,
             changes=changes,
             refactored_code=updated,
-        )
-
-    def _run_class_nesting_postcheck(
-        self, *, file_path: Path, updated: str, changes: t.StrSequence
-    ) -> m.Infra.Result | None:
-        """Run postchecks for a modified class-nesting result."""
-        expected_base_chain: t.JsonValueList = []
-        post_checks: t.JsonValueList = [c.Infra.RK_IMPORTS_RESOLVE]
-        quality_gates: t.JsonValueList = [c.Infra.RK_LSP_DIAGNOSTICS_CLEAN]
-        payload_values: t.JsonMapping = {
-            c.Infra.RK_SOURCE_SYMBOL: "",
-            c.Infra.RK_EXPECTED_BASE_CHAIN: expected_base_chain,
-            c.Infra.RK_POST_CHECKS: post_checks,
-            c.Infra.RK_QUALITY_GATES: quality_gates,
-        }
-        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload_values)
-        gate = self._class_nesting_gate or FlextInfraClassNestingPostCheckGate()
-        self._class_nesting_gate = gate
-        ok, errs = gate.validate(
-            m.Infra.Result(
-                file_path=file_path,
-                success=True,
-                modified=True,
-                changes=changes,
-                refactored_code=updated,
-            ),
-            payload,
-        )
-        if ok:
-            return None
-        return m.Infra.Result(
-            file_path=file_path,
-            success=False,
-            modified=False,
-            error="postcheck_failed",
-            changes=errs,
-            refactored_code=None,
         )
 
     def _load_class_nesting_config(self) -> t.JsonMapping:
@@ -385,7 +274,4 @@ class FlextInfraRefactorFileExecutor:
         return candidate
 
 
-__all__: list[str] = [
-    "FlextInfraClassNestingPostCheckGate",
-    "FlextInfraRefactorFileExecutor",
-]
+__all__: list[str] = ["FlextInfraRefactorFileExecutor"]

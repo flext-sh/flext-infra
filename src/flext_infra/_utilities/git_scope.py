@@ -42,23 +42,31 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
         resolved_root = Path(repo_root).resolve()
         try:
             repo = Repo(resolved_root)
-        except (InvalidGitRepositoryError, NoSuchPathError, OSError, ValueError):
-            return None
+        except (
+            InvalidGitRepositoryError,
+            NoSuchPathError,
+            OSError,
+            ValueError,
+        ) as exc:
+            msg = f"Git repository initialization failed for {resolved_root}"
+            raise RuntimeError(msg) from exc
         if repo.bare or repo.working_tree_dir is None:
             return None
         scope_paths: set[str] = set()
         try:
             tracked_output = repo.git.ls_files()
-        except GitCommandError:
-            return None
+        except GitCommandError as exc:
+            msg = f"Git tracked-file query failed for {resolved_root}"
+            raise RuntimeError(msg) from exc
         for raw_line in tracked_output.splitlines():
             normalized = raw_line.strip()
             if normalized:
                 scope_paths.add(normalized)
         try:
             status_output = repo.git.status("--porcelain", "--untracked-files=all")
-        except GitCommandError:
-            status_output = ""
+        except GitCommandError as exc:
+            msg = f"Git status query failed for {resolved_root}"
+            raise RuntimeError(msg) from exc
         for raw_line in status_output.splitlines():
             if not raw_line:
                 continue
@@ -90,10 +98,10 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
         if repo_relative_paths is None:
             return None
         repo_root = Path(repo_root_text).resolve()
-        try:
-            scope_prefix = resolved_root.resolve().relative_to(repo_root)
-        except ValueError:
+        resolved_scope = resolved_root.resolve()
+        if not resolved_scope.is_relative_to(repo_root):
             return None
+        scope_prefix = resolved_scope.relative_to(repo_root)
         prefix_parts = scope_prefix.parts
         scope_paths: set[str] = set()
         for repo_relative_text in repo_relative_paths:

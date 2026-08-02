@@ -5,18 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from flext_core import m
 
 
 class FlextInfraSettingsModels:
     """Private namespace for validated settings payloads."""
 
-    class Infra(BaseSettings):
+    class Infra(m.BaseSettings):
         """Validated process-start settings owned by flext-infra."""
 
         # mro-wkii.4.15: validate every external alias before singleton export.
-        model_config = SettingsConfigDict(
+        model_config = m.SettingsConfigDict(
             env_prefix="",
             env_ignore_empty=True,
             case_sensitive=True,
@@ -27,7 +26,7 @@ class FlextInfraSettingsModels:
 
         standalone: Annotated[
             bool,
-            Field(
+            m.Field(
                 default=False,
                 validation_alias="FLEXT_STANDALONE",
                 description="Force standalone mode and skip workspace auto-detection.",
@@ -35,7 +34,7 @@ class FlextInfraSettingsModels:
         ]
         workspace_root: Annotated[
             Path | None,
-            Field(
+            m.Field(
                 default=None,
                 validation_alias="FLEXT_WORKSPACE_ROOT",
                 description="Explicit workspace root for dependency orchestration.",
@@ -43,7 +42,7 @@ class FlextInfraSettingsModels:
         ]
         use_https: Annotated[
             bool,
-            Field(
+            m.Field(
                 default=False,
                 validation_alias="FLEXT_USE_HTTPS",
                 description="Prefer HTTPS repository URLs during dependency sync.",
@@ -51,7 +50,7 @@ class FlextInfraSettingsModels:
         ]
         github_actions: Annotated[
             bool,
-            Field(
+            m.Field(
                 default=False,
                 validation_alias="GITHUB_ACTIONS",
                 description="Whether the process runs in GitHub Actions.",
@@ -59,7 +58,7 @@ class FlextInfraSettingsModels:
         ]
         github_head_ref: Annotated[
             str | None,
-            Field(
+            m.Field(
                 default=None,
                 validation_alias="GITHUB_HEAD_REF",
                 description="GitHub Actions head ref for dependency sync.",
@@ -67,7 +66,7 @@ class FlextInfraSettingsModels:
         ]
         github_ref_name: Annotated[
             str | None,
-            Field(
+            m.Field(
                 default=None,
                 validation_alias="GITHUB_REF_NAME",
                 description="GitHub Actions ref name for dependency sync.",

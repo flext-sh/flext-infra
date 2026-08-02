@@ -13,9 +13,9 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, u
-from tests import u as test_u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
+from tests import u as test_u
 
 
 class TestCodegenBeadsLedger:
@@ -100,9 +100,7 @@ class TestCodegenBeadsLedger:
     def _beads_plan(cls, root: Path) -> m.Infra.BeadsPlan:
         """Plan one repository in check mode and return its single Beads plan."""
         request = m.Infra.CodegenConformRequest(
-            root=root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
+            root=root, scope=c.Infra.CodegenConformScope.SELF
         )
         planned: m.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform(workspace_root=root).plan(request)
@@ -153,9 +151,7 @@ class TestCodegenBeadsLedger:
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
         """Plan one repository in check mode."""
         request = m.Infra.CodegenConformRequest(
-            root=root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
+            root=root, scope=c.Infra.CodegenConformScope.SELF
         )
         planned: m.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform(workspace_root=root).plan(request)
@@ -253,8 +249,7 @@ class TestCodegenBeadsLedger:
     def test_server_block_loads_from_typed_ssot(self) -> None:
         """Load the shared server block with typed fields from the toolchain SSOT."""
         server = self._toolchain_server()
-        tm.that(isinstance(server.port, int) and server.port > 0, eq=True)
-        tm.that(isinstance(server.shared_server, bool), eq=True)
+        tm.that(server.port, gt=0)
         tm.that(bool(server.host), eq=True)
         tm.that(server.auto_commit in {"off", "on", "batch"}, eq=True)
 
@@ -308,9 +303,7 @@ class TestCodegenBeadsLedger:
         try:
             result = FlextInfraCodegenConform.execute_request(
                 m.Infra.CodegenConformRequest(
-                    root=root,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.CHECK,
+                    root=root, scope=c.Infra.CodegenConformScope.SELF
                 )
             )
             tm.fail(result, has="checksum mismatch")

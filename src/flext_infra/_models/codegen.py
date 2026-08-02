@@ -122,10 +122,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         file: Annotated[
             t.NonEmptyStr, m.Field(description="Workspace-relative file path")
         ]
-        status: Annotated[
-            Literal["applied", "reverted"],
-            m.Field(description="File processing status"),
-        ]
         changes: Annotated[
             t.StrSequence,
             m.Field(default_factory=tuple, description="Applied replacements"),
@@ -139,9 +135,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ] = 0
         total_applied: Annotated[
             t.NonNegativeInt, m.Field(description="Total replacements applied")
-        ] = 0
-        total_failed: Annotated[
-            t.NonNegativeInt, m.Field(description="Total files reverted")
         ] = 0
         files: Annotated[
             t.SequenceOf[FlextInfraModelsCodegen.ConsolidatorFileResult],
@@ -283,29 +276,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         passed: Annotated[bool, m.Field(description="Whether check passed")]
         detail: Annotated[str, m.Field(description="Human-readable check detail")] = ""
         critical: Annotated[bool, m.Field(description="Whether failure is critical")]
-
-    class QualityGateProjectFinding(mm.ProjectNameMixin, m.ArbitraryTypesModel):
-        """Per-project quality gate findings."""
-
-        violations_total: Annotated[
-            t.NonNegativeInt, m.Field(description="Total violations")
-        ]
-        fixable_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Auto-fixable violations")
-        ]
-        validator_passed: Annotated[
-            bool, m.Field(description="Whether validator passed")
-        ]
-        mro_failures: Annotated[
-            t.NonNegativeInt, m.Field(description="MRO failure count")
-        ]
-        layer_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Layer violation count")
-        ]
-        cross_project_reference_violations: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Cross-project reference violation count"),
-        ]
 
     class BulkFixItem(
         mm.AbsoluteFilePathTextMixin, mm.PositiveLineMixin, m.ArbitraryTypesModel

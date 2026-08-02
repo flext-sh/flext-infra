@@ -1,14 +1,4 @@
-"""Integration tests for flext_infra cross-module flows.
-
-Tests exercise cross-module flows using the public runtime surfaces, validating:
-- Output/reporting methods via u.Infra
-- Service r chaining
-- Command runtime operations via u.Cli.run_checked/capture
-- BaseMk generation flow
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Integration tests for current ``flext_infra`` public cross-module flows."""
 
 from __future__ import annotations
 
@@ -16,12 +6,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import r, u
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra import config, m, r, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+from flext_infra.workspace.make_generation import FlextInfraMakeGenerationService
+from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
 from flext_tests import tm
+from tests import u as test_u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,270 +20,184 @@ pytestmark = [pytest.mark.integration]
 
 
 class TestsFlextInfraIntegrationInfraIntegration:
-    """Integration tests for the public FlextInfra surface."""
+    """Integration tests for the current infrastructure runtime surfaces."""
 
-    @pytest.mark.integration
-    def test_workspace_detector_and_orchestrator_share_state(
+    def test_detector_and_make_services_share_typed_context(
         self, tmp_path: Path
     ) -> None:
-        """Test that FlextInfraWorkspaceDetector and orchestrator share state.
+        """Route one isolated repository through detector, serializer, and generator."""
+        root = tmp_path / "integration-probe"
+        (root / "src" / "integration_probe").mkdir(parents=True)
+        (root / "src" / "integration_probe" / "__init__.py").write_text(
+            "", encoding="utf-8"
+        )
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "integration-probe"\n'
+            'version = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\n',
+            encoding="utf-8",
+        )
+        makefile = root / "Makefile"
+        makefile.write_text("# selected Make owner\n", encoding="utf-8")
+        provider = config.Infra.codegen.default_provider_spec
+        test_u.Tests.initialize_git_repo(
+            root, f"{provider.base_url.rstrip('/')}/integration-probe.git"
+        )
 
-        Validates:
-        - Detector can be created
-        - Orchestrator can be created
-        - Both can access shared workspace information
-        """
-        workspace_root = tmp_path / "workspace"
-        workspace_root.mkdir()
-        (workspace_root / ".git").mkdir()
-        detector = FlextInfraWorkspaceDetector()
-        orchestrator = FlextInfraOrchestratorService(verb="test")
-        tm.that(detector, none=False)
-        tm.that(orchestrator, none=False)
-        tm.that(detector, is_=FlextInfraWorkspaceDetector)
-        tm.that(orchestrator, is_=FlextInfraOrchestratorService)
+        workspace: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        )
+        target: m.Infra.RepositoryConformTarget = tm.ok(
+            FlextInfraWorkspaceDetector.conform_target(root, workspace)
+        )
+        tm.that(target.repository, eq=workspace.repository)
 
-    @pytest.mark.integration
-    def test_workspace_detector_returns_flext_result(self) -> None:
-        """Test that workspace detector operations return r.
+        make = config.Infra.codegen.make
+        operations = {operation.name: operation for operation in make.operations}
+        help_verb = next(
+            verb
+            for verb in make.verbs
+            if operations[verb.operation].executor == "bootstrap"
+            and operations[verb.operation].scope == "self"
+        )
+        serialized = FlextInfraMakeSerializationService.model_validate({
+            "workspace_root": root,
+            "verb": help_verb.name,
+            "makefile": makefile,
+            "selector_value": help_verb.default_what,
+            "apply_token": make.apply_absent_value,
+            "make_level": 0,
+        })
+        tm.ok(serialized.execute())
 
-        Validates:
-        - Detector methods return r
-        - Result typing is correct
-        """
-        detector = FlextInfraWorkspaceDetector()
-        tm.that(detector, none=False)
-        tm.that(detector, is_=FlextInfraWorkspaceDetector)
+        generation_operation = next(
+            operation
+            for operation in make.operations
+            if operation.executor == "generation"
+        )
+        generation_verb = next(
+            verb for verb in make.verbs if verb.operation == generation_operation.name
+        )
+        generation_handler = next(
+            handler
+            for handler in generation_verb.handlers
+            if handler.what == generation_verb.default_what
+        )
+        profile = next(
+            item
+            for item in config.Infra.codegen.profiles
+            if item.name == target.make_profile
+        )
+        context = m.Infra.MakeExecutionContext(
+            workspace_root=root,
+            workspace=workspace,
+            target=target,
+            profile=profile,
+            environment_root=root,
+            targets=(
+                m.Infra.MakeTargetSpec(repository=target.repository, root=target.root),
+            ),
+            invocation=m.Infra.MakeInvocationSpec(
+                verb=generation_verb,
+                operation=generation_operation,
+                handler=generation_handler,
+                applying=False,
+                target_scope="profile",
+                inputs=(),
+            ),
+            make=make,
+        )
 
-    @pytest.mark.integration
-    def test_basemk_template_renderer_and_generator_flow(self, tmp_path: Path) -> None:
-        """Test BaseMk template renderer → generator flow.
+        tm.fail(
+            FlextInfraMakeGenerationService.execute_for(context, applying=False),
+            has="generated surface drift detected",
+        )
 
-        Validates:
-        - Template renderer can be created
-        - Generator can be created
-        - Both work together in a flow
-        """
-        output_dir = tmp_path / "basemk_output"
-        output_dir.mkdir()
-        renderer = FlextInfraBaseMkTemplateRenderer()
-        generator = FlextInfraBaseMkGenerator()
-        tm.that(renderer, none=False)
-        tm.that(generator, none=False)
-        tm.that(renderer, is_=FlextInfraBaseMkTemplateRenderer)
-        tm.that(generator, is_=FlextInfraBaseMkGenerator)
+    def test_output_methods_are_callable_via_public_facade(self) -> None:
+        """Expose reporting methods through the real CLI utility facade."""
+        for method in (
+            u.Cli.status,
+            u.Cli.summary,
+            u.Cli.error,
+            u.Cli.warning,
+            u.Cli.info,
+            u.Cli.header,
+            u.Cli.progress,
+        ):
+            tm.that(callable(method), eq=True)
 
-    @pytest.mark.integration
-    def test_basemk_generator_generates_valid_content(self, tmp_path: Path) -> None:
-        """Test BaseMk generator validates rendered output using real make."""
-        _ = tmp_path
-        generator = FlextInfraBaseMkGenerator()
-        generated = generator.execute()
-        tm.ok(generated)
-        tm.that(generated.value, is_=str)
-        tm.that(generated.value, has="check")
-
-    @pytest.mark.integration
-    def test_basemk_fmt_formats_markdown_instead_of_linting_it(self) -> None:
-        """The format verb must format Markdown, never lint it.
-
-        ``rumdl check --fix`` is a linter: it exits non-zero whenever an issue
-        has no autofix, so a formatting run that repaired every fixable file
-        still failed the verb. ``rumdl fmt`` carries formatter-style exit
-        codes, which is the contract ``fmt`` promises.
-        """
-        generated = FlextInfraBaseMkGenerator().execute()
-
-        tm.ok(generated)
-        tm.that(generated.value, has='rumdl" fmt')
-        tm.that('rumdl" check --fix' in generated.value, eq=False)
-
-    @pytest.mark.integration
-    def test_basemk_renders_shell_continuations_without_blank_lines(self) -> None:
-        r"""Every rendered recipe line must keep its shell continuation intact.
-
-        A Jinja loop that emits a bare newline breaks the ``\\`` continuation of
-        the surrounding shell construct, so the generated recipe dies with
-        'syntax error: unexpected end of file' before running anything.
-        """
-        generated = FlextInfraBaseMkGenerator().execute()
-
-        tm.ok(generated)
-        continued = [
-            index
-            for index, line in enumerate(generated.value.splitlines())
-            if line.rstrip().endswith("\\")
-        ]
-        lines = generated.value.splitlines()
-        tm.that([index for index in continued if not lines[index + 1].strip()], eq=[])
-
-    @pytest.mark.integration
-    def test_basemk_invokes_infra_entrypoints_without_eval(self) -> None:
-        """Infra entrypoints run directly, never rebuilt as an eval string.
-
-        The entrypoint macros carry an executable guard, so they contain ``;``
-        and ``||``. Captured into a shell variable, only the fragment before
-        the first ``;`` survives and the guard leaks into the recipe:
-        ``FLEXT_INFRA_PYTHON: command not found`` followed by
-        ``eval: --: invalid option``.
-        """
-        generated = FlextInfraBaseMkGenerator().execute()
-
-        tm.ok(generated)
-        tm.that("eval $$cmd" in generated.value, eq=False)
-
-    @pytest.mark.integration
-    def test_output_singleton_has_expected_methods(self) -> None:
-        """Test that reporting/output methods are exposed through u.Infra.
-
-        Validates u.Infra MRO output methods are available:
-        - status, summary, error, warning, info, header, progress
-        """
-        tm.that(callable(u.Cli.status), eq=True)
-        tm.that(callable(u.Cli.summary), eq=True)
-        tm.that(callable(u.Cli.error), eq=True)
-        tm.that(callable(u.Cli.warning), eq=True)
-        tm.that(callable(u.Cli.info), eq=True)
-        tm.that(callable(u.Cli.header), eq=True)
-        tm.that(callable(u.Cli.progress), eq=True)
-
-    @pytest.mark.integration
-    def test_output_methods_are_callable_via_u_infra(self) -> None:
-        """Test that reporting methods are callable through the real facade.
-
-        Validates:
-        - All methods are callable through u.Infra
-        """
-        tm.that(callable(u.Cli.status), eq=True)
-        tm.that(callable(u.Cli.summary), eq=True)
-        tm.that(callable(u.Cli.error), eq=True)
-        tm.that(callable(u.Cli.warning), eq=True)
-        tm.that(callable(u.Cli.info), eq=True)
-        tm.that(callable(u.Cli.header), eq=True)
-        tm.that(callable(u.Cli.progress), eq=True)
-
-    @pytest.mark.integration
     def test_service_result_chaining_with_map(self) -> None:
-        """Test chaining multiple services via .map().
-
-        Validates:
-        - r.map() works with service results
-        - Type is preserved through chain
-        - Value is transformed correctly
-        """
-        initial_value = 10
-        result = r[int].ok(initial_value).map(lambda x: x * 2).map(lambda x: x + 5)
+        """Preserve values across consecutive result mappings."""
+        result = r[int].ok(10).map(lambda value: value * 2).map(lambda value: value + 5)
         tm.ok(result)
         tm.that(result.value, eq=25)
 
-    @pytest.mark.integration
     def test_service_result_chaining_with_flat_map(self) -> None:
-        """Test chaining multiple services via .flat_map().
-
-        Validates:
-        - r.flat_map() works with service results
-        - Type is preserved through chain
-        - Failures propagate correctly
-        """
-        initial_value = 10
+        """Compose result-producing services without leaving the result boundary."""
         result = (
             r[int]
-            .ok(initial_value)
-            .flat_map(lambda x: r[int].ok(x * 2))
-            .flat_map(lambda x: r[int].ok(x + 5))
+            .ok(10)
+            .flat_map(lambda value: r[int].ok(value * 2))
+            .flat_map(lambda value: r[int].ok(value + 5))
         )
         tm.ok(result)
         tm.that(result.value, eq=25)
 
-    @pytest.mark.integration
     def test_service_result_chaining_failure_propagation(self) -> None:
-        """Test that failures propagate through result chains.
-
-        Validates:
-        - Failure stops the chain
-        - Error message is preserved
-        - Subsequent operations are not executed
-        """
-        initial_value = 10
+        """Stop a chain at the first failure and preserve its diagnostic."""
         result = (
             r[int]
-            .ok(initial_value)
-            .flat_map(lambda x: r[int].ok(x * 2))
+            .ok(10)
+            .flat_map(lambda value: r[int].ok(value * 2))
             .flat_map(lambda _: r[int].fail("intentional error"))
-            .flat_map(lambda x: r[int].ok(x + 5))
+            .flat_map(lambda value: r[int].ok(value + 5))
         )
         tm.fail(result)
         tm.that(result.error, is_=str)
         tm.that(result.error, has="intentional error")
 
-    @pytest.mark.integration
     def test_service_result_chaining_with_mixed_operations(self) -> None:
-        """Test chaining with mixed map and flat_map operations.
-
-        Validates:
-        - Mixed operations work together
-        - Type is preserved
-        - Values are transformed correctly
-        """
-        initial_value = 5
+        """Compose map and flat-map operations through one typed result."""
         result = (
             r[int]
-            .ok(initial_value)
-            .map(lambda x: x * 2)
-            .flat_map(lambda x: r[int].ok(x + 3))
-            .map(lambda x: x * 2)
+            .ok(5)
+            .map(lambda value: value * 2)
+            .flat_map(lambda value: r[int].ok(value + 3))
+            .map(lambda value: value * 2)
         )
         tm.ok(result)
         tm.that(result.value, eq=26)
 
-    @pytest.mark.integration
-    def test_discover_projects_via_mro(self) -> None:
-        """Test u.Infra.discover_projects flow.
-
-        Validates:
-        - discover_projects is callable via u.Infra MRO
-        - workspace_root is callable via u.Infra MRO
-        """
-        tm.that(callable(u.Infra.discover_projects), eq=True)
-        tm.that(callable(u.Infra.resolve_workspace_root_or_cwd), eq=True)
-
-    @pytest.mark.integration
-    def test_path_utilities_via_mro(self) -> None:
-        """Test u.Infra path utility methods are available via MRO."""
-        tm.that(callable(u.Infra.resolve_project_root), eq=True)
-
-    @pytest.mark.integration
     def test_cli_capture_git_current_branch_in_real_repo(self, tmp_path: Path) -> None:
-        """Test git branch detection through the canonical CLI runtime surface."""
+        """Detect a branch through the canonical CLI runtime surface."""
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
-        init_result = u.Cli.run_checked(["git", "init"], cwd=repo_root)
-        tm.ok(init_result)
-        email_result = u.Cli.run_checked(
-            ["git", "config", "user.email", "infra@example.com"], cwd=repo_root
+        tm.ok(u.Cli.run_checked(["git", "init"], cwd=repo_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.email", "infra@example.com"], cwd=repo_root
+            )
         )
-        tm.ok(email_result)
-        name_result = u.Cli.run_checked(
-            ["git", "config", "user.name", "Infra Test"], cwd=repo_root
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.name", "Infra Test"], cwd=repo_root
+            )
         )
-        tm.ok(name_result)
-        sample_file = repo_root / "README.md"
-        _ = sample_file.write_text("infra test\n", encoding="utf-8")
-        add_result = u.Cli.run_checked(["git", "add", "README.md"], cwd=repo_root)
-        tm.ok(add_result)
-        commit_result = u.Cli.run_checked(
-            ["git", "commit", "-m", "initial"], cwd=repo_root
+        (repo_root / "README.md").write_text("infra test\n", encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["git", "add", "README.md"], cwd=repo_root))
+        tm.ok(u.Cli.run_checked(["git", "commit", "-m", "initial"], cwd=repo_root))
+        branch: str = tm.ok(
+            u.Cli.capture(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_root)
         )
-        tm.ok(commit_result)
-        branch_result = u.Cli.capture(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_root
-        )
-        tm.ok(branch_result)
-        tm.that(branch_result.value, ne="")
+        tm.that(branch, ne="")
 
-    @pytest.mark.integration
     def test_command_runner_capture_executes_real_command(self) -> None:
-        """Test u.Cli.capture with a real external command."""
-        capture_result = u.Cli.capture(["python3", "-c", "print('infra-ok')"])
-        tm.ok(capture_result)
-        tm.that(capture_result.value, eq="infra-ok")
+        """Capture a real external command through the public CLI utility."""
+        captured: str = tm.ok(
+            u.Cli.capture(["python3", "-c", "print('infra-ok')"])
+        )
+        tm.that(captured, eq="infra-ok")
+
+
+__all__: tuple[str, ...] = ()

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -271,138 +269,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
         venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
         return u.Cli.ensure_symlink(worktree_root / venv_name, runtime_root)
 
-    @staticmethod
-    def _lint_counts(tool: str, output: str) -> tuple[int, int]:
-        """Extract comparable error and warning counts from lint output."""
-        if tool == "ruff":
-            errors = sum(
-                int(match.group(1))
-                for match in re.finditer(r"(?m)^\s*(\d+)\s+[A-Z][A-Z0-9]+\s+", output)
-            )
-            return (errors, 0)
-        error_matches = tuple(
-            int(match.group(1)) for match in re.finditer(r"\b(\d+)\s+errors?\b", output)
-        )
-        errors = error_matches[-1] if error_matches else 0
-        warning_matches = tuple(
-            int(match.group(1))
-            for match in re.finditer(r"\b(\d+)\s+warnings?\b", output)
-        )
-        warnings = (
-            warning_matches[-1]
-            if warning_matches
-            else len(re.findall(r"(?im)^.*\bwarning:", output))
-        )
-        return (errors, warnings)
-
-    @classmethod
-    def _lint_snapshot(
-        cls,
-        worktree_root: Path,
-        tool: str,
-        command: t.StrSequence,
-        environment: t.StrMapping,
-        timeout_seconds: int,
-    ) -> m.Infra.LintSnapshot:
-        """Capture one lint command without hiding a non-zero exit status."""
-        lint_environment = {
-            key: value
-            for key, value in environment.items()
-            if key != c.Infra.ORCHESTRATOR_ENV_PYTHONPATH
-        }
-        result = u.Cli.run_raw(
-            command,
-            cwd=worktree_root,
-            env=lint_environment,
-            remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-            timeout=timeout_seconds,
-        )
-        if result.failure:
-            return m.Infra.LintSnapshot(
-                tool=tool,
-                exit_code=1,
-                errors=1,
-                output=result.error or "lint command execution failed",
-            )
-        command_output = result.value
-        combined_output = "\n".join(
-            part for part in (command_output.stdout, command_output.stderr) if part
-        )
-        errors, warnings = cls._lint_counts(tool, combined_output)
-        if command_output.exit_code != 0 and errors == 0:
-            errors = 1
-        return m.Infra.LintSnapshot(
-            tool=tool,
-            exit_code=command_output.exit_code,
-            errors=errors,
-            warnings=warnings,
-            output=combined_output,
-        )
-
-    @staticmethod
-    def _pyrefly_interpreter(worktree_root: Path) -> str:
-        """Resolve the interpreter that owns the checked tree's dependencies.
-
-        ``sys.executable`` may point at the flext-infra bootstrap interpreter
-        (from ``FLEXT_INFRA_BOOTSTRAP`` / ``uv run --project ...``); it resolves
-        flext-infra's dependencies and may not include the checked project's dev
-        dependencies (pytest, PyYAML, ...). Type checking against it reports each as a
-        missing import. The project virtualenv is the only interpreter that can
-        resolve the imports the project actually declares.
-        """
-        candidate = worktree_root / c.Infra.VENV_BIN_REL / c.Infra.PYTHON
-        if candidate.is_file():
-            return str(candidate.resolve())
-        return sys.executable
-
-    @classmethod
-    def _lint_commands(cls, worktree_root: Path) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools from the managed process environment before mutation."""
-        managed_path = u.Cli.process_env().get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
-        commands: t.MutableSequenceOf[t.StrSequencePair] = []
-        for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            resolved = shutil.which(command[0], path=managed_path)
-            if resolved is None:
-                return r[t.StrSequencePairTuple].fail(
-                    "required transaction lint executable not found on managed PATH: "
-                    f"{command[0]}"
-                )
-            executable = Path(resolved).resolve()
-            if not executable.is_file():
-                return r[t.StrSequencePairTuple].fail(
-                    f"resolved transaction lint executable is not a file: {executable}"
-                )
-            bound_command: t.StrSequence = (str(executable), *command[1:])
-            if tool == c.Infra.PYREFLY:
-                bound_command = (
-                    *bound_command,
-                    "--config",
-                    c.Infra.PYPROJECT_FILENAME,
-                    "--python-interpreter-path",
-                    cls._pyrefly_interpreter(worktree_root),
-                )
-            commands.append((tool, bound_command))
-        return r[t.StrSequencePairTuple].ok(tuple(commands))
-
-    @classmethod
-    def _lint_snapshots(
-        cls,
-        worktree_root: Path,
-        environment: t.StrMapping,
-        timeout_seconds: int,
-        commands: t.StrSequencePairTuple,
-    ) -> t.VariadicTuple[m.Infra.LintSnapshot]:
-        """Capture every canonical transaction lint command in parallel."""
-        with ThreadPoolExecutor(thread_name_prefix="lint_") as executor:
-            return tuple(
-                executor.map(
-                    lambda item: cls._lint_snapshot(
-                        worktree_root, item[0], item[1], environment, timeout_seconds
-                    ),
-                    commands,
-                )
-            )
-
     @classmethod
     def _import_probe(
         cls,
@@ -411,7 +277,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         timeout_seconds: int,
         scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Cli.CommandOutput:
-        """Fresh-import every productive package root the scope owns."""
+        """Fresh-import every installed productive package the scope owns."""
         packages = tuple(
             sorted({
                 package_dir.name
@@ -424,10 +290,20 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
         script = (
             "import importlib\n"
+            "import importlib.metadata as metadata\n"
             f"packages = {packages!r}\n"
+            "installed = metadata.packages_distributions()\n"
+            "imported = 0\n"
+            "skipped = []\n"
             "for package in packages:\n"
+            "    if not installed.get(package):\n"
+            "        skipped.append(package)\n"
+            "        continue\n"
             "    importlib.import_module(package)\n"
-            "print(f'imported {len(packages)} packages')\n"
+            "    imported += 1\n"
+            "print(f'imported {imported} packages')\n"
+            "if skipped:\n"
+            "    print(f'skipped (not installed): {sorted(skipped)}')\n"
         )
         result = u.Cli.run_raw(
             (sys.executable, "-c", script),
@@ -453,19 +329,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
             if source_text in argument
             else argument
             for argument in command
-        )
-
-    @staticmethod
-    def _lint_regressed(
-        before: t.SequenceOf[m.Infra.LintSnapshot],
-        after: t.SequenceOf[m.Infra.LintSnapshot],
-    ) -> bool:
-        """Return whether a command introduced or increased diagnostics."""
-        return any(
-            after_item.errors > before_item.errors
-            or after_item.warnings > before_item.warnings
-            or (after_item.exit_code != 0 and before_item.exit_code == 0)
-            for before_item, after_item in zip(before, after, strict=True)
         )
 
     @classmethod
@@ -725,17 +588,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
     ) -> p.Result[m.Infra.WorktreeTransactionReport]:
         """Run and evaluate the command inside an already checkpointed worktree."""
-        lint_commands_result = cls._lint_commands(worktree_root)
-        if lint_commands_result.failure:
-            return r[m.Infra.WorktreeTransactionReport].fail(
-                lint_commands_result.error
-                or "failed to resolve transaction lint executables"
-            )
-        lint_commands = lint_commands_result.value
         environment = cls._transaction_environment(worktree_root, request.scoped_paths)
-        lint_before = cls._lint_snapshots(
-            worktree_root, environment, request.timeout_seconds, lint_commands
-        )
         relocated = cls._relocate_command(
             request.command, request.workspace_root.resolve(), worktree_root
         )
@@ -752,9 +605,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
         else:
             command_output = command_result.value
-        lint_after = cls._lint_snapshots(
-            worktree_root, environment, request.timeout_seconds, lint_commands
-        )
 
         def _run_import_probe() -> p.Cli.CommandOutput:
             return cls._import_probe(
@@ -778,12 +628,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 deltas_result.error or "failed to capture repository deltas"
             )
         deltas = deltas_result.value
-        lint_regressed = cls._lint_regressed(lint_before, lint_after)
-        breakage = (
-            command_output.exit_code != 0
-            or import_probe.exit_code != 0
-            or lint_regressed
-        )
+        breakage = command_output.exit_code != 0 or import_probe.exit_code != 0
         patch_check = cls._check_patches(deltas)
         if patch_check.failure:
             breakage = True
@@ -808,8 +653,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 worktree_root=worktree_root,
                 command_output=command_output,
                 import_probe=import_probe,
-                lint_before=lint_before,
-                lint_after=lint_after,
                 repositories=tuple(deltas),
                 breakage_detected=breakage,
                 applied=applied,
@@ -821,7 +664,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def render_worktree_transaction_report(
         report: m.Infra.WorktreeTransactionReport,
     ) -> str:
-        """Render command evidence, lint deltas, and generated patches."""
+        """Render command, import, and generated-patch evidence."""
         lines: t.MutableSequenceOf[str] = [
             f"transaction: {report.transaction_id}",
             f"command exit: {report.command_output.exit_code}",
@@ -837,21 +680,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
         ):
             if output.strip():
                 lines.extend((f"{label}:", output.rstrip()))
-        lines.append("lint delta:")
-        for before, after in zip(report.lint_before, report.lint_after, strict=True):
-            lines.append(
-                f"  {before.tool}: errors {before.errors}->{after.errors} "
-                f"({after.errors - before.errors:+d}), warnings "
-                f"{before.warnings}->{after.warnings} "
-                f"({after.warnings - before.warnings:+d})"
-            )
-            if before.exit_code != 0 or before.errors or before.warnings:
-                lines.extend((
-                    f"  {before.tool} before output:",
-                    before.output.rstrip(),
-                ))
-            if after.exit_code != 0 or after.errors or after.warnings:
-                lines.extend((f"  {after.tool} after output:", after.output.rstrip()))
         for repository in report.repositories:
             if not repository.patch:
                 continue

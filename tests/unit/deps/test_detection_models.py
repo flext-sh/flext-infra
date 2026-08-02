@@ -43,42 +43,9 @@ class TestsFlextInfraDepsDetectionModels:
         tm.that(report.project, eq="test-project")
         tm.that(report.deptry, eq=deptry)
 
-    def test_typings_report_creation(self) -> None:
-        """Verify typings report creation."""
-        report = m.Infra.TypingsReport(
-            required_packages=[],
-            hinted=[],
-            missing_modules=[],
-            current=[],
-            to_add=[],
-            to_remove=[],
-        )
-        tm.that(report.required_packages, empty=True)
-        tm.that(report.hinted, empty=True)
-        tm.that(report.missing_modules, empty=True)
-        tm.that(report.current, empty=True)
-        tm.that(report.to_add, empty=True)
-        tm.that(report.to_remove, empty=True)
-        tm.that(not report.limits_applied, eq=True)
-        tm.that(report.python_version, eq=None)
-
     def test_service_initialization(self) -> None:
         """Verify service initialization."""
         FlextInfraDependencyDetectionService()
-
-    def test_default_module_to_types_package_mapping(self) -> None:
-        """Verify default module to types package mapping."""
-        service = FlextInfraDependencyDetectionService()
-        limits = service.load_dependency_limits()
-        typing_libraries = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            limits["typing_libraries"]
-        )
-        module_to_package = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            typing_libraries["module_to_package"]
-        )
-        expected = module_to_package["yaml"]
-
-        tm.that(service.module_to_types_package("yaml", limits), eq=expected)
 
     def test_none_value(self) -> None:
         """Verify none value."""

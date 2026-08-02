@@ -37,7 +37,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         if not pkg_dir.parent.is_dir():
             return self._empty_result(project_path.name)
         ctx = m.Infra.FixContext()
-        initial_violations = self._load_initial_violations(ctx, project_path)
+        initial_violations = self._load_initial_violations(project_path)
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
@@ -58,9 +58,12 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
             selected_projects = tuple(projects)
         else:
             projects_result = u.Infra.projects(self.workspace_root)
-            discovered = (
-                tuple(projects_result.unwrap()) if projects_result.success else ()
-            )
+            if projects_result.failure:
+                msg = projects_result.error or (
+                    f"workspace project discovery failed: {self.workspace_root}"
+                )
+                raise RuntimeError(msg)
+            discovered = tuple(projects_result.value)
             scope = frozenset(self.project_names or ())
             selected_projects = (
                 tuple(p for p in discovered if p.path.name in scope)

@@ -8,7 +8,10 @@ are provably equivalent under FLEXT law.
 from __future__ import annotations
 
 from abc import abstractmethod
+from importlib import import_module
 from typing import TYPE_CHECKING, ClassVar, Final
+
+from flext_infra import c
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,8 +36,7 @@ class FlextInfraSmellFixer:
 
     def can_fix(self, issue: m.Infra.Issue) -> bool:
         """Return True when this fixer handles the given issue code."""
-        issue_code: str = issue.code
-        return issue_code == self.tag
+        return smell_tag_for_code(issue.code) == self.tag
 
     @abstractmethod
     def fix(self, project_dir: Path, issue: m.Infra.Issue) -> tuple[bool, list[str]]:
@@ -56,23 +58,59 @@ class FlextInfraSmellFixer:
 _SMELL_FIXERS: Final[dict[str, type[FlextInfraSmellFixer]]] = {}
 
 
+def _fixer_id(fixer_class: type[FlextInfraSmellFixer]) -> str:
+    """Derive the implementation identifier owned by the transformer module."""
+    return fixer_class.__module__.rpartition(".")[2]
+
+
 def register_smell_fixer(
     fixer_class: type[FlextInfraSmellFixer],
 ) -> type[FlextInfraSmellFixer]:
-    """Register a smell fixer under its class ``tag``."""
-    _SMELL_FIXERS[fixer_class.tag] = fixer_class
+    """Register one transformer against its flext-core strategy row."""
+    fixer_id = _fixer_id(fixer_class)
+    matching_tags = tuple(
+        tag
+        for tag, strategy in c.ENFORCEMENT_SMELL_FIX_STRATEGIES.items()
+        if strategy.get("fixer") == fixer_id
+    )
+    if len(matching_tags) != 1:
+        msg = f"smell fixer {fixer_id!r} must own exactly one strategy tag"
+        raise ValueError(msg)
+    fixer_class.tag = matching_tags[0]
+    _SMELL_FIXERS[fixer_id] = fixer_class
     return fixer_class
 
 
-def smell_fixer_for(code: str) -> FlextInfraSmellFixer | None:
-    """Return a fresh fixer instance for ``code``, or None when absent."""
-    fixer_class = _SMELL_FIXERS.get(code)
+def smell_tag_for_code(code: str) -> str | None:
+    """Resolve one external qlty smell code through flext-core's tag SSOT."""
+    candidate = f"smell_{code.replace('-', '_')}"
+    return candidate if candidate in c.ENFORCEMENT_SMELL_TAGS else None
+
+
+def smell_fixer_for(tag: str) -> FlextInfraSmellFixer | None:
+    """Resolve one tag through its core strategy and return its transformer."""
+    strategy = c.ENFORCEMENT_SMELL_FIX_STRATEGIES.get(tag)
+    fixer_id = strategy.get("fixer") if strategy is not None else None
+    fixer_class = _smell_fixer_class(fixer_id) if isinstance(fixer_id, str) else None
     return None if fixer_class is None else fixer_class()
 
 
 def auto_fixable_smell_tags() -> tuple[str, ...]:
     """Return tags of all registered smell fixers."""
-    return tuple(_SMELL_FIXERS.keys())
+    return tuple(
+        tag
+        for tag, strategy in c.ENFORCEMENT_SMELL_FIX_STRATEGIES.items()
+        if strategy.get("auto")
+        and isinstance(fixer_id := strategy.get("fixer"), str)
+        and _smell_fixer_class(fixer_id) is not None
+    )
+
+
+def _smell_fixer_class(fixer_id: str) -> type[FlextInfraSmellFixer] | None:
+    """Load one transformer module named by the canonical strategy row."""
+    if fixer_id not in _SMELL_FIXERS:
+        import_module(f"{__package__}.{fixer_id}")
+    return _SMELL_FIXERS.get(fixer_id)
 
 
 __all__: list[str] = [
@@ -80,4 +118,5 @@ __all__: list[str] = [
     "auto_fixable_smell_tags",
     "register_smell_fixer",
     "smell_fixer_for",
+    "smell_tag_for_code",
 ]

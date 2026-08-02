@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import p, t
 
 
@@ -48,7 +49,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
     def _fix_scope(
         self, scope: m.Infra.DocScope, *, apply: bool
     ) -> m.Infra.DocsPhaseReport:
-        """Run TOC, link and python-codeblock fixes on one scope."""
+        """Run TOC and link fixes on one scope."""
         collected: list[m.Infra.DocsPhaseItemModel] = []
         for md_file in u.Infra.iter_scope_markdown_files(scope):
             item = u.Infra.docs_process_markdown_file(md_file, apply=apply)
@@ -61,17 +62,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                         toc=item.toc,
                     )
                 )
-        codeblock_changes = u.Infra.docs_fix_python_codeblocks(scope, apply=apply)
-        collected.extend(
-            m.Infra.DocsPhaseItemModel(
-                phase="fix",
-                file=Path(generated.path).relative_to(scope.path).as_posix(),
-                codeblocks=1,
-            )
-            for generated in codeblock_changes
-        )
         items = tuple(collected)
-        u.Infra.docs_write_fix_reports(scope, items=items, apply=apply)
         report = m.Infra.DocsPhaseReport(
             phase="fix",
             scope=scope.name,
@@ -86,6 +77,16 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             reason=f"changes:{len(items)}",
             passed=apply or not items,
         )
+        write_result = u.Infra.docs_write_fix_reports(
+            scope, items=items, apply=apply
+        )
+        if write_result.failure:
+            report = u.Infra.docs_persistence_failure(
+                phase="fix",
+                scope=scope.name,
+                error=write_result.error,
+                report=report,
+            )
         self.logger.info(
             "docs_fix_scope_completed",
             project=scope.name,

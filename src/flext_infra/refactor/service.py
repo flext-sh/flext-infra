@@ -8,22 +8,19 @@ from typing import TYPE_CHECKING
 from flext_infra import c
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
-from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 
 if TYPE_CHECKING:
     from flext_infra import m, p, t
 
 
 class FlextInfraRefactorService:
-    """Composition root wiring loader, orchestrator, and safety services."""
+    """Composition root wiring the refactor loader and orchestrator."""
 
     def __init__(self, config_path: Path | None = None) -> None:
         """Initialize the composed refactor services."""
         self.config_path = config_path or Path(__file__).parent / "settings.yml"
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
-        self.orchestrator = FlextInfraRefactorOrchestrator(
-            self.rule_loader, safety_manager=FlextInfraRefactorSafetyManager()
-        )
+        self.orchestrator = FlextInfraRefactorOrchestrator(self.rule_loader)
 
     def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
         """Delegate config loading to the dedicated refactor loader."""
@@ -48,9 +45,11 @@ class FlextInfraRefactorService:
         return self.rule_loader.list_rules()
 
     @staticmethod
-    def print_rules_table(rows: t.SequenceOf[t.FeatureFlagMapping]) -> None:
+    def print_rules_table(
+        rows: t.SequenceOf[t.FeatureFlagMapping],
+    ) -> p.Result[None]:
         """Delegate table rendering to the dedicated loader."""
-        FlextInfraRefactorRuleLoader.print_rules_table(rows)
+        return FlextInfraRefactorRuleLoader.print_rules_table(rows)
 
     def run_analyze_violations(self, args: p.Infra.RefactorCliArgs) -> int:
         """Delegate violation analysis to the dedicated orchestrator."""
@@ -63,26 +62,16 @@ class FlextInfraRefactorService:
         return exit_code
 
     def refactor_file(
-        self,
-        file_path: Path,
-        *,
-        dry_run: bool = False,
-        gates: t.StrSequence | None = None,
+        self, file_path: Path, *, dry_run: bool = False
     ) -> m.Infra.Result:
         """Delegate single-file refactoring to the dedicated orchestrator."""
-        return self.orchestrator.refactor_file(file_path, dry_run=dry_run, gates=gates)
+        return self.orchestrator.refactor_file(file_path, dry_run=dry_run)
 
     def refactor_files(
-        self,
-        file_paths: t.SequenceOf[Path],
-        *,
-        dry_run: bool = False,
-        gates: t.StrSequence | None = None,
+        self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate multi-file refactoring to the dedicated orchestrator."""
-        return self.orchestrator.refactor_files(
-            file_paths, dry_run=dry_run, gates=gates
-        )
+        return self.orchestrator.refactor_files(file_paths, dry_run=dry_run)
 
     def refactor_project(
         self,
@@ -90,16 +79,10 @@ class FlextInfraRefactorService:
         *,
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
-        apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate project refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_project(
-            project_path,
-            dry_run=dry_run,
-            pattern=pattern,
-            apply_safety=apply_safety,
-            gates=gates,
+            project_path, dry_run=dry_run, pattern=pattern
         )
 
     def refactor_workspace(
@@ -108,16 +91,10 @@ class FlextInfraRefactorService:
         *,
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
-        apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate workspace refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_workspace(
-            workspace_root,
-            dry_run=dry_run,
-            pattern=pattern,
-            apply_safety=apply_safety,
-            gates=gates,
+            workspace_root, dry_run=dry_run, pattern=pattern
         )
 
 

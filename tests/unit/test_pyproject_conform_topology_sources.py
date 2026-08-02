@@ -13,7 +13,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_tests import tm
 
 _ROLE = c.Infra.RepositoryRole
@@ -37,6 +37,7 @@ def _repository(
         path=Path(path),
         role=role,
         provider=_PROVIDER,
+        branch=_PROVIDER_SPEC.branch,
         checkout=checkout,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=True,
@@ -105,7 +106,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
-        rendered = tm.ok(result)
+        rendered: str = tm.ok(result)
         document = tomllib.loads(rendered)
         group = document["dependency-groups"]["workspace"]
         runtime = document["project"]["dependencies"]
@@ -134,7 +135,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         member = workspace.members[0]
         tm.that(
             document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
+            eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
 
     def test_publishable_member_keeps_catalog_git_provenance(self) -> None:
@@ -156,12 +157,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         document = tomllib.loads(tm.ok(result))
         tm.that(
             document["project"]["dependencies"],
-            eq=[
-                (
-                    f"{provider.distribution} @ git+{provider.url}@"
-                    f"{_PROVIDER_SPEC.branch}"
-                )
-            ],
+            eq=[(f"{provider.distribution} @ git+{provider.url}@{provider.branch}")],
         )
 
     def test_attached_root_rejects_explicit_member_source(self) -> None:
@@ -171,7 +167,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             'dependencies = ["flext-core"]',
             (
                 f'dependencies = ["{member.distribution} @ '
-                f'git+{member.url}@{_PROVIDER_SPEC.branch}"]'
+                f'git+{member.url}@{member.branch}"]'
             ),
             1,
         )
@@ -191,7 +187,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         local_result = u.Infra.pyproject_dependencies_conform(
             attached_root.replace(
-                f"git+{member.url}@{_PROVIDER_SPEC.branch}",
+                f"git+{member.url}@{member.branch}",
                 "file:///home/marlonsc/flext/flext-core",
             ),
             providers=config.Infra.codegen.providers,
@@ -260,7 +256,7 @@ workspace = true
 [tool.uv.sources.{consumer.distribution}]
 workspace = true
 """
-        root_rendered = tm.ok(
+        root_rendered: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 root_source,
                 providers=config.Infra.codegen.providers,
@@ -268,7 +264,7 @@ workspace = true
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
         )
-        consumer_rendered = tm.ok(
+        consumer_rendered: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 (
                     f'[project]\nname = "{consumer.distribution}"\n'
@@ -289,7 +285,7 @@ workspace = true
             consumer_rendered, encoding="utf-8"
         )
 
-        lock_result = tm.ok(
+        lock_result: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.UV, "lock", "--offline", "--project", str(root)],
                 cwd=root,

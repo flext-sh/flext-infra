@@ -22,6 +22,7 @@ def _repository(
         path=Path(path),
         role=role,
         provider=provider.name,
+        branch=provider.branch,
         checkout=(
             c.Infra.CheckoutKind.ROOT
             if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
@@ -97,7 +98,7 @@ dependencies = ["requests>=2"]
 [tool.uv]
 constraint-dependencies = ["uv>=0", "requests<3"]
 """
-        first = tm.ok(
+        first: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
                 providers=config.Infra.codegen.providers,
@@ -105,7 +106,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
         )
-        second = tm.ok(
+        second: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 first,
                 providers=config.Infra.codegen.providers,
@@ -128,7 +129,7 @@ dependencies = ["requests>=2"]
 link-mode = "copy"
 constraint-dependencies = ["uv>=0"]
 """
-        conformed = tm.ok(
+        conformed: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
                 providers=config.Infra.codegen.providers,
@@ -192,7 +193,7 @@ required-version = ">=0"
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
 """
-        first = tm.ok(
+        first: str = tm.ok(
             u.Infra.pyproject_conform(
                 source,
                 providers=config.Infra.codegen.providers,
@@ -202,7 +203,7 @@ python-interpreter-path = "../.venv/bin/python"
                 required_dev_dependencies=required_dev,
             )
         )
-        second = tm.ok(
+        second: str = tm.ok(
             u.Infra.pyproject_conform(
                 first,
                 providers=config.Infra.codegen.providers,
@@ -239,7 +240,7 @@ attached = true
 [tool.poetry]
 name = "legacy-packaging"
 """
-        conformed = tm.ok(
+        conformed: str = tm.ok(
             u.Infra.pyproject_conform(
                 source,
                 providers=config.Infra.codegen.providers,

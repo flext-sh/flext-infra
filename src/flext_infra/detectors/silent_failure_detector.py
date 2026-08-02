@@ -6,7 +6,6 @@ import ast
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra._utilities.silent_failure_ast import collect_silent_failure_findings
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -29,8 +28,6 @@ class FlextInfraSilentFailureDetector:
         if ctx.project_root is not None and file_path.is_relative_to(ctx.project_root):
             display_path = file_path.relative_to(ctx.project_root)
         tree = _rope_module_ast(ctx.rope_project, resource)
-        if tree is None:
-            return []
         return tuple(
             m.Infra.Issue(
                 file=str(display_path),
@@ -39,7 +36,7 @@ class FlextInfraSilentFailureDetector:
                 code=finding.kind,
                 message=finding.detail,
             )
-            for finding in collect_silent_failure_findings(tree, source)
+            for finding in u.Infra.collect_silent_failure_findings(tree, source)
         )
 
     @classmethod
@@ -54,8 +51,6 @@ class FlextInfraSilentFailureDetector:
         if not source.strip():
             return ()
         tree = _rope_module_ast(ctx.rope_project, resource)
-        if tree is None:
-            return ()
         return tuple(
             m.Infra.SilentFailureViolation(
                 file=str(ctx.file_path),
@@ -64,7 +59,7 @@ class FlextInfraSilentFailureDetector:
                 detail=finding.detail,
                 fix_action=finding.fix_action,
             )
-            for finding in collect_silent_failure_findings(tree, source)
+            for finding in u.Infra.collect_silent_failure_findings(tree, source)
         )
 
     @classmethod
@@ -72,17 +67,16 @@ class FlextInfraSilentFailureDetector:
         """Kinds that ``fix_silent_failure_sentinels`` can auto-correct."""
         return frozenset({"silent-failure-guard", "silent-failure-except"})
 
-
 def _rope_module_ast(
     rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-) -> ast.Module | None:
-    """Return the rope-backed module AST, or None on parse failure."""
-    try:
-        pymodule = u.Infra.get_pymodule(rope_project, resource)
-        tree = pymodule.get_ast()
-    except (*u.Infra.rope_syntax_errors(),):
-        return None
-    return tree if isinstance(tree, ast.Module) else None
+) -> ast.Module:
+    """Return the rope-backed module AST, failing on an invalid module shape."""
+    pymodule = u.Infra.get_pymodule(rope_project, resource)
+    tree = pymodule.get_ast()
+    if not isinstance(tree, ast.Module):
+        msg = f"Rope returned a non-module AST for {resource.path}"
+        raise TypeError(msg)
+    return tree
 
 
 __all__: list[str] = ["FlextInfraSilentFailureDetector"]

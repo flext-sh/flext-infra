@@ -48,8 +48,6 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         except c.EXC_OS_SYNTAX:
             return source, list[str]()
-        if pymodule is None:
-            return source, list[str]()
         lines = source.splitlines(keepends=True)
         edits: list[tuple[int, int, str]] = []
         for class_name, class_pyname in pymodule.get_attributes().items():
