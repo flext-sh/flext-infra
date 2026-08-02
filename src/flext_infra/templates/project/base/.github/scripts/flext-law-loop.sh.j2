@@ -118,7 +118,7 @@ run_cycle() {
   # transaction worktrees by removing the directory after detaching it).
   trap 'git worktree remove --force "${worktree}" 2>/dev/null || true; rm -rf "${worktree}" 2>/dev/null || true; git worktree prune 2>/dev/null || true' RETURN
 
-  local spec group cmd changed=0
+  local spec group cmd fixer_status changed=0
   local -a command_parts flags
   for spec in "${FIXER_SPECS[@]}"; do
     read -r -a command_parts <<<"${spec}"
@@ -131,9 +131,9 @@ run_cycle() {
         >"${REPORT_DIR}/${stamp}-${group}-${cmd}.log" 2>&1; then
       :
     else
-      # rc!=0 from a fixer means "violations found/applied" or a real error;
-      # the worktree validation below is the authoritative gate.
-      log "fixer ${group} ${cmd} returned non-zero (see ${REPORT_DIR}/${stamp}-${group}-${cmd}.log)"
+      fixer_status=$?
+      log "fixer ${group} ${cmd} failed with status ${fixer_status} (see ${REPORT_DIR}/${stamp}-${group}-${cmd}.log)"
+      return "${fixer_status}"
     fi
   done
 
@@ -189,11 +189,15 @@ run_cycle() {
 log "flext-law loop starting (interval=${INTERVAL}s apply=${APPLY} once=${ONCE} mypy_cap=${MYPY_MEMORY_LIMIT_MB}MB/${MYPY_TIMEOUT_SECONDS}s)"
 while true; do
   if run_cycle; then
+    cycle_status=0
     log "cycle ok"
   else
+    cycle_status=$?
     log "cycle failed (workspace untouched); will retry next interval"
   fi
-  [ "${ONCE}" -eq 1 ] && break
+  if [ "${ONCE}" -eq 1 ]; then
+    exit "${cycle_status}"
+  fi
   log "sleeping ${INTERVAL}s until next cycle"
   sleep "${INTERVAL}"
 done

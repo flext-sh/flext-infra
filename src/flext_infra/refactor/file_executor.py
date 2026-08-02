@@ -45,9 +45,7 @@ class FlextInfraClassNestingPostCheckGate:
             errors.extend(self._validate_mro(file_path, source_symbol, expected_chain))
         if c.Infra.RK_LSP_DIAGNOSTICS_CLEAN in quality_gates:
             errors.extend(
-                self._validate_source(
-                    file_path, updated_source=result.refactored_code
-                )
+                self._validate_source(file_path, updated_source=result.refactored_code)
             )
         return (not errors, errors)
 

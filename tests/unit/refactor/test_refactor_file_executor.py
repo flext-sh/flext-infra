@@ -15,9 +15,7 @@ if TYPE_CHECKING:
 class TestsRefactorFileExecutor:
     """Validate the exact transformed artifact before it is written."""
 
-    def test_postcheck_rejects_invalid_transformed_source(
-        self, tmp_path: Path
-    ) -> None:
+    def test_postcheck_rejects_invalid_transformed_source(self, tmp_path: Path) -> None:
         """Compile the pending source instead of the old file on disk."""
         file_path = tmp_path / "sample.py"
         file_path.write_text("value = 1\n", encoding=c.Cli.ENCODING_DEFAULT)
