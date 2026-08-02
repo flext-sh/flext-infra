@@ -12,7 +12,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Source: template (distro-specific package list)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       bash ca-certificates curl git make build-essential libicu-dev \
+       bash ca-certificates curl git make build-essential \
     && rm -rf /var/lib/apt/lists/*
 # End SECTION: base packages
 

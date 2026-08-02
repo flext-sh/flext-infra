@@ -268,16 +268,6 @@ class FlextInfraConfigModels:
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(
-                default=(),
-                description=(
-                    "Governed member repositories consumed by workspace-scoped "
-                    "workflow templates (docs paths, dependabot directories)"
-                ),
-            ),
-        ]
 
     class DistroDockerRenderSpec(_ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
@@ -503,21 +493,6 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-    class MakeBootstrapSpec(_ConfigContract):
-        """Hermetic project dependency surface used before conform."""
-
-        environment: Annotated[
-            Literal["isolated"], m.Field(description="uv environment isolation policy")
-        ]
-        dependency_groups: Annotated[
-            Literal["all"],
-            m.Field(description="Project dependency-group selection policy"),
-        ]
-        extras: Annotated[
-            Literal["all"],
-            m.Field(description="Project optional-dependency selection policy"),
-        ]
-
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
@@ -574,10 +549,6 @@ class FlextInfraConfigModels:
         ]
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
-        ]
-        bootstrap: Annotated[
-            FlextInfraConfigModels.MakeBootstrapSpec,
-            m.Field(description="Pre-conform project environment contract"),
         ]
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
@@ -1004,10 +975,6 @@ class FlextInfraConfigModels:
 
         infra_cli: Annotated[
             t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
-        ]
-        pytest: Annotated[
-            FlextInfraModelsDepsToolSettings.PytestConfig,
-            m.Field(description="Typed pytest execution policy"),
         ]
 
     class MakefileRenderSpec(MakeCommandContext):
@@ -1799,56 +1766,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.TemplatesSpec,
             m.Field(description="New-project-only scaffold template manifest"),
         ]
-        # Operator law: flext-infra owns generic conform policy only. The set
-        # of projects it serves is NOT its knowledge — each repository declares
-        # its own topology in config/workspace.yaml, and standalone checkouts
-        # are derived from their own metadata plus live Git.
-
-        @u.model_validator(mode="after")
-        def _validate_github_artifact_ownership(self) -> Self:
-            """Require one full-managed conform owner for every GitHub template."""
-            github_templates = tuple(
-                Path(entry.destination)
-                for entry in self.templates.entries
-                if Path(entry.destination).parts[:1] == (".github",)
-            )
-            github_managed = tuple(
-                managed
-                for managed in self.managed_files
-                if managed.path.parts[:1] == (".github",)
-            )
-            template_paths = set(github_templates)
-            managed_paths = {managed.path for managed in github_managed}
-            duplicate_templates = len(github_templates) != len(template_paths)
-            duplicate_managed = len(github_managed) != len(managed_paths)
-            if duplicate_templates or duplicate_managed:
-                msg = (
-                    "GitHub artifacts must have exactly one template and managed owner"
-                )
-                raise ValueError(msg)
-            if template_paths != managed_paths:
-                missing_owners = sorted(
-                    path.as_posix() for path in template_paths - managed_paths
-                )
-                missing_templates = sorted(
-                    path.as_posix() for path in managed_paths - template_paths
-                )
-                msg = (
-                    "GitHub template/managed ownership mismatch: "
-                    f"missing owners={missing_owners}, "
-                    f"missing templates={missing_templates}"
-                )
-                raise ValueError(msg)
-            non_full = sorted(
-                managed.path.as_posix()
-                for managed in github_managed
-                if managed.policy
-                != FlextInfraConstantsSharedInfra.MANAGED_FILE_POLICY_FULL
-            )
-            if non_full:
-                msg = f"GitHub artifacts must be full-managed: {non_full}"
-                raise ValueError(msg)
-            return self
+        repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Ordered repository catalog"),
+        ]
 
     # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source
     # selection is modeled once so iteration, Rope, and census share one SSOT.
@@ -2053,22 +1974,14 @@ class FlextInfraConfigModels:
             ),
         ] = None
         ledger_root: Annotated[
-            Path,
+            Path | None,
             m.Field(
                 description=(
-                    "Checkout root that owns the ledger. Equal to "
-                    "repository_root when this repository owns its own tracker, "
-                    "and the principal checkout when the tracker is routed."
+                    "Principal checkout root owning the ledger; None keeps the "
+                    "tracker at repository_root"
                 )
             ),
-        ]
-
-        @m.computed_field()
-        @property
-        def routes_to_principal_ledger(self) -> bool:
-            """Whether the tracker lives in another checkout than this one."""
-            return self.ledger_root != self.repository_root
-
+        ] = None
         ledger_id: Annotated[
             t.NonEmptyStr | None,
             m.Field(

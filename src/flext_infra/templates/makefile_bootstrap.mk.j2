@@ -43,23 +43,9 @@ FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
 
 {{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(SETUP_BIN)", "$(SETUP_MISE)", "$(MISE_DATA_DIR)", "$(SETUP_MISE_VERSION)") }}
 
-.PHONY: _setup_require_safe_branch _bootstrap_setup_submodules
+.PHONY: _bootstrap_setup_submodules
 
-# Git refnames allow characters the shell parses ($ ; ` and whitespace), and
-# SETUP_BRANCH comes from `git rev-parse --abbrev-ref HEAD` — i.e. from whoever
-# named the branch. Validate it against a strict allowlist BEFORE any recipe
-# interpolates it into a command, so a hostile branch name cannot execute.
-_setup_require_safe_branch:
-	@branch="$(SETUP_BRANCH)"; \
-	if [ -z "$$branch" ] || [ "$$branch" = HEAD ]; then \
-		echo "ERROR: setup requires a named git branch" >&2; exit 1; \
-	fi; \
-	case "$$branch" in \
-		*[!a-zA-Z0-9._/-]*) \
-			echo "ERROR: refusing unsafe branch name: $$branch" >&2; exit 1 ;; \
-	esac
-
-_bootstrap_setup_submodules: _setup_require_safe_branch
+_bootstrap_setup_submodules:
 	@set -eu; \
 	root="$(SETUP_ROOT)"; \
 	cd "$$root"; \
@@ -83,7 +69,9 @@ _bootstrap_setup_submodules: _setup_require_safe_branch
 venv: ## Create the checkout-local virtual environment from the lock
 	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 
-setup: _setup_require_safe_branch _bootstrap_setup_tools _bootstrap_setup_submodules ## Create the complete local toolchain and environment
+setup: _bootstrap_setup_tools _bootstrap_setup_submodules ## Create the complete local toolchain and environment
+	@test -n "$(SETUP_BRANCH)" && test "$(SETUP_BRANCH)" != HEAD || { \
+		echo "ERROR: setup requires a named git branch"; exit 1; }
 	@MISE_DATA_DIR="$(MISE_DATA_DIR)" $(SETUP_MISE) install --yes
 	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 	@$(SETUP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \

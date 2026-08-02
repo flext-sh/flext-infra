@@ -19,10 +19,10 @@ issue-prefix: {{ issue_prefix | tojson }}
 # Dolt shared-server connection (machine-wide shared server on :{{ server.port }}).
 # The `{{ database }}` database lives there; a repository-local server is never used.
 dolt:
-  mode: {{ server.mode }}
-  shared-server: {{ server.shared_server | tojson }}
-  host: {{ server.host }}
-  port: {{ server.port }}
-  user: {{ server.user }}
-  database: {{ database }}
-  auto-commit: {{ server.auto_commit | tojson }}
+    mode: {{ server.mode }}
+    shared-server: {{ server.shared_server | tojson }}
+    host: {{ server.host }}
+    port: {{ server.port }}
+    user: {{ server.user }}
+    database: {{ database }}
+    auto-commit: {{ server.auto_commit }}

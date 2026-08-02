@@ -5,6 +5,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import tomlkit
+from tomlkit import TOMLDocument
 
 from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -13,7 +15,7 @@ from flext_tests import tm
 from tests import t, u
 
 
-def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
         u.normalize_to_json_value(doc.unwrap())
     )
@@ -42,7 +44,7 @@ class TestsFlextInfraDepsModernizerCoverage:
             update={"coverage": coverage_config}
         )
         configured = tool_config.model_copy(update={"tools": tools_config})
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = FlextInfraEnsureCoverageConfigPhase(configured).apply(doc)
 
@@ -54,7 +56,7 @@ class TestsFlextInfraDepsModernizerCoverage:
     def test_apply_sets_report_and_run_state(self) -> None:
         """Verify apply sets report and run state."""
         tool_config = config.Infra.tooling
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = FlextInfraEnsureCoverageConfigPhase(tool_config).apply(
             doc, project_kind="integration"
@@ -82,7 +84,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         """Verify apply is idempotent."""
         tool_config = config.Infra.tooling
         phase = FlextInfraEnsureCoverageConfigPhase(tool_config)
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = phase.apply(doc, project_kind="core")
         second_changes = phase.apply(doc, project_kind="core")

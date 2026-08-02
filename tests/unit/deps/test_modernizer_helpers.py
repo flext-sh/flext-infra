@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+import tomlkit
+import tomlkit.items
 
 from flext_tests import tm
 from tests import u
@@ -12,25 +14,40 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tomlkit.toml_document import TOMLDocument
+
     from tests import t
 
 
 @pytest.fixture
-def doc() -> t.Cli.TomlDocument:
+def doc() -> TOMLDocument:
     """Provide a mutable TOML document fixture."""
-    return u.Cli.toml_document()
+    return tomlkit.document()
 
 
-def _toml_table_item() -> t.Cli.TomlItem:
-    tbl = u.Cli.toml_table()
+def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
+    if isinstance(value, str):
+        return tomlkit.items.String.from_raw(value)
+    if isinstance(value, int):
+        return tomlkit.items.Integer(
+            value, trivia=tomlkit.items.Trivia(), raw=str(value)
+        )
+    str_items: list[tomlkit.items.Item] = [
+        tomlkit.items.String.from_raw(v) for v in value
+    ]
+    return tomlkit.items.Array(str_items, trivia=tomlkit.items.Trivia())
+
+
+def _toml_table_item() -> tomlkit.items.Item:
+    tbl = tomlkit.table()
     tbl["key"] = "value"
     return tbl
 
 
 def _doc_with_optional_deps(
     optional_deps: t.MappingKV[str, t.StrSequence],
-) -> t.Cli.TomlDocument:
-    doc = u.Cli.toml_document()
+) -> TOMLDocument:
+    doc = tomlkit.document()
     doc["project"] = {"optional-dependencies": optional_deps}
     return doc
 
@@ -99,7 +116,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         actual = None if value is None else u.Cli.toml_unwrap_item(value)
         tm.that(actual, eq=expected)
 
-    def test_unwrap_item_toml_item(self, doc: t.Cli.TomlDocument) -> None:
+    def test_unwrap_item_toml_item(self, doc: TOMLDocument) -> None:
         """Verify unwrap item toml item."""
         doc["key"] = "value"
         tm.that(u.Cli.toml_unwrap_item(doc["key"]), eq="value")
@@ -107,15 +124,15 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize(
         ("value", "expected"),
         [
-            (u.Cli.toml_item_from_json_value(["a", "b", "c"]), ["a", "b", "c"]),
+            (_toml_item(["a", "b", "c"]), ["a", "b", "c"]),
             (None, []),
-            (u.Cli.toml_item_from_json_value("test"), []),
+            (_toml_item("test"), []),
             (_toml_table_item(), []),
-            (u.Cli.toml_item_from_json_value(42), []),
+            (_toml_item(42), []),
         ],
     )
     def test_as_string_list(
-        self, value: t.Cli.TomlItem | None, expected: t.StrSequence
+        self, value: tomlkit.items.Item | None, expected: t.StrSequence
     ) -> None:
         """Verify as string list."""
         actual: t.StrSequence = (
@@ -123,13 +140,13 @@ class TestsFlextInfraDepsModernizerHelpers:
         )
         tm.that(list(actual), eq=list(expected))
 
-    def test_as_string_list_toml_item(self, doc: t.Cli.TomlDocument) -> None:
+    def test_as_string_list_toml_item(self, doc: TOMLDocument) -> None:
         """Verify as string list toml item."""
         doc["items"] = ["a", "b"]
-        items_array = u.Cli.toml_item_from_json_value(["a", "b"])
+        items_array: tomlkit.items.Item = _toml_item(["a", "b"])
         tm.that(u.Cli.toml_as_string_list(items_array), eq=["a", "b"])
         doc["value"] = 42
-        int_val = u.Cli.toml_item_from_json_value(42)
+        int_val: tomlkit.items.Item = _toml_item(42)
         tm.that(u.Cli.toml_as_string_list(int_val), eq=[])
 
     @pytest.mark.parametrize(
@@ -142,9 +159,9 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize("mode", ["new", "existing", "replace-non-table"])
     def test_ensure_table(self, mode: str) -> None:
         """Verify ensure table."""
-        parent = u.Cli.toml_table()
+        parent = tomlkit.table()
         if mode == "existing":
-            existing = u.Cli.toml_table()
+            existing = tomlkit.table()
             parent["key"] = existing
             ensured = u.Cli.toml_ensure_table(parent, "key")
             tm.that(ensured is existing, eq=True)
@@ -186,7 +203,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(list(groups.get("dev", [])), eq=list(expected_dev))
         tm.that(list(groups.get("docs", [])), eq=list(expected_docs))
 
-    def test_project_dev_groups_missing_sections(self, doc: t.Cli.TomlDocument) -> None:
+    def test_project_dev_groups_missing_sections(self, doc: TOMLDocument) -> None:
         """Verify project dev groups missing sections."""
         tm.that(u.Infra.project_dev_groups(doc), eq={})
         doc["project"] = {"name": "test"}
@@ -227,7 +244,7 @@ class TestsFlextInfraDepsModernizerHelpers:
 
     def test_declared_dependency_names_collects_all_supported_groups(self) -> None:
         """Verify declared dependency names collects all supported groups."""
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
         doc["project"] = {
             "dependencies": ["requests>=2.0"],
             "optional-dependencies": {

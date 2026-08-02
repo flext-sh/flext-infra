@@ -20,6 +20,8 @@ from flext_infra.constants import c
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tomlkit import TOMLDocument
+
     from flext_infra.typings import t
 
 
@@ -176,7 +178,7 @@ class FlextInfraUtilitiesDependencies:
         return tuple(selected_by_name[name] for name in sorted(selected_by_name))
 
     @classmethod
-    def declared_dependency_names(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
+    def declared_dependency_names(cls, document: TOMLDocument) -> t.StrSequence:
         """Return normalized dependency names from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -306,7 +308,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def project_dev_groups(
-        cls, document: t.Cli.TomlDocument
+        cls, document: TOMLDocument
     ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
@@ -316,7 +318,7 @@ class FlextInfraUtilitiesDependencies:
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod
-    def canonical_dev_dependencies(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
+    def canonical_dev_dependencies(cls, document: TOMLDocument) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -336,7 +338,7 @@ class FlextInfraUtilitiesDependencies:
         ])
 
     @classmethod
-    def flext_dependency_namespaces(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
+    def flext_dependency_namespaces(cls, document: TOMLDocument) -> t.StrSequence:
         """Extract declared FLEXT dependency namespaces from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import tomlkit
 
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
@@ -23,7 +24,7 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase sets expected state."""
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -56,7 +57,7 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase keeps misc globally disabled."""
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -88,7 +89,7 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase removes legacy test overrides."""
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -120,7 +121,7 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase replaces managed lists and overrides."""
-        doc = u.Tests.toml_doc(
+        doc = tomlkit.parse(
             """
 [tool.mypy]
 plugins = ["custom.plugin"]
@@ -157,7 +158,7 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
     def test_mypy_phase_removes_deprecated_strict_concatenate(self) -> None:
         """Verify mypy phase removes deprecated strict concatenate."""
         tool_config_document = u.Tests.tool_config_document()
-        doc = u.Tests.toml_doc(
+        doc = tomlkit.parse(
             """
 [tool.mypy]
 strict_concatenate = true
@@ -181,7 +182,7 @@ warn_return_any = false
     ) -> None:
         """Verify mypy phase is idempotent."""
         phase = FlextInfraEnsureMypyConfigPhase(tool_config_document)
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
@@ -192,7 +193,7 @@ warn_return_any = false
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify pydantic mypy phase sets expected state."""
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -217,7 +218,7 @@ warn_return_any = false
     ) -> None:
         """Verify pydantic mypy phase is idempotent."""
         phase = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document)
-        doc = u.Cli.toml_document()
+        doc = tomlkit.document()
 
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)

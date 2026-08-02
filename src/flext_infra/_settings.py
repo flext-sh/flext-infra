@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 
@@ -24,7 +22,7 @@ from flext_infra._models.settings import FlextInfraSettingsModels
 class _FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
 
-    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+    model_config = SettingsConfigDict(
         env_prefix="FLEXT_INFRA_",
         env_nested_delimiter="__",
         extra="ignore",

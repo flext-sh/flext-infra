@@ -3,8 +3,6 @@
 	validator,
 	default_target,
 	coverage_default_target,
-	timeout_command,
-	timeout_kill_after_seconds,
 	command_prefix="@"
 ) %}
 	{{ command_prefix }}_files="$(strip $(FILES))"; \
@@ -50,7 +48,7 @@
 	printf '%s\n' '{{ runner }}' \
 		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
 		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
-	{{ timeout_command }} --kill-after={{ timeout_kill_after_seconds }}s $(PYTEST_PROCESS_TIMEOUT_SECONDS)s {{ runner }} $$_pytest_run \
+	{{ runner }} $$_pytest_run \
 		$(PYTEST_REPORT_ARGS) \
 		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
 		-p no:metadata \
@@ -59,11 +57,6 @@
 		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
 	rc=$$?; \
 	cat "$$log_file"; \
-	if [ "$$rc" -eq 124 ]; then \
-		printf 'ERROR: pytest process exceeded %ss wall-clock deadline\n' \
-			"$(PYTEST_PROCESS_TIMEOUT_SECONDS)" >&2; \
-		exit "$$rc"; \
-	fi; \
 	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
 		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
 			"$$coverage_file" >&2; \

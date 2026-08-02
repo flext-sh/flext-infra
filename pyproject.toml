@@ -118,8 +118,8 @@ dependencies = [
   "mkdocs-exclude>=1.0.2",
   "mkdocs-material>=9.7.6",
   "mkdocs-section-index>=0.3.12",
-  "mkdocstrings>=1.0.6",
-  "mkdocstrings-python>=2.0.5",
+  "mkdocstrings>=1.0.4",
+  "mkdocstrings-python>=2.0.3",
   "pyrefly>=1.1.1",
   "rope>=1.14.0",
   "ruff>=0.15.12",
@@ -236,7 +236,7 @@ local_partial_types = true
 mypy_path = [".", "src"]
 namespace_packages = true
 no_implicit_reexport = true
-plugins = ["pydantic.mypy"]
+plugins = ["pydantic.mypy", "returns.contrib.mypy.returns_plugin"]
 python_version = "3.13"
 strict_equality = true
 warn_redundant_casts = true
@@ -280,7 +280,13 @@ project-excludes = [
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
-search-path = [".", "src"]
+search-path = [
+  ".",
+  "../flext-cli/src",
+  "../flext-core/src",
+  "../flext-tests/src",
+  "src",
+]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -431,7 +437,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = "."
+venvPath = ".."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -488,9 +494,13 @@ root = "tests"
 [tool.pytest.ini_options]
 addopts = [
   "--benchmark-disable",
+  "--dist=worksteal",
   "--durations=10",
   "--markdown-docs",
+  "--session-timeout=300",
   "--strict-markers",
+  "--timeout=30",
+  "-n=4",
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [
@@ -701,12 +711,6 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
-
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-tests"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]

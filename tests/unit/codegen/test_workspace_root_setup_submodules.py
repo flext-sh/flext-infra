@@ -5,16 +5,22 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
 
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
-    root_repository = test_u.Tests.repository_ref("flext")
-    member = test_u.Tests.repository_ref(
-        "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+    root_repository = next(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.name == "flext"
+    )
+    member = next(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.name == "flext-core"
     )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,

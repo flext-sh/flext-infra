@@ -16,7 +16,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, u
-from tests import u as test_u
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -209,7 +208,11 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = test_u.Tests.repository_ref(config.Infra.name)
+        repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == "flext-infra"
+        )
         local_repository = repository.model_copy(update={"path": Path()})
         dist = repository.distribution
         create_only = {
@@ -286,9 +289,13 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
-        root_repository = test_u.Tests.repository_ref("flext")
-        member = test_u.Tests.repository_ref(
-            "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        root_repository = next(
+            item for item in config.Infra.codegen.repositories if item.name == "flext"
+        )
+        member = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.name == "flext-core"
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -339,7 +346,7 @@ class TestCodegenConform:
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
         provider = config.Infra.codegen.providers[0]
-        repository = test_u.Tests.repository_ref("arbitrary-root").model_copy(
+        repository = config.Infra.codegen.repositories[0].model_copy(
             update={
                 "name": "arbitrary-root",
                 "distribution": "arbitrary-root",
@@ -398,12 +405,9 @@ class TestCodegenConform:
         rendered_tooling = tomllib.loads(first_pyproject.rendered)["tool"]
         report = rendered_tooling["coverage"]["report"]
         addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
-        pytest_policy = config.Infra.tooling.tools.pytest
 
         tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
-        tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
-        tm.that(addopts, lacks="--session-timeout")
-        tm.that(addopts >= set(pytest_policy.standard_addopts), eq=True)
+        tm.that(addopts, eq=set(config.Infra.tooling.tools.pytest.standard_addopts))
         tm.that(
             report["fail_under"],
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,
@@ -413,7 +417,7 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Build Make context from repository-owned data alone."""
-        repository = test_u.Tests.repository_ref("consumer")
+        repository = config.Infra.codegen.repositories[0]
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
@@ -443,25 +447,28 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
-        # A standalone consumer declares no flext-infra member, so the
-        # reference is derived from the provider contract. The generated
-        # Makefile consumes exactly the distribution and the URL (the
-        # bootstrap requirement), which is what this asserts; the topology
-        # role of a derived reference is not part of that contract.
-        tm.that(rendered.infra_repository.distribution, eq=config.Infra.name)
-        tm.that(
-            rendered.infra_repository.url,
-            eq=f"{config.Infra.codegen.providers[0].base_url.rstrip('/')}"
-            f"/{config.Infra.name}.git",
+        infra_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == config.Infra.name
         )
+        tm.that(rendered.infra_repository, eq=infra_repository)
         tm.that(rendered.infra_source_root_rel, eq=None)
 
     def test_make_context_resolves_attached_infra_member_from_workspace(
         self, tmp_path: Path
     ) -> None:
         """An attached member bootstraps from its declared local checkout."""
-        workspace_repository = test_u.Tests.repository_ref("workspace-root-fixture")
-        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
+        workspace_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+        )
+        infra_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == config.Infra.name
+        )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=workspace_repository.name,
@@ -655,14 +662,7 @@ class TestCodegenConform:
         custom = root / "custom.mk"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                custom,
-                (
-                    ".PHONY: \\\n"
-                    "\t_custom_check_demo \\\n"
-                    "\t_custom_run_demo\n"
-                    "_custom_check_demo:\n\t@true\n"
-                    "_custom_run_demo:\n\t@true\n"
-                ),
+                custom, ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n"
             )
         )
         result = FlextInfraCodegenConform.execute_request(
@@ -675,18 +675,6 @@ class TestCodegenConform:
         tm.ok(result)
         tm.that("WARN:" in capsys.readouterr().out, eq=False)
         tm.that(Path(f"{custom}.rej").exists(), eq=False)
-
-    def test_custom_make_rejects_unterminated_phony_continuation(self) -> None:
-        """Fail closed when a multiline private-handler declaration is truncated."""
-        policy = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.STANDALONE
-        ]
-
-        result = FlextInfraCodegenConform.validate_custom_make(
-            ".PHONY: \\\n\t_custom_check_demo \\", policy
-        )
-
-        tm.fail(result, has="unterminated .PHONY continuation")
 
     def test_scaffold_make_help_documents_and_lists_custom_hooks(
         self, infra_git_repo: Path

@@ -68,28 +68,8 @@ Infra:
         repository: helm/kind-action
         version: v1.14.0
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
-      upload-artifact:
-        repository: actions/upload-artifact
-        version: v4.6.2
-        sha: ea165f8d65b6e75b540449e92b4886f43607fa02
-      configure-pages:
-        repository: actions/configure-pages
-        version: v6.0.0
-        sha: 45bfe0192ca1faeb007ade9deae92b16b8254a0d
-      upload-pages-artifact:
-        repository: actions/upload-pages-artifact
-        version: v5.0.0
-        sha: fc324d3547104276b827a68afc52ff2a11cc49c9
-      deploy-pages:
-        repository: actions/deploy-pages
-        version: v5.0.0
-        sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
     uv_exclude_dependencies:
-      # Standalone flext-infra installs flext-tests from its dev group, while
-      # flext-tests also declares flext-infra for its own tooling. Scope the
-      # official uv exclusion to that transitive self-edge only; every other
-      # flext-tests dependency remains part of bootstrap and release validation.
       - project: flext-infra
         package:
           name: flext-tests
@@ -101,11 +81,11 @@ Infra:
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
       # External consumer organization: standalone repositories governed by
-      # conform through their own config/workspace.yaml (develop-based integration line per cosmos ADR-134).
+      # conform through their own config/workspace.yaml (main-based line).
       - name: datacosmos-br
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
-        branch: develop
+        branch: main
     branch_policy:
       technical_branch_patterns:
         - __dolt_remote_info__
@@ -135,10 +115,6 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
-      bootstrap:
-        environment: isolated
-        dependency_groups: all
-        extras: all
       docs:
         actions: [all, generate, fix, audit, build, validate]
         default_action: all
@@ -585,33 +561,6 @@ Infra:
             - models
 
     managed_files:
-      - path: .github/ci-template/ci.yml
-        owner: codegen
-        policy: full
-      - path: .github/copilot-instructions.md
-        owner: codegen
-        policy: full
-      - path: .github/dependabot.yml
-        owner: codegen
-        policy: full
-      - path: .github/prompts/flext-aggressive-scale-refactor.prompt.md
-        owner: codegen
-        policy: full
-      - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-        owner: codegen
-        policy: full
-      - path: .github/scripts/check-beads-policy.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/check-cqrs-compliance.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/flext-law-loop.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/install-git-hooks.sh
-        owner: codegen
-        policy: full
       - path: ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
@@ -631,12 +580,6 @@ Infra:
         owner: codegen
         policy: full
       - path: .github/workflows/ci.yml
-        owner: codegen
-        policy: full
-      - path: .github/workflows/docs.yml
-        owner: codegen
-        policy: full
-      - path: .github/workflows/release.yml
         owner: codegen
         policy: full
       - path: .beads/config.yaml
@@ -706,10 +649,6 @@ Infra:
         keywords: [clean-architecture, flext, integration, typed]
         dev:
           - actionlint-py>=1.7.12.24
-          # The security gate (flext_infra.gates.bandit) runs unconditionally for
-          # every project owning src/, so the tool it shells out to must be a
-          # declared dev dependency of every generated project.
-          - bandit>=1.8
           - flext-tests
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.
@@ -756,11 +695,10 @@ Infra:
             - "/*"
             - "/*/"
             - "!/LICENSE"
-        # NOTE: governed member directories are NOT declared here. They are
-        # derived from the live workspace topology (`config/workspace.yaml`
-        # members) by conform._render_gitignore, so declaring a member in the
-        # manifest is the single source that makes it trackable. A hardcoded
-        # name glob here would be a second, silently-diverging source.
+        - name: "Allow all FLEXT ecosystem project directories"
+          profiles: [workspace-root]
+          patterns:
+            - "!flext-*/"
         - name: "WHITELIST: Workspace Directories"
           profiles: [workspace-root]
           patterns:
@@ -873,9 +811,10 @@ Infra:
             - "!.vscode/**"
             - "!.claude/**"
             - "!.claude-plugin/**"
-        # NOTE: member contents are emitted by the same derived section as the
-        # member directories themselves (see the note above), so both come from
-        # the live workspace topology and can never diverge from each other.
+        - name: "Workspace member contents"
+          profiles: [workspace-root]
+          patterns:
+            - "!flext-*/**"
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
@@ -1097,51 +1036,6 @@ Infra:
     templates:
       root: project
       entries:
-        - source: base/.github/ci-template/ci.yml.j2
-          destination: .github/ci-template/ci.yml
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/copilot-instructions.md.j2
-          destination: .github/copilot-instructions.md
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/dependabot.yml.j2
-          destination: .github/dependabot.yml
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2
-          destination: .github/prompts/flext-aggressive-scale-refactor.prompt.md
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2
-          destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/check-beads-policy.sh.j2
-          destination: .github/scripts/check-beads-policy.sh
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/check-cqrs-compliance.sh.j2
-          destination: .github/scripts/check-cqrs-compliance.sh
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/flext-law-loop.sh.j2
-          destination: .github/scripts/flext-law-loop.sh
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/install-git-hooks.sh.j2
-          destination: .github/scripts/install-git-hooks.sh
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
         - source: base/.github/workflows/ci.yml.j2
           destination: .github/workflows/ci.yml
           profiles: [workspace-root, standalone]
@@ -1195,16 +1089,6 @@ Infra:
         - source: base/.github/workflows/ci-matrix.yml.j2
           destination: .github/workflows/ci-matrix.yml
           profiles: [workspace-root, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/docs.yml.j2
-          destination: .github/workflows/docs.yml
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/release.yml.j2
-          destination: .github/workflows/release.yml
-          profiles: [workspace-root]
           delegate: render
           overwrite: false
         - source: base/ci/docker/ubuntu.Dockerfile.j2
@@ -1417,3 +1301,390 @@ Infra:
           delegate: render
           overwrite: false
 
+    repositories:
+      - name: flext
+        distribution: flext
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext.git
+        path: .
+        role: workspace-root
+        state: active
+        checkout: root
+        codegen: conform
+        package: false
+        editable: false
+        read_only: false
+      - name: flext-api
+        distribution: flext-api
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-api.git
+        path: flext-api
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-auth
+        distribution: flext-auth
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-auth.git
+        path: flext-auth
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-cli
+        distribution: flext-cli
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-cli.git
+        path: flext-cli
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-core
+        distribution: flext-core
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-core.git
+        path: flext-core
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-db-oracle
+        distribution: flext-db-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-db-oracle.git
+        path: flext-db-oracle
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-ldap
+        distribution: flext-dbt-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-ldap.git
+        path: flext-dbt-ldap
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-ldif
+        distribution: flext-dbt-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-ldif.git
+        path: flext-dbt-ldif
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-oracle
+        distribution: flext-dbt-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-oracle.git
+        path: flext-dbt-oracle
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-oracle-wms
+        distribution: flext-dbt-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-oracle-wms.git
+        path: flext-dbt-oracle-wms
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-grpc
+        distribution: flext-grpc
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-grpc.git
+        path: flext-grpc
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-infra
+        distribution: flext-infra
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-infra.git
+        path: flext-infra
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+        extra_verbs:
+          - { name: basemk, default_what: generate }
+      - name: flext-ldap
+        distribution: flext-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-ldap.git
+        path: flext-ldap
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-ldif
+        distribution: flext-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-ldif.git
+        path: flext-ldif
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-meltano
+        distribution: flext-meltano
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-meltano.git
+        path: flext-meltano
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-observability
+        distribution: flext-observability
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-observability.git
+        path: flext-observability
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-oracle-oic
+        distribution: flext-oracle-oic
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-oracle-oic.git
+        path: flext-oracle-oic
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-oracle-wms
+        distribution: flext-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-oracle-wms.git
+        path: flext-oracle-wms
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-plugin
+        distribution: flext-plugin
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-plugin.git
+        path: flext-plugin
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-quality
+        distribution: flext-quality
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-quality.git
+        path: flext-quality
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-ldap
+        distribution: flext-tap-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-ldap.git
+        path: flext-tap-ldap
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-ldif
+        distribution: flext-tap-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-ldif.git
+        path: flext-tap-ldif
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-oracle
+        distribution: flext-tap-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-oracle.git
+        path: flext-tap-oracle
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-oracle-oic
+        distribution: flext-tap-oracle-oic
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-oracle-oic.git
+        path: flext-tap-oracle-oic
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-oracle-wms
+        distribution: flext-tap-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-oracle-wms.git
+        path: flext-tap-oracle-wms
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-ldap
+        distribution: flext-target-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-ldap.git
+        path: flext-target-ldap
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-ldif
+        distribution: flext-target-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-ldif.git
+        path: flext-target-ldif
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-oracle
+        distribution: flext-target-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-oracle.git
+        path: flext-target-oracle
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-oracle-oic
+        distribution: flext-target-oracle-oic
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-oracle-oic.git
+        path: flext-target-oracle-oic
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-oracle-wms
+        distribution: flext-target-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-oracle-wms.git
+        path: flext-target-oracle-wms
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tests
+        distribution: flext-tests
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tests.git
+        path: flext-tests
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-web
+        distribution: flext-web
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-web.git
+        path: flext-web
+        role: workspace-member
+        state: active
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false

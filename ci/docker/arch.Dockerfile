@@ -11,7 +11,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # === SECTION: base packages (managed) ===
 # Source: template (distro-specific package list)
 RUN pacman -Syu --noconfirm --needed \
-      bash ca-certificates curl git make base-devel icu \
+      bash ca-certificates curl git make base-devel \
     && pacman -Scc --noconfirm
 # End SECTION: base packages
 

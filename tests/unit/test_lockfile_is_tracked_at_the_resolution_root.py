@@ -16,13 +16,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 import flext_infra
 from flext_tests import tm
 
-from flext_infra import c
-from tests import u as test_u
+from flext_infra import c, config, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 def _workspace_root() -> Path:
@@ -30,10 +31,40 @@ def _workspace_root() -> Path:
     return Path(flext_infra.__file__).resolve().parents[2]
 
 
+def _repository_profile() -> c.Infra.MakeProfile:
+    """Return this repository's profile inferred by the production detector."""
+    return tm.ok(
+        FlextInfraWorkspaceDetector.conform_target(_workspace_root())
+    ).make_profile
+
+
+def _ssot_patterns() -> tuple[str, ...]:
+    """Return ignore patterns applicable to this repository's declared profile."""
+    profile = _repository_profile()
+    return tuple(
+        pattern
+        for section in config.Infra.codegen.gitignore_sections
+        if not section.profiles or profile in section.profiles
+        for pattern in section.patterns
+    )
+
+
 def _is_allowed_by_policy(relative_path: str) -> bool:
     """Return whether git would track *relative_path* under the SSOT policy."""
-    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
-    return test_u.Tests.is_tracked_under(rendered, relative_path)
+    rendered = "\n".join(_ssot_patterns()) + "\n"
+    with tempfile.TemporaryDirectory() as raw_root:
+        root = Path(raw_root)
+        tm.ok(u.Cli.run_checked(["git", "init", "-q", str(root)]))
+        (root / ".gitignore").write_text(rendered, encoding="utf-8")
+        target = root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("", encoding="utf-8")
+        # `git check-ignore` exits 0 when the path IS ignored, so a failed run
+        # is the success case for a file that must stay trackable.
+        probe = tm.ok(
+            u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
+        )
+    return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
 
 
 class TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot:

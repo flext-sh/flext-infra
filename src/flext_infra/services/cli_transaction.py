@@ -128,18 +128,14 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     ) -> tuple[Path, ...]:
         """Derive workspace-relative paths the command can touch.
 
-        Any explicit target flag wins: ``--root``, ``--output-root``,
-        ``--project``, and ``--projects`` all name the scope the caller asked
-        for. A route that names its own target must never inherit the whole
-        manifest, or the transaction adopts siblings the scoped project never
-        declared. Otherwise, for a workspace-scoped route, fall back to the
-        manifest's member paths so the transaction isolates the root plus
-        declared members instead of every sibling submodule. Returns an empty
-        tuple (full-workspace isolation, safe default) only when neither
-        source yields a target.
+        Explicit ``--output-root``/``--projects`` win. Otherwise, for a
+        workspace-scoped route, fall back to the manifest's member paths so the
+        transaction isolates the root plus declared members instead of every
+        sibling submodule. Returns an empty tuple (full-workspace isolation,
+        safe default) only when neither source yields a target.
         """
         scoped: list[Path] = []
-        value_flags = frozenset({"--output-root", "--project", "--projects", "--root"})
+        value_flags = frozenset({"--output-root", "--projects", "--project"})
         for index, argument in enumerate(args):
             raw: str | None = None
             if argument in value_flags and index + 1 < len(args):

@@ -113,7 +113,6 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     apply_value=config.Infra.codegen.make.apply_value,
                     apply_variable=config.Infra.codegen.make.apply_variable,
                     docs=config.Infra.codegen.make.docs,
-                    pytest=config.Infra.tooling.tools.pytest,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -124,9 +123,6 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                    pytest_process_timeout_seconds=(
-                        config.Infra.tooling.tools.pytest.process_timeout_seconds
-                    ),
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

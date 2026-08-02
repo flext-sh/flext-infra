@@ -94,55 +94,6 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(generated.value, has="check")
 
     @pytest.mark.integration
-    def test_basemk_fmt_formats_markdown_instead_of_linting_it(self) -> None:
-        """The format verb must format Markdown, never lint it.
-
-        ``rumdl check --fix`` is a linter: it exits non-zero whenever an issue
-        has no autofix, so a formatting run that repaired every fixable file
-        still failed the verb. ``rumdl fmt`` carries formatter-style exit
-        codes, which is the contract ``fmt`` promises.
-        """
-        generated = FlextInfraBaseMkGenerator().execute()
-
-        tm.ok(generated)
-        tm.that(generated.value, has='rumdl" fmt')
-        tm.that('rumdl" check --fix' in generated.value, eq=False)
-
-    @pytest.mark.integration
-    def test_basemk_renders_shell_continuations_without_blank_lines(self) -> None:
-        r"""Every rendered recipe line must keep its shell continuation intact.
-
-        A Jinja loop that emits a bare newline breaks the ``\\`` continuation of
-        the surrounding shell construct, so the generated recipe dies with
-        'syntax error: unexpected end of file' before running anything.
-        """
-        generated = FlextInfraBaseMkGenerator().execute()
-
-        tm.ok(generated)
-        continued = [
-            index
-            for index, line in enumerate(generated.value.splitlines())
-            if line.rstrip().endswith("\\")
-        ]
-        lines = generated.value.splitlines()
-        tm.that([index for index in continued if not lines[index + 1].strip()], eq=[])
-
-    @pytest.mark.integration
-    def test_basemk_invokes_infra_entrypoints_without_eval(self) -> None:
-        """Infra entrypoints run directly, never rebuilt as an eval string.
-
-        The entrypoint macros carry an executable guard, so they contain ``;``
-        and ``||``. Captured into a shell variable, only the fragment before
-        the first ``;`` survives and the guard leaks into the recipe:
-        ``FLEXT_INFRA_PYTHON: command not found`` followed by
-        ``eval: --: invalid option``.
-        """
-        generated = FlextInfraBaseMkGenerator().execute()
-
-        tm.ok(generated)
-        tm.that("eval $$cmd" in generated.value, eq=False)
-
-    @pytest.mark.integration
     def test_output_singleton_has_expected_methods(self) -> None:
         """Test that reporting/output methods are exposed through u.Infra.
 

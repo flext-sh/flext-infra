@@ -20,7 +20,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, t, u
-from tests import u as test_u
 from flext_tests import tm
 
 
@@ -30,7 +29,17 @@ def owned_provider() -> str:
     engine_root = Path(__file__).resolve().parents[2]
     metadata = tm.ok(u.read_project_metadata(engine_root))
     distribution = metadata.project.name
-    entry = test_u.Tests.repository_ref(distribution)
+    entry = next(
+        (
+            repository
+            for repository in config.Infra.codegen.repositories
+            if repository.distribution == distribution
+        ),
+        None,
+    )
+    if entry is None:
+        msg = f"engine absent from its own catalog: {distribution}"
+        raise AssertionError(msg)
     provider: str = t.Infra.STR_ADAPTER.validate_python(entry.provider)
     return provider
 
@@ -38,7 +47,9 @@ def owned_provider() -> str:
 class TestsFlextInfraEngineIsConsumerAgnostic:
     def test_repository_catalog_uses_declared_providers(self) -> None:
         declared = {provider.name for provider in config.Infra.codegen.providers}
-        referenced = {test_u.Tests.repository_ref("any-consumer").provider}
+        referenced = {
+            repository.provider for repository in config.Infra.codegen.repositories
+        }
 
         tm.that(referenced - declared, eq=set())
 

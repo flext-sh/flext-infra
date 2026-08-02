@@ -91,9 +91,14 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             ),
             None,
         )
-        # The URL comes from the caller or is derived from the provider
-        # contract. flext-infra keeps no catalog of existing projects to
-        # consult, so scaffolding a new project needs no prior knowledge of it.
+        known = next(
+            (
+                item
+                for item in config.Infra.codegen.repositories
+                if item.name == self.name
+            ),
+            None,
+        )
         package_name = self.package_name or self.name.replace("-", "_")
         class_stem = u.derive_class_stem(self.name)
         derived_namespace = class_stem.removeprefix("Flext")
@@ -102,7 +107,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         provider_url = (
             f"{provider.base_url}/{self.name}.git" if provider is not None else ""
         )
-        repository_url = self.repository_url or provider_url
+        repository_url = known.url if known else self.repository_url or provider_url
         if not repository_url:
             return r[m.Infra.CodegenResult].fail(
                 f"repository URL is required for provider: {self.provider}"
@@ -114,7 +119,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         repository_page = repository_url.removesuffix(".git")
         repository = m.Infra.RepositoryRef(
             name=self.name,
-            distribution=self.name,
+            distribution=known.distribution if known is not None else self.name,
             provider=self.provider,
             url=repository_url,
             path=Path(),
