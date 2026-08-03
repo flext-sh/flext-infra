@@ -57,6 +57,32 @@ class FlextInfraUtilitiesRepository:
             )
         return r[m.Infra.ProviderSpec].ok(matches[0])
 
+    @staticmethod
+    def resolve_integration_branch(
+        workspace: m.Infra.WorkspaceSpec,
+        provider: m.Infra.ProviderSpec,
+    ) -> str:
+        """Return the workspace overlay branch, else the provider catalog branch."""
+        if workspace.integration is not None:
+            return workspace.integration.branch
+        return provider.branch
+
+    @staticmethod
+    def gitmodule_branch_is_governed(
+        declared_branch: str,
+        *,
+        provider_branch: str,
+        integration_branch: str | None = None,
+    ) -> bool:
+        """Accept follow-superproject (``.``) or the resolved integration line."""
+        if declared_branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH:
+            return True
+        if declared_branch == provider_branch:
+            return True
+        return (
+            integration_branch is not None and declared_branch == integration_branch
+        )
+
     @classmethod
     def repository_baseline_branch(
         cls, repository_root: Path, fallback: str | None = None

@@ -86,7 +86,9 @@ class FlextInfraExtraPathsManager(
             for relative_path in configured_typings
             if (project_dir / relative_path).is_dir()
         ]
-        return sorted({rules.project_root, source_root, *typings_paths})
+        # Immutable sequence at the producer so every consumer compares
+        # path lists without list/tuple false churn (sync_doc, modernizer).
+        return tuple(sorted({rules.project_root, source_root, *typings_paths}))
 
     @override
     def pyrefly_search_paths(
@@ -115,7 +117,7 @@ class FlextInfraExtraPathsManager(
         # bad-argument-type errors. A naive sorted({...}) puts "." before
         # "src" (ASCII '.' < 's'), silently breaking every consumer with a
         # "." shared search path (e.g. tests.* resolution). Sort everything
-        # else, then place the declared source root LAST so it always wins.
+        # else, then place the declared source root first so it always wins.
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
         if rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
@@ -128,8 +130,8 @@ class FlextInfraExtraPathsManager(
         paths.discard(source_root)
         ordered = sorted(paths)
         if has_source_root:
-            ordered = [source_root, *ordered]
-        return ordered
+            return (source_root, *ordered)
+        return tuple(ordered)
 
     def _workspace_member_source_paths(self, *, project_dir: Path) -> t.StrSequence:
         """Return `<member>/<source_dir>` search paths for uv workspace members.

@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.fixers.base import FlextInfraFixerAdapter
-from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,20 +51,20 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
-    ) -> fr.ProjectFixResult:
+    ) -> m.Infra.ProjectFixResult:
         """Apply gate fixes for the first violation group (all share target)."""
         if not violations:
-            return fr.ProjectFixResult(project=project_dir.name)
+            return m.Infra.ProjectFixResult(project=project_dir.name)
         rule, _probe = violations[0]
         fix_action = rule.fix_action
         if fix_action is None:
-            return fr.ProjectFixResult(project=project_dir.name)
+            return m.Infra.ProjectFixResult(project=project_dir.name)
         gate_cls = self._registry().get(fix_action.target)
         if gate_cls is None:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=project_dir.name,
                 failed=(
-                    fr.FailedFix(
+                    m.Infra.FailedFix(
                         rule_id=rule.id,
                         file_path=str(project_dir),
                         error=f"gate {fix_action.target} not registered",
@@ -74,10 +73,10 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
             )
         gate = gate_cls(self._workspace_root)
         if not gate.can_fix:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=project_dir.name,
                 skipped=(
-                    fr.SkippedViolation(
+                    m.Infra.SkippedViolation(
                         rule_id=rule.id,
                         file_path=str(project_dir),
                         reason=f"gate {fix_action.target} does not support fix",
@@ -88,10 +87,10 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         if ctx.apply:
             reports_dir_result = u.Cli.ensure_dir(reports_dir)
             if reports_dir_result.failure:
-                return fr.ProjectFixResult(
+                return m.Infra.ProjectFixResult(
                     project=project_dir.name,
                     failed=(
-                        fr.FailedFix(
+                        m.Infra.FailedFix(
                             rule_id=rule.id,
                             file_path=str(project_dir),
                             error=(
@@ -116,10 +115,10 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 else gate.check(project_dir, gate_ctx)
             )
         except c.EXC_BROAD_RUNTIME as exc:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=project_dir.name,
                 failed=(
-                    fr.FailedFix(
+                    m.Infra.FailedFix(
                         rule_id=rule.id,
                         file_path=str(project_dir),
                         error=(
@@ -136,25 +135,25 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 target=fix_action.target,
                 execution=execution,
             )
-        fixed: list[fr.FixedViolation] = []
-        previewed: list[fr.PreviewedViolation] = []
-        skipped: list[fr.SkippedViolation] = []
-        failed: list[fr.FailedFix] = []
+        fixed: list[m.Infra.FixedViolation] = []
+        previewed: list[m.Infra.PreviewedViolation] = []
+        skipped: list[m.Infra.SkippedViolation] = []
+        failed: list[m.Infra.FailedFix] = []
         if execution.result.passed:
             message = f"gate {fix_action.target} fix applied"
-            fixed_violation: fr.FixedViolation = fr.FixedViolation(
+            fixed_violation: m.Infra.FixedViolation = m.Infra.FixedViolation(
                 rule_id=rule.id, file_path=str(project_dir), message=message
             )
             fixed = [fixed_violation]
         else:
             failed = [
-                fr.FailedFix(
+                m.Infra.FailedFix(
                     rule_id=rule.id,
                     file_path=str(project_dir),
                     error=execution.raw_output or "gate fix failed",
                 )
             ]
-        return fr.ProjectFixResult(
+        return m.Infra.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
             previewed=tuple(previewed),
@@ -169,14 +168,14 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         rule: me.EnforcementRuleSpec,
         target: str,
         execution: m.Infra.GateExecution,
-    ) -> fr.ProjectFixResult:
+    ) -> m.Infra.ProjectFixResult:
         """Build a dry-run result from the non-mutating gate check output."""
         matching = self._matching_issues(rule, execution.issues)
         if matching:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=project_dir.name,
                 previewed=(
-                    fr.PreviewedViolation(
+                    m.Infra.PreviewedViolation(
                         rule_id=rule.id,
                         file_path=str(project_dir),
                         message=(
@@ -187,14 +186,14 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 ),
             )
         if execution.result.passed:
-            return fr.ProjectFixResult(project=project_dir.name)
+            return m.Infra.ProjectFixResult(project=project_dir.name)
         details = execution.raw_output or "; ".join(
             issue.formatted for issue in execution.issues
         )
-        return fr.ProjectFixResult(
+        return m.Infra.ProjectFixResult(
             project=project_dir.name,
             failed=(
-                fr.FailedFix(
+                m.Infra.FailedFix(
                     rule_id=rule.id,
                     file_path=str(project_dir),
                     error=details or f"gate {target} check failed",

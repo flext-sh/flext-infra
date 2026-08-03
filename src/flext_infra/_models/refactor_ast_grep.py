@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
@@ -13,6 +14,24 @@ from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
     """Mixin containing migration/reporting contracts for refactor orchestration."""
+
+    class RewriteFilesInput(m.Value):
+        """Typed input envelope for workspace rewrite execution."""
+
+        workspace_root: Annotated[Path, m.Field(description="Workspace root path")]
+        file_moves: Annotated[
+            t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]],
+            m.Field(description="Per-file symbol move map for rewrite"),
+        ]
+        pending_sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(description="In-memory pending sources keyed by file path"),
+        ]
+        apply: Annotated[bool, m.Field(description="Whether to write rewritten sources")]
+        gates: Annotated[
+            t.StrSequence | None,
+            m.Field(description="Optional protected-write gate selectors"),
+        ] = None
 
     class MROImportRewrite(m.ArbitraryTypesModel):
         """Unified import rewrite payload for MRO reference updates."""

@@ -57,6 +57,9 @@
         "$ref": "#/$defs/relativePath"
       }
     },
+    "integration": {
+      "$ref": "#/$defs/workspaceIntegration"
+    },
     "repository_policy_overlays": {
       "type": "array",
       "uniqueItems": true,
@@ -177,6 +180,32 @@
               }
             }
           }
+        }
+      }
+    },
+    "workspaceIntegration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "branch"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/name"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "organization": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+$"
         }
       }
     },

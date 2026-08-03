@@ -6,13 +6,56 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
+from flext_infra import t
 
 
 class FlextInfraModelsTransformers:
     """Models for source transformers — exposed through the ``m.Infra`` facade."""
+
+    class Tier0ImportAnalysis(m.Value):
+        """Detection results for a single Python file self-import patterns."""
+
+        # Why: value contract owned by m.Infra transformers facet, not nested in the fixer service.
+        package_name: Annotated[
+            str, m.Field(description="Resolved package name for the analyzed file")
+        ]
+        file_path: Annotated[
+            Path,
+            m.Field(description="Python file analyzed for Tier 0 import violations"),
+        ]
+        alias_to_module: Annotated[
+            t.StrMapping,
+            m.Field(description="Alias names mapped to their source modules"),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        category_a: Annotated[
+            frozenset[str],
+            m.Field(description="Top-level aliases that are informational only"),
+        ] = m.Field(default_factory=frozenset)
+        category_b: Annotated[
+            frozenset[str],
+            m.Field(description="Core aliases to redirect to the core package"),
+        ] = m.Field(default_factory=frozenset)
+        category_c: Annotated[
+            frozenset[str],
+            m.Field(description="Aliases to move into a TYPE_CHECKING block"),
+        ] = m.Field(default_factory=frozenset)
+        category_d: Annotated[
+            frozenset[str],
+            m.Field(
+                description="Runtime-used aliases requiring direct import handling"
+            ),
+        ] = m.Field(default_factory=frozenset)
+
+        @m.computed_field()
+        @property
+        def has_violations(self) -> bool:
+            """True if any imports need redirecting or moving."""
+            return bool(self.category_b or self.category_c or self.category_d)
 
     class SourceRewrite(m.ArbitraryTypesModel):
         """One source rewrite: replace ``source[start:end]`` with ``text``."""

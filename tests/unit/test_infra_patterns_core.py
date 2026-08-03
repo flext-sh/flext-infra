@@ -163,3 +163,24 @@ class TestsFlextInfraInfraPatternsCore:
         match = c.Infra.INLINE_CODE_RE.search(text)
         match = tm.not_none(match)
         tm.that(match.group(0), eq="``")
+
+    def test_make_assignment_matches_operators(self) -> None:
+        for line in ("FOO = 1", "FOO:=1", "FOO ::= 1", "FOO ?= 1", "FOO += 1"):
+            tm.not_none(c.Infra.MAKE_ASSIGNMENT_RE.match(line))
+        tm.that(c.Infra.MAKE_ASSIGNMENT_RE.match("\tFOO = 1"), none=True)
+        tm.that(c.Infra.MAKE_ASSIGNMENT_RE.match("all:"), none=True)
+
+    def test_make_directive_and_conditional_match(self) -> None:
+        tm.not_none(c.Infra.MAKE_DIRECTIVE_RE.match("include base.mk"))
+        tm.not_none(c.Infra.MAKE_DIRECTIVE_RE.match("-include custom.mk"))
+        tm.not_none(c.Infra.MAKE_DIRECTIVE_RE.match("export PATH"))
+        tm.not_none(c.Infra.MAKE_CONDITIONAL_RE.match("ifeq ($(A),$(B))"))
+        tm.not_none(c.Infra.MAKE_CONDITIONAL_RE.match("endif"))
+        tm.that(c.Infra.MAKE_CONDITIONAL_RE.match("FOO = 1"), none=True)
+
+    def test_gitmodule_section_and_path_match(self) -> None:
+        section = '[submodule "flext-core"]\n\tpath = flext-core\n'
+        section_match = tm.not_none(c.Infra.GITMODULE_SECTION_RE.search(section))
+        tm.that(section_match.group(0), eq='[submodule "flext-core"]')
+        path_match = tm.not_none(c.Infra.GITMODULE_PATH_RE.search(section))
+        tm.that(path_match.group(1), eq="flext-core")

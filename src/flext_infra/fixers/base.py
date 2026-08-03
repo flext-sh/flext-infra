@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, ClassVar
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import m, p, t
-    from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 
 class FlextInfraFixerAdapter:
@@ -37,7 +36,7 @@ class FlextInfraFixerAdapter:
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
-    ) -> fr.ProjectFixResult:
+    ) -> m.Infra.ProjectFixResult:
         """Apply fixes for the given violations in ``project_dir``."""
         msg = f"{self.__class__.__name__}.fix_project must be implemented"
         raise NotImplementedError(msg)

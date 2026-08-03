@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
+import os
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -22,61 +24,19 @@ from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-# A GNU Make variable assignment: NAME followed by =, :=, ::=, ?= or +=.
-# Matched at column 0 only, so an indented recipe line is never mistaken for
-# a declaration.
-_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?=")
-# GNU Make directives that scope or include a declaration rather than define a
-# target. `include` is listed so a profile that forbids declarations also
-# forbids pulling them in from elsewhere.
-_DIRECTIVE_RE = re.compile(
-    r"^(?:export|unexport|override|include|-include|sinclude|vpath)\b"
-)
-
-# Conditional control flow. These select which declarations apply; they never
-# define a target, so they are structural and always permitted.
-_CONDITIONAL_RE = re.compile(r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)")
-_GITMODULE_SECTION_RE = re.compile(r'(?m)^\[submodule "[^"]+"\]\s*$')
-_GITMODULE_PATH_RE = re.compile(r"(?m)^[ \t]*path[ \t]*=[ \t]*(.+?)[ \t]*$")
-
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
-    class SurfaceContract(m.Value):
-        """Typed ownership contract for one requested conformance surface."""
-
-        destinations: frozenset[str] | None = m.Field(
-            default=None, description="Output paths selected for conformance planning"
-        )
-        complete_governed: bool = m.Field(
-            default=False, description="Whether every governed output is represented"
-        )
-        dependencies_only: bool = m.Field(
-            default=False, description="Whether planning is dependency-only"
-        )
-        delegates: bool = m.Field(
-            default=True, description="Whether delegated templates are planned"
-        )
-        pyproject: bool = m.Field(
-            default=True, description="Whether project metadata is planned"
-        )
-        templates: bool = m.Field(
-            default=True, description="Whether managed templates are planned"
-        )
-        custom: bool = m.Field(
-            default=True, description="Whether custom Make policy is planned"
-        )
-
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
-    ) -> SurfaceContract:
+    ) -> m.Infra.CodegenConformSurfaceContract:
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
-                return cls.SurfaceContract(complete_governed=True)
+                return m.Infra.CodegenConformSurfaceContract(complete_governed=True)
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
-                return cls.SurfaceContract(
+                return m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
                     dependencies_only=True,
                     delegates=False,
@@ -84,14 +44,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
-                return cls.SurfaceContract(
+                return m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
                     delegates=False,
                     templates=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.MAKEFILE:
-                return cls.SurfaceContract(
+                return m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.Infra.MAKEFILE_FILENAME}),
                     pyproject=False,
                     custom=False,
@@ -418,7 +378,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         codegen: m.Infra.CodegenConfigSpec,
-        contract: SurfaceContract,
+        contract: m.Infra.CodegenConformSurfaceContract,
         *,
         profile: c.Infra.MakeProfile,
         workspace: m.Infra.WorkspaceSpec | None = None,
@@ -698,7 +658,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
-        contract: SurfaceContract,
+        contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only."""
         project = workspace.project
@@ -853,9 +813,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     rendered.error or f"template render failed: {entry.source}"
                 )
-            file_plan = self._file_plan(
-                root, destination, rendered.value
-            )
+            file_plan = self._file_plan(root, destination, rendered.value)
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     file_plan.error
@@ -935,7 +893,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
-        contract: SurfaceContract,
+        contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
         pyproject = root / c.Infra.PYPROJECT_FILENAME
@@ -1085,7 +1043,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
-        contract: SurfaceContract,
+        contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
         profile = target.make_profile
@@ -1204,7 +1162,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         current: str, managed: str, *, managed_paths: frozenset[str]
     ) -> str:
         """Replace governed submodule sections and preserve every foreign block."""
-        matches = tuple(_GITMODULE_SECTION_RE.finditer(current))
+        matches = tuple(c.Infra.GITMODULE_SECTION_RE.finditer(current))
         if not matches:
             preserved = current
         else:
@@ -1216,7 +1174,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     else len(current)
                 )
                 block = current[match.start() : end]
-                path_match = _GITMODULE_PATH_RE.search(block)
+                path_match = c.Infra.GITMODULE_PATH_RE.search(block)
                 if path_match is None or path_match.group(1) not in managed_paths:
                     parts.append(block)
             preserved = "".join(parts)
@@ -1279,7 +1237,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
-                    repository=repository, branch=provider.value.branch
+                    repository=repository, branch=c.Infra.FOLLOW_SUPERPROJECT_BRANCH
                 )
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
@@ -1742,15 +1700,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 homepage=project.homepage,
                 documentation=project.documentation,
                 flext_git_base_url=flext_provider.base_url,
-                flext_git_branch=flext_provider.branch,
+                flext_git_branch=(
+                    workspace.integration.branch
+                    if workspace.integration is not None
+                    and workspace.integration.provider == flext_provider.name
+                    else flext_provider.branch
+                ),
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
-                repository_branch=repository_provider.value.branch,
+                repository_branch=u.Infra.resolve_integration_branch(
+                    workspace, repository_provider.value
+                ),
                 workspace_manifest_version=c.Infra.WORKSPACE_MANIFEST_VERSION,
                 workspace_repository=repository,
                 year=project.year,
                 workspace_exclusions=tuple(workspace.exclusions),
                 workspace_policy_overlays=tuple(workspace.repository_policy_overlays),
+                workspace_integration=workspace.integration,
             )
         )
 
@@ -1873,7 +1839,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if raw_line[0].isspace():
                 continue
-            if _CONDITIONAL_RE.match(raw_line):
+            if c.Infra.MAKE_CONDITIONAL_RE.match(raw_line):
                 continue
             if raw_line.startswith(".PHONY:"):
                 declaration = raw_line.partition(":")[2].strip()
@@ -1883,7 +1849,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
             if target and target_re.fullmatch(target):
                 continue
-            if _ASSIGNMENT_RE.match(raw_line) or _DIRECTIVE_RE.match(raw_line):
+            if c.Infra.MAKE_ASSIGNMENT_RE.match(
+                raw_line
+            ) or c.Infra.MAKE_DIRECTIVE_RE.match(raw_line):
                 if policy.allow_toolchain_declarations:
                     continue
                 return r[bool].fail(
@@ -1898,10 +1866,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[bool].ok(True)
 
     def _file_plan(
-        self,
-        root: Path,
-        relative_path: str,
-        rendered: str,
+        self, root: Path, relative_path: str, rendered: str
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Compare one expected output and mark whether it changed."""
         path = root / relative_path
@@ -2151,6 +2116,167 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups=groups,
             editable_repositories=editable_repositories,
         )
+
+    @staticmethod
+    def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
+        """Resolve the principal checkout owning the workspace ledger."""
+        probe = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=workspace_root
+        )
+        if probe.failure or probe.value.strip() != "true":
+            return r[Path].ok(workspace_root)
+        principal = u.Infra.git_primary_worktree_root(workspace_root)
+        if principal.failure:
+            return r[Path].fail(
+                principal.error or "unable to resolve the principal worktree"
+            )
+        return r[Path].ok(principal.value)
+
+    @staticmethod
+    def _beads_binary(ledger_root: Path) -> p.Result[Path]:
+        """Resolve the mise-managed Beads binary pinned by the ledger root."""
+        resolved = u.Cli.run_raw(["mise", "which", "bd"], cwd=ledger_root)
+        if resolved.failure or resolved.value.exit_code != 0:
+            return r[Path].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
+        binary = Path(resolved.value.stdout.strip())
+        if not binary.is_file():
+            return r[Path].fail(f"mise-resolved Beads CLI is not a file: {binary}")
+        return r[Path].ok(binary)
+
+    @classmethod
+    def _beads_command(
+        cls, plan: m.Infra.BeadsPlan, *arguments: str
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run the ledger-root Beads binary, never an ambient PATH resolution."""
+        ledger_root = plan.ledger_root
+        binary = cls._beads_binary(ledger_root)
+        if binary.failure:
+            return r[p.Cli.CommandOutput].fail(
+                binary.error or "mise-managed Beads CLI is unavailable"
+            )
+        return u.Cli.run_raw([str(binary.value), *arguments], cwd=ledger_root)
+
+    @staticmethod
+    def beads_declaration(
+        repository_root: Path,
+    ) -> p.Result[m.Infra.BeadsTrackerDeclaration]:
+        """Parse the repository's committed tracker declaration, once.
+
+        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
+        ledger on the machine-wide Dolt server) is the tracker declaration for
+        that repository; deriving the namespace from the repository name and
+        rejecting the declared one inverted the SSOT. The file is parsed at
+        this boundary into a validated model — absence and an invalid payload
+        are failures the caller decides about, never a substituted string.
+        """
+        config_path = repository_root / ".beads" / "config.yaml"
+        if not config_path.is_file():
+            return r[m.Infra.BeadsTrackerDeclaration].fail(
+                f"repository declares no Beads tracker: {config_path}"
+            )
+        loaded = u.Cli.yaml_load_mapping(config_path)
+        try:
+            declaration = m.Infra.BeadsTrackerDeclaration.model_validate({
+                "issue_prefix": loaded.get("issue-prefix")
+            })
+        except c.ValidationError as exc:
+            return r[m.Infra.BeadsTrackerDeclaration].fail_op(
+                f"Beads tracker declaration is invalid: {config_path}", exc
+            )
+        return r[m.Infra.BeadsTrackerDeclaration].ok(declaration)
+
+    @staticmethod
+    def declared_beads_prefix(repository_root: Path, *, fallback: str) -> str:
+        """Return the committed tracker prefix, falling back to the derived name.
+
+        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
+        ledger on the machine-wide Dolt server) is the tracker declaration for
+        that repository; deriving the namespace from the repository name and
+        rejecting the declared one inverted the SSOT; the derived name is only
+        the default for repositories without a committed tracker config.
+        """
+        config_path = repository_root / ".beads" / "config.yaml"
+        if not config_path.is_file():
+            return fallback
+        loaded = u.Cli.yaml_load_mapping(config_path)
+        prefix = loaded.get("issue-prefix")
+        if isinstance(prefix, str) and prefix.strip():
+            return prefix.strip()
+        return fallback
+
+    @classmethod
+    def _verify_beads_plan(
+        cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
+    ) -> p.Result[bool]:
+        """Validate the principal ledger route and fail closed on disagreement.
+
+        Worktrees that route to a principal ledger never own the tracker
+        lifecycle: verification is skipped there and re-run at the real tree on
+        apply.
+        """
+        if plan.routes_to_principal_ledger:
+            return r[bool].ok(True)
+        if os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true":
+            # CI runners are ephemeral and do not carry a live Dolt tracker;
+            # the Beads lifecycle is owned by development machines, not CI.
+            return r[bool].ok(True)
+        if not plan.enabled:
+            beads_dir = plan.repository_root / ".beads"
+            if beads_dir.exists():
+                return r[bool].fail(
+                    f"Beads is disabled but tracker state exists: {beads_dir}"
+                )
+            return r[bool].ok(True)
+        ledger_root = plan.ledger_root
+        version = cls._beads_command(plan, "version")
+        if version.failure or version.value.exit_code != 0:
+            return r[bool].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
+        version_parts = version.value.stdout.strip().split()
+        match version_parts:
+            case ["bd", "version", actual_version, *_]:
+                pass
+            case _:
+                actual_version = ""
+        if actual_version != plan.expected_version:
+            return r[bool].fail(
+                "mise-managed Beads CLI version mismatch: "
+                f"{actual_version or '<unparseable>'} != {plan.expected_version}"
+            )
+        if plan.expected_checksum is not None:
+            binary = cls._beads_binary(ledger_root)
+            if binary.failure:
+                return r[bool].fail(
+                    binary.error or "mise-managed Beads CLI is unavailable"
+                )
+            digest = hashlib.sha256(binary.value.read_bytes()).hexdigest()
+            if digest != plan.expected_checksum:
+                return r[bool].fail(
+                    "mise-managed Beads CLI checksum mismatch: "
+                    f"{digest} != {plan.expected_checksum}"
+                )
+        beads_dir = ledger_root / ".beads"
+        if not beads_dir.exists():
+            if allow_missing:
+                return r[bool].ok(True)
+            return r[bool].fail(f"Beads ledger is missing: {beads_dir}")
+        if not beads_dir.is_dir():
+            return r[bool].fail(f"Beads ledger path is not a directory: {beads_dir}")
+        info = cls._beads_command(plan, "info", "--json")
+        if info.failure or info.value.exit_code != 0:
+            return r[bool].fail(f"Beads ledger inspection failed: {beads_dir}")
+        parsed = u.Cli.json_parse(info.value.stdout)
+        if parsed.failure:
+            return r[bool].fail(f"Beads info returned invalid JSON: {beads_dir}")
+        payload = u.Cli.json_as_mapping(parsed.value)
+        tracker_config = u.Cli.json_deep_mapping(payload, "config")
+        issue_prefix = u.Cli.json_pick_str(tracker_config, "issue_prefix")
+        if issue_prefix != plan.canonical_prefix:
+            return r[bool].fail(
+                "Beads namespace mismatch: "
+                f"{issue_prefix or '<missing>'} != {plan.canonical_prefix}"
+            )
+        return r[bool].ok(True)
+
 
 
 __all__: list[str] = ["FlextInfraCodegenConform"]

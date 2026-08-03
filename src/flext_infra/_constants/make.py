@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -15,6 +16,21 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsMake:
     """Make-related constants for Makefile generation and CLI routing."""
+
+    # Why: conform Makefile policy classifies declarations via these patterns;
+    # they belong on c.Infra, not as leaf module re.compile copies.
+    MAKE_ASSIGNMENT_RE: Final[t.RegexPattern] = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?="
+    )
+    "GNU Make variable assignment at column 0 (``=``, ``:=``, ``::=``, ``?=``, ``+=``)."
+    MAKE_DIRECTIVE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:export|unexport|override|include|-include|sinclude|vpath)\b"
+    )
+    "GNU Make directives that scope or include a declaration rather than define a target."
+    MAKE_CONDITIONAL_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)"
+    )
+    "GNU Make conditional control flow; structural, never a target declaration."
 
     VERB_CHECK: Final[str] = "check"
     VERB_VALIDATE: Final[str] = "validate"

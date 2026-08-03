@@ -140,6 +140,17 @@ class FlextInfraConstantsSharedInfra:
     MAKEFILE_FILENAME: Final[str] = "Makefile"
     BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
+    # Why: conform .gitmodules merge classifies sections via these patterns;
+    # they belong beside GITMODULES on c.Infra, not as leaf re.compile copies.
+    GITMODULE_SECTION_RE: Final[t.RegexPattern] = re.compile(
+        r'(?m)^\[submodule "[^"]+"\]\s*$'
+    )
+    "``.gitmodules`` submodule section header at line start."
+    GITMODULE_PATH_RE: Final[t.RegexPattern] = re.compile(
+        r"(?m)^[ \t]*path[ \t]*=[ \t]*(.+?)[ \t]*$"
+    )
+    "``.gitmodules`` path assignment value inside a submodule section."
+    FOLLOW_SUPERPROJECT_BRANCH: Final[str] = "."
     GITIGNORE: Final[str] = ".gitignore"
     BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"

@@ -72,23 +72,6 @@ class FlextInfraGateRegistry:
         return cls()
 
 
-class _LoopOutcome(m.ArbitraryTypesModel):
-    """Bundled results from the project-checking loop."""
-
-    results: tuple[m.Infra.ProjectResult, ...] = m.Field(
-        description="Individual project execution results."
-    )
-    failed: int = m.Field(
-        description="Number of projects that failed one or more gates."
-    )
-    skipped: int = m.Field(
-        description="Number of projects that were skipped during execution."
-    )
-    total_elapsed: float = m.Field(
-        description="Total time elapsed in seconds for the entire loop."
-    )
-
-
 class FlextInfraWorkspaceCheckGatesMixin:
     """Gate execution, project loop, and individual gate runner methods."""
 
@@ -148,7 +131,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ctx: m.Infra.GateContext,
         *,
         fail_fast: bool,
-    ) -> _LoopOutcome:
+    ) -> m.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing."""
         results: t.MutableSequenceOf[m.Infra.ProjectResult] = []
         total = len(projects)
@@ -167,7 +150,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 failed += 1
                 if fail_fast:
                     break
-        return _LoopOutcome(
+        return m.Infra.LoopOutcome(
             results=tuple(results),
             failed=failed,
             skipped=skipped,

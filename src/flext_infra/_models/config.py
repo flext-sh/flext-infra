@@ -1031,6 +1031,31 @@ class FlextInfraConfigModels:
             ),
         ] = None
 
+    class WorkspaceIntegrationSpec(_ConfigContract):
+        """Workspace overlay adjusting flext-infra provider defaults.
+
+        Declared in ``config/workspace.yaml``. Absent means the fleet
+        ``providers[]`` catalog branch/org/URL apply unchanged. Package
+        version stays on ``project.version``.
+        """
+
+        provider: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Provider key into flext-infra providers[]"),
+        ]
+        branch: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Integration line this workspace follows by default"),
+        ]
+        organization: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional GitHub organization override"),
+        ] = None
+        base_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional GitHub HTTPS base URL override"),
+        ] = None
+
     class RepositoryPolicyOverlaySpec(_ConfigContract):
         """Bounded per-project exceptions to inferred repository policy."""
 
@@ -1132,7 +1157,7 @@ class FlextInfraConfigModels:
             m.Field(description="Governed repository identity"),
         ]
         branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Provider-owned integration branch")
+            t.NonEmptyStr, m.Field(description="Declared gitlink branch (. follows the superproject)")
         ]
 
     class MakeCommandContext(_ConfigContract):
@@ -1647,6 +1672,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
+        workspace_integration: Annotated[
+            FlextInfraConfigModels.WorkspaceIntegrationSpec | None,
+            m.Field(description="Optional workspace provider-default overlay"),
+        ] = None
 
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""
@@ -1704,6 +1733,15 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
             m.Field(description="Ordered paths deliberately excluded from inventory"),
         ] = ()
+        integration: Annotated[
+            FlextInfraConfigModels.WorkspaceIntegrationSpec | None,
+            m.Field(
+                description=(
+                    "Optional workspace overlay adjusting flext-infra provider "
+                    "branch/organization/base_url for this tree"
+                )
+            ),
+        ] = None
         repository_policy_overlays: Annotated[
             tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
             m.Field(description="Repository-local policy exceptions keyed by project"),
@@ -2376,6 +2414,39 @@ class FlextInfraConfigModels:
         content: Annotated[
             t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
         ]
+
+    class CodegenConformSurfaceContract(m.Value):
+        """Typed ownership contract for one requested conformance surface."""
+
+        # Why: leaf conform planning contract lives on m.Infra only (not nested in services).
+        destinations: Annotated[
+            frozenset[str] | None,
+            m.Field(description="Output paths selected for conformance planning"),
+        ] = None
+        complete_governed: Annotated[
+            bool,
+            m.Field(description="Whether every governed output is represented"),
+        ] = False
+        dependencies_only: Annotated[
+            bool,
+            m.Field(description="Whether planning is dependency-only"),
+        ] = False
+        delegates: Annotated[
+            bool,
+            m.Field(description="Whether delegated templates are planned"),
+        ] = True
+        pyproject: Annotated[
+            bool,
+            m.Field(description="Whether project metadata is planned"),
+        ] = True
+        templates: Annotated[
+            bool,
+            m.Field(description="Whether managed templates are planned"),
+        ] = True
+        custom: Annotated[
+            bool,
+            m.Field(description="Whether custom Make policy is planned"),
+        ] = True
 
     class CodegenConformRequest(_ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""
