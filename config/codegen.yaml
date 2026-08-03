@@ -183,6 +183,8 @@ Infra:
         # Every apply-guarded verb mutates the checkout, so every one of them is
         # serialized: deps/clean/worktree became guarded once their recipes were
         # found to call _require_apply, and the two lists must stay equal.
+        # `run` uses accepts_apply (not apply_guarded) so APPLY=Y is legal for
+        # custom handlers without taking the serialized mutation lock.
         mutation_verbs: [gen, fmt, fix, deps, clean, worktree]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
@@ -236,10 +238,11 @@ Infra:
         - name: run
           default_what: default
           whats: [default]
-          # Custom `_custom_run_*` handlers (workspaces inject, daemon deploy,
-          # propagate) mutate when APPLY=Y. Read-only invocations omit APPLY;
-          # apply_guarded only unlocks the token — it does not force mutation.
-          apply_guarded: true
+          apply_guarded: false
+          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
+          # entering the serialized mutation set (daemon/mcp must not take the
+          # checkout lock). accepts_apply unlocks the APPLY token only.
+          accepts_apply: true
           apply_what: default
         - name: status
           default_what: diagnostics
