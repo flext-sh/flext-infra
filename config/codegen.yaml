@@ -194,7 +194,8 @@ Infra:
           - .coverage
         timeout_seconds: 1800
         # Serialized surface: the read-only validators plus every mutation verb,
-        # so no two lanes mutate one checkout concurrently.
+        # so no two lanes mutate one checkout concurrently. `run` stays out:
+        # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
         verbs: [check, test, gen, fmt, fix, deps, clean, worktree]
       verbs:
         - name: help
@@ -691,19 +692,19 @@ Infra:
       - path: .github/scripts/install-git-hooks.sh
         owner: codegen
         policy: full
-      - path: ci/docker/alpine.Dockerfile
+      - path: tests/fixtures/ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
-      - path: ci/docker/arch.Dockerfile
+      - path: tests/fixtures/ci/docker/arch.Dockerfile
         owner: codegen
         policy: full
-      - path: ci/docker/debian.Dockerfile
+      - path: tests/fixtures/ci/docker/debian.Dockerfile
         owner: codegen
         policy: full
-      - path: ci/docker/fedora.Dockerfile
+      - path: tests/fixtures/ci/docker/fedora.Dockerfile
         owner: codegen
         policy: full
-      - path: ci/docker/ubuntu.Dockerfile
+      - path: tests/fixtures/ci/docker/ubuntu.Dockerfile
         owner: codegen
         policy: full
       - path: .github/workflows/ci-matrix.yml
@@ -1335,28 +1336,28 @@ Infra:
           profiles: [workspace-root]
           delegate: render
           overwrite: false
-        - source: base/ci/docker/ubuntu.Dockerfile.j2
-          destination: ci/docker/ubuntu.Dockerfile
+        - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
+          destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        - source: base/ci/docker/debian.Dockerfile.j2
-          destination: ci/docker/debian.Dockerfile
+        - source: base/tests/fixtures/ci/docker/debian.Dockerfile.j2
+          destination: tests/fixtures/ci/docker/debian.Dockerfile
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        - source: base/ci/docker/fedora.Dockerfile.j2
-          destination: ci/docker/fedora.Dockerfile
+        - source: base/tests/fixtures/ci/docker/fedora.Dockerfile.j2
+          destination: tests/fixtures/ci/docker/fedora.Dockerfile
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        - source: base/ci/docker/alpine.Dockerfile.j2
-          destination: ci/docker/alpine.Dockerfile
+        - source: base/tests/fixtures/ci/docker/alpine.Dockerfile.j2
+          destination: tests/fixtures/ci/docker/alpine.Dockerfile
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        - source: base/ci/docker/arch.Dockerfile.j2
-          destination: ci/docker/arch.Dockerfile
+        - source: base/tests/fixtures/ci/docker/arch.Dockerfile.j2
+          destination: tests/fixtures/ci/docker/arch.Dockerfile
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

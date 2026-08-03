@@ -1377,7 +1377,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         destination_path = Path(destination)
         if (
-            destination_path.parent.as_posix() == "ci/docker"
+            destination_path.parent.as_posix() == "tests/fixtures/ci/docker"
             and destination_path.suffix == ".Dockerfile"
         ):
             return r[p.Model].ok(
