@@ -123,11 +123,13 @@ Infra:
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
       # External consumer organization: standalone repositories governed by
-      # conform through their own config/workspace.yaml (develop-based integration line per cosmos ADR-134).
+      # conform through their own config/workspace.yaml. A linha de integracao e
+      # 'dev': nenhum repo datacosmos-br publica 'develop' (verificado em
+      # cosmos-docgen e nos quatro submodulos de data/).
       - name: datacosmos-br
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
-        branch: develop
+        branch: dev
     branch_policy:
       technical_branch_patterns:
         - __dolt_remote_info__
