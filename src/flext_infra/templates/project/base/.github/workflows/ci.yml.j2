@@ -61,4 +61,30 @@ jobs:
       - name: {{ step.verb }} (blocking)
         run: make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {% endfor %}
+      - name: Dump reports on failure
+        if: {% raw %}${{ failure() }}{% endraw %}
+        run: |
+          set -eu
+          for f in .reports/workspace/test/*.log; do
+            [ -f "$f" ] || continue
+            echo "::group::workspace $(basename "$f")"
+            tail -n 200 "$f"
+            echo "::endgroup::"
+          done
+          for f in apps/*/.reports/tests/*/pytest.log .reports/tests/*/pytest.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$f"
+            tail -n 200 "$f"
+            echo "::endgroup::"
+          done
+      - name: Upload reports on failure
+        if: {% raw %}${{ failure() }}{% endraw %}
+        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}
+        with:
+          name: flext-ci-reports-{% raw %}${{ github.run_id }}{% endraw %}
+          path: |
+            .reports/**
+            apps/*/.reports/**
+          if-no-files-found: ignore
+          retention-days: 7
     # End SECTION: ci job
