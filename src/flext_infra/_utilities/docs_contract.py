@@ -44,7 +44,10 @@ class FlextInfraUtilitiesDocsContract:
             lines.insert(heading_at + 3, "")
             updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
             return (updated, 1)
-        return (toc + "\n\n" + content, 1)
+        # MD041 requires the first line to be an H1. Never prepend the TOC ahead
+        # of body content that lacks a heading (generated stubs, HTML comments).
+        updated = f"# Documentation\n\n{toc}\n\n{content.lstrip()}"
+        return (updated, 1)
 
     @staticmethod
     def docs_anchorize(text: str) -> str:
