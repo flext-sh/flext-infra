@@ -283,23 +283,44 @@ class FlextInfraPytestRunner(s[int]):
             diagnostics.skipped_count,
         )):
             exit_code = 1
+        pytest_log = report_dir / "pytest.log"
+        if (
+            exit_code == 0
+            and self.file is None
+            and self.match is None
+            and self._pytest_log_reports_coverage_failure(pytest_log)
+        ):
+            # pytest-cov under xdist can print fail-under and still return 0.
+            return r[int].fail(
+                self._artifact_failure_detail(
+                    "coverage fail-under reported while pytest exit was 0",
+                    pytest_log,
+                )
+            )
         if (
             exit_code == 0
             and self.file is None
             and self.match is None
             and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
         ):
-            pytest_log = report_dir / "pytest.log"
-            log_tail = ""
-            if pytest_log.is_file():
-                lines = pytest_log.read_text(encoding="utf-8", errors="replace").splitlines()
-                log_tail = "\n".join(lines[-40:])
-            detail = (
-                f"coverage report was not generated or is empty: {coverage_file}"
+            return r[int].fail(
+                self._artifact_failure_detail(
+                    f"coverage report was not generated or is empty: {coverage_file}",
+                    pytest_log,
+                )
             )
-            if log_tail:
-                detail = f"{detail}\n--- pytest.log (tail) ---\n{log_tail}"
-            return r[int].fail(detail)
+        if (
+            exit_code == 0
+            and self.file is None
+            and self.match is None
+            and not junit_file.is_file()
+        ):
+            return r[int].fail(
+                self._artifact_failure_detail(
+                    f"junit report was not generated: {junit_file}",
+                    pytest_log,
+                )
+            )
         sys.stderr.write(
             f"Reports: {report_dir} (latest: {self.root / self.reports / 'latest.txt'})\n"
         )
@@ -309,6 +330,25 @@ class FlextInfraPytestRunner(s[int]):
                 f"{pytest.run_timeout_seconds}s (exit={exit_code})\n"
             )
         return r[int].ok(exit_code)
+
+    @staticmethod
+    def _pytest_log_reports_coverage_failure(pytest_log: Path) -> bool:
+        """Detect pytest-cov fail-under text when the child exit code stayed 0."""
+        if not pytest_log.is_file():
+            return False
+        body = pytest_log.read_text(encoding="utf-8", errors="replace")
+        return "Coverage failure:" in body or "Required test coverage of" in body
+
+    @staticmethod
+    def _artifact_failure_detail(message: str, pytest_log: Path) -> str:
+        """Attach a pytest.log tail so CI extract_errors keeps actionable context."""
+        if not pytest_log.is_file():
+            return message
+        lines = pytest_log.read_text(encoding="utf-8", errors="replace").splitlines()
+        log_tail = "\n".join(lines[-40:])
+        if not log_tail:
+            return message
+        return f"{message}\n--- pytest.log (tail) ---\n{log_tail}"
 
 
 __all__: list[str] = ["FlextInfraPytestRunner"]

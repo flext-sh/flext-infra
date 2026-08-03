@@ -21,7 +21,11 @@ def main() -> int:
         return 2
     result = runner.execute()
     if result.failure:
-        sys.stderr.write(f"ERROR: {result.error or 'pytest runner failed'}\n")
+        # Prefix every line so workspace extract_errors keeps the full detail
+        # (it only retains lines matching ^ERROR:), not just the first sentence.
+        detail = result.error or "pytest runner failed"
+        for line in detail.splitlines() or [detail]:
+            sys.stderr.write(f"ERROR: {line}\n")
         return 2
     return result.value
 
