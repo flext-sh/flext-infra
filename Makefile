@@ -649,8 +649,8 @@ _builtin_setup_submodules:
 					need_fetch=0; \
 				fi; \
 			else \
-				# Pin is already present; origin tip may be absent on a shallow CI
-				# clone. Origin lag must not fail verify (setup never destroys).
+				# Pin is already present; origin tip may be absent on a shallow CI \
+				# clone. Origin lag must not fail verify (setup never destroys). \
 				need_fetch=0; \
 			fi; \
 		fi; \
