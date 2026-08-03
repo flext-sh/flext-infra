@@ -75,6 +75,9 @@ jobs:
           git config submodule.{{ key.submodule }}.url {{ key.ssh_url }}
 {% endfor %}
           git submodule update --init --depth 1 --jobs 2 -- {% for p in private_submodules.paths %}{{ p }} {% endfor %}
+{% for key in private_submodules.deploy_keys %}
+          git -C {{ key.path }} remote set-url origin {{ key.ssh_url }}
+{% endfor %}
 {% endif %}
 
       - name: Install mise toolchain
