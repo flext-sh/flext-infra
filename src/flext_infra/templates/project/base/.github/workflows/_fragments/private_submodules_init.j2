@@ -32,4 +32,4 @@
 {% for key in private_submodules.deploy_keys %}
           git -C {{ key.path }} remote set-url origin {{ key.ssh_url }}
 {% endfor %}
-{%- endif %}
+{%- endif -%}
