@@ -28,6 +28,11 @@ permissions:
   contents: read
 # End SECTION: permissions
 
+# Why: one active run per workflow and branch prevents obsolete CI from consuming runners.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # === SECTION: ci job (managed) ===
   # Source: template + config:github_actions.*
