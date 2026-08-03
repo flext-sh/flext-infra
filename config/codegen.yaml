@@ -66,8 +66,7 @@ Infra:
     # with "Repository not found" before any code runs. Only projects that
     # really exercise their subprojects in CI opt in through the override map.
     checkout_submodules: "false"
-    checkout_submodules_overrides:
-      cosmos-docgen: recursive
+    checkout_submodules_overrides: {}
 
     # Per-distribution private workspace-member auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
