@@ -273,6 +273,42 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class CiPrivateSubmoduleDeployKeySpec(_ConfigContract):
+        """One read-only deploy key that unlocks a private workspace member in CI."""
+
+        secret: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="GitHub Actions secret name holding the deploy key PEM"),
+        ]
+        host_alias: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="SSH Host alias written into ~/.ssh/config"),
+        ]
+        submodule: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="gitmodules submodule name (git config submodule.<name>.url)"),
+        ]
+        path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Checkout-relative submodule path"),
+        ]
+        ssh_url: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="SSH clone URL using the Host alias"),
+        ]
+
+    class CiPrivateSubmodulesSpec(_ConfigContract):
+        """Per-distribution private submodule init contract for generated CI."""
+
+        paths: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Submodule paths to init before make setup"),
+        ]
+        deploy_keys: Annotated[
+            tuple[FlextInfraConfigModels.CiPrivateSubmoduleDeployKeySpec, ...],
+            m.Field(min_length=1, description="Ordered deploy-key materializations"),
+        ]
+
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
@@ -316,6 +352,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        private_submodules: Annotated[
+            FlextInfraConfigModels.CiPrivateSubmodulesSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Optional private-member deploy-key init for this "
+                    "distribution; None means the workflow skips the step"
+                ),
+            ),
+        ] = None
 
     class MakeWorkflowRenderSpec(_ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
@@ -1908,6 +1954,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
+                ),
+            ),
+        ]
+        ci_private_submodules: Annotated[
+            Mapping[str, FlextInfraConfigModels.CiPrivateSubmodulesSpec],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description=(
+                    "Per-distribution private submodule deploy-key contracts "
+                    "rendered into generated CI before make setup"
                 ),
             ),
         ]

@@ -252,3 +252,31 @@ name = "legacy-packaging"
         document = tomllib.loads(conformed)
         tm.that(document["tool"]["flext"]["workspace"]["attached"], eq=True)
         tm.that("poetry" not in document["tool"], eq=True)
+
+    def test_exclude_dependencies_emit_for_standalone_without_project_key(self) -> None:
+        """Standalone member CI needs scoped excludes without the routing key."""
+        workspace = _workspace()
+        exclusion = m.Infra.UvScopedDependencyExclusionSpec(
+            project="flext-infra",
+            package=m.Infra.UvPackageSelectorSpec(name="flext-tests"),
+            dependencies=("flext-infra",),
+        )
+        source = """[project]
+name = "flext-infra"
+dependencies = []
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                uv_exclude_dependencies=(exclusion,),
+            )
+        )
+        document = tomllib.loads(conformed)
+        excludes = document["tool"]["uv"]["exclude-dependencies"]
+        tm.that(excludes, eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}])
+        tm.that("project" not in excludes[0], eq=True)
