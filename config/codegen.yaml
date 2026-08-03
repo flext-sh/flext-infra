@@ -278,14 +278,14 @@ Infra:
           apply_guarded: false
         - name: fmt
           default_what: check
-          whats: [check, all]
+          whats: [check, all, apply]
           apply_guarded: true
-          apply_what: all
+          apply_what: apply
         - name: fix
           default_what: check
-          whats: [check, all]
+          whats: [check, all, apply]
           apply_guarded: true
-          apply_what: all
+          apply_what: apply
         - name: run
           default_what: default
           whats: [default]
@@ -315,9 +315,9 @@ Infra:
           apply_guarded: false
         - name: gen
           default_what: check
-          whats: [check, all]
+          whats: [check, all, apply]
           apply_guarded: true
-          apply_what: all
+          apply_what: apply
         - name: worktree
           default_what: list
           whats: [list, add, update, remove]
