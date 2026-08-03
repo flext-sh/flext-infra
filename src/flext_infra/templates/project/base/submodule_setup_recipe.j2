@@ -107,10 +107,16 @@
 			exit 1; \
 		fi; \
 		need_fetch=1; \
-		if git -C "$$child_root" rev-parse --verify "$$remote_ref" >/dev/null 2>&1 && \
-		   git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD && \
-		   git -C "$$child_root" merge-base --is-ancestor "$$remote_ref" HEAD; then \
-			need_fetch=0; \
+		if git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
+			if git -C "$$child_root" rev-parse --verify "$$remote_ref" >/dev/null 2>&1; then \
+				if git -C "$$child_root" merge-base --is-ancestor "$$remote_ref" HEAD; then \
+					need_fetch=0; \
+				fi; \
+			else \
+				# Pin is already present; origin tip may be absent on a shallow CI
+				# clone. Origin lag must not fail verify (setup never destroys).
+				need_fetch=0; \
+			fi; \
 		fi; \
 		if [ "$$need_fetch" -eq 1 ]; then \
 			git -C "$$child_root" fetch --quiet origin "$$branch" || { \
