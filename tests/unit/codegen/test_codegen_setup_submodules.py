@@ -148,6 +148,35 @@ class TestsCodegenSetupSubmodules:
             eq="nested-dev",
         )
 
+    def test_setup_is_repeatable_with_managed_submodule(self, tmp_path: Path) -> None:
+        """Idempotent setup succeeds twice when the submodule is already valid."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        environment = self._fake_uv(project)
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
+
+    def test_submodule_setup_uses_conditional_fetch(self) -> None:
+        """Generated setup skips fetch when cached origin refs already validate."""
+        template = (
+            Path(__file__).resolve().parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / "submodule_setup_recipe.j2"
+        )
+        content = template.read_text(encoding="utf-8")
+
+        tm.that(content, has="need_fetch=1")
+        tm.that(content, has='if [ "$$need_fetch" -eq 1 ]')
+        tm.that(content, has="cached_ok=1")
+
     def test_setup_is_repeatable_without_gitmodules(self, tmp_path: Path) -> None:
         project = tmp_path / "project"
         self._generated_project(project)
