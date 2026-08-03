@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import TYPE_CHECKING
 
 from flext_cli import u
@@ -198,6 +199,28 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 f"Git primary worktree mismatch: {primary_root} != {resolved_top_level}"
             )
         return r[Path].ok(primary_root)
+
+
+    @staticmethod
+    def git_remote_identity(url: str) -> str:
+        """Normalize HTTPS and SSH remotes to one comparable host/path identity.
+
+        CI deploy-key init rewrites private member ``origin`` to SSH while the
+        workspace manifest and ``.gitmodules`` keep the HTTPS form. Exact string
+        equality then false-fails ``gen`` after a successful private checkout.
+        """
+        value = url.strip().removesuffix(".git")
+        if value.startswith("git@"):
+            host_path = value.removeprefix("git@")
+            if ":" in host_path:
+                host, remote_path = host_path.split(":", 1)
+                return f"{host.lower()}/{remote_path}".lower()
+        parsed = urlparse(value)
+        if parsed.scheme in {"http", "https", "ssh"} and parsed.netloc:
+            host = parsed.netloc.split("@")[-1].lower()
+            remote_path = parsed.path.lstrip("/")
+            return f"{host}/{remote_path}".lower()
+        return value.lower()
 
     @classmethod
     def git_declared_submodule_paths(
