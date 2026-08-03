@@ -236,7 +236,11 @@ Infra:
         - name: run
           default_what: default
           whats: [default]
-          apply_guarded: false
+          # Custom `_custom_run_*` handlers (workspaces inject, daemon deploy,
+          # propagate) mutate when APPLY=Y. Read-only invocations omit APPLY;
+          # apply_guarded only unlocks the token — it does not force mutation.
+          apply_guarded: true
+          apply_what: default
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
