@@ -379,7 +379,11 @@ Infra:
           - "if _t.TYPE_CHECKING:"
           - "if TYPE_CHECKING:"
           - "if typing.TYPE_CHECKING:"
-        omit: ["*/dependency_injector/providers.pyx"]
+        omit:
+          - "*/dependency_injector/providers.pyx"
+          # Declaration-layer Protocol facades have no runtime behavior to cover.
+          - "*/protocols.py"
+          - "*/_protocols/*"
       pyrefly:
         disable-project-excludes-heuristics: true
         ignore-errors-in-generated-code: true
