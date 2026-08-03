@@ -705,11 +705,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 context_result.error or "project render context is invalid"
             )
         context = context_result.value
-        uv_exclude_dependencies = tuple(
-            item
-            for item in codegen.uv_exclude_dependencies
-            if item.project == repository.distribution
-        )
+        # Workspace root owns resolution for attached members (uv reads
+        # exclude-dependencies only from the workspace root). Members still
+        # receive their own routed excludes for standalone CI clones.
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT:
+            uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
+        else:
+            uv_exclude_dependencies = tuple(
+                item
+                for item in codegen.uv_exclude_dependencies
+                if item.project == repository.distribution
+            )
         planned: list[m.Infra.CodegenFilePlan] = []
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
@@ -931,11 +937,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else c.Infra.WorkspaceMode.STANDALONE
         )
-        uv_exclude_dependencies = tuple(
-            item
-            for item in codegen.uv_exclude_dependencies
-            if item.project == repository.distribution
-        )
+        # Workspace root owns resolution for attached members (uv reads
+        # exclude-dependencies only from the workspace root). Members still
+        # receive their own routed excludes for standalone CI clones.
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT:
+            uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
+        else:
+            uv_exclude_dependencies = tuple(
+                item
+                for item in codegen.uv_exclude_dependencies
+                if item.project == repository.distribution
+            )
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
@@ -1381,6 +1393,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
+                    private_submodules=codegen.ci_private_submodules.get(dist),
                 )
             )
         destination_path = Path(destination)
