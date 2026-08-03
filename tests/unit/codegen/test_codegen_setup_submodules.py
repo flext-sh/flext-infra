@@ -175,7 +175,7 @@ class TestsCodegenSetupSubmodules:
 
         tm.that(content, has="need_fetch=1")
         tm.that(content, has='if [ "$$need_fetch" -eq 1 ]')
-        tm.that(content, has="cached_ok=1")
+        tm.that(content, has='merge-base --is-ancestor "$$remote_ref" HEAD')
 
     def test_setup_is_repeatable_without_gitmodules(self, tmp_path: Path) -> None:
         project = tmp_path / "project"
@@ -339,6 +339,32 @@ class TestsCodegenSetupSubmodules:
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"), eq="main"
         )
+
+    def test_setup_succeeds_when_gitlink_is_ahead_of_origin(self, tmp_path: Path) -> None:
+        """Present pin matching HEAD must verify even when origin lags the pin."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        checkout = project / "vendor/source"
+        ahead = checkout / "ahead.txt"
+        ahead.write_text("local ahead of origin", encoding="utf-8")
+        self._git(checkout, "add", "ahead.txt")
+        self._git(checkout, "commit", "-q", "-m", "ahead of origin")
+        # Advance the superproject gitlink to the local tip without pushing origin.
+        self._git(project, "add", "vendor/source")
+        self._git(project, "commit", "-q", "-m", "pin ahead of origin")
+        dirty = checkout / "dirty.txt"
+        dirty.write_text("preserve me", encoding="utf-8")
+        environment = self._fake_uv(project)
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
+
 
 
 __all__: tuple[str, ...] = ()

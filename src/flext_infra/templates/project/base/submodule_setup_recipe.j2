@@ -9,8 +9,9 @@
 #       An absent checkout holds no work, so setup initializes it at the recorded
 #       gitlink. A present checkout is never destroyed: git checkout and git reset
 #       are forbidden. Detached HEAD is attached via branch + symbolic-ref so dirty
-#       work is carried. branch = . follows the superproject named branch (worktree
-#       propagation). Fetch is conditional when cached origin refs already validate.
+#       work is carried. Pin validity is HEAD contains gitlink — origin may lag the
+#       pin without failing verify. branch = . follows the superproject named branch
+#       (worktree propagation). Fetch skips when local already contains pin and origin tip.
 # Free: no
 # End SECTION: submodule setup
 {{ target }}:
@@ -105,18 +106,10 @@
 			exit 1; \
 		fi; \
 		need_fetch=1; \
-		if git -C "$$child_root" rev-parse --verify "$$remote_ref" >/dev/null 2>&1; then \
-			cached_ok=1; \
-			if [ -z "$$current" ]; then \
-				if ! git -C "$$child_root" merge-base --is-ancestor "$$head" "$$remote_ref"; then \
-					cached_ok=0; \
-				fi; \
-			fi; \
-			if [ "$$cached_ok" -eq 1 ] && \
-			   git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "$$remote_ref" && \
-			   git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-				need_fetch=0; \
-			fi; \
+		if git -C "$$child_root" rev-parse --verify "$$remote_ref" >/dev/null 2>&1 && \
+		   git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD && \
+		   git -C "$$child_root" merge-base --is-ancestor "$$remote_ref" HEAD; then \
+			need_fetch=0; \
 		fi; \
 		if [ "$$need_fetch" -eq 1 ]; then \
 			git -C "$$child_root" fetch --quiet origin "$$branch" || { \
@@ -131,19 +124,19 @@
 			exit 1; \
 		fi; \
 		if [ -z "$$current" ]; then \
-			if ! git -C "$$child_root" merge-base --is-ancestor "$$head" "$$remote_ref"; then \
-				printf 'ERROR: %s: detached HEAD %s is not contained in origin/%s; reconcile it yourself (setup never discards commits)\n' "$$child_path" "$$head" "$$branch" >&2; \
+			if git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
+				attach_branch_at_head "$$child_root" "$$branch"; \
+			elif git -C "$$child_root" rev-parse --verify "$$remote_ref" >/dev/null 2>&1 && \
+			     git -C "$$child_root" merge-base --is-ancestor "$$head" "$$remote_ref"; then \
+				attach_branch_at_head "$$child_root" "$$branch"; \
+			else \
+				printf 'ERROR: %s: detached HEAD %s is not on the recorded gitlink and not contained in origin/%s; reconcile it yourself (setup never discards commits)\n' "$$child_path" "$$head" "$$branch" >&2; \
 				exit 1; \
 			fi; \
-			attach_branch_at_head "$$child_root" "$$branch"; \
 			current="$$branch"; \
 		fi; \
-		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "$$remote_ref"; then \
-			printf 'ERROR: %s: origin/%s diverges from recorded gitlink %s\\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
-			exit 1; \
-		fi; \
 		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-			printf 'ERROR: %s: branch %s diverges from recorded gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+			printf 'ERROR: %s: branch %s diverges from recorded gitlink %s (setup never runs checkout/reset; advance or switch it yourself while keeping dirty)\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
 			exit 1; \
 		fi; \
 		if [ -f "$$child_root/.gitmodules" ]; then \
