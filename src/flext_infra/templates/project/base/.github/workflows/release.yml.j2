@@ -71,7 +71,7 @@ jobs:
       RELEASE_VERSION: ${{ needs.identity.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: {% endraw %}{{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}{% raw %}
+        uses: {% endraw %}{{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}{% raw %}
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -99,12 +99,12 @@ jobs:
           fi
 
       - name: Setup Python
-        uses: {% endraw %}{{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }} # {{ github_actions["setup-python"].version }}{% raw %}
+        uses: {% endraw %}{{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}{% raw %}
         with:
           python-version: "{% endraw %}{{ python_version }}{% raw %}"
 
       - name: Install uv
-        uses: {% endraw %}{{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }} # {{ github_actions["setup-uv"].version }}{% raw %}
+        uses: {% endraw %}{{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}{% raw %}
         with:
           enable-cache: false
 
@@ -216,7 +216,7 @@ jobs:
       RELEASE_VERSION: ${{ needs.identity.outputs.version }}
     steps:
       - name: Checkout immutable canary source
-        uses: {% endraw %}{{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}{% raw %}
+        uses: {% endraw %}{{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}{% raw %}
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -248,12 +248,12 @@ jobs:
           echo "core_oid=$CORE_OID" >> "$GITHUB_OUTPUT"
 
       - name: Setup Python
-        uses: {% endraw %}{{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }} # {{ github_actions["setup-python"].version }}{% raw %}
+        uses: {% endraw %}{{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}{% raw %}
         with:
           python-version: "{% endraw %}{{ python_version }}{% raw %}"
 
       - name: Install uv
-        uses: {% endraw %}{{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }} # {{ github_actions["setup-uv"].version }}{% raw %}
+        uses: {% endraw %}{{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}{% raw %}
         with:
           enable-cache: false
 
