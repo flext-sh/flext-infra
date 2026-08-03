@@ -1118,6 +1118,14 @@ Infra:
             - "**/.coverage.*"
             - "**/coverage.xml"
             - "**/*.cover"
+        - name: "Docs verb report artifacts inside docs trees"
+          patterns:
+            - "**/docs/generate-report.md"
+            - "**/docs/generate-summary.json"
+            - "**/docs/fix-report.md"
+            - "**/docs/fix-summary.json"
+            - "**/docs/audit-report.md"
+            - "**/docs/audit-summary.json"
         - name: "Virtual environments inside allowed directories (should never be committed)"
           patterns:
             - "**/.venv/"
