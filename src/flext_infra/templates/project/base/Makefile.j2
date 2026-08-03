@@ -526,12 +526,16 @@ _builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
+_builtin_fmt_apply: _builtin_fmt_all
+
 _builtin_fix_check:
 	@printf 'ERROR: make fix requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; exit 2
 
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+
+_builtin_fix_apply: _builtin_fix_all
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -567,12 +571,16 @@ _builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
+_builtin_fmt_apply: _builtin_fmt_all
+
 _builtin_fix_check:
 	@printf 'ERROR: make fix requires {{ make.apply_variable }}={{ make.apply_value }}\n' >&2; exit 2
 
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+
+_builtin_fix_apply: _builtin_fix_all
 {% endif %}
 
 _builtin_run_default: _builtin_require_environment
@@ -633,6 +641,8 @@ _builtin_gen_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply
+
+_builtin_gen_apply: _builtin_gen_all
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list

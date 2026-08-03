@@ -79,6 +79,9 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: make setup")
         tm.that(workflow, has="run: make check")
         tm.that(workflow, has="run: make test")
+        tm.that(workflow, has="run: make gen WHAT=apply APPLY=Y")
+        tm.that(workflow, has="run: make fmt WHAT=apply APPLY=Y")
+        tm.that(workflow, has="run: make fix WHAT=apply APPLY=Y")
 
     def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
         """The generated staged hooks render the configured workflow partitions."""
