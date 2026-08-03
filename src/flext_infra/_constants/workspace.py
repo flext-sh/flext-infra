@@ -16,12 +16,48 @@ class FlextInfraConstantsWorkspace:
 
     @unique
     class WorktreeOperation(StrEnum):
-        """Supported repository-local development-lane operations."""
+        """Private Git worktree primitives composed by the work saga."""
 
         LIST = "list"
         ADD = "add"
         UPDATE = "update"
         REMOVE = "remove"
+
+    @unique
+    class WorkOperation(StrEnum):
+        """Public make work saga operations."""
+
+        START = "start"
+        STATUS = "status"
+        LAND = "land"
+        FINISH = "finish"
+
+    @unique
+    class WorkKind(StrEnum):
+        """GitFlow lane kinds owned by configuration policy."""
+
+        FEATURE = "feature"
+        BUGFIX = "bugfix"
+        HOTFIX = "hotfix"
+        RELEASE = "release"
+
+    WORK_FORBIDDEN_SLUGS: Final[frozenset[str]] = frozenset({
+        "teste",
+        "ajuste",
+        "correcao",
+        "temp",
+        "nova-branch",
+    })
+    WORK_BEADS_METADATA_KEYS: Final[t.StrSequence] = (
+        "branch",
+        "worktree",
+        "kind",
+        "slug",
+        "integration_base",
+        "head_oid",
+        "pr_number",
+        "pr_url",
+    )
 
     @unique
     class WorkspaceMode(StrEnum):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import FlextInfraWorktreeService, c, m
+from flext_infra import FlextInfraWorkService, c, m
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
@@ -68,9 +68,9 @@ class WorkspaceRoutes(RefactorRoutes):
                         FlextInfraMakeSerializationService,
                     ),
                     (
-                        "worktree",
-                        "Manage repository-local development worktrees",
-                        FlextInfraWorktreeService,
+                        "work",
+                        "Unified bead/GitFlow/worktree/PR lane saga",
+                        FlextInfraWorkService,
                     ),
                 )
             ),
