@@ -1033,10 +1033,10 @@ Infra:
           patterns:
             - ".claude/*"
         # Only the workspace root owns agent skills as real versioned files.
-        # Anything a non-root repository could place under `.agents/` is a
-        # symlink back to the root, and one out-of-bounds symlink makes the
-        # ArgoCD repo-server refuse to render the entire repository, so the
-        # directory stays ignored outside the root.
+        # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
+        # provider surfaces as real local files via generate-workspace-config
+        # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
+        # repo-server refuse the repository, so members must not track them.
         - name: "BLOCK: Agent surface outside the workspace root"
           profiles: [workspace-member, standalone]
           patterns:
