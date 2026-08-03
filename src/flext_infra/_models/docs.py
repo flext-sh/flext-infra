@@ -67,12 +67,8 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
         apply: Annotated[bool, m.Field(description="Apply writes to disk")] = False
 
-    class DocsPhaseItemModel(m.BaseModel):
+    class DocsPhaseItemModel(m.Value):
         """Unified item payload for docs phase reports."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", frozen=True, strict=True
-        )
 
         phase: Annotated[
             str,

@@ -131,7 +131,10 @@ class FlextInfraEnforcementFixerOrchestrator(
                 projects_result.error or "workspace discovery failed"
             )
         discovered = tuple(projects_result.unwrap())
-        scope = frozenset(self.project_names or ())
+        selected_projects: t.StrSequence = (
+            self.project_names if self.project_names is not None else ()
+        )
+        scope: frozenset[str] = frozenset(selected_projects)
         available_names = {
             name
             for project in discovered

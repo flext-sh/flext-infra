@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
-from pydantic import model_validator
 
 from flext_infra import c, config, m, u
 from flext_infra.base import s
@@ -92,7 +91,7 @@ class FlextInfraPytestRunner(s[int]):
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
         )
 
-    @model_validator(mode="after")
+    @u.model_validator(mode="after")
     def _validate_paths_and_selectors(self) -> Self:
         """Reject selector and output paths that escape the active project."""
         selector = FlextInfraPytestSelectorValidator(

@@ -146,7 +146,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 skipped += 1
                 continue
             results.append(project_result)
-            if not project_result.passed:
+            project_passed: bool = project_result.passed
+            if not project_passed:
                 failed += 1
                 if fail_fast:
                     break

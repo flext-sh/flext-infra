@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
 from flext_core import r
-from pydantic import model_validator
 
 from flext_infra import m, u
 from flext_infra.base import s
@@ -38,7 +37,7 @@ class FlextInfraCProfileReport(s[bool]):
     ]
     limit: Annotated[int, m.Field(gt=0, le=1000, description="Maximum rows to print")]
 
-    @model_validator(mode="after")
+    @u.model_validator(mode="after")
     def _validate_report_paths(self) -> Self:
         """Keep profile input and output inside the workspace report tree."""
         report_root = (self.workspace_root / ".reports").resolve()
