@@ -175,6 +175,16 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        go_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Exact Go runtime version; mise resolves go: backend "
+                    "selectors through it, so beads only installs when Go "
+                    "is a declared tool"
+                ),
+            ),
+        ]
         mise_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact mise binary version")
         ]
@@ -1641,6 +1651,9 @@ class FlextInfraConfigModels:
         ]
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        ]
+        go_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Go runtime version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

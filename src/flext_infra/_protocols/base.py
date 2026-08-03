@@ -379,6 +379,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def go_version(self) -> str:
+            """Exact Go runtime version backing go: mise selectors."""
+            ...
+
+        @property
         def mise_version(self) -> str:
             """Exact mise binary version."""
             ...
