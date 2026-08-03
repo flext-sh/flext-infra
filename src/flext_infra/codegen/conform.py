@@ -2278,5 +2278,4 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[bool].ok(True)
 
 
-
 __all__: list[str] = ["FlextInfraCodegenConform"]
