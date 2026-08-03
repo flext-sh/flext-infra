@@ -337,7 +337,7 @@ class FlextInfraPytestRunner(s[int]):
         if not pytest_log.is_file():
             return False
         body = pytest_log.read_text(encoding="utf-8", errors="replace")
-        return "Coverage failure:" in body or "Required test coverage of" in body
+        return "Coverage failure:" in body or "not reached" in body
 
     @staticmethod
     def _artifact_failure_detail(message: str, pytest_log: Path) -> str:
