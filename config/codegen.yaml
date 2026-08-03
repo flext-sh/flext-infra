@@ -211,15 +211,14 @@ Infra:
         variable: CI
         value: Y
       workflow:
-        # `setup` provisions the environment and runs `git submodule`, which
-        # fails inside pre-commit: the hook framework has already moved the
-        # working tree, so git reports "cannot be used without a working tree".
+        # Why: pre-commit remains fast and mutation-only; pre-push owns the
+        # generated-artifact and read-only validation gates.
         - { verb: setup, apply: false, contexts: [local, ci] }
-        - { verb: gen, apply: true, contexts: [local, ci, pre_commit] }
+        - { verb: gen, apply: true, contexts: [local, ci, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_commit] }
-        - { verb: test, apply: false, contexts: [local, ci, pre_commit] }
+        - { verb: check, apply: false, contexts: [local, ci, pre_push] }
+        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all
@@ -1391,9 +1390,12 @@ Infra:
           overwrite: false
         - source: base/.github/workflows/docs.yml.j2
           destination: .github/workflows/docs.yml
-          profiles: [workspace-root]
+          # O workflow chama `uv sync`; e esta projecao que instala o uv antes.
+          # Restringir a workspace-root deixava os membros com uma copia stale
+          # sem o passo Install uv, e o job morria em "uv: command not found".
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/.github/workflows/release.yml.j2
           destination: .github/workflows/release.yml
           profiles: [workspace-root]
