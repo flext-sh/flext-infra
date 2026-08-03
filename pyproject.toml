@@ -633,6 +633,12 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 [tool.uv]
 link-mode = "copy"
 
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-tests"
+
 [tool.vulture]
 exclude = ["*/_protocols/*"]
 min_confidence = 100
