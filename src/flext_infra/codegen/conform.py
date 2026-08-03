@@ -827,7 +827,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if not contract.delegates:
                 continue
-            if entry.destination == c.Infra.BEADS_CONFIG_RELPATH and not (
+            if entry.destination in c.Infra.BEADS_LEDGER_RELPATHS and not (
                 target.beads_enabled or target.routing_only
             ):
                 continue
@@ -1161,7 +1161,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             entry = entries[0]
             if profile not in entry.profiles:
                 continue
-            if managed.path.as_posix() == c.Infra.BEADS_CONFIG_RELPATH and not (
+            if managed.path.as_posix() in c.Infra.BEADS_LEDGER_RELPATHS and not (
                 target.beads_enabled or target.attached_standalone
             ):
                 continue
@@ -1431,6 +1431,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     server=server,
                     routing=target.routing_only,
                 )
+            )
+        if destination == c.Infra.BEADS_METADATA_RELPATH:
+            server = codegen.toolchain.beads.server
+            if server is None:
+                return r[p.Model].fail(
+                    "Beads ledger server is not declared in the toolchain SSOT"
+                )
+            # Why (mro-9wv8): bd resolves a checkout to its Dolt database
+            # through this marker, and `bd init` never writes it. A clone that
+            # carried only the generated config.yaml therefore fell back to the
+            # default "beads" database, so issues landed in a throwaway store.
+            # The database name is the same declared identity config.yaml uses.
+            database = workspace.ledger_id or (
+                FlextInfraCodegenConform.declared_beads_prefix(
+                    target.root, fallback=target.canonical_project_name
+                )
+            )
+            return r[p.Model].ok(
+                m.Infra.BeadsMetadataRenderSpec(database=database, server=server)
             )
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)

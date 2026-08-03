@@ -37,10 +37,12 @@ Infra:
         expected_schema: 61
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never
-        # used. Rendered into .beads/config.yaml by codegen for ledger owners
-        # (workspace-root) and attached standalones (routing only).
+        # used. Rendered into .beads/config.yaml and .beads/metadata.json by
+        # codegen for ledger owners (workspace-root) and attached standalones
+        # (routing only).
         server:
           mode: server
+          backend: dolt
           shared_server: true
           host: 127.0.0.1
           port: 3308
@@ -712,6 +714,9 @@ Infra:
       - path: .beads/config.yaml
         owner: codegen
         policy: full
+      - path: .beads/metadata.json
+        owner: codegen
+        policy: full
       - path: .env.example
         owner: codegen
         policy: create-only
@@ -1297,6 +1302,14 @@ Infra:
         # planner skips every other profile/class (mro-z89e governance).
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # Ledger-resolution marker: bd binds a checkout to its Dolt database
+        # through this file and `bd init` never writes it, so a clone carrying
+        # only config.yaml fell back to the default "beads" database (mro-9wv8).
+        - source: base/beads-metadata.json.j2
+          destination: .beads/metadata.json
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

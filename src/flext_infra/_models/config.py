@@ -81,6 +81,15 @@ class FlextInfraConfigModels:
     class BeadsServerSpec(_ConfigContract):
         """Machine-wide shared Dolt server connection for Beads ledgers."""
 
+        backend: Annotated[
+            Literal["dolt"],
+            m.Field(
+                description=(
+                    "Ledger storage engine bd binds a checkout to through "
+                    ".beads/metadata.json"
+                )
+            ),
+        ]
         mode: Annotated[
             Literal["server"],
             m.Field(description="Dolt connection mode; ledgers never embed locally"),
@@ -1264,6 +1273,27 @@ class FlextInfraConfigModels:
                     "Routing-only client config for an attached standalone; "
                     "False marks the workspace-root owned ledger"
                 )
+            ),
+        ]
+
+    class BeadsMetadataRenderSpec(_ConfigContract):
+        """Field-only render input for the generated Beads ledger marker.
+
+        The Beads CLI resolves a checkout to its Dolt database through
+        ``.beads/metadata.json``; ``bd init`` never writes it, so a fresh
+        clone that carries only the generated ``config.yaml`` silently falls
+        back to the default ``beads`` database. Generating the marker binds
+        every checkout to the shared server database declared by the SSOT.
+        """
+
+        database: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Ledger Dolt database from the declared ledger_id"),
+        ]
+        server: Annotated[
+            FlextInfraConfigModels.BeadsServerSpec,
+            m.Field(
+                description="Shared Dolt server connection from the toolchain SSOT"
             ),
         ]
 
