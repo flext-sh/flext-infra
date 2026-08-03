@@ -100,7 +100,7 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             tm.that(
-                (root / "ci" / "docker" / f"{distro}.Dockerfile").is_file(), eq=True
+                (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").is_file(), eq=True
             )
 
     def test_distro_bootstrap_is_fail_closed_and_self_contained(
@@ -109,7 +109,7 @@ class TestCodegenCiMatrix:
         """Every distro runs the canonical self-bootstrap fail-closed."""
         root = self._render_project(tmp_path / "external")
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
-            content = (root / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
+            content = (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
                 encoding="utf-8"
             )
             tm.that(content, has="make setup")
@@ -124,12 +124,12 @@ class TestCodegenCiMatrix:
     ) -> None:
         """Fedora's generated Node runtime has its required atomic library."""
         root = self._render_project(tmp_path / "external")
-        fedora = (root / "ci" / "docker" / "fedora.Dockerfile").read_text(
+        fedora = (root / "tests" / "fixtures" / "ci" / "docker" / "fedora.Dockerfile").read_text(
             encoding="utf-8"
         )
         tm.that(fedora, has="libatomic")
         for distro in ("ubuntu", "debian", "alpine", "arch"):
-            content = (root / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
+            content = (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
                 encoding="utf-8"
             )
             tm.that("libatomic" not in content, eq=True, msg=distro)
@@ -138,12 +138,12 @@ class TestCodegenCiMatrix:
         """Repeated project generation preserves the generated Dockerfiles."""
         root = self._render_project(tmp_path / "external")
         before = {
-            distro: (root / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
+            distro: (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
             for distro in ("ubuntu", "debian", "fedora", "alpine", "arch")
         }
         self._render_project(root)
         after = {
-            distro: (root / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
+            distro: (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
             for distro in before
         }
         tm.that(after, eq=before)
@@ -193,9 +193,13 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
         tm.that(blocking, has=f"      - {branch}")
-        tm.that(matrix, has=f"branches: [{branch}]")
-        tm.that(blocking, lacks="      - main")
-        tm.that(matrix, lacks="branches: [main]")
+        tm.that(blocking, has="      - main")
+        tm.that(matrix, has="branches: [main]")
+        tm.that(matrix, lacks=f"branches: [{branch}]")
+        tm.that(blocking, has="draft == false")
+        tm.that(matrix, has="draft == false")
+        tm.that(blocking, has="ready_for_review")
+        tm.that(matrix, has="ready_for_review")
 
     def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""
@@ -225,7 +229,7 @@ class TestCodegenCiMatrix:
             "!.default-python-packages",
             "!config/",
             "!scripts/dispatch.py",
-            "!ci/docker/",
+            "!tests/fixtures/ci/docker/",
         ):
             tm.that(content, has=marker)
 
