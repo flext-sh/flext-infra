@@ -880,6 +880,15 @@ Infra:
             - "!.beads/"
             - ".beads/*"
             - "!.beads/config.yaml"
+            # metadata.json is what bd reads to resolve the ledger. Without it
+            # bd warns "no beads configuration found" and silently falls back
+            # to the default database, so beads created from a clean clone land
+            # in a throwaway store (mro-9wv8). In workspace-root the file holds
+            # only facts already declared in the generated config.yaml
+            # (backend/dolt_mode/dolt_database) -- no secret and no per-machine
+            # value -- so it is safe to track. Members keep it ignored: their
+            # embedded-mode file carries a per-machine project_id UUID.
+            - "!.beads/metadata.json"
         - name: "Python configuration"
           profiles: [workspace-root]
           patterns:
@@ -1144,6 +1153,11 @@ Infra:
         - name: "--- codegen conform: tracked owner inputs ---"
           patterns:
             - "!base.mk"
+        # This final policy re-ignores .beads/* for every profile, so the
+        # workspace-root exception for metadata.json is re-stated in a
+        # workspace-root-scoped section immediately after it (last rule wins).
+        # Members are deliberately NOT covered: their embedded-mode
+        # metadata.json carries a per-machine project_id UUID.
         - name: "FINAL BEADS TRACKING POLICY"
           patterns:
             - "!.beads/"
@@ -1156,6 +1170,10 @@ Infra:
             - ".beads-credential-key"
             - ".worktrees/"
             - "legado/"
+        - name: "Beads ledger identity (workspace-root only; see mro-9wv8)"
+          profiles: [workspace-root]
+          patterns:
+            - "!.beads/metadata.json"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
           patterns:
             - "*.tpl.rej"
