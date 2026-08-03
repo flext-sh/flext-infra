@@ -86,9 +86,13 @@ class FlextInfraExtraPathsManager(
             for relative_path in configured_typings
             if (project_dir / relative_path).is_dir()
         ]
-        # Immutable sequence at the producer so every consumer compares
-        # path lists without list/tuple false churn (sync_doc, modernizer).
-        return tuple(sorted({rules.project_root, source_root, *typings_paths}))
+        # Why: naive sorted({".", "src"}) puts "." first and diverges from the
+        # declared scaffold roots and pyrefly search-path ordering, so conform
+        # apply never reached a fixed point on pyproject.toml. Keep the source
+        # import root first; sort everything else for stable comparisons.
+        paths: t.Infra.StrSet = {rules.project_root, source_root, *typings_paths}
+        paths.discard(source_root)
+        return (source_root, *sorted(paths))
 
     @override
     def pyrefly_search_paths(

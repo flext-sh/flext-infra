@@ -233,7 +233,11 @@ class FlextInfraPyprojectModernizer(
             if path_rules.source_dir in declared_python_dirs
             else ()
         )
-        derived_search_path = discovered_search or declared_roots
+        # Why: partial disk discovery returns ('.',) before src/ exists, which is
+        # truthy and blocked declared_roots ('src', '.'). Prefer declared roots
+        # for search/mypy whenever scaffolding supplied them; pyright extras keep
+        # discovery order (sorted {'.', 'src'}) so the first write matches sync.
+        derived_search_path = declared_roots or discovered_search
         derived_extra_paths = discovered_extra or declared_roots
         resolved_project_kind = project_kind or "core"
         child_result = self._project_is_flext_child(path.parent)
@@ -266,9 +270,18 @@ class FlextInfraPyprojectModernizer(
                 # instead writes an empty list that the NEXT plan immediately
                 # re-derives as ['src', '.'], so apply never reaches its fixed
                 # point. Seeding the derivation makes the first write final.
-                "mypy_path": mypy.get("mypy_path") or derived_search_path,
+                # When scaffolding declares roots, conform_source may already
+                # have written a partial mypy_path ('.' only). Prefer derivation
+                # so the template matches post-write ExtraPaths sync.
+                "mypy_path": (
+                    derived_search_path
+                    if declared_roots
+                    else (mypy.get("mypy_path") or derived_search_path)
+                ),
                 "pyrefly_search_path": (
-                    pyrefly.get(c.Infra.SEARCH_PATH) or derived_search_path
+                    derived_search_path
+                    if declared_roots
+                    else (pyrefly.get(c.Infra.SEARCH_PATH) or derived_search_path)
                 ),
                 "pyrefly_project_includes": (
                     declared_pyrefly_includes
