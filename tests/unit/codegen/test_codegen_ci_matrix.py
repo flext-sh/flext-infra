@@ -192,10 +192,14 @@ class TestCodegenCiMatrix:
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        tm.that(blocking, has=f"      - {branch}")
-        tm.that(blocking, has="      - main")
+        integrations = ("dev", "develop", "0.12.0-dev", "main")
+        tm.that(integrations, has=branch)
+        for integration in integrations:
+            tm.that(blocking, has=f"      - {integration}")
         tm.that(matrix, has="branches: [main]")
-        tm.that(matrix, lacks=f"branches: [{branch}]")
+        tm.that(matrix, lacks="branches: [0.12.0-dev]")
+        tm.that(matrix, lacks="branches: [develop]")
+        tm.that(matrix, lacks="branches: [dev]")
         tm.that(blocking, has="draft == false")
         tm.that(matrix, has="draft == false")
         tm.that(blocking, has="ready_for_review")

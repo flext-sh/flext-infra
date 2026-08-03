@@ -7,13 +7,14 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
-# Direct push to the integration branch or main runs CI.
-# Non-draft PRs targeting main run CI. Draft PRs and other branches do not.
+# Source: operator CI policy — integration push = blocking CI only;
+# main push/PR (non-draft) = blocking CI; draft and other branches = none.
 "on":
   push:
     branches:
-      - {{ repository_branch }}
+      - dev
+      - develop
+      - 0.12.0-dev
       - main
   pull_request:
     branches:
