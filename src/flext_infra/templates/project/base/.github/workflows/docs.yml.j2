@@ -36,7 +36,7 @@ jobs:
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
-{% include "base/.github/workflows/_fragments/private_submodules_init.j2" %}
+{% include "_fragments/private_submodules_init.j2" %}
 
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
@@ -108,7 +108,7 @@ jobs:
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
-{% include "base/.github/workflows/_fragments/private_submodules_init.j2" %}
+{% include "_fragments/private_submodules_init.j2" %}
 
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
