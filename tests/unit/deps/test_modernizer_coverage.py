@@ -77,6 +77,9 @@ class TestsFlextInfraDepsModernizerCoverage:
         tm.that(
             list(_strings(run["omit"])), eq=sorted(set(tool_config.tools.coverage.omit))
         )
+        # Declaration-layer Protocol facades are never runtime coverage targets.
+        tm.that("*/protocols.py" in tool_config.tools.coverage.omit, eq=True)
+        tm.that("*/_protocols/*" in tool_config.tools.coverage.omit, eq=True)
 
     def test_apply_is_idempotent(self) -> None:
         """Verify apply is idempotent."""
