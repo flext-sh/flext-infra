@@ -843,7 +843,11 @@ class FlextInfraWorkspaceDetector(
             return r[c.Infra.WorkspaceMode].fail(
                 member_head.error or f"workspace member HEAD is missing: {member_path}"
             )
-        if gitmodule_url != declared.url or origin.value != declared.url:
+        declared_identity = u.Infra.git_remote_identity(declared.url)
+        if (
+            u.Infra.git_remote_identity(gitmodule_url) != declared_identity
+            or u.Infra.git_remote_identity(origin.value) != declared_identity
+        ):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
             )

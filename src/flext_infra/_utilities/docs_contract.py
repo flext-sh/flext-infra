@@ -19,23 +19,75 @@ class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
 
     @staticmethod
+    def _docs_body_start(lines: list[str]) -> int:
+        """Return the first body line index, skipping YAML frontmatter when present."""
+        if not lines or lines[0].strip() != "---":
+            return 0
+        for index in range(1, len(lines)):
+            if lines[index].strip() == "---":
+                return index + 1
+        return 0
+
+    @staticmethod
+    def _docs_strip_invented_toc_before_frontmatter(content: str) -> str:
+        """Undo H1+TOC wrongly prepended ahead of YAML frontmatter."""
+        if not content.startswith("# Documentation"):
+            return content
+        if c.Infra.TOC_START not in content or c.Infra.TOC_END not in content:
+            return content
+        toc_end = content.find(c.Infra.TOC_END)
+        if toc_end < 0:
+            return content
+        after_toc = content[toc_end + len(c.Infra.TOC_END) :].lstrip("\n")
+        if not after_toc.startswith("---"):
+            return content
+        return after_toc
+
+    @staticmethod
     def docs_update_toc(content: str) -> t.StrIntPair:
         """Normalize the managed table of contents in Markdown content."""
+        original = content
+        content = (
+            FlextInfraUtilitiesDocsContract._docs_strip_invented_toc_before_frontmatter(
+                content
+            )
+        )
         toc = FlextInfraUtilitiesDocsContract.docs_build_toc(content)
         if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
             updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
-            return (updated, int(updated != content))
+            return (updated, int(updated != original))
         lines = content.splitlines()
-        if lines and lines[0].startswith("# "):
-            insert_at = 1
+        body_start = FlextInfraUtilitiesDocsContract._docs_body_start(lines)
+        heading_at = next(
+            (
+                index
+                for index, line in enumerate(lines[body_start:], start=body_start)
+                if line.startswith("# ")
+                or (
+                    line.strip()
+                    and not line.lstrip().startswith("<!--")
+                    and line.strip() != "---"
+                )
+            ),
+            None,
+        )
+        if heading_at is not None and lines[heading_at].startswith("# "):
+            insert_at = heading_at + 1
             while insert_at < len(lines) and (not lines[insert_at].strip()):
                 insert_at += 1
-            lines[1:insert_at] = [""]
-            lines.insert(2, toc)
-            lines.insert(3, "")
+            lines[heading_at + 1 : insert_at] = [""]
+            lines.insert(heading_at + 2, toc)
+            lines.insert(heading_at + 3, "")
             updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
-            return (updated, 1)
-        return (toc + "\n\n" + content, 1)
+            return (updated, int(updated != original))
+        # MD041 wants an H1 for heading-less bodies. Keep YAML frontmatter first.
+        body = "\n".join(lines[body_start:]).lstrip()
+        prefix = "\n".join(lines[:body_start])
+        invented = f"# Documentation\n\n{toc}\n\n{body}"
+        updated = f"{prefix}\n{invented}" if prefix else invented
+        if content.endswith("\n") and not updated.endswith("\n"):
+            updated = f"{updated}\n"
+        return (updated, int(updated != original))
 
     @staticmethod
     def docs_anchorize(text: str) -> str:

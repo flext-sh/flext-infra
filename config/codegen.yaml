@@ -234,7 +234,9 @@ Infra:
         # found to call _require_apply, and the two lists must stay equal.
         # `run` uses accepts_apply (not apply_guarded) so APPLY=Y is legal for
         # custom handlers without taking the serialized mutation lock.
-        mutation_verbs: [gen, fmt, fix, deps, clean, worktree]
+        # `docs` materializes contract artifacts under APPLY=Y (handler picks
+        # --apply/--check), same class as gen/fmt/fix.
+        mutation_verbs: [gen, fmt, fix, deps, clean, worktree, docs]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -245,7 +247,7 @@ Infra:
         # Serialized surface: the read-only validators plus every mutation verb,
         # so no two lanes mutate one checkout concurrently. `run` stays out:
         # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
-        verbs: [check, test, gen, fmt, fix, deps, clean, worktree]
+        verbs: [check, test, gen, fmt, fix, deps, clean, worktree, docs]
       verbs:
         - name: help
           default_what: usage
@@ -301,7 +303,12 @@ Infra:
         - name: docs
           default_what: all
           whats: [all, generate, fix, audit, build, validate]
-          apply_guarded: false
+          # generate/fix materialize artifacts: the generated handler picks
+          # --apply or --check from APPLY, and the docs workflow calls
+          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
+          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
+          apply_guarded: true
+          apply_what: generate
         - name: clean
           default_what: generated
           whats: [generated]
@@ -1111,6 +1118,14 @@ Infra:
             - "**/.coverage.*"
             - "**/coverage.xml"
             - "**/*.cover"
+        - name: "Docs verb report artifacts inside docs trees"
+          patterns:
+            - "**/docs/generate-report.md"
+            - "**/docs/generate-summary.json"
+            - "**/docs/fix-report.md"
+            - "**/docs/fix-summary.json"
+            - "**/docs/audit-report.md"
+            - "**/docs/audit-summary.json"
         - name: "Virtual environments inside allowed directories (should never be committed)"
           patterns:
             - "**/.venv/"

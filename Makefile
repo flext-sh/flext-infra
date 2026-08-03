@@ -48,7 +48,7 @@ BRANCH ?=
 PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 60
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 360
 # mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
 # MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
@@ -131,8 +131,8 @@ _ALLOWED_WHATS_basemk := generate $(shell sed -n 's/^_custom_basemk_\([a-z0-9_-]
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test gen fmt fix deps clean worktree
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix _serialized_deps _serialized_clean _serialized_worktree
+SERIALIZED_VERBS := check test gen fmt fix deps clean worktree docs
+SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix _serialized_deps _serialized_clean _serialized_worktree _serialized_docs
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -181,6 +181,7 @@ _APPLY_WHAT_deps := upgrade
 _APPLY_WHAT_fmt := apply
 _APPLY_WHAT_fix := apply
 _APPLY_WHAT_run := default
+_APPLY_WHAT_docs := generate
 _APPLY_WHAT_clean := generated
 _APPLY_WHAT_gen := apply
 _APPLY_WHAT_worktree := update
@@ -437,6 +438,13 @@ _serialized_worktree:
 	$(call _dispatch,worktree)
 
 
+docs: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "docs" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+
+_serialized_docs:
+	$(call _dispatch,docs)
+
+
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -496,7 +504,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'docs' "$$(printf '%s' '$(_ALLOWED_WHATS_docs)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'docs' "$$(printf '%s' '$(_ALLOWED_WHATS_docs)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
@@ -649,8 +657,8 @@ _builtin_setup_submodules:
 					need_fetch=0; \
 				fi; \
 			else \
-				# Pin is already present; origin tip may be absent on a shallow CI
-				# clone. Origin lag must not fail verify (setup never destroys).
+				# Pin is already present; origin tip may be absent on a shallow CI \
+				# clone. Origin lag must not fail verify (setup never destroys). \
 				need_fetch=0; \
 			fi; \
 		fi; \

@@ -289,9 +289,17 @@ class FlextInfraPytestRunner(s[int]):
             and self.match is None
             and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
         ):
-            return r[int].fail(
+            pytest_log = report_dir / "pytest.log"
+            log_tail = ""
+            if pytest_log.is_file():
+                lines = pytest_log.read_text(encoding="utf-8", errors="replace").splitlines()
+                log_tail = "\n".join(lines[-40:])
+            detail = (
                 f"coverage report was not generated or is empty: {coverage_file}"
             )
+            if log_tail:
+                detail = f"{detail}\n--- pytest.log (tail) ---\n{log_tail}"
+            return r[int].fail(detail)
         sys.stderr.write(
             f"Reports: {report_dir} (latest: {self.root / self.reports / 'latest.txt'})\n"
         )
