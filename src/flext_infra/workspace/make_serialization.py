@@ -79,7 +79,13 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         selected_what = self.selector_value or (
             verb_spec.apply_what if applying else verb_spec.default_what
         )
-        if selected_what not in verb_spec.whats:
+        # Why (MCP fleet / custom.mk): continuous Makefile _dispatch already
+        # accepts `_custom_<verb>_<what>` before the builtin allowlist. The
+        # serialize-make gate must honor the same contract or custom WHATs
+        # on serialized verbs (test/check/gen/...) fail closed incorrectly.
+        if selected_what not in verb_spec.whats and not self._custom_what_defined(
+            selected_what
+        ):
             allowed = ", ".join(verb_spec.whats)
             return r[t.StrMapping].fail(
                 f"unsupported {self.verb} {make_config.selector}={selected_what} "
@@ -89,6 +95,18 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             make_config.selector: selected_what,
             make_config.apply_variable: self.apply_token,
         })
+
+    def _custom_what_defined(self, selected_what: str) -> bool:
+        """Return True when custom.mk defines `_custom_<verb>_<what>`."""
+        custom_mk = self.makefile.parent / "custom.mk"
+        if not custom_mk.is_file():
+            return False
+        target = f"_custom_{self.verb}_{selected_what}:"
+        prefixes = (target, f"_custom_{self.verb}_{selected_what} :")
+        for line in custom_mk.read_text(encoding="utf-8").splitlines():
+            if line.strip().startswith(prefixes):
+                return True
+        return False
 
     @classmethod
     def _process_failure(
