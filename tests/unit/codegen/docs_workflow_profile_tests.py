@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from flext_infra import config
+from flext_infra import config, m
 from flext_tests import tm
 
 _DOCS_DESTINATION = ".github/workflows/docs.yml"
 _CI_DESTINATION = ".github/workflows/ci.yml"
 
 
-def _artifact(destination: str) -> object:
+def _artifact(destination: str) -> m.Infra.TemplateEntrySpec:
     """Return the declared render artifact for one destination."""
     for entry in config.Infra.codegen.templates.entries:
         if entry.destination == destination:

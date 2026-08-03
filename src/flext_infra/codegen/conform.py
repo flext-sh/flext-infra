@@ -2164,6 +2164,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
 
+    @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
         """Resolve the principal checkout owning the workspace ledger."""
         probe = u.Cli.capture(
