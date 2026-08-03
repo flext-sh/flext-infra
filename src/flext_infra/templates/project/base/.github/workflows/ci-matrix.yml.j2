@@ -6,16 +6,18 @@
 # Multi-environment CI base: proves the project bootstrap and canonical Make
 # verbs work identically across distros, macOS, and Windows. The CI invokes
 # the project's own Make surface; it never reimplements bootstrap.
+# Runs only on main (direct push or non-draft PR targeting main).
 ---
 name: ci-matrix
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
+# Source: main promotion only (integration branch uses blocking ci.yml alone)
 "on":
   push:
-    branches: [{{ repository_branch }}]
+    branches: [main]
   pull_request:
-    branches: [{{ repository_branch }}]
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch: {}
 # End SECTION: triggers
 
@@ -39,6 +41,7 @@ jobs:
     # Clean-machine proof per distro: build the distro image (which runs the
     # full project bootstrap at image-build time), then smoke the verb surface
     # inside the built container.
+    if: {% raw %}${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}{% endraw %}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -47,11 +50,11 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
         run: >-
           docker build
-          -f ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
+          -f tests/fixtures/ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
@@ -61,23 +64,24 @@ jobs:
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
-  # Source: template + config:github_actions.checkout/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   macos:
+    if: {% raw %}${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}{% endraw %}
     runs-on: macos-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        with:
+          submodules: {{ checkout_submodules }}
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
-          submodules: recursive
+          python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
           enable-cache: true
-      - name: Install declared toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
       - name: Bootstrap
         run: make setup
       - name: Verb surface
@@ -85,23 +89,24 @@ jobs:
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
-  # Source: template + config:github_actions.checkout/mise/setup-uv
+  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   windows:
+    if: {% raw %}${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}{% endraw %}
     runs-on: windows-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        with:
+          submodules: {{ checkout_submodules }}
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
-          submodules: recursive
+          python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
           enable-cache: true
-      - name: Install declared toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
       - name: Bootstrap
         shell: bash
         run: make setup

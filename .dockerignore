@@ -10,4 +10,4 @@
 !.default-python-packages
 !config/
 !scripts/dispatch.py
-!ci/docker/
+!tests/fixtures/ci/docker/
