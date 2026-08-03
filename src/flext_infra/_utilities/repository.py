@@ -64,8 +64,10 @@ class FlextInfraUtilitiesRepository:
     ) -> str:
         """Return the workspace overlay branch, else the provider catalog branch."""
         if workspace.integration is not None:
-            return workspace.integration.branch
-        return provider.branch
+            integration_branch: str = workspace.integration.branch
+            return integration_branch
+        provider_branch: str = provider.branch
+        return provider_branch
 
     @staticmethod
     def gitmodule_branch_is_governed(

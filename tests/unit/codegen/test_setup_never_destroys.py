@@ -81,7 +81,6 @@ def test_submodule_setup_skips_fetch_when_cached_origin_is_valid() -> None:
     assert 'if [ "$$need_fetch" -eq 1 ]' in content
 
 
-
 def test_submodule_setup_does_not_require_pin_on_origin() -> None:
     """Verify uses HEAD contains gitlink; origin lagging the pin is not a hard fail."""
     content = _SUBMODULES.read_text(encoding="utf-8")

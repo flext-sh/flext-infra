@@ -353,7 +353,7 @@ class TestsCodegenSetupSubmodules:
         self._git(checkout, "add", "ahead.txt")
         self._git(checkout, "commit", "-q", "-m", "ahead of origin")
         # Advance the superproject gitlink to the local tip without pushing origin.
-        self._git(project, "add", "vendor/source")
+        self._git(project, "add", "-f", "vendor/source")
         self._git(project, "commit", "-q", "-m", "pin ahead of origin")
         dirty = checkout / "dirty.txt"
         dirty.write_text("preserve me", encoding="utf-8")
@@ -364,7 +364,6 @@ class TestsCodegenSetupSubmodules:
         tm.that(result.exit_code, eq=0)
         tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
-
 
 
 __all__: tuple[str, ...] = ()

@@ -1237,7 +1237,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
-                    repository=repository, branch=c.Infra.FOLLOW_SUPERPROJECT_BRANCH
+                    repository=repository,
+                    branch=u.Infra.resolve_integration_branch(workspace, provider.value),
                 )
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))

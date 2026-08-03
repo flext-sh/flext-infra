@@ -10,8 +10,9 @@
 #       gitlink. A present checkout is never destroyed: git checkout and git reset
 #       are forbidden. Detached HEAD is attached via branch + symbolic-ref so dirty
 #       work is carried. Pin validity is HEAD contains gitlink — origin may lag the
-#       pin without failing verify. branch = . follows the superproject named branch
-#       (worktree propagation). Fetch skips when local already contains pin and origin tip.
+#       pin without failing verify. Declared branch is the named integration line;
+#       legacy branch=. still resolves to the superproject named branch if present.
+#       Fetch skips when local already contains pin and origin tip.
 # Free: no
 # End SECTION: submodule setup
 {{ target }}:

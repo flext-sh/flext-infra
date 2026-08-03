@@ -84,15 +84,19 @@ def test_gitmodule_branch_dot_is_governed() -> None:
     )
 
 
-def test_managed_gitlinks_follow_superproject_branch() -> None:
-    """Managed gitlinks always follow the superproject named branch."""
-    tm.that(c.Infra.FOLLOW_SUPERPROJECT_BRANCH, eq=".")
-    tm.that(
-        u.Infra.gitmodule_branch_is_governed(
-            ".", provider_branch="0.12.0-dev", integration_branch="0.12.0-dev"
-        ),
-        eq=True,
+def test_managed_gitlinks_pin_resolved_integration_branch() -> None:
+    """Managed gitlinks always pin the resolved integration/provider branch."""
+    provider = _provider(branch="0.12.0-dev")
+    overlaid = _workspace(
+        integration=m.Infra.WorkspaceIntegrationSpec(
+            provider="flext-sh",
+            branch="hotfix/lane",
+        )
     )
+    absent = _workspace(integration=None)
+
+    tm.that(u.Infra.resolve_integration_branch(overlaid, provider), eq="hotfix/lane")
+    tm.that(u.Infra.resolve_integration_branch(absent, provider), eq="0.12.0-dev")
 
 
 __all__: tuple[str, ...] = ()
