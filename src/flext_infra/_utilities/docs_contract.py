@@ -26,13 +26,22 @@ class FlextInfraUtilitiesDocsContract:
             updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
             return (updated, int(updated != content))
         lines = content.splitlines()
-        if lines and lines[0].startswith("# "):
-            insert_at = 1
+        heading_at = next(
+            (
+                index
+                for index, line in enumerate(lines)
+                if line.startswith("# ")
+                or (line.strip() and not line.lstrip().startswith("<!--"))
+            ),
+            None,
+        )
+        if heading_at is not None and lines[heading_at].startswith("# "):
+            insert_at = heading_at + 1
             while insert_at < len(lines) and (not lines[insert_at].strip()):
                 insert_at += 1
-            lines[1:insert_at] = [""]
-            lines.insert(2, toc)
-            lines.insert(3, "")
+            lines[heading_at + 1 : insert_at] = [""]
+            lines.insert(heading_at + 2, toc)
+            lines.insert(heading_at + 3, "")
             updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
             return (updated, 1)
         return (toc + "\n\n" + content, 1)
