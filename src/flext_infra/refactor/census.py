@@ -128,7 +128,7 @@ class FlextInfraRefactorCensus(
         Workspace-wide scans (zero or many projects) keep the canonical workspace
         root so cross-project rules such as duplicate detection remain accurate.
         """
-        names = self.project_names
+        names: t.StrSequence | None = self.project_names
         if names is None or len(names) != 1:
             return None
         project_name: str = names[0]
@@ -162,7 +162,8 @@ class FlextInfraRefactorCensus(
 
             report = collect(applied)
             impact_map_report = report
-            if self.apply_changes and not self.effective_dry_run:
+            effective_dry_run: bool = self.effective_dry_run
+            if self.apply_changes and not effective_dry_run:
                 applied = self._apply_supported_fixes(rope, report)
                 if applied:
                     rope.reload()

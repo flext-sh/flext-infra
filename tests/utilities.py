@@ -1374,9 +1374,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             """
             profile = TestsFlextInfraUtilities.Tests.repository_profile(root)
+            gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
+                config.Infra.codegen.gitignore_sections
+            )
             return tuple(
                 pattern
-                for section in config.Infra.codegen.gitignore_sections
+                for section in gitignore_sections
                 if not section.profiles or profile in section.profiles
                 for pattern in section.patterns
             )

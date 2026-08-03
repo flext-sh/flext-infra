@@ -293,7 +293,8 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
             ),
         )
         analysis = analyzer.build_analysis()
-        if not analysis.has_violations:
+        has_violations: bool = analysis.has_violations
+        if not has_violations:
             return (source, list[str]())
         transformer = FlextInfraTransformerTier0ImportFixer.Transformer(
             analysis=analysis,

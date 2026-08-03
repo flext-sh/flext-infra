@@ -678,7 +678,7 @@ class TestCodegenConform:
 
     def test_custom_make_rejects_unterminated_phony_continuation(self) -> None:
         """Fail closed when a multiline private-handler declaration is truncated."""
-        policy = config.Infra.codegen.make.custom_handler_policies[
+        policy: m.Infra.CustomHandlerPolicy = config.Infra.codegen.make.custom_handler_policies[
             c.Infra.MakeProfile.STANDALONE
         ]
 
@@ -958,6 +958,26 @@ class TestScriptDispatchMakefile:
         broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
         tm.that(broken, eq=[])
 
+    def test_dispatch_routes_custom_what_before_allowlist(
+        self, tmp_path: Path
+    ) -> None:
+        """Custom ``_custom_<verb>_<what>`` handlers bypass the builtin allowlist.
+
+        ai-hub and other projects extend ``run`` / ``check`` via custom.mk. The
+        continuous Makefile must discover those handlers and dispatch them
+        instead of rejecting unknown WHATs as ``allowed:default``.
+        """
+        rendered = self._render_root_makefile(
+            tmp_path, extra_verbs=(), script_dispatch=None
+        )
+        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
+        tm.that("_custom_$(1)_$$what" in body, eq=True)
+        tm.that("custom_rc" in body, eq=True)
+        tm.that('$(SELF_MAKE) "$$custom"' in body, eq=True)
+        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
+        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
+        tm.that(broken, eq=[])
+
     def test_repo_without_script_dispatch_omits_script_routing(
         self, tmp_path: Path
     ) -> None:
@@ -1018,7 +1038,10 @@ class TestScriptDispatchMakefile:
         # The regeneration contract published on every projection speaks gen.
         tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
-        for policy in config.Infra.codegen.make.custom_handler_policies.values():
+        handler_policies: dict[str, m.Infra.CustomHandlerPolicy] = dict(
+            config.Infra.codegen.make.custom_handler_policies
+        )
+        for policy in handler_policies.values():
             tm.that("|gen|" in policy.target_pattern, eq=True)
             tm.that("|codegen|" in policy.target_pattern, eq=False)
 
