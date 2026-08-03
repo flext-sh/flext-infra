@@ -306,6 +306,7 @@ class TestCodegenCiMatrix:
             "!Makefile",
             "!*.mk",
             "!pyproject.toml",
+            "!README.md",
             "!uv.lock",
             "!.mise.toml",
             "!.python-version",

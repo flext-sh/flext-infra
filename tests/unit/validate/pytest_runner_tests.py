@@ -240,6 +240,51 @@ class TestsFlextInfraPytestRunner:
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="coverage report was not generated or is empty")
 
+    def test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """pytest-cov under xdist must not hide fail-under behind a zero exit."""
+        runner = self._runner(tmp_path)
+
+        def fake_run_to_file(
+            cmd: t.StrSequence,
+            output_file: t.Cli.TextPath,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            live: bool = False,
+            deadline: p.Cli.ProcessDeadline | None = None,
+        ) -> p.Result[int]:
+            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
+            log_path = Path(output_file)
+            report_dir = log_path.parent
+            log_path.write_text(
+                "ERROR: Coverage failure: total of 43.04 is less than fail-under=45.00\n",
+                encoding="utf-8",
+            )
+            (report_dir / "junit.xml").write_text(
+                (
+                    '<?xml version="1.0"?>'
+                    '<testsuites><testsuite tests="1" failures="0" errors="0" '
+                    'skipped="0" time="0.01"><testcase classname="Tests" '
+                    'name="test_ok" time="0.01"/></testsuite></testsuites>'
+                ),
+                encoding="utf-8",
+            )
+            (report_dir / "coverage.xml").write_text("<coverage/>", encoding="utf-8")
+            _dump_real_profile(report_dir / "pytest.pstats")
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+
+        result = runner.execute()
+
+        tm.that(result.failure, eq=True)
+        tm.that(result.error or "", has="coverage fail-under reported while pytest exit was 0")
+
     def test_focused_run_records_coverage_as_not_generated(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
