@@ -344,7 +344,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # issue IDs) -- it must never be workspace.ledger_id,
                     # which is the separate Dolt-safe database identifier and
                     # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
-                    canonical_prefix=target.canonical_project_name,
+                    # Why (mro-6fca): when the tracker namespace genuinely
+                    # diverges from the project name, the workspace declares it
+                    # explicitly via ledger_prefix; absent that, the canonical
+                    # project name still wins and the contract above holds.
+                    # which is the separate Dolt-safe database identifier and
+                    # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
+                    canonical_prefix=(
+                        workspace.ledger_prefix or target.canonical_project_name
+                    ),
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
@@ -1331,7 +1339,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            issue_prefix = target.canonical_project_name
+            issue_prefix = workspace.ledger_prefix or target.canonical_project_name
             database = workspace.ledger_id or issue_prefix
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(

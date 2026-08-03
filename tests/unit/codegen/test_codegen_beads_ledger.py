@@ -31,6 +31,7 @@ class TestCodegenBeadsLedger:
         root: Path,
         *,
         ledger_id: str | None,
+        ledger_prefix: str | None = None,
         overlay: bool = True,
         attached_marker: bool = False,
     ) -> Path:
@@ -76,6 +77,7 @@ class TestCodegenBeadsLedger:
             name=repository.distribution,
             repository=local_repository,
             ledger_id=ledger_id,
+            ledger_prefix=ledger_prefix,
             repository_policy_overlays=overlays,
         )
         tm.ok(
@@ -157,6 +159,29 @@ class TestCodegenBeadsLedger:
         repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.ledger_id, eq="workspace-ledger")
         tm.that(plan.canonical_prefix, eq=repository.distribution)
+
+    def test_declared_ledger_prefix_overrides_canonical_project_name(
+        self, tmp_path: Path
+    ) -> None:
+        """Allow a workspace to declare an issue prefix that diverges from its name.
+
+        mro-6fca: the flext workspace root tracks its issues under the ``mro-``
+        namespace on the shared Dolt server, not ``flext-``. Deriving the issue
+        prefix solely from ``canonical_project_name`` rebinds bd to a
+        non-existent ledger and loses the live tracker. ``ledger_prefix`` is the
+        typed, explicit override; when it is absent the canonical project name
+        still wins, so the ai-hub-qwoc contract above is unchanged.
+        """
+        principal = self._standalone_workspace(
+            tmp_path / "principal",
+            ledger_id="mro",
+            ledger_prefix="mro",
+        )
+
+        plan = self._beads_plan(principal)
+
+        tm.that(plan.ledger_id, eq="mro")
+        tm.that(plan.canonical_prefix, eq="mro")
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:

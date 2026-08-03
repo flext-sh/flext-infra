@@ -1734,6 +1734,16 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        ledger_prefix: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Beads issue-prefix override for workspaces whose tracker "
+                    "namespace diverges from the canonical project name; None "
+                    "keeps the canonical project name (see mro-6fca)"
+                )
+            ),
+        ] = None
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
             m.Field(description="Root repository Git contract"),
