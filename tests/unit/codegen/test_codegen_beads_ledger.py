@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -30,6 +31,7 @@ class TestCodegenBeadsLedger:
         root: Path,
         *,
         ledger_id: str | None,
+        ledger_prefix: str | None = None,
         overlay: bool = True,
         attached_marker: bool = False,
     ) -> Path:
@@ -75,6 +77,7 @@ class TestCodegenBeadsLedger:
             name=repository.distribution,
             repository=local_repository,
             ledger_id=ledger_id,
+            ledger_prefix=ledger_prefix,
             repository_policy_overlays=overlays,
         )
         tm.ok(
@@ -137,16 +140,48 @@ class TestCodegenBeadsLedger:
         tm.that(plan.ledger_root, eq=principal.resolve())
         tm.that(plan.routes_to_principal_ledger, eq=False)
 
-    def test_manifest_ledger_id_owns_tracker_namespace(self, tmp_path: Path) -> None:
-        """Derive the tracker identity from the declared ledger, never the repo name."""
+    def test_manifest_ledger_id_owns_database_not_issue_prefix(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep the declared ledger database distinct from the issue namespace.
+
+        ai-hub-qwoc (landed in 1b8ac2d2): ``ledger_id`` is the Dolt-safe
+        database identifier while ``canonical_prefix`` is the human-facing
+        tracker namespace verified against the live ledger. Collapsing both
+        silently renamed issue-prefix to the database form.
+        """
         principal = self._standalone_workspace(
             tmp_path / "principal", ledger_id="workspace-ledger"
         )
 
         plan = self._beads_plan(principal)
 
+        repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.ledger_id, eq="workspace-ledger")
-        tm.that(plan.canonical_prefix, eq="workspace-ledger")
+        tm.that(plan.canonical_prefix, eq=repository.distribution)
+
+    def test_declared_ledger_prefix_overrides_canonical_project_name(
+        self, tmp_path: Path
+    ) -> None:
+        """Allow a workspace to declare an issue prefix that diverges from its name.
+
+        mro-6fca: the flext workspace root tracks its issues under the ``mro-``
+        namespace on the shared Dolt server, not ``flext-``. Deriving the issue
+        prefix solely from ``canonical_project_name`` rebinds bd to a
+        non-existent ledger and loses the live tracker. ``ledger_prefix`` is the
+        typed, explicit override; when it is absent the canonical project name
+        still wins, so the ai-hub-qwoc contract above is unchanged.
+        """
+        principal = self._standalone_workspace(
+            tmp_path / "principal",
+            ledger_id="mro",
+            ledger_prefix="mro",
+        )
+
+        plan = self._beads_plan(principal)
+
+        tm.that(plan.ledger_id, eq="mro")
+        tm.that(plan.canonical_prefix, eq="mro")
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
@@ -175,6 +210,20 @@ class TestCodegenBeadsLedger:
         )
         return match.rendered if match is not None else None
 
+    @classmethod
+    def _beads_metadata_render(cls, root: Path) -> str | None:
+        """Return the rendered ledger-resolution marker, if planned."""
+        planned = cls._plan(root)
+        match = next(
+            (
+                file
+                for file in planned.files
+                if file.path.as_posix().endswith(c.Infra.BEADS_METADATA_RELPATH)
+            ),
+            None,
+        )
+        return match.rendered if match is not None else None
+
     @staticmethod
     def _toolchain_server() -> m.Infra.BeadsServerSpec:
         """Read the shared server block from the typed toolchain SSOT."""
@@ -192,7 +241,10 @@ class TestCodegenBeadsLedger:
         if rendered is None:
             pytest.fail("owner plan must render the ledger config")
         server = self._toolchain_server()
-        tm.that(rendered, has='issue-prefix: "fleet-ledger"')
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+        # ai-hub-qwoc: issue-prefix is the tracker namespace derived from the
+        # committed declaration, never the Dolt-safe ledger_id database name.
+        tm.that(rendered, has=f'issue-prefix: "{repository.distribution}"')
         tm.that(rendered, has="database: fleet-ledger")
         tm.that(rendered, has="Owned ledger config")
         tm.that(rendered, has=f"mode: {server.mode}")
@@ -200,7 +252,10 @@ class TestCodegenBeadsLedger:
         tm.that(rendered, has=f"host: {server.host}")
         tm.that(rendered, has=f"port: {server.port}")
         tm.that(rendered, has=f"user: {server.user}")
-        tm.that(rendered, has=f"auto-commit: {server.auto_commit}")
+        # Quoted on purpose: bare `on` is a YAML boolean, not the string "on".
+        # Deriva a expectativa do mesmo SSOT que o template serializa com
+        # `| tojson`, entao o teste segue valido para qualquer valor declarado.
+        tm.that(rendered, has=f"auto-commit: {json.dumps(server.auto_commit)}")
 
     def test_attached_standalone_plan_renders_routing_config(
         self, tmp_path: Path
@@ -218,7 +273,8 @@ class TestCodegenBeadsLedger:
         if rendered is None:
             pytest.fail("attached standalone plan must render the routing config")
         server = self._toolchain_server()
-        tm.that(rendered, has='issue-prefix: "attached-ledger"')
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+        tm.that(rendered, has=f'issue-prefix: "{repository.distribution}"')
         tm.that(rendered, has="database: attached-ledger")
         tm.that(rendered, has="Routing-only client config")
         tm.that(rendered, has=f"mode: {server.mode}")
@@ -235,6 +291,45 @@ class TestCodegenBeadsLedger:
         )
 
         tm.that(self._beads_config_render(root), eq=None)
+        tm.that(self._beads_metadata_render(root), eq=None)
+
+    def test_owner_plan_renders_ledger_resolution_marker(self, tmp_path: Path) -> None:
+        """Bind the owned ledger to its Dolt database through the bd marker.
+
+        mro-9wv8: bd resolves a checkout to its database through
+        ``.beads/metadata.json`` and ``bd init`` never writes it, so a clone
+        carrying only the generated ``config.yaml`` silently fell back to the
+        default ``beads`` database and lost every issue to a throwaway store.
+        """
+        root = self._standalone_workspace(tmp_path / "owner", ledger_id="fleet-ledger")
+
+        rendered = self._beads_metadata_render(root)
+
+        if rendered is None:
+            pytest.fail("owner plan must render the ledger-resolution marker")
+        server = self._toolchain_server()
+        marker = json.loads(rendered)
+        tm.that(marker["dolt_database"], eq="fleet-ledger")
+        tm.that(marker["dolt_mode"], eq=server.mode)
+        tm.that(marker["backend"], eq=server.backend)
+        tm.that(marker["database"], eq=server.backend)
+
+    def test_attached_standalone_plan_renders_ledger_resolution_marker(
+        self, tmp_path: Path
+    ) -> None:
+        """Bind a routing-only standalone to the same shared ledger database."""
+        root = self._standalone_workspace(
+            tmp_path / "attached",
+            ledger_id="attached-ledger",
+            overlay=False,
+            attached_marker=True,
+        )
+
+        rendered = self._beads_metadata_render(root)
+
+        if rendered is None:
+            pytest.fail("attached standalone plan must render the marker")
+        tm.that(json.loads(rendered)["dolt_database"], eq="attached-ledger")
 
     def test_tool_spec_rejects_malformed_checksum(self) -> None:
         """Reject a checksum that is not a SHA-256 hex digest."""
@@ -249,8 +344,7 @@ class TestCodegenBeadsLedger:
     def test_server_block_loads_from_typed_ssot(self) -> None:
         """Load the shared server block with typed fields from the toolchain SSOT."""
         server = self._toolchain_server()
-        tm.that(isinstance(server.port, int) and server.port > 0, eq=True)
-        tm.that(isinstance(server.shared_server, bool), eq=True)
+        tm.that(server.port > 0, eq=True)
         tm.that(bool(server.host), eq=True)
         tm.that(server.auto_commit in {"off", "on", "batch"}, eq=True)
 

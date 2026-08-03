@@ -16,6 +16,16 @@ from tests import u
 class TestsRootArtifactOwnership:
     """Prove codegen config is the sole root-artifact ownership catalog."""
 
+    def test_envrc_template_covers_every_repository_profile(self) -> None:
+        """Every generated repository owns the same direnv activation contract."""
+        entry = next(
+            item
+            for item in config.Infra.codegen.templates.entries
+            if item.destination == c.Infra.ENVRC_FILENAME
+        )
+
+        tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
+
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
         configured = config.Infra.codegen.managed_files
         paths = tuple(item.path.as_posix() for item in configured)

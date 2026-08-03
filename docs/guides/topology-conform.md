@@ -13,6 +13,10 @@ implementations directly.
 - An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
   metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
   CI surface, and project runtime.
+- Generated `.envrc` files derive `PROJECT_ROOT` from the nearest
+  `pyproject.toml` through direnv's documented `find_up` stdlib function. They
+  do not depend on undocumented `DIRENV_*` variables, so strict evaluation is
+  valid both at a repository root and under `direnv exec` from a subdirectory.
 - External and fork Git links are observed from live Git metadata. Conform
   preserves their `.gitmodules` blocks but never initializes, updates, checks
   out, lints, type-checks, provisions, or otherwise manages them.
@@ -58,3 +62,14 @@ repositories enable it only through a typed repository-local overlay. The
 generated `.mise.toml` pins the official Beads CLI version, and conform verifies
 that `mise exec -- bd version` equals that pin before inspecting or initializing
 the tracker.
+
+
+## MCP / CRG identity (out of scope for conform)
+
+flext-infra conform owns Beads ledger projections only: `ledger_id` from
+`config/workspace.yaml`, `.beads/config.yaml`, and `.beads/metadata.json`, plus
+worktree checkouts that `routes_to_principal_ledger`. It does **not** own MCP
+gateway routing, CRG graph paths, memory `project_id` stores, or activation
+inventory. Those stay in ai-hub (`docs/worktrees.md` three-axis identity).
+Empty `.mcp.json` at a flext root is not a conform defect when Cursor uses the
+ai-hub gateway.

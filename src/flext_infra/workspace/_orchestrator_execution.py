@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -58,6 +58,15 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             )
         cmd_output: p.Cli.CommandOutput = output_result.value
         return (cmd_output, cmd_output.exit_code == 0)
+
+    @staticmethod
+    def _exit_classification(exit_code: int) -> str:
+        """Name the process outcome behind a non-zero exit status."""
+        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
+            return " timeout"
+        if exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
+            return f" signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
+        return ""
 
     @staticmethod
     def _collect_failures(
@@ -189,9 +198,25 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             self._failure_summary(verb, failures)
             return r.fail(
                 f"orchestration completed with failures: {failed} "
-                f"(first failure {failed_project} exit code {exit_code})"
+                f"(first failure {failed_project} exit={exit_code}"
+                f"{self._exit_classification(exit_code)})"
             )
         return r.ok(results)
+
+    @staticmethod
+    def _project_make_target(project: str, verb: str) -> str:
+        """Name the Make target that runs one project's verb exactly once.
+
+        mro-wkii.17.43: the workspace root reaches this dispatcher while it
+        already owns the serialize-make lock, so re-entering its public verb
+        would block on a lock the parent never releases. The root runs the
+        post-lock target instead; every other project takes the public verb.
+        """
+        if project != c.Infra.ROOT_PROJECT_SELECTOR:
+            return verb
+        if verb not in config.Infra.codegen.make.serialization.verbs:
+            return verb
+        return f"_serialized_{verb}"
 
     def _run_project(
         self, project: str, verb: str, _index: int, *, make_args: t.StrSequence
@@ -203,7 +228,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         _ = u.Cli.ensure_dir(log_path.parent)
         started = time.monotonic()
         proc_result = u.Cli.run_to_file(
-            [c.Infra.MAKE, "-C", project, verb, *make_args],
+            [c.Infra.MAKE, "-C", project, self._project_make_target(project, verb)]
+            + list(make_args),
             log_path,
             env=self._project_child_env(),
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,

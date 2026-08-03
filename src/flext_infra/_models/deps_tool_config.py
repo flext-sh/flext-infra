@@ -5,9 +5,8 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from pydantic import model_validator
 
-from flext_cli import m
+from flext_cli import m, u
 from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (
     FlextInfraModelsDepsToolConfigLinters,
@@ -216,7 +215,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
 
-        @model_validator(mode="after")
+        @u.model_validator(mode="after")
         def _validate_execution_limits(self) -> Self:
             """Keep item and termination budgets inside the hard invocation cap."""
             if self.case_timeout_seconds >= self.run_timeout_seconds:

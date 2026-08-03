@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -15,6 +16,21 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsMake:
     """Make-related constants for Makefile generation and CLI routing."""
+
+    # Why: conform Makefile policy classifies declarations via these patterns;
+    # they belong on c.Infra, not as leaf module re.compile copies.
+    MAKE_ASSIGNMENT_RE: Final[t.RegexPattern] = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?="
+    )
+    "GNU Make variable assignment at column 0 (``=``, ``:=``, ``::=``, ``?=``, ``+=``)."
+    MAKE_DIRECTIVE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:export|unexport|override|include|-include|sinclude|vpath)\b"
+    )
+    "GNU Make directives that scope or include a declaration rather than define a target."
+    MAKE_CONDITIONAL_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)"
+    )
+    "GNU Make conditional control flow; structural, never a target declaration."
 
     VERB_CHECK: Final[str] = "check"
     VERB_VALIDATE: Final[str] = "validate"
@@ -37,6 +53,12 @@ class FlextInfraConstantsMake:
     CLI_GROUP_VALIDATE: Final[str] = "validate"
     CLI_ROUTE_MAINTENANCE: Final[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: Final[str] = "workspace"
+    CLI_GROUPS_TRANSLATING_WHAT: Final[frozenset[str]] = frozenset({
+        CLI_GROUP_CHECK,
+        CLI_GROUP_VALIDATE,
+        CLI_GROUP_CODEGEN,
+    })
+    "Groups whose --what maps onto a selector instead of a subcommand option."
     MYPY_MEMORY_LIMIT_MB_ENV: Final[str] = "MYPY_MEMORY_LIMIT_MB"
     MYPY_MEMORY_LIMIT_MB_DEFAULT: Final[int] = 6144
     MYPY_TIMEOUT_SECONDS_ENV: Final[str] = "MYPY_TIMEOUT_SECONDS"
@@ -60,7 +82,6 @@ class FlextInfraConstantsMake:
     )
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -91,6 +112,7 @@ class FlextInfraConstantsMake:
         "clean",
         "docs",
         "fmt",
+        "fix",
         "scan",
         "test",
         "val",

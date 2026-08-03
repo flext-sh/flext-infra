@@ -69,6 +69,27 @@ Infra:
     checkout_submodules_overrides:
       cosmos-docgen: recursive
 
+    # Per-distribution private workspace-member auth for CI. The default
+    # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
+    # read-only deploy-key secrets that the generated workflow materializes
+    # before `make setup` (which otherwise fails on HTTPS submodule clone).
+    ci_private_submodules:
+      cosmos-main:
+        paths:
+          - apps/cosmos-charts
+          - apps/cosmos-gitops
+        deploy_keys:
+          - secret: CHARTS_DEPLOY_KEY
+            host_alias: github-charts
+            submodule: cosmos-charts
+            path: apps/cosmos-charts
+            ssh_url: git@github-charts:datacosmos-br/cosmos-charts.git
+          - secret: GITOPS_DEPLOY_KEY
+            host_alias: github.com
+            submodule: cosmos-gitops
+            path: apps/cosmos-gitops
+            ssh_url: git@github.com:datacosmos-br/cosmos-gitops.git
+
     github_actions:
       checkout:
         repository: actions/checkout
@@ -84,8 +105,8 @@ Infra:
         sha: c771a70e6277c0a99b617c7a806ffedaca235ff9
       mise:
         repository: jdx/mise-action
-        version: v4.1.0
-        sha: dba19683ed58901619b14f395a24841710cb4925
+        version: v4.2.3
+        sha: 9e7f7633ff6f6d6048a9418a68d48f288f50eb14
       kind:
         repository: helm/kind-action
         version: v1.14.0
@@ -108,14 +129,38 @@ Infra:
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
     uv_exclude_dependencies:
-      # Standalone flext-infra installs flext-tests from its dev group, while
-      # flext-tests also declares flext-infra for its own tooling. Scope the
-      # official uv exclusion to that transitive self-edge only; every other
-      # flext-tests dependency remains part of bootstrap and release validation.
+      # Standalone CI installs the project editable while sibling flext packages
+      # declare the same package via git+https@integration. uv rejects that as
+      # conflicting URLs. Scope official exclude-dependencies to the reverse
+      # edges only; every other transitive dependency stays in resolution.
       - project: flext-infra
         package:
           name: flext-tests
         dependencies: [flext-infra]
+      - project: flext-core
+        package:
+          name: flext-infra
+        dependencies: [flext-core]
+      - project: flext-core
+        package:
+          name: flext-tests
+        dependencies: [flext-core]
+      - project: flext-core
+        package:
+          name: flext-cli
+        dependencies: [flext-core]
+      - project: flext-cli
+        package:
+          name: flext-infra
+        dependencies: [flext-cli]
+      - project: flext-cli
+        package:
+          name: flext-core
+        dependencies: [flext-cli]
+      - project: flext-tests
+        package:
+          name: flext-infra
+        dependencies: [flext-tests]
 
     providers:
       - name: flext-sh

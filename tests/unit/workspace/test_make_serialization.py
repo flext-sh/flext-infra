@@ -17,10 +17,12 @@ from flext_infra.workspace.make_serialization import FlextInfraMakeSerialization
 from flext_tests import tm
 from tests import u as test_u
 
+# Derived from the handler SSOT: a serialized mutation runs the verb's
+# apply selector, then re-checks itself with the read-only default.
 _MUTATION_CASES = tuple(
-    (verb, mutation_what, fixed_point_what)
-    for verb, fixed_points in config.Infra.codegen.make.serialization.mutation_fixed_points.items()
-    for mutation_what, fixed_point_what in fixed_points.items()
+    (verb.name, verb.apply_what, verb.default_what)
+    for verb in config.Infra.codegen.make.verbs
+    if verb.name in config.Infra.codegen.make.serialization.mutation_verbs
 )
 
 
@@ -39,17 +41,29 @@ class TestsFlextInfraMakeSerialization:
         tm.that(serialization.timeout_seconds, gt=0)
         tm.that(serialization.verbs, empty=False)
         tm.that(set(serialization.verbs).issubset(declared_verbs), where=bool)
-        for verb, fixed_points in serialization.mutation_fixed_points.items():
-            tm.that(verb in serialization.verbs, where=bool)
-            tm.that(fixed_points, empty=False)
-            for mutation_what, fixed_point_what in fixed_points.items():
-                tm.that(mutation_what, empty=False)
-                tm.that(fixed_point_what, empty=False)
+        # Every serialized mutation verb is itself serialized and apply-guarded,
+        # so its apply and read-only selectors both come from the handler SSOT.
+        for verb_name, mutation_what, fixed_point_what in _MUTATION_CASES:
+            tm.that(verb_name in serialization.verbs, where=bool)
+            tm.that(mutation_what, empty=False)
+            tm.that(fixed_point_what, empty=False)
         for lock_path in lock_paths:
             tm.that(not lock_path.is_absolute(), where=bool)
             tm.that(lock_path in serialization.snapshot_excludes, where=bool)
         for excluded_path in serialization.snapshot_excludes:
             tm.that(not excluded_path.is_absolute(), where=bool)
+
+    def test_mutation_verbs_equal_apply_guarded_public_verbs(self) -> None:
+        """Config SSOT must keep mutation_verbs == apply_guarded verb names.
+
+        A drift here fails closed on every flext_infra import (including ai-hub
+        CLI when PYTHONPATH points at this checkout).
+        """
+        make = config.Infra.codegen.make
+        mutation = set(make.serialization.mutation_verbs)
+        guarded = {verb.name for verb in make.verbs if verb.apply_guarded}
+        tm.that(mutation, eq=guarded)
+        tm.that(mutation.issubset(set(make.serialization.verbs)), where=bool)
 
     def test_single_flight_and_mutation_locks_must_be_distinct(self) -> None:
         """The child transaction lock cannot recursively equal the outer lock."""
@@ -97,10 +111,7 @@ class TestsFlextInfraMakeSerialization:
         """Checks and mutations wait through both mutation phases."""
         make_config = config.Infra.codegen.make
         serialization = make_config.serialization
-        mutation_verb, fixed_points = next(
-            iter(serialization.mutation_fixed_points.items())
-        )
-        mutation_what, fixed_point_what = next(iter(fixed_points.items()))
+        mutation_verb, mutation_what, fixed_point_what = _MUTATION_CASES[0]
         check_verb = next(verb for verb in serialization.verbs if verb != mutation_verb)
         contender_verb = mutation_verb if contender_is_mutation else check_verb
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
@@ -183,12 +194,12 @@ class TestsFlextInfraMakeSerialization:
             "_run_make",
             classmethod(controlled_run_make),
         )
-        monkeypatch.setenv(make_config.selector, mutation_what)
-        monkeypatch.setenv(make_config.apply_variable, make_config.apply_value)
         mutation_service = FlextInfraMakeSerializationService.model_validate({
             "workspace_root": tmp_path,
             "verb": mutation_verb,
             "makefile": makefile,
+            "selector_value": mutation_what,
+            "apply_token": make_config.apply_value,
         })
         contender_service = FlextInfraMakeSerializationService.model_validate({
             "workspace_root": tmp_path,
@@ -258,15 +269,19 @@ class TestsFlextInfraMakeSerialization:
             )
         tm.that(acquisition_failures, eq=[])
 
-    def test_mutation_mapping_requires_a_fixed_point(self) -> None:
-        """Every declared mutating selector has a validation selector."""
+    def test_mutation_verbs_must_be_serialized(self) -> None:
+        """A mutating verb outside the serialized set is rejected."""
         serialization = config.Infra.codegen.make.serialization
         payload = serialization.model_dump(mode="python")
-        empty_fixed_points: dict[str, str] = {}
-        payload["mutation_fixed_points"] = {serialization.verbs[0]: empty_fixed_points}
+        unserialized = next(
+            verb.name
+            for verb in config.Infra.codegen.make.verbs
+            if verb.name not in serialization.verbs
+        )
+        payload["mutation_verbs"] = [*serialization.mutation_verbs, unserialized]
 
         with pytest.raises(
-            ValueError, match="make serialization mutation verbs require fixed points"
+            ValueError, match="make serialization mutation verbs are not serialized"
         ):
             m.Infra.MakeSerializationSpec.model_validate(payload)
 
@@ -720,12 +735,12 @@ class TestsFlextInfraMakeSerialization:
                     str(makefile),
                     "--verb",
                     mutation_verb,
+                    "--selector-value",
+                    mutation_what,
+                    "--apply-token",
+                    make_config.apply_value,
                 ],
                 cwd=tmp_path,
-                env={
-                    make_config.apply_variable: make_config.apply_value,
-                    make_config.selector: mutation_what,
-                },
             )
         )
 
@@ -803,12 +818,15 @@ class TestsFlextInfraMakeSerialization:
             state.mkdir(parents=True, exist_ok=True)
             mutation_future = executor.submit(
                 u.Cli.run_raw,
-                [*command, mutation_verb],
+                [
+                    *command,
+                    mutation_verb,
+                    "--selector-value",
+                    mutation_what,
+                    "--apply-token",
+                    make_config.apply_value,
+                ],
                 tmp_path,
-                env={
-                    make_config.apply_variable: make_config.apply_value,
-                    make_config.selector: mutation_what,
-                },
             )
             try:
                 deadline = time.monotonic() + self._process_start_timeout_seconds
@@ -910,12 +928,12 @@ class TestsFlextInfraMakeSerialization:
             return result
 
         monkeypatch.setattr(u.Infra, "workspace_fingerprint", observed_fingerprint)
-        monkeypatch.setenv(make_config.selector, mutation_what)
-        monkeypatch.setenv(make_config.apply_variable, make_config.apply_value)
         service = FlextInfraMakeSerializationService.model_validate({
             "workspace_root": tmp_path,
             "verb": mutation_verb,
             "makefile": makefile,
+            "selector_value": mutation_what,
+            "apply_token": make_config.apply_value,
         })
 
         incumbent_lock = FileLock(

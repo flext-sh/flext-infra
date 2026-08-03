@@ -38,6 +38,7 @@ class FlextInfraLayoutGate(FlextInfraGate):
         engine = FlextInfraCodegenLayout(workspace_root=ctx.workspace_root)
         report = engine.check_project(project_dir)
         warning = spec.severity == "warning"
+        report_findings: tuple[m.Infra.LayoutFinding, ...] = report.findings
         issues = tuple(
             m.Infra.Issue(
                 file=str(project_dir / finding.path),
@@ -47,11 +48,12 @@ class FlextInfraLayoutGate(FlextInfraGate):
                 message=finding.message,
                 severity="WARNING" if warning or finding.rule == "review" else "ERROR",
             )
-            for finding in report.findings
+            for finding in report_findings
         )
-        blocking = tuple(finding for finding in report.actionable if not warning)
+        actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
+        blocking = tuple(finding for finding in actionable if not warning)
         passed = warning or not blocking
-        errors = [issue.formatted for issue in issues if not passed]
+        errors: list[str] = [issue.formatted for issue in issues if not passed]
         return self._build_gate_result(
             result=m.Infra.GateResult(
                 gate=self.gate_id,

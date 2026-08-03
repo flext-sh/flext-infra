@@ -481,15 +481,6 @@ class FlextInfraUtilitiesPyprojectConform:
         )
 
     @staticmethod
-    def _owns_uv_root_policy(
-        *, project_name: str, workspace: p.Infra.WorkspaceSpec
-    ) -> bool:
-        """Identify autonomous and multi-project roots that own uv root policy."""
-        return not workspace.members or (
-            project_name == workspace.repository.distribution
-        )
-
-    @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
         """Delete legacy packaging owners superseded by canonical conformance.
 
@@ -504,23 +495,25 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
-        """Remove checkout- and interpreter-specific type checker paths."""
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): port the 0.20
-        # canonical path policy so all generated 0.12 projects are portable.
+        """Remove checkout- and interpreter-specific type checker paths.
+
+        Search paths themselves belong to FlextInfraExtraPathsManager, which
+        derives them from the project's declared path dependencies and uv
+        workspace members. Restating a literal here made gen overwrite that
+        derivation with a two-entry list, so sibling sources dropped off the
+        analyzer path and every symbol imported from them degraded to Any.
+        """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return r[bool].ok(True)
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
-            u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
-        mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
-        if mypy is not None:
-            u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
+
         pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
         if pyright is None:
             return r[bool].ok(True)
-        u.Cli.toml_sync_string_list(pyright, c.Infra.EXTRA_PATHS, (".", "src"))
+
         interpreter_keys = ("venv", "venvPath", "pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
@@ -564,9 +557,6 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        owns_uv_root_policy = cls._owns_uv_root_policy(
-            project_name=project_name, workspace=workspace
-        )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             if not workspace_root and link_mode is None and not exclude_dependencies:
@@ -599,13 +589,23 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
+        # Project is a flext-infra routing key only; uv scoped form is
+        # {package={name, version?}, dependencies=[...]} (uv settings docs).
+        # Emit on every owning pyproject so standalone CI clones resolve;
+        # do not gate on owns_uv_root_policy (that stripped member excludes).
         exclude_payload = list(
             t.Cli.JSON_LIST_ADAPTER.validate_python([
-                item.model_dump(mode="json", exclude_none=True)
+                {
+                    key: value
+                    for key, value in item.model_dump(
+                        mode="json", exclude_none=True
+                    ).items()
+                    if key != "project"
+                }
                 for item in exclude_dependencies
             ])
         )
-        if owns_uv_root_policy and exclude_payload:
+        if exclude_payload:
             u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")

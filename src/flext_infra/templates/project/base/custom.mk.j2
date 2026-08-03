@@ -1,4 +1,6 @@
-# Private project handlers for {{ dist }}.
-# NOTE (multi-agent, mro-wkii.17.4 / agent: codex): this versioned extension
-# accepts only `_custom_<verb>_<what>` handlers. Public targets, aliases,
-# toolchain setup, generated-target redefinitions, and help entries are invalid.
+# Private project hooks for {{ dist }}.
+# Two shapes are accepted, matching what base_verbs.mk.j2 dispatches to:
+#   * lifecycle hooks   (pre|post)-<verb>[-<what>]
+#   * custom handlers   _custom_<verb>_<what> (new project-specific WHAT)
+# Public targets, top-level variables, `define` macros, and `include`
+# directives are rejected by `codegen conform`.

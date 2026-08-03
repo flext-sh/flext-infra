@@ -140,9 +140,27 @@ class FlextInfraConstantsSharedInfra:
     MAKEFILE_FILENAME: Final[str] = "Makefile"
     BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
+    # Why: conform .gitmodules merge classifies sections via these patterns;
+    # they belong beside GITMODULES on c.Infra, not as leaf re.compile copies.
+    GITMODULE_SECTION_RE: Final[t.RegexPattern] = re.compile(
+        r'(?m)^\[submodule "[^"]+"\]\s*$'
+    )
+    "``.gitmodules`` submodule section header at line start."
+    GITMODULE_PATH_RE: Final[t.RegexPattern] = re.compile(
+        r"(?m)^[ \t]*path[ \t]*=[ \t]*(.+?)[ \t]*$"
+    )
+    "``.gitmodules`` path assignment value inside a submodule section."
+    FOLLOW_SUPERPROJECT_BRANCH: Final[str] = "."
     GITIGNORE: Final[str] = ".gitignore"
     BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
+    BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
+    "Ledger-resolution marker bd reads to bind a checkout to its Dolt database."
+    BEADS_LEDGER_RELPATHS: Final[frozenset[str]] = frozenset({
+        BEADS_CONFIG_RELPATH,
+        BEADS_METADATA_RELPATH,
+    })
+    "Generated ledger surfaces emitted only for a ledger owner or router."
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"

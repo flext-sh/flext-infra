@@ -140,7 +140,7 @@ class FlextInfraOrchestratorService(
         if not projects:
             return r[bool].fail("no projects discovered")
 
-        workspace_root = self.root
+        workspace_root: Path = self.root
         effective_file = self.file
         if self.file is not None:
             owner_result = self._select_file_owner(
@@ -152,10 +152,6 @@ class FlextInfraOrchestratorService(
                 )
             owner, effective_file = owner_result.value
             projects = (owner,)
-        prepare_result = self._prepare_projects(projects)
-        if prepare_result.failure:
-            return prepare_result
-
         orchestrate_result = self.orchestrate(
             projects=[
                 self._project_target(project, workspace_root=workspace_root)

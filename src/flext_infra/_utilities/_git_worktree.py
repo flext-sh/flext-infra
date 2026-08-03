@@ -409,6 +409,18 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         cls, worktree_root: Path, *, message: str, excluded: t.SequenceOf[Path] = ()
     ) -> p.Result[str]:
         """Commit the complete isolated state as a synthetic checkpoint."""
+        # `make setup` fast-forwards every declared submodule to its branch tip by
+        # contract, so staging gitlinks made the checkpoint differ from HEAD before
+        # the verb even ran: every later verb then reported pending changes for
+        # pointers it never touched, and `gen` aborted before applying anything.
+        submodules_result = cls.git_declared_submodule_paths(worktree_root)
+        if submodules_result.failure:
+            return r[str].fail(
+                submodules_result.error or "failed to resolve declared submodules"
+            )
+        gitlink_exclusions = tuple(
+            f":(exclude){path.as_posix()}" for path in submodules_result.value
+        )
         if excluded:
             tracked_result = cls.git_capture(
                 worktree_root,
@@ -434,13 +446,20 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 # Why: force-add matches git_repository_delta staging (line ~454);
                 # checkpoint captures complete state incl. ignored-but-tracked paths.
                 cls.git_capture(
-                    worktree_root, ("add", "-A", "-f", "--", *tracked_paths)
+                    worktree_root,
+                    ("add", "-A", "-f", "--", *tracked_paths, *gitlink_exclusions),
                 )
                 if tracked_paths
                 else r[str].ok("")
             )
         else:
-            stage_result = cls.git_capture(worktree_root, ("add", "-A"))
+            # `-f` matches the tracked-paths branch above and the operation
+            # delta staging: the checkpoint must capture ignored-but-tracked
+            # paths. Without it git aborts the whole call whenever an ignored
+            # directory sits at the repository root.
+            stage_result = cls.git_capture(
+                worktree_root, ("add", "-A", "-f", "--", *gitlink_exclusions)
+            )
         if stage_result.failure:
             return r[str].fail(stage_result.error or "failed to stage checkpoint")
         tree_result = cls.git_capture(worktree_root, ("write-tree",))
@@ -533,6 +552,10 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 return r[m.Infra.RepositoryDelta].fail(
                     update_result.error or f"failed to stage source gitlink: {path}"
                 )
+        # Gitlinks are owned by `make setup`, which fast-forwards each declared
+        # submodule to its branch tip. Including them here made every verb that
+        # runs after setup report "pending changes" for pointers it never
+        # touched, so `gen` aborted before applying anything.
         names_result = cls.git_capture(
             repository.worktree_root,
             (
@@ -540,6 +563,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 "--cached",
                 "--name-only",
                 "-z",
+                "--ignore-submodules=all",
                 repository.checkpoint_sha,
                 "--",
                 *exclusions,
@@ -551,6 +575,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 "diff",
                 "--cached",
                 "--binary",
+                "--ignore-submodules=all",
                 repository.checkpoint_sha,
                 "--",
                 *exclusions,

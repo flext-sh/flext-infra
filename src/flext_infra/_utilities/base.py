@@ -27,7 +27,20 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
-        """Resolve workspace root from explicit value or current working directory."""
+        """Resolve the root a verb operates on from its invocation point.
+
+        Scope follows where the verb is invoked: run it at the workspace and it
+        works on the whole active workspace; run it inside a project and it
+        works on that project alone. The checkout is therefore the root, and a
+        member is never escalated to its enclosing superproject.
+
+        Escalating inverted that rule. A verb invoked inside one member
+        resolved every relative path against the superproject shared by all
+        sibling worktrees, so `FILE=` selectors rejected files that exist and
+        `.reports/tests/latest.txt` -- the canonical evidence artifact -- was
+        written to the shared root, where each project's run overwrote the
+        previous one's result.
+        """
         target = workspace_root or Path.cwd()
         if target.is_file():
             target = target.parent

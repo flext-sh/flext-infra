@@ -20,7 +20,6 @@ from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.namespace import FlextInfraNamespaceGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
@@ -42,7 +41,6 @@ class FlextInfraGateRegistry:
         """Return the runtime gate classes registered for workspace checks."""
         return (
             FlextInfraRuffLintGate,
-            FlextInfraRuffFormatGate,
             FlextInfraPyreflyGate,
             FlextInfraMypyGate,
             FlextInfraPyrightGate,
@@ -72,23 +70,6 @@ class FlextInfraGateRegistry:
     def default(cls) -> FlextInfraGateRegistry:
         """Return the default registry instance for workspace checks."""
         return cls()
-
-
-class _LoopOutcome(m.ArbitraryTypesModel):
-    """Bundled results from the project-checking loop."""
-
-    results: tuple[m.Infra.ProjectResult, ...] = m.Field(
-        description="Individual project execution results."
-    )
-    failed: int = m.Field(
-        description="Number of projects that failed one or more gates."
-    )
-    skipped: int = m.Field(
-        description="Number of projects that were skipped during execution."
-    )
-    total_elapsed: float = m.Field(
-        description="Total time elapsed in seconds for the entire loop."
-    )
 
 
 class FlextInfraWorkspaceCheckGatesMixin:
@@ -150,7 +131,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ctx: m.Infra.GateContext,
         *,
         fail_fast: bool,
-    ) -> _LoopOutcome:
+    ) -> m.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing."""
         results: t.MutableSequenceOf[m.Infra.ProjectResult] = []
         total = len(projects)
@@ -165,11 +146,12 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 skipped += 1
                 continue
             results.append(project_result)
-            if not project_result.passed:
+            project_passed: bool = project_result.passed
+            if not project_passed:
                 failed += 1
                 if fail_fast:
                     break
-        return _LoopOutcome(
+        return m.Infra.LoopOutcome(
             results=tuple(results),
             failed=failed,
             skipped=skipped,

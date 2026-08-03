@@ -50,7 +50,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
-        tm.that(result, eq=[".", "src"])
+        tm.that(result, eq=("src", "."))
 
     def test_pyrefly_search_paths_include_project_root_for_tests_package(
         self, tmp_path: Path
@@ -70,7 +70,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
-        tm.that(result, eq=[".", "src"])
+        tm.that(result, eq=("src", "."))
 
     def test_pyrefly_search_paths_ignore_non_path_dependencies_at_root(
         self, tmp_path: Path
@@ -97,7 +97,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=[".", "src"])
+        tm.that(result, eq=("src", "."))
 
     def test_pyrefly_search_paths_include_workspace_dependency_src_dirs_at_root(
         self, tmp_path: Path
@@ -135,7 +135,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=[".", "flext-core/src", "flext-tests/src", "src"])
+        tm.that(result, eq=("src", ".", "flext-core/src", "flext-tests/src"))
 
     def test_pyrefly_search_paths_exclude_dependency_venv_dirs_at_root(
         self, tmp_path: Path
@@ -170,4 +170,4 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=[".", "flext-core/src", "src"])
+        tm.that(result, eq=("src", ".", "flext-core/src"))

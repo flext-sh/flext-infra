@@ -236,7 +236,7 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        tm.that(search_path, eq=[".", "src"])
+        tm.that(search_path, eq=["src", "."])
 
     def test_ensure_pyrefly_config_uses_declared_future_source_root(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
@@ -258,7 +258,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(tool, is_=MutableMapping)
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=[".", "src"])
+        tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=["src", "."])
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]),
             eq=["src/**/*.py*", "tests/**/*.py*"],
@@ -339,7 +339,7 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        tm.that(search_path, eq=[".", "flext-core/src", "src"])
+        tm.that(search_path, eq=["src", ".", "flext-core/src"])
 
     def test_ensure_pyrefly_config_phase_apply_errors(
         self, tool_config_document: m.Infra.ToolConfigDocument

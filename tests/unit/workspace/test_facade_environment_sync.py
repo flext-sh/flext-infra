@@ -46,6 +46,9 @@ class TestsFlextInfraFacadeEnvironmentSync:
         envrc = (workspace / ".envrc").read_text(encoding="utf-8")
         mise = (workspace / ".mise.toml").read_text(encoding="utf-8")
         tm.that("strict_env" in envrc, eq=True)
+        tm.that("DIRENV_DIR" in envrc, eq=False)
+        tm.that('PROJECT_ROOT="$(find_up pyproject.toml)"' in envrc, eq=True)
+        tm.that('PROJECT_ROOT="${PROJECT_ROOT%/*}"' in envrc, eq=True)
         tm.that('python = "3.13"' in mise, eq=True)
 
     def test_sync_preserves_custom_envrc_without_force(self, tmp_path: Path) -> None:

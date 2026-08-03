@@ -365,18 +365,17 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.that(spec.repository.role, eq=declared.role)
         tm.that(spec.version, eq=c.Infra.WORKSPACE_MANIFEST_VERSION)
 
-    def test_manifestless_repo_absent_from_catalog_fails_closed(
-        self, tmp_path: Path
-    ) -> None:
-        """Fail closed for a manifest-less project absent from the catalog."""
+    def test_manifestless_repo_derives_its_own_identity(self, tmp_path: Path) -> None:
+        """Derive a manifest-less project from itself, with no catalog lookup."""
         (tmp_path / "pyproject.toml").write_text(
             '[project]\nname = "not-a-declared-flext-project"\nversion = "0.0.0"\n',
             encoding="utf-8",
         )
-        tm.fail(
-            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path),
-            has="absent from the codegen catalog",
-        )
+        u.Tests.initialize_git_repo(tmp_path)
+
+        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+
+        tm.that(spec.name, eq="not-a-declared-flext-project")
 
     def test_manifested_repo_absent_from_catalog_loads_spec(
         self, tmp_path: Path
@@ -459,10 +458,10 @@ class TestsFlextInfraInfraWorkspaceDetector:
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-    def test_toolchain_owner_absent_from_catalog_fails_closed(
+    def test_toolchain_owner_with_branchless_gitlink_fails_closed(
         self, tmp_path: Path
     ) -> None:
-        """Keep catalog validation authoritative once the toolchain is present."""
+        """Fail closed when a declared gitlink names no branch to derive from."""
         project_root = tmp_path / "toolchain-owner"
         self._initialize_repository(project_root)
         (project_root / ".gitmodules").write_text(
@@ -477,12 +476,12 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
         infra_repository = u.Tests.repository_ref(config.Infra.name)
         toolchain_marker = project_root / infra_repository.path / c.Infra.BASE_MK
-        toolchain_marker.parent.mkdir()
+        toolchain_marker.parent.mkdir(parents=True, exist_ok=True)
         toolchain_marker.write_text("# toolchain marker\n", encoding="utf-8")
 
         tm.fail(
             FlextInfraWorkspaceDetector().detect(project_root),
-            has="absent from the codegen catalog",
+            has="submodule.vendored.branch",
         )
 
     def test_conform_target_member_overlay_never_promotes_beads(

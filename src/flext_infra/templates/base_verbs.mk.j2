@@ -1,4 +1,3 @@
-{% from "project/base/base_test_report_recipe.j2" import test_report_recipe -%}
 PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra
 ifeq ($(wildcard $(PROJECT_INFRA_HOME)/src/flext_infra),)
 PROJECT_INFRA_HOME := $(PROJECT_ROOT)
@@ -146,7 +145,7 @@ _check_impl:
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
 			case "$$g" in \
-				lint|format|pyrefly|mypy|pyright|security|markdown|smells) ;; \
+				{{ make.PROJECT_CHECK_GATES_ALLOWED | replace(',', '|') }}) ;; \
 				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: {{ make.PROJECT_CHECK_GATES_ALLOWED }})"; exit 2;; \
 			esac; \
 		done; \
@@ -283,7 +282,7 @@ _fmt_impl:
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
-docs: ## Run docs (WHAT={{ docs.actions | join('|') }})
+docs: ## Run docs (WHAT={{ docs_whats | join('|') }})
 	$(call _run_verb_hooks,pre,docs,$(WHAT))
 	$(call _run_verb_body,docs,_docs_impl)
 	$(call _run_verb_hooks,post,docs,$(WHAT))
@@ -295,17 +294,17 @@ _docs_impl:
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=FAIL REASON=docs-module-missing"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(WHAT)" = "{{ docs.default_action }}" ]; then \
-		actions="{% for action in docs.actions if action != docs.default_action %}{{ action }} {% endfor %}"; \
+	$(Q)if [ "$(WHAT)" = "{{ docs_default_what }}" ]; then \
+		actions="{% for action in docs_whats if action != docs_default_what %}{{ action }} {% endfor %}"; \
 	else \
 		actions="$(WHAT)"; \
 	fi; \
 	for action in $$actions; do \
 		case "$$action" in \
-{%- for action in docs.actions if action != docs.default_action %}
+{%- for action in docs_whats if action != docs_default_what %}
 			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
 {%- endfor %}
-			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs.actions | join('|') }})"; exit 2 ;; \
+			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs_whats | join('|') }})"; exit 2 ;; \
 		esac; \
 		$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }} $$extra || exit $$?; \
 	done
@@ -325,10 +324,7 @@ test: ## Run pytest only
 	$(call _run_verb_hooks,post,test,$(WHAT))
 
 _test_impl:
-{{ test_report_recipe(
-    "$(VENV_PYTHON) -m flext_infra._pytest_entry",
-    "$(Q)",
-) }}
+	$(Q)$(PYTEST_BOUNDED) $(VENV_PYTHON) -m flext_infra._pytest_entry
 
 val: ## Run validate gates (VALIDATE_GATES={{ make.PROJECT_VALIDATE_GATES_ALLOWED }} to select, FIX=1)
 	$(call _run_verb_hooks,pre,val,$(WHAT))

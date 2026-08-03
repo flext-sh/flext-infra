@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
-from pydantic import model_validator
 
 from flext_infra import c, config, m, u
 from flext_infra.base import s
@@ -92,7 +91,7 @@ class FlextInfraPytestRunner(s[int]):
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
         )
 
-    @model_validator(mode="after")
+    @u.model_validator(mode="after")
     def _validate_paths_and_selectors(self) -> Self:
         """Reject selector and output paths that escape the active project."""
         selector = FlextInfraPytestSelectorValidator(
@@ -120,8 +119,11 @@ class FlextInfraPytestRunner(s[int]):
     def _report_directory(self) -> Path:
         """Create one collision-resistant report directory under the project."""
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
-        report_root = self.root / self.reports
-        report_dir = report_root / run_id
+        # Annotated explicitly: `root` is a computed_field on a generic base,
+        # so its Path return is erased to Any through the s[int] alias and the
+        # derived path would silently propagate Any into the return.
+        report_root: Path = self.root / self.reports
+        report_dir: Path = report_root / run_id
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 
@@ -144,6 +146,12 @@ class FlextInfraPytestRunner(s[int]):
                 str(pytest.parallel_workers),
                 "--dist",
                 pytest.parallel_distribution,
+                # pytest-benchmark disables itself under xdist and warns while
+                # configuring. Projects run filterwarnings=["error"], which
+                # turns that warning into an INTERNALERROR before collection.
+                # Asking for the same outcome up front keeps the run truthful:
+                # benchmarks are off because the run is parallel, not silenced.
+                "--benchmark-disable",
             )
         )
         optional_args = (

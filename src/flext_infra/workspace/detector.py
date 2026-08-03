@@ -168,7 +168,9 @@ class FlextInfraWorkspaceDetector(
             # known provider on that provider's integration branch. Anything
             # else is a vendored or third-party dependency the workspace
             # observes but never mutates.
-            if member_provider.branch != member_branch:
+            if not u.Infra.gitmodule_branch_is_governed(
+                member_branch, provider_branch=member_provider.branch
+            ):
                 continue
             member = m.Infra.RepositoryRef(
                 name=path.name,
@@ -280,7 +282,10 @@ class FlextInfraWorkspaceDetector(
                 return r[tuple[Path, ...]].fail(
                     contract.error or f"invalid governed member: {member.name}"
                 )
-            if contract.value != (member.url, provider.branch):
+            declared_url, declared_branch = contract.value
+            if declared_url != member.url or not u.Infra.gitmodule_branch_is_governed(
+                declared_branch, provider_branch=provider.branch
+            ):
                 return r[tuple[Path, ...]].fail(
                     f"governed workspace member contract differs: {member.name}"
                 )
@@ -457,7 +462,10 @@ class FlextInfraWorkspaceDetector(
                 return r[c.Infra.WorkspaceMode].fail(
                     contract.error or f"invalid governed member: {member.name}"
                 )
-            if contract.value != (member.url, provider.branch):
+            declared_url, declared_branch = contract.value
+            if declared_url != member.url or not u.Infra.gitmodule_branch_is_governed(
+                declared_branch, provider_branch=provider.branch
+            ):
                 return r[c.Infra.WorkspaceMode].fail(
                     f"governed workspace member contract differs: {member.name}"
                 )
@@ -851,7 +859,9 @@ class FlextInfraWorkspaceDetector(
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member provider is unknown: {declared.provider}"
             )
-        if gitmodule_branch != provider.branch:
+        if not u.Infra.gitmodule_branch_is_governed(
+            gitmodule_branch, provider_branch=provider.branch
+        ):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
             )

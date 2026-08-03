@@ -7,8 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
-from flext_infra import c
-from flext_infra.fixers.result import FlextInfraFixersResult as fr
+from flext_infra import c, m
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
@@ -20,7 +19,7 @@ class FlextInfraEnforcementEvaluation:
     """Collected rule probes and collection failures for one project."""
 
     violations: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]
-    failures: list[fr.FailedFix]
+    failures: list[m.Infra.FailedFix]
 
 
 class FlextInfraEnforcementCollectionBase:
@@ -54,14 +53,14 @@ class FlextInfraEnforcementCollectionBase:
     @staticmethod
     def collection_failure(
         project_dir: Path, rule: me.EnforcementRuleSpec, message: str
-    ) -> fr.FailedFix:
+    ) -> m.Infra.FailedFix:
         """Build a failed-fix record for collection/routing errors."""
-        return fr.FailedFix(rule_id=rule.id, file_path=str(project_dir), error=message)
+        return m.Infra.FailedFix(rule_id=rule.id, file_path=str(project_dir), error=message)
 
     def _empty_failure(
         self, project_dir: Path, rule: me.EnforcementRuleSpec, message: str
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
+        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Return a typed empty collection plus one structured failure."""
         return [], [self.collection_failure(project_dir, rule, message)]

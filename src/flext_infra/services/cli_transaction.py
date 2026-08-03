@@ -7,6 +7,7 @@ from typing import ClassVar
 
 from flext_cli import cli as cli_facade
 from flext_infra import c, m, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.services.cli_routes import CliRouteService
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -22,7 +23,9 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     @classmethod
     def transaction_route_key(cls, group: str, args: t.StrSequence) -> str | None:
         """Resolve one governed write route from unnormalized CLI arguments."""
-        route_names = {route.name for route in cls.group_commands[group]}
+        # Why: adopts the lane's per-group lazy route resolution (cli_routes.
+        # route_table_for); `group_commands` no longer exists after that cutover.
+        route_names = {route.name for route in cls.route_table_for(group)}
         command_name = next(
             (argument for argument in args if argument in route_names), None
         )
@@ -156,14 +159,61 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
                 token = token.strip()
                 if not token:
                     continue
-                resolved = Path(token).expanduser().resolve()
+                # A bare selector token is a workspace member NAME, not a
+                # cwd-relative path: --projects flext-infra resolved against
+                # the current directory yields <member>/<member> whenever a
+                # verb runs from inside a member, so the transaction scoped
+                # itself to a directory that does not exist.
+                candidate = Path(token).expanduser()
+                resolved = (
+                    candidate.resolve()
+                    if candidate.is_absolute()
+                    else (workspace_root / candidate).resolve()
+                )
                 try:
                     scoped.append(resolved.relative_to(workspace_root))
                 except ValueError:
                     return ()
         if scoped:
-            return tuple(scoped)
+            return cls._dependency_closure_scope(scoped, workspace_root)
         return cls._manifest_member_scope(workspace_root)
+
+    @staticmethod
+    def _dependency_closure_scope(
+        scoped: t.SequenceOf[Path], workspace_root: Path
+    ) -> tuple[Path, ...]:
+        """Expand explicit targets to the declared workspace dependency closure.
+
+        A scoped target is not self-contained: it imports its declared
+        workspace path dependencies, and routes that derive from on-disk
+        topology (extra-paths) read those sibling source roots directly.
+        Isolating the target alone made the transaction contradict itself --
+        the fresh-import probe still imported the target, whose package
+        imports its dependencies, so the probe failed closed; and the search
+        path derivation observed no siblings on disk and collapsed to
+        ['src', '.'], which would then be applied back over the correct value.
+
+        Reuses FlextInfraExtraPathsManager's transitive resolver so the scope
+        is exactly the auto-adjusted dependency set the project declares --
+        never a second, divergent notion of what a project depends on.
+        """
+        manager = FlextInfraExtraPathsManager(workspace_root=workspace_root)
+        workspace_names = tuple(manager.workspace_project_names)
+        if not workspace_names:
+            return tuple(scoped)
+        closure: dict[Path, None] = dict.fromkeys(scoped)
+        for target in scoped:
+            pyproject = workspace_root / target / c.Infra.PYPROJECT_FILENAME
+            if not pyproject.is_file():
+                continue
+            declared = u.Infra.local_dependency_names_from_payload(
+                u.Infra.pyproject_payload(pyproject),
+                workspace_project_names=workspace_names,
+            )
+            for name in manager.resolve_transitive_dependency_names(declared):
+                if (workspace_root / name).is_dir():
+                    closure.setdefault(Path(name), None)
+        return tuple(closure)
 
     def run_worktree_transaction(self, group: str, args: t.StrSequence) -> int | None:
         """Execute a governed mutation through the central worktree transaction."""

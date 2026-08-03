@@ -89,6 +89,19 @@ class TestsFlextInfraPytestTimeoutConfig:
         ):
             type(policy).model_validate(payload)
 
+    def test_process_budget_must_exceed_run_and_termination_windows(self) -> None:
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True)
+        payload["process-timeout-seconds"] = (
+            policy.run_timeout_seconds + policy.termination_grace_seconds
+        )
+
+        with pytest.raises(
+            c.ValidationError,
+            match="pytest process timeout must exceed run and termination budgets",
+        ):
+            type(policy).model_validate(payload)
+
     def test_progress_policy_cannot_hide_item_names(self) -> None:
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True)

@@ -22,6 +22,7 @@ repository:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
       default_what: {{ verb.default_what | tojson }}
+      whats: {{ verb.whats | tojson }}
       apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}
@@ -53,6 +54,17 @@ project:
   year: {{ year }}
 # NOTE (multi-agent, mro-wkii.17 / agent: codex): the typed manifest context is
 # the sole topology owner; every declared member/exclusion round-trips here.
+{%- if workspace_integration %}
+integration:
+  provider: {{ workspace_integration.provider | tojson }}
+  branch: {{ workspace_integration.branch | tojson }}
+{%- if workspace_integration.organization %}
+  organization: {{ workspace_integration.organization | tojson }}
+{%- endif %}
+{%- if workspace_integration.base_url %}
+  base_url: {{ workspace_integration.base_url | tojson }}
+{%- endif %}
+{%- endif %}
 members:
 {% for repository in workspace_repositories %}
   - name: {{ repository.name | tojson }}
@@ -72,6 +84,7 @@ members:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
         default_what: {{ verb.default_what | tojson }}
+        whats: {{ verb.whats | tojson }}
         apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}

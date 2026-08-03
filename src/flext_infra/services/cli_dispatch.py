@@ -6,10 +6,7 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.services.cli_transaction import CliTransactionService
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -66,7 +63,7 @@ class CliDispatchService(CliTransactionService):
 
     def register_group_commands(self, group: str, app: p.Cli.Application) -> None:
         """Register one group's command routes."""
-        self.register_result_routes(app, self.group_commands[group])
+        self.register_result_routes(app, self.route_table_for(group))
 
     @staticmethod
     def split_what(args: t.StrSequence) -> tuple[str | None, list[str]]:
@@ -90,22 +87,34 @@ class CliDispatchService(CliTransactionService):
         return what, remaining
 
     def translate_what(self, group: str, args: t.StrSequence) -> p.Result[list[str]]:
-        """Map ``--what <phase>`` onto the canonical command selector."""
+        """Map ``--what <phase>`` onto the canonical command selector.
+
+        Only the groups below translate ``--what`` into a selector. Every other
+        group forwards it untouched, because its subcommands declare ``--what``
+        as their own parameter; stripping it here left them without the value
+        and failed the call before the subcommand ever ran.
+        """
+        if group not in c.Infra.CLI_GROUPS_TRANSLATING_WHAT:
+            return r[list[str]].ok(list(args))
         what, remaining = self.split_what(args)
         if what is None:
             return r[list[str]].ok(list(args))
         if group == c.Infra.CLI_GROUP_CHECK:
+            # Why: WorkspaceChecker owns the 20-gate check config; deferred
+            # so groups other than `check` never import it (ai-hub-xkux).
+            from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+
             gate_check = FlextInfraWorkspaceChecker.resolve_gates([what])
             if gate_check.failure:
                 return r[list[str]].fail(gate_check.error or f"unknown gate '{what}'")
-            check_routes = {route.name for route in self.group_commands[group]}
+            check_routes = {route.name for route in self.route_table_for(group)}
             has_subcommand = bool(remaining) and remaining[0] in check_routes
             prefix = (
                 list(remaining) if has_subcommand else [c.Infra.VERB_RUN, *remaining]
             )
             return r[list[str]].ok([*prefix, "--gates", what])
         if group == c.Infra.CLI_GROUP_VALIDATE:
-            valid_names = {route.name for route in self.group_commands[group]}
+            valid_names = {route.name for route in self.route_table_for(group)}
             if what not in valid_names:
                 return r[list[str]].fail(f"unknown validator '{what}'")
             return r[list[str]].ok([what, *remaining])
@@ -138,11 +147,20 @@ class CliDispatchService(CliTransactionService):
         if result.success:
             return 0
         if result.error_code == c.Infra.PROCESS_EXIT_ERROR_CODE:
-            process_exit = m.Infra.ProcessExit.model_validate(result.error_data)
+            # Why: `m` is a TYPE_CHECKING-only name at module scope, so binding
+            # it again here made Python treat it as local for the whole function
+            # (NameError before this line). Import the module under its own name.
+            from flext_infra import models as _models
+
+            process_exit = _models.m.Infra.ProcessExit.model_validate(result.error_data)
             exit_code: int = process_exit.exit_code
             return exit_code
         error_message = result.error
-        if error_message:
+        # One emission boundary: framework_exit_result already printed plain
+        # Result-route failures (error_code is None). Coded boundary failures
+        # (validation/operation) never crossed that emitter and still need
+        # exactly one console line — same rule as PROCESS_EXIT above.
+        if error_message and result.error_code is not None:
             self.display_message(error_message, c.Cli.MessageTypes.ERROR)
         return 2 if error_message and u.Cli.cli_usage_error(error_message) else 1
 
