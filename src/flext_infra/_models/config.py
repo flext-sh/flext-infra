@@ -395,15 +395,26 @@ class FlextInfraConfigModels:
         apply_guarded: Annotated[
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
+        accepts_apply: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether APPLY=Y is legal for this verb without placing it "
+                    "in the serialized mutation set. Used by run handlers that "
+                    "sometimes mutate under explicit APPLY but must not take "
+                    "the checkout lock on every invocation."
+                )
+            ),
+        ] = False
         apply_what: Annotated[
             t.NonEmptyStr,
             m.Field(
                 default="all",
                 description=(
-                    "Selector an apply-guarded verb resolves to when APPLY is "
-                    "set and no explicit WHAT is given. Without it, "
-                    "a mutating workflow step could silently retain its "
-                    "read-only default selector"
+                    "Selector an apply-guarded or accepts_apply verb resolves "
+                    "to when APPLY is set and no explicit WHAT is given. "
+                    "Without it, a mutating workflow step could silently "
+                    "retain its read-only default selector"
                 ),
             ),
         ]
@@ -415,8 +426,14 @@ class FlextInfraConfigModels:
                 msg = f"make verb {self.name} handler selectors must be unique"
                 raise ValueError(msg)
             required = {self.default_what}
-            if self.apply_guarded:
+            if self.apply_guarded or self.accepts_apply:
                 required.add(self.apply_what)
+            if self.apply_guarded and self.accepts_apply:
+                msg = (
+                    f"make verb {self.name} cannot set both apply_guarded and "
+                    "accepts_apply"
+                )
+                raise ValueError(msg)
             missing = required - set(self.whats)
             if missing:
                 msg = (
