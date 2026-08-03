@@ -31,13 +31,21 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ]
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
-        """Resolve markdownlint settings file args."""
-        root_config = self._workspace_root / ".markdownlint.json"
-        local_config = project_dir / ".markdownlint.json"
-        if root_config.exists():
-            return ["--config", str(root_config)]
-        if local_config.exists():
-            return ["--config", str(local_config)]
+        """Resolve markdownlint settings file args.
+
+        Member ``make check`` passes the member as ``--workspace``, so walk
+        parents to inherit the workspace-root ``.markdownlint.json``.
+        """
+        seen: set[Path] = set()
+        for base in (self._workspace_root, project_dir):
+            for candidate_dir in (base, *base.parents):
+                config_path = candidate_dir / ".markdownlint.json"
+                resolved = config_path.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                if config_path.is_file():
+                    return ["--config", str(config_path)]
         return []
 
     @override
