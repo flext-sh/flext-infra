@@ -113,6 +113,22 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="group: ${{ github.workflow }}-${{ github.ref }}")
         tm.that(workflow, has="cancel-in-progress: true")
 
+    def test_ci_workflow_stable_blank_line_without_private_submodules(
+        self, tmp_path: Path
+    ) -> None:
+        """Empty private_submodules include must not accumulate blank lines."""
+        root = self._render_project(tmp_path / "member")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
+        tm.that(workflow, has=marker)
+        tm.that(workflow, lacks="fetch-depth: 0\n\n\n      - name: Install mise toolchain")
+        root2 = self._render_project(tmp_path / "member-again")
+        workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        tm.that(workflow2, eq=workflow)
 
     def test_docs_workflow_inits_private_submodules_when_configured(
         self, tmp_path: Path
