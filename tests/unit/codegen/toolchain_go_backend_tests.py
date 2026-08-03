@@ -23,7 +23,7 @@ class TestsToolchainGoBackend:
         if not toolchain.beads.selector.startswith("go:"):
             return
 
-        tm.that(toolchain.go_version, truthy=True)
+        tm.that(toolchain.go_version, empty=False)
 
     def test_go_version_is_an_exact_pin(self) -> None:
         """Every native toolchain floor pins an exact version, Go included."""
@@ -43,7 +43,7 @@ class TestsToolchainGoBackend:
         minor, _, _patch = rest.partition(".")
 
         tm.that(int(major), eq=1)
-        tm.that(int(minor) >= 26, truthy=True)
+        tm.that(int(minor), gte=26)
 
 
 __all__: tuple[str, ...] = ()

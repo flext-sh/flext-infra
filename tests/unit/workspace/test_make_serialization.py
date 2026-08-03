@@ -53,7 +53,7 @@ class TestsFlextInfraMakeSerialization:
         for excluded_path in serialization.snapshot_excludes:
             tm.that(not excluded_path.is_absolute(), where=bool)
 
-        def test_mutation_verbs_equal_apply_guarded_public_verbs(self) -> None:
+    def test_mutation_verbs_equal_apply_guarded_public_verbs(self) -> None:
         """Config SSOT must keep mutation_verbs == apply_guarded verb names.
 
         A drift here fails closed on every flext_infra import (including ai-hub
@@ -65,8 +65,7 @@ class TestsFlextInfraMakeSerialization:
         tm.that(mutation, eq=guarded)
         tm.that(mutation.issubset(set(make.serialization.verbs)), where=bool)
 
-
-def test_single_flight_and_mutation_locks_must_be_distinct(self) -> None:
+    def test_single_flight_and_mutation_locks_must_be_distinct(self) -> None:
         """The child transaction lock cannot recursively equal the outer lock."""
         serialization = config.Infra.codegen.make.serialization
         payload = serialization.model_dump(mode="python")
