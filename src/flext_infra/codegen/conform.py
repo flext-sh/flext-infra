@@ -335,6 +335,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
+            issue_prefix, ledger_database = self.ledger_identity_for_target(
+                workspace, target
+            )
             beads_plans.append(
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
@@ -344,20 +347,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # issue IDs) -- it must never be workspace.ledger_id,
                     # which is the separate Dolt-safe database identifier and
                     # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
-                    # Why (mro-6fca): when the tracker namespace genuinely
-                    # diverges from the project name, the workspace declares it
-                    # explicitly via ledger_prefix; absent that, the canonical
-                    # project name still wins and the contract above holds.
-                    # which is the separate Dolt-safe database identifier and
-                    # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
-                    canonical_prefix=(
-                        workspace.ledger_prefix or target.canonical_project_name
-                    ),
+                    # Why (mro-6fca / mro-z75t): WORKSPACE_MEMBER targets keep
+                    # canonical_project_name; root/standalone manifests still
+                    # honor their own ledger_prefix/id so a flext root
+                    # declaring ledger_prefix=mro does not rewrite every
+                    # submodule .beads/config.yaml onto the root tracker.
+                    canonical_prefix=issue_prefix,
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
                     ledger_root=repository_root,
-                    ledger_id=workspace.ledger_id,
+                    ledger_id=ledger_database,
                 )
             )
             if self.initial_workspace is None:
@@ -1351,8 +1351,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            issue_prefix = workspace.ledger_prefix or target.canonical_project_name
-            database = workspace.ledger_id or issue_prefix
+            issue_prefix, database = self.ledger_identity_for_target(
+                workspace, target
+            )
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=issue_prefix,
@@ -1367,7 +1368,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            database = workspace.ledger_id or target.canonical_project_name
+            _issue_prefix, database = self.ledger_identity_for_target(
+                workspace, target
+            )
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(database=database, server=server)
             )
@@ -2139,6 +2142,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups=groups,
             editable_repositories=editable_repositories,
         )
+
+    @staticmethod
+    def ledger_identity_for_target(
+        workspace: m.Infra.WorkspaceSpec,
+        target: m.Infra.RepositoryConformTarget,
+    ) -> tuple[str, str]:
+        """Return ``(issue_prefix, database)`` for one conform target.
+
+        ``WORKSPACE_MEMBER`` targets keep ``canonical_project_name`` because
+        they are planned under the parent workspace.yaml (mro-z75t). Root and
+        standalone manifests still honor their own ``ledger_prefix`` /
+        ``ledger_id`` overrides (mro-6fca).
+        """
+        # Members are planned under the parent workspace.yaml, so a root
+        # ledger_prefix must not rewrite their issue-prefix/database. A
+        # standalone's workspace.yaml is its own manifest, so ledger_* there
+        # still apply (mro-6fca).
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER:
+            return target.canonical_project_name, target.canonical_project_name
+        issue_prefix = workspace.ledger_prefix or target.canonical_project_name
+        return issue_prefix, workspace.ledger_id or issue_prefix
 
     @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:

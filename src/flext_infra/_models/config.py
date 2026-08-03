@@ -498,7 +498,7 @@ class FlextInfraConfigModels:
             m.Field(description="Whether the step supplies the configured apply token"),
         ] = False
         contexts: Annotated[
-            tuple[Literal["local", "ci", "pre_commit"], ...],
+            tuple[Literal["local", "ci", "pre_commit", "pre_push"], ...],
             m.Field(
                 min_length=1,
                 description="Execution contexts consuming this single workflow row",
