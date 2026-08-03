@@ -49,7 +49,7 @@ jobs:
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
-{% include "base/.github/workflows/_fragments/private_submodules_init.j2" %}
+{% include "_fragments/private_submodules_init.j2" %}
 
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
