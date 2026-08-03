@@ -76,7 +76,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
-          submodules: {{ checkout_submodules }}
+          submodules: {% endraw %}{{ checkout_submodules }}{% raw %}
 
       - name: Verify immutable release source
         shell: bash
@@ -221,7 +221,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
-          submodules: {{ checkout_submodules }}
+          submodules: {% endraw %}{{ checkout_submodules }}{% raw %}
 
       - name: Verify immutable canary source
         id: source
