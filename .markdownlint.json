@@ -1,11 +1,14 @@
 {
   "default": true,
+  "MD001": false,
   "MD013": {
     "line_length": 500,
     "heading_line_length": 200,
     "code_block_line_length": 500,
     "tables": false
   },
+  "MD022": false,
+  "MD023": false,
   "MD024": {
     "siblings_only": true
   },
@@ -22,24 +25,13 @@
   "MD036": false,
   "MD040": false,
   "MD041": false,
+  "MD042": false,
+  "MD046": false,
   "MD050": {
     "style": "consistent"
   },
   "MD051": false,
   "MD057": false,
   "MD060": false,
-  "MD076": false,
-  "MD023": false,
-  "MD046": false,
-  "MD001": false,
-  "MD022": false,
-  "MD026": false,
-  "MD029": false,
-  "MD032": false,
-  "MD034": false,
-  "MD047": false,
-  "MD049": false,
-  "MD055": false,
-  "MD058": false,
-  "MD042": false
+  "MD076": false
 }
