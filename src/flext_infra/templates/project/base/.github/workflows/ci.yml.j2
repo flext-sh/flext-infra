@@ -7,15 +7,19 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
+# Source: operator CI policy — integration push = blocking CI only;
+# main push/PR (non-draft) = blocking CI; draft and other branches = none.
 "on":
-  pull_request:
-    branches:
-      - {{ repository_branch }}
   push:
     branches:
-      - {{ repository_branch }}
-  workflow_dispatch:
+      - dev
+      - develop
+      - 0.12.0-dev
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -29,13 +33,16 @@ jobs:
   # Source: template + config:github_actions.*
   ci:
     name: ci
+    if: {% raw %}${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}{% endraw %}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
       - name: Install mise toolchain
@@ -44,12 +51,8 @@ jobs:
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
 
-      - name: Setup (blocking)
-        run: make setup
-
-      - name: Check (blocking)
-        run: make check
-
-      - name: Test (blocking)
-        run: make test
+{% for step in make.workflow if "ci" in step.contexts %}
+      - name: {{ step.verb }} (blocking)
+        run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
+{% endfor %}
     # End SECTION: ci job
