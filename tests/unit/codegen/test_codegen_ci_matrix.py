@@ -80,6 +80,36 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: make check")
         tm.that(workflow, has="run: make test")
 
+    def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
+        """The generated staged hooks render the configured workflow partitions."""
+        root = self._render_project(tmp_path / "external")
+        hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+        workflow = config.Infra.codegen.make.workflow
+
+        for hook_id, context in (
+            ("flext-pre-commit", "pre_commit"),
+            ("flext-pre-push", "pre_push"),
+        ):
+            commands = " && ".join(
+                f"make {step.verb}"
+                f"{f' {config.Infra.codegen.make.apply_variable}={config.Infra.codegen.make.apply_value}' if step.apply else ''}"
+                for step in workflow
+                if context in step.contexts
+            )
+            tm.that(hooks, has=f"id: {hook_id}")
+            tm.that(hooks, has=f"'{commands}'")
+
+    def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
+        """Generated CI groups competing runs by workflow and ref."""
+        root = self._render_project(tmp_path / "external")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(workflow, has="concurrency:")
+        tm.that(workflow, has="group: ${{ github.workflow }}-${{ github.ref }}")
+        tm.that(workflow, has="cancel-in-progress: true")
+
     def test_ci_uses_typed_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")

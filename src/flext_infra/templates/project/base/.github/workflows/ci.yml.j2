@@ -28,6 +28,11 @@ permissions:
   contents: read
 # End SECTION: permissions
 
+# Why: one active run per workflow and branch prevents obsolete CI from consuming runners.
+concurrency:
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
 jobs:
   # === SECTION: ci job (managed) ===
   # Source: template + config:github_actions.*
@@ -88,6 +93,6 @@ jobs:
 
 {% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
-        run: make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
+        run: make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {% endfor %}
     # End SECTION: ci job

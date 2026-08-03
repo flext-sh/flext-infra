@@ -41,8 +41,13 @@ fail() {
 	exit 1
 }
 
+command -v pre-commit >/dev/null 2>&1 || fail "pre-commit is not installed; install it before provisioning hooks"
 command -v bd >/dev/null 2>&1 || fail "bd is not installed; install Beads before provisioning hooks"
 
+# Why: install both staged workflow entry points before Beads chains its guard.
+_log "Installing pre-commit and pre-push hooks at ${WORKSPACE_ROOT}"
+pre-commit install -t pre-commit -t pre-push >/dev/null \
+	|| fail "pre-commit hook installation failed"
 _log "Installing Beads git hooks (chained) at ${WORKSPACE_ROOT}"
 bd hooks install --chain >/dev/null || fail "bd hooks install --chain failed"
 
@@ -96,5 +101,9 @@ grep -q 'BD_ALLOW_AGENT_COMMIT_TRAILERS' "${hook_path}" \
 	|| fail "guard token missing after injection"
 grep -q 'bd hooks run prepare-commit-msg' "${hook_path}" \
 	|| fail "bd delegation missing; refusing to leave hook without beads integration"
+[ -f "$(git rev-parse --git-path hooks/pre-commit)" ] \
+	|| fail "pre-commit hook missing after provisioning"
+[ -f "$(git rev-parse --git-path hooks/pre-push)" ] \
+	|| fail "pre-push hook missing after provisioning"
 
 echo "install-git-hooks: prepare-commit-msg guarded (BD_ALLOW_AGENT_COMMIT_TRAILERS opt-in)"
