@@ -109,19 +109,32 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
+        ci = config.Infra.codegen.make.ci
 
         for hook_id, context in (
             ("flext-pre-commit", "pre_commit"),
             ("flext-pre-push", "pre_push"),
         ):
             commands = " && ".join(
-                f"make {step.verb}"
-                f"{f' {config.Infra.codegen.make.apply_variable}={config.Infra.codegen.make.apply_value}' if step.apply else ''}"
+                (
+                    f"{ci.variable}={ci.value} make {step.verb}"
+                    if step.verb == "check"
+                    else f"make {step.verb}"
+                )
+                + (
+                    f" {config.Infra.codegen.make.apply_variable}="
+                    f"{config.Infra.codegen.make.apply_value}"
+                    if step.apply
+                    else ""
+                )
                 for step in workflow
                 if context in step.contexts
             )
             tm.that(hooks, has=f"id: {hook_id}")
             tm.that(hooks, has=f"'{commands}'")
+        tm.that(hooks, has=f"{ci.variable}={ci.value} make check")
+        tm.that(hooks, has="make test")
+        tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
     def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
         """Generated CI groups competing runs by workflow and ref."""
