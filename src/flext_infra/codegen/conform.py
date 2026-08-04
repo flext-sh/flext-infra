@@ -2476,10 +2476,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Routing-only projections (attached standalones / worktree routes)
             # may commit config.yaml + metadata.json without owning tracker
             # state. Fail only when additional tracker artifacts appear.
-            routing_only_names = frozenset({
-                "config.yaml",
-                "metadata.json",
-            })
+            routing_only_names = frozenset({"config.yaml", "metadata.json"})
             extra = tuple(
                 path.name
                 for path in beads_dir.iterdir()

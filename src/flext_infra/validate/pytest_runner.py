@@ -204,9 +204,7 @@ class FlextInfraPytestRunner(s[int]):
         # skips in flext-tests remain as a second fail-closed boundary for
         # unmarked tests that still call FlextTestsDocker.
         ci_marker_args = (
-            ("-m", "not docker and not remote")
-            if self._ci_disables_coverage()
-            else ()
+            ("-m", "not docker and not remote") if self._ci_disables_coverage() else ()
         )
         optional_args = (
             *(("-k", self.match) if self.match is not None else ()),
