@@ -298,7 +298,11 @@ WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_P
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
-UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+# A borrowed RUNTIME_VENV keeps the primary editable install. Clearing
+# PYTHONPATH would make `make test` in a linked worktree execute that primary
+# tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
+# always wins over the shared editable (terminus T4 / path-purity).
+UV_RUN := env -u MYPYPATH PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
