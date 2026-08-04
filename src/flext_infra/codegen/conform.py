@@ -401,7 +401,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            issue_prefix, ledger_database = self.ledger_identity_for_target(
+            issue_prefix, _ledger_database = self.ledger_identity_for_target(
                 workspace, target
             )
             ledger_root_result = self._beads_ledger_root(repository_root)
