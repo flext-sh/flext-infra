@@ -100,6 +100,30 @@ class FlextInfraWorktreeService(s[str]):
         return r.ok(checked.value.exit_code == 0)
 
     @staticmethod
+    def _resolve_borrowable_venv(primary_root: Path) -> Path | None:
+        """Return the environment a lane may borrow without provisioning its own."""
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        primary_venv = primary_root / venv_name
+        if primary_venv.is_dir():
+            return primary_venv
+        # Why (mro-7jrx.2.2): workspace-member primaries often have no local
+        # `.venv`; the superproject owns the shared environment. Borrowing it
+        # keeps isolated member lanes off `uv sync` and avoids self-conflicting
+        # editable/git dependency URLs during `make work` setup.
+        superproject = u.Infra.git_capture(
+            primary_root, ("rev-parse", "--show-superproject-working-tree")
+        )
+        if superproject.failure:
+            return None
+        super_root = superproject.value.strip()
+        if not super_root:
+            return None
+        super_venv = Path(super_root) / venv_name
+        if super_venv.is_dir():
+            return super_venv
+        return None
+
+    @staticmethod
     def _borrow_primary_environment(primary_root: Path, lane: Path) -> p.Result[bool]:
         """Point the lane's environment name at the primary checkout's environment.
 
@@ -111,10 +135,11 @@ class FlextInfraWorktreeService(s[str]):
         environment and provisions nothing. A real local environment is never
         replaced, because a concurrent process may be running against it.
         """
-        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
-        primary_venv = primary_root / venv_name
-        if not primary_venv.is_dir():
+        borrow_venv = FlextInfraWorktreeService._resolve_borrowable_venv(primary_root)
+        if borrow_venv is None:
             return r.ok(False)
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        primary_venv = borrow_venv
         lane_venv = lane / venv_name
         if lane_venv.exists() and not lane_venv.is_symlink():
             return r.ok(False)
@@ -127,15 +152,17 @@ class FlextInfraWorktreeService(s[str]):
 
     @classmethod
     def setup_lane(cls, primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Borrow the primary environment, then provision one lane through Make.
+        """Borrow the primary environment, then provision only when needed.
 
-        Every maintained worktree runs `make setup`, so this is the single setup
-        path shared by `worktree add` and `work start`: adopting an existing lane
-        must provision it exactly like creating one.
+        Every maintained worktree must share the primary environment when one
+        is available. When the lane borrows successfully, skip `make setup` so
+        a stale lane Makefile cannot `uv sync` the shared environment.
         """
         borrowed = cls._borrow_primary_environment(primary_root, lane)
         if borrowed.failure:
             return r.fail(borrowed.error or "failed to borrow the primary environment")
+        if borrowed.value:
+            return r.ok(True)
         setup = u.Cli.run_live(
             (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
             cwd=lane,

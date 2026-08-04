@@ -31,7 +31,7 @@ class FlextInfraWorkSagaCommon:
     def _resolve_integration_base(self, primary_root: Path) -> p.Result[str]:
         explicit = (self.base or "").strip()
         if explicit:
-            return r.ok(explicit)
+            return r.ok(self._prefer_origin_integration_base(primary_root, explicit))
         cursor = primary_root.resolve()
         for candidate in (cursor, *cursor.parents):
             manifest = candidate / "config" / "workspace.yaml"
@@ -47,8 +47,26 @@ class FlextInfraWorkSagaCommon:
             if isinstance(integration, dict):
                 branch = integration.get("branch")
                 if isinstance(branch, str) and branch.strip():
-                    return r.ok(branch.strip())
+                    return r.ok(
+                        self._prefer_origin_integration_base(
+                            primary_root, branch.strip()
+                        )
+                    )
         return r.ok("HEAD")
+
+    @staticmethod
+    def _prefer_origin_integration_base(primary_root: Path, base: str) -> str:
+        """Prefer origin/<branch> when present so stale local integration is unused."""
+        cleaned = base.strip()
+        if not cleaned or cleaned == "HEAD" or cleaned.startswith("origin/"):
+            return cleaned
+        remote = f"origin/{cleaned}"
+        checked = u.Infra.git_capture(
+            primary_root, ("show-ref", "--verify", "--quiet", f"refs/remotes/{remote}")
+        )
+        if checked.success:
+            return remote
+        return cleaned
 
     def _validated_kind_slug(self) -> p.Result[tuple[c.Infra.WorkKind, str]]:
         if self.kind is None:
