@@ -40,6 +40,11 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(f"bead {bead} missing branch/worktree metadata")
         if worktree == "removed":
             return r.fail(f"bead {bead} lane worktree already removed")
+        if not integration:
+            base = self._resolve_integration_base(primary_root)
+            if base.failure:
+                return r.fail(base.error or "missing integration base")
+            integration = base.value
         lane_meta = Path(worktree)
         if self._is_primary_path(primary_root, lane_meta):
             return r.fail("work finish refuses the primary worktree")
@@ -83,13 +88,15 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             if open_prs.success and (open_prs.value or "") not in {"", "[]"}:
                 return r.fail(f"work finish refuses open PR on {branch}")
         if lane.is_dir():
-            if expected:
-                head = self._git_head(lane)
-                if head.success and head.value != expected:
-                    return r.fail(
-                        "CAS failed before finish: "
-                        f"expected {expected} head={head.value}"
-                    )
+            if not expected:
+                return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
+            head = self._git_head(lane)
+            if head.failure:
+                return r.fail(head.error or "failed to resolve lane HEAD")
+            if head.value != expected:
+                return r.fail(
+                    f"CAS failed before finish: expected {expected} head={head.value}"
+                )
             removed = FlextInfraWorktreeService(
                 workspace_root=primary_root,
                 operation=c.Infra.WorktreeOperation.REMOVE,
