@@ -35,6 +35,26 @@ class TestCodegenCiMatrix:
         tm.ok(result)
         return root
 
+    def test_ci_matrix_profiles_exclude_workspace_member(self) -> None:
+        """Matrix + distro Dockerfiles are root/standalone only (not members)."""
+        entries = config.Infra.codegen.templates.entries
+        matrix = next(
+            entry
+            for entry in entries
+            if entry.destination == ".github/workflows/ci-matrix.yml"
+        )
+        tm.that(set(matrix.profiles), eq={"workspace-root", "standalone"})
+        tm.that("workspace-member" in matrix.profiles, eq=False)
+        docker_dests = {
+            f"tests/fixtures/ci/docker/{name}.Dockerfile"
+            for name in ("ubuntu", "debian", "fedora", "alpine", "arch")
+        }
+        for entry in entries:
+            if entry.destination not in docker_dests:
+                continue
+            tm.that(set(entry.profiles), eq={"workspace-root", "standalone"})
+            tm.that("workspace-member" in entry.profiles, eq=False)
+
     def test_ci_matrix_workflow_emitted(self, tmp_path: Path) -> None:
         """Generated project carries .github/workflows/ci-matrix.yml."""
         root = self._render_project(tmp_path / "external")
@@ -145,6 +165,7 @@ class TestCodegenCiMatrix:
         )
         spec = m.Infra.GithubWorkflowRenderSpec(
             dist="cosmos-main",
+            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
             repository_branch="develop",
             python_version=codegen.toolchain.python_version,
             github_actions=codegen.github_actions,
@@ -286,6 +307,52 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="0.12.0-dev")
         tm.that(triggers, lacks="develop")
         tm.that(triggers, lacks="branches: [dev]")
+
+    def test_workspace_member_ci_matrix_is_manual_only(self) -> None:
+        """Workspace members keep ci-matrix for manual runs but never auto-fire."""
+        from flext_infra import m
+        from flext_cli import u as cli_u
+
+        codegen = config.Infra.codegen
+        tpl = (
+            Path(__file__).resolve().parents[3]
+            / "src/flext_infra/templates/project/base/.github/workflows/ci-matrix.yml.j2"
+        )
+        member = m.Infra.GithubWorkflowRenderSpec(
+            dist="flext-core",
+            make_profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            repository_branch="0.12.0-dev",
+            python_version=codegen.toolchain.python_version,
+            github_actions=codegen.github_actions,
+            make=codegen.make,
+            workspace_repositories=(),
+            checkout_submodules=codegen.checkout_submodules,
+        )
+        rendered = tm.ok(cli_u.Cli.template_render(tpl, member))
+        triggers = rendered.split('"on":', maxsplit=1)[1].split(
+            "# End SECTION: triggers", maxsplit=1
+        )[0]
+        tm.that(triggers, has="workflow_dispatch: {}")
+        tm.that(triggers, lacks="push:")
+        tm.that(triggers, lacks="pull_request:")
+
+        root = m.Infra.GithubWorkflowRenderSpec(
+            dist="flext",
+            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            repository_branch="0.12.0-dev",
+            python_version=codegen.toolchain.python_version,
+            github_actions=codegen.github_actions,
+            make=codegen.make,
+            workspace_repositories=(),
+            checkout_submodules=codegen.checkout_submodules,
+        )
+        root_rendered = tm.ok(cli_u.Cli.template_render(tpl, root))
+        root_triggers = root_rendered.split('"on":', maxsplit=1)[1].split(
+            "# End SECTION: triggers", maxsplit=1
+        )[0]
+        tm.that(root_triggers, has="push:")
+        tm.that(root_triggers, has="branches: [main]")
+        tm.that(root_triggers, lacks="pull_request:")
 
     def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""
