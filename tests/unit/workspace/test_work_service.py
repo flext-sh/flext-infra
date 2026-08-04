@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import flext_infra
 import pytest
-from flext_infra import FlextInfraWorkService, c, u
+from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -45,7 +45,9 @@ class TestsFlextInfraWorkService:
         return repository
 
     @staticmethod
-    def _install_bd_shim(tmp_path: PathType, bead_id: str) -> PathType:
+    def _install_bd_shim(
+        tmp_path: PathType, bead_id: str, *, update_fails: bool = False
+    ) -> PathType:
         store = tmp_path / "beads-store.json"
         store.write_text(
             json.dumps({
@@ -79,6 +81,8 @@ class TestsFlextInfraWorkService:
             "    print(json.dumps(data))\n"
             "    raise SystemExit(0)\n"
             "if args[:1] == ['update']:\n"
+            f"    if {update_fails!r}:\n"
+            "        raise SystemExit('bd update refused')\n"
             "    i = 1\n"
             "    while i < len(args):\n"
             "        if args[i] == '--set-metadata':\n"
@@ -112,29 +116,65 @@ class TestsFlextInfraWorkService:
         return shim_dir
 
     @staticmethod
-    def _install_gh_shim(tmp_path: PathType) -> PathType:
+    def _install_gh_shim(
+        tmp_path: PathType,
+        *,
+        pr_list: str = "[]",
+        pr_view: str = (
+            '{"state": "MERGED", "mergedAt": "2026-08-03T00:00:00Z", "headRefName": ""}'
+        ),
+    ) -> PathType:
         shim_dir = tmp_path / "bin"
         shim_dir.mkdir(exist_ok=True)
         shim = shim_dir / "gh"
         shim.write_text(
             "#!/usr/bin/env python3\n"
             "from __future__ import annotations\n"
-            "import json, sys\n"
+            "import sys\n"
+            f"PR_LIST = {pr_list!r}\n"
+            f"PR_VIEW = {pr_view!r}\n"
             "args = sys.argv[1:]\n"
             "if args[:2] == ['pr', 'list']:\n"
-            "    print('[]')\n"
+            "    print(PR_LIST)\n"
             "    raise SystemExit(0)\n"
             "if args[:2] == ['pr', 'create']:\n"
             "    print('https://example.test/pr/1')\n"
             "    raise SystemExit(0)\n"
             "if args[:2] == ['pr', 'view']:\n"
-            "    print(json.dumps({'state': 'MERGED', 'mergedAt': '2026-08-03T00:00:00Z', 'headRefName': ''}))\n"
+            "    print(PR_VIEW)\n"
             "    raise SystemExit(0)\n"
             "raise SystemExit(f'unsupported gh args: {args}')\n",
             encoding="utf-8",
         )
         shim.chmod(0o755)
         return shim_dir
+
+    @staticmethod
+    def _attach_bare_origin(tmp_path: PathType, repository: PathType) -> PathType:
+        """Replace the self-referencing fixture remote with a pushable origin."""
+        origin = tmp_path / "origin.git"
+        tm.ok(test_u.Infra.git_capture(tmp_path, ("init", "--bare", str(origin))))
+        tm.ok(
+            test_u.Infra.git_capture(
+                repository, ("remote", "set-url", "origin", str(origin))
+            )
+        )
+        tm.ok(test_u.Infra.git_capture(repository, ("push", "origin", "main")))
+        return origin
+
+    @staticmethod
+    def _metadata(tmp_path: PathType) -> dict[str, str]:
+        """Return the lane metadata the bd shim persisted."""
+        payload: dict[str, dict[str, str]] = json.loads(
+            (tmp_path / "beads-store.json").read_text(encoding="utf-8")
+        )
+        return payload["metadata"]
+
+    @staticmethod
+    def _commit_in(lane: PathType, message: str) -> None:
+        tm.ok(
+            test_u.Infra.git_capture(lane, ("commit", "--allow-empty", "-m", message))
+        )
 
     def test_start_registers_lane_and_status_reports_metadata(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -699,12 +739,10 @@ class TestsFlextInfraWorkService:
         tm.that(template, has="_builtin_work_land:")
         tm.that(template, has="_builtin_work_finish:")
         tm.that(
-            template,
-            has='workspace work --workspace "$(WORKSPACE)" --operation status',
+            template, has='workspace work --workspace "$(WORKSPACE)" --operation status'
         )
         tm.that(
-            template,
-            has='workspace work --workspace "$(WORKSPACE)" --operation land',
+            template, has='workspace work --workspace "$(WORKSPACE)" --operation land'
         )
 
     def test_finish_refuses_missing_lane(
@@ -772,9 +810,12 @@ class TestsFlextInfraWorkService:
         )
         gh = shim_dir / "gh"
         gh.write_text(
-            "#!/usr/bin/env python3" + chr(10)
-            + "import sys" + chr(10)
-            + "raise SystemExit('gh unavailable')" + chr(10),
+            "#!/usr/bin/env python3"
+            + chr(10)
+            + "import sys"
+            + chr(10)
+            + "raise SystemExit('gh unavailable')"
+            + chr(10),
             encoding="utf-8",
         )
         gh.chmod(0o755)
@@ -811,9 +852,12 @@ class TestsFlextInfraWorkService:
         (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
         gh = shim_dir / "gh"
         gh.write_text(
-            "#!/usr/bin/env python3" + chr(10)
-            + "import json, sys" + chr(10)
-            + "print(json.dumps({'state': 'MERGED', 'mergedAt': '2026-08-03T00:00:00Z', 'headRefName': 'feature/other'}))" + chr(10),
+            "#!/usr/bin/env python3"
+            + chr(10)
+            + "import json, sys"
+            + chr(10)
+            + "print(json.dumps({'state': 'MERGED', 'mergedAt': '2026-08-03T00:00:00Z', 'headRefName': 'feature/other'}))"
+            + chr(10),
             encoding="utf-8",
         )
         gh.chmod(0o755)
@@ -862,3 +906,409 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="integration_base drift")
+
+    def test_start_idempotent_same_lane_refreshes_head(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Re-running start on a bound bead refreshes CAS instead of failing."""
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-start-idempotent"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        first = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="idempotent-lane",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        tm.that(first, has="receipt.operation=start")
+        lane = Path(self._metadata(tmp_path)["worktree"])
+        stale_head = self._metadata(tmp_path)["head_oid"]
+        self._commit_in(lane, "lane work")
+        second = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="idempotent-lane",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        refreshed = self._metadata(tmp_path)
+        assert refreshed["worktree"] == str(lane)
+        assert refreshed["head_oid"] != stale_head
+        tm.that(second, has=f"receipt.head_oid={refreshed['head_oid']}")
+        tm.that(second, has=f"receipt.worktree={lane}")
+        assert lane.is_dir()
+
+    def test_start_recovers_existing_lane_without_metadata(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A lane registered by an interrupted start is adopted, not rejected."""
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-start-recover"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        orphan = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch="feature/recover-lane",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        assert self._metadata(tmp_path) == {}
+        started = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="recover-lane",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        tm.that(started, has=f"receipt.worktree={orphan}")
+        tm.that(started, has="receipt.branch=feature/recover-lane")
+        assert self._metadata(tmp_path)["worktree"] == orphan
+
+    def test_start_rolls_back_lane_when_beads_update_fails(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A lane the saga cannot register on its bead must not survive."""
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-start-rollback"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id, update_fails=True)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="rollback-lane",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="bd update refused")
+        tm.fail(result, has="rolled back")
+        orphaned = FlextInfraWorktreeService.registered_lane(
+            repository, "feature/rollback-lane"
+        )
+        tm.fail(orphaned, has="is not registered")
+
+    def test_land_happy_path_push_and_pr_updates_metadata(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Land pushes the lane, records the PR, and emits a land receipt."""
+        repository = self._repository(tmp_path)
+        self._attach_bare_origin(tmp_path, repository)
+        bead_id = "mro-test-land-happy"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(
+            tmp_path, pr_list='[{"number": "7", "url": "https://example.test/pr/7"}]'
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="land-happy",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        landed = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.LAND,
+                bead=bead_id,
+                apply_changes=True,
+            ).execute()
+        )
+        metadata = self._metadata(tmp_path)
+        tm.that(landed, has="receipt.operation=land")
+        tm.that(landed, has="receipt.pr=7")
+        tm.that(landed, has="receipt.base=main")
+        tm.that(landed, has=f"receipt.head_oid={metadata['head_oid']}")
+        assert metadata["pr_number"] == "7"
+        assert metadata["pr_url"] == "https://example.test/pr/7"
+        pushed = tm.ok(
+            test_u.Infra.git_capture(
+                repository, ("rev-parse", "refs/remotes/origin/feature/land-happy")
+            )
+        )
+        assert pushed.strip() == metadata["head_oid"]
+
+    def test_land_allows_ancestor_cas(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Lane commits made after start are a fast-forward, not a CAS conflict."""
+        repository = self._repository(tmp_path)
+        self._attach_bare_origin(tmp_path, repository)
+        bead_id = "mro-test-land-ancestor"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(
+            tmp_path, pr_list='[{"number": "3", "url": "https://example.test/pr/3"}]'
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="land-ancestor",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        recorded = self._metadata(tmp_path)["head_oid"]
+        lane = Path(self._metadata(tmp_path)["worktree"])
+        self._commit_in(lane, "lane advance")
+        landed = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.LAND,
+                bead=bead_id,
+                apply_changes=True,
+            ).execute()
+        )
+        advanced = self._metadata(tmp_path)["head_oid"]
+        assert advanced != recorded
+        tm.that(landed, has=f"receipt.head_oid={advanced}")
+
+    def test_land_push_rejection_reports_shas(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A rejected push names both SHAs so the operator can judge divergence."""
+        repository = self._repository(tmp_path)
+        self._attach_bare_origin(tmp_path, repository)
+        bead_id = "mro-test-land-reject"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="land-reject",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        lane = Path(self._metadata(tmp_path)["worktree"])
+        self._commit_in(repository, "remote advance")
+        remote_oid = tm.ok(test_u.Infra.git_capture(repository, ("rev-parse", "HEAD")))
+        tm.ok(
+            test_u.Infra.git_capture(
+                repository, ("push", "origin", "HEAD:refs/heads/feature/land-reject")
+            )
+        )
+        tm.ok(test_u.Infra.git_capture(lane, ("fetch", "origin")))
+        self._commit_in(lane, "lane diverge")
+        local_oid = tm.ok(test_u.Infra.git_capture(lane, ("rev-parse", "HEAD")))
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has=f"local={local_oid.strip()}")
+        tm.fail(result, has=f"remote={remote_oid.strip()}")
+
+    def test_finish_refuses_open_pr_state(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An open PR still owns the lane, so finish must refuse to retire it."""
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-open"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(
+            tmp_path, pr_view='{"state": "OPEN", "mergedAt": null, "headRefName": ""}'
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="finish-open",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["pr_number"] = "5"
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="requires merged PR #5; state=OPEN")
+
+    def test_finish_refuses_closed_unmerged_pr(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A closed-without-merge PR abandoned the work; the lane stays."""
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-closed"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(
+            tmp_path, pr_view='{"state": "CLOSED", "mergedAt": null, "headRefName": ""}'
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="finish-closed",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["pr_number"] = "6"
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="requires merged PR #6; state=CLOSED")
+        assert self._metadata(tmp_path)["worktree"] != "removed"
+
+    def test_finish_refuses_open_pr_without_pr_number(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Without a recorded PR the branch query is the only merge evidence."""
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-open-query"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path, pr_list='[{"number": "8"}]')
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="finish-open-query",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="refuses open PR on bugfix/finish-open-query")
+
+    def test_start_status_land_finish_idempotent_status_twice(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The full lane lifecycle runs once, and status never mutates it."""
+        repository = self._repository(tmp_path)
+        self._attach_bare_origin(tmp_path, repository)
+        bead_id = "mro-test-lifecycle"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(
+            tmp_path, pr_list='[{"number": "9", "url": "https://example.test/pr/9"}]'
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        started = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="lifecycle-lane",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        tm.that(started, has="receipt.operation=start")
+        status_service = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.STATUS,
+            bead=bead_id,
+            apply_changes=False,
+        )
+        first_status = tm.ok(status_service.execute())
+        second_status = tm.ok(status_service.execute())
+        assert first_status == second_status
+        landed = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.LAND,
+                bead=bead_id,
+                apply_changes=True,
+            ).execute()
+        )
+        tm.that(landed, has="receipt.operation=land")
+        finished = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.FINISH,
+                bead=bead_id,
+                apply_changes=True,
+            ).execute()
+        )
+        tm.that(finished, has="receipt.operation=finish")
+        tm.that(finished, has="receipt.pr=9")
+        tm.that(finished, has="receipt.branch=feature/lifecycle-lane")
+        assert self._metadata(tmp_path)["worktree"] == "removed"
+
+    def test_makefile_j2_help_scopes_apply_to_mutating_work_selectors(self) -> None:
+        """Help must not demand APPLY=Y for the read-only default selector."""
+        template = (
+            Path(flext_infra.__file__).resolve().parent
+            / "templates"
+            / "project"
+            / "base"
+            / "Makefile.j2"
+        ).read_text(encoding="utf-8")
+        tm.that(
+            template,
+            has="{{ verb.default_what }} is read-only; other WHATs require APPLY=Y",
+        )

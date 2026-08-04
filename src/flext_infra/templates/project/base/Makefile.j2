@@ -424,6 +424,12 @@ _builtin_help_usage:
 {% for verb in make.verbs %}
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';
+{% elif verb.name == "work" %}
+{# The generic line appends APPLY=Y to every apply-guarded verb, which reads as
+   if the read-only default selector also demanded mutation authority. Only the
+   lane-mutating selectors call _require_apply, so work states that itself. #}
+	@printf '  %-10s WHAT=%s\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s %s\n' '' '{{ verb.default_what }} is read-only; other WHATs require APPLY=Y';
 {% else %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 {% endif %}
