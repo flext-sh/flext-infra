@@ -49,7 +49,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work land requires --bead")
-        shown = u.Infra.beads_show_json(bead)
+        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
         meta = shown.value.get("metadata")
@@ -129,7 +129,11 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             f"decisive=PR {pr_url or pr_number or 'pending'} sha={head.value}"
         )
         updated = u.Infra.beads_update_lane(
-            bead, metadata=meta_update, labels=labels, notes=notes
+            bead,
+            metadata=meta_update,
+            labels=labels,
+            notes=notes,
+            root=self.workspace_root,
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record land on bead")

@@ -72,7 +72,7 @@ class FlextInfraWorkSagaCommon:
 
     @staticmethod
     def _branch_name(kind: c.Infra.WorkKind | str, slug: str) -> str:
-        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else str(kind)
+        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else kind
         return f"{kind_value}/{slug}"
 
     def _resolve_lane_branch(self) -> p.Result[str]:
@@ -81,7 +81,7 @@ class FlextInfraWorkSagaCommon:
             return r.ok(explicit)
         bead = (self.bead or "").strip()
         if bead:
-            shown = u.Infra.beads_show_json(bead)
+            shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
             if shown.success:
                 metadata = shown.value.get("metadata")
                 if isinstance(metadata, dict):

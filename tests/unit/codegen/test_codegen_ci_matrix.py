@@ -130,9 +130,7 @@ class TestCodegenCiMatrix:
         )
         tm.that(workflow2, eq=workflow)
 
-    def test_docs_workflow_inits_private_submodules_when_configured(
-        self, tmp_path: Path
-    ) -> None:
+    def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
         from flext_infra import config, m
         from flext_cli import u as cli_u
