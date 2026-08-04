@@ -19,7 +19,7 @@ Mandatory load order:
 8. [Pydantic v2 Patterns](../../.agents/skills/pydantic-v2-patterns/SKILL.md)
 9. [FLEXT Strict Typing](../../.agents/skills/flext-strict-typing/SKILL.md)
 10. [FLEXT Patterns](../../.agents/skills/flext-patterns/SKILL.md)
-11. [FLEXT Quality Gates](../../.agents/skills/flext-inviolable-rules/SKILL.md)
+11. [FLEXT Law](../../.agents/skills/flext-law/SKILL.md) (composes `inviolable-rules` / `make-check` / `verification-loop` from agents_home)
 12. [Testing Patterns](../../.agents/skills/testing-patterns/SKILL.md) when tests are touched
 
 Session recovery protocol:
