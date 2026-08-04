@@ -25,7 +25,7 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work finish requires --bead")
-        shown = u.Infra.beads_show_json(bead)
+        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
         meta = shown.value.get("metadata")
@@ -110,6 +110,7 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             bead,
             metadata={"worktree": "removed", "head_oid": expected or ""},
             notes=notes,
+            root=self.workspace_root,
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record finish on bead")
