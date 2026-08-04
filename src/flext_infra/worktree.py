@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -98,6 +98,60 @@ class FlextInfraWorktreeService(s[str]):
             detail = (checked.value.stderr or checked.value.stdout).strip()
             return r.fail(detail or f"failed to inspect Git ref: {reference}")
         return r.ok(checked.value.exit_code == 0)
+
+    @staticmethod
+    def _borrow_primary_environment(primary_root: Path, lane: Path) -> p.Result[bool]:
+        """Point the lane's environment name at the primary checkout's environment.
+
+        A lane that provisions its own environment is a second uv sync target:
+        syncing it rewrites the editable pointers every other checkout resolves
+        through, so main and every sibling lane start importing this lane's
+        sources. Linking the lane's environment name to the primary's makes the
+        primary the only owner, and `make setup` then recognizes the borrowed
+        environment and provisions nothing. A real local environment is never
+        replaced, because a concurrent process may be running against it.
+        """
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        primary_venv = primary_root / venv_name
+        if not primary_venv.is_dir():
+            return r.ok(False)
+        lane_venv = lane / venv_name
+        if lane_venv.exists() and not lane_venv.is_symlink():
+            return r.ok(False)
+        linked = u.Cli.ensure_symlink(lane_venv, primary_venv)
+        if linked.failure:
+            return r.fail(
+                linked.error or f"failed to borrow {primary_venv} into {lane_venv}"
+            )
+        return r.ok(True)
+
+    @classmethod
+    def setup_lane(cls, primary_root: Path, lane: Path) -> p.Result[bool]:
+        """Borrow the primary environment, then provision one lane through Make.
+
+        Every maintained worktree runs `make setup`, so this is the single setup
+        path shared by `worktree add` and `work start`: adopting an existing lane
+        must provision it exactly like creating one.
+        """
+        borrowed = cls._borrow_primary_environment(primary_root, lane)
+        if borrowed.failure:
+            return r.fail(borrowed.error or "failed to borrow the primary environment")
+        setup = u.Cli.run_live(
+            (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
+            cwd=lane,
+            remove_env_keys=(
+                "MAKEFLAGS",
+                "MAKELEVEL",
+                "MAKEOVERRIDES",
+                "MFLAGS",
+                "UV_PROJECT",
+                "UV_PROJECT_ENVIRONMENT",
+                "VIRTUAL_ENV",
+            ),
+        )
+        if setup.failure:
+            return r.fail(setup.error or "make setup execution failed")
+        return r.ok(True)
 
     @staticmethod
     def _rollback_new_lane(
@@ -199,19 +253,7 @@ class FlextInfraWorktreeService(s[str]):
                 created_branch_oid,
                 metadata.error or "invalid lane project metadata",
             )
-        setup = u.Cli.run_live(
-            (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
-            cwd=lane,
-            remove_env_keys=(
-                "MAKEFLAGS",
-                "MAKELEVEL",
-                "MAKEOVERRIDES",
-                "MFLAGS",
-                "UV_PROJECT",
-                "UV_PROJECT_ENVIRONMENT",
-                "VIRTUAL_ENV",
-            ),
-        )
+        setup = self.setup_lane(primary_root, lane)
         if setup.failure:
             return self._rollback_new_lane(
                 primary_root,
