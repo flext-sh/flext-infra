@@ -235,7 +235,6 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix, "AGENTS.md"
         )
-        make_check_link = "~/.agents/skills/make-check/SKILL.md"
         return [
             "## Quality Gates",
             "",
@@ -243,7 +242,7 @@ class FlextInfraUtilitiesDocsRender:
                 f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, "
                 f"`val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` "
                 f"and `Required Python quality gates`; selector routing is owned "
-                f"universally by [`make-check`]({make_check_link})."
+                f"universally by the agents_home `make-check` skill."
             ),
         ]
 
