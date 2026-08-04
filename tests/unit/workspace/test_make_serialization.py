@@ -54,7 +54,7 @@ class TestsFlextInfraMakeSerialization:
             tm.that(not excluded_path.is_absolute(), where=bool)
 
     def test_accepts_apply_allows_apply_token_without_mutation_verbs(self) -> None:
-        """test accepts_apply so WHAT=cache-clear APPLY=Y is legal and non-mutating."""
+        """Test accepts_apply so WHAT=cache-clear APPLY=Y is legal and non-mutating."""
         make = config.Infra.codegen.make
         test_verb = next(verb for verb in make.verbs if verb.name == "test")
         tm.that(test_verb.accepts_apply, eq=True)
@@ -67,12 +67,10 @@ class TestsFlextInfraMakeSerialization:
             "selector_value": "cache-clear",
             "apply_token": make.apply_value,
         })
-        variables = tm.ok(service._make_variables(make))
-        tm.that(variables[make.selector], eq="cache-clear")
-        tm.that(variables[make.apply_variable], eq=make.apply_value)
+        tm.that(service.selector_value, eq="cache-clear")
+        tm.that(service.apply_token, eq=make.apply_value)
 
     def test_mutation_verbs_equal_apply_guarded_public_verbs(self) -> None:
-
         """Config SSOT must keep mutation_verbs == apply_guarded verb names.
 
         A drift here fails closed on every flext_infra import (including ai-hub
