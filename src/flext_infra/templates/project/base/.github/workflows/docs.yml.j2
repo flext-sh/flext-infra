@@ -57,19 +57,17 @@ jobs:
       # upload as artifact so the real error is always reachable.
       - name: Docs audit (blocking)
         run: |
-          make docs DOCS_PHASE=audit || {
-            for f in .reports/workspace/docs/*.log; do
-              echo "=== $f ==="
-              tail -60 "$f"
-            done
-            for r in */.reports/docs/audit-summary.json; do
-              [ -f "$r" ] || continue
-              n=$(grep -o '"issues": [0-9]*' "$r" | head -1 | grep -o '[0-9]*')
-              if [ "${n:-0}" -gt 0 ]; then
-                echo "=== $(dirname "$r")/audit-report.md ==="
-                cat "$(dirname "$r")/audit-report.md"
-              fi
-            done
+          make docs WHAT=audit || {
+            while IFS= read -r -d '' f; do
+              echo "::group::$f"
+              tail -n 80 "$f"
+              echo "::endgroup::"
+            done < <(
+              find .reports apps \
+                \( -path '*/audit-summary.json' -o -path '*/audit-report.md' \
+                   -o -path '*/validate-summary.json' -o -path '*/validate-report.md' \) \
+                -type f -print0 2>/dev/null || true
+            )
             exit 1
           }
 
@@ -78,11 +76,17 @@ jobs:
 
       - name: Docs validate (blocking)
         run: |
-          make docs DOCS_PHASE=validate || {
-            for f in .reports/workspace/docs/*.log; do
-              echo "=== $f ==="
-              tail -60 "$f"
-            done
+          make docs WHAT=validate || {
+            while IFS= read -r -d '' f; do
+              echo "::group::$f"
+              tail -n 80 "$f"
+              echo "::endgroup::"
+            done < <(
+              find .reports apps \
+                \( -path '*/validate-summary.json' -o -path '*/validate-report.md' \
+                   -o -path '*/audit-summary.json' -o -path '*/audit-report.md' \) \
+                -type f -print0 2>/dev/null || true
+            )
             exit 1
           }
 
@@ -93,9 +97,19 @@ jobs:
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}
         with:
           name: docs-reports
-          path: .reports/
+          # Structured docs reports only — omit raw docs log trees that may carry
+          # env-derived secrets from setup/docs phases.
+          path: |
+            .reports/**/audit-summary.json
+            .reports/**/audit-report.md
+            .reports/**/validate-summary.json
+            .reports/**/validate-report.md
+            apps/*/.reports/**/audit-summary.json
+            apps/*/.reports/**/audit-report.md
+            apps/*/.reports/**/validate-summary.json
+            apps/*/.reports/**/validate-report.md
+          if-no-files-found: ignore
           retention-days: 7
-          include-hidden-files: true
 
   build:
     name: build
