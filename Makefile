@@ -118,8 +118,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test cov fmt fix run status docs clean release gen work
-BUILTIN_VERBS := help setup deps build check test cov fmt fix run status docs clean release gen work
+PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen work
+BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen work
 SCRIPT_VERBS :=
 
 _ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
@@ -127,8 +127,7 @@ _ALLOWED_WHATS_setup := environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-
 _ALLOWED_WHATS_deps := check lock upgrade $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_build := artifacts $(shell sed -n 's/^_custom_build_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_check := all $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_test := all $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_cov := all $(shell sed -n 's/^_custom_cov_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_fmt := check all apply $(shell sed -n 's/^_custom_fmt_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_fix := check all apply $(shell sed -n 's/^_custom_fix_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_run := default $(shell sed -n 's/^_custom_run_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
@@ -142,8 +141,8 @@ _ALLOWED_WHATS_work := start status land finish $(shell sed -n 's/^_custom_work_
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test cov gen fmt fix deps clean work docs
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_cov _serialized_gen _serialized_fmt _serialized_fix _serialized_deps _serialized_clean _serialized_work _serialized_docs
+SERIALIZED_VERBS := check test gen fmt fix deps clean work docs
+SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix _serialized_deps _serialized_clean _serialized_work _serialized_docs
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -184,7 +183,6 @@ _DEFAULT_deps := check
 _DEFAULT_build := artifacts
 _DEFAULT_check := all
 _DEFAULT_test := all
-_DEFAULT_cov := all
 _DEFAULT_fmt := check
 _DEFAULT_fix := check
 _DEFAULT_run := default
@@ -196,6 +194,7 @@ _DEFAULT_gen := check
 _DEFAULT_work := status
 
 _APPLY_WHAT_deps := upgrade
+_APPLY_WHAT_test := all
 _APPLY_WHAT_fmt := apply
 _APPLY_WHAT_fix := apply
 _APPLY_WHAT_run := default
@@ -304,7 +303,7 @@ WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(pr
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS := build check clean docs fmt fix scan test cov val
+ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
@@ -393,7 +392,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_cov_all _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_work_start _builtin_work_status _builtin_work_land _builtin_work_finish
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_work_start _builtin_work_status _builtin_work_land _builtin_work_finish
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -411,13 +410,6 @@ test: _builtin_require_environment
 
 _serialized_test:
 	$(call _dispatch,test)
-
-
-cov: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "cov" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_cov:
-	$(call _dispatch,cov)
 
 
 gen: _builtin_require_environment
@@ -515,11 +507,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'test' "$$(printf '%s' '$(_ALLOWED_WHATS_test)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-
-
-
-	@printf '  %-10s WHAT=%s\n' 'cov' "$$(printf '%s' '$(_ALLOWED_WHATS_cov)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'test' "$$(printf '%s' '$(_ALLOWED_WHATS_test)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
@@ -555,7 +543,9 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'work' "$$(printf '%s' '$(_ALLOWED_WHATS_work)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+
+	@printf '  %-10s WHAT=%s\n' 'work' "$$(printf '%s' '$(_ALLOWED_WHATS_work)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s %s\n' '' 'status is read-only; other WHATs require APPLY=Y';
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
@@ -833,12 +823,19 @@ _builtin_test_all: _builtin_require_environment
 
 	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
-_builtin_cov_all: _builtin_require_environment
-	@if [ -n "$(strip $(FILE)$(MATCH))" ]; then \
-		printf 'ERROR: make cov rejects FILE and MATCH\n' >&2; exit 2; \
-	fi
 
-	@FLEXT_PYTEST_WHAT_RAW=cov $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+_builtin_test_cache-status: _builtin_require_environment
+
+	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+
+_builtin_test_cache-clear: _builtin_require_environment
+
+	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+
+_builtin_test_cache-checkpoint: _builtin_require_environment
+
+	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+
 
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
 # `fix` owns the mutating lint pass. Running ruff twice per gate was the

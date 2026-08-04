@@ -42,8 +42,8 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
         bool, m.Field(description="Pytest finished green without timeout/cancel.")
     ]
     mode: Annotated[
-        Literal["test", "cov"],
-        m.Field(description="Runner mode; only test mode uses the DB."),
+        Literal["test"],
+        m.Field(description="Runner mode; testmon-backed pytest runs only."),
     ]
 
     @u.model_validator(mode="after")
@@ -75,23 +75,17 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
         self, connection: sqlite3.Connection
     ) -> p.Result[FlextInfraTestmonCacheState] | None:
         """Return a reject Result when the open DB fails validation."""
-        checkpoint = connection.execute(
-            "PRAGMA wal_checkpoint(TRUNCATE)"
-        ).fetchone()
+        checkpoint = connection.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
         if checkpoint is None or int(checkpoint[0]) != 0:
             return r[FlextInfraTestmonCacheState].ok(
                 self._reject(
-                    f"testmon wal_checkpoint busy={checkpoint!r}",
-                    seed_needed=False,
+                    f"testmon wal_checkpoint busy={checkpoint!r}", seed_needed=False
                 )
             )
         integrity = connection.execute("PRAGMA integrity_check").fetchone()
         if integrity is None or integrity[0] != "ok":
             return r[FlextInfraTestmonCacheState].ok(
-                self._reject(
-                    f"testmon integrity_check={integrity!r}",
-                    seed_needed=True,
-                )
+                self._reject(f"testmon integrity_check={integrity!r}", seed_needed=True)
             )
         tables = {
             row[0]
@@ -155,13 +149,7 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
         )
 
     def execute(self) -> p.Result[FlextInfraTestmonCacheState]:
-        """Return typed cache state; cov mode never treats the DB as saveable."""
-        if self.mode == "cov":
-            return r[FlextInfraTestmonCacheState].ok(
-                self._reject(
-                    "coverage mode does not use testmon db", seed_needed=False
-                )
-            )
+        """Return typed cache state after a successful testmon-backed pytest run."""
         if not self.run_succeeded:
             return r[FlextInfraTestmonCacheState].ok(
                 self._reject("pytest run not successful", seed_needed=False)
@@ -169,7 +157,4 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
         return self._inspect_existing()
 
 
-__all__: list[str] = [
-    "FlextInfraTestmonCacheState",
-    "FlextInfraTestmonDbInspector",
-]
+__all__: list[str] = ["FlextInfraTestmonCacheState", "FlextInfraTestmonDbInspector"]

@@ -115,7 +115,6 @@ class FlextInfraConstantsMake:
         "fix",
         "scan",
         "test",
-        "cov",
         "val",
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
@@ -155,6 +154,7 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_ENV_CI: Final[str] = "CI"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",

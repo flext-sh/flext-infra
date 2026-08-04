@@ -71,7 +71,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"{make_config.apply_variable} must be "
                 f"{make_config.apply_value} when set"
             )
-        if applying and not verb_spec.apply_guarded:
+        if applying and not (verb_spec.apply_guarded or verb_spec.accepts_apply):
             return r[t.StrMapping].fail(
                 f"Make verb '{self.verb}' is read-only and does not accept "
                 f"{make_config.apply_variable}"
