@@ -88,9 +88,9 @@ jobs:
         with:
           enable-cache: true
       - name: Bootstrap
-        run: make setup
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
-        run: make help
+        run: {{ make.ci.variable }}={{ make.ci.value }} make help
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
@@ -115,8 +115,8 @@ jobs:
           enable-cache: true
       - name: Bootstrap
         shell: bash
-        run: make setup
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
         shell: bash
-        run: make help
+        run: {{ make.ci.variable }}={{ make.ci.value }} make help
   # End SECTION: windows
