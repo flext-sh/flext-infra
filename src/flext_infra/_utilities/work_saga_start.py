@@ -110,7 +110,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             f"head={head.value}"
         )
         # Why: mro-dipb.1 kind may arrive as str; coerce like _branch_name.
-        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else str(kind)
+        kind_value = kind.value
         updated = u.Infra.beads_update_lane(
             bead,
             metadata={
