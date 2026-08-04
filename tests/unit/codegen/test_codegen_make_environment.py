@@ -248,7 +248,7 @@ class TestsCodegenMakeEnvironment:
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has="venv --clear")
+        tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --project")
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
@@ -431,7 +431,7 @@ class TestsCodegenMakeEnvironment:
 
         for required in (
             "UV ?= uv",
-            '$(UV) venv --clear "$(RUNTIME_VENV)"',
+            '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$root" submodule update --init --recursive -- "$$child_path"',

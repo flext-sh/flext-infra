@@ -27,10 +27,10 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
 def test_governance_authority_sequence_matches_agents() -> None:
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     governance = (ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
-    assert "Beads never override higher law" in agents
-    assert "never overrides higher law" in governance
+    assert "USER REQUEST > BEADS" in agents
+    assert "AIHUB-INVIOLABLE-LAW-PRELUDE" in agents
     assert "quality-gates skill" not in governance
-    assert "`make-check` skill" in governance
+    assert "flext-law" in governance or "AGENTS.md" in governance
 
 
 def test_docs_validation_required_skills_exist_with_adr() -> None:

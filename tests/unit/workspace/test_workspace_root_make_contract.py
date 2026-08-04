@@ -458,7 +458,7 @@ class TestsWorkspaceRootMakeContract:
         expected_environment = str(workspace_root / ".venv")
         # The root owns its own environment: the venv lives beside it and the
         # sync targets the workspace root, never an ambient caller project.
-        tm.that(output, has=f'venv --clear "{expected_environment}"')
+        tm.that(output, has=f'venv "{expected_environment}"')
         tm.that(output, has=f'sync --project "{workspace_root}"')
         tm.that(output, has=f'pip check --python "{expected_environment}"')
 
