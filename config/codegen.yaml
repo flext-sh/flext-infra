@@ -300,7 +300,7 @@ Infra:
         # Serialized surface: the read-only validators plus every mutation verb,
         # so no two lanes mutate one checkout concurrently. `run` stays out:
         # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
-        verbs: [check, test, cov, gen, fmt, fix, deps, clean, work, docs]
+        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs]
       verbs:
         - name: help
           default_what: usage
@@ -328,12 +328,14 @@ Infra:
           apply_guarded: false
         - name: test
           default_what: all
-          whats: [all]
+          # all = incremental testmon run; cache-* maintain .testmondata locally.
+          # Coverage is on unless CI=Y (no separate cov verb).
+          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
+          # test in mutation_verbs (fingerprint still ignores .testmondata*).
+          whats: [all, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
-        - name: cov
-          default_what: all
-          whats: [all]
-          apply_guarded: false
+          accepts_apply: true
+          apply_what: all
         - name: fmt
           default_what: check
           whats: [check, all, apply]
@@ -396,7 +398,7 @@ Infra:
         # from pre-/post- lifecycle hooks. The validator must accept both
         # shapes the runtime itself dispatches to, or every project that
         # defines a custom WHAT handler fails `codegen conform` outright.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|cov|fmt|fix|run|status|docs|clean|release|gen|work)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|cov|fmt|fix|run|status|docs|clean|release|gen|work)_[a-z0-9][a-z0-9_-]*)$"
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:

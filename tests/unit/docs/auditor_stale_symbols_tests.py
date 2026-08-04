@@ -97,8 +97,6 @@ def test_manual_docs_report_live_symbol_mentions(tmp_path: Path) -> None:
     tm.that(issues[0].message, eq="contains `LiveSymbol`")
 
 
-
-
 def test_public_contract_resolves_local_tuple_public_exports(tmp_path: Path) -> None:
     """Generated ABI ``__all__ = tuple(_PUBLIC_EXPORTS)`` must yield a contract."""
     package_root = tmp_path / "src" / "demo_pkg"

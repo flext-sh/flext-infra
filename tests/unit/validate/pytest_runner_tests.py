@@ -39,6 +39,11 @@ def _dump_real_profile(path: Path) -> None:
 
 
 class TestsFlextInfraPytestRunner:
+    @pytest.fixture(autouse=True)
+    def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Local argv contracts assume CI is unset unless a test sets CI=Y."""
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
+
     """Prove exact argv, hard deadline propagation, and durable artifacts."""
 
     @staticmethod
@@ -93,7 +98,7 @@ class TestsFlextInfraPytestRunner:
                 "-m",
                 "pytest",
                 "--testmon",
-                "--no-cov",
+                "--cov",
                 "-n",
                 str(policy.parallel_workers),
                 "--dist",
@@ -103,7 +108,7 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
-        tm.that(command, lacks="--cov")
+        tm.that(command, lacks="--no-cov")
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -203,11 +208,11 @@ class TestsFlextInfraPytestRunner:
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
 
-    def test_cov_run_fails_when_coverage_artifact_is_missing(
+    def test_full_run_fails_when_coverage_artifact_is_missing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A zero pytest status cannot mask a missing full-suite coverage report."""
-        runner = self._runner(tmp_path, what="cov")
+        runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
             cmd: t.StrSequence,
@@ -244,11 +249,11 @@ class TestsFlextInfraPytestRunner:
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="coverage report was not generated or is empty")
 
-    def test_cov_run_fails_when_coverage_fail_under_prints_with_exit_zero(
+    def test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """pytest-cov under xdist must not hide fail-under behind a zero exit."""
-        runner = self._runner(tmp_path, what="cov")
+        runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
             cmd: t.StrSequence,
@@ -391,14 +396,71 @@ class TestsFlextInfraPytestRunner:
             ],
         )
 
-    def test_testmon_mode_argv(self, tmp_path: Path) -> None:
+    def test_local_full_argv_keeps_testmon_and_coverage(self, tmp_path: Path) -> None:
+        runner = self._runner(tmp_path, what="all")
+        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
+        tm.that(command, has=["--testmon", "--cov"])
+        tm.that(any(arg.startswith("--cov-report=xml:") for arg in command), eq=True)
+        tm.that(command, lacks="--no-cov")
+
+    def test_ci_y_disables_coverage_keeps_testmon(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
 
-    def test_cov_mode_argv_rejects_testmon(self, tmp_path: Path) -> None:
-        runner = self._runner(tmp_path, what="cov")
+    def test_ci_true_does_not_disable_coverage(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """GitHub default CI=true must not match the Make token CI=Y."""
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, "true")
+        runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has="--cov")
-        tm.that(command, lacks="--testmon")
+        tm.that(command, has=["--testmon", "--cov"])
+
+    def test_cache_status_skips_pytest(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        db = tmp_path / ".testmondata"
+        db.write_bytes(b"not-a-real-db-but-nonempty")
+        runner = self._runner(tmp_path, what="cache-status")
+        called: list[bool] = []
+
+        def fake_run_to_file(*args: object, **kwargs: object) -> p.Result[int]:
+            del args, kwargs
+            called.append(True)
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+        exit_code: int = tm.ok(runner.execute())
+        tm.that(exit_code, eq=0)
+        tm.that(called, eq=[])
+
+    def test_cache_clear_requires_apply(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(config.Infra.codegen.make.apply_variable, raising=False)
+        runner = self._runner(tmp_path, what="cache-clear")
+        result = runner.execute()
+        tm.that(result.failure, eq=True)
+        tm.that(result.error or "", has="cache-clear requires")
+
+    def test_cache_clear_removes_db(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        db = tmp_path / ".testmondata"
+        wal = tmp_path / ".testmondata-wal"
+        db.write_bytes(b"db")
+        wal.write_bytes(b"wal")
+        monkeypatch.setenv(
+            config.Infra.codegen.make.apply_variable,
+            config.Infra.codegen.make.apply_value,
+        )
+        runner = self._runner(tmp_path, what="cache-clear")
+        exit_code: int = tm.ok(runner.execute())
+        tm.that(exit_code, eq=0)
+        tm.that(db.exists(), eq=False)
+        tm.that(wal.exists(), eq=False)

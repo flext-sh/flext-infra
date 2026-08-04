@@ -67,14 +67,3 @@ class TestsFlextInfraTestmonDbInspector:
         tm.that(state.changed, eq=False)
         tm.that(state.saveable, eq=False)
         tm.that(state.reason, eq="unchanged")
-
-    def test_cov_mode_never_saveable(self, tmp_path: Path) -> None:
-        state: FlextInfraTestmonCacheState = tm.ok(
-            FlextInfraTestmonDbInspector(
-                workspace_root=tmp_path,
-                db_path=tmp_path / ".testmondata",
-                run_succeeded=True,
-                mode="cov",
-            ).execute()
-        )
-        tm.that(state.saveable, eq=False)

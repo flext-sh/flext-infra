@@ -255,7 +255,7 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
 
     def test_non_test_verb_rejects_pytest_selectors(self) -> None:
         """Keep test-only selector fields out of unrelated orchestrated verbs."""
-        with pytest.raises(c.ValidationError, match="only valid for the test or cov verbs"):
+        with pytest.raises(c.ValidationError, match="only valid for the test verb"):
             FlextInfraOrchestratorService(verb="check", match="sample")
 
     def test_empty_project_list(

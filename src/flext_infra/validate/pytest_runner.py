@@ -8,7 +8,7 @@ import sys
 from defusedxml import ElementTree as DefusedET
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, Self, override
+from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
 
@@ -129,21 +129,30 @@ class FlextInfraPytestRunner(s[int]):
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 
-    def _execution_mode(self) -> Literal["test", "cov"]:
-        """Map WHAT to the exclusive testmon or coverage execution mode."""
-        if self.what == "cov":
-            return "cov"
-        return "test"
+    _CACHE_WHATS: frozenset[str] = frozenset({
+        "cache-status",
+        "cache-clear",
+        "cache-checkpoint",
+    })
+
+    def _ci_disables_coverage(self) -> bool:
+        """Coverage is off when Make CI token is exact make.ci.value (CI=Y)."""
+        raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
+        return raw == config.Infra.codegen.make.ci.value
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
         path: Path = Path(self.root) / ".testmondata"
         return path
 
-    def _require_junit(self, junit_file: Path, pytest_log: Path) -> p.Result[None]:
+    def _is_cache_maintenance(self) -> bool:
+        """True when WHAT selects a testmon DB maintenance handler."""
+        return self.what in self._CACHE_WHATS
+
+    def _require_junit(self, junit_file: Path, pytest_log: Path) -> p.Result[bool]:
         """Require a non-empty parseable JUnit document after a green run."""
         if not junit_file.is_file() or junit_file.stat().st_size == 0:
-            return r[None].fail(
+            return r[bool].fail(
                 self._artifact_failure_detail(
                     f"junit report was not generated or is empty: {junit_file}",
                     pytest_log,
@@ -152,13 +161,12 @@ class FlextInfraPytestRunner(s[int]):
         try:
             DefusedET.parse(junit_file)
         except DefusedET.ParseError as exc:
-            return r[None].fail(
+            return r[bool].fail(
                 self._artifact_failure_detail(
-                    f"junit report is not parseable: {junit_file}: {exc}",
-                    pytest_log,
+                    f"junit report is not parseable: {junit_file}: {exc}", pytest_log
                 )
             )
-        return r[None].ok(None)
+        return r[bool].ok(True)
 
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
@@ -166,14 +174,16 @@ class FlextInfraPytestRunner(s[int]):
         focused = self.file is not None or self.match is not None
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
-        mode = self._execution_mode()
-        if mode == "cov":
+        # Always select via testmon. Full local runs keep coverage; CI=Y and
+        # focused FILE/MATCH selectors disable it (subset cov is not fail-under).
+        if self._ci_disables_coverage() or focused:
+            coverage_args = ("--testmon", "--no-cov")
+        else:
             coverage_args = (
+                "--testmon",
                 "--cov",
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
             )
-        else:
-            coverage_args = ("--testmon", "--no-cov")
         parallel_args = (
             ("-n", "0")
             if focused
@@ -244,9 +254,59 @@ class FlextInfraPytestRunner(s[int]):
         )
         return extractor.extract(extractor.junit, extractor.log_path)
 
+    def _execute_cache_maintenance(self) -> p.Result[int]:
+        """Run one typed testmon DB maintenance WHAT without invoking pytest."""
+        db = self._testmon_db_path()
+        if self.what == "cache-clear":
+            apply = (
+                u.Cli
+                .env_read(config.Infra.codegen.make.apply_variable)
+                .unwrap()
+                .strip()
+            )
+            if apply != config.Infra.codegen.make.apply_value:
+                return r[int].fail(
+                    "make test WHAT=cache-clear requires "
+                    f"{config.Infra.codegen.make.apply_variable}="
+                    f"{config.Infra.codegen.make.apply_value}"
+                )
+            for path in (db, Path(f"{db}-wal"), Path(f"{db}-shm")):
+                if path.exists() or path.is_symlink():
+                    path.unlink()
+            sys.stderr.write(f"testmon cache cleared under {self.root}\n")
+            return r[int].ok(0)
+        if self.what == "cache-status":
+            digest = FlextInfraTestmonDbInspector.digest_file(db)
+            exists = db.is_file() and not db.is_symlink()
+            size = db.stat().st_size if exists else 0
+            sys.stdout.write(
+                f"path={db}\nexists={exists}\nsize={size}\ndigest={digest or 'none'}\n"
+            )
+            return r[int].ok(0)
+        state = FlextInfraTestmonDbInspector(
+            workspace_root=self.root,
+            db_path=db,
+            pre_run_digest=FlextInfraTestmonDbInspector.digest_file(db),
+            run_succeeded=True,
+            mode="test",
+        ).execute()
+        if state.failure:
+            return r[int].fail(state.error or "testmon checkpoint failed")
+        value = state.value
+        sys.stdout.write(
+            f"seed_needed={value.seed_needed}\n"
+            f"restored_accepted={value.restored_accepted}\n"
+            f"changed={value.changed}\n"
+            f"saveable={value.saveable}\n"
+            f"reason={value.reason}\n"
+        )
+        return r[int].ok(0 if value.reason != "testmon db missing or empty" else 1)
+
     @override
     def execute(self) -> p.Result[int]:
         """Execute pytest, profile it, and preserve reports under one deadline."""
+        if self._is_cache_maintenance():
+            return self._execute_cache_maintenance()
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
         pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
@@ -326,14 +386,18 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
-        mode = self._execution_mode()
+        coverage_enabled = (
+            not self._ci_disables_coverage()
+            and self.file is None
+            and self.match is None
+        )
         if exit_code == 0:
             junit_ok = self._require_junit(junit_file, pytest_log)
             if junit_ok.failure:
                 return r[int].fail(junit_ok.error or "junit validation failed")
         if (
             exit_code == 0
-            and mode == "cov"
+            and coverage_enabled
             and self._pytest_log_reports_coverage_failure(pytest_log)
         ):
             # pytest-cov under xdist can print fail-under and still return 0.
@@ -344,7 +408,7 @@ class FlextInfraPytestRunner(s[int]):
             )
         if (
             exit_code == 0
-            and mode == "cov"
+            and coverage_enabled
             and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
         ):
             return r[int].fail(
@@ -353,20 +417,18 @@ class FlextInfraPytestRunner(s[int]):
                     pytest_log,
                 )
             )
-        if exit_code == 0 and mode == "test":
+        if exit_code == 0:
             timed_out_or_signal = timed_out
             inspector = FlextInfraTestmonDbInspector(
                 workspace_root=self.root,
                 db_path=self._testmon_db_path(),
                 pre_run_digest=pre_run_digest,
                 run_succeeded=not timed_out_or_signal,
-                mode=mode,
+                mode="test",
             )
             state_result = inspector.execute()
             if state_result.failure:
-                return r[int].fail(
-                    state_result.error or "testmon db inspection failed"
-                )
+                return r[int].fail(state_result.error or "testmon db inspection failed")
             state = state_result.value
             u.Cli.atomic_write_text_file(
                 report_dir / "testmon-cache-state.txt",

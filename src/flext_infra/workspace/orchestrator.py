@@ -64,21 +64,13 @@ class FlextInfraOrchestratorService(
     @u.model_validator(mode="after")
     def _validate_test_selectors(self) -> Self:
         """Keep pytest selectors typed and out of generic Make argument strings."""
-        if self.verb not in {"test", "cov"} and any(
+        if self.verb != "test" and any(
             value is not None for value in (self.file, self.match, self.what)
         ):
-            msg = (
-                "file, match, and what selectors are only valid for the "
-                "test or cov verbs"
-            )
+            msg = "file, match, and what selectors are only valid for the test verb"
             raise ValueError(msg)
-        if self.verb == "cov" and (
-            self.file is not None or self.match is not None
-        ):
-            msg = "cov rejects FILE and MATCH"
-            raise ValueError(msg)
-        if self.verb in {"test", "cov"} and self.make_arg:
-            msg = f"generic make-arg is forbidden for the {self.verb} verb"
+        if self.verb == "test" and self.make_arg:
+            msg = "generic make-arg is forbidden for the test verb"
             raise ValueError(msg)
         if msg := FlextInfraPytestSelectorValidator.syntax_violation(
             file=self.file, match=self.match, what=self.what
@@ -89,11 +81,8 @@ class FlextInfraOrchestratorService(
     def _make_args(self, *, file: str | None = None) -> t.StrSequence:
         """Build exact Make argv elements from already validated fields."""
         normalized = u.Infra.normalize_make_args(self.make_arg)
-        if self.verb not in {"test", "cov"}:
+        if self.verb != "test":
             return normalized
-        if self.verb == "cov":
-            what = self.what or "cov"
-            return (*normalized, f"WHAT={what}")
         selectors = (
             *((f"FILE={file}",) if file is not None else ()),
             *((f"MATCH={self.match}",) if self.match is not None else ()),
