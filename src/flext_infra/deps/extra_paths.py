@@ -1,16 +1,22 @@
 """Synchronize pyright, mypy, and pyrefly paths from workspace dependencies.
 
 Handlers are called by the canonical CLI via FlextInfraCliDeps.register_deps.
+
+Every emitted entry is relative to the project that owns the file it is written
+into. A dependency that lives in another checkout resolves through its installed
+distribution in the environment the project runs against, never through a
+filesystem hop out of the project root: a generated surface that encodes
+``../<sibling>/src`` describes one host layout, so it is wrong in any checkout
+whose siblings sit elsewhere and it makes one generator emit different content
+per clone (mro-c6di).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.deps._extra_paths_sources import FlextInfraExtraPathsSourceMixin
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
 if TYPE_CHECKING:
@@ -18,7 +24,6 @@ if TYPE_CHECKING:
 
 
 class FlextInfraExtraPathsManager(
-    FlextInfraExtraPathsSourceMixin,
     FlextInfraExtraPathsSyncMixin,
     FlextInfraProjectSelectionServiceBase[bool],
 ):
@@ -48,31 +53,6 @@ class FlextInfraExtraPathsManager(
             return r[bool].fail(result.error or "extra-path synchronization failed")
         return r[bool].ok(True)
 
-    def _dep_paths(self, payload: t.JsonMapping, *, project_dir: Path) -> t.StrSequence:
-        """Resolve only productive dependency import roots to relative paths."""
-        project_table = payload.get(c.Infra.PROJECT)
-        current_project_name = (
-            project_table.get(c.NAME) if isinstance(project_table, Mapping) else None
-        )
-        resolved: t.Infra.StrSet = set()
-        for name in self._resolve_transitive_deps(
-            u.Infra.local_dependency_names_from_payload(
-                payload, workspace_project_names=tuple(self._workspace_project_names)
-            )
-        ):
-            if isinstance(current_project_name, str) and name == current_project_name:
-                continue
-            dep_dir = self.root / name
-            # mro-j47u (codex): dependency lookup is an import-root contract;
-            # legacy/examples/scripts are never promoted by directory discovery.
-            for source_root in self._uv_source_search_roots(dep_dir):
-                resolved.add(
-                    self._project_relative_path(
-                        project_dir=project_dir, target_dir=source_root
-                    )
-                )
-        return tuple(sorted(resolved))
-
     @override
     def pyright_extra_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
         """Compute pyright extra paths for a project."""
@@ -98,7 +78,13 @@ class FlextInfraExtraPathsManager(
     def pyrefly_search_paths(
         self, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
-        """Compute pyrefly search paths for a project."""
+        """Compute pyrefly search paths for a project.
+
+        Only roots inside ``project_dir`` are emitted. Path dependencies and uv
+        workspace members are importable through their installed distributions,
+        so they need no search-path entry and must never be described by a path
+        that leaves the project (mro-c6di).
+        """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = rules.source_dir
         configured_typings = (
@@ -123,40 +109,12 @@ class FlextInfraExtraPathsManager(
         # "." shared search path (e.g. tests.* resolution). Sort everything
         # else, then place the declared source root first so it always wins.
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
-        if rules.include_path_dependencies_in_search_path:
-            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-            if pyproject.exists():
-                payload = u.Infra.pyproject_payload(pyproject)
-                paths.update(self._dep_paths(payload, project_dir=project_dir))
-                paths.update(self._uv_source_paths(payload, project_dir=project_dir))
-            paths.update(self._workspace_member_source_paths(project_dir=project_dir))
         has_source_root = (project_dir / source_root).is_dir()
         paths.discard(source_root)
         ordered = sorted(paths)
         if has_source_root:
             return (source_root, *ordered)
         return tuple(ordered)
-
-    def _workspace_member_source_paths(self, *, project_dir: Path) -> t.StrSequence:
-        """Return `<member>/<source_dir>` search paths for uv workspace members.
-
-        ``[tool.uv.workspace] members`` lists path entries (e.g.
-        ``../flext/flext-cli``) for consumers that depend on flext via workspace
-        membership rather than ``[tool.uv.sources] path=``. Those members are the
-        real import roots but were previously absent from the pyrefly search path,
-        leaving stale/wrong entries. Emit each existing ``<member>/<source_dir>``.
-        """
-        source_dir = config.Infra.tooling.tools.pyrefly.path_rules.source_dir
-        resolved: t.MutableSequenceOf[str] = []
-        for member in u.Infra.workspace_member_names(project_dir):
-            member_source = project_dir / member / source_dir
-            if not member_source.is_dir():
-                continue
-            relative = self._project_relative_path(
-                project_dir=project_dir, target_dir=member_source
-            )
-            resolved.append(relative)
-        return tuple(resolved)
 
     def pyrefly_project_includes(
         self, *, project_dir: Path, is_root: bool

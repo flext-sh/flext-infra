@@ -494,7 +494,6 @@ Infra:
           project-typings-paths: []
           workspace-include-children: false
           workspace-include-child-env-dirs: []
-          include-path-dependencies-in-search-path: true
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
