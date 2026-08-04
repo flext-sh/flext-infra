@@ -117,7 +117,6 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
     def _require_merged_pr(
         primary_root: Path, branch: str, pr_number: str
     ) -> p.Result[bool]:
-    ) -> p.Result[bool]:
         """Refuse to retire a lane whose pull request is not merged."""
         if not pr_number:
             open_prs = u.Cli.capture(
