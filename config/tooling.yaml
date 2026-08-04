@@ -539,6 +539,7 @@ Infra:
           - "performance: performance and benchmark tests"
           - "slow: slow-running tests"
           - "docker: tests requiring Docker"
+          - "remote: tests requiring remote/external network services"
           - "e2e: end-to-end integration tests"
           - "edge_cases: edge case tests"
           - "stress: stress tests"

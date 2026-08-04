@@ -200,6 +200,14 @@ class FlextInfraPytestRunner(s[int]):
                 "--benchmark-disable",
             )
         )
+        # CI=Y deselects docker and remote suites entirely. Fixture-level
+        # skips in flext-tests remain as a second fail-closed boundary for
+        # unmarked tests that still call FlextTestsDocker.
+        ci_marker_args = (
+            ("-m", "not docker and not remote")
+            if self._ci_disables_coverage()
+            else ()
+        )
         optional_args = (
             *(("-k", self.match) if self.match is not None else ()),
             *(("-x",) if self.fail_fast else ()),
@@ -223,6 +231,7 @@ class FlextInfraPytestRunner(s[int]):
             f"--junitxml={report_dir / 'junit.xml'}",
             *coverage_args,
             *parallel_args,
+            *ci_marker_args,
             *optional_args,
         )
 

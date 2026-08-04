@@ -411,6 +411,7 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
+        tm.that(command, has=["-m", "not docker and not remote"])
 
     def test_ci_true_does_not_disable_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -420,6 +421,15 @@ class TestsFlextInfraPytestRunner:
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--cov"])
+        tm.that(command, lacks="not docker and not remote")
+
+    def test_local_full_argv_keeps_docker_remote_markers_selected(
+        self, tmp_path: Path
+    ) -> None:
+        """Without CI=Y the runner must not deselect docker/remote suites."""
+        runner = self._runner(tmp_path, what="all")
+        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
+        tm.that(command, lacks="not docker and not remote")
 
     def test_cache_status_skips_pytest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
