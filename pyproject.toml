@@ -609,6 +609,7 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
+exclude-newer = "7 days"
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]
