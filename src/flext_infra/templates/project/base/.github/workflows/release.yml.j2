@@ -223,7 +223,7 @@ jobs:
           ref: ${{ github.sha }}
           submodules: {% endraw %}{{ checkout_submodules }}{% raw %}
 
-      - name: Verify immutable canary source
+      - name: Verify immutable canary root
         id: source
         shell: bash
         run: |
@@ -240,11 +240,6 @@ jobs:
             exit 1
           fi
           CORE_OID="$(git rev-parse "${RELEASE_ROOT_SHA}:flext-core")"
-          CHECKED_CORE_OID="$(git -C flext-core rev-parse HEAD)"
-          if [ "$CHECKED_CORE_OID" != "$CORE_OID" ]; then
-            echo "checked-out flext-core commit $CHECKED_CORE_OID does not match gitlink $CORE_OID" >&2
-            exit 1
-          fi
           echo "core_oid=$CORE_OID" >> "$GITHUB_OUTPUT"
 
       - name: Setup Python
@@ -266,6 +261,17 @@ jobs:
 
       - name: Boot workspace
         run: make setup PROJECT=flext-core
+
+      - name: Verify immutable flext-core gitlink
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE_OID="${{ steps.source.outputs.core_oid }}"
+          CHECKED_CORE_OID="$(git -C flext-core rev-parse HEAD)"
+          if [ "$CHECKED_CORE_OID" != "$CORE_OID" ]; then
+            echo "checked-out flext-core commit $CHECKED_CORE_OID does not match gitlink $CORE_OID" >&2
+            exit 1
+          fi
 
       - name: Build flext-core canary
         shell: bash
