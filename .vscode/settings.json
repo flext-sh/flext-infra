@@ -56,7 +56,10 @@
     "**/.hypothesis": true,
     "**/.bin": true,
     "**/.tools": true,
-    "**/.bkp": true
+    "**/.bkp": true,
+    "**/.testmondata": true,
+    "**/.testmondata-wal": true,
+    "**/.testmondata-shm": true
   },
   "files.watcherExclude": {
     "**/__pycache__/**": true,
@@ -97,7 +100,10 @@
     "**/.hypothesis/**": true,
     "**/.bin/**": true,
     "**/.tools/**": true,
-    "**/.bkp/**": true
+    "**/.bkp/**": true,
+    "**/.testmondata/**": true,
+    "**/.testmondata-wal/**": true,
+    "**/.testmondata-shm/**": true
   },
   "search.exclude": {
     "**/__pycache__": true,
@@ -137,7 +143,10 @@
     "**/.hypothesis": true,
     "**/.bin": true,
     "**/.tools": true,
-    "**/.bkp": true
+    "**/.bkp": true,
+    "**/.testmondata": true,
+    "**/.testmondata-wal": true,
+    "**/.testmondata-shm": true
   },
   "terminal.integrated.env.linux": {
     "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}",
