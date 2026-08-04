@@ -205,6 +205,7 @@ def _archive_root() -> str:
 
 __all__: t.StrSequence = []
 
+
 def test_keep_root_files_override(tmp_path: Path) -> None:
     """Declared keep_root_files stay at root without review findings."""
     project = tmp_path / "ai-hub"
@@ -258,4 +259,3 @@ def test_duplicate_root_md_archives_when_docs_copy_exists(tmp_path: Path) -> Non
     tm.that(archived.is_file(), eq=True)
     tm.that(archived.read_text(encoding="utf-8"), eq="index\n")
     tm.that((project / "index.md").exists(), eq=False)
-

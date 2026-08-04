@@ -167,6 +167,7 @@ class TestAuditorBrokenLinks:
         tm.that(len(issues), gte=0)
         tm.that(len(issues), eq=0)
 
+
 class TestAuditorGithubLinks:
     """Governed GitHub URL audit and rewrite."""
 
@@ -211,4 +212,3 @@ class TestAuditorGithubLinks:
         text = target.read_text()
         tm.that("flext-sh/flext" in text, eq=True)
         tm.that("0.12.0-dev" in text, eq=True)
-

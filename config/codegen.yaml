@@ -720,7 +720,6 @@ Infra:
         - logs
         - complete_pipeline_results
         - legado
-        - __pycache__
         - b-pipeline
         - debug-pipeline
         - exec-pipeline
@@ -820,6 +819,13 @@ Infra:
             - LICENSE-3RD-PARTY.md
             - LICENSE.quick-reference.md
             - QODER.md
+            - mkdocs.yaml
+            - Makefile.check
+            - config.yaml
+            - cloud-init.sh
+            - pycodestyle.cfg
+            - pylintrc
+            - patch.diff
           ignore_globs:
             - cosmos
             - apps
@@ -830,10 +836,51 @@ Infra:
             - yarn.lock
             - tsconfig.json
             - turbo.json
+            - bin
+            - build
+            - coordination
+            - cosmos_main.egg-info
+            - evals
+            - json
+            - mro
+            - platform-namespaces
+            - policy
+            - scratchpad
+            - site
+            - skills
+            - templates
+            - work
+        cosmos-charts:
+          keep_root_files:
+            - cosmos-release.lock
+            - release.lock.json
+            - pycodestyle.cfg
+          ignore_globs:
+            - build
+            - charts
+            - images
+        cosmos-gitops:
+          ignore_globs:
+            - build
+            - repo
+            - tenants
+        neptor:
+          keep_root_files:
+            - Taskfile.yml
+            - workspace_custom.mk
+          ignore_globs:
+            - typings
+        vectorbt.pro:
+          ignore_globs:
+            - "*"
         invest:
           keep_root_files:
             - BEADS_WORKFLOW.md
             - GEMINI.md
+            - activate_workspace.sh
+            - poetry.toml
+            - workspace_config.py
+            - workspace_custom.mk
           ignore_globs:
             - neptor
             - mt5linux
