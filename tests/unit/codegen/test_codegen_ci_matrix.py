@@ -35,6 +35,26 @@ class TestCodegenCiMatrix:
         tm.ok(result)
         return root
 
+    def test_ci_matrix_profiles_exclude_workspace_member(self) -> None:
+        """Matrix + distro Dockerfiles are root/standalone only (not members)."""
+        entries = config.Infra.codegen.templates.entries
+        matrix = next(
+            entry
+            for entry in entries
+            if entry.destination == ".github/workflows/ci-matrix.yml"
+        )
+        tm.that(set(matrix.profiles), eq={"workspace-root", "standalone"})
+        tm.that("workspace-member" in matrix.profiles, eq=False)
+        docker_dests = {
+            f"tests/fixtures/ci/docker/{name}.Dockerfile"
+            for name in ("ubuntu", "debian", "fedora", "alpine", "arch")
+        }
+        for entry in entries:
+            if entry.destination not in docker_dests:
+                continue
+            tm.that(set(entry.profiles), eq={"workspace-root", "standalone"})
+            tm.that("workspace-member" in entry.profiles, eq=False)
+
     def test_ci_matrix_workflow_emitted(self, tmp_path: Path) -> None:
         """Generated project carries .github/workflows/ci-matrix.yml."""
         root = self._render_project(tmp_path / "external")
