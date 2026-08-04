@@ -85,26 +85,31 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                 ),
                 cwd=primary_root,
             )
-            if open_prs.success and (open_prs.value or "") not in {"", "[]"}:
-                return r.fail(f"work finish refuses open PR on {branch}")
-        if lane.is_dir():
-            if not expected:
-                return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
-            head = self._git_head(lane)
-            if head.failure:
-                return r.fail(head.error or "failed to resolve lane HEAD")
-            if head.value != expected:
+            if open_prs.failure:
                 return r.fail(
-                    f"CAS failed before finish: expected {expected} head={head.value}"
+                    open_prs.error or f"failed to list open PRs for {branch}"
                 )
-            removed = FlextInfraWorktreeService(
-                workspace_root=primary_root,
-                operation=c.Infra.WorktreeOperation.REMOVE,
-                branch=branch,
-                apply_changes=True,
-            ).execute()
-            if removed.failure:
-                return r.fail(removed.error or f"failed to remove lane {branch}")
+            if (open_prs.value or "") not in {"", "[]"}:
+                return r.fail(f"work finish refuses open PR on {branch}")
+        if not lane.is_dir():
+            return r.fail(f"lane worktree missing: {lane}")
+        if not expected:
+            return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
+        head = self._git_head(lane)
+        if head.failure:
+            return r.fail(head.error or "failed to resolve lane HEAD")
+        if head.value != expected:
+            return r.fail(
+                f"CAS failed before finish: expected {expected} head={head.value}"
+            )
+        removed = FlextInfraWorktreeService(
+            workspace_root=primary_root,
+            operation=c.Infra.WorktreeOperation.REMOVE,
+            branch=branch,
+            apply_changes=True,
+        ).execute()
+        if removed.failure:
+            return r.fail(removed.error or f"failed to remove lane {branch}")
         if expected:
             deleted = u.Infra.git_capture(
                 primary_root, ("update-ref", "-d", f"refs/heads/{branch}", expected)

@@ -112,11 +112,25 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         head = self._git_head(lane)
         if head.failure:
             return r.fail(head.error or "failed to resolve pushed HEAD")
+        pr_base = integration
+        if pr_base == "HEAD":
+            resolved_base = u.Infra.git_capture(
+                primary_root, ("rev-parse", "--abbrev-ref", "HEAD")
+            )
+            if resolved_base.failure:
+                return r.fail(
+                    resolved_base.error or "failed to resolve HEAD for PR base"
+                )
+            pr_base = resolved_base.value.strip()
+            if not pr_base or pr_base == "HEAD":
+                return r.fail(
+                    "work land cannot open a PR with unresolved integration base HEAD"
+                )
         pr = u.Infra.run_github_pull_request(
             m.Infra.GithubPullRequestRequest(
                 repo_root=str(primary_root),
                 action=c.Infra.PullRequestAction.CREATE,
-                base=integration if integration != "HEAD" else None,
+                base=pr_base,
                 head=branch,
                 title=f"{branch}: lane land",
                 body=f"Automated land for bead {bead} ({branch}).",
@@ -127,7 +141,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if pr.failure and observed.failure:
             return r.fail(pr.error or observed.error or "work land PR failed")
         pr_number, pr_url = observed.value if observed.success else ("", "")
-        meta_update = {"head_oid": head.value, "integration_base": integration}
+        meta_update = {"head_oid": head.value, "integration_base": pr_base}
         labels: tuple[str, ...] = ()
         if pr_number:
             meta_update["pr_number"] = pr_number
