@@ -129,6 +129,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         written: list[Path] = []
         for file in changed:
+            if file.absent:
+                target = file.path.expanduser().resolve()
+                try:
+                    target.relative_to(plan.request.root.expanduser().resolve())
+                except ValueError:
+                    return r[m.Infra.CodegenResult].fail(
+                        f"absent path escapes repository root: {file.path}"
+                    )
+                if target.exists():
+                    if not target.is_file():
+                        return r[m.Infra.CodegenResult].fail(
+                            f"absent path is not a regular file: {target}"
+                        )
+                    removed = r.create_from_callable(
+                        lambda path=target: (path.unlink(), path)[1],
+                        error_code="E_CODEGEN_ABSENT_UNLINK",
+                    )
+                    if removed.failure:
+                        return r[m.Infra.CodegenResult].fail(
+                            removed.error or f"absent path unlink failed: {target}"
+                        )
+                written.append(file.path)
+                continue
             result = u.Cli.atomic_write_text_file(file.path, file.rendered)
             if result.failure:
                 return r[m.Infra.CodegenResult].fail(
@@ -220,11 +243,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"integration baseline resolution failed: {root}"
                 )
             current_repository_role = current_repository.role
-            current_make_profile = (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if current_repository_role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-                else c.Infra.MakeProfile.STANDALONE
-            )
+            current_make_profile = {
+                c.Infra.RepositoryRole.WORKSPACE_ROOT: (
+                    c.Infra.MakeProfile.WORKSPACE_ROOT
+                ),
+                c.Infra.RepositoryRole.WORKSPACE_MEMBER: (
+                    c.Infra.MakeProfile.WORKSPACE_MEMBER
+                ),
+                c.Infra.RepositoryRole.STANDALONE: c.Infra.MakeProfile.STANDALONE,
+            }[current_repository_role]
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
@@ -422,6 +449,38 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"governed artifact is not a regular file: {path}"
                 )
+            entry_profiles = tuple(
+                entry.profiles
+                for entry in codegen.templates.entries
+                if entry.destination == relative.as_posix()
+            )
+            if entry_profiles:
+                allowed = {item for profiles in entry_profiles for item in profiles}
+                if profile not in allowed:
+                    # Why: profile-excluded managed workflows must not survive as
+                    # "keep current" ghosts (ci-matrix on workspace-member).
+                    if (
+                        relative.parts[:2] == (".github", "workflows")
+                        and path.is_file()
+                    ):
+                        current = u.Cli.files_read_text(path)
+                        if current.failure:
+                            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                                current.error or f"orphan workflow read failed: {path}"
+                            )
+                        completed.append(
+                            m.Infra.CodegenFilePlan(
+                                path=path,
+                                owner=governed.owner,
+                                policy=governed.policy,
+                                rendered="",
+                                expected_sha256=u.Cli.sha256_content(""),
+                                current_sha256=u.Cli.sha256_content(current.value),
+                                changed=True,
+                                absent=True,
+                            )
+                        )
+                    continue
             current = ""
             if path.is_file():
                 read = u.Cli.files_read_text(path)
@@ -1101,9 +1160,43 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed file requires exactly one render template: {managed.path}"
                 )
             entry = entries[0]
+            relative = Path(entry.destination)
+            if relative.is_absolute() or ".." in relative.parts:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"managed destination escapes repository root: {entry.destination}"
+                )
+            path = (root / relative).resolve()
+            try:
+                path.relative_to(root.resolve())
+            except ValueError:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"managed destination escapes repository root: {entry.destination}"
+                )
             if profile not in entry.profiles:
+                # Why: profile-excluded managed workflows must not keep firing
+                # (ci-matrix on workspace-member). Prune the orphan projection.
+                if (
+                    managed.path.parts[:2] == (".github", "workflows")
+                    and path.is_file()
+                ):
+                    current = u.Cli.files_read_text(path)
+                    if current.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                            current.error or f"orphan workflow read failed: {path}"
+                        )
+                    planned.append(
+                        m.Infra.CodegenFilePlan(
+                            path=path,
+                            owner=managed.owner,
+                            policy=managed.policy,
+                            rendered="",
+                            expected_sha256=u.Cli.sha256_content(""),
+                            current_sha256=u.Cli.sha256_content(current.value),
+                            changed=True,
+                            absent=True,
+                        )
+                    )
                 continue
-            path = root / entry.destination
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
                 if current.failure:
@@ -1258,7 +1351,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
                     repository=repository,
-                    branch=u.Infra.resolve_integration_branch(workspace, provider.value),
+                    branch=u.Infra.resolve_integration_branch(
+                        workspace, provider.value
+                    ),
                 )
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
@@ -1351,9 +1446,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            issue_prefix, database = self.ledger_identity_for_target(
-                workspace, target
-            )
+            issue_prefix, database = self.ledger_identity_for_target(workspace, target)
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=issue_prefix,
@@ -1368,9 +1461,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            _issue_prefix, database = self.ledger_identity_for_target(
-                workspace, target
-            )
+            _issue_prefix, database = self.ledger_identity_for_target(workspace, target)
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(database=database, server=server)
             )
@@ -1388,6 +1479,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
+                    make_profile=target.make_profile,
                     repository_branch=provider.value.branch,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
@@ -2145,8 +2237,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def ledger_identity_for_target(
-        workspace: m.Infra.WorkspaceSpec,
-        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
     ) -> tuple[str, str]:
         """Return ``(issue_prefix, database)`` for one conform target.
 

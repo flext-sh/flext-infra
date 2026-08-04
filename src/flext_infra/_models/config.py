@@ -182,7 +182,7 @@ class FlextInfraConfigModels:
                     "Exact Go runtime version; mise resolves go: backend "
                     "selectors through it, so beads only installs when Go "
                     "is a declared tool"
-                ),
+                )
             ),
         ]
         mise_version: Annotated[
@@ -278,7 +278,9 @@ class FlextInfraConfigModels:
 
         secret: Annotated[
             t.NonEmptyStr,
-            m.Field(description="GitHub Actions secret name holding the deploy key PEM"),
+            m.Field(
+                description="GitHub Actions secret name holding the deploy key PEM"
+            ),
         ]
         host_alias: Annotated[
             t.NonEmptyStr,
@@ -286,15 +288,15 @@ class FlextInfraConfigModels:
         ]
         submodule: Annotated[
             t.NonEmptyStr,
-            m.Field(description="gitmodules submodule name (git config submodule.<name>.url)"),
+            m.Field(
+                description="gitmodules submodule name (git config submodule.<name>.url)"
+            ),
         ]
         path: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Checkout-relative submodule path"),
+            t.NonEmptyStr, m.Field(description="Checkout-relative submodule path")
         ]
         ssh_url: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="SSH clone URL using the Host alias"),
+            t.NonEmptyStr, m.Field(description="SSH clone URL using the Host alias")
         ]
 
     class CiPrivateSubmodulesSpec(_ConfigContract):
@@ -302,7 +304,9 @@ class FlextInfraConfigModels:
 
         paths: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Submodule paths to init before make setup"),
+            m.Field(
+                min_length=1, description="Submodule paths to init before make setup"
+            ),
         ]
         deploy_keys: Annotated[
             tuple[FlextInfraConfigModels.CiPrivateSubmoduleDeployKeySpec, ...],
@@ -313,6 +317,16 @@ class FlextInfraConfigModels:
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        make_profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile,
+            m.Field(
+                description=(
+                    "Make/codegen profile; ci-matrix projected only for "
+                    "workspace-root/standalone; workspace-member excluded "
+                    "and orphan copies pruned"
+                )
+            ),
+        ]
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
@@ -1230,7 +1244,8 @@ class FlextInfraConfigModels:
             m.Field(description="Governed repository identity"),
         ]
         branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Declared gitlink branch (. follows the superproject)")
+            t.NonEmptyStr,
+            m.Field(description="Declared gitlink branch (. follows the superproject)"),
         ]
 
     class MakeCommandContext(_ConfigContract):
@@ -2520,28 +2535,22 @@ class FlextInfraConfigModels:
             m.Field(description="Output paths selected for conformance planning"),
         ] = None
         complete_governed: Annotated[
-            bool,
-            m.Field(description="Whether every governed output is represented"),
+            bool, m.Field(description="Whether every governed output is represented")
         ] = False
         dependencies_only: Annotated[
-            bool,
-            m.Field(description="Whether planning is dependency-only"),
+            bool, m.Field(description="Whether planning is dependency-only")
         ] = False
         delegates: Annotated[
-            bool,
-            m.Field(description="Whether delegated templates are planned"),
+            bool, m.Field(description="Whether delegated templates are planned")
         ] = True
         pyproject: Annotated[
-            bool,
-            m.Field(description="Whether project metadata is planned"),
+            bool, m.Field(description="Whether project metadata is planned")
         ] = True
         templates: Annotated[
-            bool,
-            m.Field(description="Whether managed templates are planned"),
+            bool, m.Field(description="Whether managed templates are planned")
         ] = True
         custom: Annotated[
-            bool,
-            m.Field(description="Whether custom Make policy is planned"),
+            bool, m.Field(description="Whether custom Make policy is planned")
         ] = True
 
     class CodegenConformRequest(_ConfigContract):
@@ -2581,6 +2590,14 @@ class FlextInfraConfigModels:
             str, m.Field(description="SHA-256 of current content, empty when missing")
         ] = ""
         changed: Annotated[bool, m.Field(description="Whether content differs")]
+        absent: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "When true, apply removes the path instead of writing rendered"
+                )
+            ),
+        ] = False
         blocked: Annotated[
             bool, m.Field(description="Whether unrecognized WIP blocks application")
         ] = False

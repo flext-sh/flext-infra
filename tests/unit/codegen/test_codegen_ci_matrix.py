@@ -143,7 +143,9 @@ class TestCodegenCiMatrix:
         )
         marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
         tm.that(workflow, has=marker)
-        tm.that(workflow, lacks="fetch-depth: 0\n\n\n      - name: Install mise toolchain")
+        tm.that(
+            workflow, lacks="fetch-depth: 0\n\n\n      - name: Install mise toolchain"
+        )
         root2 = self._render_project(tmp_path / "member-again")
         workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
@@ -197,7 +199,15 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             tm.that(
-                (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").is_file(), eq=True
+                (
+                    root
+                    / "tests"
+                    / "fixtures"
+                    / "ci"
+                    / "docker"
+                    / f"{distro}.Dockerfile"
+                ).is_file(),
+                eq=True,
             )
 
     def test_distro_bootstrap_is_fail_closed_and_self_contained(
@@ -206,9 +216,9 @@ class TestCodegenCiMatrix:
         """Every distro runs the canonical self-bootstrap fail-closed."""
         root = self._render_project(tmp_path / "external")
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
-            content = (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
-                encoding="utf-8"
-            )
+            content = (
+                root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
+            ).read_text(encoding="utf-8")
             tm.that(content, has="make setup")
             tm.that(content, lacks="UV_UNMANAGED_INSTALL")
             tm.that(content, lacks="uv python install")
@@ -221,26 +231,30 @@ class TestCodegenCiMatrix:
     ) -> None:
         """Fedora's generated Node runtime has its required atomic library."""
         root = self._render_project(tmp_path / "external")
-        fedora = (root / "tests" / "fixtures" / "ci" / "docker" / "fedora.Dockerfile").read_text(
-            encoding="utf-8"
-        )
+        fedora = (
+            root / "tests" / "fixtures" / "ci" / "docker" / "fedora.Dockerfile"
+        ).read_text(encoding="utf-8")
         tm.that(fedora, has="libatomic")
         for distro in ("ubuntu", "debian", "alpine", "arch"):
-            content = (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
-                encoding="utf-8"
-            )
+            content = (
+                root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
+            ).read_text(encoding="utf-8")
             tm.that("libatomic" not in content, eq=True, msg=distro)
 
     def test_dockerfiles_render_byte_idempotently(self, tmp_path: Path) -> None:
         """Repeated project generation preserves the generated Dockerfiles."""
         root = self._render_project(tmp_path / "external")
         before = {
-            distro: (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
+            distro: (
+                root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
+            ).read_bytes()
             for distro in ("ubuntu", "debian", "fedora", "alpine", "arch")
         }
         self._render_project(root)
         after = {
-            distro: (root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
+            distro: (
+                root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
+            ).read_bytes()
             for distro in before
         }
         tm.that(after, eq=before)
@@ -271,9 +285,7 @@ class TestCodegenCiMatrix:
             tm.that(host, has="run: make setup")
         tm.that(windows.count("shell: bash"), eq=2)
 
-    def test_workflow_ci_policy_locks_matrix_to_main_push(
-        self, tmp_path: Path
-    ) -> None:
+    def test_workflow_ci_policy_locks_matrix_to_main_push(self, tmp_path: Path) -> None:
         """Blocking CI covers integration; matrix is post-merge main push only."""
         root = self._render_project(tmp_path / "external")
         manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
@@ -306,6 +318,92 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="0.12.0-dev")
         tm.that(triggers, lacks="develop")
         tm.that(triggers, lacks="branches: [dev]")
+
+    def test_ci_matrix_template_is_main_push_only(self) -> None:
+        """SSOT template binds matrix auto-run to main push only."""
+        template = (
+            Path(__file__).resolve().parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / ".github"
+            / "workflows"
+            / "ci-matrix.yml.j2"
+        )
+        content = template.read_text(encoding="utf-8")
+        triggers = content.split('"on":', maxsplit=1)[1].split("---", maxsplit=1)[0]
+        tm.that(triggers, has="branches: [main]")
+        tm.that(triggers, has="workflow_dispatch: {}")
+        tm.that(triggers, lacks="pull_request:")
+        tm.that(triggers, lacks="repository_branch")
+        tm.that(triggers, lacks="0.12.0-dev")
+        tm.that(triggers, lacks="develop")
+        tm.that(triggers, lacks="branches: [dev]")
+        tm.that(triggers, lacks="workspace-member")
+        tm.that(content, lacks="{% if make_profile")
+
+    def test_profile_excluded_workflow_orphan_is_planned_absent(
+        self, tmp_path: Path
+    ) -> None:
+        """Profile-excluded member ci-matrix orphans are planned as absent."""
+        from flext_infra import m
+        from flext_infra.codegen.conform import FlextInfraCodegenConform
+        from tests import u as test_u
+
+        name = "flext-core"
+        root = tmp_path / name
+        orphan = root / ".github" / "workflows" / "ci-matrix.yml"
+        orphan.parent.mkdir(parents=True)
+        orphan.write_text(
+            'name: ci-matrix\n"on":\n  push:\n    branches: [0.12.0-dev]\n',
+            encoding="utf-8",
+        )
+        repository = test_u.Tests.repository_ref(
+            name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=name,
+            repository=repository,
+            project=m.Infra.ProjectSpec(
+                package_name="flext_core",
+                class_stem="FlextCore",
+                namespace="FlextCore",
+                constant_name="flext-core",
+                namespace_attribute="flext_core",
+                alias="flext_core",
+                environment_prefix="FLEXT_CORE_",
+                description="member fixture",
+                version="0.12.0.dev0",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                homepage="https://github.com/flext-sh/flext-core",
+                documentation="https://github.com/flext-sh/flext-core",
+                workspace_root_rel=".",
+                year=2026,
+            ),
+        )
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        planned = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        ).plan(request)
+        tm.ok(planned)
+        absent = tuple(
+            item
+            for item in planned.value.files
+            if item.absent and item.path.resolve() == orphan.resolve()
+        )
+        tm.that(len(absent), eq=1)
+        tm.that(absent[0].changed, eq=True)
+        tm.that(orphan.exists(), eq=True)
 
     def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""

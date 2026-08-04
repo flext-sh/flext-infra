@@ -6,8 +6,10 @@
 # Multi-environment CI base: proves the project bootstrap and canonical Make
 # verbs work identically across distros, macOS, and Windows. The CI invokes
 # the project's own Make surface; it never reimplements bootstrap.
-# Runs only after merge to main (push). Integration uses blocking ci.yml alone.
-# Never bind triggers to the integration-line variable.
+# Projected only for workspace-root/standalone. Auto-runs on push to main only
+# (plus workflow_dispatch). Workspace members are covered by the root matrix;
+# conform/make gen APPLY=Y prunes orphan member copies. Never bind triggers to
+# the integration-line variable.
 ---
 name: ci-matrix
 
@@ -18,6 +20,8 @@ name: ci-matrix
     branches: [main]
   workflow_dispatch: {}
 # End SECTION: triggers
+
+
 
 # === SECTION: permissions (managed) ===
 # Source: template (minimal read-only permissions)
