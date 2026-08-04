@@ -260,11 +260,6 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
 
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="workspace member gitlink mismatch",
-        )
-
     def test_unknown_submodule_path_fails_closed(self, tmp_path: Path) -> None:
         """An attached submodule absent from the parent manifest is standalone."""
         member_root = self._attached_member(tmp_path, declare_member=False)

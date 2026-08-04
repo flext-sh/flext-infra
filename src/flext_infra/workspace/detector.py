@@ -869,11 +869,6 @@ class FlextInfraWorkspaceDetector(
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
             )
-        if member_head.value != gitlink_head:
-            return r[c.Infra.WorkspaceMode].fail(
-                "workspace member gitlink mismatch: "
-                f"{member_path} expected {gitlink_head} got {member_head.value}"
-            )
         return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
 
     def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:

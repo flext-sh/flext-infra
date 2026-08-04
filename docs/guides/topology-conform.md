@@ -63,7 +63,6 @@ generated `.mise.toml` pins the official Beads CLI version, and conform verifies
 that `mise exec -- bd version` equals that pin before inspecting or initializing
 the tracker.
 
-
 ## MCP / CRG identity (out of scope for conform)
 
 flext-infra conform owns Beads ledger projections only: `ledger_id` from
