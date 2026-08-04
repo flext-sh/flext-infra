@@ -143,10 +143,15 @@ jobs:
       - name: Build site
         run: make docs WHAT=build
 
+      # Pages configure/upload exist only to feed deploy on main. Running them on
+      # every integration push fails closed when Pages is unset and is wasted
+      # work when deploy is skipped (deploy already gates on refs/heads/main).
       - name: Configure Pages
+        if: github.ref == 'refs/heads/main'
         uses: {{ github_actions["configure-pages"].repository }}@{{ github_actions["configure-pages"].sha }}  # {{ github_actions["configure-pages"].version }}
 
       - name: Upload site artifact
+        if: github.ref == 'refs/heads/main'
         uses: {{ github_actions["upload-pages-artifact"].repository }}@{{ github_actions["upload-pages-artifact"].sha }}  # {{ github_actions["upload-pages-artifact"].version }}
         with:
           path: .reports/docs/site
