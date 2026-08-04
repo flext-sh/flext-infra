@@ -108,6 +108,15 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 return True
         return False
 
+    def _lock_wait_progress(
+        self, lock_path: Path, waited: float, *, timeout_seconds: int
+    ) -> None:
+        """Emit one lock-wait heartbeat so serialized Make is not silent."""
+        u.Cli.info(
+            f"stage=lock-wait verb={self.verb} path={lock_path} "
+            f"waited={waited:.0f}s timeout={timeout_seconds}s"
+        )
+
     @classmethod
     def _process_failure(
         cls, raw_exit_code: int, message: str
@@ -140,6 +149,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         # Without this marker the child Make re-enters run_worktree_transaction,
         # which waits for that very lock and deadlocks: parent in do_wait, child
         # sleeping on a lock only the parent can release.
+        u.Cli.info(f"stage=run context={failure_context} command={' '.join(command)}")
         result = u.Cli.run_raw(
             list(command),
             cwd=checkout,
@@ -201,6 +211,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         makefile: Path,
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one read-only validation and reject any checkout mutation."""
+        u.Cli.info(f"stage=fingerprint phase=before verb={self.verb}")
         before_result = self._capture_fingerprint(
             checkout, serialization, phase="before serialized Make"
         )
@@ -220,6 +231,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             ),
             failure_context=f"serialized Make {self.verb} failed",
         )
+        u.Cli.info(f"stage=fingerprint phase=after verb={self.verb}")
         after_result = self._capture_fingerprint(
             checkout, serialization, phase="after serialized Make"
         )
@@ -319,6 +331,11 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     f"Make serialization lock escapes selected Make owner: {lock_path}"
                 )
 
+        def wait_progress(lock_path: Path, waited: float) -> None:
+            self._lock_wait_progress(
+                lock_path, waited, timeout_seconds=serialization.timeout_seconds
+            )
+
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:
             if is_mutation:
                 return self._execute_mutation_once(
@@ -336,14 +353,25 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 ),
                 timeout_failure=self._lock_timeout_failure,
                 acquisition_failure=self._lock_acquisition_failure,
+                wait_heartbeat_seconds=serialization.wait_heartbeat_seconds,
+                wait_progress=wait_progress,
             )
 
+        u.Cli.header(f"Serialize Make {self.verb}")
+        u.Cli.info(
+            "stage=serialize "
+            f"verb={self.verb} mutation={is_mutation} "
+            f"what={make_variables.get(make_config.selector, '')} "
+            f"apply={make_variables.get(make_config.apply_variable, '')}"
+        )
         return u.Infra.serialization_lock_execute(
             (single_flight_lock_path,),
             serialization.timeout_seconds,
             complete_operation,
             timeout_failure=self._lock_timeout_failure,
             acquisition_failure=self._lock_acquisition_failure,
+            wait_heartbeat_seconds=serialization.wait_heartbeat_seconds,
+            wait_progress=wait_progress,
         )
 
 

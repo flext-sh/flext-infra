@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
+import time
 import os
 import re
 from fnmatch import fnmatchcase
@@ -97,6 +98,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.workspace_root
         )
+        u.Cli.header("Codegen Conform")
+        u.Cli.info(
+            f"stage=plan mode={request.mode} scope={request.scope} "
+            f"what={request.what} root={request.root}"
+        )
         planned = self.plan(request)
         if planned.failure:
             return r[m.Infra.CodegenResult].fail(
@@ -128,7 +134,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         written: list[Path] = []
-        for file in changed:
+        total_changed = len(changed)
+        u.Cli.info(f"stage=apply changed={total_changed}")
+        for write_index, file in enumerate(changed, start=1):
+            u.Cli.emit_raw(f"  write [{write_index}/{total_changed}] {file.path}\n")
             if file.absent:
                 target = file.path.expanduser().resolve()
                 try:
@@ -155,13 +164,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             result = u.Cli.atomic_write_text_file(file.path, file.rendered)
             if result.failure:
                 return r[m.Infra.CodegenResult].fail(
-                    result.error or f"atomic write failed: {file.path}"
+                    result.error
+                    or (
+                        f"stage=apply position={write_index}/{total_changed} "
+                        f"path={file.path}: atomic write failed"
+                    )
                 )
             written.append(file.path)
+        u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
             return r[m.Infra.CodegenResult].fail(
-                verified.error or "post-apply conform verification failed"
+                verified.error
+                or "stage=verify-fixed-point: post-apply conform verification failed"
             )
         verified_plan = verified.value
         residual = tuple(file for file in verified_plan.files if file.changed)
@@ -284,7 +299,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         environments: list[m.Infra.UvEnvironmentPlan] = []
         beads_plans: list[m.Infra.BeadsPlan] = []
         ancestry_plans: list[m.Infra.BranchAncestryPlan] = []
-        for repository in selected:
+        total_repositories = len(selected)
+        u.Cli.info(f"stage=plan repositories={total_repositories}")
+        for repository_index, repository in enumerate(selected, start=1):
+            repository_started = time.monotonic()
+            u.Cli.progress(
+                repository_index, total_repositories, repository.name, "conform"
+            )
             repository_root = self._repository_root(
                 workspace_root, workspace, repository
             )
@@ -337,7 +358,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if repository_plan.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     repository_plan.error
-                    or f"repository planning failed: {repository_root}"
+                    or (
+                        f"stage=plan position={repository_index}/"
+                        f"{total_repositories} repository={repository.name}: "
+                        f"repository planning failed: {repository_root}"
+                    )
                 )
             governed = self._complete_governed_plans(
                 repository_root,
@@ -350,7 +375,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if governed.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     governed.error
-                    or f"artifact ownership planning failed: {repository_root}"
+                    or (
+                        f"stage=plan position={repository_index}/"
+                        f"{total_repositories} repository={repository.name}: "
+                        f"artifact ownership planning failed: {repository_root}"
+                    )
                 )
             files.extend(governed.value)
             environments.append(
@@ -392,9 +421,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if ancestry_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
                         ancestry_result.error
-                        or f"branch ancestry inventory failed: {repository_root}"
+                        or (
+                            f"stage=plan position={repository_index}/"
+                            f"{total_repositories} repository={repository.name}: "
+                            f"branch ancestry inventory failed: {repository_root}"
+                        )
                     )
                 ancestry_plans.append(ancestry_result.value)
+            u.Cli.status(
+                "conform",
+                repository.name,
+                result=True,
+                elapsed=time.monotonic() - repository_started,
+            )
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
@@ -466,7 +505,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         orphan_read = u.Cli.files_read_text(path)
                         if orphan_read.failure:
                             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                                orphan_read.error or f"orphan workflow read failed: {path}"
+                                orphan_read.error
+                                or f"orphan workflow read failed: {path}"
                             )
                         completed.append(
                             m.Infra.CodegenFilePlan(
@@ -884,7 +924,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    rendered.error or f"template render failed: {entry.source}"
+                    rendered.error
+                    or (
+                        f"stage=templates repository={repository.name} "
+                        f"template={entry.source}: template render failed"
+                    )
                 )
             file_plan = self._file_plan(root, destination, rendered.value)
             if file_plan.failure:
@@ -969,6 +1013,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
+        u.Cli.info(f"  stage=pyproject repository={repository.name}")
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1125,6 +1170,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
+        u.Cli.info(f"  stage=templates repository={repository.name}")
         profile = target.make_profile
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
@@ -1160,6 +1206,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed file requires exactly one render template: {managed.path}"
                 )
             entry = entries[0]
+            u.Cli.emit_raw(f"  template {entry.source} -> {entry.destination}\n")
             relative = Path(entry.destination)
             if relative.is_absolute() or ".." in relative.parts:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1179,10 +1226,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()
                 ):
-                    current = u.Cli.files_read_text(path)
-                    if current.failure:
+                    # Why: mro-4p0t orphan_read avoids Result[str] vs str overlap on current.
+                    orphan_read = u.Cli.files_read_text(path)
+                    if orphan_read.failure:
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                            current.error or f"orphan workflow read failed: {path}"
+                            orphan_read.error or f"orphan workflow read failed: {path}"
                         )
                     planned.append(
                         m.Infra.CodegenFilePlan(
@@ -1191,7 +1239,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                             policy=managed.policy,
                             rendered="",
                             expected_sha256=u.Cli.sha256_content(""),
-                            current_sha256=u.Cli.sha256_content(current.value),
+                            current_sha256=u.Cli.sha256_content(orphan_read.value),
                             changed=True,
                             absent=True,
                         )

@@ -204,3 +204,58 @@ def _archive_root() -> str:
 
 
 __all__: t.StrSequence = []
+
+
+def test_keep_root_files_override(tmp_path: Path) -> None:
+    """Declared keep_root_files stay at root without review findings."""
+    project = tmp_path / "ai-hub"
+    package_dir = project / "src" / "ai_hub"
+    package_dir.mkdir(parents=True)
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    (project / "pyproject.toml").write_text(
+        "[project]\nname='ai-hub'\nversion='0.1.0'\n", encoding="utf-8"
+    )
+    (project / "README.md").write_text("# ai-hub\n", encoding="utf-8")
+    (project / "UNIVERSAL_CORE.md").write_text("core\n", encoding="utf-8")
+    (project / "ECOSYSTEM.md").write_text("eco\n", encoding="utf-8")
+    engine = _engine(tmp_path)
+
+    report = engine.check_project(project)
+
+    paths = {finding.path for finding in report.findings}
+    tm.that("UNIVERSAL_CORE.md" in paths, eq=False)
+    tm.that("ECOSYSTEM.md" in paths, eq=False)
+
+
+def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:
+    """data/ is skipped; external-docs/ is allowed as reference corpus."""
+    project = _build_loose_project(tmp_path)
+    (project / "data").mkdir()
+    (project / "data" / "proposal").mkdir()
+    (project / "external-docs").mkdir()
+    (project / "external-docs" / "note.md").write_text("ext\n", encoding="utf-8")
+    engine = _engine(tmp_path)
+
+    report = engine.check_project(project)
+
+    paths = {finding.path for finding in report.findings}
+    tm.that("data" in paths, eq=False)
+    tm.that("external-docs" in paths, eq=False)
+
+
+def test_duplicate_root_md_archives_when_docs_copy_exists(tmp_path: Path) -> None:
+    """Root move_docs_files collide with docs/ -> archive root, keep docs."""
+    project = _build_loose_project(tmp_path)
+    docs = project / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    (docs / "index.md").write_text("canonical-index\n", encoding="utf-8")
+    engine = _engine(tmp_path, apply_changes=True)
+
+    result = engine.execute()
+
+    tm.ok(result)
+    tm.that((docs / "index.md").read_text(encoding="utf-8"), eq="canonical-index\n")
+    archived = project / _archive_root() / project.name / "index.md"
+    tm.that(archived.is_file(), eq=True)
+    tm.that(archived.read_text(encoding="utf-8"), eq="index\n")
+    tm.that((project / "index.md").exists(), eq=False)

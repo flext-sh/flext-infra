@@ -226,6 +226,37 @@ Infra:
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
+        stale_github_organizations:
+          - organization
+        github_repos:
+          - organization: flext-sh
+            repository: flext
+            branch: 0.12.0-dev
+            local_checkout: ~/flext
+          - organization: flext-sh
+            repository: flext-core
+            branch: 0.12.0-dev
+            local_checkout: ~/flext/flext-core
+          - organization: flext-sh
+            repository: flext-infra
+            branch: 0.12.0-dev
+            local_checkout: ~/flext/flext-infra
+          - organization: datacosmos-br
+            repository: ai-hub
+            branch: develop
+            local_checkout: ~/.ai-hub
+          - organization: datacosmos-br
+            repository: cosmos-docgen
+            branch: develop
+            local_checkout: ~/cosmos-docgen
+          - organization: datacosmos-br
+            repository: cosmos-main
+            branch: develop
+            local_checkout: ~/cosmos-main
+          - organization: marlonsc
+            repository: invest
+            branch: main
+            local_checkout: ~/invest
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
@@ -244,6 +275,9 @@ Infra:
           - .pytest_cache
           - .coverage
         timeout_seconds: 1800
+        # Heartbeat while FileLock polls so make gen is not silent for up to
+        # timeout_seconds when another lane owns single-flight / mutation.
+        wait_heartbeat_seconds: 5
         # Serialized surface: the read-only validators plus every mutation verb,
         # so no two lanes mutate one checkout concurrently. `run` stays out:
         # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
@@ -552,6 +586,7 @@ Infra:
         - conftest.py
         - mkdocs.yml
         - uv.lock
+        - sgconfig.yml
       canonical_root_dotfiles:
         - .gitignore
         - .gitattributes
@@ -576,6 +611,7 @@ Infra:
         - dist
         - docker
         - dbt_packages
+        - ast-grep-rules
       # Per-project-type extra canonical root files; the profile of a project
       # is resolved by matching its name against profile_project_patterns.
       profile_extra_root_files:
@@ -587,6 +623,7 @@ Infra:
         meltano:
           - meltano.yml
           - docker-compose.test.yml
+          - dbt_project.yml
       profile_project_patterns:
         dbt:
           - flext-dbt-*
@@ -616,6 +653,17 @@ Infra:
         - troubleshooting
         - testing
         - overview
+        - docs-finais
+        - authoring
+        - ARCHITECTURE
+        - OPERATIONS
+        - STANDARDS
+        - DEVELOPMENT
+        - API
+        - CODEMAPS
+        - RELEASES
+        - apresentacoes
+        - solutions
       # Root Markdown documents moved under <docs_target>/.
       move_docs_files:
         - index.md
@@ -641,6 +689,7 @@ Infra:
         - RULE_MODIFICATION.md
         - TESTING_WARNING_SYSTEM.md
         - FLEXT_0_12_BEADS_LANE_REORGANIZATION_PLAN.md
+        - cosmos-docgen_FLEXT_BEADS_LANE_REORGANIZATION_PLAN.md
       # Sample data files moved under <examples_target>/.
       move_example_files:
         - directory.ldif
@@ -655,6 +704,7 @@ Infra:
         - $OUT
         - max
         - "=4.0.0"
+        - "=4.0.0,"
         - nohup.out
         - poetry.lock
         - history
@@ -670,7 +720,6 @@ Infra:
         - logs
         - complete_pipeline_results
         - legado
-        - __pycache__
         - b-pipeline
         - debug-pipeline
         - exec-pipeline
@@ -683,6 +732,13 @@ Infra:
         - pyright_errors*.log
         - test_output.txt
         - mro-to59-*
+      # Content submodule trees and agent law dirs are out of product-docs relocate.
+      # .agents is already skipped via allow_hidden (dotdir); data/ is explicit.
+      special_root_dirs:
+        - data
+      # External reference corpora (same class as docs/references/**).
+      reference_root_dirs:
+        - external-docs
       # Per-project overrides: extra archives (with the matching .gitignore
       # additions), explicit nested moves, and empty-directory archives.
       project_overrides:
@@ -719,6 +775,122 @@ Infra:
             - { source: models/reference.md, target: docs/reference.md }
           archive_empty_dirs:
             - models
+        # Consumer ecosystem root keep-lists (plan B): declared only via overrides.
+        ai-hub:
+          keep_root_files:
+            - UNIVERSAL_CORE.md
+            - ECOSYSTEM.md
+            - CATALOG.md
+            - config.yaml
+            - schema.json
+            - version.json
+            - surface-catalog.json
+            - crg-watch.toml
+            - env.example
+            - bootstrap.ps1
+          ignore_globs:
+            - skills
+            - rules
+            - bin
+            - templates
+            - tools
+            - evals
+            - mcp
+            - openclaw
+            - opencode
+            - run
+            - ast-grep-rule-tests
+        cosmos-docgen:
+          keep_root_files:
+            - ECOSYSTEM.md
+            - Taskfile.yml
+            - dcdoc.config.yaml
+            - coverage.json
+          ignore_globs:
+            - skills
+            - templates
+            - layouts
+            - assets
+        cosmos-main:
+          keep_root_files:
+            - ECOSYSTEM.md
+            - SECURITY.md
+            - ONBOARDING.md
+            - LICENSE-3RD-PARTY.md
+            - LICENSE.quick-reference.md
+            - QODER.md
+            - mkdocs.yaml
+            - Makefile.check
+            - config.yaml
+            - cloud-init.sh
+            - pycodestyle.cfg
+            - pylintrc
+            - patch.diff
+          ignore_globs:
+            - cosmos
+            - apps
+            - package.json
+            - package-lock.json
+            - node_modules
+            - pnpm-lock.yaml
+            - yarn.lock
+            - tsconfig.json
+            - turbo.json
+            - bin
+            - build
+            - coordination
+            - cosmos_main.egg-info
+            - evals
+            - json
+            - mro
+            - platform-namespaces
+            - policy
+            - scratchpad
+            - site
+            - skills
+            - templates
+            - work
+        cosmos-charts:
+          keep_root_files:
+            - cosmos-release.lock
+            - release.lock.json
+            - pycodestyle.cfg
+          ignore_globs:
+            - build
+            - charts
+            - images
+        cosmos-gitops:
+          ignore_globs:
+            - build
+            - repo
+            - tenants
+        neptor:
+          keep_root_files:
+            - Taskfile.yml
+            - workspace_custom.mk
+          ignore_globs:
+            - typings
+        vectorbt.pro:
+          ignore_globs:
+            - "*"
+        invest:
+          keep_root_files:
+            - BEADS_WORKFLOW.md
+            - GEMINI.md
+            - activate_workspace.sh
+            - poetry.toml
+            - workspace_config.py
+            - workspace_custom.mk
+          ignore_globs:
+            - neptor
+            - mt5linux
+            - mt5docker
+            - vectorbt.pro
+            - ansible
+            - docker
+            - scripts
+            - typings
+            - external-docs
 
     managed_files:
       - path: .github/ci-template/ci.yml

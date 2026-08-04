@@ -508,6 +508,7 @@ class TestsFlextInfraWorkService:
                 workspace_root=repository,
                 operation=c.Infra.WorkOperation.STATUS,
                 bead=bead_id,
+                apply_changes=False,
             ).execute()
         )
         tm.that(status, has="branch: feature/status-detail")
