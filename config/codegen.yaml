@@ -365,7 +365,10 @@ Infra:
           whats: [diagnostics]
           apply_guarded: false
         - name: docs
-          default_what: all
+          # `validate` is the read-only fixed-point after mutation (must differ
+          # from apply_what so serialize-make can re-check without APPLY=Y).
+          # `WHAT=all` remains the explicit full pipeline meta-selector.
+          default_what: validate
           whats: [all, generate, fix, audit, build, validate]
           # generate/fix materialize artifacts: the generated handler picks
           # --apply or --check from APPLY, and the docs workflow calls

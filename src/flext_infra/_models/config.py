@@ -498,6 +498,13 @@ class FlextInfraConfigModels:
                     "accepts_apply"
                 )
                 raise ValueError(msg)
+            if self.apply_guarded and self.default_what == self.apply_what:
+                msg = (
+                    f"make verb {self.name} apply_guarded default_what must "
+                    "differ from apply_what so serialize-make can re-check "
+                    "without APPLY=Y"
+                )
+                raise ValueError(msg)
             missing = required - set(self.whats)
             if missing:
                 msg = (
