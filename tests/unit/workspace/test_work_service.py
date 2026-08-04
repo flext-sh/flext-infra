@@ -511,3 +511,40 @@ class TestsFlextInfraWorkService:
         )
         tm.that(status, has="branch: feature/status-detail")
         tm.that(status, has="primary_checkout:")
+
+    def test_finish_refuses_metadata_worktree_mismatch(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-bind"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="finish-bind",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        poison = tmp_path / "poison-finish"
+        poison.mkdir()
+        (poison / "README.md").write_text("poison\n", encoding="utf-8")
+        test_u.Tests.initialize_git_repo(poison)
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["worktree"] = str(poison)
+        store["metadata"]["pr_number"] = "1"
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="does not match registered lane")
