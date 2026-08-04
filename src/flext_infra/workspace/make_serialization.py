@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, override
 
@@ -99,7 +98,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
 
     def _custom_what_defined(self, selected_what: str) -> bool:
         """Return True when custom.mk defines `_custom_<verb>_<what>`."""
-        custom_mk = self.makefile.parent / c.Infra.CUSTOM_MAKE_FILENAME
+        custom_mk = self.makefile.parent / "custom.mk"
         if not custom_mk.is_file():
             return False
         target = f"_custom_{self.verb}_{selected_what}:"
@@ -264,16 +263,12 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         *,
         fixed_point_what: str,
         makefile: Path,
-        mutation_lock_path: Path,
-        wait_progress: Callable[[Path, float], None],
+        lock_path: Path,
     ) -> p.Result[m.Infra.ProcessExit]:
-        """Run apply without the mutation lock, then lock the read-only fixed point.
-
-        The child transaction owns apply serialization. Holding the mutation lock
-        during apply would deadlock nested worktree transactions. After apply,
-        fingerprint drift before the fixed-point lock fails closed; the fixed
-        point itself must not mutate the checkout.
-        """
+        """Let the child transaction own apply locks, then lock the fixed point."""
+        # Why (handler SSOT): apply runs once under single-flight; the read-only
+        # default WHAT then re-checks under the mutation lock so concurrent
+        # validators wait through both phases and drift fails closed.
         primary = self._run_make(
             checkout,
             self._serialized_command(
@@ -321,11 +316,11 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     makefile,
                     make_config,
                     selected_what=fixed_point_what,
-                    apply_value=make_config.apply_absent_value,
+                    apply_value="",
                 ),
-                failure_context=(
+                run_context=(
                     f"serialized Make {self.verb} fixed-point "
-                    f"{make_config.selector}={fixed_point_what} failed"
+                    f"{make_config.selector}={fixed_point_what}"
                 ),
             )
             if fixed_point.failure:
@@ -345,20 +340,22 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     int(c.Infra.ScriptExitCode.INFRA),
                     (
                         f"serialized Make {self.verb} fixed-point "
-                        f"{make_config.selector}={fixed_point_what} changed workspace: "
-                        f"{changed_paths}"
+                        f"{make_config.selector}={fixed_point_what} "
+                        f"changed workspace: {changed_paths}"
                     ),
                 )
             return primary
 
         return u.Infra.serialization_lock_execute(
-            (mutation_lock_path,),
+            (lock_path,),
             serialization.timeout_seconds,
             locked_fixed_point,
             timeout_failure=self._lock_timeout_failure,
             acquisition_failure=self._lock_acquisition_failure,
             wait_heartbeat_seconds=serialization.wait_heartbeat_seconds,
-            wait_progress=wait_progress,
+            wait_progress=lambda path, waited: self._lock_wait_progress(
+                path, waited, timeout_seconds=serialization.timeout_seconds
+            ),
         )
 
     @classmethod
@@ -406,7 +403,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         )
         if verb_spec is None:
             return r[m.Infra.ProcessExit].fail(f"unknown Make verb: {self.verb}")
-        fixed_point_what = verb_spec.default_what if is_mutation else ""
+        fixed_point_what = verb_spec.default_what if is_mutation else None
 
         checkout = self.root.resolve()
         selected_makefile = self.makefile.resolve()
@@ -433,7 +430,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
 
         def complete_operation() -> p.Result[m.Infra.ProcessExit]:
-            if is_mutation:
+            if fixed_point_what is not None:
                 return self._execute_transaction_owned_mutation(
                     checkout,
                     make_config,
@@ -441,8 +438,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     make_variables,
                     fixed_point_what=fixed_point_what,
                     makefile=selected_makefile,
-                    mutation_lock_path=mutation_lock_path,
-                    wait_progress=wait_progress,
+                    lock_path=mutation_lock_path,
                 )
             return u.Infra.serialization_lock_execute(
                 (mutation_lock_path,),
