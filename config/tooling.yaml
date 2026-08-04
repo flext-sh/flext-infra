@@ -502,7 +502,10 @@ Infra:
         # they retain the observed coverage-run slack. The typed runner owns
         # them; never narrow them back to the pre-measurement 10s/60s.
         case-timeout-seconds: 30
-        run-timeout-seconds: 300
+        # Measured (ai-hub-wjmk, 2026-08-04): ai-hub unit alone reaches only
+        # ~38 percent before the old 300s run wall (exit 124). Full suite is
+        # ~1464 items. Align with consumer health-gate budget (1800s).
+        run-timeout-seconds: 1800
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
@@ -547,7 +550,9 @@ Infra:
           # mro-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
         # mro-99ae: hard process boundary independent of pytest hook progress.
-        process-timeout-seconds: 60
+        # Must exceed run-timeout-seconds (1800). ai-hub-wjmk: process=60 after
+        # make gen killed CI at ~63s (Error 124) before the run budget applied.
+        process-timeout-seconds: 1920
       tomlsort:
         all: true
         in_place: true
