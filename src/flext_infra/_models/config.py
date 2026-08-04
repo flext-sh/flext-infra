@@ -764,10 +764,11 @@ class FlextInfraConfigModels:
     class TestmonCacheSpec(_ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy (mro-dipb)."""
 
-        schema_version: Annotated[int, m.Field(ge=1, description="Cache key schema version")]
+        schema_version: Annotated[
+            int, m.Field(ge=1, description="Cache key schema version")
+        ]
         mode: Annotated[
-            Literal["bootstrap", "stable"],
-            m.Field(description="Cache renewal phase"),
+            Literal["bootstrap", "stable"], m.Field(description="Cache renewal phase")
         ]
         save_enabled: Annotated[
             bool,
@@ -801,7 +802,9 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Refs allowed to save cache generations"),
         ]
-        key_prefix: Annotated[t.NonEmptyStr, m.Field(description="Immutable cache key prefix")]
+        key_prefix: Annotated[
+            t.NonEmptyStr, m.Field(description="Immutable cache key prefix")
+        ]
 
         @u.model_validator(mode="after")
         def _validate_thresholds(self) -> Self:

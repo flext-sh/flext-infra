@@ -15,7 +15,10 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
         text = prompt.read_text(encoding="utf-8")
         assert "flext-inviolable-rules" not in text
         assert "quality-gates" not in text
-        if "flext-aggressive-scale-refactor" in prompt.name or "flext-strict-jsonvalue" in prompt.name:
+        if (
+            "flext-aggressive-scale-refactor" in prompt.name
+            or "flext-strict-jsonvalue" in prompt.name
+        ):
             assert law_link in text
             target = (prompt.parent / law_link).resolve()
             assert target.exists(), f"{prompt.name} dead skill path: {law_link}"

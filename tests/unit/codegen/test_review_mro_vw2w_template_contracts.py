@@ -92,9 +92,9 @@ class TestsReviewTemplateContracts:
 
     def test_docs_upload_excludes_raw_report_logs(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")
-        upload = text.split("Upload docs reports on failure", 1)[1].split(
-            "build:", 1
-        )[0]
+        upload = text.split("Upload docs reports on failure", 1)[1].split("build:", 1)[
+            0
+        ]
         tm.that(upload, has="audit-summary.json")
         tm.that(upload, has="validate-summary.json")
         tm.that(upload, lacks="path: .reports/")

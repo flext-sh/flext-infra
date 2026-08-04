@@ -66,11 +66,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
 
     @staticmethod
     def docs_canonical_github_url(
-        organization: str,
-        repository: str,
-        path: str,
-        *,
-        is_dir: bool = False,
+        organization: str, repository: str, path: str, *, is_dir: bool = False
     ) -> str | None:
         """Build a canonical GitHub URL for a governed repository path."""
         repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
