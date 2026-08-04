@@ -609,6 +609,7 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
+exclude-newer = "7 days"
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]
@@ -687,7 +688,7 @@ dev = [
   "pyupgrade>=3.21.2",
   "radon>=6.0.1",
   "ruff>=0.16.0",
-  "rumdl>=0.2.46",
+  "rumdl>=0.2.45",
   "types-cachetools>=7.0.0.20260713",
   "types-cffi>=2.0.0.20260518",
   "types-click>=7.1.8",

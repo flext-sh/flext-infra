@@ -339,6 +339,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def uv_exclude_newer(self) -> str:
+            """uv exclude-newer cooldown window for dependency resolution."""
+            ...
+
+        @property
         def kubectl_version(self) -> str:
             """Exact kubectl version."""
             ...
