@@ -94,6 +94,8 @@ class FlextInfraWorkspaceChecker(
             return ()
         skip = frozenset(c.Infra.PROJECT_CHECK_GATES_CI_SKIP_VALUES)
         return tuple(gate for gate in gates if gate in skip)
+
+    @staticmethod
     def apply_ci_gate_skips(gates: t.StrSequence) -> list[str]:
         """Omit make.ci.check_gates_skip when the Make CI token is exact CI=Y."""
         ci = config.Infra.codegen.make.ci
