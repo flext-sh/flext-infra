@@ -25,7 +25,7 @@ class TestsReviewTemplateContracts:
     def test_makefile_bootstrap_prefers_gitlink_oid(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(text, has="FLEXT_INFRA_BOOTSTRAP_REF")
-        tm.that(text, has='rev-parse "HEAD:{{ infra_repository.path.as_posix() }}"')
+        tm.that(text, has='rev-parse "HEAD:{{ infra_repository.path }}"')
         tm.that(text, has="@$(FLEXT_INFRA_BOOTSTRAP_REF)")
         tm.that(text, lacks="@{{ infra_repository_branch }}")
 
