@@ -40,8 +40,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
         )
         if pipeline_result.failure:
             return r[str].fail(pipeline_result.error or "pipeline execution failed")
-        # Why: flext-cli execute_pipeline with fail_fast returns Result.failure
-        # when any stage fails, so the ok path never carries failed_stages.
+        # cli.pipeline already maps failed_stages to r.fail; value is always success.
         return self._collect_pipeline_output()
 
     # ------------------------------------------------------------------

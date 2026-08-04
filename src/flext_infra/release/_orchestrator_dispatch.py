@@ -173,9 +173,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
         if pipeline_result.failure:
             return r[bool].fail(pipeline_result.error or "pipeline execution failed")
-        # Why: flext-cli execute_pipeline with fail_fast returns Result.failure
-        # when any stage fails, so inspecting failed_stages on the ok value is
-        # unreachable dead code under mypy.
+        # cli.pipeline already maps failed_stages to r.fail; value is always success.
         if release_config.next_dev and not release_config.dry_run:
             return self._bump_next_dev(
                 release_config.workspace_root,
