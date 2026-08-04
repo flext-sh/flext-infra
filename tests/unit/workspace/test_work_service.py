@@ -128,7 +128,7 @@ class TestsFlextInfraWorkService:
             "    print('https://example.test/pr/1')\n"
             "    raise SystemExit(0)\n"
             "if args[:2] == ['pr', 'view']:\n"
-            "    print(json.dumps({'state': 'MERGED', 'mergedAt': '2026-08-03T00:00:00Z'}))\n"
+            "    print(json.dumps({'state': 'MERGED', 'mergedAt': '2026-08-03T00:00:00Z', 'headRefName': ''}))\n"
             "    raise SystemExit(0)\n"
             "raise SystemExit(f'unsupported gh args: {args}')\n",
             encoding="utf-8",
@@ -784,3 +784,80 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="gh unavailable")
+
+    def test_finish_refuses_pr_head_mismatch(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-pr-head"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="finish-pr-head",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["pr_number"] = "9"
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        gh = shim_dir / "gh"
+        gh.write_text(
+            "#!/usr/bin/env python3" + chr(10)
+            + "import json, sys" + chr(10)
+            + "print(json.dumps({'state': 'MERGED', 'mergedAt': '2026-08-03T00:00:00Z', 'headRefName': 'feature/other'}))" + chr(10),
+            encoding="utf-8",
+        )
+        gh.chmod(0o755)
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="does not match lane branch")
+
+    def test_land_refuses_integration_base_drift(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        config = repository / "config"
+        config.mkdir()
+        (config / "workspace.yaml").write_text(
+            "integration:" + chr(10) + "  branch: 0.12.0-dev" + chr(10),
+            encoding="utf-8",
+        )
+        bead_id = "mro-test-land-base-drift"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="land-base-drift",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["integration_base"] = "attacker-base"
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="integration_base drift")
