@@ -137,7 +137,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                 return r.fail(open_prs.error or f"failed to list open PRs for {branch}")
             if (open_prs.value or "").strip() not in {"", "[]"}:
                 return r.fail(f"work finish refuses open PR on {branch}")
-            return r.ok(True)  # Why (mro-5p9w): FlextResult forbids a None success payload.
+            return r.ok(
+                True
+            )  # Why (mro-5p9w): FlextResult forbids a None success payload.
         viewed = u.Cli.capture(
             ("gh", "pr", "view", pr_number, "--json", "state,mergedAt,headRefName"),
             cwd=primary_root,

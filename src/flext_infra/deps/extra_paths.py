@@ -24,8 +24,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraExtraPathsManager(
-    FlextInfraExtraPathsSyncMixin,
-    FlextInfraProjectSelectionServiceBase[bool],
+    FlextInfraExtraPathsSyncMixin, FlextInfraProjectSelectionServiceBase[bool]
 ):
     """Manager for synchronizing type-checker search paths from dependencies."""
 

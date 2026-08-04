@@ -202,9 +202,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(deadline.expires_at_monotonic, eq=started + policy.run_timeout_seconds)
         tm.that(deadline.termination_grace_seconds, eq=policy.termination_grace_seconds)
         tm.that(observed_live, eq=[True])
-        tm.that(
-            observed_pythonpath, eq=[str(tmp_path / c.Infra.DEFAULT_SRC_DIR)]
-        )
+        tm.that(observed_pythonpath, eq=[str(tmp_path / c.Infra.DEFAULT_SRC_DIR)])
         latest = tmp_path / ".reports" / "tests" / "latest.txt"
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)

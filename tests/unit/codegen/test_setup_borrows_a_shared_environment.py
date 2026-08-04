@@ -70,7 +70,7 @@ def test_uv_run_prefers_project_src_over_borrowed_editable() -> None:
     """Borrowed envs keep the primary editable; local src must win on PYTHONPATH."""
     template = _template_text()
     assert 'PYTHONPATH="$(PROJECT_ROOT)/src"' in template
-    assert 'env -u PYTHONPATH -u MYPYPATH $(UV) run' not in template
+    assert "env -u PYTHONPATH -u MYPYPATH $(UV) run" not in template
 
 
 def test_the_generated_makefile_encodes_no_foreign_path() -> None:
