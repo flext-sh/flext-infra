@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import flext_infra
 import pytest
 from flext_infra import FlextInfraWorkService, c, u
 from flext_tests import tm
@@ -548,3 +549,159 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="does not match registered lane")
+
+    def test_start_rejects_invalid_slug(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-bad-slug"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="Not_Kebab",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="kebab-case required")
+
+    def test_start_rejects_forbidden_slug(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-forbidden-slug"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="temp",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="forbidden work slug")
+
+    def test_start_requires_apply(self, tmp_path: PathType) -> None:
+        repository = self._repository(tmp_path)
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead="mro-test-start-apply",
+            kind=c.Infra.WorkKind.FEATURE,
+            name="needs-apply",
+            base="HEAD",
+            apply_changes=False,
+        ).execute()
+        tm.fail(result, has="requires --apply")
+
+    def test_land_requires_apply(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-land-apply"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=False,
+        ).execute()
+        tm.fail(result, has="requires --apply")
+
+    def test_land_cas_mismatch_fails(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-land-cas"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="land-cas",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["head_oid"] = "0" * 40
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="CAS failed")
+
+    def test_land_refuses_dirty_lane(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-land-dirty"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="land-dirty",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        lane = Path(store["metadata"]["worktree"])
+        (lane / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="clean lane worktree")
+
+    def test_makefile_j2_exposes_work_builtins_on_workspace(self) -> None:
+        template = (
+            Path(flext_infra.__file__).resolve().parent
+            / "templates"
+            / "project"
+            / "base"
+            / "Makefile.j2"
+        ).read_text(encoding="utf-8")
+        tm.that(template, has="override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)")
+        tm.that(template, has="_builtin_work_status:")
+        tm.that(template, has="_builtin_work_start:")
+        tm.that(template, has="_builtin_work_land:")
+        tm.that(template, has="_builtin_work_finish:")
+        tm.that(
+            template,
+            has='workspace work --workspace "$(WORKSPACE)" --operation status',
+        )
+        tm.that(
+            template,
+            has='workspace work --workspace "$(WORKSPACE)" --operation land',
+        )
