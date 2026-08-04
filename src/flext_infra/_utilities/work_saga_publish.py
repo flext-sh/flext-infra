@@ -61,7 +61,22 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         expected = str(meta.get("head_oid") or "").strip()
         if not branch or not worktree:
             return r.fail(f"bead {bead} missing branch/worktree metadata")
-        lane = Path(worktree)
+        if not expected:
+            return r.fail(f"bead {bead} missing metadata.head_oid for land CAS")
+        if not integration:
+            base = self._resolve_integration_base(primary_root)
+            if base.failure:
+                return r.fail(base.error or "missing integration base")
+            integration = base.value
+        permanent = self._refuse_permanent_branch(branch, integration)
+        if permanent.failure:
+            return r.fail(
+                permanent.error or f"work land refuses permanent branch {branch}"
+            )
+        bound = self._bound_registered_lane(primary_root, branch, worktree)
+        if bound.failure:
+            return r.fail(bound.error or "work land lane binding failed")
+        lane = bound.value
         if self._is_primary_path(primary_root, lane):
             return r.fail("work land refuses the primary worktree")
         if not lane.is_dir():
@@ -72,7 +87,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         head = self._git_head(lane)
         if head.failure:
             return r.fail(head.error or "failed to resolve lane HEAD")
-        if expected and head.value != expected:
+        if head.value != expected:
             contains = u.Infra.git_run(
                 lane, ("merge-base", "--is-ancestor", expected, "HEAD")
             )
@@ -80,11 +95,6 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
                 return r.fail(
                     f"CAS failed: metadata.head_oid={expected} head={head.value}"
                 )
-        if not integration:
-            base = self._resolve_integration_base(primary_root)
-            if base.failure:
-                return r.fail(base.error or "missing integration base")
-            integration = base.value
         synced = FlextInfraWorktreeService(
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.UPDATE,

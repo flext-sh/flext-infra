@@ -299,3 +299,95 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="CAS failed")
+
+    def test_land_refuses_permanent_branch(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-land-perm"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        store = tmp_path / "beads-store.json"
+        payload = json.loads(store.read_text(encoding="utf-8"))
+        payload["metadata"] = {
+            "branch": "main",
+            "worktree": str(tmp_path / "fake-lane"),
+            "integration_base": "HEAD",
+            "head_oid": "a" * 40,
+        }
+        store.write_text(json.dumps(payload), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="permanent branch")
+
+    def test_land_requires_head_oid(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-land-oid"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="land-oid",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["head_oid"] = ""
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="missing metadata.head_oid")
+
+    def test_land_refuses_metadata_worktree_mismatch(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-land-bind"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="land-bind",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        poison = tmp_path / "poison-tree"
+        poison.mkdir()
+        (poison / "README.md").write_text("poison\n", encoding="utf-8")
+        test_u.Tests.initialize_git_repo(poison)
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["worktree"] = str(poison)
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.LAND,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="does not match registered lane")
