@@ -81,6 +81,7 @@ class TestWorkspaceCheckerResolveGates:
         tm.that(result.value, lacks="lint")
         tm.that(result.value, lacks="pyrefly")
 
+
 class TestWorkspaceCheckerCiGateSkips:
     """Test FlextInfraWorkspaceChecker.apply_ci_gate_skips."""
 

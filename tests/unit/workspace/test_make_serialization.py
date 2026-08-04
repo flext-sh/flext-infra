@@ -154,14 +154,23 @@ class TestsFlextInfraMakeSerialization:
             _checkout: Path,
             command: t.StrSequence,
             *,
-            failure_context: str,
+            run_context: str,
         ) -> p.Result[m.Infra.ProcessExit]:
             nonlocal primary_count
-            tm.that(failure_context, empty=False)
-            if (
-                f"_serialized_{mutation_verb}" in command
-                and f"{make_config.selector}={fixed_point_what}" not in command
-            ):
+            tm.that(run_context, empty=False)
+            tm.that(run_context, has="serialized Make")
+            if " failed" in run_context or run_context.endswith("failed"):
+                message = f"run_context must stay neutral: {run_context}"
+                raise AssertionError(message)
+            apply_marker = f"{make_config.apply_variable}={make_config.apply_value}"
+            is_apply = apply_marker in command
+            is_mutation_target = f"_serialized_{mutation_verb}" in command
+            is_fixed_point = (
+                is_mutation_target
+                and f"{make_config.selector}={fixed_point_what}" in command
+                and not is_apply
+            )
+            if is_mutation_target and is_apply:
                 with primary_order_lock:
                     primary_count += 1
                     primary_index = primary_count
@@ -188,10 +197,7 @@ class TestsFlextInfraMakeSerialization:
                     )
                 else:
                     contender_entered.set()
-            elif (
-                f"_serialized_{mutation_verb}" in command
-                and f"{make_config.selector}={fixed_point_what}" in command
-            ):
+            elif is_fixed_point:
                 fixed_point_entered.set()
                 tm.that(
                     fixed_point_release.wait(timeout=event_timeout_seconds), where=bool
@@ -218,11 +224,17 @@ class TestsFlextInfraMakeSerialization:
             "selector_value": mutation_what,
             "apply_token": make_config.apply_value,
         })
-        contender_service = FlextInfraMakeSerializationService.model_validate({
+        contender_payload: dict[str, object] = {
             "workspace_root": tmp_path,
             "verb": contender_verb,
             "makefile": makefile,
-        })
+        }
+        if contender_is_mutation:
+            contender_payload["selector_value"] = mutation_what
+            contender_payload["apply_token"] = make_config.apply_value
+        contender_service = FlextInfraMakeSerializationService.model_validate(
+            contender_payload
+        )
 
         def execute_contender() -> p.Result[m.Infra.ProcessExit]:
             contender_started.set()
@@ -721,18 +733,27 @@ class TestsFlextInfraMakeSerialization:
     ) -> None:
         """An authorized generator apply owns its projection and proves stability."""
         make_config = config.Infra.codegen.make
+        tm.that(
+            fixed_point_what,
+            eq=next(
+                verb.default_what
+                for verb in make_config.verbs
+                if verb.name == mutation_verb
+            ),
+        )
         projection = tmp_path / "generated.txt"
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(
             (
                 f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
+                f'\t@if [ "$({make_config.apply_variable})" = '
+                f'"{make_config.apply_value}" ]; then '
                 f"printf 'generated\\n' > {projection}; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
+                f"else "
                 f'[ "$({make_config.apply_variable})" != '
                 f'"{make_config.apply_value}" ] || exit 9; '
-                "else exit 8; fi\n"
+                "fi\n"
             ),
             encoding="utf-8",
         )
@@ -776,6 +797,14 @@ class TestsFlextInfraMakeSerialization:
     ) -> None:
         """The child owns apply serialization before Make locks the fixed point."""
         make_config = config.Infra.codegen.make
+        tm.that(
+            fixed_point_what,
+            eq=next(
+                verb.default_what
+                for verb in make_config.verbs
+                if verb.name == mutation_verb
+            ),
+        )
         worker = tmp_path / "worker.py"
         worker.write_text(
             (
@@ -806,11 +835,11 @@ class TestsFlextInfraMakeSerialization:
             (
                 f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
+                f'\t@if [ "$({make_config.apply_variable})" = '
+                f'"{make_config.apply_value}" ]; then '
                 f"{sys.executable} {worker} {state} mutation; "
-                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
+                f"else "
                 f"{sys.executable} {worker} {state} fixed-point; "
-                "else exit 8; "
                 "fi\n"
             ),
             encoding="utf-8",
