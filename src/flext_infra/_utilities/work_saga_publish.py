@@ -57,17 +57,25 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             return r.fail(f"bead {bead} has no lane metadata; run work start first")
         branch = str(meta.get("branch") or "").strip()
         worktree = str(meta.get("worktree") or "").strip()
-        integration = str(meta.get("integration_base") or "").strip()
+        recorded_integration = str(meta.get("integration_base") or "").strip()
         expected = str(meta.get("head_oid") or "").strip()
         if not branch or not worktree:
             return r.fail(f"bead {bead} missing branch/worktree metadata")
         if not expected:
             return r.fail(f"bead {bead} missing metadata.head_oid for land CAS")
-        if not integration:
-            base = self._resolve_integration_base(primary_root)
-            if base.failure:
-                return r.fail(base.error or "missing integration base")
-            integration = base.value
+        base = self._resolve_integration_base(primary_root)
+        if base.failure:
+            return r.fail(base.error or "missing integration base")
+        integration = base.value
+        if (
+            recorded_integration
+            and recorded_integration not in {"HEAD", integration}
+            and recorded_integration != integration
+        ):
+            return r.fail(
+                "work land refuses metadata.integration_base drift: "
+                f"metadata={recorded_integration} ssot={integration}"
+            )
         permanent = self._refuse_permanent_branch(branch, integration)
         if permanent.failure:
             return r.fail(
