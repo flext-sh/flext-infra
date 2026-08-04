@@ -90,7 +90,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                 workspace_root=primary_root,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
-                base=base.value,
+                base=self._git_integration_ref(primary_root, base.value),
                 apply_changes=True,
             ).execute()
             if created.failure:

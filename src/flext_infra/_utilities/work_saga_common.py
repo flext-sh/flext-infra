@@ -50,6 +50,25 @@ class FlextInfraWorkSagaCommon:
                     return r.ok(branch.strip())
         return r.ok("HEAD")
 
+    @staticmethod
+    def _git_integration_ref(primary_root: Path, base: str) -> str:
+        """Map a logical integration name to the Git ref used for lane creation.
+
+        Prefer origin/<branch> when the remote-tracking ref exists so a stale
+        local integration branch cannot seed new lanes after `git fetch`.
+        Metadata keeps the logical name; only Git operations use this ref.
+        """
+        cleaned = base.strip()
+        if not cleaned or cleaned == "HEAD" or cleaned.startswith("origin/"):
+            return cleaned
+        remote = f"origin/{cleaned}"
+        checked = u.Infra.git_capture(
+            primary_root, ("show-ref", "--verify", "--quiet", f"refs/remotes/{remote}")
+        )
+        if checked.success:
+            return remote
+        return cleaned
+
     def _validated_kind_slug(self) -> p.Result[tuple[c.Infra.WorkKind, str]]:
         if self.kind is None:
             return r.fail("work start requires --kind")
