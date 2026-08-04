@@ -48,6 +48,7 @@ RUN mise trust .mise.toml && mise install --yes
 # revision wrapped this in `set +e` and soft-passed whenever the output
 # mentioned uv.lock/flext-core, which turned the proof into a bypass -- a
 # broken bootstrap still produced a green image.
+ENV CI=Y
 RUN make setup
 # End SECTION: bootstrap proof
 
