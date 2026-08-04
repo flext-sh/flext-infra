@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
 from flext_core import r
 from flext_infra import m, u
@@ -148,6 +148,7 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
             )
         )
 
+    @override
     def execute(self) -> p.Result[FlextInfraTestmonCacheState]:
         """Return typed cache state after a successful testmon-backed pytest run."""
         if not self.run_succeeded:

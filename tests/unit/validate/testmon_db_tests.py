@@ -5,7 +5,10 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+from flext_infra.validate.testmon_db import (
+    FlextInfraTestmonCacheState,
+    FlextInfraTestmonDbInspector,
+)
 from flext_tests import tm
 
 
@@ -13,7 +16,7 @@ class TestsFlextInfraTestmonDbInspector:
     """Prove WAL checkpoint, integrity, and saveability decisions."""
 
     def test_missing_db_is_not_saveable(self, tmp_path: Path) -> None:
-        state = tm.ok(
+        state: FlextInfraTestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
                 workspace_root=tmp_path,
                 db_path=tmp_path / ".testmondata",
@@ -32,7 +35,7 @@ class TestsFlextInfraTestmonDbInspector:
         connection.execute("INSERT INTO meta VALUES ('schema', '1')")
         connection.commit()
         connection.close()
-        state = tm.ok(
+        state: FlextInfraTestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
                 workspace_root=tmp_path,
                 db_path=db,
@@ -52,7 +55,7 @@ class TestsFlextInfraTestmonDbInspector:
         connection.commit()
         connection.close()
         digest = FlextInfraTestmonDbInspector.digest_file(db)
-        state = tm.ok(
+        state: FlextInfraTestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
                 workspace_root=tmp_path,
                 db_path=db,

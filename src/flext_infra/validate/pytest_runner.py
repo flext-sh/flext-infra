@@ -142,7 +142,8 @@ class FlextInfraPytestRunner(s[int]):
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
-        return self.root / ".testmondata"
+        path: Path = Path(self.root) / ".testmondata"
+        return path
 
     def _is_cache_maintenance(self) -> bool:
         """True when WHAT selects a testmon DB maintenance handler."""
