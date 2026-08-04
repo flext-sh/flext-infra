@@ -472,6 +472,13 @@ setup:
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done
 	@$(SELF_MAKE) _builtin_setup_environment
+	@# Provision Beads local role so `bd` writes do not warn (GH#2950).
+	@if git -C "$(PROJECT_ROOT)" rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		role=$$(git -C "$(PROJECT_ROOT)" config --local --get beads.role 2>/dev/null || true); \
+		if [ -z "$$role" ]; then \
+			git -C "$(PROJECT_ROOT)" config --local beads.role maintainer; \
+		fi; \
+	fi
 	@for hook in "post-setup"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \

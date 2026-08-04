@@ -53,9 +53,18 @@ class TestsFlextInfraPytestSelectorValidator:
             workspace_root=Path.cwd(), what="all"
         )
         tm.ok(validator.execute())
+        tm.ok(
+            FlextInfraPytestSelectorValidator(
+                workspace_root=Path.cwd(), what="cov"
+            ).execute()
+        )
         with pytest.raises(c.ValidationError, match="what must be"):
             FlextInfraPytestSelectorValidator(
                 workspace_root=Path.cwd(), what="$(shell touch marker)"
+            )
+        with pytest.raises(c.ValidationError, match="cov rejects FILE and MATCH"):
+            FlextInfraPytestSelectorValidator(
+                workspace_root=Path.cwd(), what="cov", match="x"
             )
 
     def test_file_rejects_symlink_hop(self, tmp_path: Path) -> None:

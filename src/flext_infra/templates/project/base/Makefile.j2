@@ -414,6 +414,13 @@ setup:
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done
 	@$(SELF_MAKE) _builtin_setup_environment
+	@# Provision Beads local role so `bd` writes do not warn (GH#2950).
+	@if git -C "$(PROJECT_ROOT)" rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		role=$$(git -C "$(PROJECT_ROOT)" config --local --get beads.role 2>/dev/null || true); \
+		if [ -z "$$role" ]; then \
+			git -C "$(PROJECT_ROOT)" config --local beads.role maintainer; \
+		fi; \
+	fi
 	@for hook in "post-setup"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -545,6 +552,12 @@ _builtin_check_all: _builtin_require_environment
 _builtin_test_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
+_builtin_cov_all: _builtin_require_environment
+	@if [ -n "$(strip $(FILE)$(MATCH))" ]; then \
+		printf 'ERROR: make cov rejects FILE and MATCH\n' >&2; exit 2; \
+	fi
+	@$(WORKSPACE_ORCHESTRATE) --verb cov $(WORKSPACE_PROJECT_ARGS) --what cov $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+
 _builtin_fmt_check: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
@@ -585,6 +598,14 @@ _builtin_check_all: _builtin_require_environment
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(
     "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
+) }}
+
+_builtin_cov_all: _builtin_require_environment
+	@if [ -n "$(strip $(FILE)$(MATCH))" ]; then \
+		printf 'ERROR: make cov rejects FILE and MATCH\n' >&2; exit 2; \
+	fi
+{{ test_report_recipe(
+    "FLEXT_PYTEST_WHAT_RAW=cov $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
 ) }}
 
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and

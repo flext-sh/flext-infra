@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 import shlex
 import sys
+import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Self, override
+from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
 from flext_core import r
 
@@ -16,6 +17,7 @@ from flext_infra.base import s
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidator
+from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -127,17 +129,51 @@ class FlextInfraPytestRunner(s[int]):
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 
+    def _execution_mode(self) -> Literal["test", "cov"]:
+        """Map WHAT to the exclusive testmon or coverage execution mode."""
+        if self.what == "cov":
+            return "cov"
+        return "test"
+
+    def _testmon_db_path(self) -> Path:
+        """Return the repository-local pytest-testmon SQLite path."""
+        return self.root / ".testmondata"
+
+    def _require_junit(self, junit_file: Path, pytest_log: Path) -> p.Result[None]:
+        """Require a non-empty parseable JUnit document after a green run."""
+        if not junit_file.is_file() or junit_file.stat().st_size == 0:
+            return r[None].fail(
+                self._artifact_failure_detail(
+                    f"junit report was not generated or is empty: {junit_file}",
+                    pytest_log,
+                )
+            )
+        try:
+            ET.parse(junit_file)
+        except ET.ParseError as exc:
+            return r[None].fail(
+                self._artifact_failure_detail(
+                    f"junit report is not parseable: {junit_file}: {exc}",
+                    pytest_log,
+                )
+            )
+        return r[None].ok(None)
+
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
         pytest = config.Infra.tooling.tools.pytest
         focused = self.file is not None or self.match is not None
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
-        coverage_args = (
-            ("--no-cov",)
-            if focused
-            else ("--cov", f"--cov-report=xml:{report_dir / 'coverage.xml'}")
-        )
+        mode = self._execution_mode()
+        if mode == "cov":
+            coverage_args = (
+                "--cov",
+                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
+            )
+            selection_args: tuple[str, ...] = ()
+        else:
+            coverage_args = ("--testmon", "--no-cov")
         parallel_args = (
             ("-n", "0")
             if focused
@@ -213,6 +249,9 @@ class FlextInfraPytestRunner(s[int]):
         """Execute pytest, profile it, and preserve reports under one deadline."""
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
+        pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
+            self._testmon_db_path()
+        )
         command = self.build_command(report_dir)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
@@ -287,10 +326,14 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
+        mode = self._execution_mode()
+        if exit_code == 0:
+            junit_ok = self._require_junit(junit_file, pytest_log)
+            if junit_ok.failure:
+                return r[int].fail(junit_ok.error or "junit validation failed")
         if (
             exit_code == 0
-            and self.file is None
-            and self.match is None
+            and mode == "cov"
             and self._pytest_log_reports_coverage_failure(pytest_log)
         ):
             # pytest-cov under xdist can print fail-under and still return 0.
@@ -301,8 +344,7 @@ class FlextInfraPytestRunner(s[int]):
             )
         if (
             exit_code == 0
-            and self.file is None
-            and self.match is None
+            and mode == "cov"
             and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
         ):
             return r[int].fail(
@@ -311,17 +353,31 @@ class FlextInfraPytestRunner(s[int]):
                     pytest_log,
                 )
             )
-        if (
-            exit_code == 0
-            and self.file is None
-            and self.match is None
-            and not junit_file.is_file()
-        ):
-            return r[int].fail(
-                self._artifact_failure_detail(
-                    f"junit report was not generated: {junit_file}", pytest_log
-                )
+        if exit_code == 0 and mode == "test":
+            timed_out_or_signal = timed_out
+            inspector = FlextInfraTestmonDbInspector(
+                workspace_root=self.root,
+                db_path=self._testmon_db_path(),
+                pre_run_digest=pre_run_digest,
+                run_succeeded=not timed_out_or_signal,
+                mode=mode,
             )
+            state_result = inspector.execute()
+            if state_result.failure:
+                return r[int].fail(
+                    state_result.error or "testmon db inspection failed"
+                )
+            state = state_result.value
+            u.Cli.atomic_write_text_file(
+                report_dir / "testmon-cache-state.txt",
+                (
+                    f"seed_needed={state.seed_needed}\n"
+                    f"restored_accepted={state.restored_accepted}\n"
+                    f"changed={state.changed}\n"
+                    f"saveable={state.saveable}\n"
+                    f"reason={state.reason}\n"
+                ),
+            ).unwrap()
         sys.stderr.write(
             f"Reports: {report_dir} (latest: {self.root / self.reports / 'latest.txt'})\n"
         )
