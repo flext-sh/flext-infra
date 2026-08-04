@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from flext_cli import u
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.beads_lane import FlextInfraUtilitiesBeadsLane
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
@@ -72,9 +73,7 @@ from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModu
 from flext_infra._utilities.rope_mro_transform import (
     FlextInfraUtilitiesRopeMroTransform,
 )
-from flext_infra._utilities.rope_patch.pep695_patch import (
-    FlextInfraUtilitiesRopePep695Patch,
-)
+from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
@@ -107,6 +106,7 @@ class FlextInfraUtilities(u):
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesBeadsLane,
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,

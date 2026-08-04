@@ -21,7 +21,7 @@ knew about these nodes:
 - Pattern-matching nodes mirror the source token stream closely enough for
     Rope's patched AST region walker to keep working without upstream support.
 
-NOTE (multi-agent, mro-f8vk / kimi): this module lives in the ``rope_patch``
+NOTE (multi-agent, mro-f8vk / kimi): this module lives in the ``_rope``
 subpackage so the root ``pyproject.toml`` can scope
 ``reportPrivateUsage = "none"`` to this intentional monkeypatch surface —
 rope 1.14 exposes no public API to register patched-AST handlers, and the

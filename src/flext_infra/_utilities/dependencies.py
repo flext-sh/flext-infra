@@ -11,10 +11,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra._utilities.pyproject import (
-    FlextInfraUtilitiesPyproject,
-    _validate_infra_payload,
-)
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
@@ -62,7 +59,7 @@ class FlextInfraUtilitiesDependencies:
             else:
                 payload_source = u.Cli.toml_mapping_from_text(raw_text)
                 if payload_source is not None:
-                    payload = _validate_infra_payload(payload_source)
+                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(payload_source)
                     if payload is not None:
                         raw_packages = payload.get("package")
                         if isinstance(raw_packages, list):
@@ -350,7 +347,7 @@ class FlextInfraUtilitiesDependencies:
         """Extract every declared ``flext-*`` dependency as a Python namespace."""
         # mro-j47u (codex): FLEXT dependencies are first-party contracts even
         # when their uv source declaration is owned by an enclosing workspace.
-        normalized = _validate_infra_payload(payload)
+        normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
         if normalized is None:
             return ()
         return tuple(

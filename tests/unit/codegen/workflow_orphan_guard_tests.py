@@ -12,7 +12,7 @@ def _declared_workflows() -> set[str]:
     """Return every workflow filename the SSOT owns."""
     declared: set[str] = set()
     for entry in config.Infra.codegen.templates.entries:
-        destination = str(entry.destination)
+        destination = entry.destination
         if destination.startswith(_WORKFLOW_PREFIX):
             declared.add(destination.removeprefix(_WORKFLOW_PREFIX))
     for managed in config.Infra.codegen.managed_files:

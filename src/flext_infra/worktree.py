@@ -72,7 +72,7 @@ class FlextInfraWorktreeService(s[str]):
         return r.ok(lane_path)
 
     @staticmethod
-    def _registered_lane(primary_root: Path, branch: str) -> p.Result[Path]:
+    def registered_lane(primary_root: Path, branch: str) -> p.Result[Path]:
         """Resolve an existing branch lane from Git's canonical registry."""
         listed = u.Infra.git_capture(primary_root, ("worktree", "list", "--porcelain"))
         if listed.failure:
@@ -226,7 +226,7 @@ class FlextInfraWorktreeService(s[str]):
         """Remove one clean canonical lane without deleting its branch."""
         if not self.apply_changes:
             return r.fail("worktree remove requires --apply")
-        lane_result = self._registered_lane(primary_root, branch)
+        lane_result = self.registered_lane(primary_root, branch)
         if lane_result.failure:
             return r.fail(lane_result.error or "invalid worktree lane path")
         lane = lane_result.value
@@ -239,7 +239,7 @@ class FlextInfraWorktreeService(s[str]):
         """Merge-forward one clean canonical lane to the requested base."""
         if not self.apply_changes:
             return r.fail("worktree update requires --apply")
-        lane_result = self._registered_lane(primary_root, branch)
+        lane_result = self.registered_lane(primary_root, branch)
         if lane_result.failure:
             return r.fail(lane_result.error or "invalid worktree lane path")
         lane = lane_result.value

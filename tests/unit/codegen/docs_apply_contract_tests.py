@@ -5,7 +5,7 @@ from __future__ import annotations
 import pathlib
 import re
 
-from flext_infra import config
+from flext_infra import config, m
 from flext_tests import tm
 
 _MAKEFILE = (
@@ -18,7 +18,7 @@ _DOCS_WORKFLOW = (
 )
 
 
-def _docs_verb() -> object:
+def _docs_verb() -> m.Infra.MakeVerbSpec:
     """Return the declared docs verb from the SSOT."""
     for verb in config.Infra.codegen.make.verbs:
         if verb.name == "docs":

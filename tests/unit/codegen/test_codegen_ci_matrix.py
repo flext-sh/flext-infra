@@ -130,9 +130,7 @@ class TestCodegenCiMatrix:
         )
         tm.that(workflow2, eq=workflow)
 
-    def test_docs_workflow_inits_private_submodules_when_configured(
-        self, tmp_path: Path
-    ) -> None:
+    def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
         from flext_infra import config, m
         from flext_cli import u as cli_u
@@ -253,10 +251,10 @@ class TestCodegenCiMatrix:
             tm.that(host, has="run: make setup")
         tm.that(windows.count("shell: bash"), eq=2)
 
-    def test_workflow_branches_derive_from_workspace_manifest(
+    def test_workflow_ci_policy_locks_matrix_to_main_push(
         self, tmp_path: Path
     ) -> None:
-        """Generated workflows consume the repository branch topology owner."""
+        """Blocking CI covers integration; matrix is post-merge main push only."""
         root = self._render_project(tmp_path / "external")
         manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
         repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
@@ -275,14 +273,19 @@ class TestCodegenCiMatrix:
         tm.that(integrations, has=branch)
         for integration in integrations:
             tm.that(blocking, has=f"      - {integration}")
-        tm.that(matrix, has="branches: [main]")
-        tm.that(matrix, lacks="branches: [0.12.0-dev]")
-        tm.that(matrix, lacks="branches: [develop]")
-        tm.that(matrix, lacks="branches: [dev]")
         tm.that(blocking, has="draft == false")
-        tm.that(matrix, has="draft == false")
         tm.that(blocking, has="ready_for_review")
-        tm.that(matrix, has="ready_for_review")
+        triggers = matrix.split('"on":', maxsplit=1)[1].split(
+            "# End SECTION: triggers", maxsplit=1
+        )[0]
+        tm.that(triggers, has="branches: [main]")
+        tm.that(triggers, has="workflow_dispatch: {}")
+        tm.that(triggers, lacks="pull_request:")
+        tm.that(triggers, lacks="ready_for_review")
+        tm.that(triggers, lacks="repository_branch")
+        tm.that(triggers, lacks="0.12.0-dev")
+        tm.that(triggers, lacks="develop")
+        tm.that(triggers, lacks="branches: [dev]")
 
     def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""
