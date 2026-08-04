@@ -120,7 +120,6 @@ class FlextInfraWorkSagaCommon:
 
     @staticmethod
     def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[bool]:
-    def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[bool]:
         cleaned_branch = branch.strip()
         cleaned_integration = integration.strip()
         if cleaned_branch in {"main", "master"} or (
@@ -148,7 +147,6 @@ class FlextInfraWorkSagaCommon:
         return r.ok(registry_lane)
 
     @staticmethod
-    def _ensure_clean(lane: Path) -> p.Result[bool]:
     def _ensure_clean(lane: Path) -> p.Result[bool]:
         status = u.Infra.git_capture(
             lane, ("status", "--porcelain", "--untracked-files=all")
