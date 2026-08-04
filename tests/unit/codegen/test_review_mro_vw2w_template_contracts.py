@@ -17,6 +17,7 @@ _TEMPLATES = (
 _MAKEFILE = _TEMPLATES / "Makefile.j2"
 _RELEASE = _TEMPLATES / ".github" / "workflows" / "release.yml.j2"
 _CI = _TEMPLATES / ".github" / "workflows" / "ci.yml.j2"
+_DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
 
 
 class TestsReviewTemplateContracts:
@@ -73,3 +74,30 @@ class TestsReviewTemplateContracts:
             .replace("coverage.json", ""),
             eq=True,
         )
+
+    def test_ci_dump_excludes_raw_pytest_logs(self) -> None:
+        text = _CI.read_text(encoding="utf-8")
+        dump = text.split("Dump reports on failure", 1)[1].split(
+            "Upload reports on failure", 1
+        )[0]
+        tm.that(dump, lacks="pytest.log")
+        tm.that(dump, has="junit.xml")
+        tm.that(dump, has="coverage.xml")
+
+    def test_docs_workflow_uses_what_not_docs_phase(self) -> None:
+        text = _DOCS.read_text(encoding="utf-8")
+        tm.that(text, lacks="DOCS_PHASE=")
+        tm.that(text, has="make docs WHAT=audit")
+        tm.that(text, has="make docs WHAT=validate")
+
+    def test_docs_upload_excludes_raw_report_logs(self) -> None:
+        text = _DOCS.read_text(encoding="utf-8")
+        upload = text.split("Upload docs reports on failure", 1)[1].split(
+            "build:", 1
+        )[0]
+        tm.that(upload, has="audit-summary.json")
+        tm.that(upload, has="validate-summary.json")
+        tm.that(upload, lacks="path: .reports/")
+        tm.that(upload, lacks=".reports/workspace/docs/")
+        tm.that(upload, lacks="pytest.log")
+
