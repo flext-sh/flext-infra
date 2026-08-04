@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import pytest
+
+from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_tests import tm
 
@@ -55,3 +58,43 @@ class TestWorkspaceCheckerResolveGates:
         result = FlextInfraWorkspaceChecker.resolve_gates(["silent-failure"])
         tm.ok(result)
         tm.that(result.value, eq=["silent-failure"])
+
+
+class TestWorkspaceCheckerCiGateSkips:
+    """Test FlextInfraWorkspaceChecker.apply_ci_gate_skips."""
+
+    def test_without_ci_token_keeps_all_gates(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ci = config.Infra.codegen.make.ci
+        monkeypatch.delenv(ci.variable, raising=False)
+        gates = ["lint", "format", "pyrefly", "mypy", "pyright"]
+        tm.that(
+            FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates),
+            eq=gates,
+        )
+
+    def test_github_ci_true_does_not_skip_gates(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ci = config.Infra.codegen.make.ci
+        monkeypatch.setenv(ci.variable, "true")
+        gates = ["lint", "format", "pyrefly", "pyright"]
+        tm.that(
+            FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates),
+            eq=gates,
+        )
+
+    def test_ci_token_omits_ruff_and_pyrefly(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ci = config.Infra.codegen.make.ci
+        monkeypatch.setenv(ci.variable, ci.value)
+        gates = ["lint", "format", "pyrefly", "mypy", "pyright", "security"]
+        expected = [gate for gate in gates if gate not in ci.check_gates_skip]
+        tm.that(expected, eq=["mypy", "pyright", "security"])
+        tm.that(
+            FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates),
+            eq=expected,
+        )
+        tm.that(set(ci.check_gates_skip), eq={"lint", "format", "pyrefly"})

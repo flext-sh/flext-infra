@@ -59,15 +59,20 @@ jobs:
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
+        env:
+          {{ make.ci.variable }}: {{ make.ci.value }}
         run: |
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
+          # ci-matrix proves bootstrap + check across distros; it never runs make test.
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   macos:
     runs-on: macos-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
@@ -92,6 +97,8 @@ jobs:
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   windows:
     runs-on: windows-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
