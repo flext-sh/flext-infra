@@ -1578,6 +1578,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.DistroDockerRenderSpec(
                     package_name=dist.replace("-", "_"),
                     python_version=codegen.toolchain.python_version,
+                    make=codegen.make,
                 )
             )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:

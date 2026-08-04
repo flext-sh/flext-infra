@@ -134,31 +134,27 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                 cwd=primary_root,
             )
             if open_prs.failure:
-                return r[bool].fail(
-                    open_prs.error or f"failed to list open PRs for {branch}"
-                )
+                return r.fail(open_prs.error or f"failed to list open PRs for {branch}")
             if (open_prs.value or "").strip() not in {"", "[]"}:
-                return r[bool].fail(f"work finish refuses open PR on {branch}")
-            return r[bool].ok(True)
+                return r.fail(f"work finish refuses open PR on {branch}")
+            return r.ok(True)
         viewed = u.Cli.capture(
             ("gh", "pr", "view", pr_number, "--json", "state,mergedAt,headRefName"),
             cwd=primary_root,
         )
         if viewed.failure:
-            return r[bool].fail(viewed.error or "failed to inspect PR merge state")
+            return r.fail(viewed.error or "failed to inspect PR merge state")
         payload = json.loads(viewed.value or "{}")
         state = str(payload.get("state") or "")
         head_ref = str(payload.get("headRefName") or "").strip()
         if head_ref and head_ref != branch:
-            return r[bool].fail(
+            return r.fail(
                 f"work finish PR #{pr_number} head {head_ref} "
                 f"does not match lane branch {branch}"
             )
         if state.upper() != "MERGED" and not payload.get("mergedAt"):
-            return r[bool].fail(
-                f"work finish requires merged PR #{pr_number}; state={state}"
-            )
-        return r[bool].ok(True)
+            return r.fail(f"work finish requires merged PR #{pr_number}; state={state}")
+        return r.ok(True)
 
 
 __all__: list[str] = ["FlextInfraWorkSagaFinish"]

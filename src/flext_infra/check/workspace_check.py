@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -55,7 +56,11 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve and validate requested gate names."""
+        """Resolve and validate requested gate names.
+
+        Under ``CI=Y`` (exact Make CI token), drop lint/ruff and pyrefly so CI
+        does not re-run gates already covered by ``make fmt`` / ``make fix``.
+        """
         resolved: t.MutableSequenceOf[str] = []
         for gate in gates:
             name = gate.strip()
@@ -65,7 +70,38 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
+        skipped = FlextInfraWorkspaceChecker._ci_skipped_gates(resolved)
+        if skipped:
+            FlextInfraWorkspaceChecker._gate_logger.info(
+                "ci_skip_check_gates",
+                skipped=list(skipped),
+                reason="CI=Y omits lint and pyrefly from make check",
+            )
+            skip_set = frozenset(skipped)
+            resolved = [gate for gate in resolved if gate not in skip_set]
         return r[list[str]].ok(list(resolved))
+
+    @staticmethod
+    def _ci_token_active() -> bool:
+        """True when the Make CI environment token is exactly make.ci.value."""
+        raw = os.environ.get(c.Infra.PYTEST_ENV_CI, "")
+        return raw == config.Infra.codegen.make.ci.value
+
+    @staticmethod
+    def _ci_skipped_gates(gates: t.StrSequence) -> tuple[str, ...]:
+        """Return lint/pyrefly entries present in *gates* when CI=Y is active."""
+        if not FlextInfraWorkspaceChecker._ci_token_active():
+            return ()
+        skip = frozenset(c.Infra.PROJECT_CHECK_GATES_CI_SKIP_VALUES)
+        return tuple(gate for gate in gates if gate in skip)
+    def apply_ci_gate_skips(gates: t.StrSequence) -> list[str]:
+        """Omit make.ci.check_gates_skip when the Make CI token is exact CI=Y."""
+        ci = config.Infra.codegen.make.ci
+        raw = u.Cli.env_read(ci.variable).unwrap().strip()
+        if raw != ci.value:
+            return [gate for gate in gates if gate]
+        skip = set(ci.check_gates_skip)
+        return [gate for gate in gates if gate and gate not in skip]
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -82,7 +118,13 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
-        gates = params.gates
+        gates = cls.apply_ci_gate_skips(params.gates)
+        if not gates:
+            return r[bool].fail(
+                "no check gates remain after CI token filtering "
+                f"({config.Infra.codegen.make.ci.variable}="
+                f"{config.Infra.codegen.make.ci.value})"
+            )
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,

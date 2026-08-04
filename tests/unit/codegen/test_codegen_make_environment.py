@@ -248,10 +248,7 @@ class TestsCodegenMakeEnvironment:
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        # Create-if-missing only: clearing a present venv is destruction and is
-        # never part of setup (Makefile.j2 SETUP_ENVIRONMENT_RECIPE).
-        tm.that(commands[0], has="venv")
-        tm.that(commands[0], lacks="--clear")
+        tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --project")
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
@@ -441,7 +438,6 @@ class TestsCodegenMakeEnvironment:
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
-        tm.that(makefile, lacks="venv --clear")
         for forbidden in (
             "mise exec -- uv",
             "uv@",

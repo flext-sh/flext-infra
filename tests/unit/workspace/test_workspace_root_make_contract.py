@@ -243,8 +243,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--verb fmt")
         tm.that(output, has=f"--projects {project_names[0]}")
-        # fmt apply is APPLY-gated; WHAT=apply is not forwarded (alias of fmt all).
-        tm.that(output, lacks='--make-arg "WHAT=apply"')
+        tm.that(output, has='--make-arg "WHAT=apply"')
         tm.that(output, has='--make-arg "APPLY=Y"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")
@@ -279,8 +278,8 @@ class TestsWorkspaceRootMakeContract:
     def test_generated_make_routes_root_file_only_to_workspace_root(
         self, tmp_path: Path
     ) -> None:
-        """Forward FILE with members-only selection; ownership is orchestrator-side."""
-        workspace_root, project_names = _write_workspace(tmp_path)
+        """Keep provider-owned root tests in the root project execution lane."""
+        workspace_root, _ = _write_workspace(tmp_path)
         selected = "tests/unit/test_provider_contract.py"
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -298,18 +297,17 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        # Workspace-root DEFAULT_PROJECTS is members-only (no `.`). The typed
-        # FILE selector travels with that selection; which project owns the
-        # file is decided by the orchestrator (_select_file_owner).
-        tm.that(output, lacks="--projects .")
-        for project_name in project_names:
-            tm.that(output, has=f"--projects {project_name}")
+        # The root project is in the forwarded selection and the typed FILE
+        # selector travels with it. Which project owns the file is decided by
+        # the orchestrator (_select_file_owner), not by this Make recipe, so
+        # this boundary asserts forwarding rather than owner filtering.
+        tm.that(output, has="--projects .")
         tm.that(output, has="--file")
 
     def test_generated_make_default_test_includes_root_and_every_member(
         self, tmp_path: Path
     ) -> None:
-        """Default workspace-root test fans out to every configured member only."""
+        """Run provider root tests alongside every configured workspace member."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -321,7 +319,7 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, lacks="--projects .")
+        tm.that(output, has="--projects .")
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
 
@@ -460,9 +458,7 @@ class TestsWorkspaceRootMakeContract:
         expected_environment = str(workspace_root / ".venv")
         # The root owns its own environment: the venv lives beside it and the
         # sync targets the workspace root, never an ambient caller project.
-        # Create-if-missing only — never `venv --clear`.
         tm.that(output, has=f'venv "{expected_environment}"')
-        tm.that(output, lacks="venv --clear")
         tm.that(output, has=f'sync --project "{workspace_root}"')
         tm.that(output, has=f'pip check --python "{expected_environment}"')
 

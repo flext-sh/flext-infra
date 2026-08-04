@@ -395,6 +395,10 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
+        ]
 
     class UvPackageSelectorSpec(_ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""
@@ -535,6 +539,29 @@ class FlextInfraConfigModels:
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
         value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
+        check_gates_skip: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Gate ids omitted from make check when the CI token is exact "
+                    "(ruff lint/format and pyrefly). Local make check without the "
+                    "token still runs the full default set."
+                )
+            ),
+        ] = ("lint", "format", "pyrefly")
+
+        @u.model_validator(mode="after")
+        def _validate_check_gates_skip(self) -> Self:
+            """Every skipped gate must be in the allowed check vocabulary."""
+            allowed = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+            unknown = sorted(set(self.check_gates_skip) - allowed)
+            if unknown:
+                msg = (
+                    "make.ci.check_gates_skip contains unknown gates: "
+                    f"{', '.join(unknown)}"
+                )
+                raise ValueError(msg)
+            return self
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -764,10 +791,11 @@ class FlextInfraConfigModels:
     class TestmonCacheSpec(_ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy (mro-dipb)."""
 
-        schema_version: Annotated[int, m.Field(ge=1, description="Cache key schema version")]
+        schema_version: Annotated[
+            int, m.Field(ge=1, description="Cache key schema version")
+        ]
         mode: Annotated[
-            Literal["bootstrap", "stable"],
-            m.Field(description="Cache renewal phase"),
+            Literal["bootstrap", "stable"], m.Field(description="Cache renewal phase")
         ]
         save_enabled: Annotated[
             bool,
@@ -801,7 +829,9 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Refs allowed to save cache generations"),
         ]
-        key_prefix: Annotated[t.NonEmptyStr, m.Field(description="Immutable cache key prefix")]
+        key_prefix: Annotated[
+            t.NonEmptyStr, m.Field(description="Immutable cache key prefix")
+        ]
 
         @u.model_validator(mode="after")
         def _validate_thresholds(self) -> Self:
