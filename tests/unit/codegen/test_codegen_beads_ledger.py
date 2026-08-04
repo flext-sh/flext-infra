@@ -173,9 +173,7 @@ class TestCodegenBeadsLedger:
         still wins, so the ai-hub-qwoc contract above is unchanged.
         """
         principal = self._standalone_workspace(
-            tmp_path / "principal",
-            ledger_id="mro",
-            ledger_prefix="mro",
+            tmp_path / "principal", ledger_id="mro", ledger_prefix="mro"
         )
 
         plan = self._beads_plan(principal)

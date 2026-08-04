@@ -174,6 +174,4 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         return updated
 
 
-__all__: list[str] = [
-    "FlextInfraWrapperRootNamespaceRewriteMixin",
-]
+__all__: list[str] = ["FlextInfraWrapperRootNamespaceRewriteMixin"]

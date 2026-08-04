@@ -65,4 +65,11 @@ class TestsReviewTemplateContracts:
         )[0]
         tm.that(upload, has=".reports/**/junit.xml")
         tm.that(upload, has=".reports/**/coverage.xml")
-        tm.that(".reports/**\n" not in upload.replace("junit.xml", "").replace("coverage.xml", "").replace("coverage.json", ""), eq=True)
+        tm.that(
+            ".reports/**\n"
+            not in upload
+            .replace("junit.xml", "")
+            .replace("coverage.xml", "")
+            .replace("coverage.json", ""),
+            eq=True,
+        )

@@ -283,7 +283,10 @@ class TestsFlextInfraPytestRunner:
         result = runner.execute()
 
         tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="coverage fail-under reported while pytest exit was 0")
+        tm.that(
+            result.error or "",
+            has="coverage fail-under reported while pytest exit was 0",
+        )
 
     def test_focused_run_records_coverage_as_not_generated(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

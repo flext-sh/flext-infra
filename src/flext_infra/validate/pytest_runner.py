@@ -293,8 +293,7 @@ class FlextInfraPytestRunner(s[int]):
             # pytest-cov under xdist can print fail-under and still return 0.
             return r[int].fail(
                 self._artifact_failure_detail(
-                    "coverage fail-under reported while pytest exit was 0",
-                    pytest_log,
+                    "coverage fail-under reported while pytest exit was 0", pytest_log
                 )
             )
         if (
@@ -317,8 +316,7 @@ class FlextInfraPytestRunner(s[int]):
         ):
             return r[int].fail(
                 self._artifact_failure_detail(
-                    f"junit report was not generated: {junit_file}",
-                    pytest_log,
+                    f"junit report was not generated: {junit_file}", pytest_log
                 )
             )
         sys.stderr.write(

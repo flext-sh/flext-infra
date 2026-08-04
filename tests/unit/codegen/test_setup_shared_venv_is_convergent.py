@@ -83,7 +83,9 @@ def test_shared_environment_is_provisioned_with_every_workspace_package() -> Non
 
 def test_setup_environment_probes_before_repair() -> None:
     """``uv sync --check`` runs before ``uv sync`` so converged venvs skip repair."""
-    recipe = _template_text().split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
+    recipe = (
+        _template_text().split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
+    )
 
     assert " sync " in recipe
     assert "--check" in recipe

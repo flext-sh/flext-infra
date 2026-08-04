@@ -109,9 +109,7 @@ class TestsCodegenArtifactSsot:
     ) -> None:
         """Keep the fast commit and full push workflows separate in the typed SSOT."""
         workflow = codegen.make.workflow
-        pre_commit = tuple(
-            step for step in workflow if "pre_commit" in step.contexts
-        )
+        pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
 
         tm.that(bool(pre_commit), eq=True)
@@ -120,9 +118,9 @@ class TestsCodegenArtifactSsot:
         tm.that(any(step.apply for step in pre_push), eq=True)
         tm.that(any(not step.apply for step in pre_push), eq=True)
         tm.that(
-            {step.verb for step in pre_commit}.isdisjoint(
-                {step.verb for step in pre_push}
-            ),
+            {step.verb for step in pre_commit}.isdisjoint({
+                step.verb for step in pre_push
+            }),
             eq=True,
         )
 

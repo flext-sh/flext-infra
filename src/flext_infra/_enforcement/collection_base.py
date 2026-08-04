@@ -55,7 +55,9 @@ class FlextInfraEnforcementCollectionBase:
         project_dir: Path, rule: me.EnforcementRuleSpec, message: str
     ) -> m.Infra.FailedFix:
         """Build a failed-fix record for collection/routing errors."""
-        return m.Infra.FailedFix(rule_id=rule.id, file_path=str(project_dir), error=message)
+        return m.Infra.FailedFix(
+            rule_id=rule.id, file_path=str(project_dir), error=message
+        )
 
     def _empty_failure(
         self, project_dir: Path, rule: me.EnforcementRuleSpec, message: str

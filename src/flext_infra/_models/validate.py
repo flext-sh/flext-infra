@@ -130,12 +130,10 @@ class FlextInfraModelsCore:
             m.Field(description="Collected skipped test-case labels"),
         ] = m.Field(default_factory=list)
         warning_lines: Annotated[
-            t.MutableSequenceOf[str],
-            m.Field(description="Collected warning lines"),
+            t.MutableSequenceOf[str], m.Field(description="Collected warning lines")
         ] = m.Field(default_factory=list)
         slow_entries: Annotated[
-            t.MutableSequenceOf[str],
-            m.Field(description="Collected slow-test entries"),
+            t.MutableSequenceOf[str], m.Field(description="Collected slow-test entries")
         ] = m.Field(default_factory=list)
 
     class InventoryReport(m.ArbitraryTypesModel):

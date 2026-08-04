@@ -34,15 +34,11 @@ class FlextInfraGateContractScanMixin:
             cwd=root,
         )
         if result.failure:
-            raise GateContractInfraError(
-                result.error or "git ls-files failed"
-            )
+            raise GateContractInfraError(result.error or "git ls-files failed")
         output = result.value
         if output.exit_code != 0:
             stderr = (output.stderr or "").strip()
-            raise GateContractInfraError(
-                stderr or "git ls-files failed"
-            )
+            raise GateContractInfraError(stderr or "git ls-files failed")
 
         scripts = (
             Path(line.strip())
