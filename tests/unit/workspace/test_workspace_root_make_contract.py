@@ -367,10 +367,8 @@ class TestsWorkspaceRootMakeContract:
             tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
             output = invocation_log.read_text(encoding="utf-8")
             expected_actions = (
-                tuple(
-                    item for item in docs_verb.whats if item != docs_verb.default_what
-                )
-                if action == docs_verb.default_what
+                tuple(item for item in docs_verb.whats if item != "all")
+                if action == "all"
                 else (action,)
             )
             for expected_action in expected_actions:
@@ -400,7 +398,7 @@ class TestsWorkspaceRootMakeContract:
                 applied_output = invocation_log.read_text(encoding="utf-8")
                 tm.that(applied_output, has="--apply")
                 tm.that(applied_output, lacks="--check")
-            elif action != docs_verb.default_what:
+            elif action != "all":
                 tm.that(output, lacks="--apply")
                 tm.that(output, lacks="--check")
 

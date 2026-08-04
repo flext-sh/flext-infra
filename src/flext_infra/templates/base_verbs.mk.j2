@@ -294,14 +294,14 @@ _docs_impl:
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=FAIL REASON=docs-module-missing"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(WHAT)" = "{{ docs_default_what }}" ]; then \
-		actions="{% for action in docs_whats if action != docs_default_what %}{{ action }} {% endfor %}"; \
+	$(Q)if [ "$(WHAT)" = "all" ]; then \
+		actions="{% for action in docs_whats if action != 'all' %}{{ action }} {% endfor %}"; \
 	else \
 		actions="$(WHAT)"; \
 	fi; \
 	for action in $$actions; do \
 		case "$$action" in \
-{%- for action in docs_whats if action != docs_default_what %}
+{%- for action in docs_whats if action != "all" %}
 			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
 {%- endfor %}
 			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs_whats | join('|') }})"; exit 2 ;; \
