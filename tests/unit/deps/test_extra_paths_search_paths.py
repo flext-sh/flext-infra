@@ -99,10 +99,10 @@ class TestsFlextInfraExtraPathsSearchPaths:
 
         tm.that(result, eq=("src", "."))
 
-    def test_pyrefly_search_paths_include_workspace_dependency_src_dirs_at_root(
+    def test_pyrefly_search_paths_omit_workspace_dependency_src_dirs_at_root(
         self, tmp_path: Path
     ) -> None:
-        """Include existing source roots for declared workspace members."""
+        """Keep declared workspace members out of the root's search path."""
         (tmp_path / ".git").mkdir()
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
@@ -135,12 +135,12 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=("src", ".", "flext-core/src", "flext-tests/src"))
+        tm.that(result, eq=("src", "."))
 
-    def test_pyrefly_search_paths_exclude_dependency_venv_dirs_at_root(
+    def test_pyrefly_search_paths_exclude_dependency_dirs_at_root(
         self, tmp_path: Path
     ) -> None:
-        """Exclude dependency virtual environments from search roots."""
+        """Exclude every dependency directory, environments included."""
         (tmp_path / ".git").mkdir()
         (tmp_path / "src").mkdir()
         (tmp_path / "pyproject.toml").write_text(
@@ -170,4 +170,4 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = ExtraPathsTestSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=("src", ".", "flext-core/src"))
+        tm.that(result, eq=("src", "."))
