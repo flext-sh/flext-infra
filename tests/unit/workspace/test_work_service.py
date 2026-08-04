@@ -432,8 +432,7 @@ class TestsFlextInfraWorkService:
         config = repository / "config"
         config.mkdir()
         (config / "workspace.yaml").write_text(
-            "integration:\n  branch: 0.12.0-dev\n",
-            encoding="utf-8",
+            "integration:\n  branch: 0.12.0-dev\n", encoding="utf-8"
         )
         bead_id = "mro-test-finish-perm"
         shim_dir = self._install_bd_shim(tmp_path, bead_id)
@@ -456,3 +455,59 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="permanent branch")
+
+    def test_finish_refuses_already_removed(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-removed"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        store = tmp_path / "beads-store.json"
+        payload = json.loads(store.read_text(encoding="utf-8"))
+        payload["metadata"] = {
+            "branch": "bugfix/gone",
+            "worktree": "removed",
+            "integration_base": "HEAD",
+            "head_oid": "a" * 40,
+        }
+        store.write_text(json.dumps(payload), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="already removed")
+
+    def test_status_reports_after_start(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-status-detail"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="status-detail",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        status = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.STATUS,
+                bead=bead_id,
+            ).execute()
+        )
+        tm.that(status, has="branch: feature/status-detail")
+        tm.that(status, has="primary_checkout:")
