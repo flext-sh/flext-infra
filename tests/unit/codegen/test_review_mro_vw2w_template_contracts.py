@@ -100,4 +100,3 @@ class TestsReviewTemplateContracts:
         tm.that(upload, lacks="path: .reports/")
         tm.that(upload, lacks=".reports/workspace/docs/")
         tm.that(upload, lacks="pytest.log")
-
