@@ -348,6 +348,35 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="workspace-member")
         tm.that(content, lacks="{% if make_profile")
 
+    def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
+        self, tmp_path: Path
+    ) -> None:
+        """Matrix smoke is help+check under CI=Y; it must never run make test."""
+        root = self._render_project(tmp_path / "external")
+        matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
+            encoding="utf-8"
+        )
+        ci = config.Infra.codegen.make.ci
+        smoke = matrix.split("Bootstrap + verb smoke", maxsplit=1)[1].split(
+            "# End SECTION: distro-matrix", maxsplit=1
+        )[0]
+        tm.that(smoke, has=f"-e {ci.variable}={ci.value}")
+        tm.that(smoke, has="make help")
+        tm.that(smoke, has="make check")
+        tm.that(smoke, lacks="} make test")
+        tm.that(
+            smoke,
+            has="ci-matrix proves bootstrap + check across distros; it never runs make test",
+        )
+        dockerfiles = list(
+            (root / "tests" / "fixtures" / "ci" / "docker").glob("*.Dockerfile")
+        )
+        tm.that(len(dockerfiles) > 0, eq=True)
+        for dockerfile in dockerfiles:
+            body = dockerfile.read_text(encoding="utf-8")
+            tm.that(body, has="ENV CI=Y")
+            tm.that(body, has="RUN make setup")
+
     def test_profile_excluded_workflow_orphan_is_planned_absent(
         self, tmp_path: Path
     ) -> None:
