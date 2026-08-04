@@ -8,7 +8,7 @@
 # the project's own Make surface; it never reimplements bootstrap.
 # Projected only for workspace-root/standalone. Auto-runs on push to main only
 # (plus workflow_dispatch). Workspace members are covered by the root matrix;
-# conform/make gen APPLY=Y prunes orphan member copies. Never bind triggers to
+# conform/make gen WHAT=apply APPLY=Y prunes orphan member copies. Never bind triggers to
 # the integration-line variable.
 ---
 name: ci-matrix
