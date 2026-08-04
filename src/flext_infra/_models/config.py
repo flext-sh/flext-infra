@@ -142,6 +142,15 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "uv exclude-newer cooldown window for dependency resolution "
+                    "(e.g. '7 days')"
+                )
+            ),
+        ]
         kubectl_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
         ]
@@ -1442,6 +1451,10 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
+        ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -1696,6 +1709,10 @@ class FlextInfraConfigModels:
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
+        ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
         ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,

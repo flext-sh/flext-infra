@@ -12,6 +12,9 @@ Infra:
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
       uv_link_mode: copy
+      # Supply-chain cooldown: refuse packages newer than this relative window
+      # (CWE-829 / uv dependency cooldowns). Projected to every [tool.uv].
+      uv_exclude_newer: "7 days"
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
