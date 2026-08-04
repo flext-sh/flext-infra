@@ -89,6 +89,12 @@ class FlextInfraConstantsMake:
         "markdown",
         "smells",
     )
+    # Why (mro-v4p5): under CI=Y, make check skips ruff lint + pyrefly — fmt/fix
+    # still mutate via ruff; CI must not re-run those read-only gates.
+    PROJECT_CHECK_GATES_CI_SKIP_VALUES: Final[tuple[str, ...]] = ("lint", "pyrefly")
+    PROJECT_CHECK_GATES_CI_SKIP: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_CI_SKIP_VALUES
+    )
     PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
         "lint",
         "format",
@@ -154,6 +160,7 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_ENV_CI: Final[str] = "CI"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",

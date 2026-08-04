@@ -1,3 +1,9 @@
+# TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local.
+!.beads/
+.beads/*
+!.beads/config.yaml
+!.beads/metadata.json
+
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
 
@@ -85,6 +91,7 @@ fix-report.json
 **/docs/audit-summary.json
 
 # Virtual environments inside allowed directories (should never be committed)
+**/.venv
 **/.venv/
 **/venv/
 **/env/
@@ -212,12 +219,16 @@ secrets.yml
 .worktrees/
 legado/
 
+# Beads ledger identity (workspace-root and standalone; see mro-9wv8)
+!.beads/metadata.json
+
 # codegen module-standardizer reject artifacts (ADR-005 §9)
 *.tpl.rej
 
 # --- codegen conform: generated runtime ignores ---
 .direnv/
 .reports/
+.venv
 .venv/
 .bin/
 .tools/
@@ -238,6 +249,9 @@ __pyrefly_virtual__/
 .omo/
 .pylance_cache/
 .pytest_cache/
+.testmondata
+.testmondata-wal
+.testmondata-shm
 .ropeproject/
 .ruff_cache/
 .scope/

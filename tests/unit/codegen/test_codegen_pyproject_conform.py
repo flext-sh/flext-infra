@@ -278,5 +278,8 @@ dependencies = []
         )
         document = tomllib.loads(conformed)
         excludes = document["tool"]["uv"]["exclude-dependencies"]
-        tm.that(excludes, eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}])
+        tm.that(
+            excludes,
+            eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}],
+        )
         tm.that("project" not in excludes[0], eq=True)

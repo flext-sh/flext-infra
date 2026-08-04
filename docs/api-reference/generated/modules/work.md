@@ -1,4 +1,4 @@
-# flext_infra.environment
+# flext_infra.work
 
 <!-- TOC START -->
 - No sections found
@@ -6,7 +6,7 @@
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-::: flext_infra.environment
+::: flext_infra.work
     options:
       show_root_heading: true
       show_root_full_path: false

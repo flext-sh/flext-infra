@@ -53,9 +53,23 @@ class TestsFlextInfraPytestSelectorValidator:
             workspace_root=Path.cwd(), what="all"
         )
         tm.ok(validator.execute())
+        for what in ("cache-status", "cache-clear", "cache-checkpoint"):
+            tm.ok(
+                FlextInfraPytestSelectorValidator(
+                    workspace_root=Path.cwd(), what=what
+                ).execute()
+            )
         with pytest.raises(c.ValidationError, match="what must be"):
             FlextInfraPytestSelectorValidator(
                 workspace_root=Path.cwd(), what="$(shell touch marker)"
+            )
+        with pytest.raises(c.ValidationError, match="what must be"):
+            FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+        with pytest.raises(
+            c.ValidationError, match="cache-status rejects FILE and MATCH"
+        ):
+            FlextInfraPytestSelectorValidator(
+                workspace_root=Path.cwd(), what="cache-status", match="x"
             )
 
     def test_file_rejects_symlink_hop(self, tmp_path: Path) -> None:

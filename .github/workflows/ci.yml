@@ -55,50 +55,71 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          enable-cache: true
+          prune-cache: false
+      - name: Restore testmon cache
+        id: testmon-restore
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: |
+            .testmondata
+          key: testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-${{ hashFiles('uv.lock', '**/uv.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-${{ hashFiles('uv.lock', '**/uv.lock') }}-
+            testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-
+
 
 
       - name: setup (blocking)
-        run: make setup
+        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: CI=Y make setup
 
       - name: gen (blocking)
-        run: make gen WHAT=apply APPLY=Y
+        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: CI=Y make gen WHAT=apply APPLY=Y
 
       - name: fmt (blocking)
-        run: make fmt WHAT=apply APPLY=Y
+        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: CI=Y make fmt WHAT=apply APPLY=Y
 
       - name: fix (blocking)
-        run: make fix WHAT=apply APPLY=Y
+        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: CI=Y make fix WHAT=apply APPLY=Y
 
       - name: check (blocking)
-        run: make check
-
-      - name: test (blocking)
-        run: make test
+        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: CI=Y make check
 
       - name: Dump reports on failure
         if: ${{ failure() }}
         run: |
           set -eu
-          for f in .reports/workspace/test/*.log; do
-            [ -f "$f" ] || continue
-            echo "::group::workspace $(basename "$f")"
-            tail -n 200 "$f"
-            echo "::endgroup::"
-          done
-          for f in apps/*/.reports/tests/*/pytest.log .reports/tests/*/pytest.log; do
-            [ -f "$f" ] || continue
+          # Structured reports only — same allowlist as Upload reports (no raw
+          # pytest/tool logs: those may carry connection strings / env secrets).
+          while IFS= read -r -d '' f; do
             echo "::group::$f"
             tail -n 200 "$f"
             echo "::endgroup::"
-          done
+          done < <(
+            find .reports apps \
+              \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
+              -type f -print0 2>/dev/null || true
+          )
       - name: Upload reports on failure
         if: ${{ failure() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: flext-ci-reports-${{ github.run_id }}
+          # Structured reports only — omit raw pytest/tool logs that may carry
+          # connection strings or env-derived secrets from integration fixtures.
           path: |
-            .reports/**
-            apps/*/.reports/**
+            .reports/**/junit.xml
+            .reports/**/coverage.xml
+            .reports/**/coverage.json
+            apps/*/.reports/**/junit.xml
+            apps/*/.reports/**/coverage.xml
+            apps/*/.reports/**/coverage.json
           if-no-files-found: ignore
           retention-days: 7
     # End SECTION: ci job

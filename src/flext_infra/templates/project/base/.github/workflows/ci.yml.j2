@@ -56,27 +56,32 @@ jobs:
 
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
+        with:
+          enable-cache: true
+          prune-cache: false
+
+{%- include "_fragments/testmon_cache.j2" %}
 
 {% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
-        run: make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
+        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {% endfor %}
       - name: Dump reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}
         run: |
           set -eu
-          for f in .reports/workspace/test/*.log; do
-            [ -f "$f" ] || continue
-            echo "::group::workspace $(basename "$f")"
-            tail -n 200 "$f"
-            echo "::endgroup::"
-          done
-          for f in apps/*/.reports/tests/*/pytest.log .reports/tests/*/pytest.log; do
-            [ -f "$f" ] || continue
+          # Structured reports only — same allowlist as Upload reports (no raw
+          # pytest/tool logs: those may carry connection strings / env secrets).
+          while IFS= read -r -d '' f; do
             echo "::group::$f"
             tail -n 200 "$f"
             echo "::endgroup::"
-          done
+          done < <(
+            find .reports apps \
+              \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
+              -type f -print0 2>/dev/null || true
+          )
       - name: Upload reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}

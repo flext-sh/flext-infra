@@ -33,7 +33,7 @@ Authoritative references, in mandatory load order:
 10. [FLEXT Strict Typing](../../.agents/skills/flext-strict-typing/SKILL.md)
 11. [FLEXT Patterns](../../.agents/skills/flext-patterns/SKILL.md)
 12. [Testing Patterns](../../.agents/skills/testing-patterns/SKILL.md)
-13. [FLEXT Quality Gates](../../.agents/skills/flext-inviolable-rules/SKILL.md)
+13. [FLEXT Law](../../.agents/skills/flext-law/SKILL.md) (composes `inviolable-rules` / `make-check` / `verification-loop` from agents_home)
 
 Mandatory operating rules:
 

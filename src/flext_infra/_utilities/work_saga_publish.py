@@ -57,17 +57,25 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             return r.fail(f"bead {bead} has no lane metadata; run work start first")
         branch = str(meta.get("branch") or "").strip()
         worktree = str(meta.get("worktree") or "").strip()
-        integration = str(meta.get("integration_base") or "").strip()
+        recorded_integration = str(meta.get("integration_base") or "").strip()
         expected = str(meta.get("head_oid") or "").strip()
         if not branch or not worktree:
             return r.fail(f"bead {bead} missing branch/worktree metadata")
         if not expected:
             return r.fail(f"bead {bead} missing metadata.head_oid for land CAS")
-        if not integration:
-            base = self._resolve_integration_base(primary_root)
-            if base.failure:
-                return r.fail(base.error or "missing integration base")
-            integration = base.value
+        base = self._resolve_integration_base(primary_root)
+        if base.failure:
+            return r.fail(base.error or "missing integration base")
+        integration = base.value
+        if (
+            recorded_integration
+            and recorded_integration not in {"HEAD", integration}
+            and recorded_integration != integration
+        ):
+            return r.fail(
+                "work land refuses metadata.integration_base drift: "
+                f"metadata={recorded_integration} ssot={integration}"
+            )
         permanent = self._refuse_permanent_branch(branch, integration)
         if permanent.failure:
             return r.fail(
@@ -99,7 +107,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.UPDATE,
             branch=branch,
-            base=integration,
+            base=self._git_integration_ref(primary_root, integration),
             apply_changes=True,
         ).execute()
         if synced.failure:
@@ -108,15 +116,33 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             lane, ("push", "-u", "origin", f"HEAD:refs/heads/{branch}")
         )
         if pushed.failure:
-            return r.fail(pushed.error or f"failed to push {branch}")
+            return r.fail(
+                self._push_rejection(
+                    lane, branch, pushed.error or f"failed to push {branch}"
+                )
+            )
         head = self._git_head(lane)
         if head.failure:
             return r.fail(head.error or "failed to resolve pushed HEAD")
+        pr_base = integration
+        if pr_base == "HEAD":
+            resolved_base = u.Infra.git_capture(
+                primary_root, ("rev-parse", "--abbrev-ref", "HEAD")
+            )
+            if resolved_base.failure:
+                return r.fail(
+                    resolved_base.error or "failed to resolve HEAD for PR base"
+                )
+            pr_base = resolved_base.value.strip()
+            if not pr_base or pr_base == "HEAD":
+                return r.fail(
+                    "work land cannot open a PR with unresolved integration base HEAD"
+                )
         pr = u.Infra.run_github_pull_request(
             m.Infra.GithubPullRequestRequest(
                 repo_root=str(primary_root),
                 action=c.Infra.PullRequestAction.CREATE,
-                base=integration if integration != "HEAD" else None,
+                base=pr_base,
                 head=branch,
                 title=f"{branch}: lane land",
                 body=f"Automated land for bead {bead} ({branch}).",
@@ -127,7 +153,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if pr.failure and observed.failure:
             return r.fail(pr.error or observed.error or "work land PR failed")
         pr_number, pr_url = observed.value if observed.success else ("", "")
-        meta_update = {"head_oid": head.value, "integration_base": integration}
+        meta_update = {"head_oid": head.value, "integration_base": pr_base}
         labels: tuple[str, ...] = ()
         if pr_number:
             meta_update["pr_number"] = pr_number
@@ -147,8 +173,19 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record land on bead")
+        receipt = self._format_receipt(
+            bead=bead,
+            operation=c.Infra.WorkOperation.LAND,
+            primary=primary_root,
+            worktree=str(lane),
+            branch=branch,
+            base=pr_base,
+            head_oid=head.value,
+            pr=pr_number,
+        )
         return r.ok(
-            f"BRANCH={branch} HEAD={head.value} PR_NUMBER={pr_number} PR_URL={pr_url}"
+            f"BRANCH={branch} HEAD={head.value} PR_NUMBER={pr_number} "
+            f"PR_URL={pr_url}\n{receipt}"
         )
 
 

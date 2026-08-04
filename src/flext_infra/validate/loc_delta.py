@@ -23,19 +23,19 @@ class FlextInfraLocDeltaValidator(s[bool]):
     @classmethod
     def evaluate(
         cls, *, subject: str, insertions: int, deletions: int
-    ) -> p.Result[None]:
+    ) -> p.Result[bool]:
         """Pure rule: net positive delta on a labelled commit is a violation."""
         lowered = subject.lower()
         if not any(label in lowered for label in c.Infra.REFACTOR_COMMIT_LABELS):
-            return r[None].ok(None)
+            return r[bool].ok(True)
         delta = insertions - deletions
         if delta > 0:
-            return r[None].fail(
+            return r[bool].fail(
                 f"net-LOC-delta violation (§3.5): '{subject}' adds +{delta} "
                 f"(insertions={insertions}, deletions={deletions}); refactor/cleanup "
                 "commits must be net non-positive"
             )
-        return r[None].ok(None)
+        return r[bool].ok(True)
 
     @staticmethod
     def _sum_numstat(numstat: str) -> tuple[int, int]:

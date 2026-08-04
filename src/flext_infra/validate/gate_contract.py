@@ -8,7 +8,10 @@ from flext_core import r
 from flext_infra import c, m
 from flext_infra.base import s
 from flext_infra.validate.gate_contract_checks import FlextInfraGateContractChecksMixin
-from flext_infra.validate.gate_contract_errors import GateContractInfraError, GateContractUsageError
+from flext_infra.validate.gate_contract_errors import (
+    GateContractInfraError,
+    GateContractUsageError,
+)
 from flext_infra.validate.gate_contract_report import FlextInfraGateContractReportMixin
 from flext_infra.validate.gate_contract_scan import FlextInfraGateContractScanMixin
 
@@ -66,10 +69,7 @@ class FlextInfraGateContractValidator(
         """Execute validation as a service."""
         try:
             outcome = self.run()
-        except (
-            GateContractUsageError,
-            GateContractInfraError,
-        ) as exc:
+        except (GateContractUsageError, GateContractInfraError) as exc:
             return r[bool].fail(str(exc))
         if outcome.exit_code == int(c.Infra.ScriptExitCode.PASS):
             return r[bool].ok(True)

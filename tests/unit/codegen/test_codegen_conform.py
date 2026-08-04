@@ -678,9 +678,11 @@ class TestCodegenConform:
 
     def test_custom_make_rejects_unterminated_phony_continuation(self) -> None:
         """Fail closed when a multiline private-handler declaration is truncated."""
-        policy: m.Infra.CustomHandlerPolicy = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.STANDALONE
-        ]
+        policy: m.Infra.CustomHandlerPolicy = (
+            config.Infra.codegen.make.custom_handler_policies[
+                c.Infra.MakeProfile.STANDALONE
+            ]
+        )
 
         result = FlextInfraCodegenConform.validate_custom_make(
             ".PHONY: \\\n\t_custom_check_demo \\", policy
@@ -958,9 +960,7 @@ class TestScriptDispatchMakefile:
         broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
         tm.that(broken, eq=[])
 
-    def test_dispatch_routes_custom_what_before_allowlist(
-        self, tmp_path: Path
-    ) -> None:
+    def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
         """Custom ``_custom_<verb>_<what>`` handlers bypass the builtin allowlist.
 
         ai-hub and other projects extend ``run`` / ``check`` via custom.mk. The

@@ -1,5 +1,12 @@
 # Topology and Conform Contract
 
+<!-- TOC START -->
+- [Effective topology](#effective-topology)
+- [Full refactor workflow](#full-refactor-workflow)
+- [Synchronization and setup](#synchronization-and-setup)
+- [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
+<!-- TOC END -->
+
 `flext-infra codegen conform` is the sole owner of repository conformance.
 Consumers use the public `u.Infra` accessors and never import workspace detector
 implementations directly.
@@ -62,7 +69,6 @@ repositories enable it only through a typed repository-local overlay. The
 generated `.mise.toml` pins the official Beads CLI version, and conform verifies
 that `mise exec -- bd version` equals that pin before inspecting or initializing
 the tracker.
-
 
 ## MCP / CRG identity (out of scope for conform)
 

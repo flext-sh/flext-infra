@@ -50,17 +50,31 @@ class FlextInfraWorkSagaCommon:
                     return r.ok(branch.strip())
         return r.ok("HEAD")
 
+    @staticmethod
+    def _git_integration_ref(primary_root: Path, base: str) -> str:
+        """Map a logical integration name to the Git ref used for lane creation.
+
+        Prefer origin/<branch> when the remote-tracking ref exists so a stale
+        local integration branch cannot seed new lanes after `git fetch`.
+        Metadata keeps the logical name; only Git operations use this ref.
+        """
+        cleaned = base.strip()
+        if not cleaned or cleaned == "HEAD" or cleaned.startswith("origin/"):
+            return cleaned
+        remote = f"origin/{cleaned}"
+        checked = u.Infra.git_capture(
+            primary_root, ("show-ref", "--verify", "--quiet", f"refs/remotes/{remote}")
+        )
+        if checked.success:
+            return remote
+        return cleaned
+
     def _validated_kind_slug(self) -> p.Result[tuple[c.Infra.WorkKind, str]]:
         if self.kind is None:
             return r.fail("work start requires --kind")
-        try:
-            kind = (
-                self.kind
-                if isinstance(self.kind, c.Infra.WorkKind)
-                else c.Infra.WorkKind(str(self.kind))
-            )
-        except ValueError:
-            return r.fail(f"invalid work kind: {self.kind}")
+        # Why: mro-5bts the service model stores enum values, so re-enter the
+        # enum here and keep every downstream saga step typed.
+        kind = c.Infra.WorkKind(self.kind)
         slug = (self.name or "").strip().lower()
         if not slug:
             return r.fail("work start requires --name")
@@ -71,9 +85,8 @@ class FlextInfraWorkSagaCommon:
         return r.ok((kind, slug))
 
     @staticmethod
-    def _branch_name(kind: c.Infra.WorkKind | str, slug: str) -> str:
-        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else kind
-        return f"{kind_value}/{slug}"
+    def _branch_name(kind: c.Infra.WorkKind, slug: str) -> str:
+        return f"{kind.value}/{slug}"
 
     def _resolve_lane_branch(self) -> p.Result[str]:
         explicit = (self.branch or "").strip()
@@ -106,14 +119,14 @@ class FlextInfraWorkSagaCommon:
         return r.ok(oid.value.strip())
 
     @staticmethod
-    def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[None]:
+    def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[bool]:
         cleaned_branch = branch.strip()
         cleaned_integration = integration.strip()
         if cleaned_branch in {"main", "master"} or (
             cleaned_integration and cleaned_branch == cleaned_integration
         ):
             return r.fail(f"work refuses permanent branch {cleaned_branch}")
-        return r.ok(None)
+        return r.ok(True)
 
     @staticmethod
     def _bound_registered_lane(
@@ -134,7 +147,7 @@ class FlextInfraWorkSagaCommon:
         return r.ok(registry_lane)
 
     @staticmethod
-    def _ensure_clean(lane: Path) -> p.Result[None]:
+    def _ensure_clean(lane: Path) -> p.Result[bool]:
         status = u.Infra.git_capture(
             lane, ("status", "--porcelain", "--untracked-files=all")
         )
@@ -142,7 +155,40 @@ class FlextInfraWorkSagaCommon:
             return r.fail(status.error or f"failed to inspect {lane}")
         if status.value.strip():
             return r.fail("work land/finish requires a clean lane worktree")
-        return r.ok(None)
+        return r.ok(True)
+
+    @staticmethod
+    def _format_receipt(
+        *,
+        bead: str,
+        operation: c.Infra.WorkOperation,
+        primary: Path,
+        worktree: str,
+        branch: str,
+        base: str,
+        head_oid: str,
+        pr: str,
+    ) -> str:
+        """Render the machine-readable lifecycle receipt of one saga step."""
+        return "\n".join((
+            f"receipt.bead={bead}",
+            f"receipt.operation={operation.value}",
+            f"receipt.primary={primary}",
+            f"receipt.worktree={worktree}",
+            f"receipt.branch={branch}",
+            f"receipt.base={base}",
+            f"receipt.head_oid={head_oid}",
+            f"receipt.pr={pr}",
+        ))
+
+    @staticmethod
+    def _push_rejection(lane: Path, branch: str, error: str) -> str:
+        """Explain a rejected push with the local and remote SHAs that diverged."""
+        local = u.Infra.git_capture(lane, ("rev-parse", "HEAD"))
+        remote = u.Infra.git_capture(lane, ("rev-parse", f"origin/{branch}"))
+        local_oid = local.value.strip() if local.success else "unresolved"
+        remote_oid = remote.value.strip() if remote.success else "unresolved"
+        return f"{error} local={local_oid} remote={remote_oid}"
 
 
 __all__: list[str] = ["FlextInfraWorkSagaCommon"]

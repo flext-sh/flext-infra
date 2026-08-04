@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
+import time
 import os
 import re
 from fnmatch import fnmatchcase
@@ -97,6 +98,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.workspace_root
         )
+        u.Cli.header("Codegen Conform")
+        u.Cli.info(
+            f"stage=plan mode={request.mode} scope={request.scope} "
+            f"what={request.what} root={request.root}"
+        )
         planned = self.plan(request)
         if planned.failure:
             return r[m.Infra.CodegenResult].fail(
@@ -121,6 +127,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 f"governed branch ancestry violations: {details}"
             )
+        # Beads binary/ledger verification must run before drift reporting so a
+        # checksum or version mismatch is not shadowed by missing projections.
+        for beads_plan in plan.beads:
+            verified_beads = self._verify_beads_plan(
+                beads_plan, allow_missing=mode is c.Infra.CodegenConformMode.CHECK
+            )
+            if verified_beads.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    verified_beads.error or "Beads ledger verification failed"
+                )
         changed = tuple(file for file in plan.files if file.changed)
         if mode is c.Infra.CodegenConformMode.CHECK:
             if changed:
@@ -128,17 +144,49 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         written: list[Path] = []
-        for file in changed:
+        total_changed = len(changed)
+        u.Cli.info(f"stage=apply changed={total_changed}")
+        for write_index, file in enumerate(changed, start=1):
+            u.Cli.emit_raw(f"  write [{write_index}/{total_changed}] {file.path}\n")
+            if file.absent:
+                target = file.path.expanduser().resolve()
+                try:
+                    target.relative_to(plan.request.root.expanduser().resolve())
+                except ValueError:
+                    return r[m.Infra.CodegenResult].fail(
+                        f"absent path escapes repository root: {file.path}"
+                    )
+                if target.exists():
+                    if not target.is_file():
+                        return r[m.Infra.CodegenResult].fail(
+                            f"absent path is not a regular file: {target}"
+                        )
+                    removed = r.create_from_callable(
+                        lambda path=target: (path.unlink(), path)[1],
+                        error_code="E_CODEGEN_ABSENT_UNLINK",
+                    )
+                    if removed.failure:
+                        return r[m.Infra.CodegenResult].fail(
+                            removed.error or f"absent path unlink failed: {target}"
+                        )
+                written.append(file.path)
+                continue
             result = u.Cli.atomic_write_text_file(file.path, file.rendered)
             if result.failure:
                 return r[m.Infra.CodegenResult].fail(
-                    result.error or f"atomic write failed: {file.path}"
+                    result.error
+                    or (
+                        f"stage=apply position={write_index}/{total_changed} "
+                        f"path={file.path}: atomic write failed"
+                    )
                 )
             written.append(file.path)
+        u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
             return r[m.Infra.CodegenResult].fail(
-                verified.error or "post-apply conform verification failed"
+                verified.error
+                or "stage=verify-fixed-point: post-apply conform verification failed"
             )
         verified_plan = verified.value
         residual = tuple(file for file in verified_plan.files if file.changed)
@@ -220,11 +268,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"integration baseline resolution failed: {root}"
                 )
             current_repository_role = current_repository.role
-            current_make_profile = (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if current_repository_role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-                else c.Infra.MakeProfile.STANDALONE
-            )
+            current_make_profile = {
+                c.Infra.RepositoryRole.WORKSPACE_ROOT: (
+                    c.Infra.MakeProfile.WORKSPACE_ROOT
+                ),
+                c.Infra.RepositoryRole.WORKSPACE_MEMBER: (
+                    c.Infra.MakeProfile.WORKSPACE_MEMBER
+                ),
+                c.Infra.RepositoryRole.STANDALONE: c.Infra.MakeProfile.STANDALONE,
+            }[current_repository_role]
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
@@ -257,7 +309,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         environments: list[m.Infra.UvEnvironmentPlan] = []
         beads_plans: list[m.Infra.BeadsPlan] = []
         ancestry_plans: list[m.Infra.BranchAncestryPlan] = []
-        for repository in selected:
+        total_repositories = len(selected)
+        u.Cli.info(f"stage=plan repositories={total_repositories}")
+        for repository_index, repository in enumerate(selected, start=1):
+            repository_started = time.monotonic()
+            u.Cli.progress(
+                repository_index, total_repositories, repository.name, "conform"
+            )
             repository_root = self._repository_root(
                 workspace_root, workspace, repository
             )
@@ -310,7 +368,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if repository_plan.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     repository_plan.error
-                    or f"repository planning failed: {repository_root}"
+                    or (
+                        f"stage=plan position={repository_index}/"
+                        f"{total_repositories} repository={repository.name}: "
+                        f"repository planning failed: {repository_root}"
+                    )
                 )
             governed = self._complete_governed_plans(
                 repository_root,
@@ -323,7 +385,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if governed.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     governed.error
-                    or f"artifact ownership planning failed: {repository_root}"
+                    or (
+                        f"stage=plan position={repository_index}/"
+                        f"{total_repositories} repository={repository.name}: "
+                        f"artifact ownership planning failed: {repository_root}"
+                    )
                 )
             files.extend(governed.value)
             environments.append(
@@ -335,9 +401,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            issue_prefix, ledger_database = self.ledger_identity_for_target(
+            issue_prefix, _ledger_database = self.ledger_identity_for_target(
                 workspace, target
             )
+            ledger_root_result = self._beads_ledger_root(repository_root)
+            if ledger_root_result.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    ledger_root_result.error
+                    or f"unable to resolve Beads ledger root: {repository_root}"
+                )
             beads_plans.append(
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
@@ -356,8 +428,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
-                    ledger_root=repository_root,
-                    ledger_id=ledger_database,
+                    ledger_root=ledger_root_result.value,
+                    ledger_id=workspace.ledger_id,
                 )
             )
             if self.initial_workspace is None:
@@ -365,9 +437,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if ancestry_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
                         ancestry_result.error
-                        or f"branch ancestry inventory failed: {repository_root}"
+                        or (
+                            f"stage=plan position={repository_index}/"
+                            f"{total_repositories} repository={repository.name}: "
+                            f"branch ancestry inventory failed: {repository_root}"
+                        )
                     )
                 ancestry_plans.append(ancestry_result.value)
+            u.Cli.status(
+                "conform",
+                repository.name,
+                result=True,
+                elapsed=time.monotonic() - repository_started,
+            )
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
@@ -422,6 +504,39 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"governed artifact is not a regular file: {path}"
                 )
+            entry_profiles = tuple(
+                entry.profiles
+                for entry in codegen.templates.entries
+                if entry.destination == relative.as_posix()
+            )
+            if entry_profiles:
+                allowed = {item for profiles in entry_profiles for item in profiles}
+                if profile not in allowed:
+                    # Why: profile-excluded managed workflows must not survive as
+                    # "keep current" ghosts (ci-matrix on workspace-member).
+                    if (
+                        relative.parts[:2] == (".github", "workflows")
+                        and path.is_file()
+                    ):
+                        orphan_read = u.Cli.files_read_text(path)
+                        if orphan_read.failure:
+                            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                                orphan_read.error
+                                or f"orphan workflow read failed: {path}"
+                            )
+                        completed.append(
+                            m.Infra.CodegenFilePlan(
+                                path=path,
+                                owner=governed.owner,
+                                policy=governed.policy,
+                                rendered="",
+                                expected_sha256=u.Cli.sha256_content(""),
+                                current_sha256=u.Cli.sha256_content(orphan_read.value),
+                                changed=True,
+                                absent=True,
+                            )
+                        )
+                    continue
             current = ""
             if path.is_file():
                 read = u.Cli.files_read_text(path)
@@ -742,6 +857,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"template destination escapes repository root: {destination}"
                 )
+            # Ledger routing config: workspace root (owned), transaction
+            # worktrees, and marker-attached standalones only (mro-z89e).
+            if destination in {
+                c.Infra.BEADS_CONFIG_RELPATH,
+                c.Infra.BEADS_METADATA_RELPATH,
+            } and not (target.beads_enabled or target.routing_only):
+                continue
             if destination in seen_destinations:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"duplicate template destination: {destination}"
@@ -825,7 +947,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    rendered.error or f"template render failed: {entry.source}"
+                    rendered.error
+                    or (
+                        f"stage=templates repository={repository.name} "
+                        f"template={entry.source}: template render failed"
+                    )
                 )
             file_plan = self._file_plan(root, destination, rendered.value)
             if file_plan.failure:
@@ -910,6 +1036,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
+        u.Cli.info(f"  stage=pyproject repository={repository.name}")
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1066,6 +1193,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
+        u.Cli.info(f"  stage=templates repository={repository.name}")
         profile = target.make_profile
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
@@ -1088,6 +1216,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
+            # Ledger routing config: workspace root (owned), transaction
+            # worktrees, and marker-attached standalones only (mro-z89e).
+            if managed.path.as_posix() in {
+                c.Infra.BEADS_CONFIG_RELPATH,
+                c.Infra.BEADS_METADATA_RELPATH,
+            } and not (target.beads_enabled or target.routing_only):
+                continue
             entries = tuple(
                 entry
                 for entry in codegen.templates.entries
@@ -1101,9 +1236,45 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed file requires exactly one render template: {managed.path}"
                 )
             entry = entries[0]
+            u.Cli.emit_raw(f"  template {entry.source} -> {entry.destination}\n")
+            relative = Path(entry.destination)
+            if relative.is_absolute() or ".." in relative.parts:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"managed destination escapes repository root: {entry.destination}"
+                )
+            path = (root / relative).resolve()
+            try:
+                path.relative_to(root.resolve())
+            except ValueError:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"managed destination escapes repository root: {entry.destination}"
+                )
             if profile not in entry.profiles:
+                # Why: profile-excluded managed workflows must not keep firing
+                # (ci-matrix on workspace-member). Prune the orphan projection.
+                if (
+                    managed.path.parts[:2] == (".github", "workflows")
+                    and path.is_file()
+                ):
+                    # Why: mro-4p0t orphan_read avoids Result[str] vs str overlap on current.
+                    orphan_read = u.Cli.files_read_text(path)
+                    if orphan_read.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                            orphan_read.error or f"orphan workflow read failed: {path}"
+                        )
+                    planned.append(
+                        m.Infra.CodegenFilePlan(
+                            path=path,
+                            owner=managed.owner,
+                            policy=managed.policy,
+                            rendered="",
+                            expected_sha256=u.Cli.sha256_content(""),
+                            current_sha256=u.Cli.sha256_content(orphan_read.value),
+                            changed=True,
+                            absent=True,
+                        )
+                    )
                 continue
-            path = root / entry.destination
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
                 if current.failure:
@@ -1258,7 +1429,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
                     repository=repository,
-                    branch=u.Infra.resolve_integration_branch(workspace, provider.value),
+                    branch=u.Infra.resolve_integration_branch(
+                        workspace, provider.value
+                    ),
                 )
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
@@ -1351,9 +1524,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            issue_prefix, database = self.ledger_identity_for_target(
-                workspace, target
-            )
+            issue_prefix, database = self.ledger_identity_for_target(workspace, target)
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=issue_prefix,
@@ -1368,9 +1539,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            _issue_prefix, database = self.ledger_identity_for_target(
-                workspace, target
-            )
+            _issue_prefix, database = self.ledger_identity_for_target(workspace, target)
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(database=database, server=server)
             )
@@ -1388,6 +1557,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
+                    make_profile=target.make_profile,
                     repository_branch=provider.value.branch,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
@@ -1408,6 +1578,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.DistroDockerRenderSpec(
                     package_name=dist.replace("-", "_"),
                     python_version=codegen.toolchain.python_version,
+                    make=codegen.make,
                 )
             )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
@@ -1942,6 +2113,33 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.BranchAncestryPlan]:
         """Inventory governed refs and prove descent from the provider baseline."""
         root = target.root
+        # Refresh the provider baseline from origin when a remote exists so
+        # CI/local gates do not compare against a stale remote-tracking SHA.
+        # Fixtures and offline clones keep the existing tracking ref.
+        remote_probe = u.Cli.run_raw(
+            (c.Infra.GIT, "remote", "get-url", "origin"), cwd=root
+        )
+        if (
+            remote_probe.success
+            and remote_probe.value.exit_code == 0
+            and remote_probe.value.stdout.strip()
+        ):
+            fetch_command = (
+                c.Infra.GIT,
+                "fetch",
+                "--no-tags",
+                "--prune",
+                "origin",
+                (
+                    f"+refs/heads/{target.baseline_branch}:"
+                    f"refs/remotes/origin/{target.baseline_branch}"
+                ),
+            )
+            fetch_result = u.Cli.run_raw(fetch_command, cwd=root)
+            if fetch_result.failure or fetch_result.value.exit_code != 0:
+                # Soft: ancestry still validates against the local tracking ref
+                # when present; hard-fail only if that ref is missing below.
+                pass
         baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
@@ -2110,7 +2308,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    @staticmethod
     def _uv_environment_plan(
         *,
         root: Path,
@@ -2145,21 +2342,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def ledger_identity_for_target(
-        workspace: m.Infra.WorkspaceSpec,
-        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
     ) -> tuple[str, str]:
         """Return ``(issue_prefix, database)`` for one conform target.
 
         ``WORKSPACE_MEMBER`` targets keep ``canonical_project_name`` because
         they are planned under the parent workspace.yaml (mro-z75t). Root and
         standalone manifests still honor their own ``ledger_prefix`` /
-        ``ledger_id`` overrides (mro-6fca).
+        ``ledger_id`` overrides (mro-6fca). Marker-attached standalones are
+        classified as ``WORKSPACE_MEMBER`` for routing, but they own their
+        workspace.yaml at the governing root, so ledger_* still apply.
         """
         # Members are planned under the parent workspace.yaml, so a root
         # ledger_prefix must not rewrite their issue-prefix/database. A
         # standalone's workspace.yaml is its own manifest, so ledger_* there
-        # still apply (mro-6fca).
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER:
+        # still apply (mro-6fca). Attached standalones share the MEMBER
+        # profile only for routing; they are not parent-manifest members.
+        if (
+            target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+            and not target.attached_standalone
+        ):
             return target.canonical_project_name, target.canonical_project_name
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
@@ -2269,9 +2471,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].ok(True)
         if not plan.enabled:
             beads_dir = plan.repository_root / ".beads"
-            if beads_dir.exists():
+            if not beads_dir.exists():
+                return r[bool].ok(True)
+            # Routing-only projections (attached standalones / worktree routes)
+            # may commit config.yaml + metadata.json without owning tracker
+            # state. Fail only when additional tracker artifacts appear.
+            routing_only_names = frozenset({"config.yaml", "metadata.json"})
+            extra = tuple(
+                path.name
+                for path in beads_dir.iterdir()
+                if path.name not in routing_only_names and not path.name.startswith(".")
+            )
+            if extra:
                 return r[bool].fail(
-                    f"Beads is disabled but tracker state exists: {beads_dir}"
+                    f"Beads is disabled but tracker state exists: {beads_dir} "
+                    f"({', '.join(sorted(extra))})"
                 )
             return r[bool].ok(True)
         ledger_root = plan.ledger_root

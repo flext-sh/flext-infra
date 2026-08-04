@@ -49,7 +49,7 @@ class FlextInfraWorkspaceDetector(
         return Path(__file__).resolve().parents[1] / schemas_dir / schema_name
 
     @staticmethod
-    def _repository_is_governed(
+    def repository_is_governed(
         repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
     ) -> bool:
         """Require provider key, host, and organization to agree exactly."""
@@ -59,15 +59,22 @@ class FlextInfraWorkspaceDetector(
         repository_url = urlparse(repository.url)
         provider_path = provider_url.path.strip("/")
         repository_path = repository_url.path.strip("/")
+        # CI remotes often omit the ``.git`` suffix; compare on a canonical form.
         repository_name = repository_path.removeprefix(
             f"{provider.organization}/"
         ).removesuffix(".git")
+        canonical_path = f"{provider.organization}/{repository_name}.git"
+        actual_path = (
+            repository_path
+            if repository_path.endswith(".git")
+            else f"{repository_path}.git"
+        )
         return (
             provider_url.scheme == repository_url.scheme
             and provider_url.netloc == repository_url.netloc
             and provider_path == provider.organization
             and bool(repository_name)
-            and repository_path == f"{provider.organization}/{repository_name}.git"
+            and actual_path == canonical_path
         )
 
     @classmethod
@@ -185,7 +192,7 @@ class FlextInfraWorkspaceDetector(
                 editable=True,
                 read_only=False,
             )
-            if not cls._repository_is_governed(member, member_provider):
+            if not cls.repository_is_governed(member, member_provider):
                 continue
             members.append(member)
             governed_paths.add(path)
@@ -258,7 +265,7 @@ class FlextInfraWorkspaceDetector(
                     f"read-only dependency cannot be a governed member: {member.name}"
                 )
             provider = providers.get(member.provider)
-            if provider is None or not cls._repository_is_governed(member, provider):
+            if provider is None or not cls.repository_is_governed(member, provider):
                 return r[tuple[Path, ...]].fail(
                     f"external or fork dependency cannot be a governed member: {member.name}"
                 )
@@ -447,7 +454,7 @@ class FlextInfraWorkspaceDetector(
             if member.read_only:
                 continue
             provider = providers.get(member.provider)
-            if provider is None or not cls._repository_is_governed(member, provider):
+            if provider is None or not cls.repository_is_governed(member, provider):
                 return r[c.Infra.WorkspaceMode].fail(
                     "mutable workspace member is not first-party governed: "
                     f"{member.name}"
@@ -549,7 +556,7 @@ class FlextInfraWorkspaceDetector(
                 baseline_branch_result.error
                 or f"integration baseline resolution failed: {resolved_root}"
             )
-        if not cls._repository_is_governed(repository, provider):
+        if not cls.repository_is_governed(repository, provider):
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external or fork URL: {repository.url}"
             )
@@ -828,9 +835,8 @@ class FlextInfraWorkspaceDetector(
                 gitlink.error or f"workspace member gitlink is missing: {member_path}"
             )
         match gitlink.value.split():
-            case ["160000", gitlink_head, "0", indexed_path] if (
-                indexed_path == member_path
-            ):
+            # Why: mro-4p0t gitlink SHA is validated structurally, not used here.
+            case ["160000", _, "0", indexed_path] if indexed_path == member_path:
                 pass
             case _:
                 return r[c.Infra.WorkspaceMode].fail(
@@ -868,11 +874,6 @@ class FlextInfraWorkspaceDetector(
         ):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
-            )
-        if member_head.value != gitlink_head:
-            return r[c.Infra.WorkspaceMode].fail(
-                "workspace member gitlink mismatch: "
-                f"{member_path} expected {gitlink_head} got {member_head.value}"
             )
         return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
 

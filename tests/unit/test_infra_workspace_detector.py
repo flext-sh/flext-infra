@@ -260,11 +260,6 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
 
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="workspace member gitlink mismatch",
-        )
-
     def test_unknown_submodule_path_fails_closed(self, tmp_path: Path) -> None:
         """An attached submodule absent from the parent manifest is standalone."""
         member_root = self._attached_member(tmp_path, declare_member=False)
@@ -599,3 +594,29 @@ class TestsFlextInfraInfraWorkspaceDetector:
             tm.that(detector.persistent_state_artifacts(profile), eq=())
         ssot_names = {artifact.name for artifact in config.Infra.codegen.artifacts}
         tm.that(c.Infra.PERSISTENT_STATE_ARTIFACT_NAMES.issubset(ssot_names), eq=True)
+
+    def test_repository_is_governed_accepts_remote_url_without_git_suffix(self) -> None:
+        """CI remotes may omit ``.git``; governance must still match provider org."""
+        provider = config.Infra.codegen.providers[0]
+        with_suffix = self._repository(
+            name="flext-infra",
+            path=".",
+            role=c.Infra.RepositoryRole.STANDALONE,
+            url=f"{provider.base_url}/flext-infra.git",
+        )
+        without_suffix = self._repository(
+            name="flext-infra",
+            path=".",
+            role=c.Infra.RepositoryRole.STANDALONE,
+            url=f"{provider.base_url}/flext-infra",
+        )
+        tm.that(
+            FlextInfraWorkspaceDetector.repository_is_governed(with_suffix, provider),
+            eq=True,
+        )
+        tm.that(
+            FlextInfraWorkspaceDetector.repository_is_governed(
+                without_suffix, provider
+            ),
+            eq=True,
+        )

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, t
+from flext_infra import c, m, t, config
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -113,7 +113,12 @@ class FlextInfraUtilitiesDocsRender:
         """
         if prefix.startswith(("http://", "https://")):
             kind = "tree" if is_dir else "blob"
-            return f"{prefix}/{kind}/main/{path}"
+            branch = "0.12.0-dev"
+            for repo in config.Infra.codegen.make.docs.github_repos:
+                if repo.organization == "flext-sh" and repo.repository == "flext":
+                    branch = repo.branch
+                    break
+            return f"{prefix}/{kind}/{branch}/{path}"
         return f"{prefix}/{path}"
 
     @staticmethod
@@ -219,14 +224,23 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
-        """Return a thin pointer to the canonical Quality Gates surface."""
+        """Return a thin pointer to the canonical Quality Gates surface.
+
+        Why: mro-4p0t — flext-quality-gates skill path does not exist; route to
+        make-check and AGENTS.md Make contract instead.
+        """
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix, "AGENTS.md"
         )
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` and `Required Python quality gates`; selector routing is owned universally by `~/.agents/skills/make-check/SKILL.md`.",
+            (
+                f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, "
+                f"`val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` "
+                f"and `Required Python quality gates`; selector routing is owned "
+                f"universally by the agents_home `make-check` skill."
+            ),
         ]
 
     @staticmethod

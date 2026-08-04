@@ -495,13 +495,11 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
-        """Remove checkout- and interpreter-specific type checker paths.
+        """Remove checkout-absolute type checker interpreter pins.
 
-        Search paths themselves belong to FlextInfraExtraPathsManager, which
-        derives them from the project's declared path dependencies and uv
-        workspace members. Restating a literal here made gen overwrite that
-        derivation with a two-entry list, so sibling sources dropped off the
-        analyzer path and every symbol imported from them degraded to Any.
+        Search paths belong to FlextInfraExtraPathsManager. Top-level
+        ``venv`` / ``venvPath`` belong to deps modernize (root vs child
+        runtime). Conform must not strip those or gen oscillates.
         """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
@@ -514,7 +512,9 @@ class FlextInfraUtilitiesPyprojectConform:
         if pyright is None:
             return r[bool].ok(True)
 
-        interpreter_keys = ("venv", "venvPath", "pythonPath", "pythonInterpreterPath")
+        # venv / venvPath are owned by deps modernize (workspace vs child
+        # runtime). Conform only strips checkout-absolute interpreter pins.
+        interpreter_keys = ("pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
         raw_environments = u.Cli.json_as_sequence(
@@ -530,7 +530,7 @@ class FlextInfraUtilitiesPyprojectConform:
             normalized: t.JsonDict = dict(mapping)
             root = normalized.get("root")
             normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]
-            for key in interpreter_keys:
+            for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
                 normalized.pop(key, None)
             normalized_environments.append(normalized)
         if raw_environments:

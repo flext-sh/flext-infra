@@ -50,9 +50,7 @@ class FlextInfraCodegenLayout(
             residual = self.plan_project(project_dir)
             actionable: tuple[m.Infra.LayoutFinding, ...] = residual.actionable
             unresolved = tuple(
-                finding.path
-                for finding in actionable
-                if finding.status == "planned"
+                finding.path for finding in actionable if finding.status == "planned"
             )
             if unresolved:
                 paths = ", ".join(unresolved)
@@ -66,9 +64,7 @@ class FlextInfraCodegenLayout(
             blocking: list[str] = []
             for report in reports:
                 report_actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
-                blocking.extend(
-                    finding.message for finding in report_actionable
-                )
+                blocking.extend(finding.message for finding in report_actionable)
             if blocking:
                 return r[str].fail(f"layout violations: {'; '.join(blocking)}")
         return r[str].ok(output)

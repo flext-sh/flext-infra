@@ -59,8 +59,7 @@ class FlextInfraUtilitiesRepository:
 
     @staticmethod
     def resolve_integration_branch(
-        workspace: m.Infra.WorkspaceSpec,
-        provider: m.Infra.ProviderSpec,
+        workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
     ) -> str:
         """Return the workspace overlay branch, else the provider catalog branch."""
         if workspace.integration is not None:
@@ -81,9 +80,7 @@ class FlextInfraUtilitiesRepository:
             return True
         if declared_branch == provider_branch:
             return True
-        return (
-            integration_branch is not None and declared_branch == integration_branch
-        )
+        return integration_branch is not None and declared_branch == integration_branch
 
     @classmethod
     def repository_baseline_branch(

@@ -155,13 +155,7 @@ extra_checks = true
 follow_imports = "normal"
 ignore_missing_imports = true
 local_partial_types = true
-mypy_path = [
-  "src",
-  ".",
-  "../flext-cli/src",
-  "../flext-core/src",
-  "../flext-tests/src",
-]
+mypy_path = ["src", "."]
 namespace_packages = true
 no_implicit_reexport = true
 plugins = ["pydantic.mypy"]
@@ -208,13 +202,7 @@ project-excludes = [
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
-search-path = [
-  "src",
-  ".",
-  "../flext-cli/src",
-  "../flext-core/src",
-  "../flext-tests/src",
-]
+search-path = ["src", "."]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -365,23 +353,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = ".."
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = ["src"]
-reportAssignmentType = "none"
-reportAttributeAccessIssue = "none"
-reportGeneralTypeIssues = "none"
-reportInvalidTypeForm = "none"
-reportPrivateImportUsage = "none"
-reportPrivateUsage = "none"
-reportUnknownArgumentType = "none"
-reportUnknownLambdaType = "none"
-reportUnknownMemberType = "none"
-reportUnknownParameterType = "none"
-reportUnknownVariableType = "none"
-reportUnusedImport = "none"
-root = "src/flext_infra/_utilities/rope_patch"
+venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -439,6 +411,7 @@ markers = [
   "edge_cases: edge case tests",
   "integration: integration tests",
   "performance: performance and benchmark tests",
+  "remote: tests requiring remote/external network services",
   "resilience: resilience tests",
   "slow: slow-running tests",
   "smoke: public-interface smoke tests",
@@ -708,6 +681,7 @@ dev = [
   "pytest-mock>=3.15.1",
   "pytest-randomly>=4.1.0",
   "pytest-sugar>=1.1.1",
+  "pytest-testmon>=2.2.0",
   "pytest-timeout>=2.4.0",
   "pytest-xdist>=3.8.0",
   "pyupgrade>=3.21.2",

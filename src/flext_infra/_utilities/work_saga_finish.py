@@ -57,20 +57,68 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         if bound.failure:
             return r.fail(bound.error or "work finish lane binding failed")
         lane = bound.value
-        if pr_number:
-            viewed = u.Cli.capture(
-                ("gh", "pr", "view", pr_number, "--json", "state,mergedAt"),
-                cwd=primary_root,
+        merged = self._require_merged_pr(primary_root, branch, pr_number)
+        if merged.failure:
+            return r.fail(merged.error or "work finish PR state check failed")
+        if not lane.is_dir():
+            return r.fail(f"lane worktree missing: {lane}")
+        if not expected:
+            return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
+        head = self._git_head(lane)
+        if head.failure:
+            return r.fail(head.error or "failed to resolve lane HEAD")
+        if head.value != expected:
+            return r.fail(
+                f"CAS failed before finish: expected {expected} head={head.value}"
             )
-            if viewed.failure:
-                return r.fail(viewed.error or "failed to inspect PR merge state")
-            payload = json.loads(viewed.value or "{}")
-            state = str(payload.get("state") or "")
-            if state.upper() != "MERGED" and not payload.get("mergedAt"):
-                return r.fail(
-                    f"work finish requires merged PR #{pr_number}; state={state}"
-                )
-        else:
+        removed = FlextInfraWorktreeService(
+            workspace_root=primary_root,
+            operation=c.Infra.WorktreeOperation.REMOVE,
+            branch=branch,
+            apply_changes=True,
+        ).execute()
+        if removed.failure:
+            return r.fail(removed.error or f"failed to remove lane {branch}")
+        deleted = u.Infra.git_capture(
+            primary_root, ("update-ref", "-d", f"refs/heads/{branch}", expected)
+        )
+        if deleted.failure:
+            exists = u.Infra.git_run(
+                primary_root,
+                ("show-ref", "--verify", "--quiet", f"refs/heads/{branch}"),
+            )
+            if exists.success and exists.value.exit_code == 0:
+                return r.fail(deleted.error or f"failed to delete local ref {branch}")
+        notes = (
+            f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "
+            f"decisive=removed {worktree} branch={branch}"
+        )
+        updated = u.Infra.beads_update_lane(
+            bead,
+            metadata={"worktree": "removed", "head_oid": expected},
+            notes=notes,
+            root=self.workspace_root,
+        )
+        if updated.failure:
+            return r.fail(updated.error or "failed to record finish on bead")
+        receipt = self._format_receipt(
+            bead=bead,
+            operation=c.Infra.WorkOperation.FINISH,
+            primary=primary_root,
+            worktree=worktree,
+            branch=branch,
+            base=integration,
+            head_oid=expected,
+            pr=pr_number,
+        )
+        return r.ok(f"FINISHED BRANCH={branch} WORKTREE={worktree}\n{receipt}")
+
+    @staticmethod
+    def _require_merged_pr(
+        primary_root: Path, branch: str, pr_number: str
+    ) -> p.Result[bool]:
+        """Refuse to retire a lane whose pull request is not merged."""
+        if not pr_number:
             open_prs = u.Cli.capture(
                 (
                     "gh",
@@ -85,52 +133,28 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                 ),
                 cwd=primary_root,
             )
-            if open_prs.success and (open_prs.value or "") not in {"", "[]"}:
+            if open_prs.failure:
+                return r.fail(open_prs.error or f"failed to list open PRs for {branch}")
+            if (open_prs.value or "").strip() not in {"", "[]"}:
                 return r.fail(f"work finish refuses open PR on {branch}")
-        if lane.is_dir():
-            if not expected:
-                return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
-            head = self._git_head(lane)
-            if head.failure:
-                return r.fail(head.error or "failed to resolve lane HEAD")
-            if head.value != expected:
-                return r.fail(
-                    f"CAS failed before finish: expected {expected} head={head.value}"
-                )
-            removed = FlextInfraWorktreeService(
-                workspace_root=primary_root,
-                operation=c.Infra.WorktreeOperation.REMOVE,
-                branch=branch,
-                apply_changes=True,
-            ).execute()
-            if removed.failure:
-                return r.fail(removed.error or f"failed to remove lane {branch}")
-        if expected:
-            deleted = u.Infra.git_capture(
-                primary_root, ("update-ref", "-d", f"refs/heads/{branch}", expected)
+            return r.ok(True)
+        viewed = u.Cli.capture(
+            ("gh", "pr", "view", pr_number, "--json", "state,mergedAt,headRefName"),
+            cwd=primary_root,
+        )
+        if viewed.failure:
+            return r.fail(viewed.error or "failed to inspect PR merge state")
+        payload = json.loads(viewed.value or "{}")
+        state = str(payload.get("state") or "")
+        head_ref = str(payload.get("headRefName") or "").strip()
+        if head_ref and head_ref != branch:
+            return r.fail(
+                f"work finish PR #{pr_number} head {head_ref} "
+                f"does not match lane branch {branch}"
             )
-            if deleted.failure:
-                exists = u.Infra.git_run(
-                    primary_root,
-                    ("show-ref", "--verify", "--quiet", f"refs/heads/{branch}"),
-                )
-                if exists.success and exists.value.exit_code == 0:
-                    return r.fail(
-                        deleted.error or f"failed to delete local ref {branch}"
-                    )
-        notes = (
-            f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "
-            f"decisive=removed {worktree} branch={branch}"
-        )
-        updated = u.Infra.beads_update_lane(
-            bead,
-            metadata={"worktree": "removed", "head_oid": expected or ""},
-            notes=notes,
-            root=self.workspace_root,
-        )
-        if updated.failure:
-            return r.fail(updated.error or "failed to record finish on bead")
-        return r.ok(f"FINISHED BRANCH={branch} WORKTREE={worktree}")
+        if state.upper() != "MERGED" and not payload.get("mergedAt"):
+            return r.fail(f"work finish requires merged PR #{pr_number}; state={state}")
+        return r.ok(True)
 
 
 __all__: list[str] = ["FlextInfraWorkSagaFinish"]

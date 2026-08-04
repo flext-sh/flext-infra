@@ -182,7 +182,7 @@ class FlextInfraConfigModels:
                     "Exact Go runtime version; mise resolves go: backend "
                     "selectors through it, so beads only installs when Go "
                     "is a declared tool"
-                ),
+                )
             ),
         ]
         mise_version: Annotated[
@@ -278,7 +278,9 @@ class FlextInfraConfigModels:
 
         secret: Annotated[
             t.NonEmptyStr,
-            m.Field(description="GitHub Actions secret name holding the deploy key PEM"),
+            m.Field(
+                description="GitHub Actions secret name holding the deploy key PEM"
+            ),
         ]
         host_alias: Annotated[
             t.NonEmptyStr,
@@ -286,15 +288,15 @@ class FlextInfraConfigModels:
         ]
         submodule: Annotated[
             t.NonEmptyStr,
-            m.Field(description="gitmodules submodule name (git config submodule.<name>.url)"),
+            m.Field(
+                description="gitmodules submodule name (git config submodule.<name>.url)"
+            ),
         ]
         path: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Checkout-relative submodule path"),
+            t.NonEmptyStr, m.Field(description="Checkout-relative submodule path")
         ]
         ssh_url: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="SSH clone URL using the Host alias"),
+            t.NonEmptyStr, m.Field(description="SSH clone URL using the Host alias")
         ]
 
     class CiPrivateSubmodulesSpec(_ConfigContract):
@@ -302,7 +304,9 @@ class FlextInfraConfigModels:
 
         paths: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Submodule paths to init before make setup"),
+            m.Field(
+                min_length=1, description="Submodule paths to init before make setup"
+            ),
         ]
         deploy_keys: Annotated[
             tuple[FlextInfraConfigModels.CiPrivateSubmoduleDeployKeySpec, ...],
@@ -313,6 +317,16 @@ class FlextInfraConfigModels:
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        make_profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile,
+            m.Field(
+                description=(
+                    "Make/codegen profile; ci-matrix projected only for "
+                    "workspace-root/standalone; workspace-member excluded "
+                    "and orphan copies pruned"
+                )
+            ),
+        ]
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
@@ -380,6 +394,10 @@ class FlextInfraConfigModels:
         ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
+        ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
@@ -521,6 +539,29 @@ class FlextInfraConfigModels:
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
         value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
+        check_gates_skip: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Gate ids omitted from make check when the CI token is exact "
+                    "(ruff lint/format and pyrefly). Local make check without the "
+                    "token still runs the full default set."
+                )
+            ),
+        ] = ("lint", "format", "pyrefly")
+
+        @u.model_validator(mode="after")
+        def _validate_check_gates_skip(self) -> Self:
+            """Every skipped gate must be in the allowed check vocabulary."""
+            allowed = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+            unknown = sorted(set(self.check_gates_skip) - allowed)
+            if unknown:
+                msg = (
+                    "make.ci.check_gates_skip contains unknown gates: "
+                    f"{', '.join(unknown)}"
+                )
+                raise ValueError(msg)
+            return self
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -614,6 +655,16 @@ class FlextInfraConfigModels:
                 description="Maximum seconds to wait for the checkout validation lock",
             ),
         ]
+        wait_heartbeat_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description=(
+                    "Seconds between lock-wait progress heartbeats while a "
+                    "serialized Make verb waits for the checkout lock"
+                ),
+            ),
+        ]
         verbs: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -686,6 +737,26 @@ class FlextInfraConfigModels:
             m.Field(description="Project optional-dependency selection policy"),
         ]
 
+    class DocsGithubRepoSpec(_ConfigContract):
+        """One governed GitHub repository used for cross-repo doc links."""
+
+        organization: Annotated[
+            t.NonEmptyStr, m.Field(description="GitHub organization")
+        ]
+        repository: Annotated[t.NonEmptyStr, m.Field(description="GitHub repository")]
+        branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Working-line branch for doc links")
+        ]
+        local_checkout: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Optional local checkout path (~ expanded) for existence checks"
+                ),
+            ),
+        ] = ""
+
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
@@ -702,6 +773,77 @@ class FlextInfraConfigModels:
                 description="Regex rejecting cross-project relative Markdown links"
             ),
         ]
+        stale_github_organizations: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=("organization",),
+                description="Placeholder GitHub orgs that must be rewritten",
+            ),
+        ] = ("organization",)
+        github_repos: Annotated[
+            tuple[FlextInfraConfigModels.DocsGithubRepoSpec, ...],
+            m.Field(
+                default=(),
+                description="Governed org/repo/branch map for cross-repo doc URLs",
+            ),
+        ] = ()
+
+    class TestmonCacheSpec(_ConfigContract):
+        """Adaptive pytest-testmon GitHub Actions cache policy (mro-dipb)."""
+
+        schema_version: Annotated[
+            int, m.Field(ge=1, description="Cache key schema version")
+        ]
+        mode: Annotated[
+            Literal["bootstrap", "stable"], m.Field(description="Cache renewal phase")
+        ]
+        save_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether CI may upload a new testmon generation. False while "
+                    "quota/HTTP 402 blocks fleet-wide saves (QUOTA_HOLD)."
+                )
+            ),
+        ]
+        max_bootstrap_generations: Annotated[
+            int, m.Field(ge=1, le=10, description="Max retained bootstrap generations")
+        ]
+        max_stable_generations: Annotated[
+            int, m.Field(ge=1, le=10, description="Max retained stable generations")
+        ]
+        per_repo_budget_bytes: Annotated[
+            int, m.Field(ge=1, description="Per-repo testmon namespace budget in bytes")
+        ]
+        warning_threshold_percent: Annotated[
+            int, m.Field(ge=1, le=100, description="Quota warning threshold percent")
+        ]
+        maintenance_threshold_percent: Annotated[
+            int,
+            m.Field(ge=1, le=100, description="Quota maintenance threshold percent"),
+        ]
+        block_threshold_percent: Annotated[
+            int, m.Field(ge=1, le=100, description="Quota block-save threshold percent")
+        ]
+        allowed_save_refs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Refs allowed to save cache generations"),
+        ]
+        key_prefix: Annotated[
+            t.NonEmptyStr, m.Field(description="Immutable cache key prefix")
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_thresholds(self) -> Self:
+            """Require warning < maintenance < block."""
+            if not (
+                self.warning_threshold_percent
+                < self.maintenance_threshold_percent
+                < self.block_threshold_percent
+            ):
+                msg = "testmon cache thresholds must satisfy warning < maintenance < block"
+                raise ValueError(msg)
+            return self
 
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
@@ -742,6 +884,10 @@ class FlextInfraConfigModels:
         ci: Annotated[
             FlextInfraConfigModels.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
+        ]
+        testmon_cache: Annotated[
+            FlextInfraConfigModels.TestmonCacheSpec,
+            m.Field(description="Adaptive testmon Actions cache policy"),
         ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -1230,7 +1376,8 @@ class FlextInfraConfigModels:
             m.Field(description="Governed repository identity"),
         ]
         branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Declared gitlink branch (. follows the superproject)")
+            t.NonEmptyStr,
+            m.Field(description="Declared gitlink branch (. follows the superproject)"),
         ]
 
     class MakeCommandContext(_ConfigContract):
@@ -2520,28 +2667,22 @@ class FlextInfraConfigModels:
             m.Field(description="Output paths selected for conformance planning"),
         ] = None
         complete_governed: Annotated[
-            bool,
-            m.Field(description="Whether every governed output is represented"),
+            bool, m.Field(description="Whether every governed output is represented")
         ] = False
         dependencies_only: Annotated[
-            bool,
-            m.Field(description="Whether planning is dependency-only"),
+            bool, m.Field(description="Whether planning is dependency-only")
         ] = False
         delegates: Annotated[
-            bool,
-            m.Field(description="Whether delegated templates are planned"),
+            bool, m.Field(description="Whether delegated templates are planned")
         ] = True
         pyproject: Annotated[
-            bool,
-            m.Field(description="Whether project metadata is planned"),
+            bool, m.Field(description="Whether project metadata is planned")
         ] = True
         templates: Annotated[
-            bool,
-            m.Field(description="Whether managed templates are planned"),
+            bool, m.Field(description="Whether managed templates are planned")
         ] = True
         custom: Annotated[
-            bool,
-            m.Field(description="Whether custom Make policy is planned"),
+            bool, m.Field(description="Whether custom Make policy is planned")
         ] = True
 
     class CodegenConformRequest(_ConfigContract):
@@ -2581,6 +2722,14 @@ class FlextInfraConfigModels:
             str, m.Field(description="SHA-256 of current content, empty when missing")
         ] = ""
         changed: Annotated[bool, m.Field(description="Whether content differs")]
+        absent: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "When true, apply removes the path instead of writing rendered"
+                )
+            ),
+        ] = False
         blocked: Annotated[
             bool, m.Field(description="Whether unrecognized WIP blocks application")
         ] = False
