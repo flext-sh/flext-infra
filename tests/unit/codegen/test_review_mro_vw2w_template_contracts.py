@@ -49,12 +49,13 @@ class TestsReviewTemplateContracts:
 
     def test_release_verifies_core_gitlink_after_setup(self) -> None:
         text = _RELEASE.read_text(encoding="utf-8")
-        boot = text.index("Boot workspace")
-        verify = text.index("Verify immutable flext-core gitlink")
-        root_verify = text.index("Verify immutable canary root")
+        job = text.split("testpypi:", 1)[1]
+        boot = job.index("Boot workspace")
+        verify = job.index("Verify immutable flext-core gitlink")
+        root_verify = job.index("Verify immutable canary root")
         tm.that(root_verify < boot, eq=True)
         tm.that(boot < verify, eq=True)
-        pre = text[:boot]
+        pre = job[:boot]
         tm.that(pre, lacks="git -C flext-core rev-parse HEAD")
 
     def test_ci_upload_excludes_raw_report_logs(self) -> None:
