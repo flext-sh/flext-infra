@@ -142,20 +142,23 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
 
     @classmethod
     def _run_make(
-        cls, checkout: Path, command: t.StrSequence, *, failure_context: str
+        cls, checkout: Path, command: t.StrSequence, *, run_context: str
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run one private Make phase and retain its process semantics."""
         # The enclosing serialization already holds the checkout's mutation lock.
         # Without this marker the child Make re-enters run_worktree_transaction,
         # which waits for that very lock and deadlocks: parent in do_wait, child
         # sleeping on a lock only the parent can release.
-        u.Cli.info(f"stage=run context={failure_context} command={' '.join(command)}")
+        # Why (flext-infra-6zi): success runs must not log a "failed" context —
+        # keep the INFO line neutral and reserve failure wording for fail paths.
+        u.Cli.info(f"stage=run context={run_context} command={' '.join(command)}")
         result = u.Cli.run_raw(
             list(command),
             cwd=checkout,
             env={c.Infra.WORKTREE_TRANSACTION_ENV: "1"},
             capture=False,
         )
+        failure_context = f"{run_context} failed"
         if result.failure:
             return cls._process_failure(
                 int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context
@@ -229,7 +232,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 selected_what=make_variables.get(make_config.selector, ""),
                 apply_value=make_variables.get(make_config.apply_variable, ""),
             ),
-            failure_context=f"serialized Make {self.verb} failed",
+            run_context=f"serialized Make {self.verb}",
         )
         u.Cli.info(f"stage=fingerprint phase=after verb={self.verb}")
         after_result = self._capture_fingerprint(
@@ -268,7 +271,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 selected_what=make_variables.get(make_config.selector, ""),
                 apply_value=make_variables.get(make_config.apply_variable, ""),
             ),
-            failure_context=f"serialized Make {self.verb} failed",
+            run_context=f"serialized Make {self.verb}",
         )
 
     @classmethod
