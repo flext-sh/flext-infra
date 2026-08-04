@@ -705,3 +705,82 @@ class TestsFlextInfraWorkService:
             template,
             has='workspace work --workspace "$(WORKSPACE)" --operation land',
         )
+
+    def test_finish_refuses_missing_lane(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-missing"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="finish-missing",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        lane = Path(store["metadata"]["worktree"])
+        store["metadata"]["pr_number"] = "1"
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        for child in sorted(lane.rglob("*"), reverse=True):
+            if child.is_file() or child.is_symlink():
+                child.unlink()
+            elif child.is_dir():
+                child.rmdir()
+        lane.rmdir()
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="lane worktree missing")
+        updated = json.loads(
+            (tmp_path / "beads-store.json").read_text(encoding="utf-8")
+        )
+        assert updated["metadata"]["worktree"] != "removed"
+
+    def test_finish_fails_when_pr_list_errors(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-gh-fail"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="finish-gh-fail",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        gh = shim_dir / "gh"
+        gh.write_text(
+            "#!/usr/bin/env python3" + chr(10)
+            + "import sys" + chr(10)
+            + "raise SystemExit('gh unavailable')" + chr(10),
+            encoding="utf-8",
+        )
+        gh.chmod(0o755)
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="gh unavailable")

@@ -45,7 +45,9 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         base = self._resolve_integration_base(primary_root)
         if base.failure:
             return r.fail(base.error or "failed to resolve integration base")
-        u.Infra.git_capture(primary_root, ("fetch", "origin"))
+        fetched = u.Infra.git_capture(primary_root, ("fetch", "origin"))
+        if fetched.failure:
+            return r.fail(fetched.error or "work start failed to fetch origin")
         created = FlextInfraWorktreeService(
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.ADD,
