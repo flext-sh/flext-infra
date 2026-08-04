@@ -463,10 +463,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         relative.parts[:2] == (".github", "workflows")
                         and path.is_file()
                     ):
-                        current = u.Cli.files_read_text(path)
-                        if current.failure:
+                        orphan_read = u.Cli.files_read_text(path)
+                        if orphan_read.failure:
                             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                                current.error or f"orphan workflow read failed: {path}"
+                                orphan_read.error or f"orphan workflow read failed: {path}"
                             )
                         completed.append(
                             m.Infra.CodegenFilePlan(
@@ -475,7 +475,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                                 policy=governed.policy,
                                 rendered="",
                                 expected_sha256=u.Cli.sha256_content(""),
-                                current_sha256=u.Cli.sha256_content(current.value),
+                                current_sha256=u.Cli.sha256_content(orphan_read.value),
                                 changed=True,
                                 absent=True,
                             )
