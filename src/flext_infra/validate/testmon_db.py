@@ -71,6 +71,40 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
             reason=reason,
         )
 
+    def _validate_open_db(
+        self, connection: sqlite3.Connection
+    ) -> p.Result[FlextInfraTestmonCacheState] | None:
+        """Return a reject Result when the open DB fails validation."""
+        checkpoint = connection.execute(
+            "PRAGMA wal_checkpoint(TRUNCATE)"
+        ).fetchone()
+        if checkpoint is None or int(checkpoint[0]) != 0:
+            return r[FlextInfraTestmonCacheState].ok(
+                self._reject(
+                    f"testmon wal_checkpoint busy={checkpoint!r}",
+                    seed_needed=False,
+                )
+            )
+        integrity = connection.execute("PRAGMA integrity_check").fetchone()
+        if integrity is None or integrity[0] != "ok":
+            return r[FlextInfraTestmonCacheState].ok(
+                self._reject(
+                    f"testmon integrity_check={integrity!r}",
+                    seed_needed=True,
+                )
+            )
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        if not tables:
+            return r[FlextInfraTestmonCacheState].ok(
+                self._reject("testmon schema empty", seed_needed=True)
+            )
+        return None
+
     def _inspect_existing(self) -> p.Result[FlextInfraTestmonCacheState]:
         """Validate one on-disk DB after pytest has closed it."""
         path = self.db_path
@@ -89,40 +123,15 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
                 self._reject(f"testmon db open failed: {exc}", seed_needed=True)
             )
         try:
-            checkpoint = connection.execute(
-                "PRAGMA wal_checkpoint(TRUNCATE)"
-            ).fetchone()
-            if checkpoint is None or int(checkpoint[0]) != 0:
-                return r[FlextInfraTestmonCacheState].ok(
-                    self._reject(
-                        f"testmon wal_checkpoint busy={checkpoint!r}",
-                        seed_needed=False,
-                    )
-                )
-            integrity = connection.execute("PRAGMA integrity_check").fetchone()
-            if integrity is None or integrity[0] != "ok":
-                return r[FlextInfraTestmonCacheState].ok(
-                    self._reject(
-                        f"testmon integrity_check={integrity!r}",
-                        seed_needed=True,
-                    )
-                )
-            tables = {
-                row[0]
-                for row in connection.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                ).fetchall()
-            }
-            if not tables:
-                return r[FlextInfraTestmonCacheState].ok(
-                    self._reject("testmon schema empty", seed_needed=True)
-                )
+            rejected = self._validate_open_db(connection)
         except sqlite3.Error as exc:
             return r[FlextInfraTestmonCacheState].ok(
                 self._reject(f"testmon pragma failed: {exc}", seed_needed=True)
             )
         finally:
             connection.close()
+        if rejected is not None:
+            return rejected
         post_digest = self.digest_file(path)
         changed = post_digest is not None and post_digest != self.pre_run_digest
         seed_needed = self.pre_run_digest is None
