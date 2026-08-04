@@ -391,3 +391,68 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="does not match registered lane")
+
+    def test_finish_requires_head_oid(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-finish-oid"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.BUGFIX,
+                name="finish-oid",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
+        store["metadata"]["head_oid"] = ""
+        store["metadata"]["pr_number"] = "1"
+        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="missing metadata.head_oid")
+
+    def test_finish_refuses_permanent_branch_via_config_integration(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        config = repository / "config"
+        config.mkdir()
+        (config / "workspace.yaml").write_text(
+            "integration:\n  branch: 0.12.0-dev\n",
+            encoding="utf-8",
+        )
+        bead_id = "mro-test-finish-perm"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        store = tmp_path / "beads-store.json"
+        payload = json.loads(store.read_text(encoding="utf-8"))
+        payload["metadata"] = {
+            "branch": "0.12.0-dev",
+            "worktree": str(tmp_path / "fake-lane"),
+            "integration_base": "",
+            "head_oid": "a" * 40,
+        }
+        store.write_text(json.dumps(payload), encoding="utf-8")
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=bead_id,
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="permanent branch")
