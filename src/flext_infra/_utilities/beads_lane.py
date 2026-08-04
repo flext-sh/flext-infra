@@ -29,23 +29,25 @@ class FlextInfraUtilitiesBeadsLane:
     def beads_resolve_root(cls, hint: Path | None = None) -> p.Result[Path]:
         """Resolve the Beads project root that owns the workspace ledger.
 
-        Prefer the Git superproject when it declares `.beads/config.yaml`, so
-        member checkouts with orphan or missing local Dolt DBs still reach the
-        workspace tracker (`bd -C <workspace>`). Uses `u.Cli` only — never
-        `u.Infra` — to avoid facade circular imports.
+        Prefer the checkout under ``hint`` (git toplevel, then hint, then
+        parents) when it declares `.beads/config.yaml`, so member projects
+        with their own tracker stay local. Fall back to the Git superproject
+        only when the member has no Beads config, so orphan members still
+        reach the workspace tracker (`bd -C <workspace>`). Uses `u.Cli`
+        only — never `u.Infra` — to avoid facade circular imports.
         """
         start = (hint or Path.cwd()).expanduser().resolve()
         candidates: list[Path] = []
-        superproject = cls._git_output(
-            start, "rev-parse", "--show-superproject-working-tree"
-        )
-        if superproject.success and superproject.value.strip():
-            candidates.append(Path(superproject.value.strip()).resolve())
         top = cls._git_output(start, "rev-parse", "--show-toplevel")
         if top.success and top.value.strip():
             candidates.append(Path(top.value.strip()).resolve())
         candidates.append(start)
         candidates.extend(start.parents)
+        superproject = cls._git_output(
+            start, "rev-parse", "--show-superproject-working-tree"
+        )
+        if superproject.success and superproject.value.strip():
+            candidates.append(Path(superproject.value.strip()).resolve())
         seen: set[Path] = set()
         for candidate in candidates:
             resolved = candidate.resolve()
