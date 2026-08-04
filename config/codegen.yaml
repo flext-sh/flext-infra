@@ -172,7 +172,7 @@ Infra:
       - name: flext-sh
         organization: flext-sh
         base_url: https://github.com/flext-sh
-        branch: 0.12.0-dev
+        branch: 0.12.0rc1
       # External consumer organization: standalone repositories governed by
       # conform through their own config/workspace.yaml. A linha de integracao
       # e 'develop', fixada pela ADR-134 do operador, que proibe 'dev' e
@@ -258,15 +258,15 @@ Infra:
         github_repos:
           - organization: flext-sh
             repository: flext
-            branch: 0.12.0-dev
+            branch: 0.12.0rc1
             local_checkout: ~/flext
           - organization: flext-sh
             repository: flext-core
-            branch: 0.12.0-dev
+            branch: 0.12.0rc1
             local_checkout: ~/flext/flext-core
           - organization: flext-sh
             repository: flext-infra
-            branch: 0.12.0-dev
+            branch: 0.12.0rc1
             local_checkout: ~/flext/flext-infra
           - organization: datacosmos-br
             repository: ai-hub
