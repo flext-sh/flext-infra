@@ -297,7 +297,7 @@ class TestsFlextInfraModernizerPyrefly:
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Verify root context includes workspace dependency source paths."""
+        """Verify root context keeps workspace dependencies out of search-path."""
         for directory in ("src", "tests"):
             (tmp_path / directory).mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
@@ -339,7 +339,7 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        tm.that(search_path, eq=["src", ".", "flext-core/src"])
+        tm.that(search_path, eq=["src", "."])
 
     def test_ensure_pyrefly_config_phase_apply_errors(
         self, tool_config_document: m.Infra.ToolConfigDocument

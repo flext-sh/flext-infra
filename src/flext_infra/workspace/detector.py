@@ -836,9 +836,7 @@ class FlextInfraWorkspaceDetector(
             )
         match gitlink.value.split():
             # Why: mro-4p0t gitlink SHA is validated structurally, not used here.
-            case ["160000", _, "0", indexed_path] if (
-                indexed_path == member_path
-            ):
+            case ["160000", _, "0", indexed_path] if indexed_path == member_path:
                 pass
             case _:
                 return r[c.Infra.WorkspaceMode].fail(

@@ -154,7 +154,7 @@ class TestsFlextInfraPytestRunner:
         runner = self._runner(tmp_path, started_at_monotonic=started)
         captured: dict[str, p.Cli.ProcessDeadline] = {}
         observed_live: t.MutableSequenceOf[bool] = []
-        observed_remove_keys: t.MutableSequenceOf[t.StrSequence] = []
+        observed_pythonpath: t.MutableSequenceOf[str] = []
 
         def fake_run_to_file(
             cmd: t.StrSequence,
@@ -168,13 +168,14 @@ class TestsFlextInfraPytestRunner:
             live: bool = False,
             deadline: p.Cli.ProcessDeadline | None = None,
         ) -> p.Result[int]:
-            del cwd, timeout, env, input_data
+            del cwd, timeout, input_data, remove_env_keys
             tm.that(cmd, has=["-m", "cProfile", "-m", "pytest"])
             tm.that(deadline is not None, eq=True)
             if deadline is not None:
                 captured["deadline"] = deadline
             observed_live.append(live)
-            observed_remove_keys.append(tuple(remove_env_keys))
+            assert env is not None
+            observed_pythonpath.append(env[c.Infra.ORCHESTRATOR_ENV_PYTHONPATH])
             log_path = Path(output_file)
             report_dir = log_path.parent
             log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
@@ -201,9 +202,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(deadline.expires_at_monotonic, eq=started + policy.run_timeout_seconds)
         tm.that(deadline.termination_grace_seconds, eq=policy.termination_grace_seconds)
         tm.that(observed_live, eq=[True])
-        tm.that(
-            observed_remove_keys, eq=[tuple(c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS)]
-        )
+        tm.that(observed_pythonpath, eq=[str(tmp_path / c.Infra.DEFAULT_SRC_DIR)])
         latest = tmp_path / ".reports" / "tests" / "latest.txt"
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
