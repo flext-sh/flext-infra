@@ -3,13 +3,40 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
+import pytest
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _workspace_root() -> Path:
+    """Resolve the flext superproject when present; else skip workspace tests."""
+    completed = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(PROJECT_ROOT),
+            "rev-parse",
+            "--show-superproject-working-tree",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    superproject = completed.stdout.strip()
+    if superproject:
+        return Path(superproject)
+    pytest.skip(
+        "flext workspace governance files require a flext superproject; "
+        "standalone flext-infra make-work worktrees have none"
+    )
 
 
 def test_prompt_skills_resolve_to_existing_paths() -> None:
-    prompts = ROOT / ".github" / "prompts"
+    root = _workspace_root()
+    prompts = root / ".github" / "prompts"
     law_link = "../../.agents/skills/flext-law/SKILL.md"
     for prompt in prompts.glob("*.prompt.md"):
         text = prompt.read_text(encoding="utf-8")
@@ -22,8 +49,9 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
 
 
 def test_governance_authority_sequence_matches_agents() -> None:
-    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    governance = (ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
+    root = _workspace_root()
+    agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+    governance = (root / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
     assert "Beads never override higher law" in agents
     assert "never overrides higher law" in governance
     assert "quality-gates skill" not in governance
@@ -31,13 +59,14 @@ def test_governance_authority_sequence_matches_agents() -> None:
 
 
 def test_docs_validation_required_skills_exist_with_adr() -> None:
+    root = _workspace_root()
     config = json.loads(
-        (ROOT / "docs" / "architecture" / "architecture_config.json").read_text(
+        (root / "docs" / "architecture" / "architecture_config.json").read_text(
             encoding="utf-8"
         )
     )
     required = config["docs_validation"]["required_skills"]
-    skills_root = ROOT / ".agents" / "skills"
+    skills_root = root / ".agents" / "skills"
     for name in required:
         skill = skills_root / name / "SKILL.md"
         assert skill.is_file(), name
@@ -45,13 +74,14 @@ def test_docs_validation_required_skills_exist_with_adr() -> None:
 
 
 def test_july_handoff_plans_are_marked_historical() -> None:
+    root = _workspace_root()
     plans = (
-        ROOT
+        root
         / "docs"
         / "superpowers"
         / "plans"
         / "2026-07-29-flext-beads-governance-reorganization-handoff.md",
-        ROOT
+        root
         / "docs"
         / "superpowers"
         / "plans"
@@ -63,7 +93,8 @@ def test_july_handoff_plans_are_marked_historical() -> None:
 
 
 def test_markdownlint_does_not_suppress_strict_rules() -> None:
-    config = json.loads((ROOT / ".markdownlint.json").read_text(encoding="utf-8"))
+    root = _workspace_root()
+    config = json.loads((root / ".markdownlint.json").read_text(encoding="utf-8"))
     assert config.get("MD012") is not False
     assert config.get("MD050") is not False
     assert config.get("MD064") is not False

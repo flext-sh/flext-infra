@@ -220,11 +220,20 @@ class TestsFlextInfraMakeSerialization:
             "selector_value": mutation_what,
             "apply_token": make_config.apply_value,
         })
-        contender_service = FlextInfraMakeSerializationService.model_validate({
+        contender_payload: dict[str, object] = {
             "workspace_root": tmp_path,
             "verb": contender_verb,
             "makefile": makefile,
-        })
+        }
+        if contender_is_mutation:
+            # Contender must be a real second mutation. Without APPLY/selector it
+            # collapses to the read-only default_what, which is also the
+            # fixed-point selector, and the mock mis-classifies it.
+            contender_payload["selector_value"] = mutation_what
+            contender_payload["apply_token"] = make_config.apply_value
+        contender_service = FlextInfraMakeSerializationService.model_validate(
+            contender_payload
+        )
 
         def execute_contender() -> p.Result[m.Infra.ProcessExit]:
             contender_started.set()

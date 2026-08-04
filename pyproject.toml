@@ -353,23 +353,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = ".."
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = ["src"]
-reportAssignmentType = "none"
-reportAttributeAccessIssue = "none"
-reportGeneralTypeIssues = "none"
-reportInvalidTypeForm = "none"
-reportPrivateImportUsage = "none"
-reportPrivateUsage = "none"
-reportUnknownArgumentType = "none"
-reportUnknownLambdaType = "none"
-reportUnknownMemberType = "none"
-reportUnknownParameterType = "none"
-reportUnknownVariableType = "none"
-reportUnusedImport = "none"
-root = "src/flext_infra/_utilities/rope_patch"
+venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -427,6 +411,7 @@ markers = [
   "edge_cases: edge case tests",
   "integration: integration tests",
   "performance: performance and benchmark tests",
+  "remote: tests requiring remote/external network services",
   "resilience: resilience tests",
   "slow: slow-running tests",
   "smoke: public-interface smoke tests",

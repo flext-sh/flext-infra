@@ -196,7 +196,15 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     first = generator.generate(request)
     tm.ok(first)
     first_readme = (project / "README.md").read_text(encoding="utf-8")
-    tm.that(first_readme, has=f"{c.Infra.GITHUB_REPO_URL}/blob/main/AGENTS.md")
+    flext_repo = next(
+        repo
+        for repo in config.Infra.codegen.make.docs.github_repos
+        if repo.organization == "flext-sh" and repo.repository == "flext"
+    )
+    tm.that(
+        first_readme,
+        has=f"{c.Infra.GITHUB_REPO_URL}/blob/{flext_repo.branch}/AGENTS.md",
+    )
     tm.that(first_readme, lacks="](../AGENTS.md)")
     tm.that(
         first_readme.index("FlextAAlpha") < first_readme.index("FlextABeta"), eq=True

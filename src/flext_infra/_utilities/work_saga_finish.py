@@ -116,7 +116,7 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
     @staticmethod
     def _require_merged_pr(
         primary_root: Path, branch: str, pr_number: str
-    ) -> p.Result[None]:
+    ) -> p.Result[bool]:
         """Refuse to retire a lane whose pull request is not merged."""
         if not pr_number:
             open_prs = u.Cli.capture(
@@ -134,27 +134,31 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                 cwd=primary_root,
             )
             if open_prs.failure:
-                return r.fail(open_prs.error or f"failed to list open PRs for {branch}")
+                return r[bool].fail(
+                    open_prs.error or f"failed to list open PRs for {branch}"
+                )
             if (open_prs.value or "").strip() not in {"", "[]"}:
-                return r.fail(f"work finish refuses open PR on {branch}")
-            return r.ok(None)
+                return r[bool].fail(f"work finish refuses open PR on {branch}")
+            return r[bool].ok(True)
         viewed = u.Cli.capture(
             ("gh", "pr", "view", pr_number, "--json", "state,mergedAt,headRefName"),
             cwd=primary_root,
         )
         if viewed.failure:
-            return r.fail(viewed.error or "failed to inspect PR merge state")
+            return r[bool].fail(viewed.error or "failed to inspect PR merge state")
         payload = json.loads(viewed.value or "{}")
         state = str(payload.get("state") or "")
         head_ref = str(payload.get("headRefName") or "").strip()
         if head_ref and head_ref != branch:
-            return r.fail(
+            return r[bool].fail(
                 f"work finish PR #{pr_number} head {head_ref} "
                 f"does not match lane branch {branch}"
             )
         if state.upper() != "MERGED" and not payload.get("mergedAt"):
-            return r.fail(f"work finish requires merged PR #{pr_number}; state={state}")
-        return r.ok(None)
+            return r[bool].fail(
+                f"work finish requires merged PR #{pr_number}; state={state}"
+            )
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraWorkSagaFinish"]

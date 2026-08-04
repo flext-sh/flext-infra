@@ -1350,8 +1350,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             and races other tests' temp fixtures under xdist.
 
             Returns:
+                Profile from ``repository.role`` when declared; otherwise
                 ``WORKSPACE_ROOT`` when the manifest declares members, else
-                ``WORKSPACE_MEMBER``.
+                ``STANDALONE``.
 
             """
             from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -1359,10 +1360,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace: m.Infra.WorkspaceSpec = tm.ok(
                 FlextInfraWorkspaceDetector.load_workspace_spec(root)
             )
+            role = workspace.repository.role.value
+            if role == c.Infra.MakeProfile.WORKSPACE_ROOT.value:
+                return c.Infra.MakeProfile.WORKSPACE_ROOT
+            if role == c.Infra.MakeProfile.WORKSPACE_MEMBER.value:
+                return c.Infra.MakeProfile.WORKSPACE_MEMBER
+            if role == c.Infra.MakeProfile.STANDALONE.value:
+                return c.Infra.MakeProfile.STANDALONE
             return (
                 c.Infra.MakeProfile.WORKSPACE_ROOT
                 if workspace.members
-                else c.Infra.MakeProfile.WORKSPACE_MEMBER
+                else c.Infra.MakeProfile.STANDALONE
             )
 
         @staticmethod

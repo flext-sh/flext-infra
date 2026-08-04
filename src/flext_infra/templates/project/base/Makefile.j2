@@ -278,7 +278,7 @@ WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_P
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
-UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
@@ -416,7 +416,13 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 	@# Provision Beads local role so `bd` writes do not warn (GH#2950).
 	@if git -C "$(PROJECT_ROOT)" rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
-		role=$$(git -C "$(PROJECT_ROOT)" config --local --get beads.role 2>/dev/null || true); \
+		role=""; \
+		role_rc=0; \
+		role=$$(git -C "$(PROJECT_ROOT)" config --local --get beads.role 2>/dev/null) || role_rc=$$?; \
+		if [ "$$role_rc" -ne 0 ] && [ "$$role_rc" -ne 1 ]; then \
+			printf 'ERROR: failed to read beads.role (exit %s)\n' "$$role_rc" >&2; \
+			exit "$$role_rc"; \
+		fi; \
 		if [ -z "$$role" ]; then \
 			git -C "$(PROJECT_ROOT)" config --local beads.role maintainer; \
 		fi; \
@@ -656,6 +662,9 @@ _builtin_docs_{{ action }}:
 	@$(PROJECT_FLEXT_INFRA) docs {{ action }} --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}"{% if action in make.docs.mutable_actions %} $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check){% endif %} $(DOCS_PROJECT_ARGS)
 
 {% endfor %}
+
+_builtin_clean_status:
+	@printf 'clean status: ok\n'
 
 _builtin_clean_generated:
 	$(call _require_apply)

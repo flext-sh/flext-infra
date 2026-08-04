@@ -100,14 +100,14 @@ class FlextInfraWorkSagaCommon:
         return r.ok(oid.value.strip())
 
     @staticmethod
-    def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[None]:
+    def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[bool]:
         cleaned_branch = branch.strip()
         cleaned_integration = integration.strip()
         if cleaned_branch in {"main", "master"} or (
             cleaned_integration and cleaned_branch == cleaned_integration
         ):
-            return r.fail(f"work refuses permanent branch {cleaned_branch}")
-        return r.ok(None)
+            return r[bool].fail(f"work refuses permanent branch {cleaned_branch}")
+        return r[bool].ok(True)
 
     @staticmethod
     def _bound_registered_lane(
@@ -128,15 +128,15 @@ class FlextInfraWorkSagaCommon:
         return r.ok(registry_lane)
 
     @staticmethod
-    def _ensure_clean(lane: Path) -> p.Result[None]:
+    def _ensure_clean(lane: Path) -> p.Result[bool]:
         status = u.Infra.git_capture(
             lane, ("status", "--porcelain", "--untracked-files=all")
         )
         if status.failure:
-            return r.fail(status.error or f"failed to inspect {lane}")
+            return r[bool].fail(status.error or f"failed to inspect {lane}")
         if status.value.strip():
-            return r.fail("work land/finish requires a clean lane worktree")
-        return r.ok(None)
+            return r[bool].fail("work land/finish requires a clean lane worktree")
+        return r[bool].ok(True)
 
     @staticmethod
     def _format_receipt(

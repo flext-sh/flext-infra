@@ -260,12 +260,11 @@ class TestsMakeTestSelector:
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
 
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
-        """Gen (conform) and base.mk generation remain distinct operations.
+        """Gen (conform) stays on the Makefile; custom.mk is hooks-only.
 
-        The generated Makefile owns ``gen``; base.mk generation is a private
-        custom handler this project declares for itself. Reading an extra-verb
-        list off a repository reference asserted nothing about that split: the
-        verbs a project adds are its own config, never flext-infra's knowledge.
+        The generated Makefile owns ``gen``. custom.mk must not declare a
+        private basemk-generate WHAT — base.mk generation is not a custom
+        handler on this surface.
         """
         template = _makefile_template().read_text(encoding="utf-8")
         custom = (
@@ -275,4 +274,5 @@ class TestsMakeTestSelector:
 
         tm.that(template, has="_builtin_gen_apply")
         tm.that(template, lacks="_builtin_build_gen")
-        tm.that(custom, has="_custom_basemk_generate:")
+        tm.that(custom, lacks="_custom_basemk_generate:")
+        tm.that(custom, lacks="basemk generate")
