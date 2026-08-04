@@ -47,6 +47,7 @@ class TestsFlextInfraPytestRunner:
         *,
         file: str | None = None,
         match: str | None = None,
+        what: str | None = None,
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -55,6 +56,7 @@ class TestsFlextInfraPytestRunner:
             started_at_monotonic=started_at_monotonic,
             file=file,
             match=match,
+            what=what,
             target="tests",
             reports=".reports/tests",
         )
@@ -72,7 +74,7 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(report_dir)
 
         tm.that(command, has=[nodeid, "-k", "exact and not slow", "-n", "0"])
-        tm.that(command, has="--no-cov")
+        tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
@@ -90,7 +92,8 @@ class TestsFlextInfraPytestRunner:
                 "cProfile",
                 "-m",
                 "pytest",
-                "--cov",
+                "--testmon",
+                "--no-cov",
                 "-n",
                 str(policy.parallel_workers),
                 "--dist",
@@ -100,6 +103,7 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
+        tm.that(command, lacks="--cov")
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -199,11 +203,11 @@ class TestsFlextInfraPytestRunner:
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
 
-    def test_full_run_fails_when_coverage_artifact_is_missing(
+    def test_cov_run_fails_when_coverage_artifact_is_missing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A zero pytest status cannot mask a missing full-suite coverage report."""
-        runner = self._runner(tmp_path)
+        runner = self._runner(tmp_path, what="cov")
 
         def fake_run_to_file(
             cmd: t.StrSequence,
@@ -240,11 +244,11 @@ class TestsFlextInfraPytestRunner:
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="coverage report was not generated or is empty")
 
-    def test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero(
+    def test_cov_run_fails_when_coverage_fail_under_prints_with_exit_zero(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """pytest-cov under xdist must not hide fail-under behind a zero exit."""
-        runner = self._runner(tmp_path)
+        runner = self._runner(tmp_path, what="cov")
 
         def fake_run_to_file(
             cmd: t.StrSequence,
@@ -386,3 +390,15 @@ class TestsFlextInfraPytestRunner:
                 "coverage=not-generated",
             ],
         )
+
+    def test_testmon_mode_argv(self, tmp_path: Path) -> None:
+        runner = self._runner(tmp_path, what="all")
+        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
+        tm.that(command, has=["--testmon", "--no-cov"])
+        tm.that(command, lacks="--cov-report")
+
+    def test_cov_mode_argv_rejects_testmon(self, tmp_path: Path) -> None:
+        runner = self._runner(tmp_path, what="cov")
+        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
+        tm.that(command, has="--cov")
+        tm.that(command, lacks="--testmon")

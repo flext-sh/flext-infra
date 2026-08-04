@@ -56,6 +56,11 @@ jobs:
 
       - name: Install uv
         uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
+        with:
+          enable-cache: true
+          prune-cache: false
+
+{%- include "_fragments/testmon_cache.j2" %}
 
 {% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)

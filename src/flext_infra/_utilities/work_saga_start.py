@@ -68,12 +68,14 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             f"branch={branch} base={base.value} exit=0 decisive=lane-ready "
             f"head={head.value}"
         )
+        # Why: mro-dipb.1 kind may arrive as str; coerce like _branch_name.
+        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else str(kind)
         updated = u.Infra.beads_update_lane(
             bead,
             metadata={
                 "branch": branch,
                 "worktree": str(lane),
-                "kind": kind.value,
+                "kind": kind_value,
                 "slug": slug,
                 "integration_base": base.value,
                 "head_oid": head.value,
