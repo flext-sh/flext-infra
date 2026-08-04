@@ -1328,7 +1328,8 @@ Infra:
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
           destination: .github/workflows/ci-matrix.yml
-          profiles: [workspace-root, workspace-member, standalone]
+          # Workspace members are covered by the root matrix; do not duplicate.
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/workflows/ci.yml.j2
@@ -1417,27 +1418,27 @@ Infra:
           overwrite: false
         - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
           destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
-          profiles: [workspace-root, workspace-member, standalone]
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/tests/fixtures/ci/docker/debian.Dockerfile.j2
           destination: tests/fixtures/ci/docker/debian.Dockerfile
-          profiles: [workspace-root, workspace-member, standalone]
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/tests/fixtures/ci/docker/fedora.Dockerfile.j2
           destination: tests/fixtures/ci/docker/fedora.Dockerfile
-          profiles: [workspace-root, workspace-member, standalone]
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/tests/fixtures/ci/docker/alpine.Dockerfile.j2
           destination: tests/fixtures/ci/docker/alpine.Dockerfile
-          profiles: [workspace-root, workspace-member, standalone]
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/tests/fixtures/ci/docker/arch.Dockerfile.j2
           destination: tests/fixtures/ci/docker/arch.Dockerfile
-          profiles: [workspace-root, workspace-member, standalone]
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         # NOTE(mro-wkii.17.11, agent codex): workspace topology owns git submodules;
