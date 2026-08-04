@@ -6,7 +6,7 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -67,6 +67,16 @@ class FlextInfraWorkspaceChecker(
                 resolved.append(name)
         return r[list[str]].ok(list(resolved))
 
+    @staticmethod
+    def apply_ci_gate_skips(gates: t.StrSequence) -> list[str]:
+        """Omit make.ci.check_gates_skip when the Make CI token is exact CI=Y."""
+        ci = config.Infra.codegen.make.ci
+        raw = u.Cli.env_read(ci.variable).unwrap().strip()
+        if raw != ci.value:
+            return [gate for gate in gates if gate]
+        skip = set(ci.check_gates_skip)
+        return [gate for gate in gates if gate and gate not in skip]
+
     @override
     def execute(self) -> p.Result[bool]:
         """Execute."""
@@ -82,7 +92,13 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
-        gates = params.gates
+        gates = cls.apply_ci_gate_skips(params.gates)
+        if not gates:
+            return r[bool].fail(
+                "no check gates remain after CI token filtering "
+                f"({config.Infra.codegen.make.ci.variable}="
+                f"{config.Infra.codegen.make.ci.value})"
+            )
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,
