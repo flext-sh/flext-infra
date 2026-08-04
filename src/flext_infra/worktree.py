@@ -161,6 +161,9 @@ class FlextInfraWorktreeService(s[str]):
         borrowed = cls._borrow_primary_environment(primary_root, lane)
         if borrowed.failure:
             return r.fail(borrowed.error or "failed to borrow the primary environment")
+        beads_dir = lane / ".beads"
+        if beads_dir.is_dir():
+            beads_dir.chmod(0o700)
         if borrowed.value:
             return r.ok(True)
         setup = u.Cli.run_live(
