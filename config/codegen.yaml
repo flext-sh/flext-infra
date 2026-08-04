@@ -228,6 +228,10 @@ Infra:
       ci:
         variable: CI
         value: Y
+        # Why: CI=Y check omits ruff (lint/format) and pyrefly. Local make check
+        # without CI=Y keeps the full default set. Blocking CI never runs make
+        # test (pytest); local/pre_push still own that verb.
+        check_gates_skip: [lint, format, pyrefly]
       workflow:
         # Why: pre-commit remains fast and mutation-only; pre-push owns the
         # generated-artifact and read-only validation gates.
@@ -236,7 +240,8 @@ Infra:
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push] }
-        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
+        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
+        - { verb: test, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all

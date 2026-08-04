@@ -686,7 +686,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#da106900ea50f8fc530f7adbfef97ba461586347" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#9d2f805dc64234d1304c1d5286ee8dd481f7edb7" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -920,7 +920,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#36e51a3f3d6956b280265f3b56984f0231f484db" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#cab3c89b6a099b460578020025db4ced8132c392" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },

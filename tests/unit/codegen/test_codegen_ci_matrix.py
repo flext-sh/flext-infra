@@ -96,12 +96,13 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
 
-        tm.that(workflow, has="run: make setup")
-        tm.that(workflow, has="run: make check")
-        tm.that(workflow, has="run: make test")
-        tm.that(workflow, has="run: make gen WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: make fmt WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: make fix WHAT=apply APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make setup")
+        tm.that(workflow, has="run: CI=Y make check")
+        tm.that(workflow, lacks="run: CI=Y make test")
+        tm.that(workflow, lacks="run: make test")
+        tm.that(workflow, has="run: CI=Y make gen WHAT=apply APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make fmt WHAT=apply APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make fix WHAT=apply APPLY=Y")
 
     def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
         """The generated staged hooks render the configured workflow partitions."""
@@ -221,6 +222,7 @@ class TestCodegenCiMatrix:
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
             ).read_text(encoding="utf-8")
             tm.that(content, has="make setup")
+            tm.that(content, has="ENV CI=Y")
             tm.that(content, lacks="UV_UNMANAGED_INSTALL")
             tm.that(content, lacks="uv python install")
             if distro == "alpine":
@@ -283,7 +285,8 @@ class TestCodegenCiMatrix:
         )[0]
         windows = content.split("\n  windows:", maxsplit=1)[1]
         for host in (macos, windows):
-            tm.that(host, has="run: make setup")
+            tm.that(host, has="run: CI=Y make setup")
+            tm.that(host, has="run: CI=Y make help")
         tm.that(windows.count("shell: bash"), eq=2)
 
     def test_workflow_ci_policy_locks_matrix_to_main_push(self, tmp_path: Path) -> None:
@@ -344,6 +347,35 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="branches: [dev]")
         tm.that(triggers, lacks="workspace-member")
         tm.that(content, lacks="{% if make_profile")
+
+    def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
+        self, tmp_path: Path
+    ) -> None:
+        """Matrix smoke is help+check under CI=Y; it must never run make test."""
+        root = self._render_project(tmp_path / "external")
+        matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
+            encoding="utf-8"
+        )
+        ci = config.Infra.codegen.make.ci
+        smoke = matrix.split("Bootstrap + verb smoke", maxsplit=1)[1].split(
+            "# End SECTION: distro-matrix", maxsplit=1
+        )[0]
+        tm.that(smoke, has=f"-e {ci.variable}={ci.value}")
+        tm.that(smoke, has="make help")
+        tm.that(smoke, has="make check")
+        tm.that(smoke, lacks="} make test")
+        tm.that(
+            smoke,
+            has="ci-matrix proves bootstrap + check across distros; it never runs make test",
+        )
+        dockerfiles = list(
+            (root / "tests" / "fixtures" / "ci" / "docker").glob("*.Dockerfile")
+        )
+        tm.that(len(dockerfiles) > 0, eq=True)
+        for dockerfile in dockerfiles:
+            body = dockerfile.read_text(encoding="utf-8")
+            tm.that(body, has="ENV CI=Y")
+            tm.that(body, has="RUN make setup")
 
     def test_profile_excluded_workflow_orphan_is_planned_absent(
         self, tmp_path: Path
