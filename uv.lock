@@ -686,7 +686,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#da106900ea50f8fc530f7adbfef97ba461586347" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#e0f1f26b7b4cf4e75cf491c825ffd0f2111d5387" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
