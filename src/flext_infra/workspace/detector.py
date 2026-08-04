@@ -59,15 +59,22 @@ class FlextInfraWorkspaceDetector(
         repository_url = urlparse(repository.url)
         provider_path = provider_url.path.strip("/")
         repository_path = repository_url.path.strip("/")
+        # CI remotes often omit the ``.git`` suffix; compare on a canonical form.
         repository_name = repository_path.removeprefix(
             f"{provider.organization}/"
         ).removesuffix(".git")
+        canonical_path = f"{provider.organization}/{repository_name}.git"
+        actual_path = (
+            repository_path
+            if repository_path.endswith(".git")
+            else f"{repository_path}.git"
+        )
         return (
             provider_url.scheme == repository_url.scheme
             and provider_url.netloc == repository_url.netloc
             and provider_path == provider.organization
             and bool(repository_name)
-            and repository_path == f"{provider.organization}/{repository_name}.git"
+            and actual_path == canonical_path
         )
 
     @classmethod
