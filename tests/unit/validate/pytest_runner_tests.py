@@ -411,6 +411,15 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
 
+    def test_ci_y_forbids_pytest_execute(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """mro-v4p5: make test under CI=Y must fail loud, not run the suite."""
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
+        runner = self._runner(tmp_path, what="all")
+        result = runner.execute()
+        tm.fail(result, has="forbidden under CI=Y")
+
     def test_ci_true_does_not_disable_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

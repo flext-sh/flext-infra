@@ -64,7 +64,8 @@ jobs:
 
 {% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
-        run: make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
+        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {% endfor %}
       - name: Dump reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}

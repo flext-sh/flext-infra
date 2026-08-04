@@ -236,7 +236,8 @@ Infra:
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push] }
-        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
+        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
+        - { verb: test, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all

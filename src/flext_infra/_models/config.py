@@ -395,6 +395,10 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
+        ]
 
     class UvPackageSelectorSpec(_ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""

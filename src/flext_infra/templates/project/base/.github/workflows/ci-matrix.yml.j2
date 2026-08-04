@@ -60,14 +60,16 @@ jobs:
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
         run: |
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   macos:
     runs-on: macos-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
@@ -83,15 +85,17 @@ jobs:
         with:
           enable-cache: true
       - name: Bootstrap
-        run: make setup
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
-        run: make help
+        run: {{ make.ci.variable }}={{ make.ci.value }} make help
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   windows:
     runs-on: windows-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
@@ -108,8 +112,8 @@ jobs:
           enable-cache: true
       - name: Bootstrap
         shell: bash
-        run: make setup
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
         shell: bash
-        run: make help
+        run: {{ make.ci.variable }}={{ make.ci.value }} make help
   # End SECTION: windows
