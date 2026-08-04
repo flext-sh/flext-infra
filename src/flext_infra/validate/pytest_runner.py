@@ -276,11 +276,14 @@ class FlextInfraPytestRunner(s[int]):
         u.Cli.atomic_write_text_file(
             self.root / self.reports / "latest.txt", f"{report_dir.name}\n"
         ).unwrap()
+        # Why (ai-hub-h2aq): optional host tools (waza, markdownlint, live
+        # systemd/hooks) legitimately skip on CI. Promoting skipped_count to
+        # exit 1 made tip ``make test`` fail with 0 FAILED / N SKIPPED.
+        # Failures, errors, and warnings still flip the exit code.
         if exit_code == 0 and any((
             diagnostics.failed_count,
             diagnostics.error_count,
             diagnostics.warning_count,
-            diagnostics.skipped_count,
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
