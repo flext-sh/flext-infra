@@ -38,11 +38,20 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         integration = str(meta.get("integration_base") or "").strip()
         if not branch or not worktree:
             return r.fail(f"bead {bead} missing branch/worktree metadata")
-        lane = Path(worktree)
-        if self._is_primary_path(primary_root, lane):
+        if worktree == "removed":
+            return r.fail(f"bead {bead} lane worktree already removed")
+        lane_meta = Path(worktree)
+        if self._is_primary_path(primary_root, lane_meta):
             return r.fail("work finish refuses the primary worktree")
-        if branch in {"main", "master"} or branch == integration:
-            return r.fail(f"work finish refuses permanent branch {branch}")
+        permanent = self._refuse_permanent_branch(branch, integration)
+        if permanent.failure:
+            return r.fail(
+                permanent.error or f"work finish refuses permanent branch {branch}"
+            )
+        bound = self._bound_registered_lane(primary_root, branch, worktree)
+        if bound.failure:
+            return r.fail(bound.error or "work finish lane binding failed")
+        lane = bound.value
         if pr_number:
             viewed = u.Cli.capture(
                 ("gh", "pr", "view", pr_number, "--json", "state,mergedAt"),

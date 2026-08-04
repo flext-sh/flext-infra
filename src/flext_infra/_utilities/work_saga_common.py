@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import FlextInfraWorktreeService, c, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -104,6 +104,34 @@ class FlextInfraWorkSagaCommon:
         if oid.failure:
             return r.fail(oid.error or "failed to resolve HEAD")
         return r.ok(oid.value.strip())
+
+    @staticmethod
+    def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[None]:
+        cleaned_branch = branch.strip()
+        cleaned_integration = integration.strip()
+        if cleaned_branch in {"main", "master"} or (
+            cleaned_integration and cleaned_branch == cleaned_integration
+        ):
+            return r.fail(f"work refuses permanent branch {cleaned_branch}")
+        return r.ok(None)
+
+    @staticmethod
+    def _bound_registered_lane(
+        primary_root: Path, branch: str, worktree: str
+    ) -> p.Result[Path]:
+        registered = FlextInfraWorktreeService.registered_lane(primary_root, branch)
+        if registered.failure:
+            return r.fail(
+                registered.error or f"worktree branch is not registered: {branch}"
+            )
+        meta_lane = Path(worktree).expanduser().resolve()
+        registry_lane = registered.value.resolve()
+        if meta_lane != registry_lane:
+            return r.fail(
+                "work metadata worktree does not match registered lane: "
+                f"metadata={meta_lane} registered={registry_lane}"
+            )
+        return r.ok(registry_lane)
 
     @staticmethod
     def _ensure_clean(lane: Path) -> p.Result[None]:
