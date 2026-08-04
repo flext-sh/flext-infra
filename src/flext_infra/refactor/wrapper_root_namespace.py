@@ -9,7 +9,6 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._wrapper_rewrite import (
     FlextInfraWrapperRootNamespaceRewriteMixin,
-    _WrapperRewriteAccumulator,
 )
 
 if TYPE_CHECKING:
@@ -43,7 +42,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if scan.failure:
             return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
-        accumulator = _WrapperRewriteAccumulator()
+        accumulator = m.Infra.WrapperRewriteAccumulator()
         metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         for file_path in py_files:
             self._process_wrapper_file(
@@ -118,7 +117,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         return " ; ".join(report[:5]) or "protected write failed"
 
     def _build_report_payload(
-        self, files_scanned: int, accumulator: _WrapperRewriteAccumulator
+        self, files_scanned: int, accumulator: m.Infra.WrapperRewriteAccumulator
     ) -> t.MutableJsonMapping:
         """Build the canonical JSON payload from the accumulated wrapper run state."""
         mode_value = (

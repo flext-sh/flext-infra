@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from dataclasses import dataclass, field
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
@@ -15,24 +13,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import t
-
-
-@dataclass(slots=True)
-class _WrapperRewriteAccumulator:
-    """Aggregates per-file rewrite stats across the wrapper-root verb run."""
-
-    updates: dict[Path, str] = field(default_factory=dict)
-    wrapper_candidates: list[Path] = field(default_factory=list)
-    changed_files: list[str] = field(default_factory=list)
-    total_replacements: int = 0
-    total_core_replacements: int = 0
-    import_rewrite_candidates: int = 0
-    per_project_changes: defaultdict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
-    per_project_replacements: defaultdict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
 
 
 class FlextInfraWrapperRootNamespaceRewriteMixin:
@@ -57,7 +37,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         self,
         file_path: Path,
         *,
-        accumulator: _WrapperRewriteAccumulator,
+        accumulator: m.Infra.WrapperRewriteAccumulator,
         project_runtime_aliases: Mapping[str, frozenset[str]],
         wrapper_submodules: frozenset[str],
         metadata_runtime_aliases: frozenset[str],
@@ -196,5 +176,4 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
 
 __all__: list[str] = [
     "FlextInfraWrapperRootNamespaceRewriteMixin",
-    "_WrapperRewriteAccumulator",
 ]

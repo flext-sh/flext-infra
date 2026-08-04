@@ -72,7 +72,7 @@ class FlextInfraWorkSagaCommon:
 
     @staticmethod
     def _branch_name(kind: c.Infra.WorkKind | str, slug: str) -> str:
-        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else str(kind)
+        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else kind
         return f"{kind_value}/{slug}"
 
     def _resolve_lane_branch(self) -> p.Result[str]:

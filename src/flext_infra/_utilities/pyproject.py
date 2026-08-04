@@ -19,23 +19,23 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
-    """Validate one plain mapping through the infra adapter.
-
-    Centralizes the repeated try/except so callers only decide what sentinel
-    to surface on failure.
-    """
-    try:
-        result: t.JsonMapping | None = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-            payload
-        )
-    except (c.ValidationError, ValueError):
-        return None
-    return result
-
-
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    @staticmethod
+    def validate_infra_payload(payload: object) -> t.JsonMapping | None:
+        """Validate one plain mapping through the infra adapter.
+
+        Centralizes the repeated try/except so callers only decide what sentinel
+        to surface on failure.
+        """
+        try:
+            result: t.JsonMapping | None = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                payload
+            )
+        except (c.ValidationError, ValueError):
+            return None
+        return result
 
     @staticmethod
     def format_toml_source(
@@ -88,7 +88,9 @@ class FlextInfraUtilitiesPyproject:
         payload_result = u.Cli.toml_read_json(pyproject_path)
         if payload_result.failure:
             return {}
-        validated = _validate_infra_payload(payload_result.value)
+        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(
+            payload_result.value
+        )
         return validated if validated is not None else {}
 
     @staticmethod
@@ -97,7 +99,7 @@ class FlextInfraUtilitiesPyproject:
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        validated = _validate_infra_payload(payload)
+        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
         return validated if validated is not None else {}
 
     @staticmethod
@@ -223,4 +225,4 @@ class FlextInfraUtilitiesPyproject:
         return ()
 
 
-__all__: list[str] = ["FlextInfraUtilitiesPyproject", "_validate_infra_payload"]
+__all__: list[str] = ["FlextInfraUtilitiesPyproject"]

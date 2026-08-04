@@ -98,14 +98,12 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                 lines.append(f"bead: error={shown.error}")
             else:
                 meta = shown.value.get("metadata")
-                meta_obj = meta if isinstance(meta, dict) else {}
-                lines.extend(
-                    (
-                        f"bead: {bead}",
-                        f"bead_status: {shown.value.get('status')}",
-                        f"assignee: {shown.value.get('assignee')}",
-                    )
-                )
+                meta_obj = meta if isinstance(meta, dict) else dict[str, object]()
+                lines.extend((
+                    f"bead: {bead}",
+                    f"bead_status: {shown.value.get('status')}",
+                    f"assignee: {shown.value.get('assignee')}",
+                ))
                 for key in c.Infra.WORK_BEADS_METADATA_KEYS:
                     value = meta_obj.get(key)
                     if value is not None:

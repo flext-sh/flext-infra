@@ -114,20 +114,29 @@ class FlextInfraModelsCore:
         """
 
         failed_cases: Annotated[
-            t.StrSequence, m.Field(description="Collected failed test-case labels")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected failed test-case labels"),
+        ] = m.Field(default_factory=list)
+        error_cases: Annotated[
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected error test-case labels"),
+        ] = m.Field(default_factory=list)
         error_traces: Annotated[
-            t.StrSequence, m.Field(description="Collected error trace chunks")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected error trace chunks"),
+        ] = m.Field(default_factory=list)
         skip_cases: Annotated[
-            t.StrSequence, m.Field(description="Collected skipped test-case labels")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected skipped test-case labels"),
+        ] = m.Field(default_factory=list)
         warning_lines: Annotated[
-            t.StrSequence, m.Field(description="Collected warning lines")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected warning lines"),
+        ] = m.Field(default_factory=list)
         slow_entries: Annotated[
-            t.StrSequence, m.Field(description="Collected slow-test entries")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected slow-test entries"),
+        ] = m.Field(default_factory=list)
 
     class InventoryReport(m.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""

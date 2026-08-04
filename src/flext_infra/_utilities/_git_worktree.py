@@ -200,7 +200,6 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             )
         return r[Path].ok(primary_root)
 
-
     @staticmethod
     def git_remote_identity(url: str) -> str:
         """Normalize remotes to owner/repo identity across HTTPS, SSH, and aliases.
@@ -224,9 +223,11 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             else:
                 remote_path = value
         parts = [part for part in remote_path.split("/") if part]
-        if len(parts) >= 2:
-            return "/".join(parts[-2:]).lower()
-        return remote_path.lower()
+        match parts:
+            case [*_, owner, repo]:
+                return f"{owner}/{repo}".lower()
+            case _:
+                return remote_path.lower()
 
     @classmethod
     def git_declared_submodule_paths(
