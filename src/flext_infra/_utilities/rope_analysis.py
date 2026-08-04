@@ -726,13 +726,42 @@ class FlextInfraUtilitiesRopeAnalysis:
         return tuple(values)
 
     @staticmethod
+    def _sequence_constructor_ref_source(source: str) -> str:
+        """Return the name wrapped by ``tuple``/``list``/``set`` or a bare name."""
+        text = source.strip()
+        if not text:
+            return ""
+        if text.isidentifier():
+            return text
+        for constructor in ("tuple", "list", "frozenset", "set"):
+            prefix = f"{constructor}("
+            if not text.startswith(prefix) or not text.endswith(")"):
+                continue
+            inner = text[len(prefix) : -1].strip()
+            if inner.isidentifier():
+                return inner
+        return ""
+
+    @staticmethod
     def module_assignment_strings_source(source: str, name: str) -> t.StrSequence:
         """Collect strings from a literal module-level assignment."""
         value_source = FlextInfraUtilitiesRopeAnalysis._assignment_value_source(
             source, name
         )
-        return FlextInfraUtilitiesRopeAnalysis._literal_string_sequence_source(
+        values = FlextInfraUtilitiesRopeAnalysis._literal_string_sequence_source(
             value_source
+        )
+        if values:
+            return values
+        # Generated roots use ``__all__ = tuple(_PUBLIC_EXPORTS)``; follow the
+        # bound name so docs validate matches the live lazy-init ABI.
+        nested_name = FlextInfraUtilitiesRopeAnalysis._sequence_constructor_ref_source(
+            value_source
+        )
+        if not nested_name or nested_name == name:
+            return ()
+        return FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
+            source, nested_name
         )
 
     @staticmethod

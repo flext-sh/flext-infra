@@ -2082,6 +2082,33 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.BranchAncestryPlan]:
         """Inventory governed refs and prove descent from the provider baseline."""
         root = target.root
+        # Refresh the provider baseline from origin when a remote exists so
+        # CI/local gates do not compare against a stale remote-tracking SHA.
+        # Fixtures and offline clones keep the existing tracking ref.
+        remote_probe = u.Cli.run_raw(
+            (c.Infra.GIT, "remote", "get-url", "origin"), cwd=root
+        )
+        if (
+            remote_probe.success
+            and remote_probe.value.exit_code == 0
+            and remote_probe.value.stdout.strip()
+        ):
+            fetch_command = (
+                c.Infra.GIT,
+                "fetch",
+                "--no-tags",
+                "--prune",
+                "origin",
+                (
+                    f"+refs/heads/{target.baseline_branch}:"
+                    f"refs/remotes/origin/{target.baseline_branch}"
+                ),
+            )
+            fetch_result = u.Cli.run_raw(fetch_command, cwd=root)
+            if fetch_result.failure or fetch_result.value.exit_code != 0:
+                # Soft: ancestry still validates against the local tracking ref
+                # when present; hard-fail only if that ref is missing below.
+                pass
         baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
@@ -2249,7 +2276,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         )
 
-    @staticmethod
     @staticmethod
     def _uv_environment_plan(
         *,
