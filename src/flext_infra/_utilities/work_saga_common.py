@@ -31,7 +31,7 @@ class FlextInfraWorkSagaCommon:
     def _resolve_integration_base(self, primary_root: Path) -> p.Result[str]:
         explicit = (self.base or "").strip()
         if explicit:
-            return r.ok(self._prefer_origin_integration_base(primary_root, explicit))
+            return r.ok(explicit)
         cursor = primary_root.resolve()
         for candidate in (cursor, *cursor.parents):
             manifest = candidate / "config" / "workspace.yaml"
@@ -47,16 +47,17 @@ class FlextInfraWorkSagaCommon:
             if isinstance(integration, dict):
                 branch = integration.get("branch")
                 if isinstance(branch, str) and branch.strip():
-                    return r.ok(
-                        self._prefer_origin_integration_base(
-                            primary_root, branch.strip()
-                        )
-                    )
+                    return r.ok(branch.strip())
         return r.ok("HEAD")
 
     @staticmethod
-    def _prefer_origin_integration_base(primary_root: Path, base: str) -> str:
-        """Prefer origin/<branch> when present so stale local integration is unused."""
+    def _git_integration_ref(primary_root: Path, base: str) -> str:
+        """Map a logical integration name to the Git ref used for lane creation.
+
+        Prefer origin/<branch> when the remote-tracking ref exists so a stale
+        local integration branch cannot seed new lanes after `git fetch`.
+        Metadata keeps the logical name; only Git operations use this ref.
+        """
         cleaned = base.strip()
         if not cleaned or cleaned == "HEAD" or cleaned.startswith("origin/"):
             return cleaned
