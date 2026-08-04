@@ -227,6 +227,32 @@ python-interpreter-path = "../.venv/bin/python"
             ),
         )
 
+    def test_ssot_required_dev_floor_replaces_stale_same_name_pin(self) -> None:
+        """Toolchain required_dev floors win over older same-package member pins."""
+        workspace = _workspace()
+        toolchain = config.Infra.codegen.toolchain
+        source = """[project]
+name = "external-consumer"
+dependencies = []
+
+[dependency-groups]
+dev = ["rumdl>=0.2.46", "custom-tool>=1"]
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                toolchain=toolchain,
+                required_dev_dependencies=("rumdl>=0.2.45",),
+            )
+        )
+        document = tomllib.loads(conformed)
+        tm.that("rumdl>=0.2.45" in document["dependency-groups"]["dev"], eq=True)
+        tm.that("rumdl>=0.2.46" not in document["dependency-groups"]["dev"], eq=True)
+        tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+
     def test_tool_flext_workspace_marker_is_preserved(self) -> None:
         """Preserve [tool.flext] policy while removing legacy tool.poetry."""
         workspace = _workspace()
