@@ -81,7 +81,7 @@ class FlextInfraWorkSagaCommon:
             return r.ok(explicit)
         bead = (self.bead or "").strip()
         if bead:
-            shown = u.Infra.beads_show_json(bead)
+            shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
             if shown.success:
                 metadata = shown.value.get("metadata")
                 if isinstance(metadata, dict):

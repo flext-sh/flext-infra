@@ -29,7 +29,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             return r.fail(kind_slug.error or "invalid kind/name")
         kind, slug = kind_slug.value
         branch = self._branch_name(kind, slug)
-        shown = u.Infra.beads_show_json(bead)
+        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
         metadata = shown.value.get("metadata")
@@ -78,6 +78,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             },
             labels=(f"branch:{branch}",),
             notes=notes,
+            root=self.workspace_root,
         )
         if updated.failure:
             return r.fail(updated.error or "failed to register lane on bead")
@@ -92,7 +93,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         branch = branch_result.value if branch_result.success else (self.branch or "")
         lines: list[str] = ["work status"]
         if bead:
-            shown = u.Infra.beads_show_json(bead)
+            shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
             if shown.failure:
                 lines.append(f"bead: error={shown.error}")
             else:
