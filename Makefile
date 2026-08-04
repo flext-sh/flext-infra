@@ -893,8 +893,10 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-_builtin_fix_check:
-	@printf 'ERROR: make fix requires APPLY=Y\n' >&2; exit 2
+# Read-only fixed-point after `make fix APPLY=Y` (serialize-make strips APPLY and
+# re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
+_builtin_fix_check: _builtin_require_environment
+	@$(UV_RUN) ruff check $(RUFF_PATHS)
 
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
