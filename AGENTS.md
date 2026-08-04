@@ -48,5 +48,7 @@ make test  PROJECT=flext-infra
 make build WHAT=gen
 make work WHAT=status PROJECT=flext-infra BEAD=<id>
 make work WHAT=start PROJECT=flext-infra BEAD=<id> KIND=feature NAME=<slug> APPLY=Y
+make work WHAT=land PROJECT=flext-infra BEAD=<id> APPLY=Y
+make work WHAT=finish PROJECT=flext-infra BEAD=<id> APPLY=Y
 ```
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->
