@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import flext_infra
 import pytest
 from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, u
+from flext_infra._utilities.work_saga_common import FlextInfraWorkSagaCommon
 from flext_tests import tm
 from tests import u as test_u
 
@@ -340,6 +341,14 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="CAS failed")
+
+    def test_refuse_permanent_branch_allows_feature_branch(self) -> None:
+        """Non-permanent branches succeed with True, not None (mro-5p9w)."""
+        result = FlextInfraWorkSagaCommon._refuse_permanent_branch(
+            "feature/x", "0.12.0-dev"
+        )
+        tm.ok(result)
+        assert result.value is True
 
     def test_land_refuses_permanent_branch(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
