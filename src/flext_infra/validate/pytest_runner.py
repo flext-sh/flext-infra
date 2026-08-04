@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import shlex
 import sys
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as DefusedET
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
@@ -149,8 +149,8 @@ class FlextInfraPytestRunner(s[int]):
                 )
             )
         try:
-            ET.parse(junit_file)
-        except ET.ParseError as exc:
+            DefusedET.parse(junit_file)
+        except DefusedET.ParseError as exc:
             return r[None].fail(
                 self._artifact_failure_detail(
                     f"junit report is not parseable: {junit_file}: {exc}",
@@ -171,7 +171,6 @@ class FlextInfraPytestRunner(s[int]):
                 "--cov",
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
             )
-            selection_args: tuple[str, ...] = ()
         else:
             coverage_args = ("--testmon", "--no-cov")
         parallel_args = (

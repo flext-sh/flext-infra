@@ -49,7 +49,7 @@ class FlextInfraWorkspaceDetector(
         return Path(__file__).resolve().parents[1] / schemas_dir / schema_name
 
     @staticmethod
-    def _repository_is_governed(
+    def repository_is_governed(
         repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
     ) -> bool:
         """Require provider key, host, and organization to agree exactly."""
@@ -192,7 +192,7 @@ class FlextInfraWorkspaceDetector(
                 editable=True,
                 read_only=False,
             )
-            if not cls._repository_is_governed(member, member_provider):
+            if not cls.repository_is_governed(member, member_provider):
                 continue
             members.append(member)
             governed_paths.add(path)
@@ -265,7 +265,7 @@ class FlextInfraWorkspaceDetector(
                     f"read-only dependency cannot be a governed member: {member.name}"
                 )
             provider = providers.get(member.provider)
-            if provider is None or not cls._repository_is_governed(member, provider):
+            if provider is None or not cls.repository_is_governed(member, provider):
                 return r[tuple[Path, ...]].fail(
                     f"external or fork dependency cannot be a governed member: {member.name}"
                 )
@@ -454,7 +454,7 @@ class FlextInfraWorkspaceDetector(
             if member.read_only:
                 continue
             provider = providers.get(member.provider)
-            if provider is None or not cls._repository_is_governed(member, provider):
+            if provider is None or not cls.repository_is_governed(member, provider):
                 return r[c.Infra.WorkspaceMode].fail(
                     "mutable workspace member is not first-party governed: "
                     f"{member.name}"
@@ -556,7 +556,7 @@ class FlextInfraWorkspaceDetector(
                 baseline_branch_result.error
                 or f"integration baseline resolution failed: {resolved_root}"
             )
-        if not cls._repository_is_governed(repository, provider):
+        if not cls.repository_is_governed(repository, provider):
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external or fork URL: {repository.url}"
             )

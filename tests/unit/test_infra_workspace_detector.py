@@ -613,11 +613,11 @@ class TestsFlextInfraInfraWorkspaceDetector:
             url=f"{provider.base_url}/flext-infra",
         )
         tm.that(
-            FlextInfraWorkspaceDetector._repository_is_governed(with_suffix, provider),
+            FlextInfraWorkspaceDetector.repository_is_governed(with_suffix, provider),
             eq=True,
         )
         tm.that(
-            FlextInfraWorkspaceDetector._repository_is_governed(
+            FlextInfraWorkspaceDetector.repository_is_governed(
                 without_suffix, provider
             ),
             eq=True,
