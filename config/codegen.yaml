@@ -374,9 +374,11 @@ Infra:
           apply_guarded: true
           apply_what: generate
         - name: clean
-          default_what: generated
-          whats: [generated]
+          default_what: status
+          whats: [status, generated]
           # `clean generated` deletes generated output and calls _require_apply.
+          # `clean status` is the read-only fixed-point after mutation (must differ
+          # from apply_what so serialize-make can re-check without APPLY=Y).
           apply_guarded: true
           apply_what: generated
         - name: release
@@ -1150,7 +1152,7 @@ Infra:
             - "!scripts/dispatch.py"
             - "!scripts/__init__.py"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
-          profiles: [workspace-root]
+          profiles: [workspace-root, standalone]
           patterns:
             - "!.beads/"
             - ".beads/*"
@@ -1158,11 +1160,12 @@ Infra:
             # metadata.json is what bd reads to resolve the ledger. Without it
             # bd warns "no beads configuration found" and silently falls back
             # to the default database, so beads created from a clean clone land
-            # in a throwaway store (mro-9wv8). In workspace-root the file holds
-            # only facts already declared in the generated config.yaml
-            # (backend/dolt_mode/dolt_database) -- no secret and no per-machine
-            # value -- so it is safe to track. Members keep it ignored: their
-            # embedded-mode file carries a per-machine project_id UUID.
+            # in a throwaway store (mro-9wv8). In workspace-root and standalone
+            # the file holds only facts already declared in the generated
+            # config.yaml (backend/dolt_mode/dolt_database) -- no secret and no
+            # per-machine value -- so it is safe to track. Members keep it
+            # ignored: their embedded-mode file carries a per-machine
+            # project_id UUID.
             - "!.beads/metadata.json"
         - name: "Python configuration"
           profiles: [workspace-root]
@@ -1466,8 +1469,8 @@ Infra:
             - ".beads-credential-key"
             - ".worktrees/"
             - "legado/"
-        - name: "Beads ledger identity (workspace-root only; see mro-9wv8)"
-          profiles: [workspace-root]
+        - name: "Beads ledger identity (workspace-root and standalone; see mro-9wv8)"
+          profiles: [workspace-root, standalone]
           patterns:
             - "!.beads/metadata.json"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"

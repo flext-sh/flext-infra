@@ -237,6 +237,13 @@ class FlextInfraModelsDepsToolSettings(
                     " or below the session budget kills healthy suites"
                 )
                 raise ValueError(msg)
+            if self.process_timeout_seconds <= (
+                self.run_timeout_seconds + self.termination_grace_seconds
+            ):
+                msg = (
+                    "pytest process timeout must exceed run and termination budgets"
+                )
+                raise ValueError(msg)
             derived_options = ("--timeout", "--session-timeout")
             if any(
                 option in {"-o", "--override-ini"}

@@ -127,6 +127,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 f"governed branch ancestry violations: {details}"
             )
+        # Beads binary/ledger verification must run before drift reporting so a
+        # checksum or version mismatch is not shadowed by missing projections.
+        for beads_plan in plan.beads:
+            verified_beads = self._verify_beads_plan(
+                beads_plan, allow_missing=mode is c.Infra.CodegenConformMode.CHECK
+            )
+            if verified_beads.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    verified_beads.error or "Beads ledger verification failed"
+                )
         changed = tuple(file for file in plan.files if file.changed)
         if mode is c.Infra.CodegenConformMode.CHECK:
             if changed:
@@ -391,9 +401,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            issue_prefix, ledger_database = self.ledger_identity_for_target(
+            issue_prefix, _ledger_database = self.ledger_identity_for_target(
                 workspace, target
             )
+            ledger_root_result = self._beads_ledger_root(repository_root)
+            if ledger_root_result.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    ledger_root_result.error
+                    or f"unable to resolve Beads ledger root: {repository_root}"
+                )
             beads_plans.append(
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
@@ -412,8 +428,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
-                    ledger_root=repository_root,
-                    ledger_id=ledger_database,
+                    ledger_root=ledger_root_result.value,
+                    ledger_id=workspace.ledger_id,
                 )
             )
             if self.initial_workspace is None:
@@ -841,6 +857,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"template destination escapes repository root: {destination}"
                 )
+            # Ledger routing config: workspace root (owned), transaction
+            # worktrees, and marker-attached standalones only (mro-z89e).
+            if destination in {
+                c.Infra.BEADS_CONFIG_RELPATH,
+                c.Infra.BEADS_METADATA_RELPATH,
+            } and not (target.beads_enabled or target.routing_only):
+                continue
             if destination in seen_destinations:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"duplicate template destination: {destination}"
@@ -1192,6 +1215,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or managed.path == Path(c.Infra.PYPROJECT_FILENAME)
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
+                continue
+            # Ledger routing config: workspace root (owned), transaction
+            # worktrees, and marker-attached standalones only (mro-z89e).
+            if managed.path.as_posix() in {
+                c.Infra.BEADS_CONFIG_RELPATH,
+                c.Infra.BEADS_METADATA_RELPATH,
+            } and not (target.beads_enabled or target.routing_only):
                 continue
             entries = tuple(
                 entry
@@ -2319,13 +2349,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ``WORKSPACE_MEMBER`` targets keep ``canonical_project_name`` because
         they are planned under the parent workspace.yaml (mro-z75t). Root and
         standalone manifests still honor their own ``ledger_prefix`` /
-        ``ledger_id`` overrides (mro-6fca).
+        ``ledger_id`` overrides (mro-6fca). Marker-attached standalones are
+        classified as ``WORKSPACE_MEMBER`` for routing, but they own their
+        workspace.yaml at the governing root, so ledger_* still apply.
         """
         # Members are planned under the parent workspace.yaml, so a root
         # ledger_prefix must not rewrite their issue-prefix/database. A
         # standalone's workspace.yaml is its own manifest, so ledger_* there
-        # still apply (mro-6fca).
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER:
+        # still apply (mro-6fca). Attached standalones share the MEMBER
+        # profile only for routing; they are not parent-manifest members.
+        if (
+            target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+            and not target.attached_standalone
+        ):
             return target.canonical_project_name, target.canonical_project_name
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
@@ -2435,9 +2471,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].ok(True)
         if not plan.enabled:
             beads_dir = plan.repository_root / ".beads"
-            if beads_dir.exists():
+            if not beads_dir.exists():
+                return r[bool].ok(True)
+            # Routing-only projections (attached standalones / worktree routes)
+            # may commit config.yaml + metadata.json without owning tracker
+            # state. Fail only when additional tracker artifacts appear.
+            routing_only_names = frozenset({
+                "config.yaml",
+                "metadata.json",
+            })
+            extra = tuple(
+                path.name
+                for path in beads_dir.iterdir()
+                if path.name not in routing_only_names and not path.name.startswith(".")
+            )
+            if extra:
                 return r[bool].fail(
-                    f"Beads is disabled but tracker state exists: {beads_dir}"
+                    f"Beads is disabled but tracker state exists: {beads_dir} "
+                    f"({', '.join(sorted(extra))})"
                 )
             return r[bool].ok(True)
         ledger_root = plan.ledger_root
