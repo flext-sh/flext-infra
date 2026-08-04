@@ -828,6 +828,7 @@ class FlextInfraWorkspaceDetector(
                 gitlink.error or f"workspace member gitlink is missing: {member_path}"
             )
         match gitlink.value.split():
+            # Why: mro-4p0t gitlink SHA is validated structurally, not used here.
             case ["160000", _, "0", indexed_path] if (
                 indexed_path == member_path
             ):

@@ -6,6 +6,9 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra._utilities._docs_github_links import (
+    FlextInfraUtilitiesDocsGithubLinks,
+)
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra.constants import c
@@ -22,9 +25,11 @@ class FlextInfraUtilitiesDocsFix:
 
     @staticmethod
     def docs_maybe_fix_link(md_file: Path, raw_link: str) -> str | None:
-        """Return a corrected link target when a simple ``.md`` fix is possible."""
+        """Return a corrected link target when a simple fix is possible."""
+        if raw_link.startswith(("http://", "https://")):
+            return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(raw_link)
         result: str | None = None
-        if not raw_link.startswith(("http://", "https://", "mailto:", "tel:", "#")):
+        if not raw_link.startswith(("mailto:", "tel:", "#")):
             base = raw_link.split("#", maxsplit=1)[0]
             if (
                 base

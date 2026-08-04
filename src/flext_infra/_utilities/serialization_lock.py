@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from flext_infra.protocols import p
@@ -21,6 +22,8 @@ class FlextInfraUtilitiesSerializationLock:
         timeout_failure: p.Infra.LockTimeoutFailure[TValue],
         acquisition_failure: p.Infra.LockAcquisitionFailure[TValue],
         ephemeral: bool = False,
+        wait_heartbeat_seconds: int | None = None,
+        wait_progress: Callable[[Path, float], None] | None = None,
     ) -> p.Result[TValue]:
         """Delegate one typed operation to the sole native lock engine."""
         return FlextInfraSerializationLockOwner.execute(
@@ -30,6 +33,8 @@ class FlextInfraUtilitiesSerializationLock:
             timeout_failure=timeout_failure,
             acquisition_failure=acquisition_failure,
             ephemeral=ephemeral,
+            wait_heartbeat_seconds=wait_heartbeat_seconds,
+            wait_progress=wait_progress,
         )
 
 

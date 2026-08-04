@@ -628,6 +628,16 @@ class FlextInfraConfigModels:
                 description="Maximum seconds to wait for the checkout validation lock",
             ),
         ]
+        wait_heartbeat_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description=(
+                    "Seconds between lock-wait progress heartbeats while a "
+                    "serialized Make verb waits for the checkout lock"
+                ),
+            ),
+        ]
         verbs: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -700,6 +710,26 @@ class FlextInfraConfigModels:
             m.Field(description="Project optional-dependency selection policy"),
         ]
 
+    class DocsGithubRepoSpec(_ConfigContract):
+        """One governed GitHub repository used for cross-repo doc links."""
+
+        organization: Annotated[
+            t.NonEmptyStr, m.Field(description="GitHub organization")
+        ]
+        repository: Annotated[t.NonEmptyStr, m.Field(description="GitHub repository")]
+        branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Working-line branch for doc links")
+        ]
+        local_checkout: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Optional local checkout path (~ expanded) for existence checks"
+                ),
+            ),
+        ] = ""
+
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
@@ -716,6 +746,20 @@ class FlextInfraConfigModels:
                 description="Regex rejecting cross-project relative Markdown links"
             ),
         ]
+        stale_github_organizations: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=("organization",),
+                description="Placeholder GitHub orgs that must be rewritten",
+            ),
+        ] = ("organization",)
+        github_repos: Annotated[
+            tuple[FlextInfraConfigModels.DocsGithubRepoSpec, ...],
+            m.Field(
+                default=(),
+                description="Governed org/repo/branch map for cross-repo doc URLs",
+            ),
+        ] = ()
 
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""

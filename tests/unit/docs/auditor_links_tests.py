@@ -166,3 +166,49 @@ class TestAuditorBrokenLinks:
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
         tm.that(len(issues), eq=0)
+
+class TestAuditorGithubLinks:
+    """Governed GitHub URL audit and rewrite."""
+
+    def test_github_stale_organization(self, tmp_path: Path) -> None:
+        """Placeholder organization URLs are high-severity defects."""
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        (docs_dir / "test.md").write_text(
+            "[x](https://github.com/organization/flext/blob/main/docs/index.md)\n"
+        )
+        scope = m.Infra.DocScope(
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
+        )
+        issues = u.Infra.docs_broken_link_issues(scope)
+        types = {issue.issue_type for issue in issues}
+        tm.that("stale_github_organization" in types, eq=True)
+
+    def test_github_wrong_branch(self, tmp_path: Path) -> None:
+        """Wrong working-line branch is reported for governed repos."""
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        (docs_dir / "test.md").write_text(
+            "[x](https://github.com/flext-sh/flext/blob/main/README.md)\n"
+        )
+        scope = m.Infra.DocScope(
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
+        )
+        issues = u.Infra.docs_broken_link_issues(scope)
+        types = {issue.issue_type for issue in issues}
+        tm.that("wrong_github_branch" in types, eq=True)
+
+    def test_github_rewrite_fix(self, tmp_path: Path) -> None:
+        """Fix rewrites organization/main flext URLs to governed org/branch."""
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        target = docs_dir / "test.md"
+        target.write_text(
+            "[x](https://github.com/organization/flext/blob/main/README.md)\n"
+        )
+        item = u.Infra.docs_process_markdown_file(target, apply=True)
+        tm.that(item.links, gte=1)
+        text = target.read_text()
+        tm.that("flext-sh/flext" in text, eq=True)
+        tm.that("0.12.0-dev" in text, eq=True)
+

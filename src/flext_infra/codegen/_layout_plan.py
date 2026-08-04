@@ -27,13 +27,15 @@ class FlextInfraCodegenLayoutPlanMixin:
         """Classify every root entry of one project without writing anything."""
         spec = self._layout_spec
         project_name = project_dir.name
-        override = spec.project_overrides.get(project_name)
-        allowed = self._allowed_root_names(spec, project_name)
+        override = self._resolve_override(spec, project_name)
+        allowed = self._allowed_root_names(spec, project_name, override)
         override_roots = self._override_root_names(override)
         findings: list[m.Infra.LayoutFinding] = []
         for entry in sorted(project_dir.iterdir()):
             name = entry.name
             if spec.allow_hidden and name.startswith("."):
+                continue
+            if self._is_ignored_root(spec, override, name):
                 continue
             if name in allowed or name in override_roots:
                 continue
@@ -50,19 +52,52 @@ class FlextInfraCodegenLayoutPlanMixin:
             project=project_name, findings=tuple(findings)
         )
 
+    @staticmethod
+    def _resolve_override(
+        spec: m.Infra.LayoutSpec, project_name: str
+    ) -> m.Infra.LayoutProjectOverrideSpec | None:
+        """Resolve override by directory name or logical name without leading dot."""
+        override = spec.project_overrides.get(project_name)
+        if override is not None:
+            return override
+        logical = project_name.lstrip(".")
+        if logical != project_name:
+            return spec.project_overrides.get(logical)
+        return None
+
     def _allowed_root_names(
-        self, spec: m.Infra.LayoutSpec, project_name: str
+        self,
+        spec: m.Infra.LayoutSpec,
+        project_name: str,
+        override: m.Infra.LayoutProjectOverrideSpec | None,
     ) -> frozenset[str]:
         """Canonical root names for one project, profile extras included."""
         allowed = {
             *spec.canonical_root_files,
             *spec.canonical_root_dotfiles,
             *spec.canonical_root_dirs,
+            *spec.special_root_dirs,
+            *spec.reference_root_dirs,
         }
         for profile, patterns in spec.profile_project_patterns.items():
             if any(fnmatchcase(project_name, pattern) for pattern in patterns):
                 allowed.update(spec.profile_extra_root_files.get(profile, ()))
+        if override is not None:
+            allowed.update(override.keep_root_files)
         return frozenset(allowed)
+
+    @staticmethod
+    def _is_ignored_root(
+        spec: m.Infra.LayoutSpec,
+        override: m.Infra.LayoutProjectOverrideSpec | None,
+        name: str,
+    ) -> bool:
+        """Whether a root entry is skipped by specials or project ignore globs."""
+        if name in spec.special_root_dirs:
+            return True
+        if override is None:
+            return False
+        return any(fnmatchcase(name, glob) for glob in override.ignore_globs)
 
     @staticmethod
     def _override_root_names(
@@ -88,7 +123,18 @@ class FlextInfraCodegenLayoutPlanMixin:
         if entry.is_dir() and name in spec.move_docs_dirs:
             return self._finding("move", name, f"{spec.docs_target}/{name}")
         if entry.is_file() and name in spec.move_docs_files:
-            return self._finding("move", name, f"{spec.docs_target}/{name}")
+            target = f"{spec.docs_target}/{name}"
+            if (entry.parent / target).exists():
+                return self._finding(
+                    "archive",
+                    name,
+                    f"{spec.archive_root}/{project_name}/{name}",
+                    message=(
+                        f"archive {name} -> {spec.archive_root}/{project_name}/{name} "
+                        f"(canonical docs/{name} kept)"
+                    ),
+                )
+            return self._finding("move", name, target)
         if entry.is_file() and name in spec.move_example_files:
             return self._finding("move", name, f"{spec.examples_target}/{name}")
         if entry.is_file() and any(
@@ -138,8 +184,6 @@ class FlextInfraCodegenLayoutPlanMixin:
                 if entry.is_file()
             }
             if remaining and remaining <= move_sources:
-                # Every remaining file leaves via an override move in the same
-                # plan, so the directory is archived right after those moves.
                 findings.append(self._finding("archive", name, target))
                 continue
             findings.append(self._finding("review", name))
@@ -171,7 +215,11 @@ class FlextInfraCodegenLayoutPlanMixin:
 
     @staticmethod
     def _finding(
-        rule: t.Infra.LayoutRule, path: str, target: str = ""
+        rule: t.Infra.LayoutRule,
+        path: str,
+        target: str = "",
+        *,
+        message: str | None = None,
     ) -> m.Infra.LayoutFinding:
         """Build one typed finding with a canonical message."""
         messages: t.MappingKV[t.Infra.LayoutRule, str] = {
@@ -181,7 +229,10 @@ class FlextInfraCodegenLayoutPlanMixin:
             "review": f"non-canonical root entry requires review: {path}",
         }
         return m.Infra.LayoutFinding(
-            rule=rule, path=path, target=target, message=messages[rule]
+            rule=rule,
+            path=path,
+            target=target,
+            message=message if message is not None else messages[rule],
         )
 
 

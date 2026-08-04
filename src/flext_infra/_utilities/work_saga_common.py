@@ -53,14 +53,8 @@ class FlextInfraWorkSagaCommon:
     def _validated_kind_slug(self) -> p.Result[tuple[c.Infra.WorkKind, str]]:
         if self.kind is None:
             return r.fail("work start requires --kind")
-        try:
-            kind = (
-                self.kind
-                if isinstance(self.kind, c.Infra.WorkKind)
-                else c.Infra.WorkKind(str(self.kind))
-            )
-        except ValueError:
-            return r.fail(f"invalid work kind: {self.kind}")
+        # Why: mro-4p0t kind is typed WorkKind after the None guard.
+        kind = self.kind
         slug = (self.name or "").strip().lower()
         if not slug:
             return r.fail("work start requires --name")

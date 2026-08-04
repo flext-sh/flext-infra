@@ -23,7 +23,7 @@
 - Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
   `FlextInfraModels`, `FlextInfraProjectSelectionServiceBase`,
   `FlextInfraProtocols`, `FlextInfraServiceBase`, `FlextInfraTypes`,
-  `FlextInfraUtilities`, `FlextInfraWorkspaceEnvironment` (+6 more)
+  `FlextInfraUtilities`, `FlextInfraWorkService` (+6 more)
 - Exported module shortcuts: `basemk`
 - Generated module pages: `12`
 
