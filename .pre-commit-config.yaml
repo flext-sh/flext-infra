@@ -3,6 +3,9 @@ repos:
   - repo: local
     hooks:
       # Why: fast fixes run before each commit; expensive gates run before push.
+      # make check under CI=Y omits make.ci.check_gates_skip.
+      # make test must NOT inherit CI=Y (mro-v4p5 forbids
+      # pytest under that token), so only the check verb is prefixed.
       - id: flext-pre-commit
         name: FLEXT pre-commit workflow
         language: system
@@ -17,7 +20,7 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'make gen APPLY=Y && make check && make test'
+          'make gen APPLY=Y && CI=Y make check && make test'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

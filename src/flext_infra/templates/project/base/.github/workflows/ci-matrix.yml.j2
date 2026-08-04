@@ -44,6 +44,8 @@ jobs:
     # full project bootstrap at image-build time), then smoke the verb surface
     # inside the built container.
     runs-on: ubuntu-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     strategy:
       fail-fast: false
       matrix:

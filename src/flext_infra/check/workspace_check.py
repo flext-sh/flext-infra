@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shlex
 from pathlib import Path
 from typing import override
@@ -84,23 +83,24 @@ class FlextInfraWorkspaceChecker(
     @staticmethod
     def _ci_token_active() -> bool:
         """True when the Make CI environment token is exactly make.ci.value."""
-        raw = os.environ.get(c.Infra.PYTEST_ENV_CI, "")
-        return raw == config.Infra.codegen.make.ci.value
+        ci = config.Infra.codegen.make.ci
+        raw = u.Cli.env_read(ci.variable).unwrap().strip()
+        return raw == ci.value
 
     @staticmethod
     def _ci_skipped_gates(gates: t.StrSequence) -> tuple[str, ...]:
-        """Return lint/pyrefly entries present in *gates* when CI=Y is active."""
+        """Return configured CI skip gates present in *gates* when CI=Y is active."""
         if not FlextInfraWorkspaceChecker._ci_token_active():
             return ()
-        skip = frozenset(c.Infra.PROJECT_CHECK_GATES_CI_SKIP_VALUES)
+        skip = frozenset(config.Infra.codegen.make.ci.check_gates_skip)
         return tuple(gate for gate in gates if gate in skip)
+
+    @staticmethod
     def apply_ci_gate_skips(gates: t.StrSequence) -> list[str]:
         """Omit make.ci.check_gates_skip when the Make CI token is exact CI=Y."""
-        ci = config.Infra.codegen.make.ci
-        raw = u.Cli.env_read(ci.variable).unwrap().strip()
-        if raw != ci.value:
+        skip = set(FlextInfraWorkspaceChecker._ci_skipped_gates(gates))
+        if not skip:
             return [gate for gate in gates if gate]
-        skip = set(ci.check_gates_skip)
         return [gate for gate in gates if gate and gate not in skip]
 
     @override
