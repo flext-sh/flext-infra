@@ -433,7 +433,7 @@ class TestsFlextInfraWorkService:
         config.mkdir()
         (config / "workspace.yaml").write_text(
             "integration:\n  branch: 0.12.0-dev\n",
-            "integration:\n  branch: 0.12.0-dev\n", encoding="utf-8"
+            encoding="utf-8",
         )
         bead_id = "mro-test-finish-perm"
         shim_dir = self._install_bd_shim(tmp_path, bead_id)
