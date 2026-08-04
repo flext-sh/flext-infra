@@ -107,7 +107,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.UPDATE,
             branch=branch,
-            base=integration,
+            base=self._git_integration_ref(primary_root, integration),
             apply_changes=True,
         ).execute()
         if synced.failure:

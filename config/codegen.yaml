@@ -1329,6 +1329,7 @@ Infra:
             - "**/docs/audit-summary.json"
         - name: "Virtual environments inside allowed directories (should never be committed)"
           patterns:
+            - "**/.venv"
             - "**/.venv/"
             - "**/venv/"
             - "**/env/"
@@ -1471,6 +1472,7 @@ Infra:
           patterns:
             - ".direnv/"
             - ".reports/"
+            - ".venv"
             - ".venv/"
             - ".bin/"
             - ".tools/"

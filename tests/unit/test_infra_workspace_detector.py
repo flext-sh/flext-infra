@@ -595,9 +595,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         ssot_names = {artifact.name for artifact in config.Infra.codegen.artifacts}
         tm.that(c.Infra.PERSISTENT_STATE_ARTIFACT_NAMES.issubset(ssot_names), eq=True)
 
-    def test_repository_is_governed_accepts_remote_url_without_git_suffix(
-        self,
-    ) -> None:
+    def test_repository_is_governed_accepts_remote_url_without_git_suffix(self) -> None:
         """CI remotes may omit ``.git``; governance must still match provider org."""
         provider = config.Infra.codegen.providers[0]
         with_suffix = self._repository(

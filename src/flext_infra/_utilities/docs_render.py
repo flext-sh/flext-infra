@@ -115,10 +115,7 @@ class FlextInfraUtilitiesDocsRender:
             kind = "tree" if is_dir else "blob"
             branch = "0.12.0-dev"
             for repo in config.Infra.codegen.make.docs.github_repos:
-                if (
-                    repo.organization == "flext-sh"
-                    and repo.repository == "flext"
-                ):
+                if repo.organization == "flext-sh" and repo.repository == "flext":
                     branch = repo.branch
                     break
             return f"{prefix}/{kind}/{branch}/{path}"

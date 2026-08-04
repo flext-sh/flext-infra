@@ -323,11 +323,18 @@ class FlextInfraPytestRunner(s[int]):
             termination_grace_seconds=pytest.termination_grace_seconds,
             timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
         )
+        # Strip host PYTEST_ADDOPTS/PYTHONPATH, then pin this checkout's src so a
+        # borrowed shared editable cannot make pytest execute another tree.
+        project_src = str(self.root / c.Infra.DEFAULT_SRC_DIR)
+        child_env = u.Cli.process_env(
+            remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+            overrides={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: project_src},
+        )
         run_result = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
             cwd=self.root,
-            remove_env_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+            env=child_env,
             live=True,
             deadline=deadline,
         )

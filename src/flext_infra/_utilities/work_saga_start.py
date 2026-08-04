@@ -90,7 +90,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                 workspace_root=primary_root,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
-                base=base.value,
+                base=self._git_integration_ref(primary_root, base.value),
                 apply_changes=True,
             ).execute()
             if created.failure:
@@ -100,6 +100,17 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             lane = reused
         if self._is_primary_path(primary_root, lane):
             return r.fail("work start refused to use the primary worktree as a lane")
+        # Why: mro-c6di — every maintained worktree runs `make setup`, so start
+        # owns that guarantee for the lane it hands back. An adopted lane used to
+        # skip provisioning entirely and was handed over with whatever
+        # environment an interrupted start had left behind.
+        prepared = FlextInfraWorktreeService.setup_lane(primary_root, lane)
+        if prepared.failure:
+            return r.fail(
+                self._rollback_started_lane(
+                    primary_root, branch, reused, prepared.error
+                )
+            )
         head = self._git_head(lane)
         if head.failure:
             return r.fail(head.error or "failed to read lane HEAD")
@@ -110,7 +121,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             f"head={head.value}"
         )
         # Why: mro-dipb.1 kind may arrive as str; coerce like _branch_name.
-        kind_value = kind.value if isinstance(kind, c.Infra.WorkKind) else str(kind)
+        kind_value = kind.value
         updated = u.Infra.beads_update_lane(
             bead,
             metadata={

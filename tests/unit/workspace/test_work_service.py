@@ -265,6 +265,24 @@ class TestsFlextInfraWorkService:
         resolved_workspace = tm.ok(u.Infra.beads_resolve_root(workspace))
         assert str(resolved_workspace) == str(workspace.resolve())
 
+    def test_beads_resolve_prefers_member_tracker_when_present(
+        self, tmp_path: PathType
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        member = workspace / "member"
+        member.mkdir(parents=True)
+        (workspace / ".beads").mkdir()
+        (workspace / ".beads" / "config.yaml").write_text(
+            'issue-prefix: "mro"\n', encoding="utf-8"
+        )
+        (member / ".beads").mkdir()
+        (member / ".beads" / "config.yaml").write_text(
+            'issue-prefix: "flext-infra"\n', encoding="utf-8"
+        )
+        test_u.Tests.initialize_git_repo(member)
+        resolved = tm.ok(u.Infra.beads_resolve_root(member))
+        assert str(resolved) == str(member.resolve())
+
     def test_finish_removes_lane_and_updates_metadata(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:
