@@ -116,7 +116,11 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             lane, ("push", "-u", "origin", f"HEAD:refs/heads/{branch}")
         )
         if pushed.failure:
-            return r.fail(pushed.error or f"failed to push {branch}")
+            return r.fail(
+                self._push_rejection(
+                    lane, branch, pushed.error or f"failed to push {branch}"
+                )
+            )
         head = self._git_head(lane)
         if head.failure:
             return r.fail(head.error or "failed to resolve pushed HEAD")
@@ -169,8 +173,19 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record land on bead")
+        receipt = self._format_receipt(
+            bead=bead,
+            operation=c.Infra.WorkOperation.LAND,
+            primary=primary_root,
+            worktree=str(lane),
+            branch=branch,
+            base=pr_base,
+            head_oid=head.value,
+            pr=pr_number,
+        )
         return r.ok(
-            f"BRANCH={branch} HEAD={head.value} PR_NUMBER={pr_number} PR_URL={pr_url}"
+            f"BRANCH={branch} HEAD={head.value} PR_NUMBER={pr_number} "
+            f"PR_URL={pr_url}\n{receipt}"
         )
 
 

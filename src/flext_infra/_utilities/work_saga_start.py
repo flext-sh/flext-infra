@@ -18,6 +18,42 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
 
     apply_changes: bool
 
+    @staticmethod
+    def _reusable_lane(primary_root: Path, branch: str) -> Path | None:
+        """Return the lane Git already owns for the branch, when it is usable.
+
+        Git's worktree registry is the only authority on lane existence. A
+        start interrupted after `worktree add` leaves a registered lane whose
+        bead carries no metadata, so re-running start adopts that lane instead
+        of failing on "worktree lane already exists".
+        """
+        registered = FlextInfraWorktreeService.registered_lane(primary_root, branch)
+        if registered.failure:
+            return None
+        lane = registered.value
+        return lane if lane.is_dir() else None
+
+    @staticmethod
+    def _rollback_started_lane(
+        primary_root: Path, branch: str, reused: Path | None, error: str | None
+    ) -> str:
+        """Undo a lane this start created when its bead registration failed."""
+        reason = error or "failed to register lane on bead"
+        if reused is not None:
+            return reason
+        removed = FlextInfraWorktreeService(
+            workspace_root=primary_root,
+            operation=c.Infra.WorktreeOperation.REMOVE,
+            branch=branch,
+            apply_changes=True,
+        ).execute()
+        if removed.failure:
+            return (
+                f"{reason}; lane {branch} rollback failed: "
+                f"{removed.error or 'unknown worktree removal failure'}"
+            )
+        return f"{reason}; lane {branch} rolled back"
+
     def _start(self, primary_root: Path) -> p.Result[str]:
         if not self.apply_changes:
             return r.fail("work start requires --apply")
@@ -45,27 +81,32 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         base = self._resolve_integration_base(primary_root)
         if base.failure:
             return r.fail(base.error or "failed to resolve integration base")
-        fetched = u.Infra.git_capture(primary_root, ("fetch", "origin"))
-        if fetched.failure:
-            return r.fail(fetched.error or "work start failed to fetch origin")
-        created = FlextInfraWorktreeService(
-            workspace_root=primary_root,
-            operation=c.Infra.WorktreeOperation.ADD,
-            branch=branch,
-            base=base.value,
-            apply_changes=True,
-        ).execute()
-        if created.failure:
-            return r.fail(created.error or f"failed to start lane {branch}")
-        lane = Path(created.value)
+        reused = self._reusable_lane(primary_root, branch)
+        if reused is None:
+            fetched = u.Infra.git_capture(primary_root, ("fetch", "origin"))
+            if fetched.failure:
+                return r.fail(fetched.error or "work start failed to fetch origin")
+            created = FlextInfraWorktreeService(
+                workspace_root=primary_root,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=base.value,
+                apply_changes=True,
+            ).execute()
+            if created.failure:
+                return r.fail(created.error or f"failed to start lane {branch}")
+            lane = Path(created.value)
+        else:
+            lane = reused
         if self._is_primary_path(primary_root, lane):
             return r.fail("work start refused to use the primary worktree as a lane")
         head = self._git_head(lane)
         if head.failure:
             return r.fail(head.error or "failed to read lane HEAD")
+        decisive = "lane-reused" if reused is not None else "lane-ready"
         notes = (
             f"work start: cmd=make work WHAT=start cwd={lane} "
-            f"branch={branch} base={base.value} exit=0 decisive=lane-ready "
+            f"branch={branch} base={base.value} exit=0 decisive={decisive} "
             f"head={head.value}"
         )
         # Why: mro-dipb.1 kind may arrive as str; coerce like _branch_name.
@@ -85,10 +126,22 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             root=self.workspace_root,
         )
         if updated.failure:
-            return r.fail(updated.error or "failed to register lane on bead")
+            return r.fail(
+                self._rollback_started_lane(primary_root, branch, reused, updated.error)
+            )
+        receipt = self._format_receipt(
+            bead=bead,
+            operation=c.Infra.WorkOperation.START,
+            primary=primary_root,
+            worktree=str(lane),
+            branch=branch,
+            base=base.value,
+            head_oid=head.value,
+            pr="",
+        )
         return r.ok(
             f"LANE_ID={bead} BRANCH={branch} WORKTREE={lane} "
-            f"BASE={base.value} HEAD={head.value}"
+            f"BASE={base.value} HEAD={head.value}\n{receipt}"
         )
 
     def _status(self, primary_root: Path) -> p.Result[str]:
