@@ -46,5 +46,7 @@ src/flext_infra/
 make check PROJECT=flext-infra
 make test  PROJECT=flext-infra
 make build WHAT=gen
+make work WHAT=status PROJECT=flext-infra BEAD=<id>
+make work WHAT=start PROJECT=flext-infra BEAD=<id> KIND=feature NAME=<slug> APPLY=Y
 ```
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->
