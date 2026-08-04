@@ -137,7 +137,8 @@ class FlextInfraPytestRunner(s[int]):
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
-        return self.root / ".testmondata"
+        path: Path = Path(self.root) / ".testmondata"
+        return path
 
     def _require_junit(self, junit_file: Path, pytest_log: Path) -> p.Result[None]:
         """Require a non-empty parseable JUnit document after a green run."""
