@@ -127,8 +127,8 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     # base_preflight.mk.j2 reserves every public verb name and
                     # builtin _custom_<verb>_<what> pair; all other custom
                     # handlers/hooks are permitted.
-                    custom_mk_reserved=sorted(
-                        FlextInfraCustomMkPolicy.reserved_targets()
+                    custom_mk_reserved=" ".join(
+                        sorted(FlextInfraCustomMkPolicy.reserved_targets())
                     ),
                     docs=config.Infra.codegen.make.docs,
                     # `MakeDocsSpec.actions` was folded into the single verb
