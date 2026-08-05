@@ -61,7 +61,7 @@ endef
 # monopoly (SSOT: flext_infra.basemk.custom_policy). Parse-time guard: every
 # make invocation fails loud when custom.mk redefines a reserved target;
 # every other target is permitted.
-CUSTOM_MK_RESERVED_TARGETS :={% for target in custom_mk_reserved %} {{ target }}{% endfor %}
+CUSTOM_MK_RESERVED_TARGETS :={{ custom_mk_reserved }}
 ifneq ($(wildcard {{ make.CUSTOM_MAKE_FILENAME }}),)
 # Target definitions at column 0, excluding assignments (=) and dot-directives.
 # $(shell) converts the newline-separated results to space-separated lists.
