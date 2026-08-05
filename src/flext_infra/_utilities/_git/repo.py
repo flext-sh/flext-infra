@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, Literal, Protocol, cast
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 
 @contextmanager
-def _git_optional_stdin(input_data: bytes | None) -> Iterator[BinaryIO | None]:
+def _git_optional_stdin(input_data: bytes | None) -> Generator[BinaryIO | None]:
     """Yield a fileno-backed stdin stream for one GitPython execute call.
 
     ``Git.execute`` forwards ``istream`` straight to ``Popen(stdin=...)``, so
