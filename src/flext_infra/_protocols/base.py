@@ -340,7 +340,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def uv_exclude_newer(self) -> str:
-            """uv exclude-newer cooldown window for dependency resolution."""
+            """Cooldown window (uv exclude-newer) for dependency resolution."""
             ...
 
         @property

@@ -8,6 +8,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra._utilities._git.repo import (
+    git_capture,
+    git_capture_bytes,
+    git_open_repo,
+    git_run,
+)
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -17,74 +23,89 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesGitWorktreeMixin:
-    """Extend the existing Git utility owner with isolated mutation primitives."""
+    """Extend the existing Git utility owner with isolated mutation primitives.
 
-    @staticmethod
-    def git_run(
-        repo_root: Path,
-        arguments: t.StrSequence,
-        *,
-        input_data: bytes | None = None,
-        timeout: int | None = None,
-    ) -> p.Result[p.Cli.CommandOutput]:
-        """Run one Git command through the canonical process facade."""
-        result = u.Cli.run_raw(
-            (c.Infra.GIT, *arguments),
-            cwd=repo_root,
-            input_data=input_data,
-            timeout=timeout,
+    Public argv helpers are forbidden — use typed ``git_*`` Request/Report
+    methods. Private ``git_run``/``git_capture`` live in ``_git.repo`` only.
+    """
+
+    @classmethod
+    def git_status(
+        cls, request: m.Infra.GitStatusRequest
+    ) -> p.Result[m.Infra.GitStatusReport]:
+        """Capture porcelain status for one repository."""
+        repo = request.repo_root.expanduser().resolve()
+        captured = git_capture(repo, ("status", "--porcelain", "--untracked-files=all"))
+        if captured.failure:
+            return r[m.Infra.GitStatusReport].fail(
+                captured.error or "git status failed"
+            )
+        porcelain = captured.value
+        return r[m.Infra.GitStatusReport].ok(
+            m.Infra.GitStatusReport(
+                repo_root=repo, porcelain=porcelain, dirty=bool(porcelain.strip())
+            )
         )
-        if result.failure:
-            return r.fail(result.error or "git command execution failed")
-        output: p.Cli.CommandOutput = result.value
-        return r.ok(output)
 
     @classmethod
-    def git_capture(cls, repo_root: Path, arguments: t.StrSequence) -> p.Result[str]:
-        """Capture stdout from one successful Git command."""
-        result = cls.git_run(repo_root, arguments)
-        if result.failure:
-            return r[str].fail(result.error or "git command execution failed")
-        output = result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(detail or f"git command exited {output.exit_code}")
-        return r[str].ok(output.stdout)
+    def git_repository_head(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Capture the current repository HEAD as a typed oid report."""
+        oid = cls._git_head_oid(request.repo_root)
+        if oid.failure:
+            return r[m.Infra.GitOidReport].fail(oid.error or "failed to resolve HEAD")
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid.value))
 
     @classmethod
-    def git_capture_bytes(
-        cls, repo_root: Path, arguments: t.StrSequence
-    ) -> p.Result[bytes]:
-        """Capture byte-exact stdout from one successful Git command."""
-        # mro-45r9: patch transport stays binary until the human error boundary.
-        result = u.Cli.run_bytes((c.Infra.GIT, *arguments), cwd=repo_root)
-        if result.failure:
-            return r[bytes].fail(result.error or "git command execution failed")
-        output: p.Cli.CommandBytesOutput = result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).decode(
-                c.Cli.ENCODING_DEFAULT, errors="replace"
-            )
-            return r[bytes].fail(
-                detail.strip() or f"git command exited {output.exit_code}"
-            )
-        return r[bytes].ok(output.stdout)
-
-    @classmethod
-    def git_repository_head(cls, repo_root: Path) -> p.Result[str]:
-        """Capture the current repository HEAD SHA."""
-        return cls.git_capture(repo_root, ("rev-parse", "HEAD")).map(str.strip)
-
-    @classmethod
-    def git_workspace_root(cls, repository_path: Path) -> p.Result[Path]:
+    def git_workspace_root(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[m.Infra.GitRootReport]:
         """Resolve the superproject root or the repository's own top level."""
-        superproject = cls.git_capture(
+        root = cls._git_workspace_root_path(request.repo_root)
+        if root.failure:
+            return r[m.Infra.GitRootReport].fail(
+                root.error or "failed to resolve workspace root"
+            )
+        return r[m.Infra.GitRootReport].ok(
+            m.Infra.GitRootReport(workspace_root=root.value)
+        )
+
+    @classmethod
+    def git_primary_worktree_root(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[m.Infra.GitPrimaryRootReport]:
+        """Resolve the primary worktree from Git's canonical storage topology."""
+        primary = cls._git_primary_worktree_root_path(request.repo_root)
+        if primary.failure:
+            return r[m.Infra.GitPrimaryRootReport].fail(
+                primary.error or "failed to resolve primary worktree"
+            )
+        return r[m.Infra.GitPrimaryRootReport].ok(
+            m.Infra.GitPrimaryRootReport(primary_root=primary.value)
+        )
+
+    @classmethod
+    def _git_head_oid(cls, repo_root: Path) -> p.Result[str]:
+        """Private Path-based HEAD oid resolver for facet-internal callers."""
+        opened = git_open_repo(repo_root)
+        if opened.failure:
+            return r[str].fail(opened.error or "failed to open git repository")
+        try:
+            return r[str].ok(opened.value.head.commit.hexsha)
+        except (ValueError, TypeError, OSError) as exc:
+            return r[str].fail(f"failed to resolve HEAD: {exc}")
+
+    @classmethod
+    def _git_workspace_root_path(cls, repository_path: Path) -> p.Result[Path]:
+        """Private Path-based workspace/superproject resolver."""
+        superproject = git_capture(
             repository_path, ("rev-parse", "--show-superproject-working-tree")
         )
         if superproject.failure:
             # Not inside any Git work tree -> standalone project owning its own
             # root; a genuine in-repo failure still fails closed.
-            inside = cls.git_capture(
+            inside = git_capture(
                 repository_path, ("rev-parse", "--is-inside-work-tree")
             )
             if inside.failure or inside.value.strip() != "true":
@@ -95,15 +116,15 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         superproject_path = superproject.value.strip()
         if superproject_path:
             return r[Path].ok(Path(superproject_path).resolve())
-        top_level = cls.git_capture(repository_path, ("rev-parse", "--show-toplevel"))
+        top_level = git_capture(repository_path, ("rev-parse", "--show-toplevel"))
         if top_level.failure:
             return r[Path].fail(top_level.error or "failed to resolve Git top level")
         return r[Path].ok(Path(top_level.value.strip()).resolve())
 
     @classmethod
-    def git_primary_worktree_root(cls, repository_path: Path) -> p.Result[Path]:
-        """Resolve the primary worktree from Git's canonical storage topology."""
-        common_dir_result = cls.git_capture(
+    def _git_primary_worktree_root_path(cls, repository_path: Path) -> p.Result[Path]:
+        """Private Path-based primary worktree resolver."""
+        common_dir_result = git_capture(
             repository_path, ("rev-parse", "--path-format=absolute", "--git-common-dir")
         )
         if common_dir_result.failure:
@@ -111,7 +132,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 common_dir_result.error or "failed to resolve Git common directory"
             )
         common_dir = Path(common_dir_result.value.strip()).resolve()
-        configured_result = cls.git_run(
+        configured_result = git_run(
             repository_path, ("config", "--path", "--get", "core.worktree")
         )
         if configured_result.failure:
@@ -132,7 +153,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         elif common_dir.name == c.Infra.GIT_DIR:
             primary_root = common_dir.parent
         else:
-            git_dir_result = cls.git_capture(
+            git_dir_result = git_capture(
                 repository_path, ("rev-parse", "--path-format=absolute", "--git-dir")
             )
             if git_dir_result.failure:
@@ -141,7 +162,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 )
             git_dir = Path(git_dir_result.value.strip()).resolve()
             if git_dir != common_dir:
-                listed_result = cls.git_capture(
+                listed_result = git_capture(
                     repository_path, ("worktree", "list", "--porcelain")
                 )
                 if listed_result.failure:
@@ -159,11 +180,11 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                         f"Git worktree registry is empty for {repository_path}"
                     )
                 primary_root = registered[0]
-                registered_top_level = cls.git_capture(
+                registered_top_level = git_capture(
                     primary_root, ("rev-parse", "--show-toplevel")
                 )
                 if registered_top_level.failure:
-                    caller_top_level = cls.git_capture(
+                    caller_top_level = git_capture(
                         repository_path, ("rev-parse", "--show-toplevel")
                     )
                     if caller_top_level.failure:
@@ -179,7 +200,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                         )
                     primary_root = caller_root
             else:
-                caller_top_level = cls.git_capture(
+                caller_top_level = git_capture(
                     repository_path, ("rev-parse", "--show-toplevel")
                 )
                 if caller_top_level.failure:
@@ -188,7 +209,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                         or f"cannot derive primary worktree from {common_dir}"
                     )
                 primary_root = Path(caller_top_level.value.strip()).resolve()
-        top_level = cls.git_capture(primary_root, ("rev-parse", "--show-toplevel"))
+        top_level = git_capture(primary_root, ("rev-parse", "--show-toplevel"))
         if top_level.failure:
             return r[Path].fail(
                 top_level.error or f"invalid primary worktree: {primary_root}"
@@ -246,7 +267,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[t.SequenceOf[Path]].fail(
                 f"Git submodule manifest is not a regular file: {gitmodules}"
             )
-        result = cls.git_run(
+        result = git_run(
             repository_root,
             (
                 "config",
@@ -291,7 +312,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     @classmethod
     def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Resolve every initialized recursive submodule path."""
-        result = cls.git_capture(workspace_root, ("submodule", "status", "--recursive"))
+        result = git_capture(workspace_root, ("submodule", "status", "--recursive"))
         if result.failure:
             return r[t.SequenceOf[Path]].fail(
                 result.error or "failed to discover Git submodules"
@@ -329,14 +350,14 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 worktree_root.rmdir()
             except OSError as exc:
                 return r[str].fail(f"worktree target is not empty: {exc}")
-        head_result = cls.git_repository_head(source_root)
+        head_result = cls._git_head_oid(source_root)
         if head_result.failure:
             return head_result
         # An isolated transaction is a generator-validation boundary, not a user
         # checkout. Host post-checkout hooks may depend on a toolchain which the
         # generated project is about to declare, so they cannot be its prerequisite.
         # Transaction validators still exercise the generated artifact explicitly.
-        add_result = cls.git_capture(
+        add_result = git_capture(
             source_root,
             (
                 "-c",
@@ -362,7 +383,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         cls, source_root: Path, worktree_root: Path, excluded: t.SequenceOf[Path]
     ) -> p.Result[bool]:
         """Copy non-ignored untracked files into an isolated worktree."""
-        untracked = cls.git_capture(
+        untracked = git_capture(
             source_root, ("ls-files", "--others", "--exclude-standard", "-z")
         )
         if untracked.failure:
@@ -407,7 +428,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bool]:
         """Reproduce tracked, staged, unstaged, and untracked source state."""
         pathspecs = tuple(f":(exclude){path.as_posix()}" for path in excluded)
-        diff_result = cls.git_capture_bytes(
+        diff_result = git_capture_bytes(
             source_root, ("diff", "--binary", "HEAD", "--", ".", *pathspecs)
         )
         if diff_result.failure:
@@ -419,7 +440,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             # that, so restore the single trailing newline the format requires.
             if not patch_bytes.endswith(b"\n"):
                 patch_bytes += b"\n"
-            apply_result = cls.git_run(
+            apply_result = git_run(
                 worktree_root, ("apply", "--binary", "-"), input_data=patch_bytes
             )
             if apply_result.failure:
@@ -452,7 +473,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             f":(exclude){path.as_posix()}" for path in submodules_result.value
         )
         if excluded:
-            tracked_result = cls.git_capture(
+            tracked_result = git_capture(
                 worktree_root,
                 (
                     "ls-files",
@@ -475,7 +496,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             stage_result = (
                 # Why: force-add matches git_repository_delta staging (line ~454);
                 # checkpoint captures complete state incl. ignored-but-tracked paths.
-                cls.git_capture(
+                git_capture(
                     worktree_root,
                     ("add", "-A", "-f", "--", *tracked_paths, *gitlink_exclusions),
                 )
@@ -487,20 +508,20 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             # delta staging: the checkpoint must capture ignored-but-tracked
             # paths. Without it git aborts the whole call whenever an ignored
             # directory sits at the repository root.
-            stage_result = cls.git_capture(
+            stage_result = git_capture(
                 worktree_root, ("add", "-A", "-f", "--", *gitlink_exclusions)
             )
         if stage_result.failure:
             return r[str].fail(stage_result.error or "failed to stage checkpoint")
-        tree_result = cls.git_capture(worktree_root, ("write-tree",))
-        parent_result = cls.git_repository_head(worktree_root)
+        tree_result = git_capture(worktree_root, ("write-tree",))
+        parent_result = cls._git_head_oid(worktree_root)
         if tree_result.failure or parent_result.failure:
             return r[str].fail(
                 tree_result.error
                 if tree_result.failure
                 else parent_result.error or "failed to resolve checkpoint parent"
             )
-        identity_result = cls.git_capture(
+        identity_result = git_capture(
             worktree_root, ("show", "-s", "--format=%an%x00%ae", parent_result.value)
         )
         if identity_result.failure:
@@ -515,7 +536,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 pass
             case _:
                 return r[str].fail("checkpoint parent has invalid author identity")
-        commit_result = cls.git_capture(
+        commit_result = git_capture(
             worktree_root,
             (
                 "-c",
@@ -535,7 +556,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 commit_result.error or "failed to create checkpoint commit"
             )
         checkpoint_sha = commit_result.value.strip()
-        update_result = cls.git_capture(
+        update_result = git_capture(
             worktree_root, ("update-ref", "HEAD", checkpoint_sha)
         )
         if update_result.failure:
@@ -558,7 +579,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         source_gitlinks: t.MappingKV[str, str] | None = None,
     ) -> p.Result[m.Infra.RepositoryDelta]:
         """Stage and capture the operation-only patch after a checkpoint."""
-        head_result = cls.git_repository_head(repository.worktree_root)
+        head_result = cls._git_head_oid(repository.worktree_root)
         if head_result.failure or head_result.value != repository.checkpoint_sha:
             return r[m.Infra.RepositoryDelta].fail(
                 head_result.error
@@ -566,7 +587,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 else "isolated command moved repository HEAD"
             )
         exclusions = cls._transaction_exclusion_pathspecs()
-        stage_result = cls.git_capture(
+        stage_result = git_capture(
             repository.worktree_root, ("add", "-A", "-f", *exclusions)
         )
         if stage_result.failure:
@@ -574,7 +595,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 stage_result.error or "failed to stage operation delta"
             )
         for path, source_head in (source_gitlinks or {}).items():
-            update_result = cls.git_capture(
+            update_result = git_capture(
                 repository.worktree_root,
                 ("update-index", "--add", "--cacheinfo", "160000", source_head, path),
             )
@@ -586,7 +607,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         # submodule to its branch tip. Including them here made every verb that
         # runs after setup report "pending changes" for pointers it never
         # touched, so `gen` aborted before applying anything.
-        names_result = cls.git_capture(
+        names_result = git_capture(
             repository.worktree_root,
             (
                 "diff",
@@ -599,7 +620,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 *exclusions,
             ),
         )
-        patch_result = cls.git_capture_bytes(
+        patch_result = git_capture_bytes(
             repository.worktree_root,
             (
                 "diff",
@@ -645,7 +666,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         if not patch:
             return r[bool].ok(True)
         direction = ("--reverse",) if reverse else ()
-        result = cls.git_run(
+        result = git_run(
             repository_root,
             ("apply", "--check", "--binary", *direction, "-"),
             input_data=patch,
@@ -710,7 +731,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 and raw_line.startswith(b"+Subproject commit ")
             ):
                 commit = raw_line.removeprefix(b"+Subproject commit ").decode()
-                updated = cls.git_capture(
+                updated = git_capture(
                     repository_root,
                     (
                         "update-index",
@@ -744,7 +765,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         }
         for path in collisions:
             (delta.source_root / path).unlink()
-        result = cls.git_run(
+        result = git_run(
             delta.source_root, ("apply", "--binary", "-"), input_data=delta.patch
         )
         if result.success and result.value.exit_code == 0:
@@ -776,7 +797,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             if collision_result.success:
                 return cls._git_apply_gitlinks(delta.source_root, delta.patch)
             return r[bool].fail(check_result.error or collision_result.error)
-        result = cls.git_run(
+        result = git_run(
             delta.source_root, ("apply", "--binary", "-"), input_data=delta.patch
         )
         if result.failure:
@@ -796,12 +817,12 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         cls, source_root: Path, worktree_root: Path
     ) -> p.Result[bool]:
         """Remove one explicitly selected temporary worktree and prune metadata."""
-        remove_result = cls.git_capture(
+        remove_result = git_capture(
             source_root, ("worktree", "remove", "--force", str(worktree_root))
         )
         if remove_result.failure:
             return r[bool].fail(remove_result.error or "failed to remove worktree")
-        prune_result = cls.git_capture(source_root, ("worktree", "prune"))
+        prune_result = git_capture(source_root, ("worktree", "prune"))
         if prune_result.failure:
             return r[bool].fail(
                 prune_result.error or "failed to prune worktree metadata"
@@ -813,14 +834,14 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         cls, source_root: Path, worktree_root: Path
     ) -> p.Result[bool]:
         """Remove an explicitly selected clean worktree and prune metadata."""
-        remove_result = cls.git_capture(
+        remove_result = git_capture(
             source_root, ("worktree", "remove", str(worktree_root))
         )
         if remove_result.failure:
             return r[bool].fail(
                 remove_result.error or "failed to remove clean worktree"
             )
-        prune_result = cls.git_capture(source_root, ("worktree", "prune"))
+        prune_result = git_capture(source_root, ("worktree", "prune"))
         if prune_result.failure:
             return r[bool].fail(
                 prune_result.error or "failed to prune worktree metadata"

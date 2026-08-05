@@ -124,7 +124,7 @@ def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
     result = engine.execute()
 
     tm.ok(result)
-    tracked = u.Infra.git_capture(project, ("ls-files",))
+    tracked = u.Cli.capture([c.Infra.GIT, "ls-files"], cwd=project)
     tm.ok(tracked)
     tracked_names = set(tracked.value.split())
     tm.that("docs/guides/intro.md" in tracked_names, eq=True)

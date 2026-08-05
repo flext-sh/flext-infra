@@ -205,14 +205,18 @@ class FlextInfraPyprojectModernizerRunMixin:
                     )
                     return 2
                 if submodule_result.value:
-                    topology_root_result = u.Infra.git_workspace_root(member_path)
+                    topology_root_result = u.Infra.git_workspace_root(
+                        m.Infra.GitRepoRequest(repo_root=member_path)
+                    )
                     if topology_root_result.failure:
                         u.Cli.error(
                             "failed to resolve Git topology for workspace member "
                             f"{member_path}: {topology_root_result.error}"
                         )
                         return 2
-                    if topology_root_result.value.resolve() == resolved_root:
+                    if topology_root_result.value.workspace_root.resolve() == (
+                        resolved_root
+                    ):
                         continue
                 competing_member_locks.append(member_lock_path)
             member_lock_paths = tuple(sorted(competing_member_locks))

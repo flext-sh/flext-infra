@@ -1,4 +1,4 @@
-"""Git-aware scope resolution helpers for flext-infra utilities.
+"""Git-aware scope resolution mixin for the private git facet.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,16 +10,15 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
-
-from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra._utilities._git.repo import git_execute_text
+from flext_infra._utilities._git.semantic import FlextInfraUtilitiesGitSemanticMixin
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
+class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @staticmethod
@@ -40,25 +39,21 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
     def _git_tracked_repo_relative_paths(repo_root: str) -> t.StrSequence | None:
         """Return tracked and dirty paths relative to one Git repo root."""
         resolved_root = Path(repo_root).resolve()
-        try:
-            repo = Repo(resolved_root)
-        except (InvalidGitRepositoryError, NoSuchPathError, OSError, ValueError):
-            return None
-        if repo.bare or repo.working_tree_dir is None:
+        tracked = git_execute_text(resolved_root, ("ls-files",))
+        if tracked.failure or tracked.value.exit_code != 0:
             return None
         scope_paths: set[str] = set()
-        try:
-            tracked_output = repo.git.ls_files()
-        except GitCommandError:
-            return None
-        for raw_line in tracked_output.splitlines():
+        for raw_line in tracked.value.stdout.splitlines():
             normalized = raw_line.strip()
             if normalized:
                 scope_paths.add(normalized)
-        try:
-            status_output = repo.git.status("--porcelain", "--untracked-files=all")
-        except GitCommandError:
-            status_output = ""
+        status = git_execute_text(
+            resolved_root, ("status", "--porcelain", "--untracked-files=all")
+        )
+        # Preserve prior Cli-era behavior: status failure yields empty porcelain.
+        status_output = (
+            "" if status.failure or status.value.exit_code != 0 else status.value.stdout
+        )
         for raw_line in status_output.splitlines():
             if not raw_line:
                 continue
@@ -81,11 +76,13 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
         returned paths are scope-relative, never repo-relative.
         """
         resolved_root = Path(scope_root)
-        repo_root_text = FlextInfraUtilitiesGitScope._git_repo_root(scope_root)
+        repo_root_text = FlextInfraUtilitiesGitScopeMixin._git_repo_root(scope_root)
         if repo_root_text is None:
             return None
         repo_relative_paths = (
-            FlextInfraUtilitiesGitScope._git_tracked_repo_relative_paths(repo_root_text)
+            FlextInfraUtilitiesGitScopeMixin._git_tracked_repo_relative_paths(
+                repo_root_text
+            )
         )
         if repo_relative_paths is None:
             return None
@@ -158,4 +155,4 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
         return f"{relative_prefix}{c.Infra.PYPROJECT_FILENAME}" in tracked_paths
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitScope"]
+__all__: list[str] = ["FlextInfraUtilitiesGitScopeMixin"]

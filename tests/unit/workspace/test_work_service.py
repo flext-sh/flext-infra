@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import flext_infra
 import pytest
-from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, u
+from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, m, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -153,13 +153,22 @@ class TestsFlextInfraWorkService:
     def _attach_bare_origin(tmp_path: PathType, repository: PathType) -> PathType:
         """Replace the self-referencing fixture remote with a pushable origin."""
         origin = tmp_path / "origin.git"
-        tm.ok(test_u.Infra.git_capture(tmp_path, ("init", "--bare", str(origin))))
         tm.ok(
-            test_u.Infra.git_capture(
-                repository, ("remote", "set-url", "origin", str(origin))
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "init", "--bare", str(origin)], cwd=tmp_path
             )
         )
-        tm.ok(test_u.Infra.git_capture(repository, ("push", "origin", "main")))
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "remote", "set-url", "origin", str(origin)],
+                cwd=repository,
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "push", "origin", "main"], cwd=repository
+            )
+        )
         return origin
 
     @staticmethod
@@ -173,7 +182,9 @@ class TestsFlextInfraWorkService:
     @staticmethod
     def _commit_in(lane: PathType, message: str) -> None:
         tm.ok(
-            test_u.Infra.git_capture(lane, ("commit", "--allow-empty", "-m", message))
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "--allow-empty", "-m", message], cwd=lane
+            )
         )
 
     def test_start_registers_lane_and_status_reports_metadata(
@@ -225,8 +236,10 @@ class TestsFlextInfraWorkService:
             "worktree": str(repository),
             "integration_base": "HEAD",
             "head_oid": tm.ok(
-                test_u.Infra.git_capture(repository, ("rev-parse", "HEAD"))
-            ),
+                test_u.Infra.git_repository_head(
+                    m.Infra.GitRepoRequest(repo_root=repository)
+                )
+            ).oid,
         }
         store.write_text(json.dumps(payload), encoding="utf-8")
         result = FlextInfraWorkService(
@@ -1070,11 +1083,14 @@ class TestsFlextInfraWorkService:
         assert metadata["pr_number"] == "7"
         assert metadata["pr_url"] == "https://example.test/pr/7"
         pushed = tm.ok(
-            test_u.Infra.git_capture(
-                repository, ("rev-parse", "refs/remotes/origin/feature/land-happy")
+            test_u.Infra.git_rev_parse(
+                m.Infra.GitCommitishRequest(
+                    repo_root=repository,
+                    commitish="refs/remotes/origin/feature/land-happy",
+                )
             )
-        )
-        assert pushed.strip() == metadata["head_oid"]
+        ).oid
+        assert pushed == metadata["head_oid"]
 
     def test_land_allows_ancestor_cas(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -1141,15 +1157,27 @@ class TestsFlextInfraWorkService:
         )
         lane = Path(self._metadata(tmp_path)["worktree"])
         self._commit_in(repository, "remote advance")
-        remote_oid = tm.ok(test_u.Infra.git_capture(repository, ("rev-parse", "HEAD")))
+        remote_oid = tm.ok(
+            test_u.Infra.git_repository_head(
+                m.Infra.GitRepoRequest(repo_root=repository)
+            )
+        ).oid
         tm.ok(
-            test_u.Infra.git_capture(
-                repository, ("push", "origin", "HEAD:refs/heads/feature/land-reject")
+            test_u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "push",
+                    "origin",
+                    "HEAD:refs/heads/feature/land-reject",
+                ],
+                cwd=repository,
             )
         )
-        tm.ok(test_u.Infra.git_capture(lane, ("fetch", "origin")))
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "fetch", "origin"], cwd=lane))
         self._commit_in(lane, "lane diverge")
-        local_oid = tm.ok(test_u.Infra.git_capture(lane, ("rev-parse", "HEAD")))
+        local_oid = tm.ok(
+            test_u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
+        ).oid
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,

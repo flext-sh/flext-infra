@@ -294,7 +294,7 @@ Infra:
         # custom handlers without taking the serialized mutation lock.
         # `docs` materializes contract artifacts under APPLY=Y (handler picks
         # --apply/--check), same class as gen/fmt/fix.
-        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs]
+        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs, mod]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -308,7 +308,7 @@ Infra:
         # Serialized surface: the read-only validators plus every mutation verb,
         # so no two lanes mutate one checkout concurrently. `run` stays out:
         # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
-        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs]
+        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs, mod]
       verbs:
         - name: help
           default_what: usage
@@ -403,6 +403,14 @@ Infra:
           # only status is read-only, so it stays the default WHAT.
           apply_guarded: true
           apply_what: land
+        - name: mod
+          default_what: check
+          whats: [check, all, apply]
+          # `mod` batch-applies the sgconfig ast-grep rules under the
+          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
+          # the read-only dry-run fixed-point after mutation.
+          apply_guarded: true
+          apply_what: apply
       custom_handler_policy:
         filename: custom.mk
         # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
@@ -411,7 +419,7 @@ Infra:
         # from pre-/post- lifecycle hooks. The validator must accept both
         # shapes the runtime itself dispatches to, or every project that
         # defines a custom WHAT handler fails `codegen conform` outright.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)_[a-z0-9][a-z0-9_-]*)$"
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:

@@ -96,10 +96,10 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if head.failure:
             return r.fail(head.error or "failed to resolve lane HEAD")
         if head.value != expected:
-            contains = u.Infra.git_run(
-                lane, ("merge-base", "--is-ancestor", expected, "HEAD")
+            contains = u.Infra.git_is_ancestor(
+                m.Infra.GitCommitishRequest(repo_root=lane, commitish=expected)
             )
-            if contains.failure or contains.value.exit_code != 0:
+            if contains.failure or not contains.value.value:
                 return r.fail(
                     f"CAS failed: metadata.head_oid={expected} head={head.value}"
                 )
@@ -112,8 +112,8 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         ).execute()
         if synced.failure:
             return r.fail(synced.error or "work land sync failed")
-        pushed = u.Infra.git_capture(
-            lane, ("push", "-u", "origin", f"HEAD:refs/heads/{branch}")
+        pushed = u.Infra.git_push_upstream(
+            m.Infra.GitPushRequest(repo_root=lane, branch=branch)
         )
         if pushed.failure:
             return r.fail(
@@ -126,14 +126,14 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             return r.fail(head.error or "failed to resolve pushed HEAD")
         pr_base = integration
         if pr_base == "HEAD":
-            resolved_base = u.Infra.git_capture(
-                primary_root, ("rev-parse", "--abbrev-ref", "HEAD")
+            resolved_base = u.Infra.git_abbrev_ref_head(
+                m.Infra.GitRepoRequest(repo_root=primary_root)
             )
             if resolved_base.failure:
                 return r.fail(
                     resolved_base.error or "failed to resolve HEAD for PR base"
                 )
-            pr_base = resolved_base.value.strip()
+            pr_base = resolved_base.value.text
             if not pr_base or pr_base == "HEAD":
                 return r.fail(
                     "work land cannot open a PR with unresolved integration base HEAD"

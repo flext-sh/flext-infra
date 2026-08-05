@@ -148,15 +148,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
-        superproject = u.Infra.git_capture(
-            project_dir, ("rev-parse", "--show-superproject-working-tree")
+        superproject = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=project_dir)
         )
         if superproject.success:
             # Git topology is authoritative inside a work tree: a nested
             # repository names its superproject, an independent checkout or
             # linked worktree names nothing. A local .venv (including a
             # borrowed symlink to the parent runtime) must not outrank this.
-            return r[bool].ok(bool(superproject.value.strip()))
+            return r[bool].ok(bool(superproject.value.text.strip()))
         local_venv = project_dir / venv_name
         if local_venv.is_symlink():
             target = local_venv.resolve()

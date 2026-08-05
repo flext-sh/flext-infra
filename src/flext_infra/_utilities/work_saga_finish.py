@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import FlextInfraWorktreeService, c, u
+from flext_infra import FlextInfraWorktreeService, c, m, u
 from flext_infra._utilities.work_saga_common import FlextInfraWorkSagaCommon
 
 if TYPE_CHECKING:
@@ -79,15 +79,20 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         ).execute()
         if removed.failure:
             return r.fail(removed.error or f"failed to remove lane {branch}")
-        deleted = u.Infra.git_capture(
-            primary_root, ("update-ref", "-d", f"refs/heads/{branch}", expected)
+        deleted = u.Infra.git_delete_ref(
+            m.Infra.GitDeleteRefRequest(
+                repo_root=primary_root,
+                reference=f"refs/heads/{branch}",
+                expected_oid=expected,
+            )
         )
         if deleted.failure:
-            exists = u.Infra.git_run(
-                primary_root,
-                ("show-ref", "--verify", "--quiet", f"refs/heads/{branch}"),
+            exists = u.Infra.git_ref_exists(
+                m.Infra.GitRefRequest(
+                    repo_root=primary_root, reference=f"refs/heads/{branch}"
+                )
             )
-            if exists.success and exists.value.exit_code == 0:
+            if exists.success and exists.value.value:
                 return r.fail(deleted.error or f"failed to delete local ref {branch}")
         notes = (
             f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "

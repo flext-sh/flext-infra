@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,7 +38,7 @@ class FlextInfraUtilitiesIterationDirectory:
         resolved_directory = directory.resolve()
         if not resolved_directory.is_dir():
             return []
-        tracked_files = FlextInfraUtilitiesGitScope.git_tracked_scope_paths(
+        tracked_files = FlextInfraUtilitiesGit.git_tracked_scope_paths(
             resolved_directory
         )
         files = (

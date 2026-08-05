@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_infra import m
+from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
 from flext_infra.codemod.rules.refactor.apply_renames import FlextInfraApplyRenames
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
@@ -144,6 +145,14 @@ class RefactorRoutes(CliRouteBase):
                 transformer_factory=FlextInfraRefactorCliModernizer,
                 description="cli modernizer",
             ),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="mod",
+            help_text=(
+                "Batch-apply all ast-grep rules under the ruff/pyrefly rollback circuit"
+            ),
+            model_cls=FlextInfraCodemodBatchApply,
+            handler=lambda params: FlextInfraCodemodBatchApply.execute_command(params),
         ),
     )
 

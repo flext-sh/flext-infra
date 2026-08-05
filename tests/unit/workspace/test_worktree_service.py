@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraWorktreeService, c
+from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
 
@@ -53,8 +53,12 @@ class TestsFlextInfraWorktreeService:
     @staticmethod
     def _commit_fixture(repository: Path, message: str) -> None:
         """Commit one deliberate fixture mutation."""
-        tm.ok(u.Infra.git_capture(repository, ("add", "Makefile", "pyproject.toml")))
-        tm.ok(u.Infra.git_capture(repository, ("commit", "-m", message)))
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "add", "Makefile", "pyproject.toml"], cwd=repository
+            )
+        )
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, "commit", "-m", message], cwd=repository))
 
     def test_list_reports_the_primary_worktree(self, tmp_path: Path) -> None:
         """List is read-only and reports Git's canonical registry."""
@@ -88,7 +92,11 @@ class TestsFlextInfraWorktreeService:
         tm.that(lane.is_dir(), where=bool)
         tm.that(not lane.is_relative_to(repository), where=bool)
         tm.that(
-            tm.ok(u.Infra.git_capture(repository, ("worktree", "list", "--porcelain"))),
+            tm.ok(
+                u.Infra.git_list_worktrees(
+                    m.Infra.GitRepoRequest(repo_root=repository)
+                )
+            ).text,
             has=f"worktree {lane}",
         )
 
@@ -240,12 +248,13 @@ class TestsFlextInfraWorktreeService:
         tm.that(not lane.exists(), where=bool)
         tm.that(
             tm.ok(
-                u.Infra.git_run(
-                    repository,
-                    ("show-ref", "--verify", "--quiet", f"refs/heads/{branch}"),
+                u.Infra.git_ref_exists(
+                    m.Infra.GitRefRequest(
+                        repo_root=repository, reference=f"refs/heads/{branch}"
+                    )
                 )
-            ).exit_code,
-            eq=1,
+            ).value,
+            eq=False,
         )
 
     def test_clean_setup_failure_rolls_back_only_the_new_lane(
@@ -319,14 +328,24 @@ class TestsFlextInfraWorktreeService:
             ).execute()
         )
         (repository / "owner.txt").write_text("owner\n", encoding="utf-8")
-        tm.ok(u.Infra.git_capture(repository, ("add", "owner.txt")))
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "owner.txt"], cwd=repository))
         tm.ok(
-            u.Infra.git_capture(
-                repository, ("commit", "-m", "test: advance update base")
+            u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "test: advance update base"],
+                cwd=repository,
             )
         )
-        base = tm.ok(u.Infra.git_capture(repository, ("rev-parse", "HEAD"))).strip()
-        tm.that(tm.ok(u.Infra.git_primary_worktree_root(lane)), eq=repository.resolve())
+        base = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository))
+        ).oid
+        tm.that(
+            tm.ok(
+                u.Infra.git_primary_worktree_root(
+                    m.Infra.GitRepoRequest(repo_root=lane)
+                )
+            ).primary_root,
+            eq=repository.resolve(),
+        )
 
         updated = tm.ok(
             FlextInfraWorktreeService(
@@ -340,7 +359,10 @@ class TestsFlextInfraWorktreeService:
 
         tm.that(updated, eq=str(lane))
         tm.that(
-            tm.ok(u.Infra.git_capture(lane, ("rev-parse", "HEAD"))).strip(), eq=base
+            tm.ok(
+                u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
+            ).oid,
+            eq=base,
         )
 
     def test_mutation_without_apply_fails_closed(self, tmp_path: Path) -> None:
@@ -407,22 +429,45 @@ class TestsFlextInfraWorktreeService:
             )
         )
         attached = superproject / "attached"
-        tm.ok(u.Infra.git_capture(attached, ("config", "--unset", "core.worktree")))
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "config", "--unset", "core.worktree"], cwd=attached
+            )
+        )
         tm.that(
-            tm.ok(u.Infra.git_primary_worktree_root(attached)), eq=attached.resolve()
+            tm.ok(
+                u.Infra.git_primary_worktree_root(
+                    m.Infra.GitRepoRequest(repo_root=attached)
+                )
+            ).primary_root,
+            eq=attached.resolve(),
         )
         linked = tmp_path / "attached-linked"
         tm.ok(
-            u.Infra.git_capture(
-                attached, ("worktree", "add", "--detach", str(linked), "HEAD")
+            u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "add", "--detach", str(linked), "HEAD"],
+                cwd=attached,
             )
         )
-        tm.that(tm.ok(u.Infra.git_primary_worktree_root(linked)), eq=linked.resolve())
+        tm.that(
+            tm.ok(
+                u.Infra.git_primary_worktree_root(
+                    m.Infra.GitRepoRequest(repo_root=linked)
+                )
+            ).primary_root,
+            eq=linked.resolve(),
+        )
         tm.ok(
-            u.Infra.git_capture(linked, ("worktree", "remove", "--force", str(linked)))
+            u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "remove", "--force", str(linked)], cwd=linked
+            )
         )
         branch = "feature/attached"
-        primary = tm.ok(u.Infra.git_primary_worktree_root(attached))
+        primary = tm.ok(
+            u.Infra.git_primary_worktree_root(
+                m.Infra.GitRepoRequest(repo_root=attached)
+            )
+        ).primary_root
         expected_lane = self._lane(primary, superproject, branch)
 
         lane = tm.ok(

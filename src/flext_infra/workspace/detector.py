@@ -590,12 +590,16 @@ class FlextInfraWorkspaceDetector(
         # Detect them from Git's canonical topology rather than from a test-only
         # environment flag, so the same code path works for real worktrees and for
         # unit fixtures that simulate CLI transaction scope.
-        primary_root_result = u.Infra.git_primary_worktree_root(resolved_root)
+        primary_root_result = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=resolved_root)
+        )
         if primary_root_result.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
                 primary_root_result.error or "unable to resolve primary worktree"
             )
-        is_transaction_worktree = primary_root_result.value != resolved_root
+        is_transaction_worktree = (
+            primary_root_result.value.primary_root != resolved_root
+        )
         # Beads participation: workspace root owns; independent standalone opts in;
         # ephemeral transaction worktrees route to the principal ledger; members and
         # attached standalones do not own tracker state.
