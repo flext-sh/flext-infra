@@ -7,10 +7,14 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import t
+from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
 
 
-class FlextInfraModelsGit:
-    """Declaration-only models for Git facade and FlextInfraGitService."""
+class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
+    """Declaration-only models for Git facade and FlextInfraGitService.
+
+    Composed via MRO with FlextInfraModelsGitIdentity (GitIdentityReport).
+    """
 
     class GitRepoRequest(m.ContractModel):
         """One repository path for a monomorphic Git query."""

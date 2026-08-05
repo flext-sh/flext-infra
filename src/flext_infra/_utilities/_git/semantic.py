@@ -521,5 +521,60 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitTextReport].fail(f"failed to resolve remote URL: {exc}")
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=url))
 
+    @classmethod
+    def git_identity(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[m.Infra.GitIdentityReport]:
+        """Return consolidated Git identity for one repository path.
+
+        One call replaces 6+ separate queries. Implemented over GitPython
+        native OO API.
+        """
+        try:
+            repo = git_repo(request.repo_root)
+            report = cls._collect_identity_facts(repo)
+        except GitCommandError as exc:
+            return r[m.Infra.GitIdentityReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitIdentityReport].fail(
+                f"failed to resolve Git identity: {exc}"
+            )
+        return r[m.Infra.GitIdentityReport].ok(report)
+
+    @staticmethod
+    def _collect_identity_facts(repo: Repo) -> m.Infra.GitIdentityReport:
+        """Collect GitPython-native identity facts into one report."""
+        head_oid = repo.head.commit.hexsha
+        working_tree = Path(repo.working_tree_dir or str(repo.working_dir)).resolve()
+        git_dir = Path(repo.git_dir).resolve()
+        common_dir = Path(repo.common_dir).resolve()
+        porcelain = repo.git.status("--porcelain", "--untracked-files=all")
+        try:
+            branch: str | None = repo.active_branch.name
+        except TypeError:
+            branch = None
+        try:
+            origin: str | None = repo.remotes["origin"].url
+        except (IndexError, AssertionError):
+            origin = None
+        superproject: Path | None = None
+        try:
+            raw_super = repo.git.rev_parse("--show-superproject-working-tree").strip()
+            if raw_super:
+                superproject = Path(raw_super).resolve()
+        except GitCommandError:
+            pass
+        return m.Infra.GitIdentityReport(
+            repo_root=working_tree,
+            head_oid=head_oid,
+            porcelain=porcelain,
+            dirty=bool(porcelain.strip()),
+            git_dir=git_dir,
+            common_dir=common_dir,
+            branch=branch,
+            origin_remote=origin,
+            superproject_root=superproject,
+        )
+
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticMixin"]
