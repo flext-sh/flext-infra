@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import FlextInfraWorktreeService, c, u
+from flext_infra import FlextInfraWorktreeService, c, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -26,7 +26,12 @@ class FlextInfraWorkSagaCommon:
     branch: str | None
 
     def _primary_root(self) -> p.Result[Path]:
-        return u.Infra.git_primary_worktree_root(self.workspace_root)
+        primary = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
+        )
+        if primary.failure:
+            return r[Path].fail(primary.error or "failed to resolve primary worktree")
+        return r[Path].ok(primary.value.primary_root)
 
     def _resolve_integration_base(self, primary_root: Path) -> p.Result[str]:
         explicit = (self.base or "").strip()
@@ -62,10 +67,12 @@ class FlextInfraWorkSagaCommon:
         if not cleaned or cleaned == "HEAD" or cleaned.startswith("origin/"):
             return cleaned
         remote = f"origin/{cleaned}"
-        checked = u.Infra.git_capture(
-            primary_root, ("show-ref", "--verify", "--quiet", f"refs/remotes/{remote}")
+        checked = u.Infra.git_ref_exists(
+            m.Infra.GitRefRequest(
+                repo_root=primary_root, reference=f"refs/remotes/{remote}"
+            )
         )
-        if checked.success:
+        if checked.success and checked.value.value:
             return remote
         return cleaned
 
@@ -113,10 +120,10 @@ class FlextInfraWorkSagaCommon:
 
     @staticmethod
     def _git_head(root: Path) -> p.Result[str]:
-        oid = u.Infra.git_capture(root, ("rev-parse", "HEAD"))
+        oid = u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=root))
         if oid.failure:
             return r.fail(oid.error or "failed to resolve HEAD")
-        return r.ok(oid.value.strip())
+        return r.ok(oid.value.oid)
 
     @staticmethod
     def _refuse_permanent_branch(branch: str, integration: str) -> p.Result[bool]:
@@ -148,12 +155,10 @@ class FlextInfraWorkSagaCommon:
 
     @staticmethod
     def _ensure_clean(lane: Path) -> p.Result[bool]:
-        status = u.Infra.git_capture(
-            lane, ("status", "--porcelain", "--untracked-files=all")
-        )
+        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:
             return r.fail(status.error or f"failed to inspect {lane}")
-        if status.value.strip():
+        if status.value.dirty:
             return r.fail("work land/finish requires a clean lane worktree")
         return r.ok(True)
 
@@ -184,10 +189,12 @@ class FlextInfraWorkSagaCommon:
     @staticmethod
     def _push_rejection(lane: Path, branch: str, error: str) -> str:
         """Explain a rejected push with the local and remote SHAs that diverged."""
-        local = u.Infra.git_capture(lane, ("rev-parse", "HEAD"))
-        remote = u.Infra.git_capture(lane, ("rev-parse", f"origin/{branch}"))
-        local_oid = local.value.strip() if local.success else "unresolved"
-        remote_oid = remote.value.strip() if remote.success else "unresolved"
+        local = u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
+        remote = u.Infra.git_rev_parse(
+            m.Infra.GitCommitishRequest(repo_root=lane, commitish=f"origin/{branch}")
+        )
+        local_oid = local.value.oid if local.success else "unresolved"
+        remote_oid = remote.value.oid if remote.success else "unresolved"
         return f"{error} local={local_oid} remote={remote_oid}"
 
 

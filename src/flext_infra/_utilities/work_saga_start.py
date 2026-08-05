@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import FlextInfraWorktreeService, c, u
+from flext_infra import FlextInfraWorktreeService, c, m, u
 from flext_infra._utilities.work_saga_common import FlextInfraWorkSagaCommon
 
 if TYPE_CHECKING:
@@ -83,7 +83,9 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             return r.fail(base.error or "failed to resolve integration base")
         reused = self._reusable_lane(primary_root, branch)
         if reused is None:
-            fetched = u.Infra.git_capture(primary_root, ("fetch", "origin"))
+            fetched = u.Infra.git_fetch_origin(
+                m.Infra.GitRepoRequest(repo_root=primary_root)
+            )
             if fetched.failure:
                 return r.fail(fetched.error or "work start failed to fetch origin")
             created = FlextInfraWorktreeService(

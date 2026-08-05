@@ -175,16 +175,12 @@ class FlextInfraUtilitiesWorktreeTransaction:
                         return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                             f"missing isolated checkpoint for {nested.relative_path}"
                         )
-                    update_result = FlextInfraUtilitiesGit.git_capture(
-                        repository.worktree_root,
-                        (
-                            "update-index",
-                            "--add",
-                            "--cacheinfo",
-                            "160000",
-                            nested_head,
-                            nested.relative_path,
-                        ),
+                    update_result = FlextInfraUtilitiesGit.git_update_index_gitlink(
+                        m.Infra.GitUpdateIndexGitlinkRequest(
+                            repo_root=repository.worktree_root,
+                            oid=nested_head,
+                            relative_path=nested.relative_path,
+                        )
                     )
                     if update_result.failure:
                         cls._cleanup_worktrees(created, worktree_root)
@@ -513,12 +509,14 @@ class FlextInfraUtilitiesWorktreeTransaction:
         }
         resolved_gitlinks: dict[str, str] = {}
         for path, source_root in source_gitlinks.items():
-            head_result = FlextInfraUtilitiesGit.git_repository_head(source_root)
+            head_result = FlextInfraUtilitiesGit.git_repository_head(
+                m.Infra.GitRepoRequest(repo_root=source_root)
+            )
             if head_result.failure:
                 return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
                     head_result.error or f"failed to resolve source head for {path}"
                 )
-            resolved_gitlinks[path] = head_result.value
+            resolved_gitlinks[path] = head_result.value.oid
         deltas: t.MutableSequenceOf[m.Infra.RepositoryDelta] = []
         for repository in repositories:
             result = FlextInfraUtilitiesGit.git_repository_delta(
@@ -552,8 +550,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
     ) -> p.Result[bool]:
         """Reject every transaction when any source HEAD moved after checkpoint."""
         for delta in deltas:
-            checkpoint_parent = FlextInfraUtilitiesGit.git_capture(
-                delta.worktree_root, ("rev-parse", f"{delta.checkpoint_sha}^")
+            checkpoint_parent = FlextInfraUtilitiesGit.git_rev_parse_parent(
+                m.Infra.GitCommitishRequest(
+                    repo_root=delta.worktree_root, commitish=delta.checkpoint_sha
+                )
             )
             if checkpoint_parent.failure:
                 return r[bool].fail(
@@ -561,15 +561,15 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     or f"{delta.relative_path}: failed to resolve checkpoint parent"
                 )
             source_head = FlextInfraUtilitiesGit.git_repository_head(
-                delta.source_root
+                m.Infra.GitRepoRequest(repo_root=delta.source_root)
             )
             if source_head.failure:
                 return r[bool].fail(
                     source_head.error
                     or f"{delta.relative_path}: failed to resolve source HEAD"
                 )
-            expected = checkpoint_parent.value.strip()
-            actual = source_head.value.strip()
+            expected = checkpoint_parent.value.oid
+            actual = source_head.value.oid
             if actual != expected:
                 return r[bool].fail(
                     f"{delta.relative_path}: source HEAD changed during isolated "
@@ -587,14 +587,14 @@ class FlextInfraUtilitiesWorktreeTransaction:
         for delta in deltas:
             for repository_root in (delta.source_root, delta.worktree_root):
                 workspace_result = FlextInfraUtilitiesGit.git_workspace_root(
-                    repository_root
+                    m.Infra.GitRepoRequest(repo_root=repository_root)
                 )
                 if workspace_result.failure:
                     return r[t.SequenceOf[Path]].fail(
                         workspace_result.error
                         or f"failed to resolve lock owner for {repository_root}"
                     )
-                workspace_root = workspace_result.value.resolve()
+                workspace_root = workspace_result.value.workspace_root.resolve()
                 lock_path = (workspace_root / relative_lock_path).resolve()
                 try:
                     lock_path.relative_to(workspace_root)
@@ -695,13 +695,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
         workspace_root = request.workspace_root.resolve()
         transaction_id = uuid4().hex
         primary_result = FlextInfraUtilitiesGit.git_primary_worktree_root(
-            workspace_root
+            m.Infra.GitRepoRequest(repo_root=workspace_root)
         )
         if primary_result.failure:
             return r[m.Infra.WorktreeTransactionReport].fail(
                 primary_result.error or "failed to resolve primary worktree"
             )
-        primary_root = primary_result.value
+        primary_root = primary_result.value.primary_root
         worktree_root = primary_root.parent / (
             c.Infra.WORKTREE_TRANSACTION_NAME_TEMPLATE.format(
                 repository=primary_root.name, transaction_id=transaction_id

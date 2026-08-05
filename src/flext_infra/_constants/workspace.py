@@ -23,15 +23,6 @@ class FlextInfraConstantsWorkspace:
         UPDATE = "update"
         REMOVE = "remove"
 
-
-    @unique
-    class GitOperation(StrEnum):
-        """Public FlextInfraGitService operations."""
-
-        STATUS = "status"
-        PRIMARY_ROOT = "primary_root"
-        WORKSPACE_ROOT = "workspace_root"
-
     @unique
     class WorkOperation(StrEnum):
         """Public make work saga operations."""

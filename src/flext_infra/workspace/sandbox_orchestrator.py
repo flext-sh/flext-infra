@@ -57,15 +57,12 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
     def _rollback_sandbox(self) -> p.Result[bool]:
         """Rollback sandbox."""
         for project_root in u.Infra.discover_project_roots(self._sandbox_path):
-            restored = u.Infra.git_run(project_root, ("checkout", "--", "."))
+            restored = u.Infra.git_checkout_restore(
+                m.Infra.GitRepoRequest(repo_root=project_root)
+            )
             if restored.failure:
                 return r[bool].fail(
                     restored.error or f"sandbox rollback ({project_root.name}) failed"
-                )
-            if restored.value.exit_code != 0:
-                detail = (restored.value.stderr or restored.value.stdout).strip()
-                return r[bool].fail(
-                    detail or f"sandbox rollback ({project_root.name}) failed"
                 )
         return r[bool].ok(True)
 

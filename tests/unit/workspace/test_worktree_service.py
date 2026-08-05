@@ -53,8 +53,12 @@ class TestsFlextInfraWorktreeService:
     @staticmethod
     def _commit_fixture(repository: Path, message: str) -> None:
         """Commit one deliberate fixture mutation."""
-        tm.ok(u.Infra.git_capture(repository, ("add", "Makefile", "pyproject.toml")))
-        tm.ok(u.Infra.git_capture(repository, ("commit", "-m", message)))
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "add", "Makefile", "pyproject.toml"], cwd=repository
+            )
+        )
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, "commit", "-m", message], cwd=repository))
 
     def test_list_reports_the_primary_worktree(self, tmp_path: Path) -> None:
         """List is read-only and reports Git's canonical registry."""

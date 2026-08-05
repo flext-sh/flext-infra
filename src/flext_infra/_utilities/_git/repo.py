@@ -5,36 +5,79 @@ from __future__ import annotations
 import io
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
-from git import Git, GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
+from git import (
+    Git,
+    GitCommandError,
+    GitCommandNotFound,
+    InvalidGitRepositoryError,
+    NoSuchPathError,
+    Repo,
+)
 
 from flext_cli import m
 from flext_core import r
 from flext_infra.constants import c
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
-def git_refresh_binary() -> None:
+class _GitExtendedExecute[TStdout](Protocol):
+    """Extended-output call shape of ``Git.execute`` for one stdout channel.
+
+    GitPython publishes overloads that omit every keyword this facet depends on,
+    so the concrete callable is narrowed to this contract at each call site.
+    ``TStdout`` must agree with ``stdout_as_string``: ``str`` when it is ``True``,
+    ``bytes`` when it is ``False``.
+    """
+
+    def __call__(
+        self,
+        command: t.StrSequence,
+        *,
+        istream: io.BytesIO | None,
+        with_extended_output: Literal[True],
+        with_exceptions: bool,
+        stdout_as_string: bool,
+        kill_after_timeout: float | None,
+        universal_newlines: bool,
+        strip_newline_in_stdout: bool,
+    ) -> tuple[int, TStdout, str]: ...
+
+
+def git_refresh_binary() -> p.Result[bool]:
     """Point GitPython at the absolute path of the canonical git binary."""
     # Git.refresh resolves relative names against cwd; always pass an absolute path.
     resolved = shutil.which(c.Infra.GIT)
     if resolved is None:
-        msg = f"git executable not found on PATH: {c.Infra.GIT}"
-        raise FileNotFoundError(msg)
-    Git.refresh(resolved)
+        return r[bool].fail(f"git executable not found on PATH: {c.Infra.GIT}")
+    try:
+        Git.refresh(resolved)
+    except (FileNotFoundError, OSError) as exc:
+        return r[bool].fail(f"git binary refresh failed: {exc}")
+    return r[bool].ok(True)
 
 
 def git_open_repo(repo_root: Path) -> p.Result[Repo]:
     """Open one non-bare worktree repository at ``repo_root``."""
-    git_refresh_binary()
     resolved = repo_root.expanduser().resolve()
     try:
+        refreshed = git_refresh_binary()
+        if refreshed.failure:
+            return r[Repo].fail(refreshed.error or "git binary unavailable")
         repo = Repo(resolved)
-    except (InvalidGitRepositoryError, NoSuchPathError, OSError, ValueError) as exc:
-        return r[Repo].fail(f"invalid git repository at {resolved}: {exc}")
+    except (
+        GitCommandNotFound,
+        ImportError,
+        InvalidGitRepositoryError,
+        NoSuchPathError,
+        OSError,
+        ValueError,
+    ) as exc:
+        return r[Repo].fail(f"cannot open git repository at {resolved}: {exc}")
     if repo.bare or repo.working_tree_dir is None:
         return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
     return r[Repo].ok(repo)
@@ -47,37 +90,32 @@ def git_execute_text(
     input_data: bytes | None = None,
     timeout: int | None = None,
 ) -> p.Result[m.Cli.CommandOutput]:
-    """Execute ``git <arguments>`` via GitPython returning text CommandOutput."""
-    opened = git_open_repo(repo_root)
-    if opened.failure:
-        return r[m.Cli.CommandOutput].fail(
-            opened.error or "failed to open git repository"
-        )
-    command: tuple[str, ...] = (c.Infra.GIT, *tuple(arguments))
+    """Execute ``git <arguments>`` via cwd-bound GitPython returning text output.
+
+    Does not require an existing worktree — preserves Cli cwd semantics including
+    ``git init --bare`` on a non-repo directory.
+    """
+    resolved = repo_root.expanduser().resolve()
+    refreshed = git_refresh_binary()
+    if refreshed.failure:
+        return r[m.Cli.CommandOutput].fail(refreshed.error or "git binary unavailable")
+    command: tuple[str, ...] = (c.Infra.GIT, *arguments)
+    execute = cast("_GitExtendedExecute[str]", Git(working_dir=str(resolved)).execute)
     try:
-        status, stdout, stderr = cast(
-            "tuple[int, str | bytes, str]",
-            opened.value.git.execute(
-                command,
-                istream=None if input_data is None else io.BytesIO(input_data),
-                with_extended_output=True,
-                with_exceptions=False,
-                stdout_as_string=True,
-                kill_after_timeout=None if timeout is None else float(timeout),
-                universal_newlines=False,
-                strip_newline_in_stdout=False,
-            ),
+        status, stdout, stderr = execute(
+            command,
+            istream=None if input_data is None else io.BytesIO(input_data),
+            with_extended_output=True,
+            with_exceptions=False,
+            stdout_as_string=True,
+            kill_after_timeout=None if timeout is None else float(timeout),
+            universal_newlines=False,
+            strip_newline_in_stdout=False,
         )
-    except (GitCommandError, OSError, ValueError) as exc:
+    except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
         return r[m.Cli.CommandOutput].fail(f"git execution failed: {exc}")
-    out_s = (
-        stdout if isinstance(stdout, str) else bytes(stdout).decode("utf-8", "replace")
-    )
-    err_s = (
-        stderr if isinstance(stderr, str) else bytes(stderr).decode("utf-8", "replace")
-    )
     return r[m.Cli.CommandOutput].ok(
-        m.Cli.CommandOutput(stdout=out_s, stderr=err_s, exit_code=int(status))
+        m.Cli.CommandOutput(stdout=stdout, stderr=stderr, exit_code=status)
     )
 
 
@@ -88,31 +126,80 @@ def git_execute_bytes(
     input_data: bytes | None = None,
     timeout: int | None = None,
 ) -> p.Result[m.Cli.CommandBytesOutput]:
-    """Execute ``git <arguments>`` via GitPython returning byte CommandBytesOutput."""
-    opened = git_open_repo(repo_root)
-    if opened.failure:
+    """Execute ``git <arguments>`` via cwd-bound GitPython returning byte output.
+
+    Does not require an existing worktree — preserves Cli cwd semantics.
+    """
+    resolved = repo_root.expanduser().resolve()
+    refreshed = git_refresh_binary()
+    if refreshed.failure:
         return r[m.Cli.CommandBytesOutput].fail(
-            opened.error or "failed to open git repository"
+            refreshed.error or "git binary unavailable"
         )
-    command: tuple[str, ...] = (c.Infra.GIT, *tuple(arguments))
+    command: tuple[str, ...] = (c.Infra.GIT, *arguments)
+    execute = cast("_GitExtendedExecute[bytes]", Git(working_dir=str(resolved)).execute)
     try:
-        status, stdout, stderr = cast(
-            "tuple[int, str | bytes, str]",
-            opened.value.git.execute(
-                command,
-                istream=None if input_data is None else io.BytesIO(input_data),
-                with_extended_output=True,
-                with_exceptions=False,
-                stdout_as_string=False,
-                kill_after_timeout=None if timeout is None else float(timeout),
-                universal_newlines=False,
-                strip_newline_in_stdout=False,
-            ),
+        status, stdout, stderr = execute(
+            command,
+            istream=None if input_data is None else io.BytesIO(input_data),
+            with_extended_output=True,
+            with_exceptions=False,
+            stdout_as_string=False,
+            kill_after_timeout=None if timeout is None else float(timeout),
+            universal_newlines=False,
+            strip_newline_in_stdout=False,
         )
-    except (GitCommandError, OSError, ValueError) as exc:
+    except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
         return r[m.Cli.CommandBytesOutput].fail(f"git execution failed: {exc}")
-    out_b = stdout if isinstance(stdout, bytes) else str(stdout).encode("utf-8")
-    err_b = stderr.encode("utf-8") if isinstance(stderr, str) else bytes(stderr)
     return r[m.Cli.CommandBytesOutput].ok(
-        m.Cli.CommandBytesOutput(stdout=out_b, stderr=err_b, exit_code=int(status))
+        m.Cli.CommandBytesOutput(
+            stdout=stdout,
+            stderr=stderr.encode(c.Cli.ENCODING_DEFAULT),
+            exit_code=status,
+        )
     )
+
+
+def git_run(
+    repo_root: Path,
+    arguments: t.StrSequence,
+    *,
+    input_data: bytes | None = None,
+    timeout: int | None = None,
+) -> p.Result[m.Cli.CommandOutput]:
+    """Private: run one Git command via cwd-bound execute (text)."""
+    result = git_execute_text(
+        repo_root, arguments, input_data=input_data, timeout=timeout
+    )
+    if result.failure:
+        return r[m.Cli.CommandOutput].fail(
+            result.error or "git command execution failed"
+        )
+    return r[m.Cli.CommandOutput].ok(result.value)
+
+
+def git_capture(repo_root: Path, arguments: t.StrSequence) -> p.Result[str]:
+    """Private: capture stdout from one successful Git command."""
+    result = git_run(repo_root, arguments)
+    if result.failure:
+        return r[str].fail(result.error or "git command execution failed")
+    output = result.value
+    if output.exit_code != 0:
+        detail = (output.stderr or output.stdout).strip()
+        return r[str].fail(detail or f"git command exited {output.exit_code}")
+    return r[str].ok(output.stdout)
+
+
+def git_capture_bytes(repo_root: Path, arguments: t.StrSequence) -> p.Result[bytes]:
+    """Private: capture byte-exact stdout from one successful Git command."""
+    # mro-45r9: patch transport stays binary until the human error boundary.
+    result = git_execute_bytes(repo_root, arguments)
+    if result.failure:
+        return r[bytes].fail(result.error or "git command execution failed")
+    output = result.value
+    if output.exit_code != 0:
+        detail = (output.stderr or output.stdout).decode(
+            c.Cli.ENCODING_DEFAULT, errors="replace"
+        )
+        return r[bytes].fail(detail.strip() or f"git command exited {output.exit_code}")
+    return r[bytes].ok(output.stdout)

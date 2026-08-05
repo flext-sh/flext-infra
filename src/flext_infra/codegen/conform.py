@@ -2378,12 +2378,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if probe.failure or probe.value.strip() != "true":
             return r[Path].ok(workspace_root)
-        principal = u.Infra.git_primary_worktree_root(workspace_root)
+        principal = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=workspace_root)
+        )
         if principal.failure:
             return r[Path].fail(
                 principal.error or "unable to resolve the principal worktree"
             )
-        return r[Path].ok(principal.value)
+        return r[Path].ok(principal.value.primary_root)
 
     @staticmethod
     def _beads_binary(ledger_root: Path) -> p.Result[Path]:

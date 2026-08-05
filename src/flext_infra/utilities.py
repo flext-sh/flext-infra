@@ -96,9 +96,9 @@ class FlextInfraUtilities(u):
 
     Usage::
 
-        from flext_infra import u
+        from flext_infra import m, u
 
-        u.Infra.git_capture(Path("."), ("status", "--porcelain"))
+        u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)
         u.Infra.discover_projects(workspace_root)
         u.Infra.parse_semver("1.2.3")
