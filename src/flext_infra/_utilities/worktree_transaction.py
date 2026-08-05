@@ -13,7 +13,7 @@ from uuid import uuid4
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, config, m, t
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.serialization_lock import (
     FlextInfraUtilitiesSerializationLock,
 )
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         snapshotted when scope is unknown (empty), so the whole monorepo is
         never checkpointed for an operation that touches one project.
         """
-        submodules_result = FlextInfraUtilitiesGitScope.git_submodule_paths(
+        submodules_result = FlextInfraUtilitiesGit.git_submodule_paths(
             workspace_root
         )
         if submodules_result.failure:
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 if relative_path == Path()
                 else worktree_root / relative_path
             )
-            add_result = FlextInfraUtilitiesGitScope.git_add_detached_worktree(
+            add_result = FlextInfraUtilitiesGit.git_add_detached_worktree(
                 source_root, isolated_root
             )
             if add_result.failure:
@@ -142,7 +142,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 checkpoint_sha=add_result.value,
             )
             created.append(repository)
-            copy_result = FlextInfraUtilitiesGitScope.git_copy_worktree_state(
+            copy_result = FlextInfraUtilitiesGit.git_copy_worktree_state(
                 source_root,
                 isolated_root,
                 excluded=cls._repository_exclusions(relative_path, submodule_paths),
@@ -175,7 +175,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                         return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                             f"missing isolated checkpoint for {nested.relative_path}"
                         )
-                    update_result = FlextInfraUtilitiesGitScope.git_capture(
+                    update_result = FlextInfraUtilitiesGit.git_capture(
                         repository.worktree_root,
                         (
                             "update-index",
@@ -193,7 +193,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                             or "failed to seed isolated gitlink for "
                             f"{nested.relative_path}"
                         )
-            checkpoint_result = FlextInfraUtilitiesGitScope.git_checkpoint_worktree(
+            checkpoint_result = FlextInfraUtilitiesGit.git_checkpoint_worktree(
                 repository.worktree_root,
                 message=(
                     "chore: isolated checkpoint "
@@ -513,7 +513,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         }
         resolved_gitlinks: dict[str, str] = {}
         for path, source_root in source_gitlinks.items():
-            head_result = FlextInfraUtilitiesGitScope.git_repository_head(source_root)
+            head_result = FlextInfraUtilitiesGit.git_repository_head(source_root)
             if head_result.failure:
                 return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
                     head_result.error or f"failed to resolve source head for {path}"
@@ -521,7 +521,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             resolved_gitlinks[path] = head_result.value
         deltas: t.MutableSequenceOf[m.Infra.RepositoryDelta] = []
         for repository in repositories:
-            result = FlextInfraUtilitiesGitScope.git_repository_delta(
+            result = FlextInfraUtilitiesGit.git_repository_delta(
                 repository,
                 source_gitlinks=resolved_gitlinks
                 if repository.relative_path == "."
@@ -539,7 +539,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def _check_patches(deltas: t.SequenceOf[m.Infra.RepositoryDelta]) -> p.Result[bool]:
         """Validate every patch from the isolated final state without source access."""
         for delta in deltas:
-            result = FlextInfraUtilitiesGitScope.git_check_isolated_patch(delta)
+            result = FlextInfraUtilitiesGit.git_check_isolated_patch(delta)
             if result.failure:
                 return r[bool].fail(
                     f"{delta.relative_path}: {result.error or 'patch check failed'}"
@@ -552,7 +552,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     ) -> p.Result[bool]:
         """Reject every transaction when any source HEAD moved after checkpoint."""
         for delta in deltas:
-            checkpoint_parent = FlextInfraUtilitiesGitScope.git_capture(
+            checkpoint_parent = FlextInfraUtilitiesGit.git_capture(
                 delta.worktree_root, ("rev-parse", f"{delta.checkpoint_sha}^")
             )
             if checkpoint_parent.failure:
@@ -560,7 +560,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     checkpoint_parent.error
                     or f"{delta.relative_path}: failed to resolve checkpoint parent"
                 )
-            source_head = FlextInfraUtilitiesGitScope.git_repository_head(
+            source_head = FlextInfraUtilitiesGit.git_repository_head(
                 delta.source_root
             )
             if source_head.failure:
@@ -586,7 +586,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         lock_paths: set[Path] = set()
         for delta in deltas:
             for repository_root in (delta.source_root, delta.worktree_root):
-                workspace_result = FlextInfraUtilitiesGitScope.git_workspace_root(
+                workspace_result = FlextInfraUtilitiesGit.git_workspace_root(
                     repository_root
                 )
                 if workspace_result.failure:
@@ -619,7 +619,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             deltas, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
         )
         for delta in ordered:
-            result = FlextInfraUtilitiesGitScope.git_apply_patch(delta)
+            result = FlextInfraUtilitiesGit.git_apply_patch(delta)
             if result.failure:
                 return r[bool].fail(
                     f"{delta.relative_path}: {result.error or 'patch apply failed'}"
@@ -670,7 +670,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             key=lambda item: len(Path(item.relative_path).parts),
             reverse=True,
         ):
-            result = FlextInfraUtilitiesGitScope.git_remove_worktree(
+            result = FlextInfraUtilitiesGit.git_remove_worktree(
                 repository.source_root, repository.worktree_root
             )
             if result.failure:
@@ -694,7 +694,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         """Execute, validate, optionally apply, and always remove one worktree."""
         workspace_root = request.workspace_root.resolve()
         transaction_id = uuid4().hex
-        primary_result = FlextInfraUtilitiesGitScope.git_primary_worktree_root(
+        primary_result = FlextInfraUtilitiesGit.git_primary_worktree_root(
             workspace_root
         )
         if primary_result.failure:

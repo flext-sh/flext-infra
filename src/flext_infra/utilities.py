@@ -26,7 +26,7 @@ from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
@@ -98,7 +98,7 @@ class FlextInfraUtilities(u):
 
         from flext_infra import u
 
-        u.Cli.run_checked(["git", "status"])
+        u.Infra.git_capture(Path("."), ("status", "--porcelain"))
         u.Cli.toml_read_json(path)
         u.Infra.discover_projects(workspace_root)
         u.Infra.parse_semver("1.2.3")
@@ -140,7 +140,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesPyproject,
         FlextInfraUtilitiesNamespaceConfig,
         FlextInfraUtilitiesDependencies,
-        FlextInfraUtilitiesGitScope,
+        FlextInfraUtilitiesGit,
         FlextInfraUtilitiesProjectDiscovery,
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,

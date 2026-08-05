@@ -54,18 +54,26 @@ class FlextInfraLocDeltaValidator(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Evaluate the workspace HEAD commit's labelled net-LOC delta."""
-        subject_result = u.Cli.run_raw(
-            ["git", "log", "-1", "--format=%s"], cwd=self.workspace_root, timeout=30
+        subject_result = u.Infra.git_run(
+            self.workspace_root, ("log", "-1", "--format=%s"), timeout=30
         )
         if subject_result.failure:
             return r[bool].fail(subject_result.error or "git subject read failed")
-        numstat_result = u.Cli.run_raw(
-            ["git", "diff", "--numstat", "HEAD~1", "HEAD"],
-            cwd=self.workspace_root,
-            timeout=30,
+        if subject_result.value.exit_code != 0:
+            return r[bool].fail(
+                (subject_result.value.stderr or subject_result.value.stdout).strip()
+                or "git subject read failed"
+            )
+        numstat_result = u.Infra.git_run(
+            self.workspace_root, ("diff", "--numstat", "HEAD~1", "HEAD"), timeout=30
         )
         if numstat_result.failure:
             return r[bool].fail(numstat_result.error or "git numstat read failed")
+        if numstat_result.value.exit_code != 0:
+            return r[bool].fail(
+                (numstat_result.value.stderr or numstat_result.value.stdout).strip()
+                or "git numstat read failed"
+            )
         insertions, deletions = self._sum_numstat(numstat_result.value.stdout)
         verdict = self.evaluate(
             subject=subject_result.value.stdout.strip(),

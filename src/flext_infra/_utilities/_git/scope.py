@@ -1,4 +1,4 @@
-"""Git-aware scope resolution helpers for flext-infra utilities.
+"""Git-aware scope resolution mixin for the private git facet.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
-from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
+class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitWorktreeMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @staticmethod
@@ -81,11 +81,13 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
         returned paths are scope-relative, never repo-relative.
         """
         resolved_root = Path(scope_root)
-        repo_root_text = FlextInfraUtilitiesGitScope._git_repo_root(scope_root)
+        repo_root_text = FlextInfraUtilitiesGitScopeMixin._git_repo_root(scope_root)
         if repo_root_text is None:
             return None
         repo_relative_paths = (
-            FlextInfraUtilitiesGitScope._git_tracked_repo_relative_paths(repo_root_text)
+            FlextInfraUtilitiesGitScopeMixin._git_tracked_repo_relative_paths(
+                repo_root_text
+            )
         )
         if repo_relative_paths is None:
             return None
@@ -158,4 +160,4 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
         return f"{relative_prefix}{c.Infra.PYPROJECT_FILENAME}" in tracked_paths
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitScope"]
+__all__: list[str] = ["FlextInfraUtilitiesGitScopeMixin"]

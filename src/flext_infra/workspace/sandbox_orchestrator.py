@@ -19,8 +19,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, override
 
-from git import GitCommandError, Repo
-
 from flext_core import r
 from flext_infra import m, u
 from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
@@ -59,10 +57,16 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
     def _rollback_sandbox(self) -> p.Result[bool]:
         """Rollback sandbox."""
         for project_root in u.Infra.discover_project_roots(self._sandbox_path):
-            try:
-                Repo(project_root).git.checkout("--", ".")
-            except (GitCommandError, FileNotFoundError) as exc:
-                return r[bool].fail_op(f"sandbox rollback ({project_root.name})", exc)
+            restored = u.Infra.git_run(project_root, ("checkout", "--", "."))
+            if restored.failure:
+                return r[bool].fail(
+                    restored.error or f"sandbox rollback ({project_root.name}) failed"
+                )
+            if restored.value.exit_code != 0:
+                detail = (restored.value.stderr or restored.value.stdout).strip()
+                return r[bool].fail(
+                    detail or f"sandbox rollback ({project_root.name}) failed"
+                )
         return r[bool].ok(True)
 
     @override

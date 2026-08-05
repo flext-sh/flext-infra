@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from .protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from .typings import FlextInfraTypes, FlextInfraTypes as t
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
+    from .git import FlextInfraGitService
     from .work import FlextInfraWorkService
     from .worktree import FlextInfraWorktreeService
 
@@ -47,6 +48,7 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".protocols": ("FlextInfraProtocols", "p"),
     ".typings": ("FlextInfraTypes", "t"),
     ".utilities": ("FlextInfraUtilities", "u"),
+    ".git": ("FlextInfraGitService",),
     ".work": ("FlextInfraWorkService",),
     ".worktree": ("FlextInfraWorktreeService",),
     "flext_cli": ("d", "e", "h", "r", "x"),
@@ -70,6 +72,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraServiceBase",
     "FlextInfraTypes",
     "FlextInfraUtilities",
+    "FlextInfraGitService",
     "FlextInfraWorkService",
     "FlextInfraWorktreeService",
     "__author__",

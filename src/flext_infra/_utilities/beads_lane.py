@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import u
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 _BD_UPDATE_BASE_ARGV_LENGTH = 2
 
@@ -20,7 +21,7 @@ class FlextInfraUtilitiesBeadsLane:
 
     @classmethod
     def _git_output(cls, repository: Path, *arguments: str) -> p.Result[str]:
-        captured = u.Cli.capture(("git", "-C", str(repository), *arguments))
+        captured = FlextInfraUtilitiesGit.git_capture(repository, tuple(arguments))
         if captured.failure:
             return r.fail(captured.error or f"git {' '.join(arguments)} failed")
         return r.ok(captured.value)

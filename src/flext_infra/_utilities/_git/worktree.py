@@ -8,6 +8,11 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra._utilities._git.repo import (
+    git_execute_bytes,
+    git_execute_text,
+    git_open_repo,
+)
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -27,12 +32,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         input_data: bytes | None = None,
         timeout: int | None = None,
     ) -> p.Result[p.Cli.CommandOutput]:
-        """Run one Git command through the canonical process facade."""
-        result = u.Cli.run_raw(
-            (c.Infra.GIT, *arguments),
-            cwd=repo_root,
-            input_data=input_data,
-            timeout=timeout,
+        """Run one Git command through GitPython."""
+        result = git_execute_text(
+            repo_root, arguments, input_data=input_data, timeout=timeout
         )
         if result.failure:
             return r.fail(result.error or "git command execution failed")
@@ -57,7 +59,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bytes]:
         """Capture byte-exact stdout from one successful Git command."""
         # mro-45r9: patch transport stays binary until the human error boundary.
-        result = u.Cli.run_bytes((c.Infra.GIT, *arguments), cwd=repo_root)
+        result = git_execute_bytes(repo_root, arguments)
         if result.failure:
             return r[bytes].fail(result.error or "git command execution failed")
         output: p.Cli.CommandBytesOutput = result.value
@@ -73,7 +75,13 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     @classmethod
     def git_repository_head(cls, repo_root: Path) -> p.Result[str]:
         """Capture the current repository HEAD SHA."""
-        return cls.git_capture(repo_root, ("rev-parse", "HEAD")).map(str.strip)
+        opened = git_open_repo(repo_root)
+        if opened.failure:
+            return r[str].fail(opened.error or "failed to open git repository")
+        try:
+            return r[str].ok(opened.value.head.commit.hexsha)
+        except (ValueError, TypeError, OSError) as exc:
+            return r[str].fail(f"failed to resolve HEAD: {exc}")
 
     @classmethod
     def git_workspace_root(cls, repository_path: Path) -> p.Result[Path]:

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra.constants import c
 from flext_infra.models import m
 
@@ -68,24 +68,24 @@ class FlextInfraUtilitiesWorkspaceFingerprint:
     ) -> p.Result[m.Infra.WorkspaceFingerprint]:
         """Capture a content-addressed snapshot of one Git checkout."""
         root = checkout.resolve()
-        inside_result = FlextInfraUtilitiesGitScope.git_capture(
+        inside_result = FlextInfraUtilitiesGit.git_capture(
             root, ("rev-parse", "--is-inside-work-tree")
         )
         if inside_result.failure or inside_result.value.strip() != "true":
             return r[m.Infra.WorkspaceFingerprint].fail(
                 inside_result.error or f"not a Git worktree: {root}"
             )
-        paths_result = FlextInfraUtilitiesGitScope.git_capture_bytes(
+        paths_result = FlextInfraUtilitiesGit.git_capture_bytes(
             root, ("ls-files", "-z", "--cached", "--others", "--exclude-standard")
         )
         if paths_result.failure:
             return r[m.Infra.WorkspaceFingerprint].from_failure(paths_result)
-        index_result = FlextInfraUtilitiesGitScope.git_capture_bytes(
+        index_result = FlextInfraUtilitiesGit.git_capture_bytes(
             root, ("ls-files", "--stage", "-z")
         )
         if index_result.failure:
             return r[m.Infra.WorkspaceFingerprint].from_failure(index_result)
-        head_result = FlextInfraUtilitiesGitScope.git_capture_bytes(
+        head_result = FlextInfraUtilitiesGit.git_capture_bytes(
             root, ("rev-parse", "--verify", "HEAD")
         )
         head = head_result.value.strip() if head_result.success else b"UNBORN"
