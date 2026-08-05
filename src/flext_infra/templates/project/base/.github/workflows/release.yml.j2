@@ -122,7 +122,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          make rel \
+          make release WHAT=rel APPLY=Y \
             RELEASE_PHASE="validate,version,build,publish" \
             VERSION="$RELEASE_VERSION" \
             TAG="$RELEASE_TAG" \
@@ -277,7 +277,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          make rel \
+          make release WHAT=rel APPLY=Y \
             PROJECT=flext-core \
             RELEASE_PHASE="validate,build" \
             VERSION="$RELEASE_VERSION" \
