@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from git import GitCommandError, Repo
 from git import BaseIndexEntry
@@ -16,6 +17,110 @@ from flext_infra.models import m
 
 if TYPE_CHECKING:
     from flext_infra import p
+
+_SSH_SCHEMES: frozenset[str] = frozenset({"ssh", "git+ssh"})
+_SENSITIVE_QUERY_KEYS: frozenset[str] = frozenset(
+    {
+        "access_token",
+        "api_key",
+        "apikey",
+        "auth",
+        "authorization",
+        "bearer",
+        "client_secret",
+        "id_token",
+        "jwt",
+        "key",
+        "oauth_token",
+        "password",
+        "passwd",
+        "private_key",
+        "private_token",
+        "refresh_token",
+        "secret",
+        "token",
+    }
+)
+_REDACTED_PLACEHOLDER: str = "REDACTED"
+_GITLINK_MODE: str = "160000"
+
+
+def _redact_query_component(component: str) -> str:
+    """Redact sensitive query/fragment key values; leave non-query text alone."""
+    if not component or "=" not in component:
+        return component
+    pairs = parse_qsl(component, keep_blank_values=True)
+    if not pairs:
+        return component
+    redacted = _REDACTED_PLACEHOLDER
+    changed = False
+    out: list[tuple[str, str]] = []
+    for key, value in pairs:
+        if key.casefold() in _SENSITIVE_QUERY_KEYS:
+            out.append((key, redacted))
+            changed = True
+        else:
+            out.append((key, value))
+    if not changed:
+        return component
+    return urlencode(out)
+
+
+def _redact_origin_remote(url: str) -> str:
+    """Strip credential userinfo and sensitive query/fragment tokens."""
+    value = url.strip()
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        scheme_separator = value.find("://")
+        if scheme_separator < 0:
+            return value
+        authority_start = scheme_separator + 3
+        authority_end = len(value)
+        for separator in "/?#":
+            position = value.find(separator, authority_start)
+            if position >= 0:
+                authority_end = min(authority_end, position)
+        authority = value[authority_start:authority_end]
+        _, at, host = authority.rpartition("@")
+        head = (
+            value[:authority_start] + host if at else value[:authority_end]
+        )
+        rest = value[authority_end:]
+        path_part = rest
+        query = ""
+        fragment = ""
+        hash_idx = path_part.find("#")
+        if hash_idx >= 0:
+            fragment = path_part[hash_idx + 1 :]
+            path_part = path_part[:hash_idx]
+        query_idx = path_part.find("?")
+        if query_idx >= 0:
+            query = path_part[query_idx + 1 :]
+            path_part = path_part[:query_idx]
+        redacted_query = _redact_query_component(query)
+        redacted_fragment = _redact_query_component(fragment)
+        if not at and redacted_query == query and redacted_fragment == fragment:
+            return value
+        rebuilt = head + path_part
+        if query_idx >= 0:
+            rebuilt = f"{rebuilt}?{redacted_query}"
+        if hash_idx >= 0:
+            rebuilt = f"{rebuilt}#{redacted_fragment}"
+        return rebuilt
+
+    userinfo, at, host = parsed.netloc.rpartition("@")
+    if at:
+        if parsed.scheme in _SSH_SCHEMES and ":" not in userinfo:
+            host = f"{userinfo}@{host}"
+        netloc = host
+    else:
+        netloc = parsed.netloc
+    query = _redact_query_component(parsed.query)
+    fragment = _redact_query_component(parsed.fragment)
+    if netloc == parsed.netloc and query == parsed.query and fragment == parsed.fragment:
+        return value
+    return urlunsplit((parsed.scheme, netloc, parsed.path, query, fragment))
 
 
 class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
@@ -532,7 +637,9 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         """
         try:
             repo = git_repo(request.repo_root)
-            report = cls._collect_identity_facts(repo)
+            report = cls._collect_identity_facts(
+                repo, requested_path=request.repo_root
+            )
         except GitCommandError as exc:
             return r[m.Infra.GitIdentityReport].fail(str(exc))
         except (OSError, ValueError) as exc:
@@ -542,7 +649,9 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         return r[m.Infra.GitIdentityReport].ok(report)
 
     @staticmethod
-    def _collect_identity_facts(repo: Repo) -> m.Infra.GitIdentityReport:
+    def _collect_identity_facts(
+        repo: Repo, *, requested_path: Path | None = None
+    ) -> m.Infra.GitIdentityReport:
         """Collect GitPython-native identity facts into one report."""
         head_oid = repo.head.commit.hexsha
         working_tree = Path(repo.working_tree_dir or str(repo.working_dir)).resolve()
@@ -557,6 +666,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             origin: str | None = repo.remotes["origin"].url
         except (IndexError, AssertionError):
             origin = None
+        origin_remote = _redact_origin_remote(origin) if origin else None
         superproject: Path | None = None
         try:
             raw_super = repo.git.rev_parse("--show-superproject-working-tree").strip()
@@ -564,6 +674,18 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
                 superproject = Path(raw_super).resolve()
         except GitCommandError:
             pass
+
+        is_worktree = git_dir != common_dir
+        has_submodules = any(
+            line.startswith(f"{_GITLINK_MODE} ") for line in porcelain.splitlines()
+        )
+        git_entry = working_tree / ".git"
+        is_submodule = (
+            superproject is not None
+            and git_entry.exists()
+            and not git_entry.is_dir()
+        )
+
         return m.Infra.GitIdentityReport(
             repo_root=working_tree,
             head_oid=head_oid,
@@ -572,8 +694,12 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             git_dir=git_dir,
             common_dir=common_dir,
             branch=branch,
-            origin_remote=origin,
+            origin_remote=origin_remote,
             superproject_root=superproject,
+            requested_path=requested_path,
+            is_worktree=is_worktree,
+            is_submodule=is_submodule,
+            has_submodules=has_submodules,
         )
 
 
