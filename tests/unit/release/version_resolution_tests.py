@@ -123,7 +123,9 @@ class TestsFlextInfraReleaseVersionResolution:
             before_root = root_pyproject.read_bytes()
             before_project = project_pyproject.read_bytes()
             before_status = tm.ok(
-                u.Infra.git_capture_bytes(workspace, ("status", "--porcelain=v1", "-z"))
+                u.Cli.capture(
+                    [c.Infra.GIT, "status", "--porcelain=v1", "-z"], cwd=workspace
+                )
             )
 
             result = u.Tests.run_release_main(
@@ -142,7 +144,9 @@ class TestsFlextInfraReleaseVersionResolution:
             )
 
             after_status = tm.ok(
-                u.Infra.git_capture_bytes(workspace, ("status", "--porcelain=v1", "-z"))
+                u.Cli.capture(
+                    [c.Infra.GIT, "status", "--porcelain=v1", "-z"], cwd=workspace
+                )
             )
             tm.that(result, eq=1)
             tm.that(root_pyproject.read_bytes(), eq=before_root)

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-import io
 import shutil
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol, cast
+from typing import TYPE_CHECKING, BinaryIO, Literal, Protocol, cast
 
 from git import (
     Git,
@@ -25,6 +27,23 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
+@contextmanager
+def _git_optional_stdin(input_data: bytes | None) -> Iterator[BinaryIO | None]:
+    """Yield a fileno-backed stdin stream for one GitPython execute call.
+
+    ``Git.execute`` forwards ``istream`` straight to ``Popen(stdin=...)``, so
+    an in-memory ``BytesIO`` aborts with ``io.UnsupportedOperation: fileno`` —
+    the patch transport must ride a real (temporary) file descriptor.
+    """
+    if input_data is None:
+        yield None
+        return
+    with tempfile.TemporaryFile() as stream:
+        stream.write(input_data)
+        stream.seek(0)
+        yield stream
+
+
 class _GitExtendedExecute[TStdout](Protocol):
     """Extended-output call shape of ``Git.execute`` for one stdout channel.
 
@@ -38,7 +57,7 @@ class _GitExtendedExecute[TStdout](Protocol):
         self,
         command: t.StrSequence,
         *,
-        istream: io.BytesIO | None,
+        istream: BinaryIO | None,
         with_extended_output: Literal[True],
         with_exceptions: bool,
         stdout_as_string: bool,
@@ -102,16 +121,17 @@ def git_execute_text(
     command: tuple[str, ...] = (c.Infra.GIT, *arguments)
     execute = cast("_GitExtendedExecute[str]", Git(working_dir=str(resolved)).execute)
     try:
-        status, stdout, stderr = execute(
-            command,
-            istream=None if input_data is None else io.BytesIO(input_data),
-            with_extended_output=True,
-            with_exceptions=False,
-            stdout_as_string=True,
-            kill_after_timeout=None if timeout is None else float(timeout),
-            universal_newlines=False,
-            strip_newline_in_stdout=False,
-        )
+        with _git_optional_stdin(input_data) as istream:
+            status, stdout, stderr = execute(
+                command,
+                istream=istream,
+                with_extended_output=True,
+                with_exceptions=False,
+                stdout_as_string=True,
+                kill_after_timeout=None if timeout is None else float(timeout),
+                universal_newlines=False,
+                strip_newline_in_stdout=False,
+            )
     except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
         return r[m.Cli.CommandOutput].fail(f"git execution failed: {exc}")
     return r[m.Cli.CommandOutput].ok(
@@ -139,16 +159,17 @@ def git_execute_bytes(
     command: tuple[str, ...] = (c.Infra.GIT, *arguments)
     execute = cast("_GitExtendedExecute[bytes]", Git(working_dir=str(resolved)).execute)
     try:
-        status, stdout, stderr = execute(
-            command,
-            istream=None if input_data is None else io.BytesIO(input_data),
-            with_extended_output=True,
-            with_exceptions=False,
-            stdout_as_string=False,
-            kill_after_timeout=None if timeout is None else float(timeout),
-            universal_newlines=False,
-            strip_newline_in_stdout=False,
-        )
+        with _git_optional_stdin(input_data) as istream:
+            status, stdout, stderr = execute(
+                command,
+                istream=istream,
+                with_extended_output=True,
+                with_exceptions=False,
+                stdout_as_string=False,
+                kill_after_timeout=None if timeout is None else float(timeout),
+                universal_newlines=False,
+                strip_newline_in_stdout=False,
+            )
     except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
         return r[m.Cli.CommandBytesOutput].fail(f"git execution failed: {exc}")
     return r[m.Cli.CommandBytesOutput].ok(

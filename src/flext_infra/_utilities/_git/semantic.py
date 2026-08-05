@@ -22,9 +22,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """List registered worktrees in porcelain form."""
-        listed = git_capture(
-            request.repo_root, ("worktree", "list", "--porcelain")
-        )
+        listed = git_capture(request.repo_root, ("worktree", "list", "--porcelain"))
         if listed.failure:
             return r[m.Infra.GitTextReport].fail(
                 listed.error or "failed to list Git worktrees"
@@ -51,8 +49,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether an exact Git ref exists (exit 0/1 only)."""
         checked = git_run(
-            request.repo_root,
-            ("show-ref", "--verify", "--quiet", request.reference),
+            request.repo_root, ("show-ref", "--verify", "--quiet", request.reference)
         )
         if checked.failure:
             return r[m.Infra.GitBoolReport].fail(
@@ -92,9 +89,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
                 captured.error or "failed to resolve Git top level"
             )
         return r[m.Infra.GitRootReport].ok(
-            m.Infra.GitRootReport(
-                workspace_root=Path(captured.value.strip()).resolve()
-            )
+            m.Infra.GitRootReport(workspace_root=Path(captured.value.strip()).resolve())
         )
 
     @classmethod
@@ -152,9 +147,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve ``rev-parse --abbrev-ref HEAD``."""
-        captured = git_capture(
-            request.repo_root, ("rev-parse", "--abbrev-ref", "HEAD")
-        )
+        captured = git_capture(request.repo_root, ("rev-parse", "--abbrev-ref", "HEAD"))
         if captured.failure:
             return r[m.Infra.GitTextReport].fail(
                 captured.error or "failed to resolve abbrev-ref HEAD"
@@ -178,9 +171,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         if checked.value.exit_code not in {0, 1}:
             detail = (checked.value.stderr or checked.value.stdout).strip()
-            return r[m.Infra.GitBoolReport].fail(
-                detail or "failed to inspect ancestry"
-            )
+            return r[m.Infra.GitBoolReport].fail(detail or "failed to inspect ancestry")
         return r[m.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(value=checked.value.exit_code == 0)
         )
@@ -233,12 +224,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         """Push HEAD to ``remote`` as ``refs/heads/<branch>`` with ``-u``."""
         pushed = git_capture(
             request.repo_root,
-            (
-                "push",
-                "-u",
-                request.remote,
-                f"HEAD:refs/heads/{request.branch}",
-            ),
+            ("push", "-u", request.remote, f"HEAD:refs/heads/{request.branch}"),
         )
         if pushed.failure:
             return r[m.Infra.GitTextReport].fail(
@@ -299,15 +285,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         """Untrack a path with ``git rm --cached``."""
         untracked = git_run(
             request.repo_root,
-            (
-                "rm",
-                "-r",
-                "--cached",
-                "--quiet",
-                "--force",
-                "--",
-                request.relative_path,
-            ),
+            ("rm", "-r", "--cached", "--quiet", "--force", "--", request.relative_path),
         )
         if untracked.failure:
             return r[m.Infra.GitBoolReport].fail(
@@ -323,9 +301,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRelativePathRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Remove a tracked path with ``git rm``."""
-        removed = git_run(
-            request.repo_root, ("rm", "-q", "--", request.relative_path)
-        )
+        removed = git_run(request.repo_root, ("rm", "-q", "--", request.relative_path))
         if removed.failure:
             return r[m.Infra.GitBoolReport].fail(
                 removed.error or "git rm execution failed"
@@ -367,9 +343,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
                 or "git subject read failed"
             )
         numstat_result = git_run(
-            request.repo_root,
-            ("diff", "--numstat", "HEAD~1", "HEAD"),
-            timeout=30,
+            request.repo_root, ("diff", "--numstat", "HEAD~1", "HEAD"), timeout=30
         )
         if numstat_result.failure:
             return r[m.Infra.GitNumstatReport].fail(
@@ -410,9 +384,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         head = head_result.value.strip() if head_result.success else b"UNBORN"
         return r[m.Infra.GitFingerprintInputsReport].ok(
             m.Infra.GitFingerprintInputsReport(
-                paths_z=paths_result.value,
-                index_z=index_result.value,
-                head=head,
+                paths_z=paths_result.value, index_z=index_result.value, head=head
             )
         )
 
@@ -460,12 +432,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
     ) -> p.Result[m.Infra.GitTextReport]:
         """Add a development lane worktree for an existing or new branch."""
         if request.local_branch_exists:
-            arguments = (
-                "worktree",
-                "add",
-                str(request.lane),
-                request.branch,
-            )
+            arguments = ("worktree", "add", str(request.lane), request.branch)
         elif request.track_remote:
             arguments = (
                 "worktree",

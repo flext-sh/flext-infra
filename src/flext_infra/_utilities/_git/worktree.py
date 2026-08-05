@@ -35,9 +35,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[m.Infra.GitStatusReport]:
         """Capture porcelain status for one repository."""
         repo = request.repo_root.expanduser().resolve()
-        captured = git_capture(
-            repo, ("status", "--porcelain", "--untracked-files=all")
-        )
+        captured = git_capture(repo, ("status", "--porcelain", "--untracked-files=all"))
         if captured.failure:
             return r[m.Infra.GitStatusReport].fail(
                 captured.error or "git status failed"

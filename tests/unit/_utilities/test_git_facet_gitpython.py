@@ -65,7 +65,7 @@ class TestsFlextInfraGitFacet:
         monkeypatch.setattr(
             "flext_infra._utilities._git.repo.shutil.which", lambda _name: None
         )
-        result = git_run(tmp_path, ("status",))
+        result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure
         assert result.error is not None
         assert "git executable not found" in result.error
