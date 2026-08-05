@@ -6,8 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, m, u
-from flext_infra._utilities._git.repo import git_capture, git_run
+from flext_infra import FlextInfraGitService, c, m, u
 
 
 class TestsFlextInfraGitFacet:
@@ -36,14 +35,13 @@ class TestsFlextInfraGitFacet:
         assert report.value.dirty is False
 
     def test_git_init_bare_on_non_repo_cwd(self, tmp_path: Path) -> None:
-        """cwd-bound private execute must allow git init --bare outside a worktree."""
+        """cwd-bound execute must allow git init --bare outside a worktree."""
         bare_root = tmp_path / "bare"
         bare_root.mkdir()
-        result = git_run(bare_root, ("init", "--bare"))
-        assert result.success
-        assert result.value.exit_code == 0
+        init_result = u.Cli.run_checked([c.Infra.GIT, "init", "--bare"], cwd=bare_root)
+        assert init_result.success
         assert (bare_root / "HEAD").is_file()
-        captured = git_capture(bare_root, ("rev-parse", "--git-dir"))
+        captured = u.Cli.capture([c.Infra.GIT, "rev-parse", "--git-dir"], cwd=bare_root)
         assert captured.success
         assert captured.value.strip() in {".", str(bare_root.resolve())}
 
