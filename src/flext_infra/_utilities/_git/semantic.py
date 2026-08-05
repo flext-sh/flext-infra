@@ -5,13 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from git import GitCommandError, Repo
+from git import BaseIndexEntry
+
 from flext_core import r
-from flext_infra._utilities._git.repo import git_capture, git_capture_bytes, git_run
+from flext_infra._utilities._git.repo import git_repo
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra.constants import c
 from flext_infra.models import m
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
@@ -22,24 +26,28 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """List registered worktrees in porcelain form."""
-        listed = git_capture(request.repo_root, ("worktree", "list", "--porcelain"))
-        if listed.failure:
-            return r[m.Infra.GitTextReport].fail(
-                listed.error or "failed to list Git worktrees"
-            )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=listed.value))
+        try:
+            repo = git_repo(request.repo_root)
+            text = repo.git.worktree("list", "--porcelain")
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitTextReport].fail(f"failed to list Git worktrees: {exc}")
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
     def git_check_branch_format(
         cls, request: m.Infra.GitBranchRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Validate a branch name with ``git check-ref-format --branch``."""
-        checked = git_capture(
-            request.repo_root, ("check-ref-format", "--branch", request.branch)
-        )
-        if checked.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            repo.git.check_ref_format("--branch", request.branch)
+        except GitCommandError:
+            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(
-                checked.error or f"invalid branch name: {request.branch}"
+                f"failed to validate branch name: {exc}"
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
@@ -48,160 +56,163 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRefRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether an exact Git ref exists (exit 0/1 only)."""
-        checked = git_run(
-            request.repo_root, ("show-ref", "--verify", "--quiet", request.reference)
-        )
-        if checked.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                checked.error or f"failed to inspect Git ref: {request.reference}"
-            )
-        if checked.value.exit_code not in {0, 1}:
-            detail = (checked.value.stderr or checked.value.stdout).strip()
-            return r[m.Infra.GitBoolReport].fail(
-                detail or f"failed to inspect Git ref: {request.reference}"
-            )
-        return r[m.Infra.GitBoolReport].ok(
-            m.Infra.GitBoolReport(value=checked.value.exit_code == 0)
-        )
+        try:
+            repo = git_repo(request.repo_root)
+            repo.git.show_ref("--verify", "--quiet", request.reference)
+        except GitCommandError:
+            # show-ref exits 1 when the ref does not exist — not an error.
+            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"failed to inspect Git ref: {exc}")
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_superproject_working_tree(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Capture ``rev-parse --show-superproject-working-tree`` stdout."""
-        captured = git_capture(
-            request.repo_root, ("rev-parse", "--show-superproject-working-tree")
-        )
-        if captured.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            text = repo.git.rev_parse("--show-superproject-working-tree")
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitTextReport].fail(
-                captured.error or "failed to resolve superproject working tree"
+                f"failed to resolve superproject working tree: {exc}"
             )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=captured.value))
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
     def git_show_toplevel(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitRootReport]:
         """Resolve ``rev-parse --show-toplevel`` as a workspace root report."""
-        captured = git_capture(request.repo_root, ("rev-parse", "--show-toplevel"))
-        if captured.failure:
-            return r[m.Infra.GitRootReport].fail(
-                captured.error or "failed to resolve Git top level"
+        try:
+            repo = git_repo(request.repo_root)
+            root = (
+                Path(repo.working_tree_dir).resolve() if repo.working_tree_dir else None
             )
-        return r[m.Infra.GitRootReport].ok(
-            m.Infra.GitRootReport(workspace_root=Path(captured.value.strip()).resolve())
-        )
+            if root is None:
+                return r[m.Infra.GitRootReport].fail(
+                    "failed to resolve Git top level: working tree is None"
+                )
+        except GitCommandError as exc:
+            return r[m.Infra.GitRootReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitRootReport].fail(
+                f"failed to resolve Git top level: {exc}"
+            )
+        return r[m.Infra.GitRootReport].ok(m.Infra.GitRootReport(workspace_root=root))
 
     @classmethod
     def git_current_branch(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve the current non-detached branch name."""
-        captured = git_capture(request.repo_root, ("branch", "--show-current"))
-        if captured.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            branch = repo.active_branch.name
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (TypeError, OSError, ValueError) as exc:
+            # active_branch raises TypeError on detached HEAD.
             return r[m.Infra.GitTextReport].fail(
-                captured.error or "failed to resolve current branch"
+                f"head branch is required from a detached HEAD: {exc}"
             )
-        head = captured.value.strip()
-        if not head:
-            return r[m.Infra.GitTextReport].fail(
-                "head branch is required from a detached HEAD"
-            )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=head))
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=branch))
 
     @classmethod
     def git_symbolic_ref_short(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve ``symbolic-ref --quiet --short HEAD``."""
-        captured = git_capture(
-            request.repo_root, ("symbolic-ref", "--quiet", "--short", "HEAD")
-        )
-        if captured.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            text = repo.git.symbolic_ref("--quiet", "--short", c.Infra.GIT_HEAD)
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitTextReport].fail(
-                captured.error or "failed to resolve symbolic-ref HEAD"
+                f"failed to resolve symbolic-ref HEAD: {exc}"
             )
-        return r[m.Infra.GitTextReport].ok(
-            m.Infra.GitTextReport(text=captured.value.strip())
-        )
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text.strip()))
 
     @classmethod
     def git_resolve_commit(
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitOidReport]:
         """Resolve a commit-ish to an oid via ``rev-parse --verify``."""
-        captured = git_capture(
-            request.repo_root,
-            ("rev-parse", "--verify", f"{request.commitish}^{{commit}}"),
-        )
-        if captured.failure:
-            return r[m.Infra.GitOidReport].fail(
-                captured.error or f"cannot resolve commitish: {request.commitish}"
-            )
-        return r[m.Infra.GitOidReport].ok(
-            m.Infra.GitOidReport(oid=captured.value.strip())
-        )
+        try:
+            repo = git_repo(request.repo_root)
+            oid = repo.commit(request.commitish).hexsha
+        except GitCommandError as exc:
+            return r[m.Infra.GitOidReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitOidReport].fail(f"cannot resolve commitish: {exc}")
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
     @classmethod
     def git_abbrev_ref_head(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve ``rev-parse --abbrev-ref HEAD``."""
-        captured = git_capture(request.repo_root, ("rev-parse", "--abbrev-ref", "HEAD"))
-        if captured.failure:
-            return r[m.Infra.GitTextReport].fail(
-                captured.error or "failed to resolve abbrev-ref HEAD"
-            )
-        return r[m.Infra.GitTextReport].ok(
-            m.Infra.GitTextReport(text=captured.value.strip())
-        )
+        try:
+            repo = git_repo(request.repo_root)
+            branch = repo.active_branch.name
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (TypeError, OSError, ValueError):
+            # Detached HEAD — fall back to the proxy for the ``HEAD`` text.
+            try:
+                text = repo.git.rev_parse("--abbrev-ref", c.Infra.GIT_HEAD)
+            except GitCommandError as exc:
+                return r[m.Infra.GitTextReport].fail(str(exc))
+            return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text.strip()))
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=branch))
 
     @classmethod
     def git_is_ancestor(
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether ``commitish`` is an ancestor of HEAD."""
-        checked = git_run(
-            request.repo_root,
-            ("merge-base", "--is-ancestor", request.commitish, "HEAD"),
-        )
-        if checked.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                checked.error or "failed to inspect ancestry"
-            )
-        if checked.value.exit_code not in {0, 1}:
-            detail = (checked.value.stderr or checked.value.stdout).strip()
-            return r[m.Infra.GitBoolReport].fail(detail or "failed to inspect ancestry")
-        return r[m.Infra.GitBoolReport].ok(
-            m.Infra.GitBoolReport(value=checked.value.exit_code == 0)
-        )
+        try:
+            repo = git_repo(request.repo_root)
+            result = repo.is_ancestor(request.commitish, c.Infra.GIT_HEAD)
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"failed to inspect ancestry: {exc}")
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=result))
 
     @classmethod
     def git_merge_no_edit(
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Merge ``commitish`` into HEAD with ``--no-edit``."""
-        merged = git_capture(
-            request.repo_root, ("merge", "--no-edit", request.commitish)
-        )
-        if merged.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            text = repo.git.merge("--no-edit", request.commitish)
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitTextReport].fail(
-                merged.error or f"merge failed for {request.commitish}"
+                f"merge failed for {request.commitish}: {exc}"
             )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=merged.value))
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
     def git_delete_ref(
         cls, request: m.Infra.GitDeleteRefRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """CAS-delete a ref when it still points at ``expected_oid``."""
-        deleted = git_capture(
-            request.repo_root,
-            ("update-ref", "-d", request.reference, request.expected_oid),
-        )
-        if deleted.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            repo.git.update_ref("-d", request.reference, request.expected_oid)
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(
-                deleted.error or f"failed to delete ref {request.reference}"
+                f"failed to delete ref {request.reference}: {exc}"
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
@@ -210,11 +221,13 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Fetch from origin."""
-        fetched = git_capture(request.repo_root, ("fetch", "origin"))
-        if fetched.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                fetched.error or "failed to fetch origin"
-            )
+        try:
+            repo = git_repo(request.repo_root)
+            repo.remotes[c.Infra.GIT_DEFAULT_REMOTE].fetch()
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError, AssertionError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"failed to fetch origin: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -222,45 +235,47 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitPushRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Push HEAD to ``remote`` as ``refs/heads/<branch>`` with ``-u``."""
-        pushed = git_capture(
-            request.repo_root,
-            ("push", "-u", request.remote, f"HEAD:refs/heads/{request.branch}"),
-        )
-        if pushed.failure:
-            return r[m.Infra.GitTextReport].fail(
-                pushed.error or f"failed to push {request.branch}"
+        try:
+            repo = git_repo(request.repo_root)
+            text = repo.git.push(
+                "-u", request.remote, f"HEAD:refs/heads/{request.branch}"
             )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=pushed.value))
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to push {request.branch}: {exc}"
+            )
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
     def git_rev_parse(
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitOidReport]:
         """Resolve an arbitrary rev-parse argument to stripped text oid."""
-        captured = git_capture(request.repo_root, ("rev-parse", request.commitish))
-        if captured.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            oid = repo.git.rev_parse(request.commitish).strip()
+        except GitCommandError as exc:
+            return r[m.Infra.GitOidReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitOidReport].fail(
-                captured.error or f"rev-parse failed for {request.commitish}"
+                f"rev-parse failed for {request.commitish}: {exc}"
             )
-        return r[m.Infra.GitOidReport].ok(
-            m.Infra.GitOidReport(oid=captured.value.strip())
-        )
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
     @classmethod
     def git_checkout_restore(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Restore tracked paths via ``git checkout -- .``."""
-        restored = git_run(request.repo_root, ("checkout", "--", "."))
-        if restored.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                restored.error or "git checkout restore failed"
-            )
-        if restored.value.exit_code != 0:
-            detail = (restored.value.stderr or restored.value.stdout).strip()
-            return r[m.Infra.GitBoolReport].fail(
-                detail or "git checkout restore failed"
-            )
+        try:
+            repo = git_repo(request.repo_root)
+            repo.git.checkout("--", ".")
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"git checkout restore failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -268,14 +283,13 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitPathPairRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Move a tracked path with ``git mv``."""
-        moved = git_run(request.repo_root, ("mv", request.source, request.target))
-        if moved.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                moved.error or "git mv execution failed"
-            )
-        if moved.value.exit_code != 0:
-            detail = (moved.value.stderr or moved.value.stdout).strip()
-            return r[m.Infra.GitBoolReport].fail(detail or "git mv failed")
+        try:
+            repo = git_repo(request.repo_root)
+            repo.index.move([request.source, request.target])
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"git mv failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -283,17 +297,13 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRelativePathRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Untrack a path with ``git rm --cached``."""
-        untracked = git_run(
-            request.repo_root,
-            ("rm", "-r", "--cached", "--quiet", "--force", "--", request.relative_path),
-        )
-        if untracked.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                untracked.error or "git rm execution failed"
-            )
-        if untracked.value.exit_code != 0:
-            detail = (untracked.value.stderr or untracked.value.stdout).strip()
-            return r[m.Infra.GitBoolReport].fail(detail or "git rm --cached failed")
+        try:
+            repo = git_repo(request.repo_root)
+            repo.index.remove([request.relative_path], cached=True, r=True, f=True)
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"git rm --cached failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -301,14 +311,13 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRelativePathRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Remove a tracked path with ``git rm``."""
-        removed = git_run(request.repo_root, ("rm", "-q", "--", request.relative_path))
-        if removed.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                removed.error or "git rm execution failed"
-            )
-        if removed.value.exit_code != 0:
-            detail = (removed.value.stderr or removed.value.stdout).strip()
-            return r[m.Infra.GitBoolReport].fail(detail or "git rm failed")
+        try:
+            repo = git_repo(request.repo_root)
+            repo.index.remove([request.relative_path], cached=False, r=True, f=True)
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"git rm failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -316,13 +325,17 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRelativePathRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether a relative path is git-tracked."""
-        listed = git_capture(
-            request.repo_root, ("ls-files", "-z", "--", request.relative_path)
-        )
-        if listed.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            listed = repo.git.ls_files("-z", "--", request.relative_path)
+        except GitCommandError:
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to check tracked status: {exc}"
+            )
         return r[m.Infra.GitBoolReport].ok(
-            m.Infra.GitBoolReport(value=bool(listed.value.strip()))
+            m.Infra.GitBoolReport(value=bool(listed.strip()))
         )
 
     @classmethod
@@ -330,35 +343,16 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitNumstatReport]:
         """Capture HEAD subject and ``HEAD~1..HEAD`` numstat."""
-        subject_result = git_run(
-            request.repo_root, ("log", "-1", "--format=%s"), timeout=30
-        )
-        if subject_result.failure:
-            return r[m.Infra.GitNumstatReport].fail(
-                subject_result.error or "git subject read failed"
-            )
-        if subject_result.value.exit_code != 0:
-            return r[m.Infra.GitNumstatReport].fail(
-                (subject_result.value.stderr or subject_result.value.stdout).strip()
-                or "git subject read failed"
-            )
-        numstat_result = git_run(
-            request.repo_root, ("diff", "--numstat", "HEAD~1", "HEAD"), timeout=30
-        )
-        if numstat_result.failure:
-            return r[m.Infra.GitNumstatReport].fail(
-                numstat_result.error or "git numstat read failed"
-            )
-        if numstat_result.value.exit_code != 0:
-            return r[m.Infra.GitNumstatReport].fail(
-                (numstat_result.value.stderr or numstat_result.value.stdout).strip()
-                or "git numstat read failed"
-            )
+        try:
+            repo = git_repo(request.repo_root)
+            subject = repo.git.log("-1", "--format=%s")
+            numstat = repo.git.diff("--numstat", "HEAD~1", c.Infra.GIT_HEAD)
+        except GitCommandError as exc:
+            return r[m.Infra.GitNumstatReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitNumstatReport].fail(f"git numstat read failed: {exc}")
         return r[m.Infra.GitNumstatReport].ok(
-            m.Infra.GitNumstatReport(
-                subject=subject_result.value.stdout.strip(),
-                numstat=numstat_result.value.stdout,
-            )
+            m.Infra.GitNumstatReport(subject=subject.strip(), numstat=numstat)
         )
 
     @classmethod
@@ -366,47 +360,53 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitFingerprintInputsReport]:
         """Capture byte-exact fingerprint inputs for one worktree."""
-        root = request.repo_root.expanduser().resolve()
-        inside_result = git_capture(root, ("rev-parse", "--is-inside-work-tree"))
-        if inside_result.failure or inside_result.value.strip() != "true":
+        try:
+            repo = git_repo(request.repo_root)
+            paths_z, index_z, head = cls._git_capture_fingerprint(repo)
+        except GitCommandError as exc:
+            return r[m.Infra.GitFingerprintInputsReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitFingerprintInputsReport].fail(
-                inside_result.error or f"not a Git worktree: {root}"
+                f"failed to capture fingerprint inputs: {exc}"
             )
-        paths_result = git_capture_bytes(
-            root, ("ls-files", "-z", "--cached", "--others", "--exclude-standard")
-        )
-        if paths_result.failure:
-            return r[m.Infra.GitFingerprintInputsReport].from_failure(paths_result)
-        index_result = git_capture_bytes(root, ("ls-files", "--stage", "-z"))
-        if index_result.failure:
-            return r[m.Infra.GitFingerprintInputsReport].from_failure(index_result)
-        head_result = git_capture_bytes(root, ("rev-parse", "--verify", "HEAD"))
-        head = head_result.value.strip() if head_result.success else b"UNBORN"
         return r[m.Infra.GitFingerprintInputsReport].ok(
             m.Infra.GitFingerprintInputsReport(
-                paths_z=paths_result.value, index_z=index_result.value, head=head
+                paths_z=paths_z, index_z=index_z, head=head
             )
         )
+
+    @staticmethod
+    def _git_capture_fingerprint(repo: Repo) -> tuple[bytes, bytes, bytes]:
+        """Capture (paths_z, index_z, head) bytes for fingerprinting."""
+        paths_z = repo.git.ls_files(
+            "-z", "--cached", "--others", "--exclude-standard"
+        ).encode(c.Cli.ENCODING_DEFAULT)
+        index_z = repo.git.ls_files("--stage", "-z").encode(c.Cli.ENCODING_DEFAULT)
+        try:
+            head = repo.head.commit.hexsha.encode(c.Cli.ENCODING_DEFAULT)
+        except (ValueError, OSError):
+            head = b"UNBORN"
+        return paths_z, index_z, head
 
     @classmethod
     def git_update_index_gitlink(
         cls, request: m.Infra.GitUpdateIndexGitlinkRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Stage one gitlink (mode 160000) into the index."""
-        updated = git_capture(
-            request.repo_root,
-            (
-                "update-index",
-                "--add",
-                "--cacheinfo",
-                "160000",
-                request.oid,
+        try:
+            repo = git_repo(request.repo_root)
+            entry = BaseIndexEntry((
+                c.Infra.GIT_MODE_GITLINK,
+                bytes.fromhex(request.oid),
+                c.Infra.GIT_STAGE_NORMAL,
                 request.relative_path,
-            ),
-        )
-        if updated.failure:
+            ))
+            repo.index.add([entry])
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(
-                updated.error or "failed to update-index gitlink"
+                f"failed to update-index gitlink: {exc}"
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
@@ -415,27 +415,42 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitOidReport]:
         """Resolve ``commitish^`` via rev-parse."""
-        captured = git_capture(
-            request.repo_root, ("rev-parse", f"{request.commitish}^")
-        )
-        if captured.failure:
+        try:
+            repo = git_repo(request.repo_root)
+            oid = repo.commit(f"{request.commitish}^").hexsha
+        except GitCommandError as exc:
+            return r[m.Infra.GitOidReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
             return r[m.Infra.GitOidReport].fail(
-                captured.error or f"failed to resolve parent of {request.commitish}"
+                f"failed to resolve parent of {request.commitish}: {exc}"
             )
-        return r[m.Infra.GitOidReport].ok(
-            m.Infra.GitOidReport(oid=captured.value.strip())
-        )
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
     @classmethod
     def git_add_lane_worktree(
         cls, request: m.Infra.GitWorktreeAddRequest
     ) -> p.Result[m.Infra.GitTextReport]:
         """Add a development lane worktree for an existing or new branch."""
+        try:
+            repo = git_repo(request.repo_root)
+            text = cls._git_add_worktree_args(repo, request)
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to add worktree for {request.branch}: {exc}"
+            )
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
+
+    @staticmethod
+    def _git_add_worktree_args(
+        repo: Repo, request: m.Infra.GitWorktreeAddRequest
+    ) -> str:
+        """Select and execute the correct ``git worktree add`` variant."""
         if request.local_branch_exists:
-            arguments = ("worktree", "add", str(request.lane), request.branch)
-        elif request.track_remote:
-            arguments = (
-                "worktree",
+            return repo.git.worktree("add", str(request.lane), request.branch)
+        if request.track_remote:
+            return repo.git.worktree(
                 "add",
                 "--track",
                 "-b",
@@ -443,21 +458,68 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
                 str(request.lane),
                 f"origin/{request.branch}",
             )
-        else:
-            arguments = (
-                "worktree",
-                "add",
-                "-b",
-                request.branch,
-                str(request.lane),
-                request.base,
-            )
-        added = git_capture(request.repo_root, arguments)
-        if added.failure:
-            return r[m.Infra.GitTextReport].fail(
-                added.error or f"failed to add worktree for {request.branch}"
-            )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=added.value))
+        return repo.git.worktree(
+            "add", "-b", request.branch, str(request.lane), request.base
+        )
+
+    @classmethod
+    def git_add_paths(
+        cls, request: m.Infra.GitPathsRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Stage multiple paths via ``git add --force``."""
+        try:
+            repo = git_repo(request.repo_root)
+            repo.index.add(list(request.paths), force=True)
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"git add failed: {exc}")
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_restore_paths(
+        cls, request: m.Infra.GitCheckoutPathsRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Restore tracked paths via ``git checkout --``."""
+        try:
+            repo = git_repo(request.repo_root)
+            if request.paths:
+                repo.index.checkout(paths=list(request.paths), force=True)
+            else:
+                repo.git.checkout("--", ".")
+        except GitCommandError as exc:
+            return r[m.Infra.GitBoolReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(f"git restore failed: {exc}")
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_commit(
+        cls, request: m.Infra.GitCommitRequest
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Create a commit with the staged tree via ``git commit``."""
+        try:
+            repo = git_repo(request.repo_root)
+            commit = repo.index.commit(request.message)
+        except GitCommandError as exc:
+            return r[m.Infra.GitOidReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitOidReport].fail(f"git commit failed: {exc}")
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
+
+    @classmethod
+    def git_remote_url(
+        cls, request: m.Infra.GitRemoteUrlRequest
+    ) -> p.Result[m.Infra.GitTextReport]:
+        """Resolve ``remote get-url <remote>`` as a text report."""
+        try:
+            repo = git_repo(request.repo_root)
+            url = repo.remotes[request.remote].url
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc))
+        except (OSError, ValueError, IndexError, AssertionError) as exc:
+            return r[m.Infra.GitTextReport].fail(f"failed to resolve remote URL: {exc}")
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=url))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticMixin"]

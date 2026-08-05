@@ -196,5 +196,43 @@ class FlextInfraModelsGit:
             t.NonEmptyStr, m.Field(description="Gitlink path relative to repo")
         ]
 
+    class GitPathsRequest(m.ContractModel):
+        """Repository plus multiple relative paths for add/restore operations."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
+        paths: Annotated[
+            t.SequenceOf[t.NonEmptyStr],
+            m.Field(description="Relative paths to operate on"),
+        ]
+
+    class GitCommitRequest(m.ContractModel):
+        """Repository plus commit message for staging a commit."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
+        message: Annotated[t.NonEmptyStr, m.Field(description="Commit message")]
+
+    class GitRemoteUrlRequest(m.ContractModel):
+        """Repository plus optional remote name for URL resolution."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
+        remote: Annotated[t.NonEmptyStr, m.Field(description="Remote name")] = "origin"
+
+    class GitCheckoutPathsRequest(m.ContractModel):
+        """Repository plus optional paths for checkout/restore operations."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
+        paths: Annotated[
+            t.SequenceOf[t.NonEmptyStr],
+            m.Field(description="Relative paths to restore; empty restores all"),
+        ] = ()
+
 
 __all__: list[str] = ["FlextInfraModelsGit"]
