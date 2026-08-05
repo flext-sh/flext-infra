@@ -19,28 +19,26 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 _SSH_SCHEMES: frozenset[str] = frozenset({"ssh", "git+ssh"})
-_SENSITIVE_QUERY_KEYS: frozenset[str] = frozenset(
-    {
-        "access_token",
-        "api_key",
-        "apikey",
-        "auth",
-        "authorization",
-        "bearer",
-        "client_secret",
-        "id_token",
-        "jwt",
-        "key",
-        "oauth_token",
-        "password",
-        "passwd",
-        "private_key",
-        "private_token",
-        "refresh_token",
-        "secret",
-        "token",
-    }
-)
+_SENSITIVE_QUERY_KEYS: frozenset[str] = frozenset({
+    "access_token",
+    "api_key",
+    "apikey",
+    "auth",
+    "authorization",
+    "bearer",
+    "client_secret",
+    "id_token",
+    "jwt",
+    "key",
+    "oauth_token",
+    "password",
+    "passwd",
+    "private_key",
+    "private_token",
+    "refresh_token",
+    "secret",
+    "token",
+})
 _REDACTED_PLACEHOLDER: str = "REDACTED"
 _GITLINK_MODE: str = "160000"
 
@@ -83,9 +81,7 @@ def _redact_origin_remote(url: str) -> str:
                 authority_end = min(authority_end, position)
         authority = value[authority_start:authority_end]
         _, at, host = authority.rpartition("@")
-        head = (
-            value[:authority_start] + host if at else value[:authority_end]
-        )
+        head = value[:authority_start] + host if at else value[:authority_end]
         rest = value[authority_end:]
         path_part = rest
         query = ""
@@ -118,7 +114,11 @@ def _redact_origin_remote(url: str) -> str:
         netloc = parsed.netloc
     query = _redact_query_component(parsed.query)
     fragment = _redact_query_component(parsed.fragment)
-    if netloc == parsed.netloc and query == parsed.query and fragment == parsed.fragment:
+    if (
+        netloc == parsed.netloc
+        and query == parsed.query
+        and fragment == parsed.fragment
+    ):
         return value
     return urlunsplit((parsed.scheme, netloc, parsed.path, query, fragment))
 
@@ -269,7 +269,8 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         except (TypeError, OSError, ValueError):
             # Detached HEAD — fall back to the proxy for the ``HEAD`` text.
             try:
-                text = repo.git.rev_parse("--abbrev-ref", c.Infra.GIT_HEAD)
+                detached_repo = git_repo(request.repo_root)
+                text = detached_repo.git.rev_parse("--abbrev-ref", c.Infra.GIT_HEAD)
             except GitCommandError as exc:
                 return r[m.Infra.GitTextReport].fail(str(exc))
             return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text.strip()))
@@ -282,7 +283,9 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         """Return whether ``commitish`` is an ancestor of HEAD."""
         try:
             repo = git_repo(request.repo_root)
-            result = repo.is_ancestor(request.commitish, c.Infra.GIT_HEAD)
+            ancestor = repo.commit(request.commitish)
+            head = repo.commit(c.Infra.GIT_HEAD)
+            result = repo.is_ancestor(ancestor, head)
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
@@ -637,9 +640,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         """
         try:
             repo = git_repo(request.repo_root)
-            report = cls._collect_identity_facts(
-                repo, requested_path=request.repo_root
-            )
+            report = cls._collect_identity_facts(repo, requested_path=request.repo_root)
         except GitCommandError as exc:
             return r[m.Infra.GitIdentityReport].fail(str(exc))
         except (OSError, ValueError) as exc:
@@ -681,9 +682,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         )
         git_entry = working_tree / ".git"
         is_submodule = (
-            superproject is not None
-            and git_entry.exists()
-            and not git_entry.is_dir()
+            superproject is not None and git_entry.exists() and not git_entry.is_dir()
         )
 
         return m.Infra.GitIdentityReport(

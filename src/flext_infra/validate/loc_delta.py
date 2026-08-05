@@ -61,9 +61,7 @@ class FlextInfraLocDeltaValidator(s[bool]):
             return r[bool].fail(report.error or "git numstat read failed")
         insertions, deletions = self._sum_numstat(report.value.numstat)
         verdict = self.evaluate(
-            subject=report.value.subject,
-            insertions=insertions,
-            deletions=deletions,
+            subject=report.value.subject, insertions=insertions, deletions=deletions
         )
         if verdict.failure:
             return r[bool].fail(verdict.error or "net-LOC-delta violation")

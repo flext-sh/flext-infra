@@ -1164,12 +1164,7 @@ class TestsFlextInfraWorkService:
         ).oid
         tm.ok(
             test_u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "push",
-                    "origin",
-                    "HEAD:refs/heads/feature/land-reject",
-                ],
+                [c.Infra.GIT, "push", "origin", "HEAD:refs/heads/feature/land-reject"],
                 cwd=repository,
             )
         )

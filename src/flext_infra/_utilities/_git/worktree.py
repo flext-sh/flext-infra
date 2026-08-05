@@ -123,7 +123,8 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         except GitCommandError:
             # Not inside any superproject — check if we're in a worktree at all.
             try:
-                inside = repo.git.rev_parse("--is-inside-work-tree").strip()
+                fallback_repo = git_repo(repository_path)
+                inside = fallback_repo.git.rev_parse("--is-inside-work-tree").strip()
             except GitCommandError:
                 return r[Path].ok(repository_path.expanduser().resolve())
             if inside != "true":
@@ -523,19 +524,21 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             case _:
                 detail = "checkpoint parent has invalid author identity"
                 raise OSError(detail)
-        commit_sha = repo.git.execute([
-            c.Infra.GIT,
-            "-c",
-            f"user.name={author_name}",
-            "-c",
-            f"user.email={author_email}",
-            "commit-tree",
-            tree,
-            "-p",
-            parent,
-            "-m",
-            message,
-        ]).strip()
+        commit_sha = str(
+            repo.git.execute([
+                c.Infra.GIT,
+                "-c",
+                f"user.name={author_name}",
+                "-c",
+                f"user.email={author_email}",
+                "commit-tree",
+                tree,
+                "-p",
+                parent,
+                "-m",
+                message,
+            ])
+        ).strip()
         repo.git.update_ref(c.Infra.GIT_HEAD, commit_sha)
         return commit_sha
 
@@ -625,7 +628,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         """Check one patch direction against an explicit repository root."""
         if not patch:
             return r[bool].ok(True)
-        direction = ["--reverse"] if reverse else []
+        direction: list[str] = ["--reverse"] if reverse else []
         try:
             repo = git_repo(repository_root)
             with _git_stdin(patch) as istream:
