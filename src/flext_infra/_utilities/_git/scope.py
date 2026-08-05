@@ -10,7 +10,7 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities._git.repo import git_execute_text
+from flext_infra._utilities._git.repo import git_repo
 from flext_infra._utilities._git.semantic import FlextInfraUtilitiesGitSemanticMixin
 from flext_infra.constants import c
 
@@ -39,21 +39,20 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
     def _git_tracked_repo_relative_paths(repo_root: str) -> t.StrSequence | None:
         """Return tracked and dirty paths relative to one Git repo root."""
         resolved_root = Path(repo_root).resolve()
-        tracked = git_execute_text(resolved_root, ("ls-files",))
-        if tracked.failure or tracked.value.exit_code != 0:
+        try:
+            repo = git_repo(resolved_root)
+            tracked_output = repo.git.ls_files(with_exceptions=False)
+            status_output = repo.git.status(
+                "--porcelain", "--untracked-files=all", with_exceptions=False
+            )
+        except (OSError, ValueError):
             return None
         scope_paths: set[str] = set()
-        for raw_line in tracked.value.stdout.splitlines():
+        for raw_line in tracked_output.splitlines():
             normalized = raw_line.strip()
             if normalized:
                 scope_paths.add(normalized)
-        status = git_execute_text(
-            resolved_root, ("status", "--porcelain", "--untracked-files=all")
-        )
         # Preserve prior Cli-era behavior: status failure yields empty porcelain.
-        status_output = (
-            "" if status.failure or status.value.exit_code != 0 else status.value.stdout
-        )
         for raw_line in status_output.splitlines():
             if not raw_line:
                 continue
