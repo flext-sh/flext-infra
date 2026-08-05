@@ -231,6 +231,10 @@
         "ci_enabled": {
           "type": "boolean"
         },
+        "ci_matrix_auto_run": {
+          "type": "boolean",
+          "description": "When true, projected ci-matrix also auto-runs on push to main; default false is workflow_dispatch only"
+        },
         "extra_ignored_patterns": {
           "type": "array",
           "uniqueItems": true,

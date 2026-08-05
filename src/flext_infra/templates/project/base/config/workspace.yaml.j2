@@ -104,6 +104,7 @@ repository_policy_overlays:
   - project: {{ overlay.project | tojson }}
     beads_enabled: {{ overlay.beads_enabled | tojson }}
     ci_enabled: {{ overlay.ci_enabled | tojson }}
+    ci_matrix_auto_run: {{ overlay.ci_matrix_auto_run | tojson }}
 {% else %}
   []
 {%- endfor %}

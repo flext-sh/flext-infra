@@ -385,6 +385,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = None
+        ci_matrix_auto_run: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "When true, ci-matrix triggers include push to main plus "
+                    "workflow_dispatch; when false (default), workflow_dispatch "
+                    "only — file remains projected for root/standalone"
+                ),
+            ),
+        ] = False
 
     class MakeWorkflowRenderSpec(_ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
@@ -1305,6 +1315,15 @@ class FlextInfraConfigModels:
             bool,
             m.Field(description="Whether conform generates the governed CI surface"),
         ] = True
+        ci_matrix_auto_run: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Opt a root/standalone project into ci-matrix push-to-main "
+                    "auto-run; default false keeps matrix dispatch-only"
+                )
+            ),
+        ] = False
         extra_ignored_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -1364,6 +1383,15 @@ class FlextInfraConfigModels:
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
+        ci_matrix_auto_run: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether projected ci-matrix auto-runs on push to main; "
+                    "false (default) means workflow_dispatch only"
+                )
+            ),
+        ] = False
         external_dependency_paths: Annotated[
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
