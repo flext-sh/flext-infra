@@ -2483,6 +2483,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if probe.failure or probe.value.strip() != "true":
             return r[Path].ok(workspace_root)
+        # A submodule's primary worktree is itself; the workspace ledger owner
+        # is the superproject. Resolve superproject working tree first.
+        superproject = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=workspace_root)
+        )
+        if superproject.success and superproject.value.text.strip():
+            return r[Path].ok(Path(superproject.value.text.strip()).resolve())
         principal = u.Infra.git_primary_worktree_root(
             m.Infra.GitRepoRequest(repo_root=workspace_root)
         )
