@@ -13,12 +13,14 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m
 from flext_infra.codemod.discovery import discover_rules
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraCodemodGate(FlextInfraGate):
@@ -47,41 +49,91 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     errors=[],
                     duration=round(time.monotonic() - started, 3),
                 ),
+                issues=[],
                 raw_output="no codemod rules discovered",
             )
 
-        issues: list[str] = []
+        issues: list[m.Infra.Issue] = []
         for rule_path in rules:
-            scan = u.Cli.capture(
-                [
-                    c.Infra.AST_GREP,
-                    "scan",
-                    "--rule",
-                    str(rule_path),
-                    "--error",
-                    str(project_dir),
-                ],
-                cwd=project_dir,
+            scan = self._run(
+                self._scan_command(rule_path, project_dir),
+                project_dir,
+                timeout=self._check_timeout(project_dir, ctx),
             )
-            if scan.failure:
-                issues.append(
-                    f"{rule_path.stem}: scan failed — {scan.error or 'unknown'}"
-                )
-                continue
-            issues.extend(
-                f"{rule_path.stem}: {line.strip()}"
-                for line in scan.value.splitlines()
-                if line.strip()
-            )
+            issues.extend(self._issues_from_scan(scan, rule_path))
 
-        passed = len(issues) == 0
         return self._build_gate_result(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
                 project=project_dir.name,
-                passed=passed,
-                errors=issues,
+                passed=not issues,
+                errors=[issue.formatted for issue in issues],
                 duration=round(time.monotonic() - started, 3),
             ),
+            issues=issues,
             raw_output=f"{len(rules)} rules scanned, {len(issues)} violations",
         )
+
+    @staticmethod
+    def _scan_command(rule_path: Path, project_dir: Path) -> t.StrSequence:
+        """Canonical ast-grep invocation for a single packaged rule."""
+        return (
+            c.Infra.SG,
+            c.Infra.SCAN,
+            "--rule",
+            str(rule_path),
+            str(project_dir),
+        )
+
+    def _issues_from_scan(
+        self, scan: p.Cli.CommandOutput, rule_path: Path
+    ) -> t.SequenceOf[m.Infra.Issue]:
+        """Turn one rule scan into issues; a scanner crash is never a silent pass."""
+        if scan.exit_code != 0 and not scan.stdout.strip():
+            return (
+                m.Infra.Issue(
+                    file=c.Infra.PYPROJECT_FILENAME,
+                    line=1,
+                    column=0,
+                    code=self.gate_id,
+                    message=(
+                        f"{rule_path.stem}: ast-grep execution failed — "
+                        f"{scan.stderr or 'unknown error'}"
+                    ),
+                    severity=str(c.Infra.GateSeverity.ERROR.value),
+                ),
+            )
+        return tuple(
+            m.Infra.Issue(
+                file=rule_path.stem,
+                line=1,
+                column=0,
+                code=self.gate_id,
+                message=line.strip(),
+                severity=str(c.Infra.GateSeverity.ERROR.value),
+            )
+            for line in scan.stdout.splitlines()
+            if line.strip()
+        )
+
+    @override
+    def _build_check_command(
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+    ) -> t.StrSequence:
+        """Per-rule scans are issued by check(); expose the first rule command."""
+        _ = ctx, check_dirs
+        rules = discover_rules()
+        if not rules:
+            return (c.Infra.SG, c.Infra.SCAN, str(project_dir))
+        return self._scan_command(rules[0], project_dir)
+
+    @override
+    def _parse_check_output(
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse a single ast-grep scan result into issues."""
+        _ = ctx
+        rules = discover_rules()
+        rule_path = rules[0] if rules else project_dir
+        issues = self._issues_from_scan(result, rule_path)
+        return not issues, issues
