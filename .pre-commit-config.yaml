@@ -2,9 +2,11 @@
 repos:
   - repo: local
     hooks:
-      # Why: fast fixes run before each commit; pre-push runs EVERY gate locally,
-      # including the lint/format/pyrefly gates that CI=Y skips because the
-      # CI workflows own them separately.
+      # Why: fast fixes run before each commit; expensive gates run before push.
+      # Pre-push is local operator validation and runs EVERY gate: CI=Y
+      # is never injected here, because it skips the lint/format/pyrefly gates
+      # that must block a push (9b604d43). make test never inherits that token
+      # either (mro-v4p5 forbids pytest under CI=Y).
       - id: flext-pre-commit
         name: FLEXT pre-commit workflow
         language: system
@@ -19,7 +21,7 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'make gen APPLY=Y && make check && make test'
+          'unset $(git rev-parse --local-env-vars); make gen APPLY=Y && make check && make test'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
