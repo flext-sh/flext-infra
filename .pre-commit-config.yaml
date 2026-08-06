@@ -21,7 +21,7 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'make gen APPLY=Y && make check && make test'
+          'unset $(git rev-parse --local-env-vars); make gen APPLY=Y && make check && make test'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
