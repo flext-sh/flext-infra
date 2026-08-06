@@ -53,6 +53,11 @@ def _conform_target(
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
+    # Why: a full project scaffold renders every managed template, applies the
+    # modernizer pipeline and boots a real subprocess interpreter twice; the
+    # measured unit budget (30s) covers single-behavior cases, not this
+    # end-to-end generation contract, so the case carries its own bound.
+    @pytest.mark.timeout(120)
     @pytest.mark.parametrize(
         ("kind", "name"),
         [
@@ -503,6 +508,10 @@ class TestCodegenConform:
 
         tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
 
+    # Why: the check/apply sweep scaffolds the full project and then replays
+    # every public conform mode against it; like the creation contract above,
+    # this is an end-to-end generation run and carries its own bound.
+    @pytest.mark.timeout(120)
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
     ) -> None:
