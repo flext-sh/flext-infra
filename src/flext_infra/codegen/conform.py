@@ -792,6 +792,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if directory in generated_roots
         )
 
+    @staticmethod
+    def _existing_python_dirs(
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+        target: m.Infra.RepositoryConformTarget,
+    ) -> t.StrSequence:
+        """Return the canonical Python roots this plan leaves on disk."""
+        rendered_roots = {
+            Path(entry.destination).parts[0]
+            for entry in codegen.templates.entries
+            if target.make_profile in entry.profiles
+            and entry.delegate == "render"
+            and Path(entry.destination).parts
+        }
+        return tuple(
+            directory
+            for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
+            if directory in rendered_roots or (root / directory).is_dir()
+        )
+
     def _plan_scaffold_repository(
         self,
         *,
@@ -1156,8 +1176,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Dependency topology is conformed before tooling so the modernizer is
         # the final owner of TOML ordering, comments, and type-checker settings.
         # It preserves the already canonical dependency source declarations.
+        # Declare the canonical roots this plan leaves on disk. Analyzer paths
+        # are otherwise derived from directories that EXIST, and the same plan
+        # also materializes managed roots (tests/), so the rendered pyproject
+        # omitted them and the NEXT plan re-derived them — apply never reached
+        # its fixed point.
         tooling_result = modernizer.conform_source(
-            prepared_result.value, path=pyproject
+            prepared_result.value,
+            path=pyproject,
+            declared_python_dirs=self._existing_python_dirs(root, codegen, target),
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(

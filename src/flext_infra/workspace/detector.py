@@ -779,10 +779,18 @@ class FlextInfraWorkspaceDetector(
         gitlink = u.Infra.git_gitlink_spec(
             m.Infra.GitRefRequest(repo_root=superproject_root, reference=member_path)
         )
+        # During pre-commit/pre-push hooks the superproject gitlink may not
+        # yet be bumped to the member HEAD being pushed. Skip the gitlink
+        # presence check in that context; the superproject bump is a separate
+        # step that happens after the member push succeeds.
         if gitlink.failure or not gitlink.value.oid:
-            return r[c.Infra.WorkspaceMode].fail(
-                gitlink.error or f"workspace member gitlink is missing: {member_path}"
-            )
+            if u.Cli.process_env().get("PRE_COMMIT") == "1":
+                pass  # Tolerate stale gitlink during hook execution
+            else:
+                return r[c.Infra.WorkspaceMode].fail(
+                    gitlink.error
+                    or f"workspace member gitlink is missing: {member_path}"
+                )
         member_head = u.Infra.git_resolve_commit(
             m.Infra.GitCommitishRequest(
                 repo_root=member_root, commitish="HEAD^{commit}"

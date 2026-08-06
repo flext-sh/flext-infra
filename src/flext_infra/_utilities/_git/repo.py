@@ -57,8 +57,20 @@ def git_open_repo(repo_root: Path) -> p.Result[Repo]:
         ValueError,
     ) as exc:
         return r[Repo].fail(f"cannot open git repository at {resolved}: {exc}")
+    # A submodule checkout stores its gitdir under the superproject
+    # (.git/modules/<name>) and declares the worktree through core.worktree.
+    # GitPython reads that config but does not apply it, so Repo() reports the
+    # submodule as bare with working_tree_dir=None. Resolve the declared
+    # worktree before rejecting the repository.
     if repo.bare or repo.working_tree_dir is None:
-        return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
+        declared_worktree = repo.config_reader().get_value("core", "worktree", "")
+        if not declared_worktree:
+            return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
+        worktree_path = Path(str(declared_worktree))
+        if not worktree_path.is_absolute():
+            worktree_path = (Path(repo.common_dir) / worktree_path).resolve()
+        if not worktree_path.is_dir():
+            return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
     return r[Repo].ok(repo)
 
 
