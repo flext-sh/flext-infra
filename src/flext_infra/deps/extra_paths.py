@@ -120,16 +120,13 @@ class FlextInfraExtraPathsManager(
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        # mro-j47u (codex): never reread an on-disk Pyright table while its
-        # in-memory payload is being conformed; include only real production roots.
+        # env_dirs is the declarative SSOT for productive roots. Filtering it by
+        # on-disk existence made the rendered output depend on filesystem state
+        # that conform itself creates: the first pass rendered without tests/
+        # (not yet scaffolded), the write created it, and the second pass
+        # rendered with it — so conform never reached a fixed point.
         includes: t.Infra.StrSet = set(
-            self.pyrefly_include_globs(
-                tuple(
-                    directory
-                    for directory in rules.env_dirs
-                    if (project_dir / directory).is_dir()
-                )
-            )
+            self.pyrefly_include_globs(tuple(rules.env_dirs))
         )
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)

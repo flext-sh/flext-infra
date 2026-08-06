@@ -289,8 +289,13 @@ class FlextInfraPyprojectModernizer(
                 ),
                 "pyright_exclude": pyright.get(c.Infra.EXCLUDE, ()),
                 "pyright_ignore": pyright.get(c.Infra.IGNORE, ()),
+                # pyright include comes from the declarative env-dirs SSOT, not
+                # from whatever the on-disk table happens to hold: reading the
+                # disk made the render depend on directories conform itself
+                # creates, so apply never reached a fixed point.
                 "pyright_include": (
-                    declared_python_dirs or pyright.get(c.Infra.INCLUDE, ())
+                    declared_python_dirs
+                    or config.Infra.tooling.tools.pyright.path_rules.env_dirs
                 ),
                 "pyright_extra_paths": (
                     pyright.get(c.Infra.EXTRA_PATHS) or derived_extra_paths

@@ -1111,13 +1111,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
+        # Both plan paths must declare the SAME Python roots or their renders
+        # diverge and conform never converges. _scaffold_python_dirs derives
+        # them from the template manifest (declarative, disk-independent), so
+        # the existing-tree path uses it too instead of hardcoding source_dir.
+        declared_python_dirs = self._scaffold_python_dirs(
+            codegen.templates.entries, target.make_profile
+        )
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1149,8 +1154,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Dependency topology is conformed before tooling so the modernizer is
         # the final owner of TOML ordering, comments, and type-checker settings.
         # It preserves the already canonical dependency source declarations.
+        # declared_python_dirs MUST match what resolve_tooling_context above
+        # received. Omitting it here let the modernizer re-derive the roots from
+        # disk, so the render depended on directories conform itself creates and
+        # apply never reached a fixed point.
         tooling_result = modernizer.conform_source(
-            prepared_result.value, path=pyproject
+            prepared_result.value,
+            path=pyproject,
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -2591,6 +2602,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             beads_dir = plan.repository_root / ".beads"
             if not beads_dir.exists():
                 return r[bool].ok(True)
+            # A repository that owns its ledger (ledger_root IS itself) and
+            # nevertheless disables Beads may only carry the COMPLETE routing
+            # projection. A partial projection is orphaned tracker state: the
+            # owner abdicated the lifecycle while leaving the directory behind.
+            # Repositories that route to someone else's ledger already returned
+            # above via routes_to_principal_ledger.
+            required_projection = frozenset({"config.yaml", "metadata.json"})
+            present = frozenset(path.name for path in beads_dir.iterdir())
+            if plan.ledger_root == plan.repository_root and not (
+                required_projection <= present
+            ):
+                missing = ", ".join(sorted(required_projection - present))
+                return r[bool].fail(
+                    "Beads is disabled but the repository owns the tracker: "
+                    f"{beads_dir} (incomplete projection, missing: {missing})"
+                )
             # Routing-only projections (attached standalones / worktree routes)
             # may commit config.yaml + metadata.json without owning tracker
             # state. Fail only when additional tracker artifacts appear.
