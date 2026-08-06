@@ -120,13 +120,18 @@ class FlextInfraExtraPathsManager(
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        # env_dirs is the declarative SSOT for productive roots. Filtering it by
-        # on-disk existence made the rendered output depend on filesystem state
-        # that conform itself creates: the first pass rendered without tests/
-        # (not yet scaffolded), the write created it, and the second pass
-        # rendered with it — so conform never reached a fixed point.
+        # Only real productive roots belong in project-includes, so env_dirs is
+        # filtered by existence. The roots conform is ABOUT to create arrive
+        # through declared_python_dirs at the modernizer boundary; this method
+        # describes the tree as it is.
         includes: t.Infra.StrSet = set(
-            self.pyrefly_include_globs(tuple(rules.env_dirs))
+            self.pyrefly_include_globs(
+                tuple(
+                    directory
+                    for directory in rules.env_dirs
+                    if (project_dir / directory).is_dir()
+                )
+            )
         )
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
