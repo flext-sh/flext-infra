@@ -76,9 +76,7 @@ class TestsFlextInfraLaneEnvironment:
         if lane_venv.exists():
             tm.that(lane_venv.resolve() == primary_venv.resolve(), eq=False)
 
-    def test_lane_setup_runs_the_canonical_setup_surface(
-        self, tmp_path: Path
-    ) -> None:
+    def test_lane_setup_runs_the_canonical_setup_surface(self, tmp_path: Path) -> None:
         """Provisioning goes through `make setup`, never a link shortcut."""
         repository = _repository(tmp_path)
         _ = _primary_environment(repository)
