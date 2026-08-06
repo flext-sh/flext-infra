@@ -142,15 +142,26 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
-        uv_exclude_newer: Annotated[
-            t.NonEmptyStr,
+        dependency_cooldown_days: Annotated[
+            int,
             m.Field(
+                ge=1,
+                le=90,
                 description=(
-                    "uv exclude-newer cooldown window for dependency resolution "
-                    "(e.g. '7 days')"
-                )
+                    "Supply-chain cooldown shared by uv resolution and "
+                    "Dependabot version updates"
+                ),
             ),
         ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Packages explicitly exempted from cooldown for urgent "
+                    "security floors"
+                )
+            ),
+        ] = ()
         kubectl_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
         ]
@@ -215,6 +226,12 @@ class FlextInfraConfigModels:
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
             return self.python_version
+
+        @m.computed_field()
+        @property
+        def uv_exclude_newer(self) -> str:
+            """Render the shared dependency cooldown in uv duration syntax."""
+            return f"{self.dependency_cooldown_days} days"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -342,6 +359,12 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
+        dependency_cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=1, le=90, description="Shared uv and Dependabot dependency cooldown"
+            ),
+        ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
@@ -392,7 +415,7 @@ class FlextInfraConfigModels:
                     "When true, ci-matrix triggers include push to main plus "
                     "workflow_dispatch; when false (default), workflow_dispatch "
                     "only — file remains projected for root/standalone"
-                ),
+                )
             ),
         ] = False
 
@@ -1483,6 +1506,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
         ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Packages exempted from uv dependency cooldown"),
+        ] = ()
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -1742,6 +1769,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
         ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Packages exempted from uv dependency cooldown"),
+        ] = ()
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),

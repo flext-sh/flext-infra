@@ -10,7 +10,7 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'make fmt APPLY=Y && make fix APPLY=Y'
+          'make fmt APPLY=Y && make fix APPLY=Y && CI=Y make check'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]

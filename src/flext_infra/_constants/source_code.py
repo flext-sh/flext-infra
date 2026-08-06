@@ -329,6 +329,22 @@ class FlextInfraConstantsSourceCode:
         )
 
     @staticmethod
+    def compile_mro_facade_alias_import(
+        module_name: str, facade_alias: str
+    ) -> t.RegexPattern:
+        r"""Compile ``^from <module> import <facade> as (alias)$`` (MULTILINE) capturing the alias."""
+        return re.compile(
+            rf"^from[ \t]+{re.escape(module_name)}[ \t]+import[ \t]+"
+            rf"{re.escape(facade_alias)}[ \t]+as[ \t]+([A-Za-z_]\w*)[ \t]*$",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_mro_alias_reference(alias_name: str) -> t.RegexPattern:
+        r"""Compile a bare ``<alias>`` reference (excludes attribute suffixes and import binders)."""
+        return re.compile(rf"(?<![.\w])(?<!from )(?<!import ){re.escape(alias_name)}\b")
+
+    @staticmethod
     def compile_mro_bare_qualify(old_symbol: str) -> t.RegexPattern:
         """Compile bare-symbol qualification pattern for MRO propagator (excludes def/class/import/dot/assign/call)."""
         escaped = re.escape(old_symbol)

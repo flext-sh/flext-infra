@@ -62,6 +62,7 @@ class FlextInfraPyprojectModernizer(
         *,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
+        generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[str]:
@@ -89,6 +90,7 @@ class FlextInfraPyprojectModernizer(
             dry_run=True,
             skip_comments=False,
             declared_python_dirs=declared_python_dirs,
+            generated_python_roots=generated_python_roots,
             project_kind=project_kind,
             analysis_exclusions=analysis_exclusions,
         )

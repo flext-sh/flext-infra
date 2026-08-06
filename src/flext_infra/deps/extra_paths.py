@@ -13,9 +13,9 @@ per clone (mro-c6di).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, config, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
@@ -27,6 +27,17 @@ class FlextInfraExtraPathsManager(
     FlextInfraExtraPathsSyncMixin, FlextInfraProjectSelectionServiceBase[bool]
 ):
     """Manager for synchronizing type-checker search paths from dependencies."""
+
+    # Why (fixed point): codegen materializes managed roots (tests/) while it
+    # applies. Discovery that only sees the pre-apply tree would omit them and
+    # the post-apply verification plan would want the pyproject changed again.
+    generated_python_roots: Annotated[
+        t.StrSequence,
+        m.Field(
+            default=(),
+            description="Analyzer roots the active codegen plan materializes",
+        ),
+    ] = ()
 
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
@@ -128,6 +139,7 @@ class FlextInfraExtraPathsManager(
                     directory
                     for directory in rules.env_dirs
                     if (project_dir / directory).is_dir()
+                    or directory in self.generated_python_roots
                 )
             )
         )

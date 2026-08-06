@@ -136,9 +136,13 @@ class FlextInfraPytestRunner(s[int]):
     })
 
     def _ci_disables_coverage(self) -> bool:
-        """Coverage is off when Make CI token is exact make.ci.value (CI=Y)."""
+        """True when Make CI token is exact make.ci.value (CI=Y)."""
         raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
         return raw == config.Infra.codegen.make.ci.value
+
+    def _cov_enabled(self) -> bool:
+        """True when Make COV token requests a full coverage run (COV=Y)."""
+        return self._environment_flag(c.Infra.PYTEST_ENV_COV)
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -168,22 +172,37 @@ class FlextInfraPytestRunner(s[int]):
             )
         return r[bool].ok(True)
 
+    def _coverage_argv(self, report_dir: Path, *, focused: bool) -> tuple[str, ...]:
+        """Build mutually exclusive testmon vs coverage argv.
+
+        pytest-testmon nests its Coverage object under an outer pytest-cov
+        stack when both are active. Flushing that stack calls get_data() on an
+        empty outer collector and emits CoverageWarning: No data was collected.
+        With filterwarnings=["error"] that kills xdist workers. The two modes
+        therefore never share an argv: default is incremental testmon without
+        coverage; COV=Y is a full suite coverage run without testmon.
+        """
+        if self._cov_enabled():
+            if focused:
+                msg = (
+                    "COV=Y forbids FILE=/MATCH= selectors; subset coverage is "
+                    "not a valid fail-under measurement"
+                )
+                raise ValueError(msg)
+            return (
+                "--cov",
+                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
+                "--no-cov-on-fail",
+            )
+        return ("--testmon", "--no-cov")
+
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
         pytest = config.Infra.tooling.tools.pytest
         focused = self.file is not None or self.match is not None
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
-        # Always select via testmon. Full local runs keep coverage; CI=Y and
-        # focused FILE/MATCH selectors disable it (subset cov is not fail-under).
-        if self._ci_disables_coverage() or focused:
-            coverage_args = ("--testmon", "--no-cov")
-        else:
-            coverage_args = (
-                "--testmon",
-                "--cov",
-                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
-            )
+        coverage_args = self._coverage_argv(report_dir, focused=focused)
         parallel_args = (
             ("-n", "0")
             if focused
@@ -408,11 +427,7 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
-        coverage_enabled = (
-            not self._ci_disables_coverage()
-            and self.file is None
-            and self.match is None
-        )
+        coverage_enabled = self._cov_enabled()
         if exit_code == 0:
             junit_ok = self._require_junit(junit_file, pytest_log)
             if junit_ok.failure:
@@ -439,7 +454,7 @@ class FlextInfraPytestRunner(s[int]):
                     pytest_log,
                 )
             )
-        if exit_code == 0:
+        if exit_code == 0 and not coverage_enabled:
             timed_out_or_signal = timed_out
             inspector = FlextInfraTestmonDbInspector(
                 workspace_root=self.root,

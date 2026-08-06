@@ -141,10 +141,10 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = project_root
+        runtime_root = workspace_root if attached else project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -314,7 +314,9 @@ class TestsCodegenMakeEnvironment:
         tm.that("UV ?= uv" in makefile, eq=True)
         tm.that(
             (
-                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
+                "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
+                "-u UV_PROJECT_ENVIRONMENT "
+                'PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
             in makefile,
@@ -346,7 +348,7 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli",
                     "APPLY=Y",
@@ -384,7 +386,7 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli --all",
                     "APPLY=Y",
@@ -434,7 +436,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$$root" submodule update --init --recursive -- "$$child_path"',
+            'git -C "$$superproject" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)

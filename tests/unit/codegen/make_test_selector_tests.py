@@ -49,12 +49,14 @@ class TestsMakeTestSelector:
 
         canonical = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "fmt", "WHAT=check", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "_serialized_fmt", "WHAT=check", f"UV={uv}"],
+                cwd=tmp_path,
             )
         )
         tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)
         invocations = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocations, has=["ruff check --no-fix", "ruff format --check"])
+        tm.that(invocations, has="ruff format --check")
+        tm.that(invocations, lacks="ruff check")
         calls_before_retired = invocations.splitlines()
 
         retired = tm.ok(
@@ -86,7 +88,16 @@ class TestsMakeTestSelector:
         invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
             engine_root / ".venv" / "bin" / "python",
-            (f'#!/bin/sh\nprintf "%s\\n" "$PYTHONPATH" "$*" > "{invocation_log}"\n'),
+            (
+                "#!/bin/sh\n"
+                'case "$*" in\n'
+                '  *"workspace serialize-make"*) '
+                f'exec make --no-print-directory -f "{selected_makefile}" '
+                "_serialized_work WHAT=status "
+                f'WORKSPACE="{target_root}" ;;\n'
+                f'  *) printf "%s\\n" "$PYTHONPATH" "$*" > "{invocation_log}" ;;\n'
+                "esac\n"
+            ),
         )
         uv = caller_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
@@ -97,8 +108,8 @@ class TestsMakeTestSelector:
                     "--no-print-directory",
                     "-f",
                     str(selected_makefile),
-                    "worktree",
-                    "WHAT=list",
+                    "work",
+                    "WHAT=status",
                     f"WORKSPACE={target_root}",
                     f"UV={uv}",
                 ],
@@ -111,9 +122,9 @@ class TestsMakeTestSelector:
             invocation_log.read_text(encoding="utf-8"),
             has=[
                 str(engine_root / "src"),
-                "-m flext_infra workspace worktree",
+                "-m flext_infra workspace work",
                 f"--workspace {target_root}",
-                "--operation list",
+                "--operation status",
             ],
         )
 
@@ -158,7 +169,7 @@ class TestsMakeTestSelector:
             invocation_log.read_text(encoding="utf-8"),
             has=[
                 "-m flext_infra workspace serialize-make",
-                f"--workspace {caller_root}",
+                f"--workspace {engine_root}",
                 f"--makefile {selected_makefile}",
                 "--verb test",
             ],

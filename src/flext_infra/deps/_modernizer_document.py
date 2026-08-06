@@ -148,15 +148,16 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
-        superproject = u.Infra.git_superproject_working_tree(
-            m.Infra.GitRepoRequest(repo_root=project_dir)
+        superproject = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
+            cwd=project_dir,
         )
         if superproject.success:
             # Git topology is authoritative inside a work tree: a nested
             # repository names its superproject, an independent checkout or
             # linked worktree names nothing. A local .venv (including a
             # borrowed symlink to the parent runtime) must not outrank this.
-            return r[bool].ok(bool(superproject.value.text.strip()))
+            return r[bool].ok(bool(superproject.value.strip()))
         local_venv = project_dir / venv_name
         if local_venv.is_symlink():
             target = local_venv.resolve()
@@ -197,6 +198,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
@@ -216,7 +218,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         project_root_exists = path.is_file()
         effective_project_dir = path.parent if project_root_exists else None
         effective_workspace_root = self.root if project_root_exists else None
-        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
+        paths_manager = FlextInfraExtraPathsManager(
+            workspace_root=self.root, generated_python_roots=generated_python_roots
+        )
         effective_paths_manager = paths_manager if project_root_exists else None
         resolved_project_kind: str = project_kind or "core"
         if project_kind is None and not is_root:

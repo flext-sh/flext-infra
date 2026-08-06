@@ -97,8 +97,8 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         })
 
     def _custom_what_defined(self, selected_what: str) -> bool:
-        """Return True when custom.mk defines `_custom_<verb>_<what>`."""
-        custom_mk = self.makefile.parent / "custom.mk"
+        """Return True when the custom Make overlay defines `_custom_<verb>_<what>`."""
+        custom_mk = self.makefile.parent / c.Infra.CUSTOM_MAKE_FILENAME
         if not custom_mk.is_file():
             return False
         target = f"_custom_{self.verb}_{selected_what}:"

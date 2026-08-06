@@ -277,7 +277,7 @@ class TestsCodegenCatalogExtensions:
         )
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
         tm.ok(verify(plan, allow_missing=False))
-        # Outside a transaction the disabled-but-present guard still fails.
+        # Outside a transaction, routing-only files remain valid.
         plan_at_root = m.Infra.BeadsPlan(
             repository_root=tx,
             enabled=False,
@@ -285,6 +285,8 @@ class TestsCodegenCatalogExtensions:
             expected_version="1.1.0",
             ledger_root=tx,
         )
+        tm.ok(verify(plan_at_root, allow_missing=False))
+        (tx / ".beads" / "issues.jsonl").write_text("{}\n", encoding="utf-8")
         tm.fail(verify(plan_at_root, allow_missing=False))
 
     def test_github_actions_ci_skips_the_beads_lifecycle(

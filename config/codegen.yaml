@@ -12,9 +12,12 @@ Infra:
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
       uv_link_mode: copy
-      # Supply-chain cooldown: refuse packages newer than this relative window
-      # (CWE-829 / uv dependency cooldowns). Projected to every [tool.uv].
-      uv_exclude_newer: "7 days"
+      # Supply-chain cooldown SSOT (CWE-829): projected to uv exclude-newer and
+      # every Dependabot ecosystem so updates never raise floors that uv blocks.
+      dependency_cooldown_days: 7
+      # Security updates are not delayed by Dependabot; match that behavior in
+      # uv only for explicitly reviewed security floors.
+      dependency_cooldown_exclusions: [cryptography]
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
@@ -163,6 +166,10 @@ Infra:
         package:
           name: flext-core
         dependencies: [flext-cli]
+      - project: flext-cli
+        package:
+          name: flext-tests
+        dependencies: [flext-cli]
       - project: flext-tests
         package:
           name: flext-infra
@@ -236,13 +243,14 @@ Infra:
         # test (pytest); local/pre_push still own that verb.
         check_gates_skip: [lint, format, pyrefly]
       workflow:
-        # Why: pre-commit remains fast and mutation-only; pre-push owns the
-        # generated-artifact and read-only validation gates.
+        # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
+        # gates as CI: mypy pyright security markdown smells). This bans
+        # broken code from ever being committed. pre-push adds gen+test.
         - { verb: setup, apply: false, contexts: [local, ci] }
         - { verb: gen, apply: true, contexts: [local, ci, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_push] }
+        - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
         # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
         - { verb: test, apply: false, contexts: [local, pre_push] }
       bootstrap:
@@ -294,7 +302,7 @@ Infra:
         # custom handlers without taking the serialized mutation lock.
         # `docs` materializes contract artifacts under APPLY=Y (handler picks
         # --apply/--check), same class as gen/fmt/fix.
-        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs, mod]
+        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -308,7 +316,7 @@ Infra:
         # Serialized surface: the read-only validators plus every mutation verb,
         # so no two lanes mutate one checkout concurrently. `run` stays out:
         # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
-        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs, mod]
+        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs]
       verbs:
         - name: help
           default_what: usage
@@ -398,19 +406,11 @@ Infra:
           apply_what: apply
         - name: work
           default_what: status
-          whats: [start, status, land, finish]
+          whats: [start, status, land, finish, help]
           # start/land/finish mutate lane state and call _require_apply;
           # only status is read-only, so it stays the default WHAT.
           apply_guarded: true
           apply_what: land
-        - name: mod
-          default_what: check
-          whats: [check, all, apply]
-          # `mod` batch-applies the sgconfig ast-grep rules under the
-          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
-          # the read-only dry-run fixed-point after mutation.
-          apply_guarded: true
-          apply_what: apply
       custom_handler_policy:
         filename: custom.mk
         # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
@@ -419,7 +419,7 @@ Infra:
         # from pre-/post- lifecycle hooks. The validator must accept both
         # shapes the runtime itself dispatches to, or every project that
         # defines a custom WHAT handler fails `codegen conform` outright.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)_[a-z0-9][a-z0-9_-]*)$"
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:

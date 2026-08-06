@@ -184,6 +184,7 @@ class TestCodegenCiMatrix:
             make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
             repository_branch="develop",
             python_version=codegen.toolchain.python_version,
+            dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,
             make=codegen.make,
             workspace_repositories=(),
@@ -208,6 +209,16 @@ class TestCodegenCiMatrix:
                     workflow,
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
+
+    def test_dependabot_uses_uv_dependency_cooldown(self, tmp_path: Path) -> None:
+        """Dependabot never raises floors newer than uv will resolve."""
+        root = self._render_project(tmp_path / "external")
+        dependabot = (root / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+        cooldown = config.Infra.codegen.toolchain.dependency_cooldown_days
+
+        tm.that(dependabot, has=f"default-days: {cooldown}")
+        tm.that(dependabot.count(f"default-days: {cooldown}"), eq=3)
+        tm.that(config.Infra.codegen.toolchain.uv_exclude_newer, eq=f"{cooldown} days")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -381,8 +392,11 @@ class TestCodegenCiMatrix:
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="develop",
             python_version=codegen.toolchain.python_version,
+            dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,
             make=codegen.make,
+            workspace_repositories=(),
+            checkout_submodules=codegen.checkout_submodules,
             ci_matrix_auto_run=False,
         )
         enabled = disabled.model_copy(update={"ci_matrix_auto_run": True})

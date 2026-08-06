@@ -137,6 +137,8 @@ class FlextInfraConstantsMake:
         "MISE_VERBOSE",
         "MFLAGS",
         "MYPYPATH",
+        "PROJECT",
+        "PROJECTS",
         "PYTHONPATH",
         "UV_PROJECT",
         "UV_PROJECT_ENVIRONMENT",
@@ -160,6 +162,7 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_ENV_COV: Final[str] = "FLEXT_PYTEST_COV_RAW"
     PYTEST_ENV_CI: Final[str] = "CI"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
@@ -186,6 +189,7 @@ class FlextInfraConstantsMake:
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
         ("MATCH", ""),
+        ("COV", ""),
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),
@@ -214,6 +218,7 @@ class FlextInfraConstantsMake:
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
         ("MATCH", ""),
+        ("COV", ""),
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),

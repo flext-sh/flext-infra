@@ -59,7 +59,7 @@ def _uv_invocation_definitions() -> dict[str, str]:
             _template_text(),
             re.MULTILINE,
         )
-        if "$(UV)" in value
+        if "$(UV)" in value and name != "UV_REQUESTED"
     }
 
 

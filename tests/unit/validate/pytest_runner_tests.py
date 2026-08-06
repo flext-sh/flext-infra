@@ -41,8 +41,9 @@ def _dump_real_profile(path: Path) -> None:
 class TestsFlextInfraPytestRunner:
     @pytest.fixture(autouse=True)
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Local argv contracts assume CI is unset unless a test sets CI=Y."""
+        """Local argv contracts assume CI/COV unset unless a test sets them."""
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
 
     """Prove exact argv, hard deadline propagation, and durable artifacts."""
 
@@ -98,7 +99,7 @@ class TestsFlextInfraPytestRunner:
                 "-m",
                 "pytest",
                 "--testmon",
-                "--cov",
+                "--no-cov",
                 "-n",
                 str(policy.parallel_workers),
                 "--dist",
@@ -108,7 +109,7 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
-        tm.that(command, lacks="--no-cov")
+        tm.that(command, lacks="--cov-report")
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -211,6 +212,7 @@ class TestsFlextInfraPytestRunner:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A zero pytest status cannot mask a missing full-suite coverage report."""
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -252,6 +254,7 @@ class TestsFlextInfraPytestRunner:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """pytest-cov under xdist must not hide fail-under behind a zero exit."""
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -395,12 +398,37 @@ class TestsFlextInfraPytestRunner:
             ],
         )
 
-    def test_local_full_argv_keeps_testmon_and_coverage(self, tmp_path: Path) -> None:
+    def test_local_full_argv_keeps_testmon_without_coverage(
+        self, tmp_path: Path
+    ) -> None:
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--cov"])
+        tm.that(command, has=["--testmon", "--no-cov"])
+        tm.that(command, lacks="--cov-report")
+        tm.that(any(arg == "--cov" for arg in command), eq=False)
+
+    def test_cov_y_disables_testmon_and_enables_coverage(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
+        runner = self._runner(tmp_path, what="all")
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        command = runner.build_command(report_dir)
+        tm.that(command, has=["--cov", "--no-cov-on-fail"])
         tm.that(any(arg.startswith("--cov-report=xml:") for arg in command), eq=True)
+        tm.that(command, lacks="--testmon")
         tm.that(command, lacks="--no-cov")
+
+    def test_cov_y_forbids_focused_selectors(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
+        test_file = tmp_path / "tests" / "sample_test.py"
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text("", encoding="utf-8")
+        runner = self._runner(tmp_path, file="tests/sample_test.py", what="all")
+        with pytest.raises(ValueError, match="COV=Y forbids FILE=/MATCH="):
+            runner.build_command(tmp_path / ".reports" / "tests" / "run")
 
     def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -421,14 +449,14 @@ class TestsFlextInfraPytestRunner:
         result = runner.execute()
         tm.fail(result, has="forbidden under CI=Y")
 
-    def test_ci_true_does_not_disable_coverage(
+    def test_ci_true_keeps_default_testmon_without_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """GitHub default CI=true must not match the Make token CI=Y."""
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, "true")
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--cov"])
+        tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="not docker and not remote")
 
     def test_local_full_argv_keeps_docker_remote_markers_selected(

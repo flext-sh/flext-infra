@@ -43,6 +43,7 @@ DEPENDENCY ?=
 FAIL_FAST ?= 0
 FILE ?=
 MATCH ?=
+COV ?=
 PROJECT ?=
 PROJECTS ?=
 BASE ?=
@@ -77,6 +78,7 @@ override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
 override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
 override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
+override export FLEXT_PYTEST_COV_RAW := $(value COV)
 WHAT ?=
 # End SECTION: user overrides
 
@@ -302,7 +304,7 @@ ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 # PYTHONPATH would make `make test` in a linked worktree execute that primary
 # tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
 # always wins over the shared editable (terminus T4 / path-purity).
-UV_RUN := env -u MYPYPATH PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
@@ -440,7 +442,7 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 	@# Provision Beads local role so `bd` writes do not warn (GH#2950).
 	@if git -C "$(PROJECT_ROOT)" rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
-		role=$$(git -C "$(PROJECT_ROOT)" config --local --get beads.role 2>/dev/null || true); \
+		if role=$$(git -C "$(PROJECT_ROOT)" config --local --get beads.role 2>/dev/null); then :; else role=; fi; \
 		if [ -z "$$role" ]; then \
 			git -C "$(PROJECT_ROOT)" config --local beads.role maintainer; \
 		fi; \
@@ -764,20 +766,6 @@ _builtin_gen_all: _builtin_require_environment
 
 _builtin_gen_apply: _builtin_gen_all
 
-# `mod` batch-applies every ast-grep rule declared by the project sgconfig.
-# The flext-infra route owns the operator safety circuit: it measures the
-# ruff/pyrefly error counts before the apply, records a checkpoint (committing
-# a dirty tree first), re-measures after, and rolls back to the checkpoint
-# when either count increased. Default WHAT is the read-only dry-run.
-_builtin_mod_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
-
-_builtin_mod_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
-
-_builtin_mod_apply: _builtin_mod_all
-
 _builtin_work_status:
 	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)" --branch "$(BRANCH)"
 
@@ -792,3 +780,24 @@ _builtin_work_land:
 _builtin_work_finish:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
+
+_builtin_work_help:
+	@printf "make work — lane lifecycle (git + beads + gh + worktree)\n"
+	@printf "\n"
+	@printf "USAGE:\n"
+	@printf "  make work WHAT=status                                 show lanes + primary\n"
+	@printf "  make work WHAT=start KIND=<k> NAME=<s> BEAD=<id> APPLY=Y\n"
+	@printf "  make work WHAT=land BEAD=<id> APPLY=Y                   push + open PR\n"
+	@printf "  make work WHAT=finish BEAD=<id> APPLY=Y                 remove lane post-merge\n"
+	@printf "\n"
+	@printf "KIND:  feature | bugfix | hotfix | release\n"
+	@printf "NAME:  kebab-case slug (e.g. add-auth-validator)\n"
+	@printf "BEAD:  beads issue id (e.g. ai-hub-xzio.3.1)\n"
+	@printf "BASE:  optional override (default: config/workspace.yaml integration.branch)\n"
+	@printf "\n"
+	@printf "EXAMPLES:\n"
+	@printf "  make work WHAT=start KIND=feature NAME=add-hook BEAD=ai-hub-abc1 APPLY=Y\n"
+	@printf "  make work WHAT=status BEAD=ai-hub-abc1\n"
+	@printf "  make work WHAT=land BEAD=ai-hub-abc1 APPLY=Y\n"
+	@printf "  # review + merge PR, then:\n"
+	@printf "  make work WHAT=finish BEAD=ai-hub-abc1 APPLY=Y\n"

@@ -148,11 +148,10 @@ class TestsWorkspaceRootSetupSubmodules:
     ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
-        sync_at = rendered.index("submodule sync --recursive")
-        update_at = rendered.index("submodule update --init --recursive")
-        uv_at = rendered.index("$(UV) sync --project")
-
-        tm.that(sync_at < update_at < uv_at, eq=True)
+        tm.that(rendered, has="_builtin_setup_environment: _builtin_setup_submodules")
+        tm.that(rendered, has="submodule update --init --")
+        tm.that(rendered, has="$(UV) sync --project")
+        tm.that(rendered, lacks="submodule update --init --recursive")
 
     def test_make_setup_initializes_local_submodule_before_environment(
         self, tmp_path: Path
