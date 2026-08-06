@@ -29,15 +29,20 @@ class FlextInfraWorktreeService(s[str]):
 
     def _primary_root(self) -> p.Result[Path]:
         """Resolve the primary worktree from Git's canonical registry."""
-        return u.Infra.git_primary_worktree_root(self.workspace_root)
+        primary = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
+        )
+        if primary.failure:
+            return r[Path].fail(primary.error or "failed to resolve primary worktree")
+        return r[Path].ok(primary.value.primary_root)
 
     def _validated_branch(self) -> p.Result[str]:
         """Validate and return the branch required by mutating operations."""
         branch = (self.branch or "").strip()
         if not branch:
             return r.fail(f"worktree {self.operation} requires --branch")
-        checked = u.Infra.git_capture(
-            self.workspace_root, ("check-ref-format", "--branch", branch)
+        checked = u.Infra.git_check_branch_format(
+            m.Infra.GitBranchRequest(repo_root=self.workspace_root, branch=branch)
         )
         if checked.failure:
             return r.fail(checked.error or f"invalid branch name: {branch}")
@@ -74,11 +79,13 @@ class FlextInfraWorktreeService(s[str]):
     @staticmethod
     def registered_lane(primary_root: Path, branch: str) -> p.Result[Path]:
         """Resolve an existing branch lane from Git's canonical registry."""
-        listed = u.Infra.git_capture(primary_root, ("worktree", "list", "--porcelain"))
+        listed = u.Infra.git_list_worktrees(
+            m.Infra.GitRepoRequest(repo_root=primary_root)
+        )
         if listed.failure:
             return r.fail(listed.error or "failed to list Git worktrees")
         current: Path | None = None
-        for line in (*listed.value.splitlines(), ""):
+        for line in (*listed.value.text.splitlines(), ""):
             if line.startswith("worktree "):
                 current = Path(line.removeprefix("worktree ").strip()).resolve()
             elif line == f"branch refs/heads/{branch}" and current is not None:
@@ -89,83 +96,35 @@ class FlextInfraWorktreeService(s[str]):
 
     def _ref_exists(self, reference: str) -> p.Result[bool]:
         """Return whether an exact Git ref exists, preserving command failures."""
-        checked = u.Infra.git_run(
-            self.workspace_root, ("show-ref", "--verify", "--quiet", reference)
+        checked = u.Infra.git_ref_exists(
+            m.Infra.GitRefRequest(repo_root=self.workspace_root, reference=reference)
         )
         if checked.failure:
             return r.fail(checked.error or f"failed to inspect Git ref: {reference}")
-        if checked.value.exit_code not in {0, 1}:
-            detail = (checked.value.stderr or checked.value.stdout).strip()
-            return r.fail(detail or f"failed to inspect Git ref: {reference}")
-        return r.ok(checked.value.exit_code == 0)
-
-    @staticmethod
-    def _resolve_borrowable_venv(primary_root: Path) -> Path | None:
-        """Return the environment a lane may borrow without provisioning its own."""
-        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
-        primary_venv = primary_root / venv_name
-        if primary_venv.is_dir():
-            return primary_venv
-        # Why (mro-7jrx.2.2): workspace-member primaries often have no local
-        # `.venv`; the superproject owns the shared environment. Borrowing it
-        # keeps isolated member lanes off `uv sync` and avoids self-conflicting
-        # editable/git dependency URLs during `make work` setup.
-        superproject = u.Infra.git_capture(
-            primary_root, ("rev-parse", "--show-superproject-working-tree")
-        )
-        if superproject.failure:
-            return None
-        super_root = superproject.value.strip()
-        if not super_root:
-            return None
-        super_venv = Path(super_root) / venv_name
-        if super_venv.is_dir():
-            return super_venv
-        return None
-
-    @staticmethod
-    def _borrow_primary_environment(primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Point the lane's environment name at the primary checkout's environment.
-
-        A lane that provisions its own environment is a second uv sync target:
-        syncing it rewrites the editable pointers every other checkout resolves
-        through, so main and every sibling lane start importing this lane's
-        sources. Linking the lane's environment name to the primary's makes the
-        primary the only owner, and `make setup` then recognizes the borrowed
-        environment and provisions nothing. A real local environment is never
-        replaced, because a concurrent process may be running against it.
-        """
-        borrow_venv = FlextInfraWorktreeService._resolve_borrowable_venv(primary_root)
-        if borrow_venv is None:
-            return r.ok(False)
-        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
-        primary_venv = borrow_venv
-        lane_venv = lane / venv_name
-        if lane_venv.exists() and not lane_venv.is_symlink():
-            return r.ok(False)
-        linked = u.Cli.ensure_symlink(lane_venv, primary_venv)
-        if linked.failure:
-            return r.fail(
-                linked.error or f"failed to borrow {primary_venv} into {lane_venv}"
-            )
-        return r.ok(True)
+        return r.ok(checked.value.value)
 
     @classmethod
     def setup_lane(cls, primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Borrow the primary environment, then provision only when needed.
+        """Provision the lane's own environment through the canonical surface.
 
-        Every maintained worktree must share the primary environment when one
-        is available. When the lane borrows successfully, skip `make setup` so
-        a stale lane Makefile cannot `uv sync` the shared environment.
+        An environment name that resolves to another checkout binds the lane to
+        that checkout's sources: ``uv`` records editable finders as
+        per-environment ``.pth`` files holding absolute paths, so a borrowed
+        environment makes every import in the lane load the owner's code. Each
+        lane therefore provisions its own environment through `make setup`. A
+        real local environment is never replaced, because a concurrent process
+        may be running against it.
         """
-        borrowed = cls._borrow_primary_environment(primary_root, lane)
-        if borrowed.failure:
-            return r.fail(borrowed.error or "failed to borrow the primary environment")
+        _ = primary_root
         beads_dir = lane / ".beads"
         if beads_dir.is_dir():
             beads_dir.chmod(0o700)
-        if borrowed.value:
-            return r.ok(True)
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        lane_venv = lane / venv_name
+        if lane_venv.is_symlink():
+            # A borrowed environment from an earlier lane layout is not the
+            # lane's own: drop the link so `make setup` can provision one.
+            lane_venv.unlink()
         setup = u.Cli.run_live(
             (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
             cwd=lane,
@@ -192,15 +151,13 @@ class FlextInfraWorktreeService(s[str]):
         setup_error: str,
     ) -> p.Result[str]:
         """Roll back only a clean lane created by the current add operation."""
-        status = u.Infra.git_capture(
-            lane, ("status", "--porcelain", "--untracked-files=all")
-        )
+        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:
             return r.fail(
                 f"worktree setup failed: {setup_error}; preserving lane {lane}: "
                 f"{status.error or 'cannot prove the new lane is clean'}"
             )
-        if status.value.strip():
+        if status.value.dirty:
             return r.fail(
                 f"worktree setup failed: {setup_error}; preserving lane {lane} "
                 "because setup left worktree changes"
@@ -212,9 +169,12 @@ class FlextInfraWorktreeService(s[str]):
                 f"{cleanup.error or 'clean lane rollback failed'}"
             )
         if created_branch_oid is not None:
-            branch_cleanup = u.Infra.git_capture(
-                primary_root,
-                ("update-ref", "-d", f"refs/heads/{branch}", created_branch_oid),
+            branch_cleanup = u.Infra.git_delete_ref(
+                m.Infra.GitDeleteRefRequest(
+                    repo_root=primary_root,
+                    reference=f"refs/heads/{branch}",
+                    expected_oid=created_branch_oid,
+                )
             )
             if branch_cleanup.failure:
                 return r.fail(
@@ -240,31 +200,26 @@ class FlextInfraWorktreeService(s[str]):
         local = self._ref_exists(f"refs/heads/{branch}")
         if local.failure:
             return r.fail(local.error or "failed to inspect local branch")
-        if local.value:
-            arguments = ("worktree", "add", str(lane), branch)
-        else:
-            remote = self._ref_exists(f"refs/remotes/origin/{branch}")
-            if remote.failure:
-                return r.fail(remote.error or "failed to inspect remote branch")
-            arguments = (
-                (
-                    "worktree",
-                    "add",
-                    "--track",
-                    "-b",
-                    branch,
-                    str(lane),
-                    f"origin/{branch}",
-                )
-                if remote.value
-                else ("worktree", "add", "-b", branch, str(lane), base)
+        remote = self._ref_exists(f"refs/remotes/origin/{branch}")
+        if remote.failure:
+            return r.fail(remote.error or "failed to inspect remote branch")
+        added = u.Infra.git_add_lane_worktree(
+            m.Infra.GitWorktreeAddRequest(
+                repo_root=self.workspace_root,
+                lane=lane,
+                branch=branch,
+                base=base,
+                local_branch_exists=local.value,
+                track_remote=not local.value and remote.value,
             )
-        added = u.Infra.git_capture(self.workspace_root, arguments)
+        )
         if added.failure:
             return r.fail(added.error or f"failed to add worktree for {branch}")
         created_branch_oid: str | None = None
         if not local.value:
-            created_oid = u.Infra.git_capture(lane, ("rev-parse", "HEAD"))
+            created_oid = u.Infra.git_repository_head(
+                m.Infra.GitRepoRequest(repo_root=lane)
+            )
             if created_oid.failure:
                 return self._rollback_new_lane(
                     primary_root,
@@ -273,7 +228,7 @@ class FlextInfraWorktreeService(s[str]):
                     None,
                     created_oid.error or "failed to retain created branch identity",
                 )
-            created_branch_oid = created_oid.value.strip()
+            created_branch_oid = created_oid.value.oid
         metadata = u.read_project_metadata(lane)
         if metadata.failure:
             return self._rollback_new_lane(
@@ -317,40 +272,40 @@ class FlextInfraWorktreeService(s[str]):
         lane = lane_result.value
         if not lane.is_dir():
             return r.fail(f"worktree lane does not exist: {lane}")
-        current_branch = u.Infra.git_capture(
-            lane, ("symbolic-ref", "--quiet", "--short", "HEAD")
+        current_branch = u.Infra.git_symbolic_ref_short(
+            m.Infra.GitRepoRequest(repo_root=lane)
         )
         if current_branch.failure:
             return r.fail(current_branch.error or f"failed to inspect lane {lane}")
-        if current_branch.value.strip() != branch:
+        if current_branch.value.text != branch:
             return r.fail(
                 f"worktree lane branch mismatch: expected {branch}, "
-                f"found {current_branch.value.strip()}"
+                f"found {current_branch.value.text}"
             )
-        status = u.Infra.git_capture(
-            lane, ("status", "--porcelain", "--untracked-files=all")
-        )
+        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:
             return r.fail(status.error or f"failed to inspect lane state: {lane}")
-        if status.value.strip():
+        if status.value.dirty:
             return r.fail(
                 "worktree update requires a clean lane; commit the owned WIP "
                 "before merge-forward"
             )
-        resolved_base = u.Infra.git_capture(
-            lane, ("rev-parse", "--verify", f"{base}^{{commit}}")
+        resolved_base = u.Infra.git_resolve_commit(
+            m.Infra.GitCommitishRequest(repo_root=lane, commitish=base)
         )
         if resolved_base.failure:
             return r.fail(resolved_base.error or f"cannot resolve update base: {base}")
-        base_oid = resolved_base.value.strip()
-        contains_base = u.Infra.git_run(
-            lane, ("merge-base", "--is-ancestor", base_oid, "HEAD")
+        base_oid = resolved_base.value.oid
+        contains_base = u.Infra.git_is_ancestor(
+            m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid)
         )
         if contains_base.failure:
             return r.fail(contains_base.error or "failed to inspect update ancestry")
-        if contains_base.value.exit_code == 0:
+        if contains_base.value.value:
             return r.ok(str(lane))
-        updated = u.Infra.git_capture(lane, ("merge", "--no-edit", base_oid))
+        updated = u.Infra.git_merge_no_edit(
+            m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid)
+        )
         if updated.failure:
             return r.fail(
                 updated.error
@@ -365,9 +320,12 @@ class FlextInfraWorktreeService(s[str]):
         if primary.failure:
             return r.fail(primary.error or "failed to resolve primary worktree")
         if self.operation == c.Infra.WorktreeOperation.LIST:
-            return u.Infra.git_capture(
-                primary.value, ("worktree", "list", "--porcelain")
+            listed = u.Infra.git_list_worktrees(
+                m.Infra.GitRepoRequest(repo_root=primary.value)
             )
+            if listed.failure:
+                return r.fail(listed.error or "failed to list Git worktrees")
+            return r.ok(listed.value.text)
         branch = self._validated_branch()
         if branch.failure:
             return r.fail(branch.error or "invalid worktree branch")

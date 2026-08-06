@@ -154,16 +154,17 @@ class TestsFlextInfraDepsModernizerWorkspace:
         (superproject / "README.md").write_text("workspace\n", encoding="utf-8")
         u.Tests.initialize_git_repo(superproject)
         tm.ok(
-            u.Infra.git_capture(
-                superproject,
-                (
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
                     "-c",
                     "protocol.file.allow=always",
                     "submodule",
                     "add",
                     str(source_repository),
                     "member",
-                ),
+                ],
+                cwd=superproject,
             )
         )
         member = superproject / "member"

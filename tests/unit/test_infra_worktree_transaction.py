@@ -15,12 +15,12 @@ from flext_tests import tm
 from tests import m, u
 
 
-def _git_status(repository_root: Path) -> bytes:
-    result = u.Infra.git_capture_bytes(
-        repository_root, ("status", "--porcelain=v1", "-z")
+def _git_status(repository_root: Path) -> str:
+    return tm.ok(
+        u.Cli.capture(
+            [c.Infra.GIT, "status", "--porcelain=v1", "-z"], cwd=repository_root
+        )
     )
-    status: bytes = tm.ok(result)
-    return status
 
 
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
@@ -182,7 +182,9 @@ class TestsFlextInfraWorktreeTransaction:
         nested_root.mkdir()
         (nested_root / "marker.txt").write_text("source\n", encoding="utf-8")
         u.Tests.initialize_git_repo(nested_root)
-        source_head = tm.ok(u.Infra.git_repository_head(nested_root))
+        source_head = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=nested_root))
+        ).oid
         # The contract under test is gitlink TRANSPORT: the isolated worktree
         # must not leak its own checkpoint SHA back into the superproject's
         # recorded pointer. That pointer only exists when the superproject
@@ -197,16 +199,12 @@ class TestsFlextInfraWorktreeTransaction:
             encoding="utf-8",
         )
         tm.ok(
-            u.Infra.git_capture(
-                workspace_root,
-                (
-                    "update-index",
-                    "--add",
-                    "--cacheinfo",
-                    "160000",
-                    source_head,
-                    "nested-repository",
-                ),
+            u.Infra.git_update_index_gitlink(
+                m.Infra.GitUpdateIndexGitlinkRequest(
+                    repo_root=workspace_root,
+                    oid=source_head,
+                    relative_path="nested-repository",
+                )
             )
         )
         manifest = workspace_root / "config" / "workspace.yaml"
@@ -241,29 +239,31 @@ class TestsFlextInfraWorktreeTransaction:
             if repository.relative_path == "nested-repository"
         )
         tm.ok(
-            u.Infra.git_capture(
-                worktree_root,
-                (
-                    "update-index",
-                    "--add",
-                    "--cacheinfo",
-                    "160000",
-                    nested.checkpoint_sha,
-                    nested.relative_path,
-                ),
+            u.Infra.git_update_index_gitlink(
+                m.Infra.GitUpdateIndexGitlinkRequest(
+                    repo_root=worktree_root,
+                    oid=nested.checkpoint_sha,
+                    relative_path=nested.relative_path,
+                )
             )
         )
 
         deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
 
+        # Operation patches exclude submodule pointers entirely
+        # (--ignore-submodules=all): gitlinks are owned by `make setup`, which
+        # fast-forwards each declared submodule to its branch tip. The root
+        # patch therefore carries no Subproject line for either the source
+        # head or the sandbox checkpoint; the transport-safety contract is
+        # enforced by the source index keeping the source head after apply.
         patch_text = root_delta.patch.decode()
-        tm.that(patch_text, has=f"+Subproject commit {source_head}")
-        tm.that(patch_text, lacks=f"+Subproject commit {nested.checkpoint_sha}")
+        tm.that(patch_text, lacks="Subproject commit")
         tm.ok(u.Infra.git_apply_patch(root_delta))
         staged = tm.ok(
-            u.Infra.git_capture(
-                workspace_root, ("ls-files", "--stage", "--", nested.relative_path)
+            u.Cli.capture(
+                [c.Infra.GIT, "ls-files", "--stage", "--", nested.relative_path],
+                cwd=workspace_root,
             )
         )
         tm.that(staged, eq=f"160000 {source_head} 0\t{nested.relative_path}")
@@ -298,7 +298,14 @@ class TestsFlextInfraWorktreeTransaction:
 
         head = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
 
-        tm.that(tm.ok(u.Infra.git_repository_head(worktree_root)), eq=head)
+        tm.that(
+            tm.ok(
+                u.Infra.git_repository_head(
+                    m.Infra.GitRepoRequest(repo_root=worktree_root)
+                )
+            ).oid,
+            eq=head,
+        )
 
     def test_isolated_worktree_does_not_run_host_checkout_hooks(
         self, tmp_path: Path
@@ -315,8 +322,9 @@ class TestsFlextInfraWorktreeTransaction:
         hook.write_text(f"#!/bin/sh\ntouch {marker}\nexit 77\n", encoding="utf-8")
         hook.chmod(0o755)
         tm.ok(
-            u.Infra.git_capture(
-                source_root, ("config", "core.hooksPath", str(hooks_root))
+            u.Cli.run_checked(
+                [c.Infra.GIT, "config", "core.hooksPath", str(hooks_root)],
+                cwd=source_root,
             )
         )
 
@@ -378,10 +386,13 @@ class TestsFlextInfraWorktreeTransaction:
         second_artifact = second_source / "artifact.txt"
         concurrent = second_source / "concurrent.txt"
         concurrent.write_text("new head\n", encoding="utf-8")
-        tm.ok(u.Infra.git_capture(second_source, ("add", concurrent.name)))
         tm.ok(
-            u.Infra.git_capture(
-                second_source, ("commit", "-m", "advance source during transaction")
+            u.Cli.run_checked([c.Infra.GIT, "add", concurrent.name], cwd=second_source)
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "advance source during transaction"],
+                cwd=second_source,
             )
         )
         first_status = _git_status(first_source)
@@ -440,47 +451,37 @@ class TestsFlextInfraWorktreeTransaction:
         ).resolve()
         preflight_complete = Event()
         contention_observed = Event()
-        original_run_raw = u.Cli.run_raw
+        original_head = u.Infra.git_repository_head
 
-        def observed_run_raw(
-            cmd: t.StrSequence,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            capture: bool = True,
-        ) -> p.Result[p.Cli.CommandOutput]:
-            result = original_run_raw(
-                cmd,
-                cwd=cwd,
-                timeout=timeout,
-                env=env,
-                remove_env_keys=remove_env_keys,
-                input_data=input_data,
-                capture=capture,
-            )
-            if (
-                tuple(cmd) == (c.Infra.GIT, "rev-parse", "HEAD")
-                and cwd is not None
-                and Path(cwd).resolve() == second_source.resolve()
-            ):
+        def observed_head(
+            _cls: type[object], request: m.Infra.GitRepoRequest
+        ) -> p.Result[m.Infra.GitOidReport]:
+            """Observe the typed preflight HEAD read on the contended source."""
+            result = original_head(request)
+            if request.repo_root.expanduser().resolve() == second_source.resolve():
                 preflight_complete.set()
                 tm.that(contention_observed.wait(timeout=10), where=bool)
             return result
 
-        monkeypatch.setattr(u.Cli, "run_raw", observed_run_raw)
+        # The facet resolves HEAD through the typed Request/Report method, so
+        # the contention hook patches that seam (GitPython spawns no u.Cli
+        # process call the old monkeypatch could observe).
+        monkeypatch.setattr(
+            "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_repository_head",
+            classmethod(observed_head),
+        )
 
         def advance_source_head() -> p.Result[bool]:
             concurrent = second_source / "concurrent.txt"
             concurrent.write_text("new head\n", encoding="utf-8")
-            add_result = u.Infra.git_capture(second_source, ("add", concurrent.name))
+            add_result = u.Cli.run_checked(
+                [c.Infra.GIT, "add", concurrent.name], cwd=second_source
+            )
             if add_result.failure:
                 return r[bool].fail(add_result.error or "failed to stage writer change")
-            commit_result = u.Infra.git_capture(
-                second_source,
-                ("commit", "-m", "advance source after transaction apply"),
+            commit_result = u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "advance source after transaction apply"],
+                cwd=second_source,
             )
             if commit_result.failure:
                 return r[bool].fail(

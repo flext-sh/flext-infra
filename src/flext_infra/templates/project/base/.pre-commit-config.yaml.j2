@@ -3,8 +3,10 @@ repos:
   - repo: local
     hooks:
       # Why: fast fixes run before each commit; expensive gates run before push.
-      # Prefix CI={{ make.ci.value }} only on make check so gate skips apply.
-      # make test must not inherit that token (mro-v4p5 forbids pytest under CI=Y).
+      # Pre-push is local operator validation and runs EVERY gate: CI={{ make.ci.value }}
+      # is never injected here, because it skips the lint/format/pyrefly gates
+      # that must block a push (9b604d43). make test never inherits that token
+      # either (mro-v4p5 forbids pytest under CI={{ make.ci.value }}).
       - id: flext-pre-commit
         name: FLEXT pre-commit workflow
         language: system
@@ -19,7 +21,7 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          '{% for step in make.workflow if "pre_push" in step.contexts %}{% if step.verb == "check" %}{{ make.ci.variable }}={{ make.ci.value }} {% endif %}make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
+          'unset $(git rev-parse --local-env-vars); {% for step in make.workflow if "pre_push" in step.contexts %}make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

@@ -226,20 +226,23 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         if route_key is None:
             return None
         candidate_root = self.transaction_workspace_argument(args)
-        workspace_result = u.Infra.git_workspace_root(candidate_root)
+        workspace_result = u.Infra.git_workspace_root(
+            m.Infra.GitRepoRequest(repo_root=candidate_root)
+        )
         if workspace_result.failure:
             self.display_message(
                 workspace_result.error or "failed to resolve transaction workspace",
                 c.Cli.MessageTypes.ERROR,
             )
             return 1
+        workspace_root = workspace_result.value.workspace_root
         apply_requested = self.transaction_apply_requested(route_key, args)
         request = m.Infra.WorktreeTransactionRequest(
-            workspace_root=workspace_result.value,
+            workspace_root=workspace_root,
             command=(group, *self.transaction_inner_args(route_key, args)),
             apply_patch=apply_requested,
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
-            scoped_paths=self.transaction_scoped_paths(args, workspace_result.value),
+            scoped_paths=self.transaction_scoped_paths(args, workspace_root),
         )
         result = u.Infra.execute_worktree_transaction(request)
         if result.failure:

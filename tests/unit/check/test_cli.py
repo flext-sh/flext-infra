@@ -113,7 +113,7 @@ class TestWorkspaceCheckCli:
 
         tm.that(exit_code, eq=0)
 
-    def test_run_cli_fix_rewrites_source_with_forwarded_ruff_args(
+    def test_run_cli_never_rewrites_source_because_check_is_read_only(
         self, tmp_path: Path
     ) -> None:
         workspace = self._create_workspace(tmp_path)
@@ -135,8 +135,8 @@ class TestWorkspaceCheckCli:
             "flext-core",
         ])
 
-        tm.that(exit_code, eq=0)
-        tm.that("import os" in module_path.read_text(encoding="utf-8"), eq=False)
+        tm.that(exit_code, eq=1)
+        tm.that(module_path.read_text(encoding="utf-8"), eq="import os\n\nvalue = 1\n")
 
     def test_run_cli_check_only_preserves_source(self, tmp_path: Path) -> None:
         workspace = self._create_workspace(tmp_path)

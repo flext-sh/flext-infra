@@ -85,6 +85,33 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in env_dirs
         ]
 
+    def _declared_envs(
+        self,
+        *,
+        declared_python_dirs: t.StrSequence,
+        project_dir: Path | None,
+        rules: m.Infra.PyrightConfig.PathRulesConfig,
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        """Build environments for roots declared before they exist on disk.
+
+        Declared roots and on-disk discovery must select the SAME environments,
+        diagnostic overrides included. Emitting only the broad roots here made
+        the declared render drop the override blocks that the on-disk render
+        keeps, so apply and check disagreed and conform never converged.
+        """
+        source_path = self._project_source_path()
+        return (
+            *self._diagnostic_override_envs(
+                project_dir=project_dir, root_prefix=None, source_path=source_path
+            ),
+            *self._envs_for_dirs(
+                env_dirs=self._declared_environment_dirs(declared_python_dirs),
+                source_path=source_path,
+                project_root=rules.project_root,
+                rules=rules,
+            ),
+        )
+
     def _diagnostic_override_envs(
         self, *, project_dir: Path | None, root_prefix: Path | None, source_path: str
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
@@ -219,15 +246,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
     def environment_payloads_for_dirs(
-        self, env_dirs: t.StrSequence
+        self, env_dirs: t.StrSequence, *, project_dir: Path | None = None
     ) -> t.SequenceOf[t.JsonDict]:
         """Render configured environments for Python roots declared before writes."""
-        rules = self._tool_config.tools.pyright.path_rules
-        environments = self._envs_for_dirs(
-            env_dirs=self._declared_environment_dirs(env_dirs),
-            source_path=self._project_source_path(),
-            project_root=rules.project_root,
-            rules=rules,
+        environments = self._declared_envs(
+            declared_python_dirs=env_dirs,
+            project_dir=project_dir,
+            rules=self._tool_config.tools.pyright.path_rules,
         )
         return tuple(self._environment_payload(item) for item in environments)
 
@@ -408,10 +433,9 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
         )
         expected_envs = (
-            self._envs_for_dirs(
-                env_dirs=self._declared_environment_dirs(declared_python_dirs),
-                source_path=self._project_source_path(),
-                project_root=stub_rules.project_root,
+            self._declared_envs(
+                declared_python_dirs=declared_python_dirs,
+                project_dir=project_dir,
                 rules=stub_rules,
             )
             if declared_python_dirs

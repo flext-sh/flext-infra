@@ -388,14 +388,18 @@ class FlextInfraUtilitiesPyprojectConform:
             optional_dev = u.Cli.toml_as_string_list(
                 u.Cli.toml_value(optional, str(c.Infra.DEV))
             )
+        # SSOT required floors win over existing same-name pins: dedupe_specs
+        # keeps the first occurrence, so toolchain floors must lead the merge.
+        # Otherwise stale member pins (e.g. rumdl>=0.2.46) block exclude-newer.
+        required_dev = tuple(
+            requirement
+            for requirement in required_dev_dependencies
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+        )
         dev = [
+            *required_dev,
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
-            *(
-                requirement
-                for requirement in required_dev_dependencies
-                if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
-            ),
         ]
         if dev:
             u.Cli.toml_sync_string_list(

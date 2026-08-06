@@ -374,9 +374,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"repository planning failed: {repository_root}"
                     )
                 )
+            ast_grep_plan = self._plan_ast_grep_surfaces(
+                root=repository_root, codegen=config_spec, contract=contract
+            )
+            if ast_grep_plan.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    ast_grep_plan.error
+                    or (
+                        f"stage=plan position={repository_index}/"
+                        f"{total_repositories} repository={repository.name}: "
+                        f"ast-grep rule projection failed: {repository_root}"
+                    )
+                )
             governed = self._complete_governed_plans(
                 repository_root,
-                repository_plan.value,
+                (*repository_plan.value, *ast_grep_plan.value),
                 config_spec,
                 contract,
                 profile=target.make_profile,
@@ -773,6 +785,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if directory in generated_roots
         )
 
+    @staticmethod
+    def _existing_python_dirs(
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+        target: m.Infra.RepositoryConformTarget,
+    ) -> t.StrSequence:
+        """Return the canonical Python roots this plan leaves on disk."""
+        rendered_roots = {
+            Path(entry.destination).parts[0]
+            for entry in codegen.templates.entries
+            if target.make_profile in entry.profiles
+            and entry.delegate == "render"
+            and Path(entry.destination).parts
+        }
+        return tuple(
+            directory
+            for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
+            if directory in rendered_roots or (root / directory).is_dir()
+        )
+
     def _plan_scaffold_repository(
         self,
         *,
@@ -1099,13 +1131,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
+        # Both plan paths must declare the SAME Python roots or their renders
+        # diverge and conform never converges. _existing_python_dirs unions the
+        # roots this plan renders with the roots already on disk, which is the
+        # complete set for an existing tree.
+        declared_python_dirs = self._existing_python_dirs(root, codegen, target)
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1137,8 +1172,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Dependency topology is conformed before tooling so the modernizer is
         # the final owner of TOML ordering, comments, and type-checker settings.
         # It preserves the already canonical dependency source declarations.
+        # Declare the canonical roots this plan leaves on disk. Analyzer paths
+        # are otherwise derived from directories that EXIST, and the same plan
+        # also materializes managed roots (tests/), so the rendered pyproject
+        # omitted them and the NEXT plan re-derived them — apply never reached
+        # its fixed point.
         tooling_result = modernizer.conform_source(
-            prepared_result.value, path=pyproject
+            prepared_result.value,
+            path=pyproject,
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1341,6 +1383,90 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
+    def _absent_file_plan(path: Path, current: str) -> m.Infra.CodegenFilePlan:
+        """Plan the removal of one retired projection."""
+        return m.Infra.CodegenFilePlan(
+            path=path,
+            rendered="",
+            expected_sha256=u.Cli.sha256_content(""),
+            current_sha256=u.Cli.sha256_content(current),
+            changed=True,
+            absent=True,
+        )
+
+    def _plan_ast_grep_surfaces(
+        self,
+        *,
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+        contract: m.Infra.CodegenConformSurfaceContract,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Own the ast-grep project contract without projecting packaged rules.
+
+        Why: rules travel inside the installed packages
+        (``flext_infra/codemod/rules`` discovered through the
+        importlib.resources cascade in ``flext_infra/codemod/discovery.py``),
+        so conform no longer copies them into ``<project>/ast-grep-rules/``.
+        ``sgconfig.yml`` is rendered from the SSOT only when the repository
+        owns hand-written rules; retired projections (generated marker
+        present) are pruned and hand-written files are never touched.
+        """
+        if contract.destinations is not None:
+            # Partial surfaces never select ast-grep artifacts; the complete
+            # surface owns the sgconfig decision and the projection prune.
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+        surfaces: list[tuple[Path, bool]] = [
+            (Path(codegen.sgconfig.rule_dirs[0]), True)
+        ]
+        if codegen.sgconfig.test_dirs:
+            surfaces.append((Path(codegen.sgconfig.test_dirs[0]), False))
+        planned: list[m.Infra.CodegenFilePlan] = []
+        own_rules = False
+        for destination_dir, is_rule_dir in surfaces:
+            target_dir = root / destination_dir
+            if not target_dir.is_dir():
+                continue
+            for existing in sorted(target_dir.rglob("*.yml")):
+                current = u.Cli.files_read_text(existing)
+                if current.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        current.error or f"ast-grep rule read failed: {existing}"
+                    )
+                if current.value.startswith("# @generated by flext_infra codegen"):
+                    planned.append(self._absent_file_plan(existing, current.value))
+                    continue
+                if is_rule_dir:
+                    own_rules = True
+        sgconfig_path = root / "sgconfig.yml"
+        if own_rules:
+            templates_root = (
+                self._package_root() / "templates" / codegen.templates.root
+            ).resolve()
+            rendered = u.Cli.template_render(
+                templates_root / "base/sgconfig.yml.j2", codegen.sgconfig
+            )
+            if rendered.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    rendered.error or "sgconfig.yml render failed"
+                )
+            sgconfig_plan = self._file_plan(root, "sgconfig.yml", rendered.value)
+            if sgconfig_plan.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    sgconfig_plan.error or "sgconfig.yml planning failed"
+                )
+            planned.append(sgconfig_plan.value)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+        if sgconfig_path.is_file():
+            current = u.Cli.files_read_text(sgconfig_path)
+            if current.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    current.error or f"sgconfig read failed: {sgconfig_path}"
+                )
+            if current.value.startswith("# @generated by flext_infra codegen"):
+                planned.append(self._absent_file_plan(sgconfig_path, current.value))
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
+    @staticmethod
     def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
         if workspace.project is not None:
@@ -1508,10 +1634,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.GitignoreRenderSpec(gitignore_sections=sections)
             )
-        if destination == "sgconfig.yml":
-            # Why (ai-hub-qwoc): the ast-grep contract is identical for every
-            # governed repository, so it renders straight from the codegen SSOT.
-            return r[p.Model].ok(codegen.sgconfig)
         if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
@@ -1567,6 +1689,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         dist, codegen.checkout_submodules
                     ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
+                    ci_matrix_auto_run=target.ci_matrix_auto_run,
                 )
             )
         destination_path = Path(destination)
@@ -2143,6 +2266,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # Soft: ancestry still validates against the local tracking ref
                 # when present; hard-fail only if that ref is missing below.
                 pass
+        has_origin = (
+            remote_probe.success
+            and remote_probe.value.exit_code == 0
+            and remote_probe.value.stdout.strip()
+        )
         baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
@@ -2152,13 +2280,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"command={' '.join(baseline_command)}; error={baseline_result.error}"
             )
         if baseline_result.value.exit_code != 0:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "provider baseline ref is missing: "
-                f"{baseline_reference}; command={' '.join(baseline_command)}; "
-                f"exit={baseline_result.value.exit_code}; "
-                f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
-            )
-        baseline_sha = baseline_result.value.stdout.strip()
+            if not has_origin:
+                # No remote origin (fixture/offline clone): skip provider
+                # baseline ancestry — only local refs are enumerated below.
+                baseline_sha = ""
+            else:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "provider baseline ref is missing: "
+                    f"{baseline_reference}; command={' '.join(baseline_command)}; "
+                    f"exit={baseline_result.value.exit_code}; "
+                    f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
+                )
+        else:
+            baseline_sha = baseline_result.value.stdout.strip()
         current_branch_result = u.Cli.run_raw(
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
@@ -2273,7 +2407,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if is_remote or is_other_local:
                     excluded = True
             ancestor: bool | None = None
-            if not excluded:
+            if not excluded and baseline_sha:
+                # Ancestry validation requires a resolved baseline SHA;
+                # skip when absent (fixture/offline clone without origin).
                 ancestry_command = (
                     c.Infra.GIT,
                     "merge-base",
@@ -2304,8 +2440,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.BranchAncestryPlan].ok(
             m.Infra.BranchAncestryPlan(
                 repository_root=root,
-                baseline_reference=baseline_reference,
-                baseline_sha=baseline_sha,
+                baseline_reference=baseline_reference or "HEAD",
+                baseline_sha=baseline_sha or "HEAD",
                 references=tuple(references),
             )
         )
@@ -2377,12 +2513,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if probe.failure or probe.value.strip() != "true":
             return r[Path].ok(workspace_root)
-        principal = u.Infra.git_primary_worktree_root(workspace_root)
+        # A submodule's primary worktree is itself; the workspace ledger owner
+        # is the superproject. Resolve superproject working tree first.
+        superproject = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=workspace_root)
+        )
+        if superproject.success and superproject.value.text.strip():
+            return r[Path].ok(Path(superproject.value.text.strip()).resolve())
+        principal = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=workspace_root)
+        )
         if principal.failure:
             return r[Path].fail(
                 principal.error or "unable to resolve the principal worktree"
             )
-        return r[Path].ok(principal.value)
+        return r[Path].ok(principal.value.primary_root)
 
     @staticmethod
     def _beads_binary(ledger_root: Path) -> p.Result[Path]:
@@ -2479,7 +2624,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Routing-only projections (attached standalones / worktree routes)
             # may commit config.yaml + metadata.json without owning tracker
             # state. Fail only when additional tracker artifacts appear.
-            routing_only_names = frozenset({"config.yaml", "metadata.json"})
+            # dolt-server.port is a runtime probe written by the CLI when it
+            # connects to the shared server; it is not tracker state.
+            routing_only_names = frozenset({
+                "config.yaml",
+                "metadata.json",
+                "dolt-server.port",
+            })
             extra = tuple(
                 path.name
                 for path in beads_dir.iterdir()

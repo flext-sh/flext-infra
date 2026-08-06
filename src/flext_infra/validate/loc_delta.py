@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -54,23 +54,14 @@ class FlextInfraLocDeltaValidator(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Evaluate the workspace HEAD commit's labelled net-LOC delta."""
-        subject_result = u.Cli.run_raw(
-            ["git", "log", "-1", "--format=%s"], cwd=self.workspace_root, timeout=30
+        report = u.Infra.git_head_numstat(
+            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
         )
-        if subject_result.failure:
-            return r[bool].fail(subject_result.error or "git subject read failed")
-        numstat_result = u.Cli.run_raw(
-            ["git", "diff", "--numstat", "HEAD~1", "HEAD"],
-            cwd=self.workspace_root,
-            timeout=30,
-        )
-        if numstat_result.failure:
-            return r[bool].fail(numstat_result.error or "git numstat read failed")
-        insertions, deletions = self._sum_numstat(numstat_result.value.stdout)
+        if report.failure:
+            return r[bool].fail(report.error or "git numstat read failed")
+        insertions, deletions = self._sum_numstat(report.value.numstat)
         verdict = self.evaluate(
-            subject=subject_result.value.stdout.strip(),
-            insertions=insertions,
-            deletions=deletions,
+            subject=report.value.subject, insertions=insertions, deletions=deletions
         )
         if verdict.failure:
             return r[bool].fail(verdict.error or "net-LOC-delta violation")

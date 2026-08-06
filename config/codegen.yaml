@@ -36,10 +36,10 @@ Infra:
       # expected_schema is the ledger schema the binary must know.
       beads:
         selector: go:github.com/steveyegge/beads/cmd/bd
-        version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
+        version: "af45955aa2878999541470182a9980dc891823f1"
         reported_version: "1.1.0"
-        checksum: "ecf032358ff126810c1ebf6733d71bc836b9b53e39f8c8753e313138d02eb3d1"
-        expected_schema: 61
+        checksum: "2671ea434a30505831474c5f1e0e6e1117499a531b623a73e468299eb0b94665"
+        expected_schema: 62
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never
         # used. Rendered into .beads/config.yaml and .beads/metadata.json by
@@ -54,9 +54,10 @@ Infra:
           user: root
           auto_commit: "on"
 
-    # Why (ai-hub-qwoc): the ast-grep project contract for every governed
-    # repository. A provider manifest may declare sgconfig.yml as a required
-    # surface, so it is rendered from here instead of hand-written per repo.
+    # Why (ai-hub-qwoc): the ast-grep project contract. Rules travel inside the
+    # installed packages (flext_infra/codemod/rules via the importlib.resources
+    # cascade in flext_infra/codemod/discovery.py); conform renders sgconfig.yml
+    # from this SSOT only for a repository with its own hand-written rules.
     sgconfig:
       rule_dirs:
         - ast-grep-rules
@@ -294,7 +295,7 @@ Infra:
         # custom handlers without taking the serialized mutation lock.
         # `docs` materializes contract artifacts under APPLY=Y (handler picks
         # --apply/--check), same class as gen/fmt/fix.
-        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs]
+        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs, mod]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -308,7 +309,7 @@ Infra:
         # Serialized surface: the read-only validators plus every mutation verb,
         # so no two lanes mutate one checkout concurrently. `run` stays out:
         # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
-        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs]
+        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs, mod]
       verbs:
         - name: help
           default_what: usage
@@ -337,7 +338,8 @@ Infra:
         - name: test
           default_what: all
           # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Coverage is on unless CI=Y (no separate cov verb).
+          # Incremental subsets never enforce global coverage; full coverage is
+          # an explicit complete-suite gate, not part of default make test.
           # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
           # test in mutation_verbs (fingerprint still ignores .testmondata*).
           whats: [all, cache-status, cache-clear, cache-checkpoint]
@@ -403,6 +405,14 @@ Infra:
           # only status is read-only, so it stays the default WHAT.
           apply_guarded: true
           apply_what: land
+        - name: mod
+          default_what: check
+          whats: [check, all, apply]
+          # `mod` batch-applies the sgconfig ast-grep rules under the
+          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
+          # the read-only dry-run fixed-point after mutation.
+          apply_guarded: true
+          apply_what: apply
       custom_handler_policy:
         filename: custom.mk
         # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
@@ -411,7 +421,7 @@ Infra:
         # from pre-/post- lifecycle hooks. The validator must accept both
         # shapes the runtime itself dispatches to, or every project that
         # defines a custom WHAT handler fails `codegen conform` outright.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)_[a-z0-9][a-z0-9_-]*)$"
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -1574,16 +1584,10 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
-        # required surface. Without a generator it was hand-written in one
-        # repository and absent in another, so provider discovery failed closed
-        # with "missing declared file: sgconfig.yml". Rendering it from the SSOT
-        # gives every governed repository the same ast-grep contract.
-        - source: base/sgconfig.yml.j2
-          destination: sgconfig.yml
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+        # sgconfig.yml is NOT a generic template entry: it is rendered by the
+        # ast-grep surface planner only for repositories with their own
+        # hand-written rules (see conform._plan_ast_grep_surfaces); every other
+        # repository consumes the packaged rule cascade.
         - source: base/python-version.j2
           destination: .python-version
           profiles: [workspace-root, workspace-member, standalone]

@@ -55,6 +55,23 @@ elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 fi
 endef
 
+# mro-ga9q (custom.mk blacklist): member projects may define ANY custom
+# verb/WHAT through _custom_<verb>_<what> handlers and (pre|post)-<verb>[-<what>]
+# hooks EXCEPT the reserved verbs/WHATs below, which stay a flext-infra
+# monopoly (SSOT: flext_infra.basemk.custom_policy). Parse-time guard: every
+# make invocation fails loud when custom.mk redefines a reserved target;
+# every other target is permitted.
+CUSTOM_MK_RESERVED_TARGETS :={{ custom_mk_reserved }}
+ifneq ($(wildcard {{ make.CUSTOM_MAKE_FILENAME }}),)
+# Target definitions at column 0, excluding assignments (=) and dot-directives.
+# $(shell) converts the newline-separated results to space-separated lists.
+_CUSTOM_MK_DEFINED := $(shell awk '/^[A-Za-z_][A-Za-z0-9_-]*([ \t]+[A-Za-z_][A-Za-z0-9_-]*)*[ \t]*:/ && index($$0, "=") == 0 { line = $$0; sub(/:.*/, "", line); count = split(line, names, /[ \t]+/); for (i = 1; i <= count; i++) print names[i] }' {{ make.CUSTOM_MAKE_FILENAME }} | sort -u)
+_CUSTOM_MK_OFFENDERS := $(shell printf '%s\n' $(_CUSTOM_MK_DEFINED) | grep -xF $(foreach target,$(CUSTOM_MK_RESERVED_TARGETS),-e $(target)))
+ifneq ($(_CUSTOM_MK_OFFENDERS),)
+$(error {{ make.CUSTOM_MAKE_FILENAME }} redefines reserved flext-infra target(s): $(_CUSTOM_MK_OFFENDERS) - {{ make.CUSTOM_MK_BLACKLIST_ERROR }})
+endif
+endif
+
 _preflight: ## Preflight: validate base.mk and enforce venv contract
 	$(Q)$(VALIDATE_CANONICAL_BASE_MK)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)

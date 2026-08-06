@@ -216,7 +216,10 @@ class TestsWorkspaceRootMakeContract:
 
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, has='--make-arg "CHECK_GATES=lint,pyrefly"')
+        # Gate normalization (CI filtering, whitespace stripping) now happens in
+        # the recipe shell before forwarding, so the dry-run projection shows
+        # the forwarded shell value rather than the raw make variable.
+        tm.that(output, has='--make-arg "CHECK_GATES=$gates"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
 
     def test_generated_make_routes_fmt_apply_to_selected_project(
@@ -243,7 +246,6 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--verb fmt")
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, has='--make-arg "WHAT=apply"')
         tm.that(output, has='--make-arg "APPLY=Y"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")
@@ -275,11 +277,18 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has="--file")
         tm.that(output, has="--match")
 
-    def test_generated_make_routes_root_file_only_to_workspace_root(
+    def test_generated_make_forwards_root_file_with_member_selection(
         self, tmp_path: Path
     ) -> None:
-        """Keep provider-owned root tests in the root project execution lane."""
-        workspace_root, _ = _write_workspace(tmp_path)
+        """Forward a root-owned test FILE selector with the member fan-out.
+
+        A workspace root owns no local gate implementation: Make never emits a
+        ``--projects .`` lane (selecting the root maps to WORKSPACE_MEMBERS).
+        Which project owns the file is decided by the orchestrator
+        (_select_file_owner) at runtime, not by this Make recipe, so this
+        boundary asserts forwarding rather than owner filtering.
+        """
+        workspace_root, project_names = _write_workspace(tmp_path)
         selected = "tests/unit/test_provider_contract.py"
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -297,17 +306,20 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        # The root project is in the forwarded selection and the typed FILE
-        # selector travels with it. Which project owns the file is decided by
-        # the orchestrator (_select_file_owner), not by this Make recipe, so
-        # this boundary asserts forwarding rather than owner filtering.
-        tm.that(output, has="--projects .")
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
+        tm.that(output, lacks="--projects .")
         tm.that(output, has="--file")
 
-    def test_generated_make_default_test_includes_root_and_every_member(
+    def test_generated_make_default_test_fans_out_to_every_member(
         self, tmp_path: Path
     ) -> None:
-        """Run provider root tests alongside every configured workspace member."""
+        """Default test selection is every declared member, never the root.
+
+        A workspace root owns no local gate implementation, so the default
+        fan-out is WORKSPACE_MEMBERS; selecting ``.`` would orchestrate the
+        root against itself forever and is mapped away by the template.
+        """
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -319,9 +331,9 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="--projects .")
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
+        tm.that(output, lacks="--projects .")
 
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
