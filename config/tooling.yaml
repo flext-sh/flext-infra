@@ -349,7 +349,7 @@ Infra:
           # registration API. This existing-path-only environment is the tested
           # vendor boundary; broad src code keeps reportPrivateUsage=error.
           diagnostic-path-overrides:
-            - root: src/flext_infra/_utilities/rope_patch
+            - root: src/flext_infra/_utilities/_rope
               reportPrivateUsage: "none"
               rationale: >-
                 Rope 1.14 and upstream master require private walker handler
