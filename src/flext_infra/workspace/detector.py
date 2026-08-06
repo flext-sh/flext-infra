@@ -306,8 +306,10 @@ class FlextInfraWorkspaceDetector(
     def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
         """Resolve the manifest owner for a repository or attached member."""
         resolved_root = repository_root.expanduser().resolve()
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
-        if identity.failure or not identity.value.is_inside_work_tree:
+        inside = u.Infra.git_is_inside_work_tree(
+            m.Infra.GitRepoRequest(repo_root=resolved_root)
+        )
+        if inside.failure or not inside.value.value:
             # A path that is not inside ANY Git work tree is a standalone project
             # that owns its own workspace root (covers freshly scaffolded projects
             # before `git init`, and repo-less checkouts).
@@ -842,14 +844,14 @@ class FlextInfraWorkspaceDetector(
                 return r[c.Infra.WorkspaceMode].fail(local_contract.error)
             workspace_spec = local_spec
 
-        git_probe = u.Infra.git_identity(
+        git_probe = u.Infra.git_is_inside_work_tree(
             m.Infra.GitRepoRequest(repo_root=resolved_project_root)
         )
         if git_probe.failure:
             return r[c.Infra.WorkspaceMode].fail(
                 git_probe.error or "unable to execute Git workspace probe"
             )
-        if not git_probe.value.is_inside_work_tree:
+        if not git_probe.value.value:
             if (resolved_project_root / c.Infra.GIT_DIR).exists():
                 return r[c.Infra.WorkspaceMode].fail("invalid Git repository metadata")
             return self._unattached_mode(resolved_project_root, workspace_spec)

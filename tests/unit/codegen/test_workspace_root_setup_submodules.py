@@ -148,11 +148,20 @@ class TestsWorkspaceRootSetupSubmodules:
     ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
-        sync_at = rendered.index("submodule sync --recursive")
-        update_at = rendered.index("submodule update --init --recursive")
-        uv_at = rendered.index("$(UV) sync --project")
+        # The generated setup expresses the ordering as a Make prerequisite:
+        # every _builtin_setup_environment profile branch depends on
+        # _builtin_setup_submodules, whose recipe runs the per-module
+        # `submodule update --init` before any `$(UV) sync --project` can run.
+        prerequisite = "_builtin_setup_environment: _builtin_setup_submodules"
+        update_at = rendered.index("submodule update --init")
+        first_uv_at = rendered.index("$(UV) sync --project")
 
-        tm.that(sync_at < update_at < uv_at, eq=True)
+        tm.that(rendered.count(prerequisite), eq=3)
+        tm.that(update_at < rendered.index(prerequisite), eq=True)
+        # The only uv sync lives in SETUP_ENVIRONMENT_RECIPE, which is reachable
+        # solely through the prerequisite-guarded _builtin_setup_environment.
+        env_recipe_at = rendered.index("SETUP_ENVIRONMENT_RECIPE = ")
+        tm.that(env_recipe_at < first_uv_at, eq=True)
 
     def test_make_setup_initializes_local_submodule_before_environment(
         self, tmp_path: Path

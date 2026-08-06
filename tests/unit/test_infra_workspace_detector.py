@@ -476,7 +476,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         tm.fail(
             FlextInfraWorkspaceDetector().detect(project_root),
-            has="submodule.vendored.branch",
+            has="Git submodule branch is missing: vendored",
         )
 
     def test_conform_target_member_overlay_never_promotes_beads(
