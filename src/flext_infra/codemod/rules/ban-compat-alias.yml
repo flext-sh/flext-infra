@@ -24,13 +24,13 @@ rule:
         kind: expression_statement
         inside:
           kind: module
-  constraints:
-    OLD:
-      kind: identifier
-      regex: '^(?!__)[A-Za-z_]\w*$'
-    NEW:
-      kind: identifier
-      regex: '^(?!__)[A-Za-z_]\w*$'
+constraints:
+  OLD:
+    kind: identifier
+    regex: '^[A-Za-z]\w*$'
+  NEW:
+    kind: identifier
+    regex: '^[A-Za-z]\w*$'
 message: >-
   Backward-compatibility alias `$OLD = $NEW` at module level is banned.
   Rename at the owner and migrate every consumer in the same cutover —
