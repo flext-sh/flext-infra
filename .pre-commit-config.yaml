@@ -19,7 +19,7 @@ repos:
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'make gen APPLY=Y && CI=Y make check && make test'
+          'make gen APPLY=Y && make check && make test'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
