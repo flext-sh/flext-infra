@@ -38,7 +38,7 @@ Infra:
         selector: go:github.com/steveyegge/beads/cmd/bd
         version: "af45955aa2878999541470182a9980dc891823f1"
         reported_version: "1.1.0"
-        checksum: "73890d154c7d5c970d8efcbe57a534ccb2ded260b5b026447892bafb883276eb"
+        checksum: "2671ea434a30505831474c5f1e0e6e1117499a531b623a73e468299eb0b94665"
         expected_schema: 62
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never
