@@ -98,7 +98,7 @@ class TestsFlextInfraPytestRunner:
                 "-m",
                 "pytest",
                 "--testmon",
-                "--cov",
+                "--no-cov",
                 "-n",
                 str(policy.parallel_workers),
                 "--dist",
@@ -108,7 +108,7 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
-        tm.that(command, lacks="--no-cov")
+        tm.that(command, lacks="--cov-report")
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -395,12 +395,13 @@ class TestsFlextInfraPytestRunner:
             ],
         )
 
-    def test_local_full_argv_keeps_testmon_and_coverage(self, tmp_path: Path) -> None:
+    def test_local_incremental_argv_keeps_testmon_without_coverage(
+        self, tmp_path: Path
+    ) -> None:
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--cov"])
-        tm.that(any(arg.startswith("--cov-report=xml:") for arg in command), eq=True)
-        tm.that(command, lacks="--no-cov")
+        tm.that(command, has=["--testmon", "--no-cov"])
+        tm.that(command, lacks="--cov-report")
 
     def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -421,14 +422,15 @@ class TestsFlextInfraPytestRunner:
         result = runner.execute()
         tm.fail(result, has="forbidden under CI=Y")
 
-    def test_ci_true_does_not_disable_coverage(
+    def test_ci_true_keeps_incremental_testmon_without_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """GitHub default CI=true must not match the Make token CI=Y."""
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, "true")
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--cov"])
+        tm.that(command, has=["--testmon", "--no-cov"])
+        tm.that(command, lacks="--cov-report")
         tm.that(command, lacks="not docker and not remote")
 
     def test_local_full_argv_keeps_docker_remote_markers_selected(
