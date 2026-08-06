@@ -1,11 +1,11 @@
-"""A lane borrows the primary checkout's environment instead of building one.
+"""A lane owns the environment `make setup` provisions for it.
 
-A lane that provisions its own environment is a second ``uv sync`` target for the
-same sources. Syncing it rewrites the editable pointers every other checkout
-resolves through, so the primary and every sibling lane silently start importing
-this lane's code. Linking the lane's environment name to the primary's leaves the
-primary as the only writer, and generated Make then recognizes the borrowed
-environment and provisions nothing (mro-c6di).
+An environment name that resolves to another checkout makes the lane import
+that checkout's sources: `uv` writes editable finders as per-environment
+``.pth`` files holding absolute paths, so borrowing another checkout's
+environment silently binds the lane to the owner's code. Every lane therefore
+provisions its own environment through the canonical `make setup` surface
+(mro-j4vd).
 """
 
 from __future__ import annotations
@@ -60,29 +60,35 @@ def _add_lane(repository: Path, branch: str) -> Path:
 
 
 class TestsFlextInfraLaneEnvironment:
-    """The lane environment name always resolves to a single owner."""
+    """The lane environment always belongs to the lane itself."""
 
-    def test_lane_environment_links_to_the_primary_environment(
+    def test_lane_environment_never_links_to_another_checkout(
         self, tmp_path: Path
     ) -> None:
-        """A new lane borrows the primary environment rather than creating one."""
+        """A lane must not resolve its environment name to the primary's."""
         repository = _repository(tmp_path)
         primary_venv = _primary_environment(repository)
 
-        lane = _add_lane(repository, "feature/borrowed-environment")
+        lane = _add_lane(repository, "feature/owned-environment")
 
         lane_venv = lane / _VENV_NAME
-        tm.that(lane_venv.is_symlink(), eq=True)
-        tm.that(lane_venv.resolve(), eq=primary_venv.resolve())
+        tm.that(lane_venv.is_symlink(), eq=False)
+        if lane_venv.exists():
+            tm.that(lane_venv.resolve() == primary_venv.resolve(), eq=False)
 
-    def test_lane_without_a_primary_environment_invents_no_link(
+    def test_lane_setup_runs_the_canonical_setup_surface(
         self, tmp_path: Path
     ) -> None:
-        """Nothing is borrowed when the primary owns no environment."""
+        """Provisioning goes through `make setup`, never a link shortcut."""
         repository = _repository(tmp_path)
+        _ = _primary_environment(repository)
+        lane = _add_lane(repository, "feature/provisioned-environment")
 
-        lane = _add_lane(repository, "feature/no-owner")
+        provisioned = tm.ok(
+            FlextInfraWorktreeService.setup_lane(repository.resolve(), lane)
+        )
 
+        tm.that(provisioned, eq=True)
         tm.that((lane / _VENV_NAME).is_symlink(), eq=False)
 
     def test_a_real_lane_environment_is_never_replaced(self, tmp_path: Path) -> None:
@@ -91,15 +97,16 @@ class TestsFlextInfraLaneEnvironment:
         primary_venv = _primary_environment(repository)
         lane = _add_lane(repository, "feature/preserved-environment")
         lane_venv = lane / _VENV_NAME
-        lane_venv.unlink()
+        if lane_venv.is_symlink() or lane_venv.exists():
+            lane_venv.unlink()
         (lane_venv / "bin").mkdir(parents=True)
         (lane_venv / "bin" / "python").write_text("local\n", encoding="utf-8")
 
-        borrowed = tm.ok(
+        provisioned = tm.ok(
             FlextInfraWorktreeService.setup_lane(repository.resolve(), lane)
         )
 
-        tm.that(borrowed, eq=True)
+        tm.that(provisioned, eq=True)
         tm.that(lane_venv.is_symlink(), eq=False)
         tm.that(
             (lane_venv / "bin" / "python").read_text(encoding="utf-8"), eq="local\n"

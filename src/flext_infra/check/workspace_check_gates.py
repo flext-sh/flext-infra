@@ -25,6 +25,7 @@ from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
+from flext_infra.gates.codemod import FlextInfraCodemodGate
 
 
 class FlextInfraGateRegistry:
@@ -55,6 +56,7 @@ class FlextInfraGateRegistry:
             FlextInfraLayoutGate,
             FlextInfraTierWhitelistGate,
             FlextInfraSmellsGate,
+            FlextInfraCodemodGate,
         )
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
