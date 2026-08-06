@@ -21,7 +21,7 @@ pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture(autouse=True)
-def _isolate_inherited_git_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def isolate_inherited_git_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Detach every test from a git environment inherited from the caller."""
     # Why: git hooks export GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE. Under the
     # pre-push hook the whole suite inherits them, so fixtures that build a
