@@ -19,8 +19,13 @@ id: ban-private-import-behavior
 language: Python
 severity: error
 rule:
-  kind: import_from_statement
-  regex: '^from\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*\s+import\b'
+  any:
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*\s+import\b'
+    - all:
+        - kind: import_statement
+        - regex: '^import\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*(\s+as\s+\w+)?\s*$'
 message: >-
   Importing from a private implementation module (_constants/_exceptions/
   _models/_typings/_utilities) is banned in behavior code. Use the public
@@ -37,14 +42,3 @@ ignores:
   - "**/.git/**"
   - "**/.venv/**"
   - "**/__pycache__/**"
-  - "**/_constants/**"
-  - "**/_exceptions/**"
-  - "**/_models/**"
-  - "**/_typings/**"
-  - "**/_runtime/**"
-  - "**/_result/**"
-  - "**/_protocols/**"
-  - "**/_handlers_parts/**"
-  - "**/_lazy_parts/**"
-  - "**/_decorators/**"
-  - "**/_fixtures/**"
