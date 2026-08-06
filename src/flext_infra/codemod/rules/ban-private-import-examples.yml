@@ -12,8 +12,13 @@ id: ban-private-import-examples
 language: Python
 severity: error
 rule:
-  kind: import_from_statement
-  regex: '^from\s+[\w.]*\._\w[\w.]*\s+import\b'
+  any:
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*\s+import\b'
+    - all:
+        - kind: import_statement
+        - regex: '^import\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*(\s+as\s+\w+)?\s*$'
 message: >-
   Importing from a private `_`-prefixed module is banned in examples/ and
   scripts/. Demonstrate the public facade (from <pkg> import c, t, p, m, u,
