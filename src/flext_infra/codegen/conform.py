@@ -2634,14 +2634,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             beads_dir = plan.repository_root / ".beads"
             if not beads_dir.exists():
                 return r[bool].ok(True)
-            # A routing-only checkout (attached standalone / worktree route)
-            # commits config.yaml + metadata.json as projections of a tracker
-            # it does not own. Every other checkout that carries a .beads
-            # directory while disabled owns real tracker state and fails closed.
-            if not plan.routing_only:
-                return r[bool].fail(
-                    f"Beads is disabled but tracker state exists: {beads_dir}"
-                )
+            # A disabled checkout may still carry the ledger projections that
+            # conform itself renders (config.yaml + metadata.json), so tracker
+            # ownership is decided by content: any other artifact under .beads
+            # is real tracker state and fails closed.
             # dolt-server.port is a runtime probe written by the CLI when it
             # connects to the shared server; it is not tracker state.
             routing_only_names = frozenset({

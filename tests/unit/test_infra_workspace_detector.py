@@ -185,6 +185,23 @@ class TestsFlextInfraInfraWorkspaceDetector:
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
+    def test_directory_outside_any_repository_is_not_a_transaction_worktree(
+        self, tmp_path: Path
+    ) -> None:
+        """A plain directory never routes its ledger to an unrelated checkout."""
+        # Why: resolving the primary worktree from a non-repository path used to
+        # walk up into whatever repository happened to contain the temporary
+        # directory, so the target looked like a transaction worktree and
+        # silently became routing-only.
+        project_root = tmp_path / "plain-project"
+        project_root.mkdir()
+        primary = tm.ok(
+            u.Infra.git_primary_worktree_root(
+                m.Infra.GitRepoRequest(repo_root=project_root)
+            )
+        )
+        tm.that(primary.primary_root, eq=project_root.resolve())
+
     def test_ancestor_gitmodules_does_not_attach_project(self, tmp_path: Path) -> None:
         """Ignore an ancestor .gitmodules file without real Git attachment."""
         project_root = tmp_path / "nested" / "project"
