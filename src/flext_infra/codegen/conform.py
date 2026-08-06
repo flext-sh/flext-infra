@@ -2591,13 +2591,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             beads_dir = plan.repository_root / ".beads"
             if not beads_dir.exists():
                 return r[bool].ok(True)
-            # A repository whose ledger_root is itself owns the tracker;
-            # a disabled plan with .beads/ present at the owner root must fail
-            # because the owner cannot abdicate its own tracker lifecycle.
-            if plan.ledger_root == plan.repository_root:
-                return r[bool].fail(
-                    f"Beads is disabled but the repository owns the tracker: {beads_dir}"
-                )
             # Routing-only projections (attached standalones / worktree routes)
             # may commit config.yaml + metadata.json without owning tracker
             # state. Fail only when additional tracker artifacts appear.
