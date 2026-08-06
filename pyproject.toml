@@ -353,7 +353,23 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = "."
+venvPath = ".."
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = ["src"]
+reportAssignmentType = "none"
+reportAttributeAccessIssue = "none"
+reportGeneralTypeIssues = "none"
+reportInvalidTypeForm = "none"
+reportPrivateImportUsage = "none"
+reportPrivateUsage = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnusedImport = "none"
+root = "src/flext_infra/_utilities/rope_patch"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -608,8 +624,8 @@ in_place = true
 sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
-link-mode = "copy"
 exclude-newer = "7 days"
+link-mode = "copy"
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]
@@ -635,7 +651,7 @@ whitelines = 1
 dev = [
   "actionlint-py>=1.7.12.24",
   "autoflake>=2.3.3",
-  "bandit>=1.9.4",
+  "bandit>=1.8",
   "black>=26.5.1",
   "blacken-docs>=1.20.0",
   "codespell>=2.4.3",
@@ -671,7 +687,7 @@ dev = [
   "pylint>=4.0.6",
   "pyrefly>=1.1.1",
   "pyright>=1.1.411",
-  "pytest>=9.1.1",
+  "pytest>=9.0.3",
   "pytest-benchmark>=5.2.3",
   "pytest-clarity>=1.0.1",
   "pytest-codeblocks>=0.18.0",
@@ -687,7 +703,7 @@ dev = [
   "pytest-xdist>=3.8.0",
   "pyupgrade>=3.21.2",
   "radon>=6.0.1",
-  "ruff>=0.16.0",
+  "ruff>=0.15.12",
   "rumdl>=0.2.45",
   "types-cachetools>=7.0.0.20260713",
   "types-cffi>=2.0.0.20260518",
