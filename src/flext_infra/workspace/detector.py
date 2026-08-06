@@ -784,7 +784,7 @@ class FlextInfraWorkspaceDetector(
         # presence check in that context; the superproject bump is a separate
         # step that happens after the member push succeeds.
         if gitlink.failure or not gitlink.value.oid:
-            if os.environ.get("PRE_COMMIT") == "1":
+            if u.Cli.process_env().get("PRE_COMMIT") == "1":
                 pass  # Tolerate stale gitlink during hook execution
             else:
                 return r[c.Infra.WorkspaceMode].fail(
