@@ -63,8 +63,8 @@ def git_open_repo(repo_root: Path) -> p.Result[Repo]:
     # submodule as bare with working_tree_dir=None. Resolve the declared
     # worktree before rejecting the repository.
     if repo.bare or repo.working_tree_dir is None:
-        declared_worktree = repo.config_reader().get_value("core", "worktree", None)
-        if declared_worktree is None:
+        declared_worktree = repo.config_reader().get_value("core", "worktree", "")
+        if not declared_worktree:
             return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
         worktree_path = Path(str(declared_worktree))
         if not worktree_path.is_absolute():
