@@ -2236,6 +2236,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # Soft: ancestry still validates against the local tracking ref
                 # when present; hard-fail only if that ref is missing below.
                 pass
+        has_origin = (
+            remote_probe.success
+            and remote_probe.value.exit_code == 0
+            and remote_probe.value.stdout.strip()
+        )
         baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
@@ -2245,13 +2250,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"command={' '.join(baseline_command)}; error={baseline_result.error}"
             )
         if baseline_result.value.exit_code != 0:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "provider baseline ref is missing: "
-                f"{baseline_reference}; command={' '.join(baseline_command)}; "
-                f"exit={baseline_result.value.exit_code}; "
-                f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
-            )
-        baseline_sha = baseline_result.value.stdout.strip()
+            if not has_origin:
+                # No remote origin (fixture/offline clone): skip provider
+                # baseline ancestry — only local refs are enumerated below.
+                baseline_sha = ""
+            else:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "provider baseline ref is missing: "
+                    f"{baseline_reference}; command={' '.join(baseline_command)}; "
+                    f"exit={baseline_result.value.exit_code}; "
+                    f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
+                )
+        else:
+            baseline_sha = baseline_result.value.stdout.strip()
         current_branch_result = u.Cli.run_raw(
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
@@ -2366,7 +2377,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if is_remote or is_other_local:
                     excluded = True
             ancestor: bool | None = None
-            if not excluded:
+            if not excluded and baseline_sha:
+                # Ancestry validation requires a resolved baseline SHA;
+                # skip when absent (fixture/offline clone without origin).
                 ancestry_command = (
                     c.Infra.GIT,
                     "merge-base",
@@ -2397,8 +2410,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.BranchAncestryPlan].ok(
             m.Infra.BranchAncestryPlan(
                 repository_root=root,
-                baseline_reference=baseline_reference,
-                baseline_sha=baseline_sha,
+                baseline_reference=baseline_reference or "HEAD",
+                baseline_sha=baseline_sha or "HEAD",
                 references=tuple(references),
             )
         )
@@ -2574,7 +2587,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Routing-only projections (attached standalones / worktree routes)
             # may commit config.yaml + metadata.json without owning tracker
             # state. Fail only when additional tracker artifacts appear.
-            routing_only_names = frozenset({"config.yaml", "metadata.json"})
+            # dolt-server.port is a runtime probe written by the CLI when it
+            # connects to the shared server; it is not tracker state.
+            routing_only_names = frozenset({
+                "config.yaml",
+                "metadata.json",
+                "dolt-server.port",
+            })
             extra = tuple(
                 path.name
                 for path in beads_dir.iterdir()

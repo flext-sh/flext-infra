@@ -589,18 +589,22 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
     ) -> str:
         """Select and execute the correct ``git worktree add`` variant."""
         if request.local_branch_exists:
-            return repo.git.worktree("add", str(request.lane), request.branch)
+            return str(repo.git.worktree("add", str(request.lane), request.branch))
         if request.track_remote:
-            return repo.git.worktree(
-                "add",
-                "--track",
-                "-b",
-                request.branch,
-                str(request.lane),
-                f"origin/{request.branch}",
+            return str(
+                repo.git.worktree(
+                    "add",
+                    "--track",
+                    "-b",
+                    request.branch,
+                    str(request.lane),
+                    f"origin/{request.branch}",
+                )
             )
-        return repo.git.worktree(
-            "add", "-b", request.branch, str(request.lane), request.base
+        return str(
+            repo.git.worktree(
+                "add", "-b", request.branch, str(request.lane), request.base
+            )
         )
 
     @classmethod

@@ -498,6 +498,21 @@ _serialized_mod:
 
 
 
+# `all` = clean setup gen fmt fmt fix check test. CI=Y skips pytest inside
+# make test (flext_infra._pytest_entry guards mro-v4p5), so all always calls
+# test — the pytest gate is self-guarding.
+all: _builtin_require_environment
+	@$(SELF_MAKE) clean APPLY=Y
+	@$(SELF_MAKE) setup
+	@$(SELF_MAKE) gen APPLY=Y
+	@$(SELF_MAKE) fmt APPLY=Y
+	@$(SELF_MAKE) fmt APPLY=Y
+	@$(SELF_MAKE) fix APPLY=Y
+	@$(SELF_MAKE) check
+	@$(SELF_MAKE) test
+
+.PHONY: all
+
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
@@ -1002,20 +1017,6 @@ _builtin_gen_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply
 
 _builtin_gen_apply: _builtin_gen_all
-
-# `mod` batch-applies every ast-grep rule declared by the project sgconfig.
-# The flext-infra route owns the operator safety circuit: it measures the
-# ruff/pyrefly error counts before the apply, records a checkpoint (committing
-# a dirty tree first), re-measures after, and rolls back to the checkpoint
-# when either count increased. Default WHAT is the read-only dry-run.
-_builtin_mod_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
-
-_builtin_mod_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
-
-_builtin_mod_apply: _builtin_mod_all
 
 _builtin_work_status:
 	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)" --branch "$(BRANCH)"

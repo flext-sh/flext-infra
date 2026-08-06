@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import tempfile
 from collections.abc import Generator
+from configparser import Error as ConfigParserError
 from typing import BinaryIO
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from git import GitCommandError
+from git import GitCommandError, GitConfigParser
 
 from flext_cli import u
 from flext_core import r
@@ -187,7 +188,17 @@ class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
                 # Verify primary_root is a real worktree top-level by opening
                 # a separate repo context against it.
                 primary_repo_result = cls._open_repo(primary_root)
-                if primary_repo_result.failure:
+                primary_top: Path | None = None
+                if primary_repo_result.success:
+                    try:
+                        primary_top = Path(
+                            primary_repo_result.value.git.rev_parse(
+                                "--show-toplevel"
+                            ).strip()
+                        ).resolve()
+                    except GitCommandError:
+                        primary_top = None
+                if primary_top != primary_root:
                     caller_top = repo.git.rev_parse("--show-toplevel").strip()
                     caller_root = Path(caller_top).resolve()
                     if caller_root not in registered:
@@ -265,31 +276,20 @@ class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
                 f"Git submodule manifest is not a regular file: {gitmodules}"
             )
         try:
-            repo = cls._repo(repository_root)
-            output = repo.git.config(
-                "--file",
-                c.Infra.GITMODULES,
-                "--get-regexp",
-                r"^submodule\..*\.path$",
-                with_exceptions=False,
-            )
-        except GitCommandError as exc:
-            return r[t.SequenceOf[Path]].fail(str(exc))
-        except (OSError, ValueError) as exc:
+            with GitConfigParser(file_or_files=gitmodules, read_only=True) as config:
+                raw_paths = tuple(
+                    str(config.get_value(section, "path"))
+                    for section in config.sections()
+                    if section.startswith("submodule ")
+                    and config.has_option(section, "path")
+                )
+        except (ConfigParserError, OSError, TypeError, ValueError) as exc:
             return r[t.SequenceOf[Path]].fail(
                 f"failed to read Git submodule declarations: {exc}"
             )
-        if not output.strip():
-            return r[t.SequenceOf[Path]].ok(())
         paths: t.MutableSequenceOf[Path] = []
-        for raw_line in output.splitlines():
-            match raw_line.split(maxsplit=1):
-                case [_, raw_path]:
-                    relative = Path(raw_path)
-                case _:
-                    return r[t.SequenceOf[Path]].fail(
-                        f"malformed Git submodule path entry: {raw_line}"
-                    )
+        for raw_path in raw_paths:
+            relative = Path(raw_path)
             if relative.is_absolute() or relative == Path() or ".." in relative.parts:
                 return r[t.SequenceOf[Path]].fail(
                     f"invalid Git submodule path: {raw_path}"
@@ -310,59 +310,16 @@ class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
         The path must be declared exactly once in ``.gitmodules``; a missing
         URL or branch fails closed.
         """
+        gitmodules = request.repo_root / c.Infra.GITMODULES
         try:
-            repo = cls._repo(request.repo_root)
-            entries = repo.git.config(
-                "--file", c.Infra.GITMODULES, "--get-regexp", r"^submodule\..*\.path$"
-            )
-        except GitCommandError as exc:
-            return r[m.Infra.GitSubmoduleContractReport].fail(str(exc))
-        except (OSError, ValueError) as exc:
+            url, branch = cls._read_gitmodule_contract(gitmodules, request.member_path)
+        except (ConfigParserError, OSError, TypeError, ValueError) as exc:
             return r[m.Infra.GitSubmoduleContractReport].fail(
                 f"failed to read Git submodule paths: {exc}"
-            )
-        matching_sections: t.MutableSequenceOf[str] = []
-        for line in entries.splitlines():
-            if not line.strip():
-                continue
-            match line.split(maxsplit=1):
-                case [key, path] if path == request.member_path:
-                    matching_sections.append(key.removesuffix(".path"))
-                case [_, _]:
-                    continue
-                case _:
-                    return r[m.Infra.GitSubmoduleContractReport].fail(
-                        "malformed Git submodule path entry"
-                    )
-        if len(matching_sections) != 1:
-            return r[m.Infra.GitSubmoduleContractReport].fail(
-                "Git submodule path must be declared exactly once: "
-                f"{request.member_path}"
-            )
-        section = matching_sections[0]
-        try:
-            url = repo.git.config(
-                "--file", c.Infra.GITMODULES, "--get", f"{section}.url"
-            ).strip()
-        except GitCommandError:
-            url = ""
-        except (OSError, ValueError) as exc:
-            return r[m.Infra.GitSubmoduleContractReport].fail(
-                f"failed to read Git submodule URL: {exc}"
             )
         if not url:
             return r[m.Infra.GitSubmoduleContractReport].fail(
                 f"Git submodule URL is missing: {request.member_path}"
-            )
-        try:
-            branch = repo.git.config(
-                "--file", c.Infra.GITMODULES, "--get", f"{section}.branch"
-            ).strip()
-        except GitCommandError:
-            branch = ""
-        except (OSError, ValueError) as exc:
-            return r[m.Infra.GitSubmoduleContractReport].fail(
-                f"failed to read Git submodule branch: {exc}"
             )
         if not branch:
             return r[m.Infra.GitSubmoduleContractReport].fail(
@@ -371,6 +328,33 @@ class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
         return r[m.Infra.GitSubmoduleContractReport].ok(
             m.Infra.GitSubmoduleContractReport(url=url, branch=branch)
         )
+
+    @staticmethod
+    def _read_gitmodule_contract(gitmodules: Path, member_path: str) -> tuple[str, str]:
+        """Read URL and branch for one submodule from .gitmodules."""
+        with GitConfigParser(file_or_files=gitmodules, read_only=True) as config:
+            matching_sections = tuple(
+                section
+                for section in config.sections()
+                if section.startswith("submodule ")
+                and config.has_option(section, "path")
+                and str(config.get_value(section, "path")) == member_path
+            )
+            if len(matching_sections) != 1:
+                msg = f"Git submodule path must be declared exactly once: {member_path}"
+                raise ValueError(msg)
+            section = matching_sections[0]
+            url = (
+                str(config.get_value(section, "url")).strip()
+                if config.has_option(section, "url")
+                else ""
+            )
+            branch = (
+                str(config.get_value(section, "branch")).strip()
+                if config.has_option(section, "branch")
+                else ""
+            )
+        return url, branch
 
     @classmethod
     def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
