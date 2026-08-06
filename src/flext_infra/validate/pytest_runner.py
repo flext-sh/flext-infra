@@ -168,6 +168,22 @@ class FlextInfraPytestRunner(s[int]):
             )
         return r[bool].ok(True)
 
+    @staticmethod
+    def _junit_totals(junit_file: Path) -> tuple[int, int, int]:
+        """Return ``(tests, failures, errors)`` summed from the JUnit document."""
+        try:
+            root = DefusedET.parse(junit_file).getroot()
+        except DefusedET.ParseError:
+            return (0, 0, 0)
+        if root is None:
+            return (0, 0, 0)
+        suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+        return (
+            sum(int(suite.get("tests", "0")) for suite in suites),
+            sum(int(suite.get("failures", "0")) for suite in suites),
+            sum(int(suite.get("errors", "0")) for suite in suites),
+        )
+
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
         pytest = config.Infra.tooling.tools.pytest
@@ -413,13 +429,27 @@ class FlextInfraPytestRunner(s[int]):
             and self.file is None
             and self.match is None
         )
+        junit_tests = -1
+        junit_failures = -1
+        junit_errors = -1
+        if junit_file.is_file():
+            junit_tests, junit_failures, junit_errors = self._junit_totals(junit_file)
+        # Why: a testmon run on an unchanged tree selects zero tests; pytest-cov
+        # then exits nonzero on 0.00% fail-under. Zero executed tests with zero
+        # failures/errors is vacuous green — the noise status is normalized.
+        vacuous = junit_tests == 0 and junit_failures == 0 and junit_errors == 0
+        if vacuous:
+            exit_code = 0
         if exit_code == 0:
             junit_ok = self._require_junit(junit_file, pytest_log)
             if junit_ok.failure:
                 return r[int].fail(junit_ok.error or "junit validation failed")
+        # Coverage gates measure executed suites, so an empty (vacuous)
+        # selection is green by construction.
+        coverage_gate_active = coverage_enabled and not vacuous
         if (
             exit_code == 0
-            and coverage_enabled
+            and coverage_gate_active
             and self._pytest_log_reports_coverage_failure(pytest_log)
         ):
             # pytest-cov under xdist can print fail-under and still return 0.
@@ -430,7 +460,7 @@ class FlextInfraPytestRunner(s[int]):
             )
         if (
             exit_code == 0
-            and coverage_enabled
+            and coverage_gate_active
             and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
         ):
             return r[int].fail(
