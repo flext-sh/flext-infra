@@ -74,4 +74,23 @@ def git_repo(repo_root: Path) -> Repo:
     return opened.value
 
 
-__all__: list[str] = ["git_open_repo", "git_refresh_binary", "git_repo"]
+class FlextInfraUtilitiesGitRepo:
+    """Base for the typed Git owner mixins: shared GitPython open helpers."""
+
+    @classmethod
+    def _repo(cls, repo_root: Path) -> Repo:
+        """Open one non-bare worktree repository, raising on failure."""
+        return git_repo(repo_root)
+
+    @classmethod
+    def _open_repo(cls, repo_root: Path) -> p.Result[Repo]:
+        """Open one non-bare worktree repository as a ``Result``."""
+        return git_open_repo(repo_root)
+
+
+__all__: list[str] = [
+    "FlextInfraUtilitiesGitRepo",
+    "git_open_repo",
+    "git_refresh_binary",
+    "git_repo",
+]

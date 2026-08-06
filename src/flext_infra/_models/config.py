@@ -1608,8 +1608,10 @@ class FlextInfraConfigModels:
         required surface, but no generator owned it, so the file was authored by
         hand in one repository and simply absent in another -- provider discovery
         then failed closed with ``missing declared file: sgconfig.yml``. The rule
-        and fixture directories are declared here so every repository renders the
-        same contract from the SSOT instead of a hand-written copy.
+        and fixture directories are declared here so a repository with its own
+        hand-written rules renders the same contract from the SSOT instead of a
+        hand-written copy; every other repository consumes the packaged rule
+        cascade and needs no ``sgconfig.yml``.
         """
 
         rule_dirs: Annotated[

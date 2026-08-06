@@ -26,7 +26,7 @@ class FlextInfraModGateSnapshot(m.ArbitraryTypesModel):
 
 
 class FlextInfraModGateEngine:
-    """Measure ruff/pyrefly counts and execute the sgconfig rule batch."""
+    """Measure ruff/pyrefly counts and execute the ast-grep rule batch."""
 
     @staticmethod
     def circuit_broken(
@@ -119,16 +119,18 @@ class FlextInfraModGateEngine:
         )
 
     @classmethod
-    def scan(cls, root: Path, config: Path, *, fix: bool) -> p.Result[int]:
-        """Scan with every sgconfig rule; fix mode applies all rewrites."""
-        command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--config", str(config)]
-        command.extend(("--update-all" if fix else "--json=stream", "."))
-        run = cls._run_tool(root, tuple(command))
-        if run.failure:
-            return r[int].from_failure(run)
-        if fix:
-            return r[int].ok(0)
-        return r[int].ok(cls._count_json_lines(run.value.stdout or ""))
+    def scan(cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool) -> p.Result[int]:
+        """Scan with each discovered rule; fix mode applies all rewrites."""
+        pending = 0
+        for rule in rules:
+            command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule)]
+            command.extend(("--update-all" if fix else "--json=stream", "."))
+            run = cls._run_tool(root, tuple(command))
+            if run.failure:
+                return r[int].from_failure(run)
+            if not fix:
+                pending += cls._count_json_lines(run.value.stdout or "")
+        return r[int].ok(pending)
 
 
 __all__: list[str] = ["FlextInfraModGateEngine", "FlextInfraModGateSnapshot"]

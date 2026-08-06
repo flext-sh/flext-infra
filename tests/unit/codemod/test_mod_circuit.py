@@ -37,7 +37,6 @@ def _repo(tmp_path: Path, source: str) -> Path:
     (root / "pyproject.toml").write_text(
         '[project]\nname = "tmp"\nversion = "0.0.0"\n', encoding="utf-8"
     )
-    (root / "sgconfig.yml").write_text("ruleDirs:\n  - rules\n", encoding="utf-8")
     (root / "sample.py").write_text(source, encoding="utf-8")
     _git(root, "add", "-A")
     _git(
@@ -54,7 +53,7 @@ def _repo(tmp_path: Path, source: str) -> Path:
 
 
 def _rule(root: Path, *, pattern: str, fix: str) -> None:
-    rules = root / "rules"
+    rules = root / "ast-grep-rules"
     rules.mkdir(exist_ok=True)
     (rules / "mod-fix.yml").write_text(
         f"id: mod-fix\nlanguage: Python\nrule:\n  pattern: {pattern}\nfix: |-\n"

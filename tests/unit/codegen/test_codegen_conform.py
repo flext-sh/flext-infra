@@ -227,6 +227,13 @@ class TestCodegenConform:
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        # The conform templates materialize tests/fixtures/ci/docker/*, and the
+        # existing-tree tooling render discovers python roots from directories
+        # that exist on disk (env_dirs). Seed tests/ so the first render already
+        # matches the post-apply fixed point.
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
         for relative, content in create_only.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
@@ -1024,17 +1031,31 @@ class TestScriptDispatchMakefile:
         tm.that("_builtin_gen_apply:" in rendered, eq=True)
         tm.that("_builtin_codegen_check" in rendered, eq=False)
         tm.that("_builtin_codegen_apply" in rendered, eq=False)
-        handlers = rendered.split("_BUILTIN_HANDLERS :=", 1)[1].split("\n\n", 1)[0]
-        tm.that("_builtin_gen_check" in handlers, eq=True)
-        tm.that("_builtin_gen_apply" in handlers, eq=True)
+        builtin_line = next(
+            line
+            for line in rendered.splitlines()
+            if line.startswith("BUILTIN_VERBS :=")
+        )
+        tm.that(" gen" in builtin_line, eq=True)
+        tm.that(" codegen" in builtin_line, eq=False)
+        phony_line = next(
+            line
+            for line in rendered.splitlines()
+            if line.startswith(".PHONY:") and "_builtin_" in line
+        )
+        tm.that("_builtin_gen_check" in phony_line, eq=True)
+        tm.that("_builtin_gen_apply" in phony_line, eq=True)
         # Both handlers drive the conform engine (CLI namespace is unchanged).
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
+        # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
+        gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
+        tm.that("codegen conform" in gen_all_body, eq=True)
+        tm.that("--mode apply" in gen_all_body, eq=True)
+        tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
-        tm.that("codegen conform" in gen_apply_body, eq=True)
-        tm.that("--mode apply" in gen_apply_body, eq=True)
-        tm.that("_require_apply" in gen_apply_body, eq=True)
+        tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         # The regeneration contract published on every projection speaks gen.
         tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.

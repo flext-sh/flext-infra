@@ -54,9 +54,10 @@ Infra:
           user: root
           auto_commit: "on"
 
-    # Why (ai-hub-qwoc): the ast-grep project contract for every governed
-    # repository. A provider manifest may declare sgconfig.yml as a required
-    # surface, so it is rendered from here instead of hand-written per repo.
+    # Why (ai-hub-qwoc): the ast-grep project contract. Rules travel inside the
+    # installed packages (flext_infra/codemod/rules via the importlib.resources
+    # cascade in flext_infra/codemod/discovery.py); conform renders sgconfig.yml
+    # from this SSOT only for a repository with its own hand-written rules.
     sgconfig:
       rule_dirs:
         - ast-grep-rules
@@ -1582,16 +1583,10 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
-        # required surface. Without a generator it was hand-written in one
-        # repository and absent in another, so provider discovery failed closed
-        # with "missing declared file: sgconfig.yml". Rendering it from the SSOT
-        # gives every governed repository the same ast-grep contract.
-        - source: base/sgconfig.yml.j2
-          destination: sgconfig.yml
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
+        # sgconfig.yml is NOT a generic template entry: it is rendered by the
+        # ast-grep surface planner only for repositories with their own
+        # hand-written rules (see conform._plan_ast_grep_surfaces); every other
+        # repository consumes the packaged rule cascade.
         - source: base/python-version.j2
           destination: .python-version
           profiles: [workspace-root, workspace-member, standalone]

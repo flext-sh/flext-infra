@@ -14,7 +14,7 @@ from git import GitCommandError
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._utilities._git.repo import git_open_repo, git_repo
+from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -35,7 +35,7 @@ def _git_stdin(data: bytes | None) -> Generator[BinaryIO | None]:
         yield stream
 
 
-class FlextInfraUtilitiesGitWorktreeMixin:
+class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
     """Extend the existing Git utility owner with isolated mutation primitives.
 
     Public argv helpers are forbidden — use typed ``git_*`` Request/Report
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         """Capture porcelain status for one repository."""
         repo_path = request.repo_root.expanduser().resolve()
         try:
-            repo = git_repo(repo_path)
+            repo = cls._repo(repo_path)
             porcelain = repo.git.status("--porcelain", "--untracked-files=all")
         except GitCommandError as exc:
             return r[m.Infra.GitStatusReport].fail(str(exc))
@@ -104,7 +104,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     @classmethod
     def _git_head_oid(cls, repo_root: Path) -> p.Result[str]:
         """Private Path-based HEAD oid resolver for facet-internal callers."""
-        opened = git_open_repo(repo_root)
+        opened = cls._open_repo(repo_root)
         if opened.failure:
             return r[str].fail(opened.error or "failed to open git repository")
         try:
@@ -116,14 +116,14 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     def _git_workspace_root_path(cls, repository_path: Path) -> p.Result[Path]:
         """Private Path-based workspace/superproject resolver."""
         try:
-            repo = git_repo(repository_path)
+            repo = cls._repo(repository_path)
             superproject = repo.git.rev_parse(
                 "--show-superproject-working-tree"
             ).strip()
         except GitCommandError:
             # Not inside any superproject — check if we're in a worktree at all.
             try:
-                fallback_repo = git_repo(repository_path)
+                fallback_repo = cls._repo(repository_path)
                 inside = fallback_repo.git.rev_parse("--is-inside-work-tree").strip()
             except GitCommandError:
                 return r[Path].ok(repository_path.expanduser().resolve())
@@ -144,7 +144,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     def _git_primary_worktree_root_path(cls, repository_path: Path) -> p.Result[Path]:
         """Private Path-based primary worktree resolver."""
         try:
-            repo = git_repo(repository_path)
+            repo = cls._repo(repository_path)
             common_dir_text = repo.git.rev_parse(
                 "--path-format=absolute", "--git-common-dir"
             ).strip()
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 primary_root = registered[0]
                 # Verify primary_root is a real worktree top-level by opening
                 # a separate repo context against it.
-                primary_repo_result = git_open_repo(primary_root)
+                primary_repo_result = cls._open_repo(primary_root)
                 if primary_repo_result.failure:
                     caller_top = repo.git.rev_parse("--show-toplevel").strip()
                     caller_root = Path(caller_top).resolve()
@@ -201,7 +201,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 primary_root = Path(caller_top).resolve()
 
         # Verify the resolved primary_root is a valid worktree top-level.
-        primary_repo_result = git_open_repo(primary_root)
+        primary_repo_result = cls._open_repo(primary_root)
         if primary_repo_result.failure:
             return r[Path].fail(
                 f"invalid primary worktree: {primary_root}: {primary_repo_result.error}"
@@ -265,7 +265,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 f"Git submodule manifest is not a regular file: {gitmodules}"
             )
         try:
-            repo = git_repo(repository_root)
+            repo = cls._repo(repository_root)
             output = repo.git.config(
                 "--file",
                 c.Infra.GITMODULES,
@@ -302,10 +302,81 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         return r[t.SequenceOf[Path]].ok(tuple(paths))
 
     @classmethod
+    def gitmodule_contract(
+        cls, request: m.Infra.GitSubmoduleContractRequest
+    ) -> p.Result[m.Infra.GitSubmoduleContractReport]:
+        """Read the exact declared URL and branch for one submodule path.
+
+        The path must be declared exactly once in ``.gitmodules``; a missing
+        URL or branch fails closed.
+        """
+        try:
+            repo = cls._repo(request.repo_root)
+            entries = repo.git.config(
+                "--file", c.Infra.GITMODULES, "--get-regexp", r"^submodule\..*\.path$"
+            )
+        except GitCommandError as exc:
+            return r[m.Infra.GitSubmoduleContractReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"failed to read Git submodule paths: {exc}"
+            )
+        matching_sections: t.MutableSequenceOf[str] = []
+        for line in entries.splitlines():
+            if not line.strip():
+                continue
+            match line.split(maxsplit=1):
+                case [key, path] if path == request.member_path:
+                    matching_sections.append(key.removesuffix(".path"))
+                case [_, _]:
+                    continue
+                case _:
+                    return r[m.Infra.GitSubmoduleContractReport].fail(
+                        "malformed Git submodule path entry"
+                    )
+        if len(matching_sections) != 1:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                "Git submodule path must be declared exactly once: "
+                f"{request.member_path}"
+            )
+        section = matching_sections[0]
+        try:
+            url = repo.git.config(
+                "--file", c.Infra.GITMODULES, "--get", f"{section}.url"
+            ).strip()
+        except GitCommandError:
+            url = ""
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"failed to read Git submodule URL: {exc}"
+            )
+        if not url:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"Git submodule URL is missing: {request.member_path}"
+            )
+        try:
+            branch = repo.git.config(
+                "--file", c.Infra.GITMODULES, "--get", f"{section}.branch"
+            ).strip()
+        except GitCommandError:
+            branch = ""
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"failed to read Git submodule branch: {exc}"
+            )
+        if not branch:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"Git submodule branch is missing: {request.member_path}"
+            )
+        return r[m.Infra.GitSubmoduleContractReport].ok(
+            m.Infra.GitSubmoduleContractReport(url=url, branch=branch)
+        )
+
+    @classmethod
     def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Resolve every initialized recursive submodule path."""
         try:
-            repo = git_repo(workspace_root)
+            repo = cls._repo(workspace_root)
             status = repo.git.submodule("status", "--recursive")
         except GitCommandError as exc:
             return r[t.SequenceOf[Path]].fail(str(exc))
@@ -354,7 +425,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         # generated project is about to declare, so they cannot be its prerequisite.
         # Transaction validators still exercise the generated artifact explicitly.
         try:
-            repo = git_repo(source_root)
+            repo = cls._repo(source_root)
             repo.git.execute([
                 c.Infra.GIT,
                 "-c",
@@ -382,7 +453,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bool]:
         """Copy non-ignored untracked files into an isolated worktree."""
         try:
-            repo = git_repo(source_root)
+            repo = cls._repo(source_root)
             untracked = repo.git.ls_files("--others", "--exclude-standard", "-z")
         except GitCommandError as exc:
             return r[bool].fail(str(exc))
@@ -429,7 +500,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         """Reproduce tracked, staged, unstaged, and untracked source state."""
         pathspecs = tuple(f":(exclude){path.as_posix()}" for path in excluded)
         try:
-            repo = git_repo(source_root)
+            repo = cls._repo(source_root)
             patch_bytes = repo.git.diff(
                 "--binary", c.Infra.GIT_HEAD, "--", ".", *pathspecs
             ).encode(c.Cli.ENCODING_DEFAULT)
@@ -444,7 +515,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             if not patch_bytes.endswith(b"\n"):
                 patch_bytes += b"\n"
             try:
-                worktree_repo = git_repo(worktree_root)
+                worktree_repo = cls._repo(worktree_root)
                 with _git_stdin(patch_bytes) as istream:
                     worktree_repo.git.apply("--binary", "-", istream=istream)
             except GitCommandError as exc:
@@ -489,7 +560,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         message: str,
     ) -> str:
         """Stage all state and create a synthetic checkpoint commit-tree."""
-        repo = git_repo(worktree_root)
+        repo = cls._repo(worktree_root)
         if excluded:
             tracked_output = repo.git.ls_files(
                 "-z",
@@ -567,7 +638,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             )
         exclusions = cls._transaction_exclusion_pathspecs()
         try:
-            repo = git_repo(repository.worktree_root)
+            repo = cls._repo(repository.worktree_root)
             repo.git.add("-A", "-f", *exclusions)
             for path, source_head in (source_gitlinks or {}).items():
                 repo.git.update_index(
@@ -630,7 +701,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[bool].ok(True)
         direction: list[str] = ["--reverse"] if reverse else []
         try:
-            repo = git_repo(repository_root)
+            repo = cls._repo(repository_root)
             with _git_stdin(patch) as istream:
                 repo.git.apply("--check", "--binary", *direction, "-", istream=istream)
         except GitCommandError as exc:
@@ -691,7 +762,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             ):
                 commit = raw_line.removeprefix(b"+Subproject commit ").decode()
                 try:
-                    repo = git_repo(repository_root)
+                    repo = cls._repo(repository_root)
                     repo.git.update_index(
                         "--add",
                         "--cacheinfo",
@@ -723,7 +794,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         for path in collisions:
             (delta.source_root / path).unlink()
         try:
-            repo = git_repo(delta.source_root)
+            repo = cls._repo(delta.source_root)
             with _git_stdin(delta.patch) as istream:
                 repo.git.apply("--binary", "-", istream=istream)
         except GitCommandError:
@@ -754,7 +825,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 return cls._git_apply_gitlinks(delta.source_root, delta.patch)
             return r[bool].fail(check_result.error or collision_result.error)
         try:
-            repo = git_repo(delta.source_root)
+            repo = cls._repo(delta.source_root)
             with _git_stdin(delta.patch) as istream:
                 repo.git.apply("--binary", "-", istream=istream)
         except GitCommandError:
@@ -772,7 +843,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bool]:
         """Remove one explicitly selected temporary worktree and prune metadata."""
         try:
-            repo = git_repo(source_root)
+            repo = cls._repo(source_root)
             repo.git.worktree("remove", "--force", str(worktree_root))
             repo.git.worktree("prune")
         except GitCommandError as exc:
@@ -787,7 +858,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bool]:
         """Remove an explicitly selected clean worktree and prune metadata."""
         try:
-            repo = git_repo(source_root)
+            repo = cls._repo(source_root)
             repo.git.worktree("remove", str(worktree_root))
             repo.git.worktree("prune")
         except GitCommandError as exc:

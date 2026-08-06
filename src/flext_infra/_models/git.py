@@ -227,6 +227,27 @@ class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         remote: Annotated[t.NonEmptyStr, m.Field(description="Remote name")] = "origin"
 
+    class GitSubmoduleContractRequest(m.ContractModel):
+        """Superproject plus one declared submodule path for contract reads."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        repo_root: Annotated[Path, m.Field(description="Superproject worktree root")]
+        member_path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Submodule path relative to the superproject root"),
+        ]
+
+    class GitSubmoduleContractReport(m.ContractModel):
+        """Declared ``.gitmodules`` URL and branch for one submodule path."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        url: Annotated[t.NonEmptyStr, m.Field(description="Declared submodule URL")]
+        branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Declared submodule branch")
+        ]
+
     class GitCheckoutPathsRequest(m.ContractModel):
         """Repository plus optional paths for checkout/restore operations."""
 

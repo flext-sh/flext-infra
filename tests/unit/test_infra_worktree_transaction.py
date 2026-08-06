@@ -251,9 +251,14 @@ class TestsFlextInfraWorktreeTransaction:
         deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
 
+        # Operation patches exclude submodule pointers entirely
+        # (--ignore-submodules=all): gitlinks are owned by `make setup`, which
+        # fast-forwards each declared submodule to its branch tip. The root
+        # patch therefore carries no Subproject line for either the source
+        # head or the sandbox checkpoint; the transport-safety contract is
+        # enforced by the source index keeping the source head after apply.
         patch_text = root_delta.patch.decode()
-        tm.that(patch_text, has=f"+Subproject commit {source_head}")
-        tm.that(patch_text, lacks=f"+Subproject commit {nested.checkpoint_sha}")
+        tm.that(patch_text, lacks="Subproject commit")
         tm.ok(u.Infra.git_apply_patch(root_delta))
         staged = tm.ok(
             u.Cli.capture(
