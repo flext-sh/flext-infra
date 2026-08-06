@@ -525,7 +525,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 allowed = {item for profiles in entry_profiles for item in profiles}
                 if profile not in allowed:
                     # Why: profile-excluded managed workflows must not survive as
-                    # "keep current" ghosts (ci-matrix on workspace-member).
+                    # "keep current" ghosts (ci-matrix on workspace-member), but a
+                    # repository-owned workflow sharing the path is foreign
+                    # content that conform must leave untouched.
                     if (
                         relative.parts[:2] == (".github", "workflows")
                         and path.is_file()
@@ -536,18 +538,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                                 orphan_read.error
                                 or f"orphan workflow read failed: {path}"
                             )
-                        completed.append(
-                            m.Infra.CodegenFilePlan(
-                                path=path,
-                                owner=governed.owner,
-                                policy=governed.policy,
-                                rendered="",
-                                expected_sha256=u.Cli.sha256_content(""),
-                                current_sha256=u.Cli.sha256_content(orphan_read.value),
-                                changed=True,
-                                absent=True,
+                        if FlextInfraCodegenConform._is_generated_workflow(
+                            orphan_read.value
+                        ):
+                            completed.append(
+                                m.Infra.CodegenFilePlan(
+                                    path=path,
+                                    owner=governed.owner,
+                                    policy=governed.policy,
+                                    rendered="",
+                                    expected_sha256=u.Cli.sha256_content(""),
+                                    current_sha256=u.Cli.sha256_content(
+                                        orphan_read.value
+                                    ),
+                                    changed=True,
+                                    absent=True,
+                                )
                             )
-                        )
                     continue
             current = ""
             if path.is_file():
@@ -1263,7 +1270,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             if profile not in entry.profiles:
                 # Why: profile-excluded managed workflows must not keep firing
-                # (ci-matrix on workspace-member). Prune the orphan projection.
+                # (ci-matrix on workspace-member). Prune the orphan projection,
+                # but only when codegen authored it — a repository-owned
+                # workflow sharing the path is foreign content, never an orphan.
                 if (
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()
@@ -1274,18 +1283,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                             orphan_read.error or f"orphan workflow read failed: {path}"
                         )
-                    planned.append(
-                        m.Infra.CodegenFilePlan(
-                            path=path,
-                            owner=managed.owner,
-                            policy=managed.policy,
-                            rendered="",
-                            expected_sha256=u.Cli.sha256_content(""),
-                            current_sha256=u.Cli.sha256_content(orphan_read.value),
-                            changed=True,
-                            absent=True,
+                    if self._is_generated_workflow(orphan_read.value):
+                        planned.append(
+                            m.Infra.CodegenFilePlan(
+                                path=path,
+                                owner=managed.owner,
+                                policy=managed.policy,
+                                rendered="",
+                                expected_sha256=u.Cli.sha256_content(""),
+                                current_sha256=u.Cli.sha256_content(orphan_read.value),
+                                changed=True,
+                                absent=True,
+                            )
                         )
-                    )
                 continue
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
@@ -2157,6 +2167,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"{policy.filename} line {line_number} is not a private custom handler"
             )
         return r[bool].ok(True)
+
+    @staticmethod
+    def _is_generated_workflow(content: str) -> bool:
+        """Return True when a workflow carries a codegen authorship marker."""
+        return any(marker in content for marker in c.Infra.WORKFLOW_GENERATED_MARKERS)
 
     def _file_plan(
         self, root: Path, relative_path: str, rendered: str
