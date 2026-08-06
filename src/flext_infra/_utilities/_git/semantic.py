@@ -10,7 +10,7 @@ from git import GitCommandError, Repo
 from git import BaseIndexEntry
 
 from flext_core import r
-from flext_infra._utilities._git.repo import git_repo
+from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -123,7 +123,9 @@ def _redact_origin_remote(url: str) -> str:
     return urlunsplit((parsed.scheme, netloc, parsed.path, query, fragment))
 
 
-class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
+class FlextInfraUtilitiesGitSemanticMixin(
+    FlextInfraUtilitiesGitRepo, FlextInfraUtilitiesGitWorktreeMixin
+):
     """Monomorphic Request/Report Git ops used by work/layout/saga consumers."""
 
     @classmethod
@@ -497,6 +499,29 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         return paths_z, index_z, head
 
     @classmethod
+    def git_gitlink_spec(
+        cls, request: m.Infra.GitRefRequest
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Read the gitlink oid for one submodule path from the index."""
+        try:
+            repo = git_repo(request.repo_root)
+            entry = repo.index.entries.get((request.reference, 0))
+            if entry is None:
+                return r[m.Infra.GitOidReport].fail(
+                    f"gitlink is missing from index: {request.reference}"
+                )
+            if entry.mode != c.Infra.GIT_MODE_GITLINK:
+                return r[m.Infra.GitOidReport].fail(
+                    f"path is not a gitlink: {request.reference}"
+                )
+            oid = entry.hexsha
+        except GitCommandError as exc:
+            return r[m.Infra.GitOidReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitOidReport].fail(f"failed to read gitlink: {exc}")
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
+
+    @classmethod
     def git_update_index_gitlink(
         cls, request: m.Infra.GitUpdateIndexGitlinkRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
@@ -638,15 +663,32 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         One call replaces 6+ separate queries. Implemented over GitPython
         native OO API.
         """
-        try:
-            repo = git_repo(request.repo_root)
-            report = cls._collect_identity_facts(repo, requested_path=request.repo_root)
-        except GitCommandError as exc:
-            return r[m.Infra.GitIdentityReport].fail(str(exc))
-        except (OSError, ValueError) as exc:
-            return r[m.Infra.GitIdentityReport].fail(
-                f"failed to resolve Git identity: {exc}"
+        repo_result = git_open_repo(request.repo_root)
+        if repo_result.failure:
+            # Path is not a Git repository — return an identity report with
+            # is_inside_work_tree=False so callers can classify as standalone.
+            resolved = request.repo_root.expanduser().resolve()
+            return r[m.Infra.GitIdentityReport].ok(
+                m.Infra.GitIdentityReport(
+                    repo_root=resolved,
+                    head_oid="",
+                    porcelain="",
+                    dirty=False,
+                    git_dir=resolved / ".git",
+                    common_dir=resolved / ".git",
+                    branch=None,
+                    origin_remote=None,
+                    superproject_root=None,
+                    requested_path=request.repo_root,
+                    is_worktree=False,
+                    is_submodule=False,
+                    has_submodules=False,
+                    is_inside_work_tree=False,
+                )
             )
+        report = cls._collect_identity_facts(
+            repo_result.value, requested_path=request.repo_root
+        )
         return r[m.Infra.GitIdentityReport].ok(report)
 
     @staticmethod
@@ -699,6 +741,57 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             is_worktree=is_worktree,
             is_submodule=is_submodule,
             has_submodules=has_submodules,
+            is_inside_work_tree=bool(repo.working_tree_dir),
+        )
+
+    @classmethod
+    def gitmodule_contract(
+        cls, request: m.Infra.GitSubmoduleContractRequest
+    ) -> p.Result[m.Infra.GitSubmoduleContractReport]:
+        """Read the exact URL and branch for one declared Git submodule path."""
+        try:
+            repo = git_repo(request.repo_root)
+            output = repo.git.config(
+                "--file",
+                c.Infra.GITMODULES,
+                "--get-regexp",
+                r"^submodule\..*\.path$",
+            )
+        except GitCommandError as exc:
+            return r[m.Infra.GitSubmoduleContractReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"failed to read Git submodule declarations: {exc}"
+            )
+        matching_keys: list[str] = []
+        for line in output.splitlines():
+            if not line.strip():
+                continue
+            match line.split(maxsplit=1):
+                case [key, path] if path == request.member_path:
+                    matching_keys.append(key)
+                case [_, _]:
+                    continue
+                case _:
+                    return r[m.Infra.GitSubmoduleContractReport].fail(
+                        "malformed Git submodule path entry"
+                    )
+        if len(matching_keys) != 1:
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"Git submodule path must be declared exactly once: {request.member_path}"
+            )
+        section = matching_keys[0].removesuffix(".path")
+        try:
+            url = repo.git.config(
+                "--file", c.Infra.GITMODULES, "--get", f"{section}.url"
+            )
+            branch = repo.git.config(
+                "--file", c.Infra.GITMODULES, "--get", f"{section}.branch"
+            )
+        except GitCommandError as exc:
+            return r[m.Infra.GitSubmoduleContractReport].fail(str(exc))
+        return r[m.Infra.GitSubmoduleContractReport].ok(
+            m.Infra.GitSubmoduleContractReport(url=url, branch=branch)
         )
 
 

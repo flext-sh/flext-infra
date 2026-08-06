@@ -238,5 +238,21 @@ class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
             m.Field(description="Relative paths to restore; empty restores all"),
         ] = ()
 
+    class GitSubmoduleContractRequest(m.ContractModel):
+        """Repository plus submodule path for .gitmodules contract resolution."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
+        member_path: Annotated[t.NonEmptyStr, m.Field(description="Submodule path")]
+
+    class GitSubmoduleContractReport(m.ContractModel):
+        """URL and branch declared for one submodule path in .gitmodules."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        url: Annotated[t.NonEmptyStr, m.Field(description="Declared submodule URL")]
+        branch: Annotated[t.NonEmptyStr, m.Field(description="Declared submodule branch")]
+
 
 __all__: list[str] = ["FlextInfraModelsGit"]

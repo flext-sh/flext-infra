@@ -2,37 +2,31 @@
 
 Circuit contract (``make mod APPLY=Y``): measure ruff + pyrefly error counts
 before the batch apply, checkpoint the tree (commit when dirty), apply every
-rule declared by the project sgconfig, then re-measure. Any count increase
-rolls the tree back to the checkpoint and fails loud; equal or lower counts
-keep the applied fixes.
+rule discovered through the package cascade (``flext_infra.codemod.discovery``)
+plus the project's own hand-written ``ast-grep-rules/``, then re-measure. Any
+count increase rolls the tree back to the checkpoint and fails loud; equal or
+lower counts keep the applied fixes.
 """  # ruff:ignore[implicit-namespace-package]
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Final, override
+from typing import Final, override
 
 from flext_cli import cli
-from flext_infra import m, p, r, t, u
+from flext_infra import config, m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
 from flext_infra.codemod.batch_gates import (
     FlextInfraModGateEngine,
     FlextInfraModGateSnapshot,
 )
+from flext_infra.codemod.discovery import discover_rules
 
 _CHECKPOINT_MESSAGE: Final[str] = "chore(git): checkpoint before ast-grep batch apply"
-_SGCONFIG_FILENAME: Final[str] = "sgconfig.yml"
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
-    """Apply one sgconfig's ast-grep rules under the baseline rollback circuit."""
-
-    config: Annotated[
-        str | None,
-        m.Field(
-            description="ast-grep sgconfig path; defaults to <workspace>/sgconfig.yml"
-        ),
-    ] = None
+    """Apply the discovered ast-grep rule batch under the rollback circuit."""
 
     @staticmethod
     def _checkpoint(root: Path) -> p.Result[str]:
@@ -63,43 +57,54 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
         return None
 
-    def _sgconfig(self) -> p.Result[Path]:
-        """Resolve the sgconfig the batch apply consumes."""
-        candidate = (
-            Path(self.config).resolve()
-            if self.config
-            else self.workspace_root / _SGCONFIG_FILENAME
-        )
-        if not candidate.is_file():
-            return r[Path].fail(f"ast-grep sgconfig not found: {candidate}")
-        return r[Path].ok(candidate)
+    def _rules(self) -> p.Result[t.SequenceOf[Path]]:
+        """Resolve the batch: packaged cascade plus project-local own rules.
+
+        Project-local ``ast-grep-rules/`` files are applied last so a
+        hand-written rule overrides a packaged rule with the same rule ID.
+        """
+        rules = {rule.stem: rule for rule in discover_rules()}
+        for rule_dir_name in config.Infra.codegen.sgconfig.rule_dirs:
+            rule_dir = self.workspace_root / rule_dir_name
+            if not rule_dir.is_dir():
+                continue
+            for rule_file in sorted(rule_dir.rglob("*.yml")):
+                rules[rule_file.stem] = rule_file
+        if not rules:
+            return r[t.SequenceOf[Path]].fail(
+                f"no ast-grep rules discovered for {self.workspace_root}"
+            )
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(rules.values())))
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
         """Run check mode (report pending fixes) or the guarded apply circuit."""
         root = self.workspace_root
-        config_result = self._sgconfig()
-        if config_result.failure:
+        rules_result = self._rules()
+        if rules_result.failure:
             return r[t.Cli.ResultValue].fail(
-                config_result.error or "sgconfig resolution failed"
+                rules_result.error or "ast-grep rule discovery failed"
             )
-        config = config_result.value
+        rules = rules_result.value
         effective_dry_run: bool = self.effective_dry_run
         if effective_dry_run:
-            pending = FlextInfraModGateEngine.scan(root, config, fix=False)
+            pending = FlextInfraModGateEngine.scan(root, rules, fix=False)
             if pending.failure:
                 return r[t.Cli.ResultValue].fail(
                     pending.error or "ast-grep scan failed"
                 )
             if pending.value:
                 return r[t.Cli.ResultValue].fail(
-                    f"{pending.value} pending ast-grep fix(es) under {config}"
+                    f"{pending.value} pending ast-grep fix(es) "
+                    f"across {len(rules)} discovered rule file(s)"
                 )
             cli.display_text("mod: no pending ast-grep fixes")
             return r[t.Cli.ResultValue].ok(True)
-        return self._execute_apply(root, config)
+        return self._execute_apply(root, rules)
 
-    def _execute_apply(self, root: Path, config: Path) -> p.Result[t.Cli.ResultValue]:
+    def _execute_apply(
+        self, root: Path, rules: t.SequenceOf[Path]
+    ) -> p.Result[t.Cli.ResultValue]:
         """Measure, checkpoint, batch-apply, re-measure, roll back on regression."""
         baseline = FlextInfraModGateEngine.measure(root)
         if baseline.failure:
@@ -110,10 +115,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         if checkpoint.failure:
             return r[t.Cli.ResultValue].fail(checkpoint.error or "checkpoint failed")
         checkpoint_sha = checkpoint.value
-        pending = FlextInfraModGateEngine.scan(root, config, fix=False)
+        pending = FlextInfraModGateEngine.scan(root, rules, fix=False)
         if pending.failure:
             return r[t.Cli.ResultValue].fail(pending.error or "ast-grep scan failed")
-        applied = FlextInfraModGateEngine.scan(root, config, fix=True)
+        applied = FlextInfraModGateEngine.scan(root, rules, fix=True)
         if applied.failure:
             return self._fail_with_rollback(
                 root, checkpoint_sha, applied.error or "ast-grep fix pass failed"

@@ -212,14 +212,13 @@ class FlextInfraWorkspaceDetector(
     @staticmethod
     def _git_origin_url(repository_root: Path) -> p.Result[str]:
         """Read the repository's own declared origin, or an empty remote."""
-        captured = u.Cli.capture(
-            [c.Infra.GIT, "remote", "get-url", "origin"], cwd=repository_root
-        )
-        if captured.failure:
+        request = m.Infra.GitRemoteUrlRequest(repo_root=repository_root, remote="origin")
+        result = u.Infra.git_remote_url(request)
+        if result.failure:
             # A repository with no origin is still a valid standalone checkout;
             # it simply has no provider-governed identity to match.
             return r[str].ok("")
-        return r[str].ok(captured.value.strip())
+        return r[str].ok(result.value.text.strip())
 
     @staticmethod
     def _declared_provider_for_url(url: str) -> m.Infra.ProviderSpec | None:
@@ -306,26 +305,21 @@ class FlextInfraWorkspaceDetector(
     def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
         """Resolve the manifest owner for a repository or attached member."""
         resolved_root = repository_root.expanduser().resolve()
-        superproject = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
-            cwd=resolved_root,
+        identity_result = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=resolved_root)
         )
-        if superproject.failure:
-            # A path that is not inside ANY Git work tree is a standalone project
-            # that owns its own workspace root (covers freshly scaffolded projects
-            # before `git init`, and repo-less checkouts). Git reports this with a
-            # non-zero rev-parse; confirm it via --is-inside-work-tree so a genuine
-            # in-repo failure still fails closed (NOTE mro-p68a.5, agent codex).
-            inside_work_tree = u.Cli.capture(
-                [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=resolved_root
-            )
-            if inside_work_tree.failure or inside_work_tree.value.strip() != "true":
-                return r[Path].ok(resolved_root)
+        if identity_result.failure or not identity_result.value.is_inside_work_tree:
+            return r[Path].ok(resolved_root)
+        superproject_result = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=resolved_root)
+        )
+        if superproject_result.failure:
             return r[Path].fail(
-                superproject.error or "unable to resolve Git superproject"
+                superproject_result.error or "unable to resolve Git superproject"
             )
+        superproject_text = superproject_result.value.text
         return r[Path].ok(
-            Path(superproject.value).resolve() if superproject.value else resolved_root
+            Path(superproject_text).resolve() if superproject_text else resolved_root
         )
 
     @staticmethod
@@ -651,68 +645,13 @@ class FlextInfraWorkspaceDetector(
             return r[tuple[str, str]].fail(
                 f"Git superproject has no {c.Infra.GITMODULES}: {superproject_root}"
             )
-        entries = u.Cli.capture(
-            [
-                c.Infra.GIT,
-                "config",
-                "--file",
-                c.Infra.GITMODULES,
-                "--get-regexp",
-                r"^submodule\..*\.path$",
-            ],
-            cwd=superproject_root,
+        request = m.Infra.GitSubmoduleContractRequest(
+            repo_root=superproject_root, member_path=member_path
         )
-        if entries.failure:
-            return r[tuple[str, str]].fail(
-                entries.error or "unable to read Git submodule paths"
-            )
-        matching_keys: t.MutableSequenceOf[str] = []
-        for line in entries.value.splitlines():
-            if not line.strip():
-                continue
-            match line.split(maxsplit=1):
-                case [key, path] if path == member_path:
-                    matching_keys.append(key)
-                case [_, _]:
-                    continue
-                case _:
-                    return r[tuple[str, str]].fail("malformed Git submodule path entry")
-        if len(matching_keys) != 1:
-            return r[tuple[str, str]].fail(
-                f"Git submodule path must be declared exactly once: {member_path}"
-            )
-        section = matching_keys[0].removesuffix(".path")
-        url = u.Cli.capture(
-            [
-                c.Infra.GIT,
-                "config",
-                "--file",
-                c.Infra.GITMODULES,
-                "--get",
-                f"{section}.url",
-            ],
-            cwd=superproject_root,
-        )
-        if url.failure or not url.value:
-            return r[tuple[str, str]].fail(
-                url.error or f"Git submodule URL is missing: {member_path}"
-            )
-        branch = u.Cli.capture(
-            [
-                c.Infra.GIT,
-                "config",
-                "--file",
-                c.Infra.GITMODULES,
-                "--get",
-                f"{section}.branch",
-            ],
-            cwd=superproject_root,
-        )
-        if branch.failure or not branch.value:
-            return r[tuple[str, str]].fail(
-                branch.error or f"Git submodule branch is missing: {member_path}"
-            )
-        return r[tuple[str, str]].ok((url.value, branch.value))
+        result = u.Infra.gitmodule_contract(request)
+        if result.failure:
+            return r[tuple[str, str]].fail(result.error)
+        return r[tuple[str, str]].ok((result.value.url, result.value.branch))
 
     @classmethod
     def _detect_attached(
@@ -722,14 +661,14 @@ class FlextInfraWorkspaceDetector(
         workspace_spec: m.Infra.WorkspaceSpec | None,
     ) -> p.Result[c.Infra.WorkspaceMode]:
         """Validate a real submodule against both manifests and classify membership."""
-        member_root_result = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-toplevel"], cwd=project_root
+        member_root_result = u.Infra.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=project_root)
         )
         if member_root_result.failure:
             return r[c.Infra.WorkspaceMode].fail(
                 member_root_result.error or "unable to resolve Git repository root"
             )
-        member_root = Path(member_root_result.value).resolve()
+        member_root = member_root_result.value.workspace_root.resolve()
         try:
             member_path = member_root.relative_to(superproject_root).as_posix()
         except ValueError as exc:
@@ -824,40 +763,34 @@ class FlextInfraWorkspaceDetector(
         if gitmodule_result.failure:
             return r[c.Infra.WorkspaceMode].fail(gitmodule_result.error)
         gitmodule_url, gitmodule_branch = gitmodule_result.value
-        origin = u.Cli.capture(
-            [c.Infra.GIT, "config", "--get", "remote.origin.url"], cwd=member_root
+        origin_result = u.Infra.git_remote_url(
+            m.Infra.GitRemoteUrlRequest(repo_root=member_root, remote="origin")
         )
-        if origin.failure or not origin.value:
+        if origin_result.failure or not origin_result.value.text:
             return r[c.Infra.WorkspaceMode].fail(
-                origin.error or f"workspace member origin is missing: {member_path}"
+                origin_result.error
+                or f"workspace member origin is missing: {member_path}"
             )
-        gitlink = u.Cli.capture(
-            [c.Infra.GIT, "ls-files", "--stage", "--", member_path],
-            cwd=superproject_root,
+        gitlink_result = u.Infra.git_gitlink_spec(
+            m.Infra.GitRefRequest(repo_root=superproject_root, reference=member_path)
         )
-        if gitlink.failure or not gitlink.value:
+        if gitlink_result.failure:
             return r[c.Infra.WorkspaceMode].fail(
-                gitlink.error or f"workspace member gitlink is missing: {member_path}"
+                gitlink_result.error
+                or f"workspace member gitlink is missing: {member_path}"
             )
-        match gitlink.value.split():
-            # Why: mro-4p0t gitlink SHA is validated structurally, not used here.
-            case ["160000", _, "0", indexed_path] if indexed_path == member_path:
-                pass
-            case _:
-                return r[c.Infra.WorkspaceMode].fail(
-                    f"workspace member gitlink is malformed: {member_path}"
-                )
-        member_head = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--verify", "HEAD^{commit}"], cwd=member_root
+        member_head_result = u.Infra.git_resolve_commit(
+            m.Infra.GitCommitishRequest(repo_root=member_root, commitish="HEAD^{commit}")
         )
-        if member_head.failure or not member_head.value:
+        if member_head_result.failure:
             return r[c.Infra.WorkspaceMode].fail(
-                member_head.error or f"workspace member HEAD is missing: {member_path}"
+                member_head_result.error
+                or f"workspace member HEAD is missing: {member_path}"
             )
         declared_identity = u.Infra.git_remote_identity(declared.url)
         if (
             u.Infra.git_remote_identity(gitmodule_url) != declared_identity
-            or u.Infra.git_remote_identity(origin.value) != declared_identity
+            or u.Infra.git_remote_identity(origin_result.value.text) != declared_identity
         ):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
@@ -906,34 +839,32 @@ class FlextInfraWorkspaceDetector(
                 return r[c.Infra.WorkspaceMode].fail(local_contract.error)
             workspace_spec = local_spec
 
-        git_probe = u.Cli.run_raw(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
-            cwd=resolved_project_root,
+        git_probe = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=resolved_project_root)
         )
         if git_probe.failure:
             return r[c.Infra.WorkspaceMode].fail(
                 git_probe.error or "unable to execute Git workspace probe"
             )
-        if git_probe.value.exit_code != 0:
+        if not git_probe.value.is_inside_work_tree:
             if (resolved_project_root / c.Infra.GIT_DIR).exists():
                 return r[c.Infra.WorkspaceMode].fail(
-                    git_probe.value.stderr.strip() or "invalid Git repository metadata"
+                    "invalid Git repository metadata"
                 )
             return self._unattached_mode(resolved_project_root, workspace_spec)
 
-        superproject_result = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
-            cwd=resolved_project_root,
+        superproject_result = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=resolved_project_root)
         )
         if superproject_result.failure:
             return r[c.Infra.WorkspaceMode].fail(
                 superproject_result.error or "unable to resolve Git superproject"
             )
-        if not superproject_result.value:
+        if not superproject_result.value.text:
             return self._unattached_mode(resolved_project_root, workspace_spec)
         return self._detect_attached(
             resolved_project_root,
-            Path(superproject_result.value).resolve(),
+            Path(superproject_result.value.text).resolve(),
             workspace_spec,
         )
 
