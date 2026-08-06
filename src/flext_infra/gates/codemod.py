@@ -77,13 +77,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     @staticmethod
     def _scan_command(rule_path: Path, project_dir: Path) -> t.StrSequence:
         """Canonical ast-grep invocation for a single packaged rule."""
-        return (
-            c.Infra.SG,
-            c.Infra.SCAN,
-            "--rule",
-            str(rule_path),
-            str(project_dir),
-        )
+        return (c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_path), str(project_dir))
 
     def _issues_from_scan(
         self, scan: p.Cli.CommandOutput, rule_path: Path
