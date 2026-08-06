@@ -24,21 +24,20 @@ Infra:
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
       mise_version: "2026.7.16"
-      # Go runtime required by mise go: backend selectors (beads).
+      # Go runtime for the Go projects in this workspace.
       go_version: "1.26.5"
-      # The shared mro Dolt ledger is at schema v61; the newest official
-      # gastownhall release (1.1.2) only knows v53 and fails preflight with
-      # "schema version mismatch". Pin the go-module commit that migrated the
-      # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform preflight gate; the immutable commit
-      # stays the installed selector version. The artifact identity is
-      # content-proven: checksum is the SHA-256 of the pinned binary, and
-      # expected_schema is the ledger schema the binary must know.
+      # bd is distributed by the governed fork, which owns the customizations
+      # over upstream and publishes its own release assets. Upstream releases
+      # lag the ledger schema these projects run and cannot take fix-forward
+      # changes. mise installs the published artifact through the github
+      # backend, so version and reported_version are the same release tag.
+      # checksum is the SHA-256 of the installed binary and expected_schema is
+      # the ledger schema that binary must know.
       beads:
-        selector: go:github.com/steveyegge/beads/cmd/bd
-        version: "af45955aa2878999541470182a9980dc891823f1"
-        reported_version: "1.1.0"
-        checksum: "2671ea434a30505831474c5f1e0e6e1117499a531b623a73e468299eb0b94665"
+        selector: github:marlon-costa-dc/beads
+        version: "1.1.2-dc1"
+        reported_version: "1.1.2-dc1"
+        checksum: "06f142c0da9868d9fa956a9ca28baab93c5ac2813c2402d44f1e54992359204b"
         expected_schema: 62
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never

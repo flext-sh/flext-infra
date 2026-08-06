@@ -407,12 +407,15 @@ class TestCodegenBeadsLedger:
 
     def test_checksum_mismatch_fails_closed(self, tmp_path: Path) -> None:
         """Reject a mise-resolved binary whose digest diverges from the SSOT pin."""
+        # The fake binary reports the SSOT's version so the run reaches the
+        # checksum comparison instead of stopping at the version gate.
+        reported = config.Infra.codegen.toolchain.beads.reported_version
         plugin = tmp_path / "fake-bd-plugin"
         scripts = {
-            "list-all": 'echo "1.1.0"\n',
+            "list-all": f'echo "{reported}"\n',
             "download": (
                 'mkdir -p "$ASDF_DOWNLOAD_PATH/bin"\n'
-                'printf "#!/bin/sh\\necho bd version 1.1.0\\n" '
+                f'printf "#!/bin/sh\\necho bd version {reported}\\n" '
                 '> "$ASDF_DOWNLOAD_PATH/bin/bd"\n'
                 'chmod +x "$ASDF_DOWNLOAD_PATH/bin/bd"\n'
             ),
@@ -441,7 +444,7 @@ class TestCodegenBeadsLedger:
         )
         root = self._standalone_workspace(tmp_path / "fake-bd-repo", ledger_id=None)
         (root / ".mise.toml").write_text(
-            f'[plugins]\nbd = "file://{plugin}"\n\n[tools]\nbd = "1.1.0"\n',
+            f'[plugins]\nbd = "file://{plugin}"\n\n[tools]\nbd = "{reported}"\n',
             encoding="utf-8",
         )
         self._git(root, "add", ".mise.toml")
