@@ -20,6 +20,7 @@ files:
   - "**/*.py"
 ignores:
   - "src/flext_infra/_utilities/_git/**"
+  - "flext-infra/src/flext_infra/_utilities/_git/**"
   - "**/.git/**"
   - "**/__pycache__/**"
 
@@ -34,5 +35,6 @@ files:
   - "**/*.py"
 ignores:
   - "src/flext_infra/_utilities/_git/**"
+  - "flext-infra/src/flext_infra/_utilities/_git/**"
   - "**/.git/**"
   - "**/__pycache__/**"
