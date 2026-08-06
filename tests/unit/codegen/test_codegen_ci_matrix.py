@@ -383,6 +383,8 @@ class TestCodegenCiMatrix:
             python_version=codegen.toolchain.python_version,
             github_actions=codegen.github_actions,
             make=codegen.make,
+            workspace_repositories=(),
+            checkout_submodules=codegen.checkout_submodules,
             ci_matrix_auto_run=False,
         )
         enabled = disabled.model_copy(update={"ci_matrix_auto_run": True})

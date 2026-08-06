@@ -102,9 +102,7 @@ class FlextInfraUtilitiesRepository:
         for candidate in c.Infra.INTEGRATION_BRANCH_PREFERENCE:
             reference = f"refs/remotes/origin/{candidate}"
             resolved = u.Infra.git_ref_exists(
-                m.Infra.GitRefRequest(
-                    repo_root=repository_root, reference=reference
-                )
+                m.Infra.GitRefRequest(repo_root=repository_root, reference=reference)
             )
             if resolved.success and resolved.value.value:
                 return r[str].ok(candidate)
