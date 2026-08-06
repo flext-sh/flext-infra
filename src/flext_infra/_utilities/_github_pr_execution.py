@@ -123,9 +123,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     @classmethod
     def _github_pr_current_head(cls, repo_root: Path) -> p.Result[str]:
         """Resolve a non-detached current branch."""
-        result = u.Infra.git_current_branch(
-            m.Infra.GitRepoRequest(repo_root=repo_root)
-        )
+        result = u.Infra.git_current_branch(m.Infra.GitRepoRequest(repo_root=repo_root))
         if result.failure:
             return r.fail(result.error or "failed to resolve current branch")
         return r.ok(result.value.text)

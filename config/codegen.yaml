@@ -236,13 +236,14 @@ Infra:
         # test (pytest); local/pre_push still own that verb.
         check_gates_skip: [lint, format, pyrefly]
       workflow:
-        # Why: pre-commit remains fast and mutation-only; pre-push owns the
-        # generated-artifact and read-only validation gates.
+        # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
+        # gates as CI: mypy pyright security markdown smells). This bans
+        # broken code from ever being committed. pre-push adds gen+test.
         - { verb: setup, apply: false, contexts: [local, ci] }
         - { verb: gen, apply: true, contexts: [local, ci, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_push] }
+        - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
         # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
         - { verb: test, apply: false, contexts: [local, pre_push] }
       bootstrap:

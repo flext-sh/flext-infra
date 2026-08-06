@@ -381,7 +381,9 @@ class TestsFlextInfraWorktreeTransaction:
         second_artifact = second_source / "artifact.txt"
         concurrent = second_source / "concurrent.txt"
         concurrent.write_text("new head\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", concurrent.name], cwd=second_source))
+        tm.ok(
+            u.Cli.run_checked([c.Infra.GIT, "add", concurrent.name], cwd=second_source)
+        )
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "commit", "-m", "advance source during transaction"],

@@ -93,9 +93,7 @@ class TestsFlextInfraWorktreeService:
         tm.that(not lane.is_relative_to(repository), where=bool)
         tm.that(
             tm.ok(
-                u.Infra.git_list_worktrees(
-                    m.Infra.GitRepoRequest(repo_root=repository)
-                )
+                u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=repository))
             ).text,
             has=f"worktree {lane}",
         )

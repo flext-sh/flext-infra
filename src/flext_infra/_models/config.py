@@ -392,7 +392,7 @@ class FlextInfraConfigModels:
                     "When true, ci-matrix triggers include push to main plus "
                     "workflow_dispatch; when false (default), workflow_dispatch "
                     "only — file remains projected for root/standalone"
-                ),
+                )
             ),
         ] = False
 

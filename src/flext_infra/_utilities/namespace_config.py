@@ -54,9 +54,7 @@ class FlextInfraUtilitiesNamespaceConfig:
             )
             if normalized:
                 return normalized
-        tracked = FlextInfraUtilitiesGit.git_tracked_top_level_dir_names(
-            project_root
-        )
+        tracked = FlextInfraUtilitiesGit.git_tracked_top_level_dir_names(project_root)
         if tracked is not None:
             excluded = c.Infra.COMMON_EXCLUDED_DIRS | {
                 name for name in tracked if name.startswith(".")

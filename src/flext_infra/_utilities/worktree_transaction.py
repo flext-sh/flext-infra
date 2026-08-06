@@ -96,9 +96,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         snapshotted when scope is unknown (empty), so the whole monorepo is
         never checkpointed for an operation that touches one project.
         """
-        submodules_result = FlextInfraUtilitiesGit.git_submodule_paths(
-            workspace_root
-        )
+        submodules_result = FlextInfraUtilitiesGit.git_submodule_paths(workspace_root)
         if submodules_result.failure:
             return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                 submodules_result.error or "failed to discover workspace repositories"
