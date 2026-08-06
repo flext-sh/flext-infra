@@ -103,73 +103,28 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(checked.error or f"failed to inspect Git ref: {reference}")
         return r.ok(checked.value.value)
 
-    @staticmethod
-    def _resolve_borrowable_venv(primary_root: Path) -> Path | None:
-        """Return the environment a lane may borrow without provisioning its own."""
-        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
-        primary_venv = primary_root / venv_name
-        if primary_venv.is_dir():
-            return primary_venv
-        # Why (mro-7jrx.2.2): workspace-member primaries often have no local
-        # `.venv`; the superproject owns the shared environment. Borrowing it
-        # keeps isolated member lanes off `uv sync` and avoids self-conflicting
-        # editable/git dependency URLs during `make work` setup.
-        superproject = u.Infra.git_superproject_working_tree(
-            m.Infra.GitRepoRequest(repo_root=primary_root)
-        )
-        if superproject.failure:
-            return None
-        super_root = superproject.value.text.strip()
-        if not super_root:
-            return None
-        super_venv = Path(super_root) / venv_name
-        if super_venv.is_dir():
-            return super_venv
-        return None
-
-    @staticmethod
-    def _borrow_primary_environment(primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Point the lane's environment name at the primary checkout's environment.
-
-        A lane that provisions its own environment is a second uv sync target:
-        syncing it rewrites the editable pointers every other checkout resolves
-        through, so main and every sibling lane start importing this lane's
-        sources. Linking the lane's environment name to the primary's makes the
-        primary the only owner, and `make setup` then recognizes the borrowed
-        environment and provisions nothing. A real local environment is never
-        replaced, because a concurrent process may be running against it.
-        """
-        borrow_venv = FlextInfraWorktreeService._resolve_borrowable_venv(primary_root)
-        if borrow_venv is None:
-            return r.ok(False)
-        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
-        primary_venv = borrow_venv
-        lane_venv = lane / venv_name
-        if lane_venv.exists() and not lane_venv.is_symlink():
-            return r.ok(False)
-        linked = u.Cli.ensure_symlink(lane_venv, primary_venv)
-        if linked.failure:
-            return r.fail(
-                linked.error or f"failed to borrow {primary_venv} into {lane_venv}"
-            )
-        return r.ok(True)
-
     @classmethod
     def setup_lane(cls, primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Borrow the primary environment, then provision only when needed.
+        """Provision the lane's own environment through the canonical surface.
 
-        Every maintained worktree must share the primary environment when one
-        is available. When the lane borrows successfully, skip `make setup` so
-        a stale lane Makefile cannot `uv sync` the shared environment.
+        An environment name that resolves to another checkout binds the lane to
+        that checkout's sources: ``uv`` records editable finders as
+        per-environment ``.pth`` files holding absolute paths, so a borrowed
+        environment makes every import in the lane load the owner's code. Each
+        lane therefore provisions its own environment through `make setup`. A
+        real local environment is never replaced, because a concurrent process
+        may be running against it.
         """
-        borrowed = cls._borrow_primary_environment(primary_root, lane)
-        if borrowed.failure:
-            return r.fail(borrowed.error or "failed to borrow the primary environment")
+        _ = primary_root
         beads_dir = lane / ".beads"
         if beads_dir.is_dir():
             beads_dir.chmod(0o700)
-        if borrowed.value:
-            return r.ok(True)
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        lane_venv = lane / venv_name
+        if lane_venv.is_symlink():
+            # A borrowed environment from an earlier lane layout is not the
+            # lane's own: drop the link so `make setup` can provision one.
+            lane_venv.unlink()
         setup = u.Cli.run_live(
             (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
             cwd=lane,

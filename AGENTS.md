@@ -39,6 +39,8 @@ src/flext_infra/
 - Rules-as-data: policy in `rules/*.yaml` + `config/*.yaml` (Pydantic); add a YAML row, not a detector class.
 - Codegen owns facets / `py.typed` / `[MANAGED]` sections — change SSOT/templates, run the generator; never hand-edit output.
 - Enforcement target is rope-semantic (ADR-005); some detectors still use AST — verify before claiming AST is banned.
+- Config/settings canonical pattern: ADR-012.
+- Codemod governance (ast-grep + make mod): ADR-014.
 
 ## Commands
 
