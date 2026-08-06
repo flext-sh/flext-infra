@@ -108,6 +108,18 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = re.compile(
             r'["\']([^"\']+)["\']'
         )
+        # Why: git hooks export these into every child process. Tests that
+        # build a throwaway repository must not inherit the caller's git dir,
+        # index, or work tree, or their commits land in this repository and
+        # trigger its hooks.
+        GIT_ENVIRONMENT_VARIABLES: Final[t.StrSequence] = (
+            "GIT_DIR",
+            "GIT_INDEX_FILE",
+            "GIT_WORK_TREE",
+            "GIT_PREFIX",
+            "GIT_COMMON_DIR",
+            "GIT_OBJECT_DIRECTORY",
+        )
         INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (
             "FlextInfra",
             "c",
