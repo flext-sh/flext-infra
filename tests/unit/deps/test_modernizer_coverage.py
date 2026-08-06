@@ -6,7 +6,8 @@ import tomllib
 from pathlib import Path
 
 
-from flext_infra import config
+from flext_infra import c, config
+from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from flext_tests import tm
@@ -131,3 +132,32 @@ dependencies = ["flext-core", "flext-cli", "flext-ldap"]
         tm.that(member_second, eq=member_first)
         tm.that(root_report["fail_under"], eq=thresholds.platform)
         tm.that(member_report["fail_under"], eq=thresholds.app)
+
+    def test_scaffold_pyproject_needs_one_canonicalization(
+        self, tmp_path: Path
+    ) -> None:
+        """Reach the scaffold's canonical pyproject in a single conform pass."""
+        # Why: the scaffold canonicalized the rendered template, ran the
+        # dependency conform, then canonicalized again, paying the full parse
+        # and phase pipeline twice for one document.
+        root = tmp_path / "flext-demo"
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        pyproject = root / "pyproject.toml"
+        generated = pyproject.read_text(encoding="utf-8")
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=root, skip_check=True)
+        tm.that(
+            tm.ok(modernizer.conform_source(generated, path=pyproject)), eq=generated
+        )

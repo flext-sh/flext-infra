@@ -1023,17 +1023,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_render.error or "pyproject template render failed"
             )
-        initial_tooling = modernizer.conform_source(
-            pyproject_render.value,
-            path=pyproject,
-            declared_python_dirs=declared_python_dirs,
-        )
-        if initial_tooling.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                initial_tooling.error or f"initial tooling conform failed: {pyproject}"
-            )
+        # Why: the dependency conform reads and rewrites the rendered template
+        # directly, and the tooling conform that follows is idempotent, so one
+        # canonicalization produces the same document as two while paying the
+        # parse and phase pipeline once.
         prepared_result = u.Infra.pyproject_conform(
-            initial_tooling.value,
+            pyproject_render.value,
             providers=codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
