@@ -725,7 +725,9 @@ class TestCodegenConform:
                 "_custom_check_myscan:\n\t@true\n",
             )
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "help"])
+        outcome = u.Cli.run_raw(
+            ["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS", "WHAT")
+        )
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         tm.that(
