@@ -17,9 +17,19 @@ id: ban-pass-through-wrapper-def
 language: Python
 severity: error
 rule:
-  pattern: |
-    def $FN($$$ARGS):
-        return $CALLEE($$$ARGS)
+  any:
+    - pattern: |
+        def $FN($$$ARGS):
+            return $CALLEE($$$ARGS)
+    - pattern: |
+        def $FN($ARG: $TYPE) -> $RET:
+            return $CALLEE($ARG)
+    - pattern: |
+        def $FN($ARG: $TYPE = $DEFAULT) -> $RET:
+            return $CALLEE($ARG)
+    - pattern: |
+        def $FN(*$ARGS: $ATYPE, **$KWARGS: $KTYPE) -> $RET:
+            return $CALLEE(*$ARGS, **$KWARGS)
 message: >-
   Pass-through wrapper: this function only forwards its arguments unchanged
   to $CALLEE. Delete the wrapper and call the real owner directly.
@@ -40,9 +50,19 @@ id: ban-pass-through-wrapper-async-def
 language: Python
 severity: error
 rule:
-  pattern: |
-    async def $FN($$$ARGS):
-        return await $CALLEE($$$ARGS)
+  any:
+    - pattern: |
+        async def $FN($$$ARGS):
+            return await $CALLEE($$$ARGS)
+    - pattern: |
+        async def $FN($ARG: $TYPE) -> $RET:
+            return await $CALLEE($ARG)
+    - pattern: |
+        async def $FN($ARG: $TYPE = $DEFAULT) -> $RET:
+            return await $CALLEE($ARG)
+    - pattern: |
+        async def $FN(*$ARGS: $ATYPE, **$KWARGS: $KTYPE) -> $RET:
+            return await $CALLEE(*$ARGS, **$KWARGS)
 message: >-
   Pass-through async wrapper: this coroutine only forwards its arguments
   unchanged to $CALLEE. Delete the wrapper and call the real owner directly.
