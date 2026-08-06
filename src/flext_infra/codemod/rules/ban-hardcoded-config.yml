@@ -27,8 +27,9 @@ rule:
     - pattern: $LIT
     - kind: string
     - any:
-        - regex: '^(?:"|\x27)https?://[^\s"\'\''"]+(?:"|\x27)$'
-        - regex: '^(?:"|\x27)/(?:home|opt|usr|etc|var|srv)/[^\s"\'\''"]*(?:"|\x27)$'
+        - regex: '^(?:"|\x27)\d+\.\d+(?:\.\d+)?(?:"|\x27)$'
+        - regex: '^(?:"|\x27)https?://[^\s"\x27]+(?:"|\x27)$'
+        - regex: '^(?:"|\x27)/(?:home|opt|usr|etc|var|srv)/[^\s"\x27]*(?:"|\x27)$'
     # Only a value BOUND to a field/argument is a duplicated source of truth;
     # a positional literal is function input data, never a second SSOT.
     - inside:
@@ -38,7 +39,7 @@ rule:
           - kind: assignment
         stopBy: end
 message: >-
-  Hardcoded config-owned value (URL or absolute path) bound to a field.
+  Hardcoded config-owned value (pin, URL or absolute path) bound to a field.
   Pins, paths, URLs and profiles must be read from config.<Ns>.* /
   settings.<Ns>.* — never repeated as a literal outside the SSOT.
 note: >-
