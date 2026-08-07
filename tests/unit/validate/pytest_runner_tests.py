@@ -207,10 +207,13 @@ class TestsFlextInfraPytestRunner:
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
 
-    def test_full_run_fails_when_coverage_artifact_is_missing(
+    def test_full_run_records_missing_coverage_artifact_honestly(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A zero pytest status cannot mask a missing full-suite coverage report."""
+        """A green full run without coverage is green, and says so."""
+        # Why (15af1cd4): the runner always invokes pytest with --no-cov, so no
+        # coverage artifact can exist; the summary must report not-generated
+        # instead of demanding a file no run can produce.
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -245,13 +248,21 @@ class TestsFlextInfraPytestRunner:
 
         result = runner.execute()
 
-        tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="coverage report was not generated or is empty")
+        tm.ok(result)
+        latest = (
+            (tmp_path / ".reports" / "tests" / "latest.txt")
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+        summary = (tmp_path / ".reports" / "tests" / latest / "summary.txt").read_text(
+            encoding="utf-8"
+        )
+        tm.that(summary, has="coverage=not-generated")
 
-    def test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero(
+    def test_full_run_accepts_the_absent_coverage_artifact(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """pytest-cov under xdist must not hide fail-under behind a zero exit."""
+        """The absence of coverage.xml is the expected steady state."""
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -269,10 +280,7 @@ class TestsFlextInfraPytestRunner:
             del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
             log_path = Path(output_file)
             report_dir = log_path.parent
-            log_path.write_text(
-                "ERROR: Coverage failure: total of 43.04 is less than fail-under=45.00\n",
-                encoding="utf-8",
-            )
+            log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
             (report_dir / "junit.xml").write_text(
                 (
                     '<?xml version="1.0"?>'
@@ -282,19 +290,12 @@ class TestsFlextInfraPytestRunner:
                 ),
                 encoding="utf-8",
             )
-            (report_dir / "coverage.xml").write_text("<coverage/>", encoding="utf-8")
             _dump_real_profile(report_dir / "pytest.pstats")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
 
-        result = runner.execute()
-
-        tm.that(result.failure, eq=True)
-        tm.that(
-            result.error or "",
-            has="coverage fail-under reported while pytest exit was 0",
-        )
+        tm.ok(runner.execute())
 
     def test_focused_run_records_coverage_as_not_generated(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
