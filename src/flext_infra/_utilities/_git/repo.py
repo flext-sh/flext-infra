@@ -47,7 +47,11 @@ def git_open_repo(repo_root: Path) -> p.Result[Repo]:
         refreshed = git_refresh_binary()
         if refreshed.failure:
             return r[Repo].fail(refreshed.error or "git binary unavailable")
-        repo = Repo(resolved)
+        # Why (flext-infra-c3h / ai-hub-n1nh.5): callers pass nested files or
+        # directories (agent cwd, open buffer). GitPython defaults to exact-root
+        # open; search parents so git_identity/git_* own ascent and consumers
+        # must not keep a parallel .git walk.
+        repo = Repo(resolved, search_parent_directories=True)
     except (
         GitCommandNotFound,
         ImportError,

@@ -134,3 +134,19 @@ class TestInfraGitIdentitySubmodules:
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member)))
         tm.that(identity.superproject_root, eq=parent.resolve())
         tm.that(identity.is_submodule, eq=True)
+
+    def test_git_identity_ascends_from_nested_path(self, tmp_path: Path) -> None:
+        """Nested file/dir paths resolve through git_open_repo parent search.
+
+        Why (flext-infra-c3h): ai-hub must not keep a parallel ``.git`` walk;
+        ``git_identity`` owns ascent and reports ``repo_root`` at the checkout.
+        """
+        root = self._repo(tmp_path / "repo")
+        nested = root / "src" / "pkg"
+        nested.mkdir(parents=True)
+        (nested / "module.py").write_text("x = 1\n", encoding="utf-8")
+        identity = tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=nested / "module.py"))
+        )
+        tm.that(identity.repo_root, eq=root.resolve())
+        tm.that(identity.requested_path, eq=(nested / "module.py").resolve())
