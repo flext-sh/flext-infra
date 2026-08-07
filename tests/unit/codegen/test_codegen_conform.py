@@ -188,7 +188,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=existing_root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed committed drift"], cwd=existing_root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed committed drift"],
+                cwd=existing_root,
             )
         )
         migrated = FlextInfraCodegenConform.execute_request(
@@ -251,7 +252,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manifest-less tree"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifest-less tree"],
+                cwd=root,
             )
         )
 
@@ -536,7 +538,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed generated project"],
+                cwd=root,
             )
         )
         snapshot_excludes = config.Infra.codegen.make.serialization.snapshot_excludes
@@ -588,7 +591,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed generated project"],
+                cwd=root,
             )
         )
         request = m.Infra.CodegenConformRequest(

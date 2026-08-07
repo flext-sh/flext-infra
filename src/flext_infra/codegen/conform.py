@@ -142,11 +142,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # like a stale managed file: check reports it, apply activates it.
         for hooks_plan in plan.hooks:
             verified_hooks = self._verify_hooks_plan(
-                hooks_plan,
-                allow_missing=(
-                    mode is not c.Infra.CodegenConformMode.CHECK
-                    or self.initial_workspace is not None
-                ),
+                hooks_plan, allow_missing=mode is not c.Infra.CodegenConformMode.CHECK
             )
             if verified_hooks.failure:
                 return r[m.Infra.CodegenResult].fail(
@@ -199,13 +195,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         u.Cli.info("stage=verify-fixed-point")
         # Activate the hooks the emitted config declares. This runs before the
         # fixed-point re-plan so that verification observes the installed state.
-        # A brand-new scaffold is skipped: its environment does not exist yet,
-        # so an installed hook would fail the project's own first commit. The
-        # hooks are installed by the first conform run over the provisioned
-        # checkout, which is the same moment the workflow they gate becomes
-        # runnable.
-        install_hooks = self.initial_workspace is None
-        for hooks_plan in plan.hooks if install_hooks else ():
+        for hooks_plan in plan.hooks:
             installed_hooks = self._install_hooks_plan(hooks_plan)
             if installed_hooks.failure:
                 return r[m.Infra.CodegenResult].fail(
@@ -2649,10 +2639,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """
         if not plan.stages:
             return r[bool].ok(True)
-        command = [sys.executable, "-m", "pre_commit", "install", "--install-hooks"]
+        command = [sys.executable, "-m", "pre_commit", "install"]
         for stage in plan.stages:
             command.extend(("-t", stage))
-        installed = u.Cli.capture(command, cwd=plan.repository_root)
+        installed = u.Cli.run_checked(command, cwd=plan.repository_root)
         if installed.failure:
             return r[bool].fail(
                 installed.error
