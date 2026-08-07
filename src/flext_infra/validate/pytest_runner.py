@@ -140,21 +140,20 @@ class FlextInfraPytestRunner(s[int]):
         raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
         return raw == config.Infra.codegen.make.ci.value
 
-    @classmethod
-    def _coverage_requested(cls) -> bool:
+    def _coverage_requested(self) -> bool:
         """Whether this runner asks pytest to measure coverage at all.
 
-        Testmon-incremental is the default and passes ``--no-cov``, so no
-        coverage report is written. ``COV=Y`` opts into the full measured run
-        instead: pre-push asks for it so the blocking hook reports real
-        coverage, while every other invocation stays incremental.
+        ``WHAT=all`` is the incremental testmon verb: it selects only impacted
+        tests, so a coverage number computed from that subset would be a lie.
+        It passes ``--testmon --no-cov``.
 
-        ``build_command`` and the artifact gate both read THIS predicate, so the
-        gate can never demand an artifact the argv told pytest not to produce
-        (mro-uwoc7).
+        ``WHAT=full`` is the complete-suite gate the pre-push workflow runs:
+        testmon OFF so every test executes, coverage ON so the number measures
+        the whole suite. ``build_command`` and the artifact gate both read THIS
+        predicate, so the gate can never demand an artifact the argv told pytest
+        not to produce (mro-uwoc7).
         """
-        raw = cls._environment_value(c.Infra.PYTEST_ENV_COV)
-        return raw == config.Infra.codegen.make.apply_value
+        return self.what == "full" and not self._ci_disables_coverage()
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -207,8 +206,23 @@ class FlextInfraPytestRunner(s[int]):
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
         # Why (mro-uwoc7): keyed to the same predicate the artifact gate reads,
-        # so the argv and the gate can never disagree about coverage.
-        coverage_args = () if self._coverage_requested() else ("--testmon", "--no-cov")
+        # so the argv and the gate can never disagree about coverage. WHAT=full
+        # turns testmon OFF (every test runs) and coverage ON, so the measured
+        # number covers the whole suite; every other WHAT is the incremental
+        # testmon verb whose subset coverage would be meaningless.
+        # Why (mro-q4osk): the xml lands in report_dir, the SAME path the
+        # artifact gate below reads. Letting --cov-report=xml default to the
+        # CWD wrote coverage.xml to the repository root, so the gate found
+        # nothing and failed a run whose coverage had in fact been measured.
+        coverage_args = (
+            (
+                "--cov",
+                "--cov-report=term-missing",
+                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
+            )
+            if self._coverage_requested()
+            else ("--testmon", "--no-cov")
+        )
         parallel_args = (
             ("-n", "0")
             if focused
@@ -433,12 +447,12 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
-        # Why (mro-uwoc7): build_command always passes --no-cov, so this runner
-        # never emits coverage.xml. Demanding the artifact anyway failed pushes
-        # on a fully green suite (1184 passed, exit=0, coverage=not-generated).
-        # The gate now asks the SAME source that builds the argv, so the two can
-        # never disagree: coverage is verified only when it was actually
-        # requested. Coverage runs are owned by the dedicated COV=Y path.
+        # Why (mro-uwoc7): the incremental verbs pass --no-cov, so this runner
+        # emits no coverage.xml for them. Demanding the artifact anyway failed
+        # pushes on a fully green suite (1184 passed, exit=0, coverage=not-
+        # generated). The gate now asks the SAME source that builds the argv, so
+        # the two can never disagree: coverage is verified only when it was
+        # actually requested. Coverage runs are owned by WHAT=full.
         coverage_enabled = (
             self._coverage_requested()
             and not self._ci_disables_coverage()

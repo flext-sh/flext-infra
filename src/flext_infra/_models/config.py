@@ -562,17 +562,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
-        env: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Literal NAME=VALUE tokens prefixed to this step's command. "
-                    "Pre-push sets COV=Y so the blocking hook measures real "
-                    "coverage, while every other context stays testmon-"
-                    "incremental."
-                )
-            ),
-        ] = ()
 
         @u.model_validator(mode="after")
         def _validate_contexts(self) -> Self:
