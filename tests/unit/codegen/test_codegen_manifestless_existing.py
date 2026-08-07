@@ -37,12 +37,7 @@ class TestCodegenManifestlessExisting:
         )
         for relative, content in preserved.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manifestless tree"], cwd=root
-            )
-        )
+        test_u.Tests.commit_git_changes(root, "Seed manifestless tree")
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(derived.repository, eq=local_repository)
@@ -54,12 +49,7 @@ class TestCodegenManifestlessExisting:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(FlextInfraCodegenConform.execute_request(request))
-        tm.ok(u.Cli.run_checked(["git", "add", "pyproject.toml"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Conform fixture metadata"], cwd=root
-            )
-        )
+        test_u.Tests.commit_git_changes(root, "Conform fixture metadata")
         artifact_request = request.model_copy(
             update={"what": c.Infra.CodegenConformSurface.ALL}
         )

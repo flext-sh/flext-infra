@@ -107,20 +107,17 @@ class TestsCodegenMakeEnvironment:
                 "fixture workspace\n", encoding="utf-8"
             )
             test_u.Tests.initialize_git_repo(workspace_root)
-            tm.ok(
-                u.Cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "-c",
-                        "protocol.file.allow=always",
-                        "submodule",
-                        "add",
-                        "-q",
-                        str(member_source),
-                        project_root.name,
-                    ],
-                    cwd=workspace_root,
-                )
+            test_u.Tests.git_bootstrap(
+                workspace_root,
+                (
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    "-q",
+                    str(member_source),
+                    project_root.name,
+                ),
             )
         else:
             project_root.mkdir(parents=True)
