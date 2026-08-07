@@ -67,16 +67,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = None
-        expected_schema: Annotated[
-            int | None,
-            m.Field(
-                gt=0,
-                description=(
-                    "Schema version the pinned tool must report for its managed "
-                    "data store (e.g. the Beads Dolt ledger schema)"
-                ),
-            ),
-        ] = None
 
     class BeadsServerSpec(_ConfigContract):
         """Machine-wide shared Dolt server connection for Beads ledgers."""
