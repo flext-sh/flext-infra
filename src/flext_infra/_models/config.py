@@ -562,6 +562,17 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
+        env: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Literal NAME=VALUE tokens prefixed to this step's command. "
+                    "Pre-push sets COV=Y so the blocking hook measures real "
+                    "coverage, while every other context stays testmon-"
+                    "incremental."
+                )
+            ),
+        ] = ()
 
         @u.model_validator(mode="after")
         def _validate_contexts(self) -> Self:
@@ -2671,30 +2682,9 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Required issue prefix derived from project metadata"),
         ]
-        expected_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact official Beads version pinned by mise"),
-        ]
-        expected_checksum: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                pattern=r"^[0-9a-f]{64}$",
-                description=(
-                    "SHA-256 the resolved Beads binary must match; declared by "
-                    "the toolchain SSOT, verified fail-closed"
-                ),
-            ),
-        ] = None
-        expected_schema: Annotated[
-            int | None,
-            m.Field(
-                gt=0,
-                description=(
-                    "Ledger schema the pinned binary must know; content identity "
-                    "of the artifact is the enforcement surface"
-                ),
-            ),
-        ] = None
+        # Why: mise owns which binary it installs, so this plan carries no
+        # expected version/checksum/schema. Re-auditing them here ran before the
+        # drift report and deadlocked `make gen WHAT=apply`.
         ledger_root: Annotated[
             Path,
             m.Field(

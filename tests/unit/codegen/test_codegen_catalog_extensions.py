@@ -135,7 +135,6 @@ class TestsCodegenCatalogExtensions:
             repository_root=repo,
             enabled=True,
             canonical_prefix="mro",
-            expected_version="1.1.0",
             ledger_root=repo,
             ledger_id="mro",
         )
@@ -149,7 +148,6 @@ class TestsCodegenCatalogExtensions:
                 "repository_root": repo,
                 "enabled": True,
                 "canonical_prefix": "mro",
-                "expected_version": "1.1.0",
                 "ledger_id": "mro",
             })
 
@@ -273,21 +271,16 @@ class TestsCodegenCatalogExtensions:
             ledger_root=principal,
             enabled=False,
             canonical_prefix="mro",
-            expected_version="1.1.0",
         )
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan, allow_missing=False))
+        tm.ok(verify(plan))
         # Owning the ledger while disabled is only a violation when real
         # tracker state exists: config.yaml alone is a routing projection.
         (tx / ".beads" / "beads.db").write_text("", encoding="utf-8")
         plan_at_root = m.Infra.BeadsPlan(
-            repository_root=tx,
-            enabled=False,
-            canonical_prefix="mro",
-            expected_version=config.Infra.codegen.toolchain.beads.reported_version,
-            ledger_root=tx,
+            repository_root=tx, enabled=False, canonical_prefix="mro", ledger_root=tx
         )
-        tm.fail(verify(plan_at_root, allow_missing=False))
+        tm.fail(verify(plan_at_root))
 
     def test_github_actions_ci_skips_the_beads_lifecycle(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -308,12 +301,11 @@ class TestsCodegenCatalogExtensions:
             repository_root=root,
             enabled=False,
             canonical_prefix="mro",
-            expected_version="1.1.0",
             ledger_root=root,
         )
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan, allow_missing=False))
+        tm.ok(verify(plan))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(

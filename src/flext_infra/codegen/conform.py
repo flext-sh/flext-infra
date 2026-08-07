@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import hashlib
 import time
 import os
+
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -127,12 +127,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 f"governed branch ancestry violations: {details}"
             )
-        # Beads binary/ledger verification must run before drift reporting so a
-        # checksum or version mismatch is not shadowed by missing projections.
+        # Ledger routing is verified before drift reporting so a namespace
         for beads_plan in plan.beads:
-            verified_beads = self._verify_beads_plan(
-                beads_plan, allow_missing=mode is c.Infra.CodegenConformMode.CHECK
-            )
+            verified_beads = self._verify_beads_plan(beads_plan)
             if verified_beads.failure:
                 return r[m.Infra.CodegenResult].fail(
                     verified_beads.error or "Beads ledger verification failed"
@@ -437,9 +434,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # declaring ledger_prefix=mro does not rewrite every
                     # submodule .beads/config.yaml onto the root tracker.
                     canonical_prefix=issue_prefix,
-                    expected_version=config_spec.toolchain.beads.reported_version,
-                    expected_checksum=config_spec.toolchain.beads.checksum,
-                    expected_schema=config_spec.toolchain.beads.expected_schema,
                     ledger_root=ledger_root_result.value,
                     ledger_id=workspace.ledger_id,
                 )
@@ -2622,9 +2616,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return fallback
 
     @classmethod
-    def _verify_beads_plan(
-        cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
-    ) -> p.Result[bool]:
+    def _verify_beads_plan(cls, plan: m.Infra.BeadsPlan) -> p.Result[bool]:
         """Validate the principal ledger route and fail closed on disagreement.
 
         Worktrees that route to a principal ledger never own the tracker
@@ -2663,37 +2655,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             return r[bool].ok(True)
         ledger_root = plan.ledger_root
+        # Why: mise owns the binaries it declares. Re-auditing the resolved
+        # version and digest here ran BEFORE the drift report, so a binary that
+        # diverged from the pin aborted `make gen WHAT=apply` — the very command
+        # that regenerates `.mise.toml` and installs the right one. Conform only
+        # needs the CLI to answer; the toolchain owns which build that is.
         version = cls._beads_command(plan, "version")
         if version.failure or version.value.exit_code != 0:
             return r[bool].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
-        version_parts = version.value.stdout.strip().split()
-        match version_parts:
-            case ["bd", "version", actual_version, *_]:
-                pass
-            case _:
-                actual_version = ""
-        if actual_version != plan.expected_version:
-            return r[bool].fail(
-                "mise-managed Beads CLI version mismatch: "
-                f"{actual_version or '<unparseable>'} != {plan.expected_version}"
-            )
-        if plan.expected_checksum is not None:
-            binary = cls._beads_binary(ledger_root)
-            if binary.failure:
-                return r[bool].fail(
-                    binary.error or "mise-managed Beads CLI is unavailable"
-                )
-            digest = hashlib.sha256(binary.value.read_bytes()).hexdigest()
-            if digest != plan.expected_checksum:
-                return r[bool].fail(
-                    "mise-managed Beads CLI checksum mismatch: "
-                    f"{digest} != {plan.expected_checksum}"
-                )
+        # Why: associating Beads with a workspace is OPTIONAL. A repository that
+        # tracks no issues carries no `.beads/`, and that is a valid shape — not
+        # a conform failure. Verify the ledger only when one actually exists.
         beads_dir = ledger_root / ".beads"
         if not beads_dir.exists():
-            if allow_missing:
-                return r[bool].ok(True)
-            return r[bool].fail(f"Beads ledger is missing: {beads_dir}")
+            return r[bool].ok(True)
         if not beads_dir.is_dir():
             return r[bool].fail(f"Beads ledger path is not a directory: {beads_dir}")
         info = cls._beads_command(plan, "info", "--json")

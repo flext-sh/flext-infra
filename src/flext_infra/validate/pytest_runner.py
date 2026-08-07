@@ -140,16 +140,21 @@ class FlextInfraPytestRunner(s[int]):
         raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
         return raw == config.Infra.codegen.make.ci.value
 
-    @staticmethod
-    def _coverage_requested() -> bool:
+    @classmethod
+    def _coverage_requested(cls) -> bool:
         """Whether this runner asks pytest to measure coverage at all.
 
-        The default verb is testmon-incremental and passes ``--no-cov``, so no
-        coverage report is ever written. ``build_command`` and the artifact gate
-        both read THIS predicate, so the gate can never demand an artifact the
-        argv told pytest not to produce (mro-uwoc7).
+        Testmon-incremental is the default and passes ``--no-cov``, so no
+        coverage report is written. ``COV=Y`` opts into the full measured run
+        instead: pre-push asks for it so the blocking hook reports real
+        coverage, while every other invocation stays incremental.
+
+        ``build_command`` and the artifact gate both read THIS predicate, so the
+        gate can never demand an artifact the argv told pytest not to produce
+        (mro-uwoc7).
         """
-        return False
+        raw = cls._environment_value(c.Infra.PYTEST_ENV_COV)
+        return raw == config.Infra.codegen.make.apply_value
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""

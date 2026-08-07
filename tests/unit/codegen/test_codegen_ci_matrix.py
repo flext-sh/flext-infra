@@ -131,6 +131,7 @@ class TestCodegenCiMatrix:
                     if step.gates_skip
                     else ""
                 )
+                + "".join(f"{token} " for token in step.env)
                 + f"make {step.verb}"
                 + (f" WHAT={step.what}" if step.what else "")
                 + (
