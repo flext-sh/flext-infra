@@ -2547,23 +2547,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> tuple[str, str]:
         """Return ``(issue_prefix, database)`` for one conform target.
 
-        ``WORKSPACE_MEMBER`` targets keep ``canonical_project_name`` because
-        they are planned under the parent workspace.yaml (mro-z75t). Root and
-        standalone manifests still honor their own ``ledger_prefix`` /
-        ``ledger_id`` overrides (mro-6fca). Marker-attached standalones are
-        classified as ``WORKSPACE_MEMBER`` for routing, but they own their
-        workspace.yaml at the governing root, so ledger_* still apply.
+        ``WORKSPACE_MEMBER`` targets route to the parent workspace's shared
+        ledger when ``ledger_prefix`` / ``ledger_id`` are declared, because
+        docs/GOVERNANCE.md mandates "Use the workspace-root Beads database for
+        the root and every member project" (mro-dz4ib). When the workspace
+        declares no ``ledger_prefix`` / ``ledger_id``, members fall back to
+        their ``canonical_project_name`` (mro-z75t). Root and standalone
+        manifests honor their own overrides (mro-6fca). Marker-attached
+        standalones are classified as ``WORKSPACE_MEMBER`` for routing, but
+        they own their workspace.yaml at the governing root, so ledger_* still
+        apply.
         """
-        # Members are planned under the parent workspace.yaml, so a root
-        # ledger_prefix must not rewrite their issue-prefix/database. A
-        # standalone's workspace.yaml is its own manifest, so ledger_* there
-        # still apply (mro-6fca). Attached standalones share the MEMBER
-        # profile only for routing; they are not parent-manifest members.
+        # Members share the parent workspace's ledger when it is declared
+        # explicitly (mro-dz4ib / GOVERNANCE.md Execution Contract). A member
+        # without an explicit ledger_prefix/ledger_id on the parent falls back
+        # to its canonical project name (mro-z75t). Attached standalones own
+        # their workspace.yaml, so they use the generic path below.
         if (
             target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
             and not target.attached_standalone
         ):
-            return target.canonical_project_name, target.canonical_project_name
+            issue_prefix = workspace.ledger_prefix or target.canonical_project_name
+            database = workspace.ledger_id or target.canonical_project_name
+            return issue_prefix, database
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
 

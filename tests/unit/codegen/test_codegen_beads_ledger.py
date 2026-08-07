@@ -237,8 +237,8 @@ class TestCodegenBeadsLedger:
         )
         tm.that(root_prefix, eq="mro")
         tm.that(root_db, eq="mro")
-        tm.that(member_prefix, eq="flext-dbt-ldif")
-        tm.that(member_db, eq="flext-dbt-ldif")
+        tm.that(member_prefix, eq="mro")
+        tm.that(member_db, eq="mro")
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
