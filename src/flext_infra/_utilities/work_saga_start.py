@@ -108,10 +108,17 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         # environment an interrupted start had left behind.
         prepared = FlextInfraWorktreeService.setup_lane(primary_root, lane)
         if prepared.failure:
+            # Why: provisioning is RESUMABLE, so a failed `make setup` must not
+            # destroy the checkout it already produced. Rolling back here forced
+            # a manual repair and re-clone after any transient setup failure (a
+            # stale submodule checkout, a network blip). The lane and its branch
+            # are kept exactly as they are and start stays idempotent: fix the
+            # cause, run the same command again, and it resumes from the
+            # existing checkout instead of starting over.
             return r.fail(
-                self._rollback_started_lane(
-                    primary_root, branch, reused, prepared.error
-                )
+                f"{prepared.error or 'failed to provision lane'}; "
+                f"lane {branch} preserved at {lane} - resolve the cause and "
+                f"re-run the same work start to resume provisioning"
             )
         head = self._git_head(lane)
         if head.failure:
