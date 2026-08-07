@@ -491,11 +491,12 @@ class TestCodegenBeadsLedger:
                 )
             )
             # A divergent binary is mise's concern, never a conform verdict.
-            # CHECK on this fixture legitimately reports drift, so pin THAT as
-            # the expected outcome first: without it the two negative checks
-            # below would also pass on an unrelated failure.
+            # CHECK on this bare fixture legitimately fails on the git-hook
+            # gate, so pin THAT as the expected outcome first: without a
+            # positive assertion the two negative checks below would also pass
+            # on an unrelated failure (or on an empty error string).
             error = result.error or ""
-            tm.that("drift detected" in error, eq=True)
+            tm.that("git hook is not installed" in error, eq=True)
             tm.that("checksum mismatch" in error, eq=False)
             tm.that("version mismatch" in error, eq=False)
         finally:
