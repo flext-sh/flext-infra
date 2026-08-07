@@ -985,45 +985,15 @@ _builtin_docs_validate:
 
 
 
-# Disposable artifacts are DATA (config.make.clean), never literals here: a
-# stale cache or report is not cosmetic, it produces false diagnoses - a stale
-# __pycache__ once raised a ValidationError for source that was already correct.
-CLEAN_CACHE_DIRS := __pycache__ .mypy_cache .pytest_cache .ruff_cache .pyrefly_cache .benchmarks .hypothesis
-CLEAN_ROOT_DIRS := build dist htmlcov .reports
-CLEAN_ROOT_FILES := .coverage .testmondata
-CLEAN_TRACE_GLOBS := *.pstats *.prof .coverage.*
-
-# Read-only census so `clean status` reports the real residue instead of being
-# a silent no-op that hides it.
+# Disposable artifacts (caches, reports, traces) are owned by the flext-infra
+# clean service and declared in config.make.clean, so the recipe stays a thin
+# dispatch like every other verb instead of shell that drifts per project.
 _builtin_clean_status:
-	@total=0; \
-	for name in $(CLEAN_CACHE_DIRS); do \
-		n=$$(find "$(PROJECT_ROOT)" -type d -name "$$name" -prune 2>/dev/null | wc -l); \
-		[ "$$n" -gt 0 ] && printf '  %-16s %s\n' "$$name" "$$n"; \
-		total=$$((total + n)); \
-	done; \
-	for name in $(CLEAN_ROOT_DIRS) $(CLEAN_ROOT_FILES); do \
-		if [ -e "$(PROJECT_ROOT)/$$name" ]; then \
-			printf '  %-16s %s\n' "$$name" 1; total=$$((total + 1)); \
-		fi; \
-	done; \
-	for pattern in $(CLEAN_TRACE_GLOBS); do \
-		n=$$(find "$(PROJECT_ROOT)" -type f -name "$$pattern" 2>/dev/null | wc -l); \
-		[ "$$n" -gt 0 ] && printf '  %-16s %s\n' "$$pattern" "$$n"; \
-		total=$$((total + n)); \
-	done; \
-	printf 'clean: %s disposable artifact(s); remove with make clean WHAT=generated APPLY=Y\n' "$$total"
+	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)"
 
 _builtin_clean_generated:
 	$(call _require_apply)
-	@for name in $(CLEAN_CACHE_DIRS); do \
-		find "$(PROJECT_ROOT)" -type d -name "$$name" -prune -exec rm -rf {} + 2>/dev/null || true; \
-	done
-	@for name in $(CLEAN_ROOT_DIRS); do rm -rf "$(PROJECT_ROOT)/$$name"; done
-	@for name in $(CLEAN_ROOT_FILES); do rm -f "$(PROJECT_ROOT)/$$name"; done
-	@for pattern in $(CLEAN_TRACE_GLOBS); do \
-		find "$(PROJECT_ROOT)" -type f -name "$$pattern" -delete 2>/dev/null || true; \
-	done
+	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)" --apply-changes
 
 _builtin_release_status: _builtin_require_environment
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
