@@ -889,26 +889,42 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             A fake remote baseline ref is created so workspace discovery
             matches a real clone. The baseline branch is read from the same
             provider config production reads. ``origin_url`` defaults to the
-            repository itself; fixtures that must be recognised as
-            provider-governed pass their declared provider URL instead.
+            repository itself. An empty value creates an offline fixture with
+            no fetchable remote while retaining its local tracking ref.
             """
             baseline_branch = config.Infra.codegen.providers[0].branch
-            commands: t.SequenceOf[t.StrSequence] = (
+            commands: list[t.StrSequence] = [
                 (c.Infra.GIT, "init", "-b", "main"),
                 (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
                 (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
-                (c.Infra.GIT, "remote", "add", "origin", origin_url or str(repo_root)),
                 (
                     c.Infra.GIT,
                     "update-ref",
                     f"refs/remotes/origin/{baseline_branch}",
                     "HEAD",
                 ),
-            )
+            ]
+            if origin_url != "":
+                commands.insert(
+                    -1,
+                    (
+                        c.Infra.GIT,
+                        "remote",
+                        "add",
+                        "origin",
+                        origin_url or str(repo_root),
+                    ),
+                )
             for command in commands:
-                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
+                tm.ok(
+                    cli_facade.run_checked(
+                        list(command),
+                        cwd=repo_root,
+                        remove_env_keys=c.Tests.GIT_LOCAL_ENV_KEYS,
+                    )
+                )
 
         @staticmethod
         def to_pascal(snake: str) -> str:
