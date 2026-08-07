@@ -1,18 +1,10 @@
 #!/usr/bin/env bash
-# Beads policy is OPTIONAL (operator directive 2026-08-07): users without
-# beads installed must pass this check. When bd is absent, print a notice and
-# exit 0 — the guard is advisory, never a hard requirement.
 set -euo pipefail
 
 fail() {
   printf 'beads-policy: %s\n' "$*" >&2
   exit 1
 }
-
-if ! command -v bd >/dev/null 2>&1; then
-  printf 'beads-policy: bd not installed — skipping beads policy checks\n'
-  exit 0
-fi
 
 repo_root="$(git rev-parse --show-toplevel)"
 cd "${repo_root}"
