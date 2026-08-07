@@ -213,6 +213,79 @@ class TestCodegenConform:
         )
         tm.that(existing_tree, eq=new_tree)
 
+    def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
+        self, infra_git_repo: Path
+    ) -> None:
+        """The gen verb converges for a Python root beyond declarative env_dirs.
+
+        ``make gen`` runs conform and then the deps modernizer over the same
+        manifest. Two derivations used to select the pyright execution
+        environments: the modernizer discovered roots ON DISK, while conform
+        planned them from the declarative ``env_dirs``. A project owning a
+        Python directory outside that list therefore had the environment
+        appended by the modernizer and erased by conform, so apply rewrote the
+        manifest forever and the next check reported permanent drift. One owner
+        must decide, so the extra root survives a whole gen cycle.
+        """
+        root = infra_git_repo
+        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / "flext_infra" / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        # The defect needs a Python root the declarative env_dirs never lists.
+        extra_root = "tools"
+        module = root / extra_root / "maintenance.py"
+        module.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(module, "VALUE = 1\n"))
+        tm.that(extra_root in u.Infra.discover_python_dirs(root), eq=True)
+        tm.that(
+            extra_root in config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+            eq=False,
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Seed python root beyond env_dirs"],
+                cwd=root,
+            )
+        )
+
+        applied = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+        tm.ok(applied)
+        # gen runs the modernizer over the same manifest right after conform, so
+        # the fixed point belongs to the pair, never to conform alone.
+        tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=root, apply_changes=True
+            ).execute()
+        )
+
+        fixed_point = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.ok(fixed_point)
+        tm.that(fixed_point.value.written_files, eq=())
+
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
         self, infra_git_repo: Path
     ) -> None:
