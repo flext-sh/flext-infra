@@ -744,8 +744,16 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             pass
 
         is_worktree = git_dir != common_dir
+        # Gitlink modes live in the index, never in `status --porcelain` (which
+        # emits XY status codes and paths, never file modes). Reading them from
+        # the porcelain text made has_submodules unconditionally False, so a
+        # real submodule superproject was never recognized as one.
+        try:
+            staged_entries = repo.git.ls_files("--stage")
+        except GitCommandError:
+            staged_entries = ""
         has_submodules = any(
-            line.startswith(f"{_GITLINK_MODE} ") for line in porcelain.splitlines()
+            line.startswith(f"{_GITLINK_MODE} ") for line in staged_entries.splitlines()
         )
         git_entry = working_tree / ".git"
         is_submodule = (
