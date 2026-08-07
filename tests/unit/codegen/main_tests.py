@@ -12,6 +12,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import main as infra_main
 from flext_tests import tm
 from tests import u
@@ -84,6 +86,12 @@ class TestMainCommandDispatch:
         tm.that(result, eq=0)
 
 
+# Exemplar: every test here spawns a fresh interpreter to prove the real
+# `python -m flext_infra` entry point. That import chain, not the assertion,
+# dominates the runtime, so the class declares its true end-to-end budget
+# instead of raising the global unit-test timeout and masking real hangs.
+@pytest.mark.slow
+@pytest.mark.timeout(120)
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 

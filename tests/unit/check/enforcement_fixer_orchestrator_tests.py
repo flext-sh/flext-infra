@@ -380,6 +380,12 @@ class TestsEnforcementFixerOrchestrator:
         tm.that(len(result.previewed), eq=1)
         tm.that(result.failed, eq=())
 
+    # Exemplar: this drives the real CLI entry point against a real Git
+    # repository, so its cost is the runtime's import chain plus several git
+    # invocations. That is a true end-to-end budget, declared explicitly rather
+    # than absorbed by raising the global timeout for every unit test.
+    @pytest.mark.slow
+    @pytest.mark.timeout(120)
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
         self,
         tmp_path: Path,

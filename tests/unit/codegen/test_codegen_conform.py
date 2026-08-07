@@ -53,6 +53,14 @@ def _conform_target(
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
+    # Exemplar: a genuine end-to-end scenario -- scaffold a project, then run
+    # its console entry point in a fresh interpreter -- legitimately costs more
+    # than the suite-wide 30s budget, because importing the generated package's
+    # dependency chain dominates. Declaring the real budget with an explicit
+    # marker and timeout keeps the scenario honest instead of hiding it behind
+    # a global timeout bump that would mask genuine hangs elsewhere.
+    @pytest.mark.slow
+    @pytest.mark.timeout(180)
     @pytest.mark.parametrize(
         ("kind", "name"),
         [
