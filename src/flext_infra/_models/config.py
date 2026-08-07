@@ -2874,6 +2874,20 @@ class FlextInfraConfigModels:
         ] = False
         reason: Annotated[str, m.Field(description="Blocking explanation")] = ""
 
+    class HooksPlan(_ConfigContract):
+        """Declared workflow git hooks and where they must be installed."""
+
+        repository_root: Annotated[
+            Path, m.Field(description="Checkout owning the hook configuration")
+        ]
+        hooks_directory: Annotated[
+            Path, m.Field(description="Resolved git hook directory for this checkout")
+        ]
+        stages: Annotated[
+            tuple[str, ...],
+            m.Field(description="Hook stages declared by the workflow SSOT"),
+        ] = ()
+
     class CodegenPlan(_ConfigContract):
         """Fully validated plan produced before any managed-file write."""
 
@@ -2901,6 +2915,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.BeadsPlan, ...],
             m.Field(description="Beads lifecycle plans paired with repositories"),
         ]
+        hooks: Annotated[
+            tuple[FlextInfraConfigModels.HooksPlan, ...],
+            m.Field(description="Workflow git-hook plans paired with repositories"),
+        ] = ()
         branch_ancestry: Annotated[
             tuple[FlextInfraConfigModels.BranchAncestryPlan, ...],
             m.Field(description="Governed branch ancestry observations"),

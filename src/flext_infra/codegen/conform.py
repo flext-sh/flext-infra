@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import time
 import os
+import sys
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -137,6 +138,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(
                     verified_beads.error or "Beads ledger verification failed"
                 )
+        # A declared workflow hook that was never installed is drift exactly
+        # like a stale managed file: check reports it, apply activates it.
+        for hooks_plan in plan.hooks:
+            verified_hooks = self._verify_hooks_plan(
+                hooks_plan, allow_missing=mode is not c.Infra.CodegenConformMode.CHECK
+            )
+            if verified_hooks.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    verified_hooks.error or "git hook verification failed"
+                )
         changed = tuple(file for file in plan.files if file.changed)
         if mode is c.Infra.CodegenConformMode.CHECK:
             if changed:
@@ -182,6 +193,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             written.append(file.path)
         u.Cli.info("stage=verify-fixed-point")
+        # Activate the hooks the emitted config declares. This runs before the
+        # fixed-point re-plan so that verification observes the installed state.
+        for hooks_plan in plan.hooks:
+            installed_hooks = self._install_hooks_plan(hooks_plan)
+            if installed_hooks.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    installed_hooks.error or "git hook installation failed"
+                )
         verified = self.plan(request)
         if verified.failure:
             return r[m.Infra.CodegenResult].fail(
@@ -308,6 +327,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         beads_plans: list[m.Infra.BeadsPlan] = []
+        hooks_plans: list[m.Infra.HooksPlan] = []
         ancestry_plans: list[m.Infra.BranchAncestryPlan] = []
         total_repositories = len(selected)
         u.Cli.info(f"stage=plan repositories={total_repositories}")
@@ -444,6 +464,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ledger_id=workspace.ledger_id,
                 )
             )
+            # A repository the plan is about to CREATE has no git directory to
+            # interrogate yet, so it carries no hook plan: hooks belong to a
+            # provisioned checkout, and the next conform run over it plans them.
+            hooks_directory = (
+                self._hooks_directory(repository_root)
+                if (repository_root / c.Infra.GIT_DIR).exists()
+                else None
+            )
+            if hooks_directory is not None:
+                if hooks_directory.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        hooks_directory.error
+                        or f"unable to resolve git hooks directory: {repository_root}"
+                    )
+                hooks_plans.append(
+                    m.Infra.HooksPlan(
+                        repository_root=repository_root,
+                        hooks_directory=hooks_directory.value,
+                        stages=self._declared_hook_stages(config_spec.make),
+                    )
+                )
             if self.initial_workspace is None:
                 ancestry_result = self._branch_ancestry_plan(target)
                 if ancestry_result.failure:
@@ -470,6 +511,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_spec=config_spec.make,
                 uv_environments=tuple(environments),
                 beads=tuple(beads_plans),
+                hooks=tuple(hooks_plans),
                 branch_ancestry=tuple(ancestry_plans),
                 files=tuple(files),
             )
@@ -2531,6 +2573,89 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return target.canonical_project_name, target.canonical_project_name
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
+
+    @staticmethod
+    def _declared_hook_stages(make_spec: m.Infra.MakeSpec) -> tuple[str, ...]:
+        """Derive the hook stages from the workflow SSOT, never a literal list.
+
+        A context named ``pre_commit``/``pre_push`` in config/codegen.yaml is
+        what makes the corresponding git hook part of the contract, so adding a
+        hook context to the SSOT extends this check with no code change.
+        """
+        contexts = {
+            context
+            for step in make_spec.workflow
+            for context in step.contexts
+            if context.startswith("pre_")
+        }
+        return tuple(sorted(context.replace("_", "-") for context in contexts))
+
+    @classmethod
+    def _hooks_directory(cls, repository_root: Path) -> p.Result[Path]:
+        """Resolve the real hook directory, honouring worktrees and submodules.
+
+        A linked worktree and a submodule both keep hooks outside ``.git/hooks``
+        of the checkout, so asking git is the only correct resolution.
+        """
+        probe = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--git-path", "hooks"], cwd=repository_root
+        )
+        if probe.failure:
+            return r[Path].fail(
+                probe.error
+                or f"unable to resolve git hooks directory: {repository_root}"
+            )
+        resolved = Path(probe.value.strip())
+        if not resolved.is_absolute():
+            resolved = repository_root / resolved
+        return r[Path].ok(resolved)
+
+    @classmethod
+    def _verify_hooks_plan(
+        cls, plan: m.Infra.HooksPlan, *, allow_missing: bool
+    ) -> p.Result[bool]:
+        """Fail closed when a declared workflow hook is not actually installed.
+
+        Emitting .pre-commit-config.yaml without activating it left every lane
+        committing and pushing ungated while conform still reported success.
+        """
+        if not plan.stages:
+            return r[bool].ok(True)
+        missing = tuple(
+            stage
+            for stage in plan.stages
+            if not (plan.hooks_directory / stage).is_file()
+        )
+        if not missing:
+            return r[bool].ok(True)
+        if allow_missing:
+            return r[bool].ok(True)
+        return r[bool].fail(
+            "git hook is not installed: "
+            + ", ".join(
+                f"{stage} ({plan.hooks_directory / stage})" for stage in missing
+            )
+        )
+
+    @classmethod
+    def _install_hooks_plan(cls, plan: m.Infra.HooksPlan) -> p.Result[bool]:
+        """Activate every declared workflow hook through pre-commit itself.
+
+        pre-commit owns the hook shim it emits, so installation delegates to it
+        rather than writing a second, divergent shim here.
+        """
+        if not plan.stages:
+            return r[bool].ok(True)
+        command = [sys.executable, "-m", "pre_commit", "install"]
+        for stage in plan.stages:
+            command.extend(("-t", stage))
+        installed = u.Cli.run_checked(command, cwd=plan.repository_root)
+        if installed.failure:
+            return r[bool].fail(
+                installed.error
+                or f"git hook installation failed: {plan.repository_root}"
+            )
+        return cls._verify_hooks_plan(plan, allow_missing=False)
 
     @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:

@@ -93,7 +93,7 @@ class TestCodegenBeadsLedger:
         origin = root.parent / f"{root.name}-origin.git"
         cls._git(root.parent, "init", "-q", "--bare", str(origin))
         cls._git(root, "add", "-A")
-        cls._git(root, "commit", "-q", "-m", "Seed standalone workspace")
+        cls._git(root, "commit", "-q", "--no-verify", "-m", "Seed standalone workspace")
         cls._git(root, "remote", "add", "origin", str(origin))
         cls._git(root, "push", "-q", "-u", "origin", provider.branch)
         return root

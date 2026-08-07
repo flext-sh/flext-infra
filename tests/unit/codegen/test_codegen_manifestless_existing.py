@@ -40,7 +40,8 @@ class TestCodegenManifestlessExisting:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manifestless tree"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifestless tree"],
+                cwd=root,
             )
         )
 
