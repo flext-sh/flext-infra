@@ -755,10 +755,13 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         has_submodules = any(
             line.startswith(f"{_GITLINK_MODE} ") for line in staged_entries.splitlines()
         )
-        git_entry = working_tree / ".git"
-        is_submodule = (
-            superproject is not None and git_entry.exists() and not git_entry.is_dir()
-        )
+        # Why (flext-infra-c3h / ai-hub-n1nh.5): rev-parse
+        # --show-superproject-working-tree already means this working tree is a
+        # submodule. Requiring .git to be a gitfile excluded absorbed/converted
+        # submodules whose .git is a real directory (e.g. cosmos-charts under
+        # cosmos-main), so is_submodule stayed False while superproject_root was
+        # set and consumers demoted owned nested repos to unmanaged.
+        is_submodule = superproject is not None
 
         return m.Infra.GitIdentityReport(
             repo_root=working_tree,
