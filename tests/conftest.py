@@ -11,13 +11,19 @@ from types import ModuleType
 import pytest
 
 import flext_infra as infra_pkg
-from flext_infra import config
 from flext_tests import tm
 from tests import c, t, u
 
 # NOTE(mro-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
 # the only fixture owner; conftest must not re-export or shadow its fixtures.
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
+
+
+@pytest.fixture(autouse=True)
+def isolate_git_local_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent Git hook context from escaping any pytest temporary repository."""
+    for key in c.Tests.GIT_LOCAL_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
 
 
 @pytest.fixture
@@ -148,39 +154,11 @@ def infra_safe_command_output(
 
 
 @pytest.fixture
-def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
-    """Initialize a local Git repository through the public CLI facade."""
+def infra_git_repo(infra_test_workspace: Path) -> Path:
+    """Initialize an isolated local Git repository through the canonical helper."""
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    tm.ok(infra_subprocess.run_checked(["git", "init"], cwd=repo))
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "config", "user.email", "infra@example.com"], cwd=repo
-        )
-    )
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "config", "user.name", "Infra Fixtures"], cwd=repo
-        )
-    )
-    # mro-j47u (codex): existing-repository conformance inventories refs against the
-    # provider baseline. Seed a commit and a fake remote ref so tests exercise the
-    # same topology a real clone would have.
-    baseline_file = repo / ".infra-baseline"
-    baseline_file.write_text("baseline\n", encoding="utf-8")
-    tm.ok(infra_subprocess.run_checked(["git", "add", str(baseline_file)], cwd=repo))
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "commit", "-q", "-m", "infra fixture baseline"], cwd=repo
-        )
-    )
-    baseline_branch = config.Infra.codegen.providers[0].branch
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "update-ref", f"refs/remotes/origin/{baseline_branch}", "HEAD"],
-            cwd=repo,
-        )
-    )
+    u.Tests.initialize_git_repo(repo, origin_url="")
     return repo
 
 
