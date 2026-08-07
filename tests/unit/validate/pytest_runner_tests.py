@@ -207,18 +207,27 @@ class TestsFlextInfraPytestRunner:
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
 
-    # NOTE: the end-to-end contract (a real profiled child run reports
-    # coverage=not-generated) lives in tests/integration/pytest_runner_e2e_tests.py.
-    # It boots a full pytest stack in a child interpreter (~35s measured), which
-    # is integration-tier work, not a unit case.
-    def test_focused_run_records_coverage_as_not_generated(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    # NOTE: a real profiled child run is deliberately NOT exercised here.
+    # Measured 2026-08-07: nested pytest costs ~85s of dedicated CPU and starves
+    # the timing-sensitive Make-lock contracts under xdist, failing them and
+    # itself. The runner's reporting contract is asserted from the artifacts it
+    # publishes; the child process boundary stays stubbed on purpose.
+    @pytest.mark.parametrize("selector", ["focused", "full"])
+    def test_run_records_coverage_as_not_generated(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, selector: str
     ) -> None:
-        """Focused selectors remain truthful while intentionally disabling coverage."""
+        """Every selector stays truthful while coverage is intentionally off."""
+        # Why (15af1cd4): the runner always invokes pytest with --no-cov, so a
+        # coverage artifact can never exist for any selector; the published
+        # summary must say not-generated rather than claim a file it never made.
         test_file = tmp_path / "tests" / "sample_test.py"
         test_file.parent.mkdir(parents=True)
         test_file.write_text("", encoding="utf-8")
-        runner = self._runner(tmp_path, file="tests/sample_test.py")
+        runner = (
+            self._runner(tmp_path, file="tests/sample_test.py")
+            if selector == "focused"
+            else self._runner(tmp_path, what="all")
+        )
 
         def fake_run_to_file(
             cmd: t.StrSequence,
