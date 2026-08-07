@@ -58,6 +58,9 @@ jobs:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
+          # No step needs authenticated git after checkout; persisting the
+          # token into .git/config would expose it to every later command.
+          persist-credentials: false
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
         run: >-
           docker build
@@ -83,6 +86,9 @@ jobs:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
+          # No step needs authenticated git after checkout; persisting the
+          # token into .git/config would expose it to every later command.
+          persist-credentials: false
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
@@ -97,6 +103,11 @@ jobs:
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
         run: {{ make.ci.variable }}={{ make.ci.value }} make help
+      # The canonical gate, not just the verb surface: this matrix exists to
+      # catch platform-specific failures, and `make help` exercises none of
+      # the gates. The linux job already runs it.
+      - name: Canonical check
+        run: {{ make.ci.variable }}={{ make.ci.value }} make check
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
@@ -109,6 +120,9 @@ jobs:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
+          # No step needs authenticated git after checkout; persisting the
+          # token into .git/config would expose it to every later command.
+          persist-credentials: false
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
@@ -125,4 +139,10 @@ jobs:
       - name: Verb surface
         shell: bash
         run: {{ make.ci.variable }}={{ make.ci.value }} make help
+      # The canonical gate, not just the verb surface: this matrix exists to
+      # catch platform-specific failures, and `make help` exercises none of
+      # the gates. The linux job already runs it.
+      - name: Canonical check
+        shell: bash
+        run: {{ make.ci.variable }}={{ make.ci.value }} make check
   # End SECTION: windows

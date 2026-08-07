@@ -150,7 +150,15 @@ CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Prefer the recorded flext-infra gitlink OID (immutable) when the workspace
 # root can resolve it; otherwise fall back to the provider integration branch.
+{%- if infra_repository.path in (".", "") %}
+# This project IS flext-infra, so no gitlink to itself exists: `rev-parse
+# HEAD:.` fails (`path '.' exists on disk, but not in 'HEAD'`) AND prints the
+# unresolved argument, which is non-empty and therefore defeats the fallback
+# below. Read its own commit instead.
+FLEXT_INFRA_BOOTSTRAP_REF := $(shell git -C "$(WORKSPACE_ROOT)" rev-parse HEAD 2>/dev/null)
+{%- else %}
 FLEXT_INFRA_BOOTSTRAP_REF := $(shell git -C "$(WORKSPACE_ROOT)" rev-parse "HEAD:{{ infra_repository.path }}" 2>/dev/null)
+{%- endif %}
 ifeq ($(strip $(FLEXT_INFRA_BOOTSTRAP_REF)),)
 FLEXT_INFRA_BOOTSTRAP_REF := {{ infra_repository_branch }}
 endif

@@ -311,7 +311,8 @@ class TestCodegenCiMatrix:
         for host in (macos, windows):
             tm.that(host, has="run: CI=Y make setup")
             tm.that(host, has="run: CI=Y make help")
-        tm.that(windows.count("shell: bash"), eq=2)
+            tm.that(host, has="run: CI=Y make check")
+        tm.that(windows.count("shell: bash"), eq=3)
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
         self, tmp_path: Path

@@ -421,8 +421,10 @@ class TestCodegenBeadsLedger:
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
         )
-        error = result.error or ""
-        tm.that("ledger is missing" in error, eq=False)
+        # Assert the RESULT, not merely the absence of one error string: a
+        # negative-only check would also pass if apply failed for an unrelated
+        # reason, which is the opposite of what this test claims to prove.
+        tm.ok(result)
 
     def test_divergent_binary_does_not_block_conform(self, tmp_path: Path) -> None:
         """Mise owns its declared binaries; conform never re-audits them.
@@ -488,9 +490,12 @@ class TestCodegenBeadsLedger:
                     mode=c.Infra.CodegenConformMode.CHECK,
                 )
             )
-            # A divergent binary is mise's concern, never a conform verdict:
-            # whatever conform reports, it must not be a binary audit failure.
+            # A divergent binary is mise's concern, never a conform verdict.
+            # CHECK on this fixture legitimately reports drift, so pin THAT as
+            # the expected outcome first: without it the two negative checks
+            # below would also pass on an unrelated failure.
             error = result.error or ""
+            tm.that("drift detected" in error, eq=True)
             tm.that("checksum mismatch" in error, eq=False)
             tm.that("version mismatch" in error, eq=False)
         finally:
