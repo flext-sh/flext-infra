@@ -24,7 +24,7 @@ def _consumer(tmp_path: Path) -> Path:
     consumer = tmp_path / "consumer"
     consumer.mkdir()
     (consumer / "pyproject.toml").write_text(
-        '[project]\n'
+        "[project]\n"
         'name = "consumer"\n'
         'version = "0.1.0"\n'
         'requires-python = ">=3.13"\n'
@@ -49,8 +49,7 @@ class TestsFlextWorktreeBinding:
 
         planned: core_p.Result[tuple[str, ...]] = (
             FlextInfraFlextBindingService.plan_targets(
-                consumer_root=consumer,
-                flext_root=Path("/home/marlonsc/flext"),
+                consumer_root=consumer, flext_root=Path("/home/marlonsc/flext")
             )
         )
 

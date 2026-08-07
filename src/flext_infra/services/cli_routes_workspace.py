@@ -49,13 +49,11 @@ class WorkspaceRoutes(RefactorRoutes):
                 name="flext-binding",
                 help_text="Bind this project onto a flext worktree for the session",
                 model_cls=m.Infra.FlextBindingRequest,
-                handler=lambda params: (
-                    FlextInfraFlextBindingService.apply(
-                        consumer_root=params.workspace_root,
-                        flext_root=params.flext_root,
-                        python=params.python,
-                    ).map(CliRouteBase.as_route_value)
-                ),
+                handler=lambda params: FlextInfraFlextBindingService.apply(
+                    consumer_root=params.workspace_root,
+                    flext_root=params.flext_root,
+                    python=params.python,
+                ).map(CliRouteBase.as_route_value),
                 success_message="flext worktree binding applied",
             ),
             *(

@@ -883,12 +883,14 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         try:
             repo = cls._repo(request.repo_root)
             listed = repo.git.config(
-                "-f", c.Infra.GITMODULES, "--name-only", "--get-regexp", r"^submodule\..*\.path$"
+                "-f",
+                c.Infra.GITMODULES,
+                "--name-only",
+                "--get-regexp",
+                r"^submodule\..*\.path$",
             )
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[t.StrMapping].fail(
-                f"failed to read submodule declarations: {exc}"
-            )
+            return r[t.StrMapping].fail(f"failed to read submodule declarations: {exc}")
         sections: dict[str, str] = {}
         for key in listed.split():
             section = key.removesuffix(".path")
