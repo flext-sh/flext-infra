@@ -405,10 +405,37 @@ class TestCodegenBeadsLedger:
         tm.that(bool(server.host), eq=True)
         tm.that(server.auto_commit in {"off", "on", "batch"}, eq=True)
 
-    def test_checksum_mismatch_fails_closed(self, tmp_path: Path) -> None:
-        """Reject a mise-resolved binary whose digest diverges from the SSOT pin."""
-        # The fake binary reports the SSOT's version so the run reaches the
-        # checksum comparison instead of stopping at the version gate.
+    def test_workspace_without_beads_conforms(self, tmp_path: Path) -> None:
+        """Associating Beads with a workspace is OPTIONAL, never required.
+
+        `apply` used to fail closed with "Beads ledger is missing" whenever a
+        repository carried no `.beads/`, so a project that simply does not track
+        issues could not run codegen at all.
+        """
+        root = self._standalone_workspace(tmp_path / "no-beads", ledger_id=None)
+        shutil.rmtree(root / ".beads", ignore_errors=True)
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+        # Assert the RESULT, not merely the absence of one error string: a
+        # negative-only check would also pass if apply failed for an unrelated
+        # reason, which is the opposite of what this test claims to prove.
+        tm.ok(result)
+
+    def test_divergent_binary_does_not_block_conform(self, tmp_path: Path) -> None:
+        """Mise owns its declared binaries; conform never re-audits them.
+
+        The version/checksum gates ran BEFORE the drift report, so a binary that
+        diverged from the pin aborted `make gen WHAT=apply` — the very command
+        that regenerates `.mise.toml` and installs the right binary. That
+        bootstrap deadlock broke CI for every consumer.
+        """
+        # The fake binary reports the SSOT's version, so before this fix the run
+        # reached the checksum gate instead of stopping at the version gate.
         reported = config.Infra.codegen.toolchain.beads.reported_version
         plugin = tmp_path / "fake-bd-plugin"
         scripts = {
@@ -463,7 +490,15 @@ class TestCodegenBeadsLedger:
                     mode=c.Infra.CodegenConformMode.CHECK,
                 )
             )
-            tm.fail(result, has="checksum mismatch")
+            # A divergent binary is mise's concern, never a conform verdict.
+            # CHECK on this bare fixture legitimately fails on the git-hook
+            # gate, so pin THAT as the expected outcome first: without a
+            # positive assertion the two negative checks below would also pass
+            # on an unrelated failure (or on an empty error string).
+            error = result.error or ""
+            tm.that("git hook is not installed" in error, eq=True)
+            tm.that("checksum mismatch" in error, eq=False)
+            tm.that("version mismatch" in error, eq=False)
         finally:
             shutil.rmtree(mise_plugin_clone, ignore_errors=True)
             shutil.rmtree(mise_install_dir, ignore_errors=True)
