@@ -67,8 +67,9 @@ class TestsFlextInfraPytestRunner:
         )
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
         test_file = tmp_path / "tests" / "sample % test.py"
         test_file.parent.mkdir(parents=True)
         test_file.write_text("", encoding="utf-8")
@@ -83,7 +84,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
-    def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
+    def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
         policy = config.Infra.tooling.tools.pytest
@@ -411,8 +413,9 @@ class TestsFlextInfraPytestRunner:
         )
 
     def test_local_incremental_argv_keeps_testmon_without_coverage(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
@@ -421,6 +424,7 @@ class TestsFlextInfraPytestRunner:
     def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
@@ -441,6 +445,7 @@ class TestsFlextInfraPytestRunner:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """GitHub default CI=true must not match the Make token CI=Y."""
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, "true")
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")

@@ -144,12 +144,17 @@ class FlextInfraPytestRunner(s[int]):
     def _coverage_requested() -> bool:
         """Whether this runner asks pytest to measure coverage at all.
 
-        The default verb is testmon-incremental and passes ``--no-cov``, so no
-        coverage report is ever written. ``build_command`` and the artifact gate
-        both read THIS predicate, so the gate can never demand an artifact the
-        argv told pytest not to produce (mro-uwoc7).
+        The default verb is testmon-incremental and passes ``--no-cov``, so it
+        reports nothing about coverage. ``COV=Y`` selects the opposite contract:
+        testmon is disabled so the whole suite executes and coverage is actually
+        measurable. The two are mutually exclusive by construction - an
+        incremental selection cannot produce a meaningful coverage number.
+
+        ``build_command`` and the artifact gate both read THIS predicate, so the
+        argv and the gate can never disagree about coverage (mro-uwoc7).
         """
-        return False
+        raw = FlextInfraPytestRunner._environment_value(c.Infra.PYTEST_ENV_COV)
+        return raw == config.Infra.codegen.make.ci.value
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -203,7 +208,19 @@ class FlextInfraPytestRunner(s[int]):
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
         # Why (mro-uwoc7): keyed to the same predicate the artifact gate reads,
         # so the argv and the gate can never disagree about coverage.
-        coverage_args = () if self._coverage_requested() else ("--testmon", "--no-cov")
+        # COV=Y measures the whole suite: testmon is dropped so nothing is
+        # deselected, and the XML lands beside the run's other artifacts where
+        # the gate already looks for it. What is measured stays owned by
+        # [tool.coverage.run] source, so this never re-declares it.
+        coverage_args = (
+            (
+                "--cov",
+                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
+                "--cov-report=term-missing",
+            )
+            if self._coverage_requested()
+            else ("--testmon", "--no-cov")
+        )
         parallel_args = (
             ("-n", "0")
             if focused

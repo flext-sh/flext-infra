@@ -250,8 +250,11 @@ Infra:
         - { verb: check, apply: false, contexts: [local, ci, pre_push], gates_skip: [markdown] }
         # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon so
         # the blocking hook always executes the complete suite deterministically.
+        # COV=Y then measures that full run: coverage is only meaningful when
+        # nothing was deselected, so the blocking gate is where it is collected.
+        # Everyday `make test` stays testmon-incremental and reports no coverage.
         - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
-        - { verb: test, what: all, apply: false, contexts: [local, pre_push] }
+        - { verb: test, what: all, apply: false, contexts: [local, pre_push], env: { COV: "Y" } }
       bootstrap:
         environment: isolated
         dependency_groups: all

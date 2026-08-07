@@ -122,6 +122,7 @@ class TestCodegenCiMatrix:
                     if step.verb == "check" and context == "pre_commit"
                     else ""
                 )
+                + "".join(f"{key}={value} " for key, value in step.env.items())
                 + (
                     "CHECK_GATES="
                     + ",".join(
