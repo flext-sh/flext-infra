@@ -22,7 +22,10 @@ if TYPE_CHECKING:
 class TestsExtendedProjectRunners:
     """Exercise runner behavior through the public checker API only."""
 
-    def test_run_projects_records_requested_gates(self, tmp_path: Path) -> None:
+    def test_run_projects_records_requested_gates(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("CI", raising=False)
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
@@ -51,7 +54,7 @@ class TestsExtendedProjectRunners:
                 os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
-        tm.that({"lint", "format", "pyrefly"} <= set(result.value[0].gates), eq=True)
+        tm.that(set(result.value[0].gates), eq={"lint", "pyrefly"})
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(
