@@ -33,14 +33,12 @@ Infra:
       # is never pinned directly. mise installs the published release asset
       # through the github backend, so version and reported_version are the same
       # release tag; checksum is the SHA-256 of the installed binary (verified
-      # against the mise-installed release asset) and expected_schema is the ledger
-      # schema it must know.
+      # against the mise-installed release asset).
       beads:
         selector: github:marlon-costa-dc/beads
         version: "1.1.2-dc1"
         reported_version: "1.1.2-dc1"
         checksum: "06f142c0da9868d9fa956a9ca28baab93c5ac2813c2402d44f1e54992359204b"
-        expected_schema: 62
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never
         # used. Rendered into .beads/config.yaml and .beads/metadata.json by
