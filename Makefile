@@ -295,6 +295,17 @@ endif
 # Each checkout therefore owns the environment its own name resolves to. The
 # link is replaced (removing a link destroys no environment); a real local
 # environment is never cleared, because a concurrent process may be using it.
+# FLEXT=<worktree> rebinds this project's flext packages onto that checkout for
+# the session. Pinned dependencies stay the default: the flag is opt-in, the
+# consumer's pyproject is never modified, and setup without FLEXT= restores the
+# pinned resolution. Which distributions are rebound comes from the worktree's
+# own manifest, so this never carries a hardcoded package list.
+FLEXT_BINDING_RECIPE = if [ -n "$(strip $(FLEXT))" ]; then \
+		$(FLEXT_INFRA_RUNTIME_PYTHON) -m flext_infra workspace flext-binding \
+			--workspace "$(PROJECT_ROOT)" --flext-root "$(strip $(FLEXT))" \
+			--python "$(RUNTIME_PYTHON)"; \
+	fi
+
 SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	if [ -L "$(RUNTIME_VENV)" ]; then \
 		rm -f "$(RUNTIME_VENV)"; \
@@ -821,13 +832,16 @@ _builtin_setup_environment: _builtin_setup_submodules
 		$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment; \
 		$(BORROW_RUNTIME_VENV_RECIPE); \
 	fi
+	@$(FLEXT_BINDING_RECIPE)
 else ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
+	@$(FLEXT_BINDING_RECIPE)
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
+	@$(FLEXT_BINDING_RECIPE)
 endif
 # End SECTION: setup environment
 

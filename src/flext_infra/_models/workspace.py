@@ -28,6 +28,21 @@ class FlextInfraModelsWorkspace:
             Path, m.Field(alias="workspace", description="Workspace root path")
         ]
 
+    class FlextBindingRequest(m.ContractModel):
+        """Session request binding one consumer onto a flext worktree."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        workspace_root: Annotated[
+            Path, m.Field(alias="workspace", description="Consumer project root")
+        ]
+        flext_root: Annotated[
+            Path, m.Field(description="Flext worktree supplying the packages")
+        ]
+        python: Annotated[
+            Path, m.Field(description="Interpreter of the environment to rebind")
+        ]
+
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""
 
