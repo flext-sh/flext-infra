@@ -771,7 +771,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         target: m.Infra.RepositoryConformTarget,
     ) -> t.StrSequence:
-        """Return the canonical Python roots this plan leaves on disk."""
+        """Return the canonical Python roots this plan leaves on disk.
+
+        ``u.Infra.analyzer_python_roots`` is the single owner shared with the
+        deps modernizer and the extra-paths sync, so no surface can select a
+        different set and erase what another just wrote.
+        """
         rendered_roots = {
             Path(entry.destination).parts[0]
             for entry in codegen.templates.entries
@@ -779,11 +784,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             and entry.delegate == "render"
             and Path(entry.destination).parts
         }
-        return tuple(
+        declared = tuple(
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
             if directory in rendered_roots or (root / directory).is_dir()
         )
+        roots: t.StrSequence = u.Infra.analyzer_python_roots(root, declared)
+        return roots
 
     def _plan_scaffold_repository(
         self,
