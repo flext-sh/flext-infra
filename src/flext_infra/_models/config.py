@@ -537,6 +537,10 @@ class FlextInfraConfigModels:
         """One canonical workflow step and its explicit mutation intent."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
+        what: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional explicit WHAT selector for this invocation"),
+        ] = None
         apply: Annotated[
             bool,
             m.Field(description="Whether the step supplies the configured apply token"),
@@ -953,10 +957,11 @@ class FlextInfraConfigModels:
             if "setup" in serialized:
                 msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
-            workflow_verbs = tuple(step.verb for step in self.workflow)
-            if len(set(workflow_verbs)) != len(workflow_verbs):
-                msg = "make workflow verbs must be unique"
+            workflow_steps = tuple((step.verb, step.what) for step in self.workflow)
+            if len(set(workflow_steps)) != len(workflow_steps):
+                msg = "make workflow verb and selector pairs must be unique"
                 raise ValueError(msg)
+            workflow_verbs = tuple(step.verb for step in self.workflow)
             unknown_workflow = set(workflow_verbs) - declared
             if unknown_workflow:
                 msg = (
@@ -968,12 +973,31 @@ class FlextInfraConfigModels:
             invalid_apply = [
                 step.verb
                 for step in self.workflow
-                if step.apply != verb_specs[step.verb].apply_guarded
+                if (verb_specs[step.verb].apply_guarded and not step.apply)
+                or (
+                    step.apply
+                    and not (
+                        verb_specs[step.verb].apply_guarded
+                        or verb_specs[step.verb].accepts_apply
+                    )
+                )
             ]
             if invalid_apply:
                 msg = (
                     "make workflow apply intent must match verb contract: "
                     f"{', '.join(sorted(invalid_apply))}"
+                )
+                raise ValueError(msg)
+            invalid_selectors = [
+                f"{step.verb}/{step.what}"
+                for step in self.workflow
+                if step.what is not None
+                and step.what not in verb_specs[step.verb].whats
+            ]
+            if invalid_selectors:
+                msg = (
+                    "make workflow selectors are not declared by their verbs: "
+                    f"{', '.join(sorted(invalid_selectors))}"
                 )
                 raise ValueError(msg)
             mutation_verbs = set(self.serialization.mutation_verbs)

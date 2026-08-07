@@ -116,7 +116,9 @@ class TestCodegenCiMatrix:
             ("flext-pre-push", "pre_push"),
         ):
             commands = " && ".join(
-                f"make {step.verb}"
+                (f"{ci.variable}={ci.value} " if step.verb == "check" else "")
+                + f"make {step.verb}"
+                + (f" WHAT={step.what}" if step.what else "")
                 + (
                     f" {config.Infra.codegen.make.apply_variable}="
                     f"{config.Infra.codegen.make.apply_value}"
@@ -128,9 +130,6 @@ class TestCodegenCiMatrix:
             )
             tm.that(hooks, has=f"id: {hook_id}")
             tm.that(hooks, has=f"'{commands}'")
-        # Pre-push is the operator's local gate: it runs EVERY check gate.
-        # CI=Y (which skips lint/format/pyrefly) belongs to CI workflows only,
-        # never to a hook that must catch what CI does not run.
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
