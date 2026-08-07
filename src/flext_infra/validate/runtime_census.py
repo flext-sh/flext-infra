@@ -217,12 +217,40 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         report = report_result.value
         if report.passed:
             return r[bool].ok(True)
-        details = (
-            report.model_dump_json()
-            if self.output_format == c.Cli.OutputFormats.JSON
-            else "\n".join([report.summary, *report.violations])
-        )
-        return r[bool].fail(details)
+        if self.output_format == c.Cli.OutputFormats.JSON:
+            return r[bool].fail(report.model_dump_json())
+        return r[bool].fail(self._render_text_summary(report))
+
+    @staticmethod
+    def _render_text_summary(report: m.Infra.ValidationReport) -> str:
+        """Render violations grouped by rule with file:line context.
+
+        The flat list the census used to emit made it impossible to see which
+        rule or file owned the bulk of the debt. Grouping by rule_id (falling
+        back to 'UNKNOWN' when a violation string carries no bracket) gives the
+        operator a histogram and a per-rule file list in one read.
+        """
+        import re
+
+        from collections import defaultdict
+
+        rule_buckets: dict[str, list[str]] = defaultdict(list)
+        for violation in report.violations:
+            match = re.search(r"\[(ENFORCE-\d+)\]", violation)
+            rule_id = match.group(1) if match else "UNKNOWN"
+            rule_buckets[rule_id].append(violation)
+        header = f"{report.summary}\n"
+        sections: list[str] = [header]
+        for rule_id in sorted(rule_buckets):
+            entries = rule_buckets[rule_id]
+            sections.append(f"  {rule_id}: {len(entries)} violation(s)")
+            seen: set[str] = set()
+            for entry in entries:
+                short = entry.split(": ", 1)[-1] if ": " in entry else entry
+                if short not in seen:
+                    seen.add(short)
+                    sections.append(f"    {short}")
+        return "\n".join(sections)
 
 
 __all__: list[str] = ["FlextInfraRuntimeCensusValidator"]
