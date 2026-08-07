@@ -1032,6 +1032,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            uv_exclude_newer=self._uv_exclude_newer(repository, workspace, codegen),
         )
         if prepared_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1164,6 +1165,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            uv_exclude_newer=self._uv_exclude_newer(repository, workspace, codegen),
         )
         if prepared_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1475,6 +1477,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return "."
 
     @staticmethod
+    def _uv_exclude_newer(
+        repository: m.Infra.RepositoryRef,
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> str:
+        """Return the cooldown window governing this repository's ``[tool.uv]``.
+
+        The fleet default is a rolling window. A project that declares a
+        security floor through ``override-dependencies`` cannot use it: once
+        the pinned version ages past the window it is excluded, the floor is
+        unsatisfiable, and resolution fails with no code change. Such a
+        project declares an absolute cutoff through the repository policy
+        overlay instead of hand-editing the generated ``pyproject.toml``.
+        """
+        overlay = next(
+            (
+                item
+                for item in workspace.repository_policy_overlays
+                if item.project == repository.distribution
+            ),
+            None,
+        )
+        if overlay is not None and overlay.uv_exclude_newer is not None:
+            pinned: str = overlay.uv_exclude_newer
+            return pinned
+        fleet: str = codegen.toolchain.uv_exclude_newer
+        return fleet
+
+    @staticmethod
     def _merge_gitmodules(
         current: str, managed: str, *, managed_paths: frozenset[str]
     ) -> str:
@@ -1748,7 +1779,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
-                    uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
+                    uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
+                        repository, workspace, codegen
+                    ),
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -1838,7 +1871,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
+                uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
+                    repository, workspace, codegen
+                ),
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1972,7 +2007,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
+                uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
+                    repository, workspace, codegen
+                ),
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,

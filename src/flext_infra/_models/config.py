@@ -1335,6 +1335,20 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Project-local [tool.uv].exclude-newer cooldown. The"
+                    " fleet default is a rolling window, which silently ages"
+                    " past a security floor declared in"
+                    " override-dependencies and makes resolution"
+                    " unsatisfiable with no code change. A project carrying"
+                    " such a floor pins the absolute cutoff here instead of"
+                    " hand-editing the generated pyproject.toml"
+                )
+            ),
+        ] = None
 
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""
