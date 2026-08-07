@@ -93,6 +93,15 @@ class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitPrimaryRootReport]:
         """Resolve the primary worktree from Git's canonical storage topology."""
+        # Why: a directory outside any repository owns itself. Reporting a
+        # failure made callers fall back to an ancestor checkout, so a plain
+        # scaffold target looked like a transaction worktree and silently
+        # became routing-only.
+        resolved_root = request.repo_root.expanduser().resolve()
+        if cls._open_repo(resolved_root).failure:
+            return r[m.Infra.GitPrimaryRootReport].ok(
+                m.Infra.GitPrimaryRootReport(primary_root=resolved_root)
+            )
         primary = cls._git_primary_worktree_root_path(request.repo_root)
         if primary.failure:
             return r[m.Infra.GitPrimaryRootReport].fail(

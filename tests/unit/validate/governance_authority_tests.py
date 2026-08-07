@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
+
+from tests import u
+
+ROOT = u.Tests.repository_root()
+WORKSPACE = u.Tests.workspace_governance_root()
 
 
 def test_prompt_skills_resolve_to_existing_paths() -> None:
@@ -25,8 +28,8 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
 
 
 def test_governance_authority_sequence_matches_agents() -> None:
-    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    governance = (ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
+    agents = (WORKSPACE / "AGENTS.md").read_text(encoding="utf-8")
+    governance = (WORKSPACE / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
     assert "USER REQUEST > BEADS" in agents
     assert "AIHUB-INVIOLABLE-LAW-PRELUDE" in agents
     assert "quality-gates skill" not in governance
@@ -35,12 +38,12 @@ def test_governance_authority_sequence_matches_agents() -> None:
 
 def test_docs_validation_required_skills_exist_with_adr() -> None:
     config = json.loads(
-        (ROOT / "docs" / "architecture" / "architecture_config.json").read_text(
+        (WORKSPACE / "docs" / "architecture" / "architecture_config.json").read_text(
             encoding="utf-8"
         )
     )
     required = config["docs_validation"]["required_skills"]
-    skills_root = ROOT / ".agents" / "skills"
+    skills_root = WORKSPACE / ".agents" / "skills"
     for name in required:
         skill = skills_root / name / "SKILL.md"
         assert skill.is_file(), name
@@ -49,12 +52,12 @@ def test_docs_validation_required_skills_exist_with_adr() -> None:
 
 def test_july_handoff_plans_are_marked_historical() -> None:
     plans = (
-        ROOT
+        WORKSPACE
         / "docs"
         / "superpowers"
         / "plans"
         / "2026-07-29-flext-beads-governance-reorganization-handoff.md",
-        ROOT
+        WORKSPACE
         / "docs"
         / "superpowers"
         / "plans"

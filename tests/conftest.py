@@ -20,6 +20,17 @@ from tests import c, t, u
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
+@pytest.fixture(autouse=True)
+def isolate_inherited_git_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Detach every test from a git environment inherited from the caller."""
+    # Why: git hooks export GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE. Under the
+    # pre-push hook the whole suite inherits them, so fixtures that build a
+    # throwaway repository commit into this repository's git dir instead and
+    # fire its pre-commit hook. Tests must never depend on the caller's shell.
+    for variable in c.Tests.GIT_ENVIRONMENT_VARIABLES:
+        monkeypatch.delenv(variable, raising=False)
+
+
 @pytest.fixture
 def infra_public_root() -> ModuleType:
     """Reload the root public package after clearing lazy-export caches."""

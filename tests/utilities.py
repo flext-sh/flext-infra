@@ -29,6 +29,41 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         """Canonical test helper namespace."""
 
         @staticmethod
+        def workspace_governance_root() -> Path:
+            """Locate the FLEXT workspace root that owns shared governance."""
+            # Why: AGENTS.md, docs/GOVERNANCE.md and the plan archive belong to
+            # the workspace, not to this member repository. A lane worktree
+            # lives outside the workspace tree, so resolve through the
+            # repository's declared git common directory instead of the path.
+            for candidate in Path(__file__).resolve().parents:
+                if (candidate / "docs" / "GOVERNANCE.md").is_file():
+                    return candidate
+            common = cli_facade.run((
+                c.Infra.GIT,
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ))
+            if common.success:
+                for candidate in Path(common.value.stdout.strip()).parents:
+                    if (candidate / "docs" / "GOVERNANCE.md").is_file():
+                        return candidate
+            msg = "workspace governance root not found"
+            raise FileNotFoundError(msg)
+
+        @staticmethod
+        def repository_root() -> Path:
+            """Locate this repository's root from any checkout depth."""
+            # Why: a fixed parents[N] hop assumes the tests tree sits at a
+            # constant depth, which is false in a lane worktree whose path
+            # carries an extra branch segment. Anchor on a root marker instead.
+            for candidate in Path(__file__).resolve().parents:
+                if (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+                    return candidate
+            msg = "repository root not found above the tests tree"
+            raise FileNotFoundError(msg)
+
+        @staticmethod
         def make_read_only(path: Path) -> None:
             """Make one fixture path read-only."""
             path.chmod(0o444)

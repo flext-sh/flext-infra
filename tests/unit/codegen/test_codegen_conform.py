@@ -53,6 +53,12 @@ def _conform_target(
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
+    # Measured (2026-08-07): ~20s standalone — full project scaffold renders
+    # every managed template, applies the modernizer pipeline and boots a real
+    # subprocess interpreter twice — so the 30s case budget is exceeded only
+    # under xdist contention. Ceiling override with measured evidence, not a
+    # suppression of a hang.
+    @pytest.mark.timeout(60)
     @pytest.mark.parametrize(
         ("kind", "name"),
         [
@@ -503,6 +509,10 @@ class TestCodegenConform:
 
         tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
 
+    # Measured (2026-08-07): ~15s standalone — full scaffold plus one replay per
+    # public conform mode — exceeding the 30s budget only under xdist. Ceiling
+    # override with measured evidence, not a suppression of a hang.
+    @pytest.mark.timeout(60)
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
     ) -> None:

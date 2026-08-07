@@ -415,11 +415,6 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
-        coverage_enabled = (
-            not self._ci_disables_coverage()
-            and self.file is None
-            and self.match is None
-        )
         junit_tests = -1
         junit_failures = -1
         junit_errors = -1
@@ -435,31 +430,10 @@ class FlextInfraPytestRunner(s[int]):
             junit_ok = self._require_junit(junit_file, pytest_log)
             if junit_ok.failure:
                 return r[int].fail(junit_ok.error or "junit validation failed")
-        # Coverage gates measure executed suites, so an empty (vacuous)
-        # selection is green by construction.
-        coverage_gate_active = coverage_enabled and not vacuous
-        if (
-            exit_code == 0
-            and coverage_gate_active
-            and self._pytest_log_reports_coverage_failure(pytest_log)
-        ):
-            # pytest-cov under xdist can print fail-under and still return 0.
-            return r[int].fail(
-                self._artifact_failure_detail(
-                    "coverage fail-under reported while pytest exit was 0", pytest_log
-                )
-            )
-        if (
-            exit_code == 0
-            and coverage_gate_active
-            and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
-        ):
-            return r[int].fail(
-                self._artifact_failure_detail(
-                    f"coverage report was not generated or is empty: {coverage_file}",
-                    pytest_log,
-                )
-            )
+        # Why (15af1cd4): the runner always invokes pytest with --no-cov, so no
+        # coverage artifact is ever produced here; coverage is meaningful only
+        # as an explicit complete-suite gate, never as a post-hoc artifact
+        # requirement on runs that never collected it.
         if exit_code == 0:
             timed_out_or_signal = timed_out
             inspector = FlextInfraTestmonDbInspector(
@@ -492,14 +466,6 @@ class FlextInfraPytestRunner(s[int]):
                 f"{pytest.run_timeout_seconds}s (exit={exit_code})\n"
             )
         return r[int].ok(exit_code)
-
-    @staticmethod
-    def _pytest_log_reports_coverage_failure(pytest_log: Path) -> bool:
-        """Detect pytest-cov fail-under text when the child exit code stayed 0."""
-        if not pytest_log.is_file():
-            return False
-        body = pytest_log.read_text(encoding="utf-8", errors="replace")
-        return "Coverage failure:" in body or "not reached" in body
 
     @staticmethod
     def _artifact_failure_detail(message: str, pytest_log: Path) -> str:

@@ -442,6 +442,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     expected_schema=config_spec.toolchain.beads.expected_schema,
                     ledger_root=ledger_root_result.value,
                     ledger_id=workspace.ledger_id,
+                    routing_only=target.routing_only,
                 )
             )
             if self.initial_workspace is None:
@@ -525,7 +526,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 allowed = {item for profiles in entry_profiles for item in profiles}
                 if profile not in allowed:
                     # Why: profile-excluded managed workflows must not survive as
-                    # "keep current" ghosts (ci-matrix on workspace-member).
+                    # "keep current" ghosts (ci-matrix on workspace-member), but a
+                    # repository-owned workflow sharing the path is foreign
+                    # content that conform must leave untouched.
                     if (
                         relative.parts[:2] == (".github", "workflows")
                         and path.is_file()
@@ -536,18 +539,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                                 orphan_read.error
                                 or f"orphan workflow read failed: {path}"
                             )
-                        completed.append(
-                            m.Infra.CodegenFilePlan(
-                                path=path,
-                                owner=governed.owner,
-                                policy=governed.policy,
-                                rendered="",
-                                expected_sha256=u.Cli.sha256_content(""),
-                                current_sha256=u.Cli.sha256_content(orphan_read.value),
-                                changed=True,
-                                absent=True,
+                        if FlextInfraCodegenConform._is_generated_workflow(
+                            orphan_read.value
+                        ):
+                            completed.append(
+                                m.Infra.CodegenFilePlan(
+                                    path=path,
+                                    owner=governed.owner,
+                                    policy=governed.policy,
+                                    rendered="",
+                                    expected_sha256=u.Cli.sha256_content(""),
+                                    current_sha256=u.Cli.sha256_content(
+                                        orphan_read.value
+                                    ),
+                                    changed=True,
+                                    absent=True,
+                                )
                             )
-                        )
                     continue
             current = ""
             if path.is_file():
@@ -1015,17 +1023,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_render.error or "pyproject template render failed"
             )
-        initial_tooling = modernizer.conform_source(
-            pyproject_render.value,
-            path=pyproject,
-            declared_python_dirs=declared_python_dirs,
-        )
-        if initial_tooling.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                initial_tooling.error or f"initial tooling conform failed: {pyproject}"
-            )
+        # Why: the dependency conform reads and rewrites the rendered template
+        # directly, and the tooling conform that follows is idempotent, so one
+        # canonicalization produces the same document as two while paying the
+        # parse and phase pipeline once.
         prepared_result = u.Infra.pyproject_conform(
-            initial_tooling.value,
+            pyproject_render.value,
             providers=codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -1293,7 +1296,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             if profile not in entry.profiles:
                 # Why: profile-excluded managed workflows must not keep firing
-                # (ci-matrix on workspace-member). Prune the orphan projection.
+                # (ci-matrix on workspace-member). Prune the orphan projection,
+                # but only when codegen authored it — a repository-owned
+                # workflow sharing the path is foreign content, never an orphan.
                 if (
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()
@@ -1304,18 +1309,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                             orphan_read.error or f"orphan workflow read failed: {path}"
                         )
-                    planned.append(
-                        m.Infra.CodegenFilePlan(
-                            path=path,
-                            owner=managed.owner,
-                            policy=managed.policy,
-                            rendered="",
-                            expected_sha256=u.Cli.sha256_content(""),
-                            current_sha256=u.Cli.sha256_content(orphan_read.value),
-                            changed=True,
-                            absent=True,
+                    if self._is_generated_workflow(orphan_read.value):
+                        planned.append(
+                            m.Infra.CodegenFilePlan(
+                                path=path,
+                                owner=managed.owner,
+                                policy=managed.policy,
+                                rendered="",
+                                expected_sha256=u.Cli.sha256_content(""),
+                                current_sha256=u.Cli.sha256_content(orphan_read.value),
+                                changed=True,
+                                absent=True,
+                            )
                         )
-                    )
                 continue
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
@@ -2188,6 +2194,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         return r[bool].ok(True)
 
+    @staticmethod
+    def _is_generated_workflow(content: str) -> bool:
+        """Return True when a workflow carries a codegen authorship marker."""
+        return any(marker in content for marker in c.Infra.WORKFLOW_GENERATED_MARKERS)
+
     def _file_plan(
         self, root: Path, relative_path: str, rendered: str
     ) -> p.Result[m.Infra.CodegenFilePlan]:
@@ -2621,9 +2632,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             beads_dir = plan.repository_root / ".beads"
             if not beads_dir.exists():
                 return r[bool].ok(True)
-            # Routing-only projections (attached standalones / worktree routes)
-            # may commit config.yaml + metadata.json without owning tracker
-            # state. Fail only when additional tracker artifacts appear.
+            # A disabled checkout may still carry the ledger projections that
+            # conform itself renders (config.yaml + metadata.json), so tracker
+            # ownership is decided by content: any other artifact under .beads
+            # is real tracker state and fails closed.
             # dolt-server.port is a runtime probe written by the CLI when it
             # connects to the shared server; it is not tracker state.
             routing_only_names = frozenset({

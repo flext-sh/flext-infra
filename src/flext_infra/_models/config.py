@@ -2627,6 +2627,16 @@ class FlextInfraConfigModels:
             """Whether the tracker lives in another checkout than this one."""
             return self.ledger_root != self.repository_root
 
+        routing_only: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether this checkout only routes to a tracker it does "
+                    "not own, so a committed config.yaml and metadata.json "
+                    "are projections rather than owned tracker state"
+                )
+            ),
+        ] = False
         ledger_id: Annotated[
             t.NonEmptyStr | None,
             m.Field(
