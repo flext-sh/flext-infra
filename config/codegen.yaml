@@ -26,19 +26,20 @@ Infra:
       mise_version: "2026.7.16"
       # Go runtime required by mise go: backend selectors (beads).
       go_version: "1.26.5"
-      # The shared mro Dolt ledger is at schema v61; the newest official
-      # gastownhall release (1.1.2) only knows v53 and fails preflight with
-      # "schema version mismatch". Pin the go-module commit that migrated the
-      # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform preflight gate; the immutable commit
-      # stays the installed selector version. The artifact identity is
-      # content-proven: checksum is the SHA-256 of the pinned binary, and
-      # expected_schema is the ledger schema the binary must know.
+      # Beads distribution owner is the operator fork marlon-costa-dc/beads
+      # (ai-hub-hi2b): it carries the fork-only customizations merged --no-ff
+      # with the newest upstream gastownhall/beads main and is released as
+      # 1.1.2-dc1. That fork release is the canonical distribution for every
+      # FLEXT ledger on this host; an upstream gastownhall release is never
+      # pinned directly. The immutable merge commit stays the installed
+      # selector version, `bd version` self-reports 1.1.2-dc1 so that value
+      # feeds the conform preflight gate, checksum is the SHA-256 of the
+      # pinned binary, and expected_schema is the ledger schema it must know.
       beads:
         selector: go:github.com/steveyegge/beads/cmd/bd
-        version: "af45955aa2878999541470182a9980dc891823f1"
-        reported_version: "1.1.0"
-        checksum: "2671ea434a30505831474c5f1e0e6e1117499a531b623a73e468299eb0b94665"
+        version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
+        reported_version: "1.1.2-dc1"
+        checksum: "f9d81cbca9a2e5f7096e119d267dc7568bf511d24ee70fca91f0ced848d12c34"
         expected_schema: 62
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never
