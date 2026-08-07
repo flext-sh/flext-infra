@@ -562,17 +562,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
-        env: Annotated[
-            t.StrMapping,
-            m.Field(
-                default_factory=lambda: MappingProxyType({}),
-                description=(
-                    "Environment assignments this step prefixes when it runs "
-                    "from a hook context, e.g. COV=Y for the blocking pre-push "
-                    "suite. Local and CI invocations are unaffected."
-                ),
-            ),
-        ]
 
         @u.model_validator(mode="after")
         def _validate_contexts(self) -> Self:

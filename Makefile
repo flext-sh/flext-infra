@@ -75,10 +75,6 @@ override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
 override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
 override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
-# COV=Y measures coverage over the whole suite. It is the inverse of the default
-# testmon run: an incremental selection cannot produce a meaningful number, so
-# the two never combine.
-override export COV := $(value COV)
 WHAT ?=
 # End SECTION: user overrides
 
