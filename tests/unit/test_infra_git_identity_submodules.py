@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from flext_infra import m, u
@@ -80,4 +81,57 @@ class TestInfraGitIdentitySubmodules:
             u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=parent / "vendored"))
         )
         tm.that(identity.has_submodules, eq=False)
+        tm.that(identity.is_submodule, eq=True)
+
+    def test_absorbed_submodule_with_git_dir_is_still_a_submodule(
+        self, tmp_path: Path
+    ) -> None:
+        """Nested checkout with a real .git directory still reports is_submodule.
+
+        Why (mro-2cafk): operator trees like cosmos-charts under cosmos-main keep
+        a full .git directory (not a gitfile) while the superproject index holds
+        a gitlink. Git still reports --show-superproject-working-tree; is_submodule
+        must follow that signal, not the gitfile heuristic.
+        """
+        child = self._repo(tmp_path / "child")
+        parent = self._repo(tmp_path / "parent")
+        member = parent / "apps" / "member"
+        shutil.copytree(child, member)
+        (parent / ".gitmodules").write_text(
+            "[submodule 'member']\n\tpath = apps/member\n"
+            f"\turl = {child.as_uri()}\n",
+            encoding="utf-8",
+        )
+        head = (member / ".git" / "HEAD").read_text(encoding="utf-8").strip()
+        if head.startswith("ref:"):
+            ref = head.split(" ", 1)[1].strip()
+            oid = (member / ".git" / ref).read_text(encoding="utf-8").strip()
+        else:
+            oid = head
+        tm.ok(u.Cli.run_checked(["git", "-C", str(parent), "add", ".gitmodules"]))
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(parent),
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                f"160000,{oid},apps/member",
+            ])
+        )
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(parent),
+                "commit",
+                "--quiet",
+                "-m",
+                "absorb member",
+            ])
+        )
+        tm.that((member / ".git").is_dir(), eq=True)
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member)))
+        tm.that(identity.superproject_root, eq=parent.resolve())
         tm.that(identity.is_submodule, eq=True)
