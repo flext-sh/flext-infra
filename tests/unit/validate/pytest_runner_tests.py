@@ -207,96 +207,10 @@ class TestsFlextInfraPytestRunner:
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
 
-    def test_full_run_records_missing_coverage_artifact_honestly(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A green full run without coverage is green, and says so."""
-        # Why (15af1cd4): the runner always invokes pytest with --no-cov, so no
-        # coverage artifact can exist; the summary must report not-generated
-        # instead of demanding a file no run can produce.
-        runner = self._runner(tmp_path, what="all")
-
-        def fake_run_to_file(
-            cmd: t.StrSequence,
-            output_file: t.Cli.TextPath,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            live: bool = False,
-            deadline: p.Cli.ProcessDeadline | None = None,
-        ) -> p.Result[int]:
-            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
-            log_path = Path(output_file)
-            report_dir = log_path.parent
-            log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
-            (report_dir / "junit.xml").write_text(
-                (
-                    '<?xml version="1.0"?>'
-                    '<testsuites><testsuite tests="1" failures="0" errors="0" '
-                    'skipped="0" time="0.01"><testcase classname="Tests" '
-                    'name="test_ok" time="0.01"/></testsuite></testsuites>'
-                ),
-                encoding="utf-8",
-            )
-            _dump_real_profile(report_dir / "pytest.pstats")
-            return r[int].ok(0)
-
-        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
-
-        result = runner.execute()
-
-        tm.ok(result)
-        latest = (
-            (tmp_path / ".reports" / "tests" / "latest.txt")
-            .read_text(encoding="utf-8")
-            .strip()
-        )
-        summary = (tmp_path / ".reports" / "tests" / latest / "summary.txt").read_text(
-            encoding="utf-8"
-        )
-        tm.that(summary, has="coverage=not-generated")
-
-    def test_full_run_accepts_the_absent_coverage_artifact(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The absence of coverage.xml is the expected steady state."""
-        runner = self._runner(tmp_path, what="all")
-
-        def fake_run_to_file(
-            cmd: t.StrSequence,
-            output_file: t.Cli.TextPath,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            live: bool = False,
-            deadline: p.Cli.ProcessDeadline | None = None,
-        ) -> p.Result[int]:
-            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
-            log_path = Path(output_file)
-            report_dir = log_path.parent
-            log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
-            (report_dir / "junit.xml").write_text(
-                (
-                    '<?xml version="1.0"?>'
-                    '<testsuites><testsuite tests="1" failures="0" errors="0" '
-                    'skipped="0" time="0.01"><testcase classname="Tests" '
-                    'name="test_ok" time="0.01"/></testsuite></testsuites>'
-                ),
-                encoding="utf-8",
-            )
-            _dump_real_profile(report_dir / "pytest.pstats")
-            return r[int].ok(0)
-
-        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
-
-        tm.ok(runner.execute())
-
+    # NOTE: the end-to-end contract (a real profiled child run reports
+    # coverage=not-generated) lives in tests/integration/pytest_runner_e2e_tests.py.
+    # It boots a full pytest stack in a child interpreter (~35s measured), which
+    # is integration-tier work, not a unit case.
     def test_focused_run_records_coverage_as_not_generated(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
