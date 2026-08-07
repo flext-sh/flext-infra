@@ -12,10 +12,14 @@ import os
 import sys
 import tomllib
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import c, config, m, u
+
+if TYPE_CHECKING:
+    from flext_infra import p
 from tests import u as test_u
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -864,6 +868,88 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(result.error, has="not a regular file")
         tm.that(result.error, has=str(root / "custom.mk"))
+
+
+class TestGitHookConformance:
+    """Prove installed git hooks are part of the conformance contract.
+
+    The generated .pre-commit-config.yaml declares the pre-commit and pre-push
+    workflows, and .github/scripts/install-git-hooks.sh documents `make hooks`
+    as its canonical entry point - but nothing ever installed them. A lane
+    created by `make work` therefore committed and pushed with no gate at all
+    while `make gen WHAT=check` still reported conformance complete. Emitting
+    the config without activating it is exactly the drift the verb exists to
+    catch, so an uninstalled hook is nonconform.
+    """
+
+    @staticmethod
+    def _scaffold(root: Path) -> None:
+        """Materialize a governed project so the hook config exists on disk."""
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+
+    @staticmethod
+    def _check(root: Path) -> p.Result[m.Infra.CodegenResult]:
+        return FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+
+    def test_check_fails_when_declared_hooks_are_not_installed(
+        self, infra_git_repo: Path
+    ) -> None:
+        """An emitted hook config that was never activated is drift."""
+        root = infra_git_repo
+        self._scaffold(root)
+        hooks_dir = root / ".git" / "hooks"
+        for stage in ("pre-commit", "pre-push"):
+            tm.ok(u.Cli.files_delete(hooks_dir / stage))
+
+        result = self._check(root)
+
+        tm.fail(result)
+        tm.that(result.error, has="git hook is not installed")
+        tm.that(result.error, has="pre-commit")
+        tm.that(result.error, has="pre-push")
+
+    def test_apply_installs_every_declared_hook(self, infra_git_repo: Path) -> None:
+        """Apply activates the hooks it emits, so the next check is green."""
+        root = infra_git_repo
+        self._scaffold(root)
+        hooks_dir = root / ".git" / "hooks"
+        for stage in ("pre-commit", "pre-push"):
+            tm.ok(u.Cli.files_delete(hooks_dir / stage))
+
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
+            )
+        )
+
+        for stage in ("pre-commit", "pre-push"):
+            hook = hooks_dir / stage
+            tm.that(hook.is_file(), eq=True)
+            tm.that(hook.read_text(encoding="utf-8"), has=f"--hook-type={stage}")
+        tm.ok(self._check(root))
 
 
 class TestScriptDispatchMakefile:
