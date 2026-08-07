@@ -1485,6 +1485,12 @@ Infra:
             - ".beads-credential-key"
             - ".worktrees/"
             - "legado/"
+            # bd writes its gate lock at the repository ROOT, not inside
+            # .beads/, so none of the .beads/* rules above ever reach it and
+            # it surfaced as an untracked file in 15 of 31 members (mro-buk6).
+            # Runtime state of a per-run lock is never publishable.
+            - ".beads.gate.lock"
+            - "*.gate.lock"
         - name: "Beads ledger identity (workspace-root and standalone; see mro-9wv8)"
           profiles: [workspace-root, standalone]
           patterns:
