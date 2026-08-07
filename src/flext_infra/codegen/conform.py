@@ -1164,11 +1164,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
-        # Both plan paths must declare the SAME Python roots or their renders
-        # diverge and conform never converges. _existing_python_dirs unions the
-        # roots this plan renders with the roots already on disk, which is the
-        # complete set for an existing tree.
-        declared_python_dirs = self._existing_python_dirs(root, codegen, target)
+        # mro-be9ld: an existing tree declares NO roots here. Declared roots are
+        # the pre-write scaffold contract (mro-j47u); on an existing repository
+        # they short-circuit the full pyright computation, which for the
+        # workspace root also spans member roots (flext-*/src, flext-*/tests)
+        # and per-project extra environments. Passing this repository's own
+        # roots erased both, so check reported permanent drift that apply could
+        # never fix. Filesystem discovery is the complete set here.
+        declared_python_dirs: t.StrSequence = ()
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
