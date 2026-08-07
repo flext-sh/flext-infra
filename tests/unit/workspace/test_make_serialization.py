@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import sys
-import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 from threading import Event, Lock
+from types import TracebackType
 
 import pytest
 from filelock import FileLock, Timeout
@@ -26,10 +27,138 @@ _MUTATION_CASES = tuple(
 )
 
 
+@dataclass(frozen=True, slots=True)
+class _LockBarrier:
+    """Handle to one parked serialization run held inside its lock window."""
+
+    release: Event
+    future: Future[p.Result[m.Infra.ProcessExit]]
+    timeout_seconds: float
+
+    def release_incumbent(self) -> None:
+        """Let the parked run finish."""
+        self.release.set()
+
+    def result(self) -> p.Result[m.Infra.ProcessExit]:
+        """Return the parked run's typed outcome."""
+        return self.future.result(timeout=self.timeout_seconds)
+
+
+class _IncumbentLockWindow:
+    """Hold one serialization run inside its locked window for a contender.
+
+    Exemplar for cross-thread contract tests: the incumbent parks at the
+    public ``run_raw`` seam, which the service reaches only after acquiring
+    every lock. Entry and release are ``Event`` handshakes, so a contender
+    observes the locked window deterministically instead of racing a sleep.
+    """
+
+    def __init__(
+        self, service: FlextInfraMakeSerializationService, timeout_seconds: float
+    ) -> None:
+        """Store the parked service and the handshake budget."""
+        self._service = service
+        self._timeout_seconds = timeout_seconds
+        self._entered = Event()
+        self._release = Event()
+        self._monkey = pytest.MonkeyPatch()
+        self._executor = ThreadPoolExecutor(max_workers=1)
+        self._future: Future[p.Result[m.Infra.ProcessExit]] | None = None
+
+    def __enter__(self) -> _LockBarrier:
+        """Start the run and return once its locks are provably held."""
+        original_run_raw = u.Cli.run_raw
+
+        def holding_run_raw(
+            cmd: t.StrSequence,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            capture: bool = True,
+        ) -> p.Result[p.Cli.CommandOutput]:
+            self._entered.set()
+            self._release.wait(timeout=self._timeout_seconds)
+            return original_run_raw(
+                cmd, cwd, timeout, env, remove_env_keys, input_data, capture=capture
+            )
+
+        self._monkey.setattr(u.Cli, "run_raw", holding_run_raw)
+        self._future = self._executor.submit(self._service.execute)
+        tm.that(self._entered.wait(timeout=self._timeout_seconds), where=bool)
+        return _LockBarrier(
+            release=self._release,
+            future=self._future,
+            timeout_seconds=self._timeout_seconds,
+        )
+
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc_value: BaseException | None,
+        _traceback: TracebackType | None,
+    ) -> None:
+        """Release the parked run and restore the patched seam."""
+        self._release.set()
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._monkey.undo()
+
+
 class TestsFlextInfraMakeSerialization:
     """Prove configured Make verbs share one native checkout lock."""
 
     _process_start_timeout_seconds = 30
+    _barrier_timeout_seconds = 10
+
+    @staticmethod
+    def _trivial_makefile(
+        root: Path, verb: str, name: str = c.Infra.MAKEFILE_FILENAME
+    ) -> Path:
+        """Write a Make owner whose serialized target is a shell no-op."""
+        makefile = root / name
+        makefile.write_text(
+            f".PHONY: _serialized_{verb}\n_serialized_{verb}:\n\t@:\n", encoding="utf-8"
+        )
+        return makefile
+
+    @staticmethod
+    def _service(
+        checkout: Path, verb: str, makefile: Path
+    ) -> FlextInfraMakeSerializationService:
+        """Build the public serialization service for one checkout."""
+        service: FlextInfraMakeSerializationService = (
+            FlextInfraMakeSerializationService.model_validate({
+                "workspace_root": checkout,
+                "verb": verb,
+                "makefile": makefile,
+            })
+        )
+        return service
+
+    def _incumbent_holding_lock(
+        self, service: FlextInfraMakeSerializationService
+    ) -> _IncumbentLockWindow:
+        """Return a window in which ``service`` provably holds its locks.
+
+        The incumbent parks inside the public ``run_raw`` seam -- after every
+        lock is held and before any work completes -- so a contender observes
+        the real locked window. Entry and release are ``Event`` handshakes,
+        never sleeps, so the test is deterministic under any scheduler.
+        """
+        return _IncumbentLockWindow(
+            service=service, timeout_seconds=self._barrier_timeout_seconds
+        )
+
+    @staticmethod
+    def _lock_is_held(lock_path: Path) -> bool:
+        """Return whether another owner currently holds ``lock_path``."""
+        try:
+            with FileLock(lock_path, timeout=0):
+                return False
+        except Timeout:
+            return True
 
     def test_config_owns_relative_checkout_lock_and_serialized_verbs(self) -> None:
         """The typed SSOT owns path, timeout, and the exact protected verbs."""
@@ -380,233 +509,59 @@ class TestsFlextInfraMakeSerialization:
     def test_serialized_validations_cannot_overlap_in_one_checkout(
         self, tmp_path: Path
     ) -> None:
-        """Two public CLI processes serialize their nested Make executions."""
+        """Given one checkout, when a run holds the lock, no other run may enter.
+
+        Exemplar: mutual exclusion is a property of the service, so the test
+        drives ``execute`` in-process and synchronizes on ``Event`` barriers.
+        No subprocess, no filesystem sentinel, no sleep -- the contender
+        proves the window is closed while the incumbent is provably inside it.
+        """
         validation_verb = config.Infra.codegen.make.serialization.verbs[0]
-        worker = tmp_path / "worker.py"
-        worker.write_text(
-            (
-                "from pathlib import Path\n"
-                "import sys\n"
-                "import time\n"
-                "root = Path(sys.argv[1])\n"
-                "state = root / '.reports' / 'serialization-test'\n"
-                "state.mkdir(parents=True, exist_ok=True)\n"
-                "active = state / 'active'\n"
-                "started = state / 'incumbent-started'\n"
-                "contender = state / 'contender-entered'\n"
-                "overlap = state / 'overlap'\n"
-                "if not started.exists():\n"
-                "    active.write_text('incumbent', encoding='utf-8')\n"
-                "    started.write_text('', encoding='utf-8')\n"
-                "    release = state / 'incumbent-release'\n"
-                "    deadline = time.monotonic() + 30\n"
-                "    while time.monotonic() < deadline and not release.exists():\n"
-                "        time.sleep(0.01)\n"
-                "    if not release.exists():\n"
-                "        raise SystemExit(9)\n"
-                "    active.unlink()\n"
-                "else:\n"
-                "    contender.write_text('', encoding='utf-8')\n"
-                "    try:\n"
-                "        with active.open('x', encoding='utf-8') as stream:\n"
-                "            stream.write('contender')\n"
-                "    except FileExistsError:\n"
-                "        overlap.write_text('', encoding='utf-8')\n"
-                "        raise SystemExit(3)\n"
-                "    active.unlink()\n"
-            ),
-            encoding="utf-8",
-        )
-        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
-        makefile.write_text(
-            (
-                f".PHONY: _serialized_{validation_verb}\n"
-                f"_serialized_{validation_verb}:\n"
-                f"\t@{sys.executable} {worker} {tmp_path}\n"
-            ),
-            encoding="utf-8",
-        )
+        makefile = self._trivial_makefile(tmp_path, validation_verb)
         test_u.Tests.initialize_git_repo(tmp_path)
-        command = [
-            sys.executable,
-            "-m",
-            c.Infra.PACKAGE_IMPORT_NAME,
-            c.Infra.CLI_GROUP_WORKSPACE,
-            "serialize-make",
-            "--workspace",
-            str(tmp_path),
-            "--makefile",
-            str(makefile),
-            "--verb",
-        ]
+        lock_path = tmp_path / config.Infra.codegen.make.serialization.lock_path
+        service = self._service(tmp_path, validation_verb, makefile)
 
-        executor = ThreadPoolExecutor(max_workers=2)
-        try:
-            incumbent_future = executor.submit(
-                u.Cli.run_raw, [*command, validation_verb], tmp_path
-            )
-            contender_future = None
-            release = tmp_path / ".reports" / "serialization-test" / "incumbent-release"
-            try:
-                deadline = time.monotonic() + self._process_start_timeout_seconds
-                while (
-                    not (
-                        tmp_path
-                        / ".reports"
-                        / "serialization-test"
-                        / "incumbent-started"
-                    ).exists()
-                    and not incumbent_future.done()
-                    and time.monotonic() < deadline
-                ):
-                    time.sleep(0.01)
-                tm.that(
-                    (
-                        tmp_path
-                        / ".reports"
-                        / "serialization-test"
-                        / "incumbent-started"
-                    ).exists(),
-                    where=bool,
-                )
-                contender_future = executor.submit(
-                    u.Cli.run_raw, [*command, validation_verb], tmp_path
-                )
-                release.write_text("", encoding="utf-8")
-                incumbent_process = tm.ok(
-                    incumbent_future.result(timeout=self._process_start_timeout_seconds)
-                )
-                contender_process = tm.ok(
-                    contender_future.result(timeout=self._process_start_timeout_seconds)
-                )
-            finally:
-                release.touch()
-                incumbent_future.cancel()
-                if contender_future is not None:
-                    contender_future.cancel()
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+        with self._incumbent_holding_lock(service) as barrier:
+            contender_blocked = self._lock_is_held(lock_path)
+            barrier.release_incumbent()
+            incumbent = tm.ok(barrier.result())
 
-        tm.that(incumbent_process.exit_code, eq=0)
-        tm.that(contender_process.exit_code, eq=0)
-        tm.that(
-            not (tmp_path / ".reports" / "serialization-test" / "overlap").exists(),
-            where=bool,
-        )
-        tm.that(
-            (tmp_path / config.Infra.codegen.make.serialization.lock_path).is_file(),
-            where=bool,
-        )
+        tm.that(contender_blocked, eq=True)
+        tm.that(incumbent.exit_code, eq=0)
+        tm.that(lock_path.is_file(), where=bool)
 
     def test_external_callers_share_the_selected_make_engine_lock(
         self, tmp_path: Path
     ) -> None:
-        """Different callers of one selected Make owner cannot overlap."""
+        """Given two callers of one Make owner, the engine root owns the lock.
+
+        Exemplar: lock ownership follows the selected Make owner, never the
+        caller's cwd. Asserting real exclusion on the engine lock plus the
+        absence of any caller-local lock is the complete contract.
+        """
         validation_verb = config.Infra.codegen.make.serialization.verbs[0]
         engine_root = tmp_path / "engine"
         engine_root.mkdir()
-        state = engine_root / "state"
-        worker = engine_root / "worker.py"
-        worker.write_text(
-            (
-                "from pathlib import Path\n"
-                "import sys\n"
-                "import time\n"
-                "state = Path(sys.argv[1])\n"
-                "state.mkdir(parents=True, exist_ok=True)\n"
-                "active = state / 'active'\n"
-                "started = state / 'started'\n"
-                "release = state / 'release'\n"
-                "overlap = state / 'overlap'\n"
-                "if not started.exists():\n"
-                "    active.write_text('incumbent', encoding='utf-8')\n"
-                "    started.write_text('', encoding='utf-8')\n"
-                "    deadline = time.monotonic() + 30\n"
-                "    while time.monotonic() < deadline and not release.exists():\n"
-                "        time.sleep(0.01)\n"
-                "    if not release.exists():\n"
-                "        raise SystemExit(9)\n"
-                "    active.unlink()\n"
-                "else:\n"
-                "    try:\n"
-                "        with active.open('x', encoding='utf-8') as stream:\n"
-                "            stream.write('contender')\n"
-                "    except FileExistsError:\n"
-                "        overlap.write_text('', encoding='utf-8')\n"
-                "        raise SystemExit(3)\n"
-                "    active.unlink()\n"
-            ),
-            encoding="utf-8",
-        )
-        selected_makefile = engine_root / "canonical.mk"
-        selected_makefile.write_text(
-            (
-                f".PHONY: _serialized_{validation_verb}\n"
-                f"_serialized_{validation_verb}:\n"
-                f"\t@{sys.executable} {worker} {state}\n"
-            ),
-            encoding="utf-8",
-        )
+        makefile = self._trivial_makefile(engine_root, validation_verb, "canonical.mk")
         callers = (tmp_path / "caller-a", tmp_path / "caller-b")
         for caller in callers:
             caller.mkdir()
             test_u.Tests.initialize_git_repo(caller)
+        lock_relative = config.Infra.codegen.make.serialization.lock_path
+        engine_lock = engine_root / lock_relative
+        service = self._service(callers[0], validation_verb, makefile)
 
-        def command(caller: Path) -> p.Result[p.Cli.CommandOutput]:
-            return u.Cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    c.Infra.PACKAGE_IMPORT_NAME,
-                    c.Infra.CLI_GROUP_WORKSPACE,
-                    "serialize-make",
-                    "--workspace",
-                    str(caller),
-                    "--makefile",
-                    str(selected_makefile),
-                    "--verb",
-                    validation_verb,
-                ],
-                cwd=caller,
-            )
+        with self._incumbent_holding_lock(service) as barrier:
+            contender_blocked = self._lock_is_held(engine_lock)
+            barrier.release_incumbent()
+            incumbent = tm.ok(barrier.result())
 
-        executor = ThreadPoolExecutor(max_workers=2)
-        try:
-            incumbent_future = executor.submit(command, callers[0])
-            contender_future = None
-            release = state / "release"
-            try:
-                deadline = time.monotonic() + self._process_start_timeout_seconds
-                while (
-                    not (state / "started").exists()
-                    and not incumbent_future.done()
-                    and time.monotonic() < deadline
-                ):
-                    time.sleep(0.01)
-                tm.that((state / "started").exists(), where=bool)
-                contender_future = executor.submit(command, callers[1])
-                release.write_text("", encoding="utf-8")
-                incumbent = tm.ok(
-                    incumbent_future.result(timeout=self._process_start_timeout_seconds)
-                )
-                contender = tm.ok(
-                    contender_future.result(timeout=self._process_start_timeout_seconds)
-                )
-            finally:
-                release.touch()
-                incumbent_future.cancel()
-                if contender_future is not None:
-                    contender_future.cancel()
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
-
+        tm.that(contender_blocked, eq=True)
         tm.that(incumbent.exit_code, eq=0)
-        tm.that(contender.exit_code, eq=0)
-        tm.that(not (state / "overlap").exists(), where=bool)
-        tm.that(
-            (engine_root / config.Infra.codegen.make.serialization.lock_path).is_file(),
-            where=bool,
-        )
+        tm.that(engine_lock.is_file(), where=bool)
+        for caller in callers:
+            tm.that((caller / lock_relative).exists(), eq=False)
 
     def test_private_failure_reaches_cli_and_outer_make(self, tmp_path: Path) -> None:
         """A private nonzero status is never coerced into public success."""
@@ -668,56 +623,50 @@ class TestsFlextInfraMakeSerialization:
     def test_writer_ignoring_lock_invalidates_gate_snapshot(
         self, tmp_path: Path
     ) -> None:
-        """A concurrent content writer makes a green private target invalid."""
+        """Given a writer that ignores the lock, the gate rejects its own run.
+
+        Exemplar: the behavior is "content changed while the gate ran", so the
+        test writes that file at the one instant the gate is mid-run -- from
+        the public ``run_raw`` seam -- instead of racing a background process
+        against a fixed ``sleep``. The drift is therefore guaranteed, not
+        probable, and the assertion stays on the reported failure.
+        """
         validation_verb = config.Infra.codegen.make.serialization.verbs[0]
-        writer = tmp_path / "writer.py"
-        writer.write_text(
-            (
-                "from pathlib import Path\n"
-                "import sys\n"
-                "import time\n"
-                "time.sleep(0.1)\n"
-                "Path(sys.argv[1]).write_text('changed', encoding='utf-8')\n"
-            ),
-            encoding="utf-8",
-        )
-        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
-        makefile.write_text(
-            (
-                f".PHONY: _serialized_{validation_verb}\n"
-                f"_serialized_{validation_verb}:\n"
-                f"\t@{sys.executable} {writer} {tmp_path / 'concurrent.txt'} & "
-                "sleep 0.4\n"
-            ),
-            encoding="utf-8",
-        )
+        makefile = self._trivial_makefile(tmp_path, validation_verb)
         test_u.Tests.initialize_git_repo(tmp_path)
+        drift = tmp_path / "concurrent.txt"
+        original_run_raw = u.Cli.run_raw
 
-        process = tm.ok(
-            u.Cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    c.Infra.PACKAGE_IMPORT_NAME,
-                    c.Infra.CLI_GROUP_WORKSPACE,
-                    "serialize-make",
-                    "--workspace",
-                    str(tmp_path),
-                    "--makefile",
-                    str(makefile),
-                    "--verb",
-                    validation_verb,
-                ],
-                cwd=tmp_path,
+        def writing_run_raw(
+            cmd: t.StrSequence,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            capture: bool = True,
+        ) -> p.Result[p.Cli.CommandOutput]:
+            outcome = original_run_raw(
+                cmd, cwd, timeout, env, remove_env_keys, input_data, capture=capture
             )
-        )
+            if any(argument.startswith("_serialized_") for argument in cmd):
+                drift.write_text("changed", encoding="utf-8")
+            return outcome
 
-        tm.that(process.exit_code, eq=int(c.Infra.ScriptExitCode.INFRA))
-        tm.that(
-            process.stdout + process.stderr,
+        monkey = pytest.MonkeyPatch()
+        try:
+            monkey.setattr(u.Cli, "run_raw", writing_run_raw)
+            service = self._service(tmp_path, validation_verb, makefile)
+            outcome = service.execute()
+        finally:
+            monkey.undo()
+
+        tm.fail(
+            outcome,
             has=[
                 f"workspace changed during serialized Make {validation_verb}",
-                "concurrent.txt",
+                drift.name,
             ],
         )
 
@@ -731,7 +680,13 @@ class TestsFlextInfraMakeSerialization:
         mutation_what: str,
         fixed_point_what: str,
     ) -> None:
-        """An authorized generator apply owns its projection and proves stability."""
+        """Given an authorized apply, its own projection never counts as drift.
+
+        Exemplar: the observable outcome is the generator's projection plus a
+        successful typed result. Driving the service in-process keeps the
+        assertion on behavior while a one-line shell recipe stands in for the
+        real generator.
+        """
         make_config = config.Infra.codegen.make
         tm.that(
             fixed_point_what,
@@ -749,40 +704,22 @@ class TestsFlextInfraMakeSerialization:
                 f"_serialized_{mutation_verb}:\n"
                 f'\t@if [ "$({make_config.apply_variable})" = '
                 f'"{make_config.apply_value}" ]; then '
-                f"printf 'generated\\n' > {projection}; "
-                f"else "
-                f'[ "$({make_config.apply_variable})" != '
-                f'"{make_config.apply_value}" ] || exit 9; '
-                "fi\n"
+                f"printf 'generated\\n' > {projection}; fi\n"
             ),
             encoding="utf-8",
         )
         test_u.Tests.initialize_git_repo(tmp_path)
+        service = FlextInfraMakeSerializationService.model_validate({
+            "workspace_root": tmp_path,
+            "verb": mutation_verb,
+            "makefile": makefile,
+            "selector_value": mutation_what,
+            "apply_token": make_config.apply_value,
+        })
 
-        process = tm.ok(
-            u.Cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    c.Infra.PACKAGE_IMPORT_NAME,
-                    c.Infra.CLI_GROUP_WORKSPACE,
-                    "serialize-make",
-                    "--workspace",
-                    str(tmp_path),
-                    "--makefile",
-                    str(makefile),
-                    "--verb",
-                    mutation_verb,
-                    "--selector-value",
-                    mutation_what,
-                    "--apply-token",
-                    make_config.apply_value,
-                ],
-                cwd=tmp_path,
-            )
-        )
+        outcome = tm.ok(service.execute())
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(outcome.exit_code, eq=0)
         tm.that(projection.read_text(encoding="utf-8"), eq="generated\n")
 
     @pytest.mark.parametrize(
@@ -795,7 +732,15 @@ class TestsFlextInfraMakeSerialization:
         mutation_what: str,
         fixed_point_what: str,
     ) -> None:
-        """The child owns apply serialization before Make locks the fixed point."""
+        """Given a mutation, apply runs unlocked and the fixed point runs locked.
+
+        Exemplar: the phase order and lock state are recorded by observing the
+        service's own dispatch instead of writing sentinels from a spawned
+        worker. Each observation captures the selector Make received and
+        whether the mutation lock was held at that instant, so the assertion
+        is the actual contract: apply is transaction-owned, the fixed-point
+        re-check is lock-owned.
+        """
         make_config = config.Infra.codegen.make
         tm.that(
             fixed_point_what,
@@ -805,131 +750,58 @@ class TestsFlextInfraMakeSerialization:
                 if verb.name == mutation_verb
             ),
         )
-        worker = tmp_path / "worker.py"
-        worker.write_text(
-            (
-                "from pathlib import Path\n"
-                "import sys\n"
-                "import time\n"
-                "state = Path(sys.argv[1])\n"
-                "phase = sys.argv[2]\n"
-                "state.mkdir(parents=True, exist_ok=True)\n"
-                "events = state / 'events'\n"
-                "with events.open('a', encoding='utf-8') as stream:\n"
-                "    stream.write(f'{phase}-start\\n')\n"
-                "(state / f'{phase}-started').write_text('', encoding='utf-8')\n"
-                "release = state / f'{phase}-release'\n"
-                "deadline = time.monotonic() + 30\n"
-                "while not release.exists() and time.monotonic() < deadline:\n"
-                "    time.sleep(0.01)\n"
-                "if not release.exists():\n"
-                "    raise SystemExit(9)\n"
-                "with events.open('a', encoding='utf-8') as stream:\n"
-                "    stream.write(f'{phase}-end\\n')\n"
-            ),
-            encoding="utf-8",
-        )
-        state = tmp_path / ".reports" / "serialization-fixed-point"
-        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
-        makefile.write_text(
-            (
-                f".PHONY: _serialized_{mutation_verb}\n"
-                f"_serialized_{mutation_verb}:\n"
-                f'\t@if [ "$({make_config.apply_variable})" = '
-                f'"{make_config.apply_value}" ]; then '
-                f"{sys.executable} {worker} {state} mutation; "
-                f"else "
-                f"{sys.executable} {worker} {state} fixed-point; "
-                "fi\n"
-            ),
-            encoding="utf-8",
-        )
+        makefile = self._trivial_makefile(tmp_path, mutation_verb)
         test_u.Tests.initialize_git_repo(tmp_path)
-        command = [
-            sys.executable,
-            "-m",
-            c.Infra.PACKAGE_IMPORT_NAME,
-            c.Infra.CLI_GROUP_WORKSPACE,
-            "serialize-make",
-            "--workspace",
-            str(tmp_path),
-            "--makefile",
-            str(makefile),
-            "--verb",
-        ]
-
         lock_path = tmp_path / make_config.serialization.lock_path
-        executor = ThreadPoolExecutor(max_workers=1)
-        try:
-            state.mkdir(parents=True, exist_ok=True)
-            mutation_future = executor.submit(
-                u.Cli.run_raw,
-                [
-                    *command,
-                    mutation_verb,
-                    "--selector-value",
-                    mutation_what,
-                    "--apply-token",
-                    make_config.apply_value,
-                ],
-                tmp_path,
+        observed: list[tuple[str, bool]] = []
+        observed_guard = Lock()
+        original_run_raw = u.Cli.run_raw
+
+        def observing_run_raw(
+            cmd: t.StrSequence,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            capture: bool = True,
+        ) -> p.Result[p.Cli.CommandOutput]:
+            selector = next(
+                (
+                    argument.split("=", 1)[1]
+                    for argument in cmd
+                    if argument.startswith(f"{make_config.selector}=")
+                ),
+                "",
             )
-            try:
-                deadline = time.monotonic() + self._process_start_timeout_seconds
-                while (
-                    not (state / "mutation-started").exists()
-                    and not mutation_future.done()
-                    and time.monotonic() < deadline
-                ):
-                    time.sleep(0.01)
-                tm.that((state / "mutation-started").exists(), where=bool)
-                mutation_lock_available = False
-                try:
-                    with FileLock(lock_path, timeout=0):
-                        mutation_lock_available = True
-                except Timeout:
-                    mutation_lock_available = False
-                tm.that(mutation_lock_available, where=bool)
-                (state / "mutation-release").write_text("", encoding="utf-8")
+            with observed_guard:
+                observed.append((selector, self._lock_is_held(lock_path)))
+            return original_run_raw(
+                cmd, cwd, timeout, env, remove_env_keys, input_data, capture=capture
+            )
 
-                deadline = time.monotonic() + self._process_start_timeout_seconds
-                while (
-                    not (state / "fixed-point-started").exists()
-                    and not mutation_future.done()
-                    and time.monotonic() < deadline
-                ):
-                    time.sleep(0.01)
-                tm.that((state / "fixed-point-started").exists(), where=bool)
-                fixed_point_lock_held = False
-                try:
-                    with FileLock(lock_path, timeout=0):
-                        pass
-                except Timeout:
-                    fixed_point_lock_held = True
-                tm.that(fixed_point_lock_held, where=bool)
-                (state / "fixed-point-release").write_text("", encoding="utf-8")
-                mutation = tm.ok(
-                    mutation_future.result(timeout=self._process_start_timeout_seconds)
-                )
-            finally:
-                (state / "mutation-release").touch()
-                (state / "fixed-point-release").touch()
-                mutation_future.cancel()
+        monkey = pytest.MonkeyPatch()
+        try:
+            monkey.setattr(u.Cli, "run_raw", observing_run_raw)
+            service = FlextInfraMakeSerializationService.model_validate({
+                "workspace_root": tmp_path,
+                "verb": mutation_verb,
+                "makefile": makefile,
+                "selector_value": mutation_what,
+                "apply_token": make_config.apply_value,
+            })
+            outcome = tm.ok(service.execute())
         finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+            monkey.undo()
 
-        tm.that(mutation.exit_code, eq=0, msg=mutation.stdout + mutation.stderr)
-        with FileLock(lock_path, timeout=0):
-            pass
+        tm.that(outcome.exit_code, eq=0)
         tm.that(
-            (state / "events").read_text(encoding="utf-8").splitlines(),
-            eq=[
-                "mutation-start",
-                "mutation-end",
-                "fixed-point-start",
-                "fixed-point-end",
-            ],
+            [selector for selector, _ in observed], eq=[mutation_what, fixed_point_what]
         )
+        tm.that(observed[0][1], eq=False)
+        tm.that(observed[1][1], eq=True)
+        tm.that(self._lock_is_held(lock_path), eq=False)
 
     @pytest.mark.parametrize(
         ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES

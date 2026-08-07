@@ -24,22 +24,22 @@ Infra:
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
       mise_version: "2026.7.16"
-      # Go runtime required by mise go: backend selectors (beads).
+      # Go runtime for the Go projects in this workspace.
       go_version: "1.26.5"
-      # Beads distribution owner is the operator fork marlon-costa-dc/beads
-      # (ai-hub-hi2b): it carries the fork-only customizations merged --no-ff
-      # with the newest upstream gastownhall/beads main and is released as
-      # 1.1.2-dc1. That fork release is the canonical distribution for every
-      # FLEXT ledger on this host; an upstream gastownhall release is never
-      # pinned directly. The immutable merge commit stays the installed
-      # selector version, `bd version` self-reports 1.1.2-dc1 so that value
-      # feeds the conform preflight gate, checksum is the SHA-256 of the
-      # pinned binary, and expected_schema is the ledger schema it must know.
+      # bd is distributed by the governed fork marlon-costa-dc/beads, which owns
+      # the fork-only customizations merged --no-ff with the newest upstream
+      # gastownhall/beads main. Upstream releases lag the ledger schema these
+      # projects run and cannot take fix-forward changes, so an upstream release
+      # is never pinned directly. mise installs the published release asset
+      # through the github backend, so version and reported_version are the same
+      # release tag; checksum is the SHA-256 of the installed binary (verified
+      # against the mise-installed release asset) and expected_schema is the ledger
+      # schema it must know.
       beads:
-        selector: go:github.com/steveyegge/beads/cmd/bd
-        version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
+        selector: github:marlon-costa-dc/beads
+        version: "1.1.2-dc1"
         reported_version: "1.1.2-dc1"
-        checksum: "f9d81cbca9a2e5f7096e119d267dc7568bf511d24ee70fca91f0ced848d12c34"
+        checksum: "06f142c0da9868d9fa956a9ca28baab93c5ac2813c2402d44f1e54992359204b"
         expected_schema: 62
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never
@@ -248,8 +248,10 @@ Infra:
         # stays fully enforced for local `make check` and the `docs` verb; only
         # the hook-context invocation omits it.
         - { verb: check, apply: false, contexts: [local, ci, pre_push], gates_skip: [markdown] }
-        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
-        - { verb: test, apply: false, contexts: [local, pre_push] }
+        # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon so
+        # the blocking hook always executes the complete suite deterministically.
+        - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
+        - { verb: test, what: all, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all
