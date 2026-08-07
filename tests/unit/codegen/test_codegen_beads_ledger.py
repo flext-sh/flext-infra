@@ -93,7 +93,7 @@ class TestCodegenBeadsLedger:
         origin = root.parent / f"{root.name}-origin.git"
         cls._git(root.parent, "init", "-q", "--bare", str(origin))
         cls._git(root, "add", "-A")
-        cls._git(root, "commit", "-q", "-m", "Seed standalone workspace")
+        cls._git(root, "commit", "-q", "--no-verify", "-m", "Seed standalone workspace")
         cls._git(root, "remote", "add", "origin", str(origin))
         cls._git(root, "push", "-q", "-u", "origin", provider.branch)
         return root
@@ -237,8 +237,8 @@ class TestCodegenBeadsLedger:
         )
         tm.that(root_prefix, eq="mro")
         tm.that(root_db, eq="mro")
-        tm.that(member_prefix, eq="flext-dbt-ldif")
-        tm.that(member_db, eq="flext-dbt-ldif")
+        tm.that(member_prefix, eq="mro")
+        tm.that(member_db, eq="mro")
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:

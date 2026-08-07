@@ -218,7 +218,7 @@ class FlextInfraPytestRunner(s[int]):
             (
                 "--cov",
                 "--cov-report=term-missing",
-                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
+                f"--cov-report=xml:{report_dir / c.Infra.PYTEST_COVERAGE_XML}",
             )
             if self._coverage_requested()
             else ("--testmon", "--no-cov")
@@ -265,7 +265,7 @@ class FlextInfraPytestRunner(s[int]):
             "-p",
             "no:metadata",
             f"--timeout={pytest.case_timeout_seconds}",
-            f"--junitxml={report_dir / 'junit.xml'}",
+            f"--junitxml={report_dir / c.Infra.PYTEST_JUNIT_XML}",
             *coverage_args,
             *parallel_args,
             *ci_marker_args,
@@ -295,7 +295,7 @@ class FlextInfraPytestRunner(s[int]):
         """Compose the existing JUnit/log diagnostic owner in-process."""
         extractor = FlextInfraPytestDiagExtractor(
             workspace_root=self.root,
-            junit=report_dir / "junit.xml",
+            junit=report_dir / c.Infra.PYTEST_JUNIT_XML,
             log_path=report_dir / "pytest.log",
         )
         return extractor.extract(extractor.junit, extractor.log_path)
@@ -416,8 +416,8 @@ class FlextInfraPytestRunner(s[int]):
             c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9,
         }
         timeout_state = "TIMED_OUT" if timed_out else "COMPLETED"
-        junit_file = report_dir / "junit.xml"
-        coverage_file = report_dir / "coverage.xml"
+        junit_file = report_dir / c.Infra.PYTEST_JUNIT_XML
+        coverage_file = report_dir / c.Infra.PYTEST_COVERAGE_XML
         junit_value = str(junit_file) if junit_file.is_file() else "not-generated"
         coverage_value = (
             str(coverage_file) if coverage_file.is_file() else "not-generated"
@@ -447,12 +447,12 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
-        # Why (mro-uwoc7): the incremental verbs pass --no-cov, so this runner
-        # emits no coverage.xml for them. Demanding the artifact anyway failed
-        # pushes on a fully green suite (1184 passed, exit=0, coverage=not-
-        # generated). The gate now asks the SAME source that builds the argv, so
-        # the two can never disagree: coverage is verified only when it was
-        # actually requested. Coverage runs are owned by WHAT=full.
+        # Why (mro-uwoc7): the incremental verb passes --no-cov, so it never
+        # emits coverage.xml. Demanding the artifact anyway failed pushes on a
+        # fully green suite (1184 passed, exit=0, coverage=not-generated).
+        # The gate now asks the SAME predicate that builds the argv, so the two
+        # can never disagree: coverage is verified only when it was actually
+        # requested. WHAT=full is the verb that requests it.
         coverage_enabled = (
             self._coverage_requested()
             and not self._ci_disables_coverage()

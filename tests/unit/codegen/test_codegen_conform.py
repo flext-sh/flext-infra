@@ -12,10 +12,14 @@ import os
 import sys
 import tomllib
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import c, config, m, u
+
+if TYPE_CHECKING:
+    from flext_infra import p
 from tests import u as test_u
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -184,7 +188,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=existing_root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed committed drift"], cwd=existing_root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed committed drift"],
+                cwd=existing_root,
             )
         )
         migrated = FlextInfraCodegenConform.execute_request(
@@ -212,6 +217,79 @@ class TestCodegenConform:
             )
         )
         tm.that(existing_tree, eq=new_tree)
+
+    def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
+        self, infra_git_repo: Path
+    ) -> None:
+        """The gen verb converges for a Python root beyond declarative env_dirs.
+
+        ``make gen`` runs conform and then the deps modernizer over the same
+        manifest. Two derivations used to select the pyright execution
+        environments: the modernizer discovered roots ON DISK, while conform
+        planned them from the declarative ``env_dirs``. A project owning a
+        Python directory outside that list therefore had the environment
+        appended by the modernizer and erased by conform, so apply rewrote the
+        manifest forever and the next check reported permanent drift. One owner
+        must decide, so the extra root survives a whole gen cycle.
+        """
+        root = infra_git_repo
+        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / "flext_infra" / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        # The defect needs a Python root the declarative env_dirs never lists.
+        extra_root = "tools"
+        module = root / extra_root / "maintenance.py"
+        module.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(module, "VALUE = 1\n"))
+        tm.that(extra_root in u.Infra.discover_python_dirs(root), eq=True)
+        tm.that(
+            extra_root in config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+            eq=False,
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Seed python root beyond env_dirs"],
+                cwd=root,
+            )
+        )
+
+        applied = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+        tm.ok(applied)
+        # gen runs the modernizer over the same manifest right after conform, so
+        # the fixed point belongs to the pair, never to conform alone.
+        tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=root, apply_changes=True
+            ).execute()
+        )
+
+        fixed_point = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.ok(fixed_point)
+        tm.that(fixed_point.value.written_files, eq=())
 
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
         self, infra_git_repo: Path
@@ -247,7 +325,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manifest-less tree"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifest-less tree"],
+                cwd=root,
             )
         )
 
@@ -532,7 +611,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed generated project"],
+                cwd=root,
             )
         )
         snapshot_excludes = config.Infra.codegen.make.serialization.snapshot_excludes
@@ -584,7 +664,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed generated project"],
+                cwd=root,
             )
         )
         request = m.Infra.CodegenConformRequest(
@@ -864,6 +945,88 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(result.error, has="not a regular file")
         tm.that(result.error, has=str(root / "custom.mk"))
+
+
+class TestGitHookConformance:
+    """Prove installed git hooks are part of the conformance contract.
+
+    The generated .pre-commit-config.yaml declares the pre-commit and pre-push
+    workflows, and .github/scripts/install-git-hooks.sh documents `make hooks`
+    as its canonical entry point - but nothing ever installed them. A lane
+    created by `make work` therefore committed and pushed with no gate at all
+    while `make gen WHAT=check` still reported conformance complete. Emitting
+    the config without activating it is exactly the drift the verb exists to
+    catch, so an uninstalled hook is nonconform.
+    """
+
+    @staticmethod
+    def _scaffold(root: Path) -> None:
+        """Materialize a governed project so the hook config exists on disk."""
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+
+    @staticmethod
+    def _check(root: Path) -> p.Result[m.Infra.CodegenResult]:
+        return FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+
+    def test_check_fails_when_declared_hooks_are_not_installed(
+        self, infra_git_repo: Path
+    ) -> None:
+        """An emitted hook config that was never activated is drift."""
+        root = infra_git_repo
+        self._scaffold(root)
+        hooks_dir = root / ".git" / "hooks"
+        for stage in ("pre-commit", "pre-push"):
+            tm.ok(u.Cli.files_delete(hooks_dir / stage))
+
+        result = self._check(root)
+
+        tm.fail(result)
+        tm.that(result.error, has="git hook is not installed")
+        tm.that(result.error, has="pre-commit")
+        tm.that(result.error, has="pre-push")
+
+    def test_apply_installs_every_declared_hook(self, infra_git_repo: Path) -> None:
+        """Apply activates the hooks it emits, so the next check is green."""
+        root = infra_git_repo
+        self._scaffold(root)
+        hooks_dir = root / ".git" / "hooks"
+        for stage in ("pre-commit", "pre-push"):
+            tm.ok(u.Cli.files_delete(hooks_dir / stage))
+
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
+            )
+        )
+
+        for stage in ("pre-commit", "pre-push"):
+            hook = hooks_dir / stage
+            tm.that(hook.is_file(), eq=True)
+            tm.that(hook.read_text(encoding="utf-8"), has=f"--hook-type={stage}")
+        tm.ok(self._check(root))
 
 
 class TestScriptDispatchMakefile:
