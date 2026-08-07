@@ -248,10 +248,12 @@ Infra:
         # stays fully enforced for local `make check` and the `docs` verb; only
         # the hook-context invocation omits it.
         - { verb: check, apply: false, contexts: [local, ci, pre_push], gates_skip: [markdown] }
-        # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon so
-        # the blocking hook always executes the complete suite deterministically.
+        # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon and
+        # then runs WHAT=full, the complete-suite gate: testmon OFF so every test
+        # executes, coverage ON so the measured number covers the whole suite.
+        # WHAT=all (incremental testmon, --no-cov) stays the local default.
         - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
-        - { verb: test, what: all, apply: false, contexts: [local, pre_push] }
+        - { verb: test, what: full, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all
@@ -374,11 +376,13 @@ Infra:
         - name: test
           default_what: all
           # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Incremental subsets never enforce global coverage; full coverage is
-          # an explicit complete-suite gate, not part of default make test.
+          # Incremental subsets never enforce global coverage, because a number
+          # computed from an impacted subset is not the suite's coverage.
+          # full = the complete-suite gate: testmon OFF, coverage ON. Pre-push
+          # runs it so the measured number covers every test.
           # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
           # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, cache-status, cache-clear, cache-checkpoint]
+          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all
