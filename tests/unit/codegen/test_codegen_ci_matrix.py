@@ -110,13 +110,27 @@ class TestCodegenCiMatrix:
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
+        gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
 
         for hook_id, context in (
             ("flext-pre-commit", "pre_commit"),
             ("flext-pre-push", "pre_push"),
         ):
             commands = " && ".join(
-                (f"{ci.variable}={ci.value} " if step.verb == "check" else "")
+                (
+                    f"{ci.variable}={ci.value} "
+                    if step.verb == "check" and context == "pre_commit"
+                    else ""
+                )
+                + (
+                    "CHECK_GATES="
+                    + ",".join(
+                        gate for gate in gates_default if gate not in step.gates_skip
+                    )
+                    + " "
+                    if step.gates_skip
+                    else ""
+                )
                 + f"make {step.verb}"
                 + (f" WHAT={step.what}" if step.what else "")
                 + (
@@ -128,10 +142,8 @@ class TestCodegenCiMatrix:
                 for step in workflow
                 if context in step.contexts
             )
-            if context == "pre_push":
-                commands = f"unset $(git rev-parse --local-env-vars); {commands}"
             tm.that(hooks, has=f"id: {hook_id}")
-            tm.that(hooks, has=f"'{commands}'")
+            tm.that(hooks, has=commands)
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 

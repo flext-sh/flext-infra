@@ -140,6 +140,17 @@ class FlextInfraPytestRunner(s[int]):
         raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
         return raw == config.Infra.codegen.make.ci.value
 
+    @staticmethod
+    def _coverage_requested() -> bool:
+        """Whether this runner asks pytest to measure coverage at all.
+
+        The default verb is testmon-incremental and passes ``--no-cov``, so no
+        coverage report is ever written. ``build_command`` and the artifact gate
+        both read THIS predicate, so the gate can never demand an artifact the
+        argv told pytest not to produce (mro-uwoc7).
+        """
+        return False
+
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
         path: Path = Path(self.root) / ".testmondata"
@@ -190,7 +201,9 @@ class FlextInfraPytestRunner(s[int]):
         focused = self.file is not None or self.match is not None
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
-        coverage_args = ("--testmon", "--no-cov")
+        # Why (mro-uwoc7): keyed to the same predicate the artifact gate reads,
+        # so the argv and the gate can never disagree about coverage.
+        coverage_args = () if self._coverage_requested() else ("--testmon", "--no-cov")
         parallel_args = (
             ("-n", "0")
             if focused
@@ -415,8 +428,15 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
+        # Why (mro-uwoc7): build_command always passes --no-cov, so this runner
+        # never emits coverage.xml. Demanding the artifact anyway failed pushes
+        # on a fully green suite (1184 passed, exit=0, coverage=not-generated).
+        # The gate now asks the SAME source that builds the argv, so the two can
+        # never disagree: coverage is verified only when it was actually
+        # requested. Coverage runs are owned by the dedicated COV=Y path.
         coverage_enabled = (
-            not self._ci_disables_coverage()
+            self._coverage_requested()
+            and not self._ci_disables_coverage()
             and self.file is None
             and self.match is None
         )

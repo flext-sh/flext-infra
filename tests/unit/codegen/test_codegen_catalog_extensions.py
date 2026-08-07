@@ -41,57 +41,57 @@ def _repository(
     )
 
 
+def _is_immutable_selector(version: str) -> bool:
+    """Whether a pin names one unchangeable artifact.
+
+    Immutable means the coordinate cannot silently point somewhere else later:
+    a published release tag or a full commit sha. A moving ref such as
+    ``latest`` or a branch name is not.
+    """
+    if not version or version in {"latest", "main", "master", "HEAD"}:
+        return False
+    is_commit = len(version) == 40 and all(
+        char in "0123456789abcdef" for char in version
+    )
+    head, _, _ = version.partition("-")
+    release_parts = head.split(".")
+    is_release_tag = len(release_parts) == 3 and all(
+        part.isdecimal() for part in release_parts
+    )
+    return is_commit or is_release_tag
+
+
 class TestsCodegenCatalogExtensions:
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
-        selector = config.Infra.codegen.toolchain.beads.version
+        version = config.Infra.codegen.toolchain.beads.version
 
-        version_parts = selector.split(".")
-        is_semver = len(version_parts) == 3 and all(
-            part.isdecimal() for part in version_parts
-        )
-        is_commit = len(selector) == 40 and all(
-            char in "0123456789abcdef" for char in selector
-        )
-        tm.that(is_semver or is_commit, eq=True)
+        tm.that(_is_immutable_selector(version), eq=True)
 
     def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
         toolchain = config.Infra.codegen.toolchain
 
         # uv is supplied by the caller environment and is deliberately not pinned;
         # only the mise binary and the Beads CLI installed through mise declare
-        # immutable selectors: a semver release for mise, and either a semver
-        # release or a full commit for the Beads go-module pin.
+        # immutable selectors: a semver release for mise, and a release tag or a
+        # full commit for Beads.
         mise_parts = toolchain.mise_version.split(".")
         tm.that(len(mise_parts), eq=3)
         tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
-        beads_version = toolchain.beads.version
-        beads_parts = beads_version.split(".")
-        beads_is_semver = len(beads_parts) == 3 and all(
-            part.isdecimal() for part in beads_parts
-        )
-        beads_is_commit = len(beads_version) == 40 and all(
-            char in "0123456789abcdef" for char in beads_version
-        )
-        tm.that(beads_is_semver or beads_is_commit, eq=True)
+        tm.that(_is_immutable_selector(toolchain.beads.version), eq=True)
 
     def test_beads_gate_compares_the_binary_reported_version(self) -> None:
         """The conform preflight gate uses the binary's self-reported version.
 
-        The pinned Beads build is a go-module commit (schema v61-capable) whose
-        ``bd version`` output does NOT echo the pin. The toolchain therefore
-        declares ``reported_version`` — what the binary actually prints — and
-        the gate consumes that value directly so preflight compares like with
-        like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
+        The gate compares what ``bd version`` prints against a declared value,
+        so the toolchain states that value outright instead of deriving it.
+        The governed fork builds its own release tag, so the printed version
+        and the installed selector are the same string.
         """
         beads = config.Infra.codegen.toolchain.beads
-        tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
-        is_commit = len(beads.version) == 40 and all(
-            char in "0123456789abcdef" for char in beads.version
-        )
-        tm.that(is_commit, eq=True)
+        tm.that(_is_immutable_selector(beads.version), eq=True)
         # ONE declared field, no optional/computed pair: the model states what
         # the binary prints and the gate reads exactly that.
-        tm.that(beads.reported_version, eq="1.1.0")
+        tm.that(beads.reported_version, eq=beads.version)
         tm.that(hasattr(beads, "gate_version"), eq=False)
 
     def test_mise_tool_spec_requires_the_reported_version(self) -> None:
@@ -277,18 +277,16 @@ class TestsCodegenCatalogExtensions:
         )
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
         tm.ok(verify(plan, allow_missing=False))
-        # Outside a transaction a routing-only projection is still legitimate:
-        # config.yaml alone owns no tracker state (3997cc74). Real tracker
-        # artifacts are what must fail closed.
+        # Owning the ledger while disabled is only a violation when real
+        # tracker state exists: config.yaml alone is a routing projection.
+        (tx / ".beads" / "beads.db").write_text("", encoding="utf-8")
         plan_at_root = m.Infra.BeadsPlan(
             repository_root=tx,
             enabled=False,
             canonical_prefix="mro",
-            expected_version="1.1.0",
+            expected_version=config.Infra.codegen.toolchain.beads.reported_version,
             ledger_root=tx,
         )
-        tm.ok(verify(plan_at_root, allow_missing=False))
-        (tx / ".beads" / "mro.db").write_text("tracker state", encoding="utf-8")
         tm.fail(verify(plan_at_root, allow_missing=False))
 
     def test_github_actions_ci_skips_the_beads_lifecycle(
@@ -556,7 +554,7 @@ class TestsCodegenCatalogExtensions:
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
         tm.that(
-            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+            mise["tools"][config.Infra.codegen.toolchain.beads.selector],
             eq=config.Infra.codegen.toolchain.beads.version,
         )
         pyproject = tomllib.loads(

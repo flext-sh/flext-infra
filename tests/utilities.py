@@ -859,16 +859,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def isolated_git_env(*, overrides: t.StrMapping | None = None) -> t.StrMapping:
-            """Return an environment with repository-local Git variables removed.
+        def isolated_git_keys() -> t.StrSequence:
+            """Return the repository-local Git variables a fixture must not inherit.
 
             Git exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE while running
             hooks. A fixture that inherits them silently operates on the calling
             repository instead of its own tmp_path, so repository construction
-            must never inherit them. The removed set is whatever the installed
-            Git declares, never a hardcoded list. ``overrides`` carries topology
-            the fixture itself requires, such as permitting the file transport
-            for a local bare origin.
+            must never inherit them. The set is whatever the installed Git
+            declares, never a hardcoded list.
             """
             declared = cli_facade.capture([
                 c.Infra.GIT,
@@ -876,23 +874,33 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "--local-env-vars",
             ])
             tm.ok(declared)
-            return cli_facade.process_env(
-                overrides=overrides, remove_keys=tuple(declared.value.split())
-            )
+            return tuple(declared.value.split())
 
         @staticmethod
-        def git_bootstrap(repo_root: Path, command: t.StrSequence) -> None:
+        def git_bootstrap(
+            repo_root: Path,
+            command: t.StrSequence,
+            *,
+            overrides: t.StrMapping | None = None,
+        ) -> None:
             """Run one repository-construction command isolated from the caller.
 
             Only repository creation belongs here: once a worktree exists, every
             behavioral operation is expressed through the typed ``u.Infra.git_*``
             facade, which binds the repository explicitly.
+
+            Isolation is expressed with ``remove_env_keys`` because ``env`` is an
+            overlay that can only add or replace keys, never remove them
+            (mro-wt8qp). ``overrides`` carries topology the fixture itself
+            requires, such as permitting the file transport for a local bare
+            origin.
             """
             tm.ok(
                 cli_facade.run_checked(
                     [c.Infra.GIT, *command],
                     cwd=repo_root,
-                    env=TestsFlextInfraUtilities.Tests.isolated_git_env(),
+                    env=overrides,
+                    remove_env_keys=TestsFlextInfraUtilities.Tests.isolated_git_keys(),
                 )
             )
 

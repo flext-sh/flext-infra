@@ -175,7 +175,8 @@ class TestsWorkspaceRootSetupSubmodules:
         outcome = u.Cli.run_raw(
             ["make", "_builtin_setup_submodules"],
             cwd=workspace,
-            env=test_u.Tests.isolated_git_env(overrides=_FILE_PROTOCOL_ENV),
+            env=_FILE_PROTOCOL_ENV,
+            remove_env_keys=test_u.Tests.isolated_git_keys(),
         )
         process = outcome.value
         transcript = process.stdout + process.stderr
