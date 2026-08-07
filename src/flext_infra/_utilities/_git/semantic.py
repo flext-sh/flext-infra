@@ -703,7 +703,8 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         resolved = request.repo_root.expanduser().resolve()
         try:
-            repo = Repo(resolved)
+            # Why (flext-infra-c3h): same nested-path contract as git_open_repo.
+            repo = Repo(resolved, search_parent_directories=True)
         except (InvalidGitRepositoryError, NoSuchPathError):
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:

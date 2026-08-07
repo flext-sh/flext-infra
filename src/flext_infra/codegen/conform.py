@@ -766,26 +766,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return resolved
 
     @staticmethod
-    def _scaffold_python_dirs(
-        entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile
-    ) -> t.StrSequence:
-        """Return Python roots the selected scaffold manifest actually creates."""
-        # NOTE (multi-agent, mro-wkii.17.9.2.1): derive future roots from both
-        # declarative owners so scaffold and existing-tree discovery converge.
-        generated_roots = {
-            Path(entry.destination).parts[0]
-            for entry in entries
-            if profile in entry.profiles
-            and entry.delegate == "render"
-            and Path(entry.destination).parts
-        }
-        return tuple(
-            directory
-            for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
-            if directory in generated_roots
-        )
-
-    @staticmethod
     def _existing_python_dirs(
         root: Path,
         codegen: m.Infra.CodegenConfigSpec,
@@ -831,9 +811,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=tooling_root, skip_check=True
         )
-        declared_python_dirs = self._scaffold_python_dirs(
-            codegen.templates.entries, profile
-        )
+        # Both plan paths MUST declare the same Python roots or their renders
+        # diverge and conform never converges: the modernizer would add a
+        # pyright environment for a directory on disk (e.g. tools/) that the
+        # scaffold-only view does not know about, and the next check would
+        # remove it again, forever. _existing_python_dirs is the complete set.
+        declared_python_dirs = self._existing_python_dirs(root, codegen, target)
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,

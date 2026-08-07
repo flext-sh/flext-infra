@@ -88,18 +88,17 @@ class TestInfraGitIdentitySubmodules:
     ) -> None:
         """Nested checkout with a real .git directory still reports is_submodule.
 
-        Why (mro-2cafk): operator trees like cosmos-charts under cosmos-main keep
-        a full .git directory (not a gitfile) while the superproject index holds
-        a gitlink. Git still reports --show-superproject-working-tree; is_submodule
-        must follow that signal, not the gitfile heuristic.
+        Why (flext-infra-c3h): operator trees like cosmos-charts under cosmos-main
+        keep a full .git directory (not a gitfile) while the superproject index
+        holds a gitlink. Git still reports --show-superproject-working-tree;
+        ``git_identity.is_submodule`` must follow that signal.
         """
         child = self._repo(tmp_path / "child")
         parent = self._repo(tmp_path / "parent")
         member = parent / "apps" / "member"
         shutil.copytree(child, member)
         (parent / ".gitmodules").write_text(
-            "[submodule 'member']\n\tpath = apps/member\n"
-            f"\turl = {child.as_uri()}\n",
+            f"[submodule 'member']\n\tpath = apps/member\n\turl = {child.as_uri()}\n",
             encoding="utf-8",
         )
         head = (member / ".git" / "HEAD").read_text(encoding="utf-8").strip()
@@ -135,3 +134,19 @@ class TestInfraGitIdentitySubmodules:
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member)))
         tm.that(identity.superproject_root, eq=parent.resolve())
         tm.that(identity.is_submodule, eq=True)
+
+    def test_git_identity_ascends_from_nested_path(self, tmp_path: Path) -> None:
+        """Nested file/dir paths resolve through git_open_repo parent search.
+
+        Why (flext-infra-c3h): ai-hub must not keep a parallel ``.git`` walk;
+        ``git_identity`` owns ascent and reports ``repo_root`` at the checkout.
+        """
+        root = self._repo(tmp_path / "repo")
+        nested = root / "src" / "pkg"
+        nested.mkdir(parents=True)
+        (nested / "module.py").write_text("x = 1\n", encoding="utf-8")
+        identity = tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=nested / "module.py"))
+        )
+        tm.that(identity.repo_root, eq=root.resolve())
+        tm.that(identity.requested_path, eq=(nested / "module.py").resolve())

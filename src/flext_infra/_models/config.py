@@ -805,6 +805,31 @@ class FlextInfraConfigModels:
             ),
         ] = ""
 
+    class MakeCleanSpec(_ConfigContract):
+        """Disposable artifacts the generated clean verb removes.
+
+        Stale caches and traces cause FALSE DIAGNOSES, so the disposable set is
+        declared data rather than a literal buried in a recipe: every project
+        cleans exactly the same things and a new artifact kind is one config row.
+        """
+
+        cache_dirs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Cache directory names removed anywhere in the tree"),
+        ]
+        root_dirs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Directories removed at the project root only"),
+        ]
+        root_files: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Files removed at the project root only"),
+        ]
+        trace_globs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Trace/profile globs removed anywhere in the tree"),
+        ]
+
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
@@ -940,6 +965,10 @@ class FlextInfraConfigModels:
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
+        ]
+        clean: Annotated[
+            FlextInfraConfigModels.MakeCleanSpec,
+            m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
             FlextInfraConfigModels.MakeDocsSpec,

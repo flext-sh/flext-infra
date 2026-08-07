@@ -256,6 +256,36 @@ Infra:
         environment: isolated
         dependency_groups: all
         extras: all
+      # Why (mro-clean): stale caches and traces are not cosmetic - they cause
+      # FALSE DIAGNOSES. A stale __pycache__ produced a pydantic ValidationError
+      # traceback for source that was already correct, and stale .reports made a
+      # green suite look failed. `clean` owns the full disposable set as DATA so
+      # no recipe hardcodes it and every project cleans identically.
+      clean:
+        # Directories removed anywhere under the tree.
+        cache_dirs:
+          - __pycache__
+          - .mypy_cache
+          - .pytest_cache
+          - .ruff_cache
+          - .pyrefly_cache
+          - .benchmarks
+          - .hypothesis
+        # Directories removed at the project root only.
+        root_dirs:
+          - build
+          - dist
+          - htmlcov
+          - .reports
+        # Files removed at the project root only.
+        root_files:
+          - .coverage
+          - .testmondata
+        # Trace/profile artifacts removed anywhere under the tree.
+        trace_globs:
+          - "*.pstats"
+          - "*.prof"
+          - ".coverage.*"
       docs:
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs

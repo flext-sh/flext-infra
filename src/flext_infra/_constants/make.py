@@ -37,6 +37,7 @@ class FlextInfraConstantsMake:
     VERB_PUBLISH: Final[str] = "publish"
     VERB_RUN: Final[str] = "run"
     VERB_CHECKS: Final[str] = "checks"
+    VERB_CLEAN: Final[str] = "clean"
 
     # --- Canonical make contract constants (was: class Make) ---
 
