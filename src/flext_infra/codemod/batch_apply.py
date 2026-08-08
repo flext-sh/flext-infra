@@ -126,7 +126,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         remaining = FlextInfraModGateEngine.scan(root, rules, fix=False)
         if remaining.failure:
             return self._fail_with_rollback(
-                root, checkpoint_sha, remaining.error or "ast-grep verification scan failed"
+                root,
+                checkpoint_sha,
+                remaining.error or "ast-grep verification scan failed",
             )
         if remaining.value:
             return self._fail_with_rollback(
