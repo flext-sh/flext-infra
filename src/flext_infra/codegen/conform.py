@@ -429,9 +429,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            issue_prefix, _ledger_database = self.ledger_identity_for_target(
-                workspace, target
-            )
+            ledger_identity = self.ledger_identity_for_target(workspace, target)
             ledger_root_result = self._beads_ledger_root(repository_root)
             if ledger_root_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -447,12 +445,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # issue IDs) -- it must never be workspace.ledger_id,
                     # which is the separate Dolt-safe database identifier and
                     # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
-                    # Why (mro-6fca / mro-z75t): WORKSPACE_MEMBER targets keep
-                    # canonical_project_name; root/standalone manifests still
-                    # honor their own ledger_prefix/id so a flext root
-                    # declaring ledger_prefix=mro does not rewrite every
-                    # submodule .beads/config.yaml onto the root tracker.
-                    canonical_prefix=issue_prefix,
+                    # Why (mro-dz4ib / mro-cdzxf): WORKSPACE_MEMBER targets
+                    # inherit the governing workspace's prefix, because a
+                    # member consumes that ledger and owns none of its own.
+                    # A workspace that declares no ledger yields no identity,
+                    # and this plan is then never `enabled`, so the prefix is
+                    # carried for reporting from the repository's own name.
+                    canonical_prefix=(
+                        ledger_identity[0]
+                        if ledger_identity is not None
+                        else target.canonical_project_name
+                    ),
                     ledger_root=ledger_root_result.value,
                     ledger_id=workspace.ledger_id,
                 )
@@ -930,12 +933,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"template destination escapes repository root: {destination}"
                 )
-            # Ledger routing config: workspace root (owned), transaction
-            # worktrees, and marker-attached standalones only (mro-z89e).
-            if destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and not (target.beads_enabled or target.routing_only):
+            if self._skips_beads_client_config(destination, workspace, target):
                 continue
             if destination in seen_destinations:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -999,6 +997,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if entry.delegate != "render":
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
+                continue
+            if self._skips_beads_client_config(destination, workspace, target):
                 continue
             artifact_context = self._artifact_render_context(
                 dist=context.dist,
@@ -1307,12 +1307,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
-            # Ledger routing config: workspace root (owned), transaction
-            # worktrees, and marker-attached standalones only (mro-z89e).
-            if managed.path.as_posix() in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and not (target.beads_enabled or target.routing_only):
+            if self._skips_beads_client_config(
+                managed.path.as_posix(), workspace, target
+            ):
                 continue
             entries = tuple(
                 entry
@@ -1735,7 +1732,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            issue_prefix, database = self.ledger_identity_for_target(workspace, target)
+            identity = self.ledger_identity_for_target(workspace, target)
+            if identity is None:
+                return r[p.Model].fail(
+                    f"workspace {workspace.name!r} declares no Beads ledger, so "
+                    f"{destination} has no identity to render"
+                )
+            issue_prefix, database = identity
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=issue_prefix,
@@ -1750,7 +1753,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            _issue_prefix, database = self.ledger_identity_for_target(workspace, target)
+            identity = self.ledger_identity_for_target(workspace, target)
+            if identity is None:
+                return r[p.Model].fail(
+                    f"workspace {workspace.name!r} declares no Beads ledger, so "
+                    f"{destination} has no identity to render"
+                )
+            database = identity[1]
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(database=database, server=server)
             )
@@ -2576,18 +2585,42 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             editable_repositories=editable_repositories,
         )
 
+    def _skips_beads_client_config(
+        self,
+        destination: str,
+        workspace: m.Infra.WorkspaceSpec,
+        target: m.Infra.RepositoryConformTarget,
+    ) -> bool:
+        """Report whether one destination is a Beads artifact this target skips.
+
+        Two independent reasons (mro-z89e, mro-cdzxf): the target participates
+        in no ledger at all, or its governing workspace declares none.
+        """
+        if destination not in {
+            c.Infra.BEADS_CONFIG_RELPATH,
+            c.Infra.BEADS_METADATA_RELPATH,
+        }:
+            return False
+        if not (target.beads_enabled or target.routing_only):
+            return True
+        return self.ledger_identity_for_target(workspace, target) is None
+
     @staticmethod
     def ledger_identity_for_target(
         workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
-    ) -> tuple[str, str]:
-        """Return ``(issue_prefix, database)`` for one conform target.
+    ) -> tuple[str, str] | None:
+        """Return ``(issue_prefix, database)``, or ``None`` when there is none.
 
         ``WORKSPACE_MEMBER`` targets route to the parent workspace's shared
         ledger, because docs/GOVERNANCE.md mandates "Use the workspace-root
         Beads database for the root and every member project" (mro-dz4ib). A
-        member owns no ledger, so the governing manifest MUST declare both
-        ``ledger_prefix`` and ``ledger_id``; a member that named itself would
-        bind bd to a ledger that does not exist (mro-9wv8).
+        member owns no ledger, so it never substitutes its own name: naming
+        itself would bind bd to a ledger that does not exist (mro-9wv8).
+
+        A workspace that declares no ledger at all tracks no issues, which is a
+        valid shape -- its members resolve ``None`` and receive no Beads client
+        config. A HALF-declared workspace is the real defect and fails closed
+        naming the missing key (mro-cdzxf).
 
         Root and standalone manifests own their identity, so an undeclared
         ``ledger_prefix`` legitimately resolves to the canonical project name
@@ -2600,20 +2633,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
             and not target.attached_standalone
         ):
-            # Fail closed (mro-cdzxf): a member consumes the governing ledger
-            # and can never substitute its own name for an undeclared one.
+            # A workspace that declares nothing simply tracks no issues.
+            if workspace.ledger_prefix is None and workspace.ledger_id is None:
+                return None
+            # Fail closed (mro-cdzxf): a half-declared ledger cannot be guessed.
             if not workspace.ledger_prefix:
                 msg = (
-                    f"workspace {workspace.name!r} governs member "
-                    f"{target.canonical_project_name!r} but declares no "
-                    f"ledger_prefix; declare it in config/workspace.yaml"
+                    f"workspace {workspace.name!r} declares ledger_id but no "
+                    f"ledger_prefix, so member "
+                    f"{target.canonical_project_name!r} cannot resolve an issue "
+                    f"namespace; declare ledger_prefix in config/workspace.yaml"
                 )
                 raise ValueError(msg)
             if not workspace.ledger_id:
                 msg = (
-                    f"workspace {workspace.name!r} governs member "
-                    f"{target.canonical_project_name!r} but declares no "
-                    f"ledger_id; declare it in config/workspace.yaml"
+                    f"workspace {workspace.name!r} declares ledger_prefix but "
+                    f"no ledger_id, so member "
+                    f"{target.canonical_project_name!r} cannot resolve a "
+                    f"database; declare ledger_id in config/workspace.yaml"
                 )
                 raise ValueError(msg)
             return workspace.ledger_prefix, workspace.ledger_id

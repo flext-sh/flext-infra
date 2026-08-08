@@ -233,29 +233,20 @@ class TestCodegenBeadsLedger:
             ledger_prefix="mro",
             members=(member_target.repository,),
         )
-        root_prefix, root_db = FlextInfraCodegenConform.ledger_identity_for_target(
+        root_identity = FlextInfraCodegenConform.ledger_identity_for_target(
             workspace, root_target
         )
-        member_prefix, member_db = FlextInfraCodegenConform.ledger_identity_for_target(
+        member_identity = FlextInfraCodegenConform.ledger_identity_for_target(
             workspace, member_target
         )
-        tm.that(root_prefix, eq="mro")
-        tm.that(root_db, eq="mro")
-        tm.that(member_prefix, eq="mro")
-        tm.that(member_db, eq="mro")
 
-    def test_conform_requires_explicit_workspace_ledger_identity(
-        self, tmp_path: Path
-    ) -> None:
-        """Fail closed when the governing workspace declares no ledger identity.
+        tm.that(root_identity, eq=("mro", "mro"))
+        tm.that(member_identity, eq=("mro", "mro"))
 
-        mro-cdzxf: ``ledger_identity_for_target`` used to silently fall back to
-        ``canonical_project_name`` for both the issue prefix and the database.
-        That is the exact mro-9wv8 failure mode -- bd binds to a ledger that
-        does not exist and every issue created from a clean clone lands in a
-        throwaway store. A missing declaration is a configuration defect and
-        must surface as one, never as a guess.
-        """
+    def _member_pair(
+        self, tmp_path: Path, *, ledger_id: str | None, ledger_prefix: str | None
+    ) -> tuple[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]:
+        """Build a governing workspace and one member target that routes to it."""
         branch_policy = config.Infra.codegen.branch_policy
         member_target = m.Infra.RepositoryConformTarget(
             repository=test_u.Tests.repository_ref(
@@ -276,9 +267,45 @@ class TestCodegenBeadsLedger:
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="flext",
             repository=test_u.Tests.repository_ref("flext"),
-            ledger_id=None,
-            ledger_prefix=None,
+            ledger_id=ledger_id,
+            ledger_prefix=ledger_prefix,
             members=(member_target.repository,),
+        )
+        return workspace, member_target
+
+    def test_member_of_beadless_workspace_resolves_no_ledger(
+        self, tmp_path: Path
+    ) -> None:
+        """Report "no ledger" for a member whose workspace declares none.
+
+        A workspace that tracks no issues carries no ledger declaration, and
+        that is a valid shape -- the member simply gets no Beads client config.
+        Only a HALF-declared workspace is a defect (see the next test).
+        """
+        workspace, member_target = self._member_pair(
+            tmp_path, ledger_id=None, ledger_prefix=None
+        )
+
+        identity = FlextInfraCodegenConform.ledger_identity_for_target(
+            workspace, member_target
+        )
+
+        tm.that(identity, eq=None)
+
+    def test_conform_requires_explicit_workspace_ledger_identity(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail closed when the governing workspace half-declares its ledger.
+
+        mro-cdzxf: ``ledger_identity_for_target`` used to silently fall back to
+        ``canonical_project_name`` for both the issue prefix and the database.
+        That is the exact mro-9wv8 failure mode -- bd binds to a ledger that
+        does not exist and every issue created from a clean clone lands in a
+        throwaway store. A half-declared ledger is a configuration defect and
+        must surface as one, never as a guess.
+        """
+        workspace, member_target = self._member_pair(
+            tmp_path, ledger_id="mro", ledger_prefix=None
         )
 
         with pytest.raises(ValueError, match="ledger_prefix"):
