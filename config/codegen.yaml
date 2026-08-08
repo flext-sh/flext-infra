@@ -134,6 +134,20 @@ Infra:
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
+    # Managed destinations a project owns as hand-written source. A managed
+    # destination outside a project's profile is pruned as an orphan
+    # projection, which is right while the path only ever holds a projection.
+    # Where the repository genuinely owns the file, the prune deletes real
+    # source on every `make gen`. The claim is ignored the moment the file
+    # carries the generated header, so retired projections are still pruned.
+    managed_destination_ownership:
+      # cosmos-charts publishes its own Helm charts to GHCR from conventional
+      # commits via helm-semver. That release workflow is not the workspace-root
+      # release projection and must survive gen.
+      - project: cosmos-charts
+        destinations:
+          - .github/workflows/release.yml
+
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as

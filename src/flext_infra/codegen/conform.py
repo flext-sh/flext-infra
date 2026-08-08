@@ -529,6 +529,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
+        owned_destinations = frozenset(
+            destination
+            for claim in codegen.managed_destination_ownership
+            if claim.project == root.name
+            for destination in claim.destinations
+        )
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)
@@ -571,6 +577,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                                 orphan_read.error
                                 or f"orphan workflow read failed: {path}"
                             )
+                        # A project may own hand-written source at a managed
+                        # destination its profile does not inherit. Keep it, but
+                        # only while it is not itself a generated projection, so
+                        # a retired projection is still pruned.
+                        if (
+                            relative.as_posix() in owned_destinations
+                            and c.Infra.TEMPLATE_GENERATED_MARKER
+                            not in orphan_read.value
+                        ):
+                            continue
                         completed.append(
                             m.Infra.CodegenFilePlan(
                                 path=path,
@@ -1268,6 +1284,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
         planned: list[m.Infra.CodegenFilePlan] = []
+        owned_destinations = frozenset(
+            destination
+            for claim in codegen.managed_destination_ownership
+            if claim.project == repository.name
+            for destination in claim.destinations
+        )
         for managed in codegen.managed_files:
             if not target.ci_enabled and managed.path.parts[:2] == (
                 ".github",
@@ -1331,6 +1353,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                             orphan_read.error or f"orphan workflow read failed: {path}"
                         )
+                    # A project may own hand-written source at a managed
+                    # destination it does not inherit by profile. Pruning it
+                    # would delete real source on every gen. The claim is
+                    # ignored once the file carries the generated marker, so a
+                    # retired projection is still pruned and a stale claim can
+                    # never resurrect one.
+                    if (
+                        entry.destination in owned_destinations
+                        and c.Infra.TEMPLATE_GENERATED_MARKER not in orphan_read.value
+                    ):
+                        continue
                     planned.append(
                         m.Infra.CodegenFilePlan(
                             path=path,

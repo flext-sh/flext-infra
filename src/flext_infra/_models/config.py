@@ -434,6 +434,39 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Excluded transitive dependency names"),
         ]
 
+    class ManagedDestinationOwnershipSpec(_ConfigContract):
+        """Project-routed ownership claim over a managed codegen destination.
+
+        Why: a managed destination excluded from a project's profile is pruned
+        as an orphan projection. That is correct while the path is only ever a
+        projection, but a repository may legitimately own a hand-written file
+        at the same path (for example a chart library whose
+        ``.github/workflows/release.yml`` drives its own OCI release, not the
+        workspace-root release projection). Without a declared owner the prune
+        deletes real source on every ``make gen``.
+
+        Declaring ownership here keeps the prune fully enabled everywhere else:
+        it is scoped to one project and one destination, and it never suppresses
+        the prune of an actual generated projection — a file still carrying the
+        generated marker is pruned even when claimed, so a retired projection
+        can never be resurrected by a stale claim.
+        """
+
+        project: Annotated[
+            t.NonEmptyStr,
+            m.Field(exclude=True, description="Owning project distribution route"),
+        ]
+        destinations: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Managed destinations this project owns as hand-written "
+                    "source; codegen never prunes them for profile exclusion"
+                ),
+            ),
+        ]
+
     class ProfileSpec(_ConfigContract):
         """Execution semantics for one generated Make profile."""
 
@@ -2182,6 +2215,15 @@ class FlextInfraConfigModels:
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
+        ] = ()
+        managed_destination_ownership: Annotated[
+            tuple[FlextInfraConfigModels.ManagedDestinationOwnershipSpec, ...],
+            m.Field(
+                description=(
+                    "Managed destinations a project owns as hand-written "
+                    "source; excluded from the profile-orphan prune"
+                )
+            ),
         ] = ()
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
