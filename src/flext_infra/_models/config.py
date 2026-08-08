@@ -655,103 +655,35 @@ class FlextInfraConfigModels:
         )
 
     class MakeSerializationSpec(_ConfigContract):
-        """Portable per-checkout serialization for state-sensitive Make verbs."""
+        """Public Make verb surface routed through the flext-infra dispatcher.
 
-        lock_path: Annotated[
-            Path, m.Field(description="Repository-relative native process-lock path")
-        ]
-        single_flight_lock_path: Annotated[
-            Path,
-            m.Field(
-                description=(
-                    "Repository-relative lock around one complete Make operation"
-                )
-            ),
-        ]
+        Locks and the snapshot fixed-point were exterminated: both assumed a
+        single actor per checkout, which is false under GitOps/DevOps flows.
+        """
+
         mutation_verbs: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
-                    "Mutating public verbs serialized once under the checkout lock; "
-                    "validation is owned by later workflow steps"
+                    "Mutating public verbs; validation is owned by later workflow steps"
                 )
-            ),
-        ]
-        snapshot_excludes: Annotated[
-            tuple[Path, ...],
-            m.Field(
-                description=(
-                    "Repository-relative lock and report artifacts omitted "
-                    "from gate-integrity fingerprints"
-                )
-            ),
-        ]
-        timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                description="Maximum seconds to wait for the checkout validation lock",
-            ),
-        ]
-        wait_heartbeat_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                description=(
-                    "Seconds between lock-wait progress heartbeats while a "
-                    "serialized Make verb waits for the checkout lock"
-                ),
             ),
         ]
         verbs: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
-                min_length=1, description="Public Make verbs serialized per checkout"
+                min_length=1,
+                description="Public Make verbs routed through the dispatcher",
             ),
         ]
 
-        @m.field_validator("lock_path", "single_flight_lock_path")
-        @classmethod
-        def _validate_lock_path(cls, value: Path) -> Path:
-            """Keep every validation lock within its owning checkout."""
-            if value.is_absolute() or not value.parts or ".." in value.parts:
-                msg = "make serialization lock paths must be repository-relative"
-                raise ValueError(msg)
-            return value
-
-        @m.field_validator("snapshot_excludes")
-        @classmethod
-        def _validate_snapshot_excludes(
-            cls, values: tuple[Path, ...]
-        ) -> tuple[Path, ...]:
-            """Keep explicit snapshot exclusions within their owning checkout."""
-            for value in values:
-                if value.is_absolute() or not value.parts or ".." in value.parts:
-                    msg = (
-                        "make serialization snapshot_excludes must be "
-                        "repository-relative"
-                    )
-                    raise ValueError(msg)
-            return values
-
         @u.model_validator(mode="after")
-        def _validate_lock_excluded_from_snapshot(self) -> Self:
-            """Require the native lock artifact to remain outside fingerprints."""
-            lock_paths = (self.single_flight_lock_path, self.lock_path)
-            if len(set(lock_paths)) != len(lock_paths):
-                msg = "make serialization lock paths must be distinct"
-                raise ValueError(msg)
-            missing_excludes = set(lock_paths) - set(self.snapshot_excludes)
-            if missing_excludes:
-                msg = (
-                    "make serialization lock paths must be snapshot-excluded: "
-                    f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
-                )
-                raise ValueError(msg)
+        def _validate_mutation_verbs(self) -> Self:
+            """Keep the mutating set a subset of the dispatched surface."""
             invalid = set(self.mutation_verbs) - set(self.verbs)
             if invalid:
                 msg = (
-                    "make serialization mutation verbs are not serialized: "
+                    "make serialization mutation verbs are not dispatched: "
                     f"{', '.join(sorted(invalid))}"
                 )
                 raise ValueError(msg)

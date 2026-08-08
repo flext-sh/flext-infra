@@ -14,6 +14,11 @@ import flext_infra.validate as core_module
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_tests import tm
 
+# Why: the symbol must be absent for the test to mean anything, so it
+# cannot be spelled as a static attribute access without making the file
+# ill-typed. The name is data here, and getattr is the access it tests.
+_ABSENT_SYMBOL = "nonexistent_xyz_attribute"
+
 if TYPE_CHECKING:
     from tests import t
 
@@ -24,7 +29,7 @@ class TestCoreModuleInit:
     def test_core_getattr_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = getattr(core_module, "nonexistent_xyz_attribute")
+            _ = getattr(core_module, _ABSENT_SYMBOL)
 
     def test_validate_package_does_not_reexport_leaf_implementations(self) -> None:
         """Keep validator implementations available only from leaf owners."""

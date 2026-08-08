@@ -387,10 +387,7 @@ class TestsEnforcementFixerOrchestrator:
     @pytest.mark.slow
     @pytest.mark.timeout(120)
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A real CLI dry-run leaves its owned committed repository unchanged."""
         project_dir = tmp_path / "demo-project"
@@ -451,7 +448,6 @@ class TestsEnforcementFixerOrchestrator:
             return stdout
 
         pre_status = git_status()
-        monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV, raising=False)
         with tm.scope(env={"GIT_CONFIG_GLOBAL": os.devnull}):
             exit_code = infra_main([
                 "check",

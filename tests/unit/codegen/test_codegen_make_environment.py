@@ -253,7 +253,7 @@ class TestsCodegenMakeEnvironment:
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
 
-    def test_serialized_runner_preserves_provisioned_external_tools(
+    def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
     ) -> None:
         """Keep managed tools reachable while removing the hostile active venv."""
@@ -286,9 +286,11 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
+        # `gen` routes through PROJECT_FLEXT_INFRA, the managed interpreter the
+        # fixture stubs, so the recipe actually observes the sanitized PATH.
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test"],
+                [c.Infra.MAKE, "--no-print-directory", "gen"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
@@ -341,16 +343,14 @@ class TestsCodegenMakeEnvironment:
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
 
-        # The public ``deps`` verb holds the serialization lock through the
-        # flext-infra serializer (stubbed here); the private target is the
-        # dispatcher entry point, exercised directly to keep the fixture
-        # focused on the uv command surface.
+        # The public ``deps`` verb dispatches straight into its builtin, so the
+        # fixture drives the public surface a caller actually uses.
         process = tm.ok(
             u.Cli.run_raw(
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "_serialized_deps",
+                    "deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli",
                     "APPLY=Y",
@@ -383,15 +383,14 @@ class TestsCodegenMakeEnvironment:
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
 
-        # Same serialized-entry bypass as the selection test above: the public
-        # verb delegates to the stubbed serializer, so the rejection must be
+        # Same public-verb entry as the selection test above: the rejection must be
         # exercised through the private dispatcher target.
         process = tm.ok(
             u.Cli.run_raw(
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "_serialized_deps",
+                    "deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli --all",
                     "APPLY=Y",

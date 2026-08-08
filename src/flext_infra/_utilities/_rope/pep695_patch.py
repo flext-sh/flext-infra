@@ -39,6 +39,10 @@ if TYPE_CHECKING:
     from flext_infra.protocols import p
 
 
+# Rope 1.14 exposes its walker handler slots under these private names and
+# offers no public registration API; they are the library interface here.
+
+
 class FlextInfraUtilitiesRopePep695Patch:
     """Idempotent monkey-patch applying PEP 695 support to rope's AST walker.
 
@@ -53,11 +57,16 @@ class FlextInfraUtilitiesRopePep695Patch:
         """Install PEP 695 handlers on rope's ``_PatchingASTWalker`` once."""
         if cls._applied:
             return
-        walker = FlextInfraUtilitiesRopeRuntime.patched_ast_walker()
-        original_function_def: Callable[..., None] = getattr(
-            walker, "_handle_function_def_node"
-        )
-        original_class_def: Callable[..., None] = getattr(walker, "_ClassDef")
+        # Vendor boundary: rope exposes NO public API to register a walker
+        # handler, so these private slots are the library's real interface.
+        # The access is written literally, NOT routed through getattr with a
+        # name constant: hiding it from the analyzer would be a disguised
+        # suppression. It is reported honestly and carries a single
+        # operator-authorized exception for private-member-access, scoped to
+        # this directory (operator ruling 2026-08-08).
+        walker = FlextInfraUtilitiesRopeRuntime.pep695_ast_walker()
+        original_function_def: Callable[..., None] = walker._handle_function_def_node
+        original_class_def: Callable[..., None] = walker._ClassDef
 
         def _type_params_children(
             node: p.Infra.PatchingASTWalker.TypeParameterOwner,
@@ -198,16 +207,16 @@ class FlextInfraUtilitiesRopePep695Patch:
             """Match or."""
             self._handle(node, self._child_nodes(node.patterns, "|"))
 
-        setattr(walker, "_handle_function_def_node", _patched_function_def)
-        setattr(walker, "_ClassDef", _patched_class_def)
-        setattr(walker, "_TypeAlias", _type_alias)
-        setattr(walker, "_TypeVar", _type_var)
-        setattr(walker, "_ParamSpec", _param_spec)
-        setattr(walker, "_TypeVarTuple", _type_var_tuple)
-        setattr(walker, "_MatchSequence", _match_sequence)
-        setattr(walker, "_MatchSingleton", _match_singleton)
-        setattr(walker, "_MatchStar", _match_star)
-        setattr(walker, "_MatchOr", _match_or)
+        walker._handle_function_def_node = _patched_function_def
+        walker._ClassDef = _patched_class_def
+        walker._TypeAlias = _type_alias
+        walker._TypeVar = _type_var
+        walker._ParamSpec = _param_spec
+        walker._TypeVarTuple = _type_var_tuple
+        walker._MatchSequence = _match_sequence
+        walker._MatchSingleton = _match_singleton
+        walker._MatchStar = _match_star
+        walker._MatchOr = _match_or
         cls._applied = True
 
 

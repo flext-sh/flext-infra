@@ -119,7 +119,7 @@ endif
 
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
-#        config:make.check_gates_default, config:make.serialization.verbs
+#        config:make.check_gates_default
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
 SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
@@ -132,8 +132,6 @@ SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
 DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
-SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
-SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -435,19 +433,15 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
+.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
-$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+# Every public verb except `setup` (which builds the environment it would
+# otherwise require) dispatches straight into its private builtin. The verbs
+# that used to round-trip through the Python serializer keep the environment
+# prerequisite that round-trip carried.
+$(filter-out setup,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
-{% for verb in make.serialization.verbs %}
-{{ verb }}: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}" --selector-value "$({{ make.selector }})" --apply-token "$({{ make.apply_variable }})"
-
-_serialized_{{ verb }}:
-	$(call _dispatch,{{ verb }})
-
-{% endfor %}
 
 # `all` = clean setup gen fmt fmt fix check test. CI=Y skips pytest inside
 # make test (flext_infra._pytest_entry guards mro-v4p5), so all always calls
@@ -459,8 +453,11 @@ all: _builtin_require_environment
 	@$(SELF_MAKE) fmt APPLY=Y
 	@$(SELF_MAKE) fmt APPLY=Y
 	@$(SELF_MAKE) fix APPLY=Y
-	@$(SELF_MAKE) check
-	@$(SELF_MAKE) test
+	@# check/test are read-only verbs. Clear APPLY and the CI token so an
+	@# inherited APPLY=Y/CI=Y from the caller environment cannot reach them:
+	@# check rejects APPLY, and pytest is forbidden under the CI token.
+	@$(SELF_MAKE) check APPLY=
+	@env -u {{ make.ci.variable }} $(SELF_MAKE) test APPLY=
 
 .PHONY: all
 
@@ -479,6 +476,13 @@ setup:
 		if [ -z "$$role" ]; then \
 			git -C "$(PROJECT_ROOT)" config --local beads.role maintainer; \
 		fi; \
+	fi
+	@# Provision git hooks when the project ships an installer. This was the
+	@# workspace-root custom.mk `hooks` + `post-boot` pair: a public target and a
+	@# lifecycle hook that only ever ran one script setup already owns. CI skips
+	@# it (no local commit hooks are needed there).
+	@if [ "$${CI:-}" != "true" ] && [ -x "$(PROJECT_ROOT)/.github/scripts/install-git-hooks.sh" ]; then \
+		"$(PROJECT_ROOT)/.github/scripts/install-git-hooks.sh"; \
 	fi
 	@for hook in "post-setup"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
@@ -652,8 +656,7 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-# Read-only fixed-point after `make fix APPLY=Y` (serialize-make strips APPLY and
-# re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
+# Read-only dual of `make fix APPLY=Y` — never mutate here.
 _builtin_fix_check: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
@@ -725,8 +728,7 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-# Read-only fixed-point after `make fix APPLY=Y` (serialize-make strips APPLY and
-# re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
+# Read-only dual of `make fix APPLY=Y` — never mutate here.
 _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check $(RUFF_PATHS)
 
@@ -781,13 +783,36 @@ _builtin_release_status: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
+# Release orchestration belongs to the verb that already owns releases. It
+# previously lived in the workspace-root custom.mk as _custom_release_rel,
+# putting the release pipeline outside the Make monopoly and making Release CI
+# depend on a hand-written surface. Knobs come from the caller environment so
+# no new selector variables enter the public surface; PUSH=1 opts into pushing.
+_builtin_release_rel: _builtin_require_environment
+	$(call _require_apply)
+	@push_flag=--no-push; \
+	if [ "$${PUSH:-0}" = "1" ]; then push_flag=--push; fi; \
+	projects_args=""; \
+	if [ -n "$${PROJECTS:-}" ]; then projects_args="--projects $${PROJECTS}"; \
+	elif [ -n "$(PROJECT)" ] && [ "$(PROJECT)" != "." ]; then projects_args="--projects $(PROJECT)"; fi; \
+	$(PROJECT_FLEXT_INFRA) release run \
+		--workspace "$(PROJECT_ROOT)" \
+		--apply \
+		--no-dry-run \
+		--phase "$${RELEASE_PHASE:-all}" \
+		--version "$${VERSION}" \
+		--tag "$${TAG}" \
+		--interactive "$${INTERACTIVE:-0}" \
+		--create-branches "$${CREATE_BRANCHES:-0}" \
+		$$push_flag \
+		$$projects_args
+
 # Every command here writes to the SAME root, derived from the invocation
 # point. `deps modernize`/`extra-paths` used to receive WORKSPACE_ROOT while
 # `conform` received PROJECT_ROOT, so a gen run inside one member rewrote the
 # pyproject of ~30 siblings and left each dirty. Because gen runs inside check
 # and check runs in the pre-commit hook, one commit in any lane dirtied every
-# sibling -- the "workspace changed during serialized Make check" abort. It
-# also kept the fixed point out of reach: each run rewrote the siblings, so
+# sibling. It also kept the fixed point out of reach: each run rewrote the siblings, so
 # the next run found a difference again. At the workspace root PROJECT_ROOT is
 # already the workspace, so fan-out survives exactly where it belongs.
 _builtin_gen_check: _builtin_require_environment
@@ -817,3 +842,18 @@ _builtin_work_land:
 _builtin_work_finish:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
+
+# `mod` was declared in the verb table (and listed in .PHONY) but no builtin
+# handler was ever generated, so the dispatcher resolved a non-existent target
+# and the verb was unreachable. The codemod engine already exists behind
+# `flext-infra refactor mod`; these handlers are the missing dispatch into it.
+# check is the read-only fixed-point (reports pending fixes); apply runs the
+# batch under the ruff/pyrefly rollback circuit.
+_builtin_mod_check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
+
+_builtin_mod_all: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
+
+_builtin_mod_apply: _builtin_mod_all

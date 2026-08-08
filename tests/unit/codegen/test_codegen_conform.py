@@ -615,7 +615,9 @@ class TestCodegenConform:
                 cwd=root,
             )
         )
-        snapshot_excludes = config.Infra.codegen.make.serialization.snapshot_excludes
+        # Report/cache artifacts are regenerated per run and are never part
+        # of the conform fixed point.
+        snapshot_excludes = (Path(".reports"), Path(".pytest_cache"), Path(".coverage"))
         before = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
