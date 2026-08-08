@@ -6,6 +6,7 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_tests import tm
 from tests import u
@@ -247,6 +248,42 @@ class TestsFlextInfraDepsModernizerPyright:
         second_changes = phase.apply(doc, is_root=False, project_dir=project_dir)
 
         tm.that(second_changes, eq=[])
+
+    def test_existing_standalone_uses_complete_declared_roots(
+        self, tmp_path: Path
+    ) -> None:
+        project_dir = tmp_path / "flext-sample"
+        source_dir = project_dir / "src" / "flext_sample"
+        source_dir.mkdir(parents=True)
+        (source_dir / "__init__.py").write_text("", encoding="utf-8")
+        pyproject = project_dir / "pyproject.toml"
+        source = "[project]\nname='flext-sample'\n"
+        pyproject.write_text(source, encoding="utf-8")
+
+        rendered = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=project_dir, skip_check=True, skip_comments=True
+            ).conform_source(
+                source,
+                path=pyproject,
+                declared_python_dirs=("src", "tests"),
+                declared_python_dirs_are_complete=True,
+            )
+        )
+
+        payload = u.Cli.toml_mapping_from_text(rendered)
+        tm.that(payload, none=False)
+        if payload is None:
+            return
+        tool = u.Cli.toml_mapping_child(payload, "tool")
+        tm.that(tool, none=False)
+        if tool is None:
+            return
+        pyright = u.Cli.toml_mapping_child(tool, "pyright")
+        tm.that(pyright, none=False)
+        if pyright is None:
+            return
+        tm.that(u.Cli.json_as_sequence(pyright.get("include")), eq=["src", "tests"])
 
     def test_workspace_root_declared_roots_do_not_override_fleet_discovery(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
