@@ -332,7 +332,7 @@ class TestsCodegenMakeEnvironment:
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
     def test_dependency_upgrade_selects_only_one_distribution(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Refresh one Git dependency without globally upgrading the lock."""
         project_root, _workspace_root = self._render_makefile(
@@ -345,6 +345,8 @@ class TestsCodegenMakeEnvironment:
         test_u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
+        monkeypatch.setenv("PROJECT", "flext-infra")
+        monkeypatch.setenv("PROJECTS", "flext-core flext-cli")
 
         # The public ``deps`` verb dispatches straight into its builtin, so the
         # fixture drives the public surface a caller actually uses.
