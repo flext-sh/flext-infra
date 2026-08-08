@@ -1126,6 +1126,10 @@ Infra:
           - mypy>=2.3.0
           - pyrefly>=1.1.1
           - pyright>=1.1.411
+          # `gen` installs the git hooks it just wrote, so the tool that owns
+          # them has to exist in the environment running codegen — including CI,
+          # which provisions only the declared groups.
+          - pre-commit>=4.6.1
           - pytest>=9.0.3
           - pytest-testmon>=2.2.0
           - ruff>=0.15.12
