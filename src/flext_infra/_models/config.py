@@ -2135,6 +2135,24 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(unknown))}"
                 )
                 raise ValueError(msg)
+            # ci-matrix is OFF fleet-wide and owned by flext-infra: it runs by
+            # workflow_dispatch only. `ci_matrix_auto_run` keeps its default and
+            # NO project -- internal or external -- may override it. An override
+            # that flips it on binds the matrix to push-on-main across every
+            # generated repository, so it is refused at load time rather than
+            # discovered from a workflow run.
+            auto_run = tuple(
+                item.project
+                for item in self.repository_policy_overlays
+                if item.ci_matrix_auto_run
+            )
+            if auto_run:
+                msg = (
+                    "ci_matrix_auto_run cannot be overridden; ci-matrix is "
+                    "dispatch-only fleet-wide: "
+                    f"{', '.join(sorted(auto_run))}"
+                )
+                raise ValueError(msg)
             return self
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): the artifact list is the SINGLE SSOT for
