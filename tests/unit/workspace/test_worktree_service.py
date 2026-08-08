@@ -255,10 +255,15 @@ class TestsFlextInfraWorktreeService:
             eq=False,
         )
 
-    def test_clean_setup_failure_rolls_back_only_the_new_lane(
+    def test_clean_setup_failure_preserves_the_new_lane_for_resume(
         self, tmp_path: Path
     ) -> None:
-        """A clean failed setup removes its new lane and exact created branch."""
+        """Even a clean failed setup keeps its lane so the next start resumes it.
+
+        Provisioning clones every governed submodule, so discarding a clean but
+        unprovisioned lane threw that away and forced a manual re-clone. The
+        checkout is valid; only its environment is missing.
+        """
         repository = self._repository(tmp_path)
         branch = "feature/clean-setup-failure"
         lane = self._lane(repository, repository, branch)
@@ -277,8 +282,8 @@ class TestsFlextInfraWorktreeService:
         ).execute()
 
         tm.fail(result, has="failed (2)")
-        tm.fail(result, has="clean lane rolled back")
-        tm.that(not lane.exists(), where=bool)
+        tm.fail(result, has=f"lane {branch} preserved at {lane}")
+        tm.that(lane.is_dir(), eq=True)
 
     def test_setup_failure_preserves_new_lane_with_work(self, tmp_path: Path) -> None:
         """A failed setup never destroys work it created before returning."""
@@ -303,8 +308,7 @@ class TestsFlextInfraWorktreeService:
             apply_changes=True,
         ).execute()
 
-        tm.fail(result, has=f"preserving lane {lane}")
-        tm.fail(result, has="setup left worktree changes")
+        tm.fail(result, has=f"lane {branch} preserved at {lane}")
         tm.that(
             (lane / "setup-wip.txt").read_text(encoding="utf-8"), eq="preserve me\n"
         )

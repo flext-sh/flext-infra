@@ -33,6 +33,11 @@ class FlextInfraUtilitiesPyprojectConform:
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
+        # The caller resolves the repository policy overlay: a project
+        # carrying a security floor in override-dependencies pins an absolute
+        # cutoff, because the fleet rolling window would age past that floor
+        # and make resolution unsatisfiable.
+        uv_exclude_newer: str | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -75,7 +80,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
             link_mode=toolchain.uv_link_mode,
-            exclude_newer=toolchain.uv_exclude_newer,
+            exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:

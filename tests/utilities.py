@@ -810,21 +810,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def commit_git_changes(repo_root: Path, message: str) -> None:
             """Commit the current real fixture changes with deterministic identity."""
-            tm.ok(cli_facade.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root))
+            TestsFlextInfraUtilities.Tests.git_bootstrap(repo_root, ("add", "-A"))
             tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "commit", "-m", message], cwd=repo_root
+                u.Infra.git_commit(
+                    m.Infra.GitCommitRequest(repo_root=repo_root, message=message)
                 )
             )
 
         @staticmethod
         def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
             """Return whether a real Git fixture contains the exact ref."""
-            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(
-                cli_facade.capture(
-                    [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
-                ).success
+            report = tm.ok(
+                u.Infra.git_ref_exists(
+                    m.Infra.GitRefRequest(repo_root=repo_root, reference=ref_name)
+                )
             )
+            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(report.value)
             return exists
 
         @staticmethod
@@ -835,38 +836,25 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             remote is re-pointed rather than added: a second ``remote add``
             fails with "remote origin already exists".
             """
+            bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
             bare_remote = remote_root / "origin.git"
-            tm.ok(
-                cli_facade.run_checked([
-                    c.Infra.GIT,
-                    "init",
-                    "--bare",
-                    str(bare_remote),
-                ])
+            bare_remote.mkdir(parents=True, exist_ok=True)
+            bootstrap(bare_remote, ("init", "--bare"))
+            bootstrap(
+                repo_root, ("remote", "set-url", c.Infra.GIT_ORIGIN, str(bare_remote))
             )
             tm.ok(
-                cli_facade.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "remote",
-                        "set-url",
-                        c.Infra.GIT_ORIGIN,
-                        str(bare_remote),
-                    ],
-                    cwd=repo_root,
+                u.Infra.git_push_upstream(
+                    m.Infra.GitPushRequest(
+                        repo_root=repo_root,
+                        remote=c.Infra.GIT_ORIGIN,
+                        branch=c.Infra.GIT_MAIN,
+                    )
                 )
             )
-            tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
-                    cwd=repo_root,
-                )
-            )
-            tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/main"],
-                    cwd=bare_remote,
-                )
+            bootstrap(
+                bare_remote,
+                ("symbolic-ref", c.Infra.GIT_HEAD, f"refs/heads/{c.Infra.GIT_MAIN}"),
             )
             return bare_remote
 
@@ -896,22 +884,58 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def configure_git_identity(repository_root: Path) -> None:
             """Set deterministic repository-local identity for real Git fixtures."""
-            tm.ok(
-                cli_facade.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "config",
-                        "--local",
-                        "user.email",
-                        "tests@flext.local",
-                    ],
-                    cwd=repository_root,
-                )
+            bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
+            bootstrap(
+                repository_root,
+                ("config", "--local", "user.email", "tests@flext.local"),
             )
+            bootstrap(
+                repository_root, ("config", "--local", "user.name", "Flext Tests")
+            )
+
+        @staticmethod
+        def isolated_git_keys() -> t.StrSequence:
+            """Return the repository-local Git variables a fixture must not inherit.
+
+            Git exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE while running
+            hooks. A fixture that inherits them silently operates on the calling
+            repository instead of its own tmp_path, so repository construction
+            must never inherit them. The set is whatever the installed Git
+            declares, never a hardcoded list.
+            """
+            declared = cli_facade.capture([
+                c.Infra.GIT,
+                "rev-parse",
+                "--local-env-vars",
+            ])
+            tm.ok(declared)
+            return tuple(declared.value.split())
+
+        @staticmethod
+        def git_bootstrap(
+            repo_root: Path,
+            command: t.StrSequence,
+            *,
+            overrides: t.StrMapping | None = None,
+        ) -> None:
+            """Run one repository-construction command isolated from the caller.
+
+            Only repository creation belongs here: once a worktree exists, every
+            behavioral operation is expressed through the typed ``u.Infra.git_*``
+            facade, which binds the repository explicitly.
+
+            Isolation is expressed with ``remove_env_keys`` because ``env`` is an
+            overlay that can only add or replace keys, never remove them
+            (mro-wt8qp). ``overrides`` carries topology the fixture itself
+            requires, such as permitting the file transport for a local bare
+            origin.
+            """
             tm.ok(
                 cli_facade.run_checked(
-                    [c.Infra.GIT, "config", "--local", "user.name", "Flext Tests"],
-                    cwd=repository_root,
+                    [c.Infra.GIT, *command],
+                    cwd=repo_root,
+                    env=overrides,
+                    remove_env_keys=TestsFlextInfraUtilities.Tests.isolated_git_keys(),
                 )
             )
 
@@ -928,22 +952,24 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             provider-governed pass their declared provider URL instead.
             """
             baseline_branch = config.Infra.codegen.providers[0].branch
-            commands: t.SequenceOf[t.StrSequence] = (
-                (c.Infra.GIT, "init", "-b", "main"),
-                (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
-                (c.Infra.GIT, "config", "user.name", "Flext Tests"),
-                (c.Infra.GIT, "add", "-A"),
-                (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
-                (c.Infra.GIT, "remote", "add", "origin", origin_url or str(repo_root)),
+            bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
+            bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
+            bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))
+            bootstrap(repo_root, ("config", "user.name", "Flext Tests"))
+            bootstrap(
+                repo_root,
+                ("remote", "add", c.Infra.GIT_ORIGIN, origin_url or str(repo_root)),
+            )
+            bootstrap(repo_root, ("add", "-A"))
+            bootstrap(repo_root, ("commit", "--allow-empty", "-m", "init"))
+            bootstrap(
+                repo_root,
                 (
-                    c.Infra.GIT,
                     "update-ref",
-                    f"refs/remotes/origin/{baseline_branch}",
-                    "HEAD",
+                    f"refs/remotes/{c.Infra.GIT_ORIGIN}/{baseline_branch}",
+                    c.Infra.GIT_HEAD,
                 ),
             )
-            for command in commands:
-                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
 
         @staticmethod
         def to_pascal(snake: str) -> str:

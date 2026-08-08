@@ -40,7 +40,8 @@ class TestCodegenManifestlessExisting:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manifestless tree"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifestless tree"],
+                cwd=root,
             )
         )
 
@@ -54,12 +55,6 @@ class TestCodegenManifestlessExisting:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(FlextInfraCodegenConform.execute_request(request))
-        tm.ok(u.Cli.run_checked(["git", "add", "pyproject.toml"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Conform fixture metadata"], cwd=root
-            )
-        )
         artifact_request = request.model_copy(
             update={"what": c.Infra.CodegenConformSurface.ALL}
         )

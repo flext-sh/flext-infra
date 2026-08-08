@@ -240,12 +240,15 @@ class FlextInfraWorktreeService(s[str]):
             )
         setup = self.setup_lane(primary_root, lane)
         if setup.failure:
-            return self._rollback_new_lane(
-                primary_root,
-                lane,
-                branch,
-                created_branch_oid,
-                setup.error or "make setup execution failed",
+            # A provisioning failure leaves a VALID checkout that is merely
+            # unprovisioned, unlike the invalid-metadata case above. Removing it
+            # discarded a completed clone of every governed submodule and forced
+            # a manual re-clone, so the lane is kept and the next start resumes
+            # from it once the cause is resolved.
+            return r.fail(
+                f"{setup.error or 'make setup execution failed'}; "
+                f"lane {branch} preserved at {lane} - resolve the cause and "
+                f"re-run work start to resume provisioning"
             )
         return r.ok(str(lane))
 

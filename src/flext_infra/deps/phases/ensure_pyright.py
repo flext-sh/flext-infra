@@ -369,17 +369,36 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.StrSequence:
         """Return the auto-discovered top-level Python roots that pyright should analyze."""
         rules = self._tool_config.tools.pyright.path_rules
+        # u.Infra.analyzer_python_roots is the single owner shared with conform
+        # and the extra-paths sync, so a root one surface writes is never erased
+        # by the next. It skips directories owning a pyproject.toml, so the
+        # workspace members the child loop below contributes with their own
+        # prefix are never duplicated as roots of this project.
         if not is_root:
-            return [
-                env_dir
-                for env_dir in rules.env_dirs
-                if project_dir is None or (project_dir / env_dir).is_dir()
-            ]
+            if project_dir is None:
+                return list(rules.env_dirs)
+            return list(
+                u.Infra.analyzer_python_roots(
+                    project_dir,
+                    tuple(
+                        env_dir
+                        for env_dir in rules.env_dirs
+                        if (project_dir / env_dir).is_dir()
+                    ),
+                )
+            )
         if workspace_root is None:
             return ()
-        includes: t.MutableSequenceOf[str] = [
-            env_dir for env_dir in rules.env_dirs if (workspace_root / env_dir).is_dir()
-        ]
+        includes: t.MutableSequenceOf[str] = list(
+            u.Infra.analyzer_python_roots(
+                workspace_root,
+                tuple(
+                    env_dir
+                    for env_dir in rules.env_dirs
+                    if (workspace_root / env_dir).is_dir()
+                ),
+            )
+        )
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
             return includes

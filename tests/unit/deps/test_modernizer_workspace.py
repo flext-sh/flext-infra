@@ -153,19 +153,16 @@ class TestsFlextInfraDepsModernizerWorkspace:
         superproject.mkdir()
         (superproject / "README.md").write_text("workspace\n", encoding="utf-8")
         u.Tests.initialize_git_repo(superproject)
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    str(source_repository),
-                    "member",
-                ],
-                cwd=superproject,
-            )
+        u.Tests.git_bootstrap(
+            superproject,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                str(source_repository),
+                "member",
+            ),
         )
         member = superproject / "member"
         attached = tm.ok(

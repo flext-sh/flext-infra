@@ -78,15 +78,9 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-from flext_infra._utilities.serialization_lock import (
-    FlextInfraUtilitiesSerializationLock,
-)
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
-)
-from flext_infra._utilities.worktree_transaction import (
-    FlextInfraUtilitiesWorktreeTransaction,
 )
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
@@ -158,12 +152,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesSerializationLock,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
-        # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing
-        # u.Infra Git owner and expose one central execution/report surface.
-        FlextInfraUtilitiesWorktreeTransaction,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

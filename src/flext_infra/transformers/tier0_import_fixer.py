@@ -88,8 +88,8 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
                 if module != pkg_name:
                     continue
                 names_str = match.group(2)
-                for name_part in names_str.split(","):
-                    name_part = name_part.strip()
+                for raw_name_part in names_str.split(","):
+                    name_part = raw_name_part.strip()
                     if not name_part:
                         continue
                     bound = (

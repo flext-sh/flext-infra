@@ -15,6 +15,7 @@ from flext_infra._utilities._git.repo import git_refresh_binary
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -42,6 +43,8 @@ _SENSITIVE_QUERY_KEYS: frozenset[str] = frozenset({
 })
 _REDACTED_PLACEHOLDER: str = "REDACTED"
 _GITLINK_MODE: str = "160000"
+# `ls-files --stage` emits "<mode> <oid> <stage>\t<path>"; mode and oid suffice.
+_STAGED_GITLINK_FIELDS: int = 2
 
 
 def _redact_query_component(component: str) -> str:
@@ -703,7 +706,8 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         resolved = request.repo_root.expanduser().resolve()
         try:
-            repo = Repo(resolved)
+            # Why (flext-infra-c3h): same nested-path contract as git_open_repo.
+            repo = Repo(resolved, search_parent_directories=True)
         except (InvalidGitRepositoryError, NoSuchPathError):
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
@@ -744,13 +748,23 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             pass
 
         is_worktree = git_dir != common_dir
+        # Gitlink modes live in the index, never in `status --porcelain` (which
+        # emits XY status codes and paths, never file modes). Reading them from
+        # the porcelain text made has_submodules unconditionally False, so a
+        # real submodule superproject was never recognized as one.
+        try:
+            staged_entries = repo.git.ls_files("--stage")
+        except GitCommandError:
+            staged_entries = ""
         has_submodules = any(
-            line.startswith(f"{_GITLINK_MODE} ") for line in porcelain.splitlines()
+            line.startswith(f"{_GITLINK_MODE} ") for line in staged_entries.splitlines()
         )
-        git_entry = working_tree / ".git"
-        is_submodule = (
-            superproject is not None and git_entry.exists() and not git_entry.is_dir()
-        )
+        # Why (mro-2cafk / ai-hub-n1nh.5): git rev-parse --show-superproject-
+        # working-tree already means "this working tree is a submodule".
+        # Requiring .git to be a gitfile excluded absorbed/converted submodules
+        # whose .git is a real directory (cosmos-charts under cosmos-main), so
+        # is_submodule stayed False and ai-hub demoted them to unmanaged.
+        is_submodule = superproject is not None
 
         return m.Infra.GitIdentityReport(
             repo_root=working_tree,
@@ -767,6 +781,137 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             is_submodule=is_submodule,
             has_submodules=has_submodules,
         )
+
+    @classmethod
+    def git_attach_branch_at_head(
+        cls, request: m.Infra.GitBranchRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Point ``branch`` at HEAD and attach HEAD to it without moving the tree.
+
+        A detached checkout carries real work, so it is attached by rewriting the
+        ref and the symbolic HEAD rather than by ``checkout``, which would touch
+        the working tree. Upstream tracking is best effort: a branch that has no
+        counterpart on origin yet is still a valid attachment.
+        """
+        try:
+            repo = cls._repo(request.repo_root)
+            repo.git.branch("--quiet", "-f", request.branch, "HEAD")
+            repo.git.symbolic_ref("HEAD", f"refs/heads/{request.branch}")
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to attach {request.branch} at HEAD: {exc}"
+            )
+        try:
+            repo.git.branch(
+                "--quiet",
+                "--set-upstream-to",
+                f"origin/{request.branch}",
+                request.branch,
+            )
+        except GitCommandError:
+            # No counterpart on origin yet; the attachment itself still stands.
+            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_staged_gitlink_oid(
+        cls, request: m.Infra.GitRefRequest
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Return the gitlink OID the index records for one submodule path."""
+        try:
+            repo = cls._repo(request.repo_root)
+            staged = repo.git.ls_files("--stage", "--", request.reference)
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitOidReport].fail(
+                f"failed to read the staged gitlink for {request.reference}: {exc}"
+            )
+        for line in staged.splitlines():
+            fields = line.split()
+            if len(fields) >= _STAGED_GITLINK_FIELDS and fields[0] == _GITLINK_MODE:
+                return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=fields[1]))
+        return r[m.Infra.GitOidReport].fail(
+            f"governed gitlink is absent from the index: {request.reference}"
+        )
+
+    @classmethod
+    def git_submodule_init(
+        cls, request: m.Infra.GitRefRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Initialize one declared submodule at its recorded gitlink."""
+        try:
+            repo = cls._repo(request.repo_root)
+            repo.git.submodule("update", "--init", "--", request.reference)
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"could not initialize the governed gitlink {request.reference}: {exc}"
+            )
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_submodule_config_value(
+        cls, request: m.Infra.GitSubmoduleConfigRequest
+    ) -> p.Result[m.Infra.GitTextReport]:
+        """Read one ``.gitmodules`` value, returning empty text when unset."""
+        try:
+            repo = cls._repo(request.repo_root)
+            value = repo.git.config(
+                "-f",
+                c.Infra.GITMODULES,
+                "--get",
+                "--default",
+                "",
+                f"{request.section}.{request.key}",
+            )
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to read {request.section}.{request.key}: {exc}"
+            )
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=value.strip()))
+
+    @classmethod
+    def git_submodule_sections(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[t.StrMapping]:
+        """Map every declared submodule path to its ``.gitmodules`` section.
+
+        A duplicated path is a declaration defect rather than a state defect, so
+        it fails here instead of silently resolving to the last writer.
+        """
+        gitmodules = request.repo_root / c.Infra.GITMODULES
+        if not gitmodules.is_file():
+            return r[t.StrMapping].ok({})
+        try:
+            repo = cls._repo(request.repo_root)
+            listed = repo.git.config(
+                "-f",
+                c.Infra.GITMODULES,
+                "--name-only",
+                "--get-regexp",
+                r"^submodule\..*\.path$",
+            )
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[t.StrMapping].fail(f"failed to read submodule declarations: {exc}")
+        sections: dict[str, str] = {}
+        for key in listed.split():
+            section = key.removesuffix(".path")
+            value = cls.git_submodule_config_value(
+                m.Infra.GitSubmoduleConfigRequest(
+                    repo_root=request.repo_root, section=section, key="path"
+                )
+            )
+            if value.failure:
+                return r[t.StrMapping].fail(
+                    value.error or f"failed to read {section}.path"
+                )
+            declared = value.value.text
+            if not declared:
+                continue
+            if declared in sections:
+                return r[t.StrMapping].fail(
+                    f"governed gitlink path is duplicated: {declared}"
+                )
+            sections[declared] = section
+        return r[t.StrMapping].ok(sections)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticMixin"]

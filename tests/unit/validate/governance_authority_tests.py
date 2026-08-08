@@ -4,11 +4,21 @@ from __future__ import annotations
 
 import json
 
+import flext_infra
+from flext_infra import u
+from flext_tests import tm
 
-from tests import u
-
-ROOT = u.Tests.repository_root()
-WORKSPACE = u.Tests.workspace_governance_root()
+ROOT = Path(flext_infra.__file__).resolve().parents[2]
+COMMON_DIR = Path(
+    tm.ok(
+        u.Cli.capture(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT
+        )
+    )
+)
+WORKSPACE_ROOT = next(
+    parent.parent for parent in COMMON_DIR.parents if parent.name == ".git"
+)
 
 
 def test_prompt_skills_resolve_to_existing_paths() -> None:
@@ -28,8 +38,8 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
 
 
 def test_governance_authority_sequence_matches_agents() -> None:
-    agents = (WORKSPACE / "AGENTS.md").read_text(encoding="utf-8")
-    governance = (WORKSPACE / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
+    agents = (WORKSPACE_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    governance = (WORKSPACE_ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
     assert "USER REQUEST > BEADS" in agents
     assert "AIHUB-INVIOLABLE-LAW-PRELUDE" in agents
     assert "quality-gates skill" not in governance
@@ -38,12 +48,12 @@ def test_governance_authority_sequence_matches_agents() -> None:
 
 def test_docs_validation_required_skills_exist_with_adr() -> None:
     config = json.loads(
-        (WORKSPACE / "docs" / "architecture" / "architecture_config.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            WORKSPACE_ROOT / "docs" / "architecture" / "architecture_config.json"
+        ).read_text(encoding="utf-8")
     )
     required = config["docs_validation"]["required_skills"]
-    skills_root = WORKSPACE / ".agents" / "skills"
+    skills_root = WORKSPACE_ROOT / ".agents" / "skills"
     for name in required:
         skill = skills_root / name / "SKILL.md"
         assert skill.is_file(), name
@@ -52,12 +62,12 @@ def test_docs_validation_required_skills_exist_with_adr() -> None:
 
 def test_july_handoff_plans_are_marked_historical() -> None:
     plans = (
-        WORKSPACE
+        WORKSPACE_ROOT
         / "docs"
         / "superpowers"
         / "plans"
         / "2026-07-29-flext-beads-governance-reorganization-handoff.md",
-        WORKSPACE
+        WORKSPACE_ROOT
         / "docs"
         / "superpowers"
         / "plans"

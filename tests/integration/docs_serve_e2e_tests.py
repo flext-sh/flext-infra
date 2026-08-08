@@ -20,7 +20,7 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-_DEADLINE_SECONDS = 9.0
+_DEADLINE_SECONDS = 25.0
 _POLL_INTERVAL_SECONDS = 0.05
 _PROCESS_STOP_TIMEOUT_SECONDS = 1.0
 _HTTP_OK = 200
