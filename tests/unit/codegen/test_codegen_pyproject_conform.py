@@ -220,6 +220,10 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
         tm.that(
+            "pre-commit" in u.Infra.declared_dependency_names_from_payload(document),
+            eq=True,
+        )
+        tm.that(
             document["project"]["dependencies"][0],
             eq=(
                 f"{workspace.members[0].distribution} @ "
