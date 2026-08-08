@@ -39,10 +39,6 @@ if TYPE_CHECKING:
     from flext_infra.protocols import p
 
 
-# Rope 1.14 exposes its walker handler slots under these private names and
-# offers no public registration API; they are the library interface here.
-
-
 class FlextInfraUtilitiesRopePep695Patch:
     """Idempotent monkey-patch applying PEP 695 support to rope's AST walker.
 
@@ -59,11 +55,12 @@ class FlextInfraUtilitiesRopePep695Patch:
             return
         # Vendor boundary: rope exposes NO public API to register a walker
         # handler, so these private slots are the library's real interface.
-        # The access is written literally, NOT routed through getattr with a
+        # The access is written LITERALLY, never routed through getattr with a
         # name constant: hiding it from the analyzer would be a disguised
-        # suppression. It is reported honestly and carries a single
-        # operator-authorized exception for private-member-access, scoped to
-        # this directory (operator ruling 2026-08-08).
+        # suppression. pep695_ast_walker narrows the walker to the handler
+        # contract and raises when rope changes its internals, so the typing is
+        # resolved and only the ruff rule remains exempted for this directory
+        # (operator authorization 2026-08-08).
         walker = FlextInfraUtilitiesRopeRuntime.pep695_ast_walker()
         original_function_def: Callable[..., None] = walker._handle_function_def_node
         original_class_def: Callable[..., None] = walker._ClassDef

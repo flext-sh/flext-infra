@@ -288,9 +288,12 @@ class TestsCodegenMakeEnvironment:
 
         # `gen` routes through PROJECT_FLEXT_INFRA, the managed interpreter the
         # fixture stubs, so the recipe actually observes the sanitized PATH.
+        # The invoking environment exports WHAT (the outer `make test WHAT=...`),
+        # and a step must state its own selector instead of inheriting one it
+        # does not support, so `gen` is invoked with its own WHAT.
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "gen", "APPLY=Y"],
+                [c.Infra.MAKE, "--no-print-directory", "gen", "WHAT=all", "APPLY=Y"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),

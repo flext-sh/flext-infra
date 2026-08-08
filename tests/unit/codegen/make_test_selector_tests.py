@@ -142,6 +142,7 @@ class TestsMakeTestSelector:
                     "-f",
                     str(selected_makefile),
                     "gen",
+                    "WHAT=all",
                     "APPLY=Y",
                     f"UV={uv}",
                 ],

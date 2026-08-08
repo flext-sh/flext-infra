@@ -1032,6 +1032,20 @@ class FlextInfraConfigModels:
 
         @m.computed_field()
         @property
+        def default_whats(self) -> Mapping[str, str]:
+            """Canonical public verb-to-default-selector map consumed by renderers.
+
+            A workflow step that declares no selector of its own must still state
+            one explicitly, because a git hook inherits the caller's environment
+            and would otherwise validate a caller-narrowed subset. The selector it
+            states is the verb's own declared default -- read from this map rather
+            than written as a literal, so a verb that renames its default selector
+            moves every generated hook with it.
+            """
+            return {verb.name: verb.default_what for verb in self.verbs}
+
+        @m.computed_field()
+        @property
         def check_gates_allowed(self) -> tuple[str, ...]:
             """Canonical generated Make check-gate vocabulary."""
             return FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
