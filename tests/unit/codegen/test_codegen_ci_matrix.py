@@ -132,7 +132,11 @@ class TestCodegenCiMatrix:
                     else ""
                 )
                 + f"make {step.verb}"
-                + (f" WHAT={step.what}" if step.what else "")
+                + (
+                    f" WHAT={step.what}"
+                    if step.what
+                    else (" WHAT=all" if not step.apply else "")
+                )
                 + (
                     f" {config.Infra.codegen.make.apply_variable}="
                     f"{config.Infra.codegen.make.apply_value}"

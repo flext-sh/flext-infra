@@ -142,6 +142,7 @@ class TestsMakeTestSelector:
                     "-f",
                     str(selected_makefile),
                     "gen",
+                    "APPLY=Y",
                     f"UV={uv}",
                 ],
                 cwd=caller_root,

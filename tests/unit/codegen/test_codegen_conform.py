@@ -851,9 +851,6 @@ class TestCodegenConform:
                 apply_changes=True,
             ).execute()
         )
-        # The private target is the dispatcher entry point invoked while the
-        # public verb holds the serialization lock. Exercising it directly
-        # keeps this test focused on hook ordering and independent of bootstrap.
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
@@ -863,13 +860,15 @@ class TestCodegenConform:
                 "post-check:\n\t@echo HOOK_POST\n",
             )
         )
-        outcome = u.Cli.run_raw([
-            "make",
-            "-C",
-            str(root),
-            "_serialized_check",
-            "WHAT=probe",
-        ])
+        # `check` requires a provisioned interpreter, which `make setup` would
+        # build. Stub it so this test stays about hook ordering.
+        test_u.Tests.write_executable(
+            root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
+        )
+        # `check` is the public verb the dispatcher routes; the private
+        # `_serialized_check` indirection died with the Make locks, so the
+        # hook ordering contract is now observed on the verb itself.
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr

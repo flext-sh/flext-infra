@@ -290,7 +290,7 @@ class TestsCodegenMakeEnvironment:
         # fixture stubs, so the recipe actually observes the sanitized PATH.
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "gen"],
+                [c.Infra.MAKE, "--no-print-directory", "gen", "APPLY=Y"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),

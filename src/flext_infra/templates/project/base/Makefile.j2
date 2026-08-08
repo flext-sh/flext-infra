@@ -435,11 +435,18 @@ endef
 
 .PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
-# Every public verb except `setup` (which builds the environment it would
-# otherwise require) dispatches straight into its private builtin. The verbs
+# Every public verb dispatches straight into its private builtin. The verbs
 # that used to round-trip through the Python serializer keep the environment
 # prerequisite that round-trip carried.
-$(filter-out setup,$(PUBLIC_VERBS)): _builtin_require_environment
+#
+# `setup` builds the environment it would otherwise require. `help` documents
+# how to build it, so demanding an interpreter to print that documentation
+# makes an unprovisioned checkout undiscoverable. Both still dispatch — they
+# only drop the prerequisite.
+$(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
+	$(call _dispatch,$@)
+
+help:
 	$(call _dispatch,$@)
 
 
