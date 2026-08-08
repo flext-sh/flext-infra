@@ -313,6 +313,33 @@ class TestCodegenBeadsLedger:
                 workspace, member_target
             )
 
+    @pytest.mark.parametrize(
+        ("ledger_id", "ledger_prefix", "missing_key"),
+        [("mro", None, "ledger_prefix"), (None, "mro", "ledger_id")],
+    )
+    def test_plan_returns_failure_for_partial_workspace_ledger_identity(
+        self,
+        tmp_path: Path,
+        ledger_id: str | None,
+        ledger_prefix: str | None,
+        missing_key: str,
+    ) -> None:
+        workspace, _member_target = self._member_pair(
+            tmp_path, ledger_id=ledger_id, ledger_prefix=ledger_prefix
+        )
+        request = m.Infra.CodegenConformRequest(
+            root=tmp_path,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+
+        planned = FlextInfraCodegenConform(
+            workspace_root=tmp_path, initial_workspace=workspace
+        ).plan(request)
+
+        tm.fail(planned, has=missing_key)
+
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
         """Plan one repository in check mode."""

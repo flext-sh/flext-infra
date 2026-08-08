@@ -239,6 +239,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_result.error or "workspace manifest load failed"
                 )
             workspace = workspace_result.value
+        if workspace.members and (
+            (workspace.ledger_id is None) != (workspace.ledger_prefix is None)
+        ):
+            missing_key = (
+                "ledger_id" if workspace.ledger_id is None else "ledger_prefix"
+            )
+            return r[m.Infra.CodegenPlan].fail(
+                f"workspace {workspace.name!r} declares an incomplete Beads ledger; "
+                f"declare {missing_key} in config/workspace.yaml"
+            )
         current_repository = workspace.repository
         if root != workspace_root:
             try:
