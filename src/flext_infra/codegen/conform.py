@@ -2583,28 +2583,40 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Return ``(issue_prefix, database)`` for one conform target.
 
         ``WORKSPACE_MEMBER`` targets route to the parent workspace's shared
-        ledger when ``ledger_prefix`` / ``ledger_id`` are declared, because
-        docs/GOVERNANCE.md mandates "Use the workspace-root Beads database for
-        the root and every member project" (mro-dz4ib). When the workspace
-        declares no ``ledger_prefix`` / ``ledger_id``, members fall back to
-        their ``canonical_project_name`` (mro-z75t). Root and standalone
-        manifests honor their own overrides (mro-6fca). Marker-attached
-        standalones are classified as ``WORKSPACE_MEMBER`` for routing, but
-        they own their workspace.yaml at the governing root, so ledger_* still
-        apply.
+        ledger, because docs/GOVERNANCE.md mandates "Use the workspace-root
+        Beads database for the root and every member project" (mro-dz4ib). A
+        member owns no ledger, so the governing manifest MUST declare both
+        ``ledger_prefix`` and ``ledger_id``; a member that named itself would
+        bind bd to a ledger that does not exist (mro-9wv8).
+
+        Root and standalone manifests own their identity, so an undeclared
+        ``ledger_prefix`` legitimately resolves to the canonical project name
+        and ``ledger_id`` defaults to that prefix (ai-hub-qwoc, mro-6fca).
+        Marker-attached standalones are classified as ``WORKSPACE_MEMBER`` for
+        routing but own their workspace.yaml at the governing root, so they
+        follow the owner path below.
         """
-        # Members share the parent workspace's ledger when it is declared
-        # explicitly (mro-dz4ib / GOVERNANCE.md Execution Contract). A member
-        # without an explicit ledger_prefix/ledger_id on the parent falls back
-        # to its canonical project name (mro-z75t). Attached standalones own
-        # their workspace.yaml, so they use the generic path below.
         if (
             target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
             and not target.attached_standalone
         ):
-            issue_prefix = workspace.ledger_prefix or target.canonical_project_name
-            database = workspace.ledger_id or target.canonical_project_name
-            return issue_prefix, database
+            # Fail closed (mro-cdzxf): a member consumes the governing ledger
+            # and can never substitute its own name for an undeclared one.
+            if not workspace.ledger_prefix:
+                msg = (
+                    f"workspace {workspace.name!r} governs member "
+                    f"{target.canonical_project_name!r} but declares no "
+                    f"ledger_prefix; declare it in config/workspace.yaml"
+                )
+                raise ValueError(msg)
+            if not workspace.ledger_id:
+                msg = (
+                    f"workspace {workspace.name!r} governs member "
+                    f"{target.canonical_project_name!r} but declares no "
+                    f"ledger_id; declare it in config/workspace.yaml"
+                )
+                raise ValueError(msg)
+            return workspace.ledger_prefix, workspace.ledger_id
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
 

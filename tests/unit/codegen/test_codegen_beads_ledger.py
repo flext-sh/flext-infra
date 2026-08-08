@@ -181,16 +181,20 @@ class TestCodegenBeadsLedger:
         tm.that(plan.ledger_id, eq="mro")
         tm.that(plan.canonical_prefix, eq="mro")
 
-    def test_workspace_ledger_prefix_does_not_rewrite_member_identity(
+    def test_workspace_ledger_identity_flows_to_member_targets(
         self, tmp_path: Path
     ) -> None:
-        """Root ledger_prefix/id stay off WORKSPACE_MEMBER targets.
+        """Route WORKSPACE_MEMBER targets onto the declared workspace ledger.
 
-        mro-z75t: applying workspace.ledger_prefix to WORKSPACE_MEMBER targets
-        rewrote every submodule ``.beads/config.yaml`` onto the shared ``mro``
-        tracker during ``make gen WHAT=all``. Members keep
-        ``canonical_project_name``; standalone/root manifests still honor
-        their own ledger_* overrides (mro-6fca).
+        mro-dz4ib / GOVERNANCE.md Execution Contract: "Use the workspace-root
+        Beads database for the root and every member project". A member is a
+        client of the governing ledger, so both its issue prefix and its
+        database come from the workspace manifest, never from its own name.
+
+        Supersedes the earlier mro-z75t reading ("members keep
+        canonical_project_name"): that title survived on this test long after
+        the body below was corrected to assert inheritance, which made the
+        docstring contradict its own assertions (mro-cdzxf).
         """
         branch_policy = config.Infra.codegen.branch_policy
         root_target = m.Infra.RepositoryConformTarget(
@@ -239,6 +243,48 @@ class TestCodegenBeadsLedger:
         tm.that(root_db, eq="mro")
         tm.that(member_prefix, eq="mro")
         tm.that(member_db, eq="mro")
+
+    def test_conform_requires_explicit_workspace_ledger_identity(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail closed when the governing workspace declares no ledger identity.
+
+        mro-cdzxf: ``ledger_identity_for_target`` used to silently fall back to
+        ``canonical_project_name`` for both the issue prefix and the database.
+        That is the exact mro-9wv8 failure mode -- bd binds to a ledger that
+        does not exist and every issue created from a clean clone lands in a
+        throwaway store. A missing declaration is a configuration defect and
+        must surface as one, never as a guess.
+        """
+        branch_policy = config.Infra.codegen.branch_policy
+        member_target = m.Infra.RepositoryConformTarget(
+            repository=test_u.Tests.repository_ref(
+                "flext-dbt-ldif", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            ),
+            root=tmp_path / "flext-dbt-ldif",
+            make_profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            beads_enabled=False,
+            routing_only=True,
+            canonical_project_name="flext-dbt-ldif",
+            baseline_branch="0.12.0-dev",
+            ci_enabled=True,
+            external_dependency_paths=(),
+            technical_branch_patterns=branch_policy.technical_branch_patterns,
+            governed_branch_patterns=branch_policy.governed_branch_patterns,
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="flext",
+            repository=test_u.Tests.repository_ref("flext"),
+            ledger_id=None,
+            ledger_prefix=None,
+            members=(member_target.repository,),
+        )
+
+        with pytest.raises(ValueError, match="ledger_prefix"):
+            FlextInfraCodegenConform.ledger_identity_for_target(
+                workspace, member_target
+            )
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
