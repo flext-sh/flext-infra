@@ -132,7 +132,11 @@ class TestCodegenCiMatrix:
                     else ""
                 )
                 + f"make {step.verb}"
-                + (f" WHAT={step.what}" if step.what else "")
+                + (
+                    f" WHAT={step.what}"
+                    if step.what
+                    else (" WHAT=all" if not step.apply else "")
+                )
                 + (
                     f" {config.Infra.codegen.make.apply_variable}="
                     f"{config.Infra.codegen.make.apply_value}"
@@ -146,6 +150,7 @@ class TestCodegenCiMatrix:
             tm.that(hooks, has=commands)
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
+        tm.that(hooks, has="'unset WHAT; ")
 
     def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
         """Generated CI groups competing runs by workflow and ref."""
