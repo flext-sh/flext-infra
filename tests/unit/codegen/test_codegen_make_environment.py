@@ -10,7 +10,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import c as test_c, u as test_u
 
 
 class TestsCodegenMakeEnvironment:
@@ -242,7 +242,7 @@ class TestsCodegenMakeEnvironment:
             [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
         )
 
         process = tm.ok(result)
@@ -296,7 +296,7 @@ class TestsCodegenMakeEnvironment:
                 [c.Infra.MAKE, "--no-print-directory", "gen", "WHAT=all", "APPLY=Y"],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
@@ -360,7 +360,7 @@ class TestsCodegenMakeEnvironment:
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
@@ -400,7 +400,7 @@ class TestsCodegenMakeEnvironment:
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
@@ -422,7 +422,7 @@ class TestsCodegenMakeEnvironment:
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
