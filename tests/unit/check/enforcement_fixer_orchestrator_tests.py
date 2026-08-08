@@ -462,7 +462,11 @@ class TestsEnforcementFixerOrchestrator:
         output = capsys.readouterr()
         post_status = git_status()
         tm.that(exit_code, eq=0, msg=output.err or output.out)
-        tm.that(output.out, has="fixed: 1")
-        tm.that(output.out, has="breakage=no")
-        tm.that(output.out, has="applied=no")
+        # A dry run previews; it never fixes. `fixed` and `previewed` are
+        # distinct counters, and --dry-run feeds the latter.
+        tm.that(output.out, has="fixed: 0")
+        tm.that(output.out, has="previewed: 1")
+        tm.that(output.out, has="failed: 0")
+        # The read-only guarantee is the worktree itself: a dry run forces
+        # check_after=False, so no gate can rewrite a file behind the preview.
         tm.that(pre_status, eq=post_status)
