@@ -1,0 +1,8 @@
+junit=/home/marlonsc/.worktrees/flext-infra-ab7706078863/bugfix/mod-verified-autofix-counts/.reports/tests/20260808T231923.079647Z-766640/junit.xml
+coverage=not-generated
+failed=2
+errors=0
+warnings=0
+skipped=0
+exit=0
+state=COMPLETED

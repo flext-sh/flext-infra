@@ -1,0 +1,10 @@
+1.481000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCliRoute::test_refactor_mod_check_route
+1.255000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_detection_only_rule_is_not_pending_or_applied
+0.928000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_apply_reports_exact_verified_fix_count
+0.922000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_apply_fails_when_fixable_finding_remains
+0.917000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_apply_rolls_back_when_ruff_regresses
+0.445000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision::test_ruff_increase_breaks_circuit
+0.139000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_check_mode_reports_pending_without_mutation
+0.022000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision::test_decreased_counts_keep_changes
+0.020000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision::test_equal_counts_keep_changes
+0.017000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision::test_pyrefly_increase_breaks_circuit

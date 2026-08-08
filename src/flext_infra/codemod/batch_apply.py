@@ -123,6 +123,18 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return self._fail_with_rollback(
                 root, checkpoint_sha, applied.error or "ast-grep fix pass failed"
             )
+        remaining = FlextInfraModGateEngine.scan(root, rules, fix=False)
+        if remaining.failure:
+            return self._fail_with_rollback(
+                root, checkpoint_sha, remaining.error or "ast-grep verification scan failed"
+            )
+        if remaining.value:
+            return self._fail_with_rollback(
+                root,
+                checkpoint_sha,
+                f"{remaining.value} fix-capable finding(s) remained after apply",
+            )
+        verified_applied = pending.value - remaining.value
         final = FlextInfraModGateEngine.measure(root)
         if final.failure:
             return r[t.Cli.ResultValue].fail(final.error or "final measure failed")
@@ -134,7 +146,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             return self._fail_with_rollback(root, checkpoint_sha, regression)
         cli.display_text(
-            f"mod: applied {pending.value} ast-grep fix(es); "
+            f"mod: applied {verified_applied} ast-grep fix(es); "
             f"ruff {baseline.value.ruff_errors}→{final.value.ruff_errors}, "
             f"pyrefly {baseline.value.pyrefly_errors}→{final.value.pyrefly_errors}; "
             f"checkpoint {checkpoint_sha}"

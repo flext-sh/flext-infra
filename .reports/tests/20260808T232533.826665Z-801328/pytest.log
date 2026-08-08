@@ -1,0 +1,44 @@
+========================================== test session starts ==========================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/.worktrees/flext-infra-ab7706078863/bugfix/mod-verified-autofix-counts/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=760288273
+testmon: changed files: tests/unit/codemod/test_mod_circuit.py, unchanged files: 100, environment: default
+hypothesis profile 'default'
+rootdir: /home/marlonsc/.worktrees/flext-infra-ab7706078863/bugfix/mod-verified-autofix-counts
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, deadfixtures-3.1.0, env-1.7.0, pytest_codeblocks-0.18.0, markdown-docs-0.9.2, benchmark-5.2.3, clarity-1.0.1, cov-7.1.0, mock-3.15.1, timeout-2.4.0, randomly-4.1.0, sugar-1.1.1, xdist-3.8.0, testmon-2.2.0, reportlog-1.0.0, hypothesis-6.161.8, Faker-40.36.0
+timeout: 30.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 10 items / 4 deselected / 6 selected
+
+tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_check_mode_reports_pending_without_mutation PASSED [ 16%]
+tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_reports_exact_verified_fix_count PASSED [ 33%]
+tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_detection_only_rule_is_not_pending_or_applied PASSED [ 50%]
+tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_rolls_back_when_ruff_regresses PASSED [ 66%]
+tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_fails_when_fixable_finding_remains PASSED [ 83%]
+tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCliRoute::test_refactor_mod_check_route PASSED [100%][2m2026-08-08T23:26:30.036106Z[0m [[31m[1merror    [0m] [1m1 pending ast-grep fix(es) across 13 discovered rule file(s)[0m [36merror_code[0m=[35m[0m [36merror_data[0m=[35m[0m
+
+
+- generated xml file: /home/marlonsc/.worktrees/flext-infra-ab7706078863/bugfix/mod-verified-autofix-counts/.reports/tests/20260808T232533.826665Z-801328/junit.xml -
+========================================= slowest 25 durations ==========================================
+5.31s call     tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_detection_only_rule_is_not_pending_or_applied
+3.97s call     tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_rolls_back_when_ruff_regresses
+3.57s call     tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_reports_exact_verified_fix_count
+3.38s call     tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_fails_when_fixable_finding_remains
+2.35s call     tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCliRoute::test_refactor_mod_check_route
+1.43s call     tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_check_mode_reports_pending_without_mutation
+0.28s setup    tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_check_mode_reports_pending_without_mutation
+0.01s setup    tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCliRoute::test_refactor_mod_check_route
+0.01s setup    tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_rolls_back_when_ruff_regresses
+0.01s teardown tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_detection_only_rule_is_not_pending_or_applied
+0.01s setup    tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_reports_exact_verified_fix_count
+0.01s teardown tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_rolls_back_when_ruff_regresses
+0.01s setup    tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_detection_only_rule_is_not_pending_or_applied
+0.01s teardown tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_check_mode_reports_pending_without_mutation
+0.00s teardown tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCliRoute::test_refactor_mod_check_route
+0.00s teardown tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_reports_exact_verified_fix_count
+0.00s setup    tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_fails_when_fixable_finding_remains
+0.00s teardown tests/unit/codemod/test_mod_circuit.py::TestsFlextInfraModCircuitApply::test_apply_fails_when_fixable_finding_remains
+=================================== 6 passed, 4 deselected in 29.24s ====================================

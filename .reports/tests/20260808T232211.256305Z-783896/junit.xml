@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="10" time="17.348" timestamp="2026-08-08T20:22:41.713248-03:00" hostname="tungs"><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision" name="test_ruff_increase_breaks_circuit" time="0.445" /><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision" name="test_pyrefly_increase_breaks_circuit" time="0.017" /><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision" name="test_decreased_counts_keep_changes" time="0.022" /><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitDecision" name="test_equal_counts_keep_changes" time="0.020" /><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCliRoute" name="test_refactor_mod_check_route" time="1.481" /><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply" name="test_check_mode_reports_pending_without_mutation" time="0.139"><failure message="AssertionError: Expected 'YAML document is empty (no content)' to contain 'pending ast-grep fix'">tests/unit/codemod/test_mod_circuit.py:176: in test_check_mode_reports_pending_without_mutation
+    tm.that(result.error or "", has="pending ast-grep fix")
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:715: in that
+    cls._validate_common(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:323: in _validate_common
+    FlextTestsMatchersContainmentMixin.check_has_lacks(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_containment.py:69: in check_has_lacks
+    FlextTestsMatchersAssertionsMixin.raise_match_assertion(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_assertions.py:26: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected 'YAML document is empty (no content)' to contain 'pending ast-grep fix'</failure></testcase><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply" name="test_apply_fails_when_fixable_finding_remains" time="0.922"><failure message="AssertionError: Expected 'YAML document is empty (no content)' to contain 'remained after apply'">tests/unit/codemod/test_mod_circuit.py:152: in test_apply_fails_when_fixable_finding_remains
+    tm.that(result.error or "", has="remained after apply")
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:715: in that
+    cls._validate_common(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:323: in _validate_common
+    FlextTestsMatchersContainmentMixin.check_has_lacks(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_containment.py:69: in check_has_lacks
+    FlextTestsMatchersAssertionsMixin.raise_match_assertion(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_assertions.py:26: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected 'YAML document is empty (no content)' to contain 'remained after apply'</failure></testcase><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply" name="test_apply_rolls_back_when_ruff_regresses" time="0.917"><failure message="AssertionError: Expected 'YAML document is empty (no content)' to contain 'rolled back'">tests/unit/codemod/test_mod_circuit.py:165: in test_apply_rolls_back_when_ruff_regresses
+    tm.that(result.error or "", has="rolled back")
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:715: in that
+    cls._validate_common(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:323: in _validate_common
+    FlextTestsMatchersContainmentMixin.check_has_lacks(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_containment.py:69: in check_has_lacks
+    FlextTestsMatchersAssertionsMixin.raise_match_assertion(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_assertions.py:26: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected 'YAML document is empty (no content)' to contain 'rolled back'</failure></testcase><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply" name="test_detection_only_rule_is_not_pending_or_applied" time="1.255"><failure message="AssertionError: Assertion failed: False did not satisfy constraints">tests/unit/codemod/test_mod_circuit.py:138: in test_detection_only_rule_is_not_pending_or_applied
+    tm.that(check_result.success, eq=True)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:707: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: False did not satisfy constraints</failure></testcase><testcase classname="tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply" name="test_apply_reports_exact_verified_fix_count" time="0.928"><failure message="AssertionError: Assertion failed: False did not satisfy constraints">tests/unit/codemod/test_mod_circuit.py:122: in test_apply_reports_exact_verified_fix_count
+    tm.that(result.success, eq=True)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:707: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: False did not satisfy constraints</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,60 @@
+Sat Aug  8 20:24:46 2026    /home/marlonsc/.worktrees/flext-infra-ab7706078863/bugfix/mod-verified-autofix-counts/.reports/tests/20260808T232401.528743Z-793075/pytest.pstats
+
+         18731343 function calls (17505962 primitive calls) in 44.258 seconds
+
+   Ordered by: cumulative time
+   List reduced from 16169 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   3619/1    0.374    0.000   43.532   43.532 {built-in method builtins.exec}
+      2/1    0.000    0.000   43.532   43.532 <string>:1(<module>)
+      2/1    0.000    0.000   43.404   43.404 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000   43.404   43.404 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000   43.404   43.404 __main__.py:1(<module>)
+      2/1    0.000    0.000   43.404   43.404 __init__.py:246(_console_main)
+      461    0.026    0.000   40.118    0.087 __init__.py:1(<module>)
+        1    0.000    0.000   36.992   36.992 __init__.py:204(_main)
+    600/2    0.004    0.000   36.992   18.496 _hooks.py:497(__call__)
+   883/70    0.002    0.000   36.914    0.527 _manager.py:111(_hookexec)
+   883/70    0.026    0.000   36.914    0.527 _callers.py:76(_multicall)
+ 3460/160    0.062    0.000   29.286    0.183 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3342/80    0.060    0.000   29.255    0.366 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3240/93    0.038    0.000   29.192    0.314 <frozen importlib._bootstrap>:911(_load_unlocked)
+   283/65    0.158    0.001   27.199    0.418 rewrite.py:148(exec_module)
+ 9220/184    0.264    0.000   25.601    0.139 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+  252/139    0.002    0.000   23.764    0.171 __init__.py:71(import_module)
+  268/139    0.002    0.000   23.757    0.171 <frozen importlib._bootstrap>:1375(_gcd_import)
+  2886/58    0.031    0.000   22.867    0.394 <frozen importlib._bootstrap_external>:1017(exec_module)
+4275/1455    0.014    0.000   22.357    0.015 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+        1    0.000    0.000   20.167   20.167 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000   20.167   20.167 main.py:317(wrap_session)
+205865/135097    0.244    0.000   17.060    0.000 {built-in method builtins.hasattr}
+    77/15    0.001    0.000   16.850    1.123 flextlazy_part_02.py:181(<lambda>)
+    77/15    0.002    0.000   16.849    1.123 flextlazy_part_02.py:70(get)
+    72/11    0.001    0.000   16.848    1.532 flextlazy_part_01.py:135(_load)
+        1    0.000    0.000   16.824   16.824 __init__.py:387(_prepareconfig)
+        8    0.001    0.000   16.773    2.097 pathlib.py:502(import_path)
+        4    0.001    0.000   16.771    4.193 conftest.py:1(<module>)
+        1    0.000    0.000   16.735   16.735 __init__.py:1228(pytest_cmdline_parse)
+        9    0.000    0.000   16.729    1.859 __init__.py:733(_importconftest)
+        1    0.000    0.000   16.729   16.729 __init__.py:1512(parse)
+        5    0.000    0.000   16.728    3.346 __init__.py:684(_loadconftestmodules)
+        1    0.000    0.000   16.725   16.725 __init__.py:1298(pytest_load_initial_conftests)
+        1    0.000    0.000   16.725   16.725 __init__.py:615(_set_initial_conftests)
+  894/202    0.009    0.000   14.387    0.071 {built-in method builtins.__import__}
+      286    0.090    0.000   13.909    0.049 queue.py:177(get)
+    12478   10.765    0.001   10.765    0.001 {built-in method builtins.compile}
+        6    0.001    0.000    9.540    1.590 _config.py:1(<module>)
+        5    0.001    0.000    9.466    1.893 utilities.py:1(<module>)
+        1    0.000    0.000    9.170    9.170 main.py:380(_main)
+8479/6952    0.256    0.000    8.916    0.001 {built-in method builtins.__build_class__}
+        1    0.000    0.000    8.701    8.701 main.py:397(pytest_runtestloop)
+       10    0.000    0.000    8.077    0.808 runner.py:115(pytest_runtest_protocol)
+       10    0.001    0.000    8.067    0.807 runner.py:123(runtestprotocol)
+       30    0.001    0.000    8.067    0.269 runner.py:236(call_and_report)
+     2887    0.103    0.000    7.938    0.003 <frozen importlib._bootstrap_external>:1090(get_code)
+        7    0.002    0.000    7.685    1.098 models.py:1(<module>)
+      887    0.122    0.000    7.578    0.009 _model_construction.py:84(__new__)
+  286/285    0.076    0.000    7.512    0.026 threading.py:327(wait)
+
+

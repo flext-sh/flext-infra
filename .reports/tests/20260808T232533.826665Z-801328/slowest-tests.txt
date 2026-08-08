@@ -1,0 +1,6 @@
+5.326000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_detection_only_rule_is_not_pending_or_applied
+3.988000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_apply_rolls_back_when_ruff_regresses
+3.590000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_apply_reports_exact_verified_fix_count
+3.390000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_apply_fails_when_fixable_finding_remains
+2.365000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCliRoute::test_refactor_mod_check_route
+1.716000s | tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_check_mode_reports_pending_without_mutation

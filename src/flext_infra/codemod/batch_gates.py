@@ -118,19 +118,58 @@ class FlextInfraModGateEngine:
             )
         )
 
+    @staticmethod
+    def _fixable_rule_ids(rule: Path) -> p.Result[frozenset[str]]:
+        fixable_ids: set[str] = set()
+        documents = rule.read_text(encoding="utf-8").split("\n---")
+        for document in documents:
+            if not any(
+                line.strip() and not line.lstrip().startswith(("#", "---"))
+                for line in document.splitlines()
+            ):
+                continue
+            parsed = u.Cli.yaml_parse(document)
+            if parsed.failure:
+                return r[frozenset[str]].fail(
+                    parsed.error or f"invalid ast-grep rule: {rule}"
+                )
+            if "fix" in parsed.value:
+                rule_id = parsed.value.get("id")
+                if isinstance(rule_id, str):
+                    fixable_ids.add(rule_id)
+        return r[frozenset[str]].ok(frozenset(fixable_ids))
+
+    @staticmethod
+    def _count_fixable_findings(stdout: str, fixable_ids: frozenset[str]) -> int:
+        findings = 0
+        for raw_line in stdout.splitlines():
+            parsed = u.Cli.json_parse(raw_line.strip())
+            if parsed.failure or not isinstance(parsed.value, Mapping):
+                continue
+            if parsed.value.get("ruleId") in fixable_ids:
+                findings += 1
+        return findings
+
     @classmethod
     def scan(cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool) -> p.Result[int]:
-        """Scan with each discovered rule; fix mode applies all rewrites."""
-        pending = 0
+        """Count or apply findings from fix-capable rule files only."""
+        findings = 0
         for rule in rules:
+            fixable_ids = cls._fixable_rule_ids(rule)
+            if fixable_ids.failure:
+                return r[int].from_failure(fixable_ids)
+            if not fixable_ids.value:
+                continue
             command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule)]
             command.extend(("--update-all" if fix else "--json=stream", "."))
             run = cls._run_tool(root, tuple(command))
             if run.failure:
                 return r[int].from_failure(run)
             if not fix:
-                pending += cls._count_json_lines(run.value.stdout or "")
-        return r[int].ok(pending)
+                findings += cls._count_fixable_findings(
+                    run.value.stdout or "", fixable_ids.value
+                )
+        return r[int].ok(findings)
 
 
 __all__: list[str] = ["FlextInfraModGateEngine", "FlextInfraModGateSnapshot"]

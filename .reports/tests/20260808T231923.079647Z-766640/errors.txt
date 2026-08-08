@@ -1,0 +1,19 @@
+=== FAILURE: tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_apply_fails_when_fixable_finding_remains ===
+AssertionError: Assertion failed: False did not satisfy constraints
+tests/unit/codemod/test_mod_circuit.py:151: in test_apply_fails_when_fixable_finding_remains
+    tm.that(result.failure, eq=True)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:707: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: False did not satisfy constraints
+
+=== FAILURE: tests.unit.codemod.test_mod_circuit.TestsFlextInfraModCircuitApply::test_detection_only_rule_is_not_pending_or_applied ===
+AssertionError: Assertion failed: False did not satisfy constraints
+tests/unit/codemod/test_mod_circuit.py:138: in test_detection_only_rule_is_not_pending_or_applied
+    tm.that(check_result.success, eq=True)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:707: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: False did not satisfy constraints
