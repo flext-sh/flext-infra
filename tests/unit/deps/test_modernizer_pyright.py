@@ -247,3 +247,59 @@ class TestsFlextInfraDepsModernizerPyright:
         second_changes = phase.apply(doc, is_root=False, project_dir=project_dir)
 
         tm.that(second_changes, eq=[])
+
+    def test_workspace_root_declared_roots_do_not_override_fleet_discovery(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Render the workspace-root fleet surface even when roots are declared.
+
+        A workspace root owns a real tree, so its analyzer surface is decided by
+        that tree's topology. Declared roots are the pre-write scaffold seed and
+        must never narrow a real root back to its own local directories, or the
+        root renders one shape from the fleet fan-out and another from inside
+        itself and no content is a fixed point (mro-dph2).
+        """
+        rules = tool_config_document.tools.pyright.path_rules
+        _ = (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname='workspace'\n\n"
+            "[tool.uv.workspace]\n"
+            "members = ['flext-core']\n",
+            encoding="utf-8",
+        )
+        flext_core = tmp_path / "flext-core"
+        (flext_core / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
+        _ = (flext_core / "pyproject.toml").write_text(
+            "[project]\nname='flext-core'\n", encoding="utf-8"
+        )
+        _ = (flext_core / "src" / "flext_core" / "__init__.py").write_text(
+            "VALUE = 1\n", encoding="utf-8"
+        )
+        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
+        fleet_doc = u.Cli.toml_document()
+        declared_doc = u.Cli.toml_document()
+
+        _ = phase.apply(fleet_doc, is_root=True, workspace_root=tmp_path)
+        _ = phase.apply(
+            declared_doc,
+            is_root=True,
+            workspace_root=tmp_path,
+            declared_python_dirs=(rules.source_dir,),
+        )
+
+        tm.that(u.Cli.toml_dumps(declared_doc), eq=u.Cli.toml_dumps(fleet_doc))
+        declared_tool = u.Cli.toml_unwrap_item(declared_doc["tool"])
+        tm.that(declared_tool, is_=MutableMapping)
+        if not isinstance(declared_tool, MutableMapping):
+            return
+        declared_pyright = u.Cli.toml_unwrap_item(declared_tool["pyright"])
+        tm.that(declared_pyright, is_=MutableMapping)
+        if not isinstance(declared_pyright, MutableMapping):
+            return
+        tm.that(
+            list(
+                u.Tests.toml_strings(
+                    u.Cli.toml_unwrap_item(declared_pyright["include"])
+                )
+            ),
+            has=f"flext-core/{rules.source_dir}",
+        )

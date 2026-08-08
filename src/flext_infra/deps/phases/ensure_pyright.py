@@ -438,7 +438,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         # mro-j47u (codex): pre-write manifests supply the same typed roots that
         # filesystem discovery observes after the atomic scaffold is materialized.
-        expected_includes = declared_python_dirs or self._expected_includes(
+        # mro-dph2: that seed is a PRE-WRITE substitute for a tree that does not
+        # exist yet, so it applies to a member/standalone target only. A workspace
+        # root owns a real tree whose members ARE its analyzer surface; letting the
+        # seed win there renders the local shape from inside the root and the fleet
+        # shape from the fan-out, and no content is a fixed point for both.
+        seeded_python_dirs = () if is_root else declared_python_dirs
+        expected_includes = seeded_python_dirs or self._expected_includes(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
@@ -453,11 +459,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         expected_envs = (
             self._declared_envs(
-                declared_python_dirs=declared_python_dirs,
+                declared_python_dirs=seeded_python_dirs,
                 project_dir=project_dir,
                 rules=stub_rules,
             )
-            if declared_python_dirs
+            if seeded_python_dirs
             else self._expected_envs(
                 is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
             )
