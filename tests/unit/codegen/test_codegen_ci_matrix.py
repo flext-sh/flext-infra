@@ -174,7 +174,14 @@ class TestCodegenCiMatrix:
             )
             tm.that(hooks, has=f"id: {hook_id}")
             tm.that(hooks, has=commands)
-            tm.that(self._hook_entry(hooks, hook_id), has="unset WHAT MAKEFLAGS; ")
+            # Every carrier that can smuggle a caller's selector or write-enable
+            # token into a hook step is cleared before the first verb runs.
+            tm.that(
+                self._hook_entry(hooks, hook_id),
+                has=(
+                    f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
+                ),
+            )
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
