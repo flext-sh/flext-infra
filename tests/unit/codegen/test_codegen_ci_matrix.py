@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, config, t, u
@@ -34,6 +35,30 @@ class TestCodegenCiMatrix:
         result = service.execute()
         tm.ok(result)
         return root
+
+    @staticmethod
+    def _hook_entry(rendered: str, hook_id: str) -> str:
+        """Return the entry command of one rendered hook, isolated from the rest.
+
+        Searching the whole file proves only that SOME hook carries a prefix; a
+        hook that loses it while its sibling keeps it would still pass.
+        """
+        lines = rendered.splitlines()
+        start = next(
+            index
+            for index, line in enumerate(lines)
+            if line.strip() == f"- id: {hook_id}"
+        )
+        following = lines[start + 1 :]
+        end = next(
+            (
+                index
+                for index, line in enumerate(following)
+                if line.strip().startswith("- id: ")
+            ),
+            len(following),
+        )
+        return "\n".join(following[:end])
 
     def test_ci_matrix_profiles_exclude_workspace_member(self) -> None:
         """Matrix + distro Dockerfiles are root/standalone only (not members)."""
@@ -111,6 +136,7 @@ class TestCodegenCiMatrix:
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
         gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
+        default_whats: Mapping[str, str] = config.Infra.codegen.make.default_whats
 
         for hook_id, context in (
             ("flext-pre-commit", "pre_commit"),
@@ -132,7 +158,11 @@ class TestCodegenCiMatrix:
                     else ""
                 )
                 + f"make {step.verb}"
-                + (f" WHAT={step.what}" if step.what else "")
+                + (
+                    f" WHAT={step.what}"
+                    if step.what
+                    else (f" WHAT={default_whats[step.verb]}" if not step.apply else "")
+                )
                 + (
                     f" {config.Infra.codegen.make.apply_variable}="
                     f"{config.Infra.codegen.make.apply_value}"
@@ -144,6 +174,7 @@ class TestCodegenCiMatrix:
             )
             tm.that(hooks, has=f"id: {hook_id}")
             tm.that(hooks, has=commands)
+            tm.that(self._hook_entry(hooks, hook_id), has="unset WHAT MAKEFLAGS; ")
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
