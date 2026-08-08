@@ -175,13 +175,15 @@ class TestCodegenCiMatrix:
             tm.that(hooks, has=f"id: {hook_id}")
             tm.that(hooks, has=commands)
             # Every carrier that can smuggle a caller's selector or write-enable
-            # token into a hook step is cleared before the first verb runs.
-            tm.that(
-                self._hook_entry(hooks, hook_id),
-                has=(
-                    f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
-                ),
+            # token into a hook step is cleared BEFORE the first verb runs.
+            # Position matters, not mere presence: cleanup rendered after the
+            # first `make` would leave that command reading the caller's values.
+            entry = self._hook_entry(hooks, hook_id)
+            cleanup = (
+                f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
             )
+            tm.that(entry, has=cleanup)
+            tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
