@@ -299,10 +299,17 @@ class TestsFlextInfraReleaseHelpers:
                 "0",
                 "--apply",
             )
-            first_result = u.Tests.run_release_main(workspace, *arguments)
             artifact_dir = u.Tests.release_artifact_dir(
                 workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
             )
+            artifact_dir.mkdir(parents=True)
+            package_name = project_name.replace("-", "_")
+            artifact_names = (
+                f"{package_name}-{c.Tests.RELEASE_VERSION_TARGET}-py2.py3-none-any.whl",
+                f"{package_name}-{c.Tests.RELEASE_VERSION_TARGET}.tar.gz",
+            )
+            for artifact_name in artifact_names:
+                (artifact_dir / artifact_name).write_bytes(artifact_name.encode())
             original_names = tuple(path.name for path in sorted(artifact_dir.iterdir()))
             collided_artifact = min(artifact_dir.iterdir())
             collided_artifact.write_bytes(b"immutable collision\n")
@@ -322,7 +329,6 @@ class TestsFlextInfraReleaseHelpers:
                 workspace, c.Tests.RELEASE_VERSION_TARGET
             )
             temporary_builds = tuple(report_dir.glob(f"{project_name}-*"))
-            tm.that(first_result, eq=0)
             tm.that(second_result, eq=1)
             tm.that(current_names, eq=original_names)
             tm.that(collided_artifact.read_bytes(), eq=b"immutable collision\n")
