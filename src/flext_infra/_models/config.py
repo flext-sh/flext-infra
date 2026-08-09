@@ -2030,8 +2030,8 @@ class FlextInfraConfigModels:
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Beads ledger identity declared by the workspace root; None "
-                    "falls back to the standalone canonical project name"
+                    "Beads database identity and default issue prefix declared "
+                    "by the tracker-owning workspace root"
                 )
             ),
         ] = None
@@ -2039,9 +2039,8 @@ class FlextInfraConfigModels:
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Beads issue-prefix override for workspaces whose tracker "
-                    "namespace diverges from the canonical project name; None "
-                    "keeps the canonical project name (see mro-6fca)"
+                    "Optional Beads issue-prefix override; when declared it must "
+                    "be distinct from ledger_id"
                 )
             ),
         ] = None
@@ -2091,6 +2090,12 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_repository_policy_overlays(self) -> Self:
             """Require local overlays to reference one declared repository each."""
+            if self.ledger_prefix is not None and self.ledger_id is None:
+                msg = "ledger_prefix requires ledger_id"
+                raise ValueError(msg)
+            if self.ledger_prefix == self.ledger_id and self.ledger_prefix is not None:
+                msg = "ledger_prefix must be distinct from ledger_id"
+                raise ValueError(msg)
             invalid_external_paths = tuple(
                 path
                 for path in self.external_dependency_paths

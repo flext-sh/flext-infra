@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import u
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra.models import m
 
 _BD_UPDATE_BASE_ARGV_LENGTH = 2
 
@@ -29,25 +27,19 @@ class FlextInfraUtilitiesBeadsLane:
         root reports — never raw argv helpers.
         """
         start = (hint or Path.cwd()).expanduser().resolve()
-        candidates: list[Path] = []
-        request = m.Infra.GitRepoRequest(repo_root=start)
-        superproject = FlextInfraUtilitiesGit.git_superproject_working_tree(request)
-        if superproject.success and superproject.value.text.strip():
-            candidates.append(Path(superproject.value.text.strip()).resolve())
-        top = FlextInfraUtilitiesGit.git_show_toplevel(request)
-        if top.success:
-            candidates.append(top.value.workspace_root)
-        candidates.append(start)
-        candidates.extend(start.parents)
-        seen: set[Path] = set()
-        for candidate in candidates:
-            resolved = candidate.resolve()
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            if (resolved / ".beads" / "config.yaml").is_file():
-                return r.ok(resolved)
-        return r.fail(f"no Beads config (.beads/config.yaml) found from {start}")
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+        governing = FlextInfraWorkspaceDetector.resolve_workspace_root(start)
+        if governing.failure:
+            return r.fail(governing.error or "unable to resolve governing workspace")
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(governing.value)
+        if workspace.failure:
+            return r.fail(workspace.error or "unable to load governing workspace")
+        if workspace.value.ledger_id is None:
+            return r.fail(
+                f"governing workspace declares no Beads ledger: {governing.value}"
+            )
+        return r.ok(governing.value)
 
     @classmethod
     def _bd_command(

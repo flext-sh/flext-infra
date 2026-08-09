@@ -129,9 +129,7 @@ class TestCodegenBeadsLedger:
         repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.canonical_prefix, eq=repository.distribution)
 
-    def test_external_member_lane_plans_only_member_routing_surfaces(
-        self, tmp_path: Path
-    ) -> None:
+    def test_external_member_lane_plans_no_beads_surfaces(self, tmp_path: Path) -> None:
         workspace = tmp_path / "workspace"
         member_source = tmp_path / "member-source"
         provider = config.Infra.codegen.providers[0]
@@ -180,8 +178,7 @@ class TestCodegenBeadsLedger:
             name="flext",
             repository=root_repository,
             members=(member,),
-            ledger_id="mro",
-            ledger_prefix="mro",
+            ledger_id=root_repository.distribution,
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -228,11 +225,11 @@ class TestCodegenBeadsLedger:
         relative_paths = {
             item.path.relative_to(lane).as_posix()
             for item in plan.files
-            if item.path.is_relative_to(lane)
+            if item.path.is_relative_to(lane) and item.rendered
         }
 
-        tm.that(c.Infra.BEADS_CONFIG_RELPATH in relative_paths, eq=True)
-        tm.that(c.Infra.BEADS_METADATA_RELPATH in relative_paths, eq=True)
+        tm.that(c.Infra.BEADS_CONFIG_RELPATH in relative_paths, eq=False)
+        tm.that(c.Infra.BEADS_METADATA_RELPATH in relative_paths, eq=False)
         tm.that(".github/workflows/ci-matrix.yml" in relative_paths, eq=False)
         tm.that(any(path.endswith(".Dockerfile") for path in relative_paths), eq=False)
         tm.that(plan.beads[0].repository_root, eq=lane.resolve())
@@ -250,7 +247,7 @@ class TestCodegenBeadsLedger:
         tm.that(plan.ledger_root, eq=principal.resolve())
         tm.that(plan.routes_to_principal_ledger, eq=False)
 
-    def test_manifest_ledger_id_owns_database_not_issue_prefix(
+    def test_manifest_ledger_id_defaults_database_and_issue_prefix(
         self, tmp_path: Path
     ) -> None:
         """Keep the declared ledger database distinct from the issue namespace.
@@ -266,9 +263,8 @@ class TestCodegenBeadsLedger:
 
         plan = self._beads_plan(principal)
 
-        repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.ledger_id, eq="workspace-ledger")
-        tm.that(plan.canonical_prefix, eq=repository.distribution)
+        tm.that(plan.canonical_prefix, eq="workspace-ledger")
 
     def test_declared_ledger_prefix_overrides_canonical_project_name(
         self, tmp_path: Path
@@ -283,13 +279,15 @@ class TestCodegenBeadsLedger:
         still wins, so the ai-hub-qwoc contract above is unchanged.
         """
         principal = self._standalone_workspace(
-            tmp_path / "principal", ledger_id="mro", ledger_prefix="mro"
+            tmp_path / "principal",
+            ledger_id="workspace-ledger",
+            ledger_prefix="workspace-prefix",
         )
 
         plan = self._beads_plan(principal)
 
-        tm.that(plan.ledger_id, eq="mro")
-        tm.that(plan.canonical_prefix, eq="mro")
+        tm.that(plan.ledger_id, eq="workspace-ledger")
+        tm.that(plan.canonical_prefix, eq="workspace-prefix")
 
     def test_workspace_ledger_identity_flows_to_member_targets(
         self, tmp_path: Path
@@ -339,8 +337,7 @@ class TestCodegenBeadsLedger:
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="flext",
             repository=root_target.repository,
-            ledger_id="mro",
-            ledger_prefix="mro",
+            ledger_id=root_target.repository.distribution,
             members=(member_target.repository,),
         )
         root_identity = FlextInfraCodegenConform.ledger_identity_for_target(
@@ -350,8 +347,8 @@ class TestCodegenBeadsLedger:
             workspace, member_target
         )
 
-        tm.that(root_identity, eq=("mro", "mro"))
-        tm.that(member_identity, eq=("mro", "mro"))
+        tm.that(root_identity, eq=(workspace.ledger_id, workspace.ledger_id))
+        tm.that(member_identity, eq=(workspace.ledger_id, workspace.ledger_id))
 
     def _member_pair(
         self, tmp_path: Path, *, ledger_id: str | None, ledger_prefix: str | None
@@ -365,7 +362,7 @@ class TestCodegenBeadsLedger:
             root=tmp_path / "flext-dbt-ldif",
             make_profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
             beads_enabled=False,
-            routing_only=True,
+            routing_only=False,
             canonical_project_name="flext-dbt-ldif",
             baseline_branch="0.12.0-dev",
             ci_enabled=True,
@@ -402,9 +399,7 @@ class TestCodegenBeadsLedger:
 
         tm.that(identity, eq=None)
 
-    def test_conform_requires_explicit_workspace_ledger_identity(
-        self, tmp_path: Path
-    ) -> None:
+    def test_ledger_id_alone_is_valid_workspace_identity(self, tmp_path: Path) -> None:
         """Fail closed when the governing workspace half-declares its ledger.
 
         mro-cdzxf: ``ledger_identity_for_target`` used to silently fall back to
@@ -418,37 +413,34 @@ class TestCodegenBeadsLedger:
             tmp_path, ledger_id="mro", ledger_prefix=None
         )
 
-        with pytest.raises(ValueError, match="ledger_prefix"):
-            FlextInfraCodegenConform.ledger_identity_for_target(
-                workspace, member_target
+        identity = FlextInfraCodegenConform.ledger_identity_for_target(
+            workspace, member_target
+        )
+
+        tm.that(identity, eq=(workspace.ledger_id, workspace.ledger_id))
+
+    def test_workspace_spec_rejects_prefix_without_ledger_id(self) -> None:
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+
+        with pytest.raises(c.ValidationError, match="ledger_id"):
+            m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=repository.distribution,
+                repository=repository,
+                ledger_prefix=f"{repository.distribution}-prefix",
             )
 
-    @pytest.mark.parametrize(
-        ("ledger_id", "ledger_prefix", "missing_key"),
-        [("mro", None, "ledger_prefix"), (None, "mro", "ledger_id")],
-    )
-    def test_plan_returns_failure_for_partial_workspace_ledger_identity(
-        self,
-        tmp_path: Path,
-        ledger_id: str | None,
-        ledger_prefix: str | None,
-        missing_key: str,
-    ) -> None:
-        workspace, _member_target = self._member_pair(
-            tmp_path, ledger_id=ledger_id, ledger_prefix=ledger_prefix
-        )
-        request = m.Infra.CodegenConformRequest(
-            root=tmp_path,
-            what=c.Infra.CodegenConformSurface.MAKEFILE,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
+    def test_workspace_spec_rejects_duplicate_ledger_prefix(self) -> None:
+        repository = test_u.Tests.repository_ref(config.Infra.name)
 
-        planned = FlextInfraCodegenConform(
-            workspace_root=tmp_path, initial_workspace=workspace
-        ).plan(request)
-
-        tm.fail(planned, has=missing_key)
+        with pytest.raises(c.ValidationError, match="distinct"):
+            m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=repository.distribution,
+                repository=repository,
+                ledger_id=repository.distribution,
+                ledger_prefix=repository.distribution,
+            )
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
@@ -508,10 +500,7 @@ class TestCodegenBeadsLedger:
         if rendered is None:
             pytest.fail("owner plan must render the ledger config")
         server = self._toolchain_server()
-        repository = test_u.Tests.repository_ref(config.Infra.name)
-        # ai-hub-qwoc: issue-prefix is the tracker namespace derived from the
-        # committed declaration, never the Dolt-safe ledger_id database name.
-        tm.that(rendered, has=f'issue-prefix: "{repository.distribution}"')
+        tm.that(rendered, has='issue-prefix: "fleet-ledger"')
         tm.that(rendered, has="database: fleet-ledger")
         tm.that(rendered, has="Owned ledger config")
         tm.that(rendered, has=f"mode: {server.mode}")
@@ -524,7 +513,7 @@ class TestCodegenBeadsLedger:
         # `| tojson`, entao o teste segue valido para qualquer valor declarado.
         tm.that(rendered, has=f"auto-commit: {json.dumps(server.auto_commit)}")
 
-    def test_attached_standalone_plan_renders_routing_config(
+    def test_attached_standalone_plan_renders_no_beads_config(
         self, tmp_path: Path
     ) -> None:
         """Render a routing-only config for a marker-attached standalone."""
@@ -537,17 +526,7 @@ class TestCodegenBeadsLedger:
 
         rendered = self._beads_config_render(root)
 
-        if rendered is None:
-            pytest.fail("attached standalone plan must render the routing config")
-        server = self._toolchain_server()
-        repository = test_u.Tests.repository_ref(config.Infra.name)
-        tm.that(rendered, has=f'issue-prefix: "{repository.distribution}"')
-        tm.that(rendered, has="database: attached-ledger")
-        tm.that(rendered, has="Routing-only client config")
-        tm.that(rendered, has=f"mode: {server.mode}")
-        tm.that(rendered, has=f"host: {server.host}")
-        tm.that(rendered, has=f"port: {server.port}")
-        tm.that(rendered, lacks="Owned ledger config")
+        tm.that(rendered, eq="")
 
     def test_plain_standalone_plan_renders_no_ledger_config(
         self, tmp_path: Path
@@ -581,7 +560,7 @@ class TestCodegenBeadsLedger:
         tm.that(marker["backend"], eq=server.backend)
         tm.that(marker["database"], eq=server.backend)
 
-    def test_attached_standalone_plan_renders_ledger_resolution_marker(
+    def test_attached_standalone_plan_renders_no_ledger_resolution_marker(
         self, tmp_path: Path
     ) -> None:
         """Bind a routing-only standalone to the same shared ledger database."""
@@ -594,9 +573,7 @@ class TestCodegenBeadsLedger:
 
         rendered = self._beads_metadata_render(root)
 
-        if rendered is None:
-            pytest.fail("attached standalone plan must render the marker")
-        tm.that(json.loads(rendered)["dolt_database"], eq="attached-ledger")
+        tm.that(rendered, eq="")
 
     def test_tool_spec_rejects_malformed_checksum(self) -> None:
         """Reject a checksum that is not a SHA-256 hex digest."""

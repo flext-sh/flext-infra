@@ -239,16 +239,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_result.error or "workspace manifest load failed"
                 )
             workspace = workspace_result.value
-        if workspace.members and (
-            (workspace.ledger_id is None) != (workspace.ledger_prefix is None)
-        ):
-            missing_key = (
-                "ledger_id" if workspace.ledger_id is None else "ledger_prefix"
-            )
-            return r[m.Infra.CodegenPlan].fail(
-                f"workspace {workspace.name!r} declares an incomplete Beads ledger; "
-                f"declare {missing_key} in config/workspace.yaml"
-            )
         current_repository = workspace.repository
         if self.initial_workspace is not None and root != workspace_root:
             try:
@@ -2630,55 +2620,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def ledger_identity_for_target(
-        workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
+        workspace: m.Infra.WorkspaceSpec, _target: m.Infra.RepositoryConformTarget
     ) -> tuple[str, str] | None:
         """Return ``(issue_prefix, database)``, or ``None`` when there is none.
 
-        ``WORKSPACE_MEMBER`` targets route to the parent workspace's shared
-        ledger, because docs/GOVERNANCE.md mandates "Use the workspace-root
-        Beads database for the root and every member project" (mro-dz4ib). A
-        member owns no ledger, so it never substitutes its own name: naming
-        itself would bind bd to a ledger that does not exist (mro-9wv8).
-
-        A workspace that declares no ledger at all tracks no issues, which is a
-        valid shape -- its members resolve ``None`` and receive no Beads client
-        config. A HALF-declared workspace is the real defect and fails closed
-        naming the missing key (mro-cdzxf).
-
-        Root and standalone manifests own their identity, so an undeclared
-        ``ledger_prefix`` legitimately resolves to the canonical project name
-        and ``ledger_id`` defaults to that prefix (ai-hub-qwoc, mro-6fca).
-        Marker-attached standalones are classified as ``WORKSPACE_MEMBER`` for
-        routing but own their workspace.yaml at the governing root, so they
-        follow the owner path below.
+        The governing tracker owner declares one database identity. That
+        identity is also the issue prefix unless a distinct typed override is
+        present. Beadless manifests return no identity.
         """
-        if (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-            and not target.attached_standalone
-        ):
-            # A workspace that declares nothing simply tracks no issues.
-            if workspace.ledger_prefix is None and workspace.ledger_id is None:
-                return None
-            # Fail closed (mro-cdzxf): a half-declared ledger cannot be guessed.
-            if not workspace.ledger_prefix:
-                msg = (
-                    f"workspace {workspace.name!r} declares ledger_id but no "
-                    f"ledger_prefix, so member "
-                    f"{target.canonical_project_name!r} cannot resolve an issue "
-                    f"namespace; declare ledger_prefix in config/workspace.yaml"
-                )
-                raise ValueError(msg)
-            if not workspace.ledger_id:
-                msg = (
-                    f"workspace {workspace.name!r} declares ledger_prefix but "
-                    f"no ledger_id, so member "
-                    f"{target.canonical_project_name!r} cannot resolve a "
-                    f"database; declare ledger_id in config/workspace.yaml"
-                )
-                raise ValueError(msg)
-            return workspace.ledger_prefix, workspace.ledger_id
-        issue_prefix = workspace.ledger_prefix or target.canonical_project_name
-        return issue_prefix, workspace.ledger_id or issue_prefix
+        if workspace.ledger_id is None:
+            return None
+        return workspace.ledger_prefix or workspace.ledger_id, workspace.ledger_id
 
     @staticmethod
     def _declared_hook_stages(make_spec: m.Infra.MakeSpec) -> tuple[str, ...]:

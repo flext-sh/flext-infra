@@ -72,6 +72,11 @@
       }
     }
   },
+  "dependentRequired": {
+    "ledger_prefix": [
+      "ledger_id"
+    ]
+  },
   "$defs": {
     "name": {
       "type": "string",
