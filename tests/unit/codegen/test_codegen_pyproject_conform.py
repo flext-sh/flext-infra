@@ -219,10 +219,15 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
-        tm.that(
-            "pre-commit" in u.Infra.declared_dependency_names_from_payload(document),
-            eq=True,
+        # Why (CodeRabbit 3742335224): assert the exact requirement the typed
+        # SSOT declares, not merely the package name. A name-only assertion
+        # stays green even if the generated floor drifts away from the owner.
+        pre_commit_requirement = next(
+            requirement
+            for requirement in required_dev
+            if u.Infra.dep_name(requirement) == "pre-commit"
         )
+        tm.that(pre_commit_requirement in document["dependency-groups"]["dev"], eq=True)
         tm.that(
             document["project"]["dependencies"][0],
             eq=(

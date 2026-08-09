@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -14,7 +14,14 @@ def _repository(root: Path) -> Path:
     (root / "README.md").write_text("fixture\n", encoding="utf-8")
     beads = root / ".beads"
     beads.mkdir()
-    (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
+    # Why (CodeRabbit 3742335229): the namespace is a typed declaration, not a
+    # literal. Building it through the owner keeps the fixture valid when the
+    # workspace renames its tracker, and proves the resolver reads the
+    # declaration rather than a hardcoded name.
+    declaration = m.Infra.BeadsTrackerDeclaration(issue_prefix=root.name)
+    (beads / "config.yaml").write_text(
+        f'issue-prefix: "{declaration.issue_prefix}"\n', encoding="utf-8"
+    )
     test_u.Tests.initialize_git_repo(root)
     return root
 
