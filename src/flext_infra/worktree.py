@@ -105,29 +105,40 @@ class FlextInfraWorktreeService(s[str]):
 
     @classmethod
     def setup_lane(cls, primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Provision the lane's own environment through the canonical surface.
-
-        An environment name that resolves to another checkout binds the lane to
-        that checkout's sources: ``uv`` records editable finders as
-        per-environment ``.pth`` files holding absolute paths, so a borrowed
-        environment makes every import in the lane load the owner's code. Each
-        lane therefore provisions its own environment through `make setup`. A
-        real local environment is never replaced, because a concurrent process
-        may be running against it.
-        """
-        _ = primary_root
+        """Provision primary dependencies and bind the lane to its environment."""
         beads_dir = lane / ".beads"
         if beads_dir.is_dir():
             beads_dir.chmod(0o700)
+        declared = u.Infra.git_declared_submodule_paths(primary_root)
+        if declared.failure:
+            return r.fail(declared.error or "failed to read primary Git declarations")
+        for relative in declared.value:
+            child = primary_root / relative
+            if (child / ".git").exists():
+                continue
+            initialized = u.Infra.git_submodule_init(
+                m.Infra.GitRefRequest(
+                    repo_root=primary_root, reference=relative.as_posix()
+                )
+            )
+            if initialized.failure:
+                return r.fail(
+                    initialized.error
+                    or f"failed to initialize primary gitlink {relative}"
+                )
         venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        primary_venv = primary_root / venv_name
         lane_venv = lane / venv_name
         if lane_venv.is_symlink():
-            # A borrowed environment from an earlier lane layout is not the
-            # lane's own: drop the link so `make setup` can provision one.
-            lane_venv.unlink()
+            if lane_venv.resolve() != primary_venv.resolve():
+                return r.fail(
+                    f"lane environment points outside the primary environment: {lane_venv}"
+                )
+        elif lane_venv.exists():
+            return r.fail(f"refusing to replace existing lane environment: {lane_venv}")
         setup = u.Cli.run_live(
-            (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
-            cwd=lane,
+            (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={primary_root}"),
+            cwd=primary_root,
             remove_env_keys=(
                 "MAKEFLAGS",
                 "MAKELEVEL",
@@ -140,6 +151,14 @@ class FlextInfraWorktreeService(s[str]):
         )
         if setup.failure:
             return r.fail(setup.error or "make setup execution failed")
+        interpreter = primary_venv / "bin" / "python"
+        if not interpreter.is_file():
+            return r.fail(f"primary setup did not create an interpreter: {interpreter}")
+        if not lane_venv.is_symlink():
+            try:
+                lane_venv.symlink_to(primary_venv, target_is_directory=True)
+            except OSError as exc:
+                return r.fail(f"failed to bind lane environment {lane_venv}: {exc}")
         return r.ok(True)
 
     @staticmethod
@@ -237,18 +256,6 @@ class FlextInfraWorktreeService(s[str]):
                 branch,
                 created_branch_oid,
                 metadata.error or "invalid lane project metadata",
-            )
-        setup = self.setup_lane(primary_root, lane)
-        if setup.failure:
-            # A provisioning failure leaves a VALID checkout that is merely
-            # unprovisioned, unlike the invalid-metadata case above. Removing it
-            # discarded a completed clone of every governed submodule and forced
-            # a manual re-clone, so the lane is kept and the next start resumes
-            # from it once the cause is resolved.
-            return r.fail(
-                f"{setup.error or 'make setup execution failed'}; "
-                f"lane {branch} preserved at {lane} - resolve the cause and "
-                f"re-run work start to resume provisioning"
             )
         return r.ok(str(lane))
 

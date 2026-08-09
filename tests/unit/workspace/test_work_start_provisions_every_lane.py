@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_infra import FlextInfraWorkService, c
+from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c
 from flext_tests import tm
 from tests import u
 
@@ -33,10 +33,12 @@ def _repository(tmp_path: Path) -> Path:
         ".PHONY: setup\n"
         "setup:\n"
         '\t@test "$(WORKSPACE)" = "$(CURDIR)"\n'
+        "\t@mkdir -p .venv/bin\n"
+        "\t@printf '#!/bin/sh\\n' > .venv/bin/python\n"
         f'\t@printf "%s\\n" "$(WORKSPACE)" >> "$(CURDIR)/{_SETUP_LOG}"\n',
         encoding="utf-8",
     )
-    (repository / ".gitignore").write_text(f"{_SETUP_LOG}\n", encoding="utf-8")
+    (repository / ".gitignore").write_text(f".venv\n{_SETUP_LOG}\n", encoding="utf-8")
     beads = repository / ".beads"
     beads.mkdir()
     (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
@@ -115,12 +117,19 @@ def _start(repository: Path, bead_id: str) -> str:
     )
 
 
-def _setup_runs(lane: Path) -> int:
-    """Return how many times ``make setup`` ran inside one lane."""
-    log = lane / _SETUP_LOG
+def _setup_runs(repository: Path) -> int:
+    """Return how many times ``make setup`` ran in the primary checkout."""
+    log = repository / _SETUP_LOG
     if not log.is_file():
         return 0
     return len([line for line in log.read_text(encoding="utf-8").splitlines() if line])
+
+
+def _metadata(tmp_path: Path) -> dict[str, str]:
+    payload: dict[str, dict[str, str]] = json.loads(
+        (tmp_path / "beads-store.json").read_text(encoding="utf-8")
+    )
+    return payload["metadata"]
 
 
 def test_start_provisions_a_new_lane_and_an_adopted_one(
@@ -132,22 +141,52 @@ def test_start_provisions_a_new_lane_and_an_adopted_one(
     shim_dir = _install_bd_shim(tmp_path, bead_id)
     monkeypatch.setenv("PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}")
 
-    first = _start(repository, bead_id)
-    lane = Path(
-        next(
-            field.removeprefix("receipt.worktree=")
-            for field in first.splitlines()
-            if field.startswith("receipt.worktree=")
-        )
-    )
-    created_runs = _setup_runs(lane)
+    _ = _start(repository, bead_id)
+    created_runs = _setup_runs(repository)
 
     _ = _start(repository, bead_id)
 
-    assert created_runs >= 1, "start left the created lane unprovisioned"
-    assert _setup_runs(lane) > created_runs, (
+    assert created_runs == 1, "start provisioned the created lane more than once"
+    assert _setup_runs(repository) == created_runs + 1, (
         "start adopted the existing lane without provisioning it"
     )
+
+
+def test_failed_primary_setup_preserves_lane_without_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = _repository(tmp_path)
+    (repository / "Makefile").write_text(
+        ".PHONY: setup\nsetup:\n\t@exit 19\n", encoding="utf-8"
+    )
+    tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "Makefile"], cwd=repository))
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "commit", "-m", "failing setup"], cwd=repository
+        )
+    )
+    bead_id = "mro-test-failed-setup"
+    shim_dir = _install_bd_shim(tmp_path, bead_id)
+    monkeypatch.setenv("PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    result = FlextInfraWorkService(
+        workspace_root=repository,
+        operation=c.Infra.WorkOperation.START,
+        bead=bead_id,
+        kind=c.Infra.WorkKind.FEATURE,
+        name="provisioned-lane",
+        base="HEAD",
+        apply_changes=True,
+    ).execute()
+
+    tm.fail(result, has="preserved at")
+    lane = tm.ok(
+        FlextInfraWorktreeService.registered_lane(
+            repository, "feature/provisioned-lane"
+        )
+    )
+    tm.that(lane.is_dir(), eq=True)
+    tm.that(_metadata(tmp_path), eq={})
 
 
 __all__: tuple[str, ...] = ()
