@@ -208,8 +208,21 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         child_result = self._project_is_flext_child(path.parent)
         if child_result.failure:
             return [child_result.error or "failed to resolve project Git topology"]
+        # Why (mro-tvc03): inside a work tree the target's own Git topology is
+        # authoritative, never the scope the modernizer was invoked with.
+        # Comparing path.parent against self.root made a workspace MEMBER look
+        # like a root whenever the run started inside it, so venvPath rendered
+        # '..' from within and '.' from the fan-out and no content satisfied
+        # both. Outside any work tree there is no topology to read, so the
+        # relative position remains the only discriminator between a root and
+        # the members nested under it.
+        governed = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=path.parent)
+        )
         is_root = (
-            path.parent.resolve() == self.root.resolve() and not child_result.value
+            not child_result.value
+            if governed.success
+            else path.parent.resolve() == self.root.resolve()
         )
         # mro-j47u (codex): scaffold (pre-write) contexts have no on-disk project
         # root yet. Derive pyright/pyrefly configuration from declared roots only;
