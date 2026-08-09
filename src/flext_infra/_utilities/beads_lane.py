@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import u
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra.constants import c
 from flext_infra.models import m
 
 _BD_UPDATE_BASE_ARGV_LENGTH = 2
@@ -22,35 +23,36 @@ class FlextInfraUtilitiesBeadsLane:
 
     @classmethod
     def beads_resolve_root(cls, hint: Path | None = None) -> p.Result[Path]:
-        """Resolve the Beads project root that owns the workspace ledger.
+        """Resolve the workspace-root Beads project that owns the ledger.
 
-        Prefer the checkout under ``hint`` (git toplevel, then hint, then
-        parents) when it declares `.beads/config.yaml`, so member projects
-        with their own tracker stay local. Fall back to the Git superproject
-        only when the member has no Beads config, so orphan members still
-        reach the workspace tracker (`bd -C <workspace>`). Uses typed Git
-        root reports — never raw argv helpers.
+        A member checkout never owns the tracker. The Git superproject chain
+        is walked to the outermost workspace repository FIRST, so a member
+        `.beads/` directory or database is refused instead of being adopted;
+        only the workspace root and its non-repository parents may declare
+        `.beads/config.yaml`. Uses typed Git root reports — never raw argv
+        helpers.
         """
         start = (hint or Path.cwd()).expanduser().resolve()
-        candidates: list[Path] = []
-        request = m.Infra.GitRepoRequest(repo_root=start)
-        top = FlextInfraUtilitiesGit.git_show_toplevel(request)
-        if top.success:
-            candidates.append(top.value.workspace_root)
-        candidates.append(start)
-        candidates.extend(start.parents)
-        superproject = FlextInfraUtilitiesGit.git_superproject_working_tree(request)
-        if superproject.success and superproject.value.text.strip():
-            candidates.append(Path(superproject.value.text.strip()).resolve())
-        seen: set[Path] = set()
-        for candidate in candidates:
-            resolved = candidate.resolve()
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            if (resolved / ".beads" / "config.yaml").is_file():
-                return r.ok(resolved)
-        return r.fail(f"no Beads config (.beads/config.yaml) found from {start}")
+        cursor = start
+        for _ in range(c.Infra.WORK_LANE_MAX_DEPTH):
+            superproject = FlextInfraUtilitiesGit.git_superproject_working_tree(
+                m.Infra.GitRepoRequest(repo_root=cursor)
+            )
+            if superproject.failure or not superproject.value.text.strip():
+                break
+            cursor = Path(superproject.value.text.strip()).resolve()
+        else:
+            return r.fail(f"workspace superproject chain is too deep: {start}")
+        top = FlextInfraUtilitiesGit.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=cursor)
+        )
+        root = top.value.workspace_root.resolve() if top.success else cursor
+        for candidate in (root, *root.parents):
+            if (candidate / ".beads" / "config.yaml").is_file():
+                return r.ok(candidate)
+        return r.fail(
+            f"no workspace Beads config (.beads/config.yaml) found from {root}"
+        )
 
     @classmethod
     def _bd_command(

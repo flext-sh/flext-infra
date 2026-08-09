@@ -55,19 +55,19 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         meta = shown.value.get("metadata")
         if not isinstance(meta, dict):
             return r.fail(f"bead {bead} has no lane metadata; run work start first")
-        bound_matrix = self._bound_root_matrix(primary_root, meta)
+        bound_matrix = self._bound_root_matrix(primary_root, bead, meta)
         if bound_matrix.failure:
             return r.fail(bound_matrix.error or "work land root lane binding failed")
-        lane, matrix = bound_matrix.value
+        identity = bound_matrix.value.identity
+        lane = bound_matrix.value.lane
+        matrix = bound_matrix.value.matrix
         root_entry = next(entry for entry in matrix.entries if entry.project == ".")
         branch = root_entry.branch
-        worktree = str(lane)
         recorded_integration = str(meta.get("integration_base") or "").strip()
-        expected = root_entry.head_oid
-        base = self._resolve_integration_base(primary_root)
-        if base.failure:
-            return r.fail(base.error or "missing integration base")
-        integration = base.value
+        # Why: a lane always integrates into the branch its role names — the
+        # repository integration branch for a top-level epic, the parent epic
+        # branch for every nested lane.
+        integration = identity.base_branch
         if (
             recorded_integration
             and recorded_integration not in {"HEAD", integration}
@@ -90,10 +90,14 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
                 return r.fail(project_root.error or "matrix project is invalid")
             clean = self._ensure_clean(project_root.value)
             if clean.failure:
-                return r.fail(clean.error or f"matrix project is dirty: {entry.project}")
+                return r.fail(
+                    clean.error or f"matrix project is dirty: {entry.project}"
+                )
             current = self._git_head(project_root.value)
             if current.failure:
-                return r.fail(current.error or f"failed to resolve matrix HEAD: {entry.project}")
+                return r.fail(
+                    current.error or f"failed to resolve matrix HEAD: {entry.project}"
+                )
             if current.value != entry.head_oid:
                 contains = u.Infra.git_is_ancestor(
                     m.Infra.GitCommitishRequest(
@@ -110,6 +114,8 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             operation=c.Infra.WorktreeOperation.UPDATE,
             branch=branch,
             base=self._git_integration_ref(primary_root, integration),
+            lane_dir=identity.lane_dir,
+            parent_lane=identity.parent_lane,
             apply_changes=True,
         ).execute()
         if synced.failure:
@@ -172,7 +178,9 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             if project_root.failure:
                 return r.fail(project_root.error or "matrix project is invalid")
             pushed_entry = u.Infra.git_push_upstream(
-                m.Infra.GitPushRequest(repo_root=project_root.value, branch=entry.branch)
+                m.Infra.GitPushRequest(
+                    repo_root=project_root.value, branch=entry.branch
+                )
             )
             if pushed_entry.failure:
                 return r.fail(
@@ -184,7 +192,10 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
                 )
             entry_head = self._git_head(project_root.value)
             if entry_head.failure:
-                return r.fail(entry_head.error or f"failed to resolve matrix HEAD: {entry.project}")
+                return r.fail(
+                    entry_head.error
+                    or f"failed to resolve matrix HEAD: {entry.project}"
+                )
             entry_pr = u.Infra.run_github_pull_request(
                 m.Infra.GithubPullRequestRequest(
                     repo_root=str(project_root.value),
@@ -198,7 +209,9 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             )
             entry_observed = self._observe_open_pr(project_root.value, entry.branch)
             if entry_pr.failure and entry_observed.failure:
-                return r.fail(entry_pr.error or entry_observed.error or "work land PR failed")
+                return r.fail(
+                    entry_pr.error or entry_observed.error or "work land PR failed"
+                )
             entry_pr_number, entry_pr_url = (
                 entry_observed.value if entry_observed.success else ("", "")
             )
@@ -223,11 +236,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             f"decisive=PR {pr_url or pr_number or 'pending'} sha={head.value}"
         )
         updated = u.Infra.beads_update_lane(
-            bead,
-            metadata=meta_update,
-            labels=labels,
-            notes=notes,
-            root=primary_root,
+            bead, metadata=meta_update, labels=labels, notes=notes, root=primary_root
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record land on bead")

@@ -36,18 +36,26 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(f"bead {bead} lane worktree already removed")
         if self._is_primary_path(primary_root, Path(worktree)):
             return r.fail("work finish refuses the primary worktree")
-        bound_matrix = self._bound_root_matrix(primary_root, meta)
+        bound_matrix = self._bound_root_matrix(primary_root, bead, meta)
         if bound_matrix.failure:
             return r.fail(bound_matrix.error or "work finish root lane binding failed")
-        lane, matrix = bound_matrix.value
+        identity = bound_matrix.value.identity
+        lane = bound_matrix.value.lane
+        matrix = bound_matrix.value.matrix
         root_entry = next(entry for entry in matrix.entries if entry.project == ".")
         branch = root_entry.branch
-        integration = str(meta.get("integration_base") or "").strip()
-        if not integration:
-            base = self._resolve_integration_base(primary_root)
-            if base.failure:
-                return r.fail(base.error or "missing integration base")
-            integration = base.value
+        # Why: a lane owns the container its child lanes live in, so removing it
+        # would delete live checkouts of other beads.
+        children = FlextInfraWorktreeService.child_lanes(primary_root, lane)
+        if children.failure:
+            return r.fail(children.error or "failed to list child lanes")
+        if children.value:
+            nested = ", ".join(str(child) for child in children.value)
+            return r.fail(
+                f"work finish refuses lane {branch}: it still owns child lanes "
+                f"({nested}); finish them first"
+            )
+        integration = identity.base_branch
         for entry in matrix.entries:
             permanent = self._refuse_permanent_branch(entry.branch, integration)
             if permanent.failure:
@@ -62,7 +70,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                 return r.fail(merged.error or "work finish PR state check failed")
             head = self._git_head(project_root.value)
             if head.failure:
-                return r.fail(head.error or f"failed to resolve matrix HEAD: {entry.project}")
+                return r.fail(
+                    head.error or f"failed to resolve matrix HEAD: {entry.project}"
+                )
             if head.value != entry.head_oid:
                 return r.fail(
                     f"CAS failed before finish for {entry.project}: "
@@ -72,17 +82,21 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.REMOVE,
             branch=branch,
+            lane_dir=identity.lane_dir,
+            parent_lane=identity.parent_lane,
             apply_changes=True,
         ).execute()
         if removed.failure:
             return r.fail(removed.error or f"failed to remove lane {branch}")
         for entry in matrix.entries:
-            project_root = (
+            # Why: the lane is gone by now, so every remaining ref lives in the
+            # primary checkout of its project, never under the removed lane.
+            ref_repo_root = (
                 primary_root if entry.project == "." else primary_root / entry.project
             )
             deleted = u.Infra.git_delete_ref(
                 m.Infra.GitDeleteRefRequest(
-                    repo_root=project_root,
+                    repo_root=ref_repo_root,
                     reference=f"refs/heads/{entry.branch}",
                     expected_oid=entry.head_oid,
                 )
@@ -90,7 +104,7 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             if deleted.failure:
                 exists = u.Infra.git_ref_exists(
                     m.Infra.GitRefRequest(
-                        repo_root=project_root, reference=f"refs/heads/{entry.branch}"
+                        repo_root=ref_repo_root, reference=f"refs/heads/{entry.branch}"
                     )
                 )
                 if exists.success and exists.value.value:

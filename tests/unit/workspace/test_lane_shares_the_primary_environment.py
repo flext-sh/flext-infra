@@ -44,8 +44,12 @@ def _primary_environment(repository: Path) -> Path:
     return primary_venv
 
 
-def _add_lane(repository: Path, branch: str) -> Path:
-    """Create one lane through the canonical worktree service."""
+def _add_lane(repository: Path, branch: str, lane_dir: str) -> Path:
+    """Create one lane through the canonical worktree service.
+
+    The lane directory is Bead-derived and never inferred from the branch, so
+    every caller states it explicitly.
+    """
     return Path(
         tm.ok(
             FlextInfraWorktreeService(
@@ -53,6 +57,7 @@ def _add_lane(repository: Path, branch: str) -> Path:
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
+                lane_dir=lane_dir,
                 apply_changes=True,
             ).execute()
         )
@@ -69,7 +74,7 @@ class TestsFlextInfraLaneEnvironment:
         repository = _repository(tmp_path)
         primary_venv = _primary_environment(repository)
 
-        lane = _add_lane(repository, "feature/owned-environment")
+        lane = _add_lane(repository, "feature/owned-environment", "mro-1-owned")
 
         lane_venv = lane / _VENV_NAME
         tm.that(lane_venv.is_symlink(), eq=False)
@@ -80,7 +85,9 @@ class TestsFlextInfraLaneEnvironment:
         """Provisioning goes through `make setup`, never a link shortcut."""
         repository = _repository(tmp_path)
         _ = _primary_environment(repository)
-        lane = _add_lane(repository, "feature/provisioned-environment")
+        lane = _add_lane(
+            repository, "feature/provisioned-environment", "mro-2-provisioned"
+        )
 
         provisioned = tm.ok(
             FlextInfraWorktreeService.setup_lane(repository.resolve(), lane)
@@ -93,7 +100,7 @@ class TestsFlextInfraLaneEnvironment:
         """A present local environment is preserved: a process may be using it."""
         repository = _repository(tmp_path)
         primary_venv = _primary_environment(repository)
-        lane = _add_lane(repository, "feature/preserved-environment")
+        lane = _add_lane(repository, "feature/preserved-environment", "mro-3-preserved")
         lane_venv = lane / _VENV_NAME
         if lane_venv.is_symlink() or lane_venv.exists():
             lane_venv.unlink()

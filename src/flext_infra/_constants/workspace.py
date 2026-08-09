@@ -34,8 +34,14 @@ class FlextInfraConstantsWorkspace:
 
     @unique
     class WorkKind(StrEnum):
-        """GitFlow lane kinds owned by configuration policy."""
+        """GitFlow lane kinds owned by configuration policy.
 
+        ``EPIC`` is the only container kind: an epic lane owns the
+        ``.worktrees`` directory that holds its child lanes, so every other
+        kind names a leaf bead lane that must sit under an epic lane.
+        """
+
+        EPIC = "epic"
         FEATURE = "feature"
         BUGFIX = "bugfix"
         HOTFIX = "hotfix"
@@ -115,7 +121,11 @@ class FlextInfraConstantsWorkspace:
     # GITIGNORE_REMOVE_EXACT and GITIGNORE_MANAGED_HEADER append-paths were
     # removed with the migrator/sync parallel writers.
     WORKTREES_DIRNAME: Final[str] = ".worktrees"
-    WORKTREE_NAMESPACE_DIGEST_LENGTH: Final[int] = 12
+    # A lane directory is derived from its Bead alone (`<bead-id>-<slug>`): it
+    # never carries a branch separator, so one `.worktrees` level holds exactly
+    # one directory level per lane.
+    WORK_LANE_DIR_PATTERN: Final[str] = r"^[a-z0-9][a-z0-9._-]*$"
+    WORK_LANE_MAX_DEPTH: Final[int] = 16
     VSCODE_DIRNAME: Final[str] = ".vscode"
     VSCODE_SETTINGS_FILENAME: Final[str] = "settings.json"
     VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY: Final[str] = "python-envs.workspaceSearchPaths"

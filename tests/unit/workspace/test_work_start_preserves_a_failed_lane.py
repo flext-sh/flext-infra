@@ -44,7 +44,9 @@ def _repository(tmp_path: Path, *, setup_exit: int) -> Path:
         f"\t@exit {setup_exit}\n",
         encoding="utf-8",
     )
-    (repository / ".gitignore").write_text(f"{_SETUP_MARKER}\n", encoding="utf-8")
+    (repository / ".gitignore").write_text(
+        f"{_SETUP_MARKER}\n{c.Infra.WORKTREES_DIRNAME}/\n", encoding="utf-8"
+    )
     beads = repository / ".beads"
     beads.mkdir()
     (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
@@ -52,16 +54,55 @@ def _repository(tmp_path: Path, *, setup_exit: int) -> Path:
     return repository
 
 
+def _epic_lane(repository: Path, bead_id: str) -> Path:
+    """Return the canonical parent epic lane of one bead."""
+    return repository / c.Infra.WORKTREES_DIRNAME / f"{bead_id}-epic-parent-epic"
+
+
 def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
-    """Install the minimal ``bd`` surface the start saga consumes."""
+    """Install the ``bd`` surface plus the parent epic lane start requires."""
+    repository = tmp_path / "repository"
+    epic_id = f"{bead_id}-epic"
+    epic_lane = _epic_lane(repository, bead_id)
+    tm.ok(
+        u.Cli.run_checked(
+            [
+                c.Infra.GIT,
+                "worktree",
+                "add",
+                "-b",
+                f"epic/{epic_id}-parent-epic",
+                str(epic_lane),
+                "HEAD",
+            ],
+            cwd=repository,
+        )
+    )
     store = tmp_path / "beads-store.json"
     store.write_text(
         json.dumps({
-            "id": bead_id,
-            "status": "open",
-            "assignee": None,
-            "metadata": {},
-            "labels": [],
+            "child": bead_id,
+            "beads": {
+                epic_id: {
+                    "id": epic_id,
+                    "status": "open",
+                    "assignee": None,
+                    "metadata": {
+                        "kind": c.Infra.WorkKind.EPIC.value,
+                        "slug": "parent-epic",
+                        "worktree": str(epic_lane),
+                    },
+                    "labels": [],
+                },
+                bead_id: {
+                    "id": bead_id,
+                    "status": "open",
+                    "assignee": None,
+                    "parent": epic_id,
+                    "metadata": {},
+                    "labels": [],
+                },
+            },
         }),
         encoding="utf-8",
     )
@@ -82,12 +123,16 @@ def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
         "        args = args[1:]\n"
         "        continue\n"
         "    break\n"
-        "data = json.loads(open(STORE, encoding='utf-8').read())\n"
+        "store = json.loads(open(STORE, encoding='utf-8').read())\n"
+        "beads = store['beads']\n"
+        "if len(args) < 2 or args[1] not in beads:\n"
+        "    raise SystemExit(f'unknown bead: {args}')\n"
+        "data = beads[args[1]]\n"
         "if args[:1] == ['show'] and '--json' in args:\n"
         "    print(json.dumps(data))\n"
         "    raise SystemExit(0)\n"
         "if args[:1] == ['update']:\n"
-        "    i = 1\n"
+        "    i = 2\n"
         "    while i < len(args):\n"
         "        if args[i] == '--set-metadata':\n"
         "            key, value = args[i + 1].split('=', 1)\n"
@@ -98,7 +143,7 @@ def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
         "            i += 2\n"
         "            continue\n"
         "        i += 1\n"
-        "    open(STORE, 'w', encoding='utf-8').write(json.dumps(data))\n"
+        "    open(STORE, 'w', encoding='utf-8').write(json.dumps(store))\n"
         "    print('updated')\n"
         "    raise SystemExit(0)\n"
         "raise SystemExit(f'unsupported bd args: {args}')\n",
@@ -121,16 +166,18 @@ def _start(repository: Path, bead_id: str) -> core_p.Result[str]:
     ).execute()
 
 
-def _lane_paths(repository: Path) -> list[Path]:
-    """Return every registered non-primary worktree of the repository."""
+def _lane_paths(repository: Path, bead_id: str) -> list[Path]:
+    """Return every registered lane below the bead's parent epic lane."""
     listed = tm.ok(
         u.Cli.capture(["git", "worktree", "list", "--porcelain"], cwd=repository)
     )
+    container = _epic_lane(repository, bead_id) / c.Infra.WORKTREES_DIRNAME
     return [
-        Path(line.removeprefix("worktree ").strip())
+        registered
         for line in listed.splitlines()
         if line.startswith("worktree ")
-        and Path(line.removeprefix("worktree ").strip()) != repository
+        for registered in (Path(line.removeprefix("worktree ").strip()),)
+        if registered.is_relative_to(container)
     ]
 
 
@@ -151,7 +198,7 @@ class TestsWorkStartPreservesAFailedLane:
         outcome = _start(repository, bead_id)
 
         tm.that(outcome.failure, eq=True)
-        lanes = _lane_paths(repository)
+        lanes = _lane_paths(repository, bead_id)
         tm.that(len(lanes), eq=1, msg="provisioning failure destroyed the lane")
         tm.that(lanes[0].is_dir(), eq=True)
         tm.that((lanes[0] / _SETUP_MARKER).is_file(), eq=True)

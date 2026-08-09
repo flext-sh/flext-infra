@@ -1,39 +1,30 @@
-"""Real Git behavior for repository-local development worktrees."""
+"""Real Git behavior for recursive in-workspace development worktrees."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraWorktreeService:
     """The typed service owns the complete safe lane lifecycle."""
 
     @staticmethod
-    def _lane(primary_root: Path, outermost_project: Path, branch: str) -> Path:
-        """Derive the configured collision-safe test contract."""
-        digest = u.Cli.sha256_content(str(primary_root.resolve()))[
-            : c.Infra.WORKTREE_NAMESPACE_DIGEST_LENGTH
-        ]
-        namespace = f"{primary_root.resolve().name}-{digest}"
-        return (
-            outermost_project.resolve().parent
-            / c.Infra.WORKTREES_DIRNAME
-            / namespace
-            / branch
-        )
+    def _lane(parent_lane: Path, lane_dir: str) -> Path:
+        """Derive the canonical recursive lane contract under a parent lane."""
+        return parent_lane.resolve() / c.Infra.WORKTREES_DIRNAME / lane_dir
 
     @staticmethod
     def _repository(tmp_path: Path) -> Path:
         repository = tmp_path / "repository"
         repository.mkdir()
         (repository / "README.md").write_text("fixture\n", encoding="utf-8")
+        (repository / ".gitignore").write_text(
+            f"{c.Infra.WORKTREES_DIRNAME}/\n", encoding="utf-8"
+        )
         (repository / "pyproject.toml").write_text(
             '[project]\nname = "fixture"\nversion = "0.1.0"\n'
             'description = "A standard PEP 621 description string"\n',
@@ -72,11 +63,13 @@ class TestsFlextInfraWorktreeService:
 
         tm.that(listed, has=f"worktree {repository}")
 
-    def test_add_and_remove_use_the_isolated_lane_path(self, tmp_path: Path) -> None:
-        """A valid PEP 621 string survives typed setup in the isolated lane."""
+    def test_add_and_remove_use_the_in_workspace_lane_path(
+        self, tmp_path: Path
+    ) -> None:
+        """A lane lives inside the workspace, one level under `.worktrees`."""
         repository = self._repository(tmp_path)
-        branch = "feature/example"
-        lane = self._lane(repository, repository, branch)
+        branch = "feature/mro-1-example"
+        lane = self._lane(repository, "mro-1-example")
 
         added = tm.ok(
             FlextInfraWorktreeService(
@@ -84,13 +77,14 @@ class TestsFlextInfraWorktreeService:
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
+                lane_dir="mro-1-example",
                 apply_changes=True,
             ).execute()
         )
 
         tm.that(added, eq=str(lane))
         tm.that(lane.is_dir(), where=bool)
-        tm.that(not lane.is_relative_to(repository), where=bool)
+        tm.that(lane.is_relative_to(repository), where=bool)
         tm.that(
             tm.ok(
                 u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=repository))
@@ -103,6 +97,7 @@ class TestsFlextInfraWorktreeService:
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.REMOVE,
                 branch=branch,
+                lane_dir="mro-1-example",
                 apply_changes=True,
             ).execute()
         )
@@ -110,13 +105,108 @@ class TestsFlextInfraWorktreeService:
         tm.that(removed, eq=str(lane))
         tm.that(not lane.exists(), where=bool)
 
+    def test_lane_directory_never_nests_by_branch_shape(self, tmp_path: Path) -> None:
+        """The branch never contributes a directory level to the lane path."""
+        repository = self._repository(tmp_path)
+
+        added = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch="feature/mro-2-flat",
+                base="HEAD",
+                lane_dir="mro-2-flat",
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(added, eq=str(self._lane(repository, "mro-2-flat")))
+        tm.that("feature" not in added.removeprefix(str(repository)), where=bool)
+
+    def test_child_lane_nests_under_its_parent_lane(self, tmp_path: Path) -> None:
+        """A child lane is derived under the parent lane's own container."""
+        repository = self._repository(tmp_path)
+        epic_lane = self._lane(repository, "mro-3-epic")
+        tm.that(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorktreeOperation.ADD,
+                    branch="epic/mro-3-epic",
+                    base="HEAD",
+                    lane_dir="mro-3-epic",
+                    apply_changes=True,
+                ).execute()
+            ),
+            eq=str(epic_lane),
+        )
+
+        child = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch="feature/mro-3.1-child",
+                base="HEAD",
+                lane_dir="mro-3.1-child",
+                parent_lane=epic_lane,
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(child, eq=str(self._lane(epic_lane, "mro-3.1-child")))
+        tm.that(Path(child).is_relative_to(epic_lane), where=bool)
+        tm.that(
+            tm.ok(FlextInfraWorktreeService.child_lanes(repository, epic_lane)),
+            eq=(Path(child).resolve(),),
+        )
+
+    def test_add_without_lane_dir_fails_closed(self, tmp_path: Path) -> None:
+        """A lane path is derived from its Bead, never from the branch."""
+        repository = self._repository(tmp_path)
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch="feature/mro-4-no-dir",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="requires --lane-dir")
+
+    def test_registered_lane_refuses_a_non_canonical_registration(
+        self, tmp_path: Path
+    ) -> None:
+        """A branch registered outside its derived path is never reused."""
+        repository = self._repository(tmp_path)
+        rogue = tmp_path / "rogue-lane"
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "worktree",
+                    "add",
+                    "-b",
+                    "feature/mro-5-rogue",
+                    str(rogue),
+                    "HEAD",
+                ],
+                cwd=repository,
+            )
+        )
+
+        result = FlextInfraWorktreeService.registered_lane(
+            repository, "feature/mro-5-rogue", self._lane(repository, "mro-5-rogue")
+        )
+
+        tm.fail(result, has="registered outside its canonical lane")
+
     def test_add_reads_the_lane_instead_of_dirty_primary_metadata(
         self, tmp_path: Path
     ) -> None:
         """Setup never inherits the primary checkout as its workspace owner."""
         repository = self._repository(tmp_path)
-        branch = "feature/isolated-metadata"
-        lane = self._lane(repository, repository, branch)
+        lane = self._lane(repository, "mro-6-isolated")
         (repository / "pyproject.toml").write_text(
             '[dependency-groups]\ndescription = "dirty primary WIP"\n', encoding="utf-8"
         )
@@ -125,8 +215,9 @@ class TestsFlextInfraWorktreeService:
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
+                branch="feature/mro-6-isolated",
                 base="HEAD",
+                lane_dir="mro-6-isolated",
                 apply_changes=True,
             ).execute()
         )
@@ -141,91 +232,13 @@ class TestsFlextInfraWorktreeService:
             has='description = "A standard PEP 621 description string"',
         )
 
-    def test_add_escapes_a_dirty_outer_project_ancestor(self, tmp_path: Path) -> None:
-        """The lane container sits outside every project uv could discover."""
-        outer_project = tmp_path / "outer"
-        outer_project.mkdir()
-        (outer_project / "pyproject.toml").write_text(
-            '[dependency-groups]\ndescription = "dirty outer WIP"\n', encoding="utf-8"
-        )
-        nested = outer_project / "nested"
-        nested.mkdir()
-        repository = self._repository(nested)
-        branch = "feature/outer-isolation"
-        lane = self._lane(repository, outer_project, branch)
-
-        added = tm.ok(
-            FlextInfraWorktreeService(
-                workspace_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
-
-        tm.that(added, eq=str(lane))
-        tm.that(not lane.is_relative_to(outer_project), where=bool)
-        tm.that(
-            (outer_project / "pyproject.toml").read_text(encoding="utf-8"),
-            eq='[dependency-groups]\ndescription = "dirty outer WIP"\n',
-        )
-
-    def test_same_named_repositories_use_distinct_lane_namespaces(
-        self, tmp_path: Path
-    ) -> None:
-        """Repository names never collide inside one outer lane container."""
-        outer_project = tmp_path / "outer"
-        outer_project.mkdir()
-        (outer_project / "pyproject.toml").write_text(
-            '[project]\nname = "outer"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-        first_parent = outer_project / "first"
-        second_parent = outer_project / "second"
-        first_parent.mkdir()
-        second_parent.mkdir()
-        first = self._repository(first_parent)
-        second = self._repository(second_parent)
-        branch = "feature/same-name"
-
-        first_lane = self._lane(first, outer_project, branch)
-        tm.that(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    workspace_root=first,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute()
-            ),
-            eq=str(first_lane),
-        )
-        second_lane = self._lane(second, outer_project, branch)
-        tm.that(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    workspace_root=second,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute()
-            ),
-            eq=str(second_lane),
-        )
-
-        tm.that(first.name, eq=second.name)
-        tm.that(first_lane != second_lane, where=bool)
-        tm.that(first_lane.parent.parent != second_lane.parent.parent, where=bool)
-
     def test_invalid_lane_metadata_fails_precisely_and_rolls_back(
         self, tmp_path: Path
     ) -> None:
         """The typed lane ingress rejects a non-string PEP 621 description."""
         repository = self._repository(tmp_path)
-        branch = "feature/invalid-metadata"
-        lane = self._lane(repository, repository, branch)
+        branch = "feature/mro-7-invalid"
+        lane = self._lane(repository, "mro-7-invalid")
         (repository / "pyproject.toml").write_text(
             '[project]\nname = "fixture"\nversion = "0.1.0"\n'
             'description = ["not", "a", "string"]\n',
@@ -238,6 +251,7 @@ class TestsFlextInfraWorktreeService:
             operation=c.Infra.WorktreeOperation.ADD,
             branch=branch,
             base="HEAD",
+            lane_dir="mro-7-invalid",
             apply_changes=True,
         ).execute()
 
@@ -265,8 +279,8 @@ class TestsFlextInfraWorktreeService:
         checkout is valid; only its environment is missing.
         """
         repository = self._repository(tmp_path)
-        branch = "feature/clean-setup-failure"
-        lane = self._lane(repository, repository, branch)
+        branch = "feature/mro-8-clean-failure"
+        lane = self._lane(repository, "mro-8-clean-failure")
         (repository / "Makefile").write_text(
             ".PHONY: setup\nsetup:\n\t@printf 'visible setup progress\\n'\n\t@exit 17\n",
             encoding="utf-8",
@@ -278,6 +292,7 @@ class TestsFlextInfraWorktreeService:
             operation=c.Infra.WorktreeOperation.ADD,
             branch=branch,
             base="HEAD",
+            lane_dir="mro-8-clean-failure",
             apply_changes=True,
         ).execute()
 
@@ -288,8 +303,8 @@ class TestsFlextInfraWorktreeService:
     def test_setup_failure_preserves_new_lane_with_work(self, tmp_path: Path) -> None:
         """A failed setup never destroys work it created before returning."""
         repository = self._repository(tmp_path)
-        branch = "feature/dirty-setup-failure"
-        lane = self._lane(repository, repository, branch)
+        branch = "feature/mro-9-dirty-failure"
+        lane = self._lane(repository, "mro-9-dirty-failure")
         (repository / "Makefile").write_text(
             ".PHONY: setup\n"
             "setup:\n"
@@ -305,6 +320,7 @@ class TestsFlextInfraWorktreeService:
             operation=c.Infra.WorktreeOperation.ADD,
             branch=branch,
             base="HEAD",
+            lane_dir="mro-9-dirty-failure",
             apply_changes=True,
         ).execute()
 
@@ -318,14 +334,15 @@ class TestsFlextInfraWorktreeService:
     ) -> None:
         """Update advances an existing lane only through a fast-forward."""
         repository = self._repository(tmp_path)
-        branch = "feature/update"
-        lane = self._lane(repository, repository, branch)
+        branch = "feature/mro-10-update"
+        lane = self._lane(repository, "mro-10-update")
         tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
+                lane_dir="mro-10-update",
                 apply_changes=True,
             ).execute()
         )
@@ -355,6 +372,7 @@ class TestsFlextInfraWorktreeService:
                 operation=c.Infra.WorktreeOperation.UPDATE,
                 branch=branch,
                 base=base,
+                lane_dir="mro-10-update",
                 apply_changes=True,
             ).execute()
         )
@@ -374,8 +392,9 @@ class TestsFlextInfraWorktreeService:
         result = FlextInfraWorktreeService(
             workspace_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
-            branch="feature/no-apply",
+            branch="feature/mro-11-no-apply",
             base="HEAD",
+            lane_dir="mro-11-no-apply",
         ).execute()
 
         tm.fail(result, has="requires --apply")
@@ -387,16 +406,15 @@ class TestsFlextInfraWorktreeService:
         result = FlextInfraWorktreeService(
             workspace_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
-            branch="feature/no-base",
+            branch="feature/mro-12-no-base",
+            lane_dir="mro-12-no-base",
             apply_changes=True,
         ).execute()
 
         tm.fail(result, has="requires --base")
 
-    def test_attached_submodule_uses_one_primary_local_container(
-        self, tmp_path: Path
-    ) -> None:
-        """Attached repositories use one container under the registry primary."""
+    def test_member_checkout_never_owns_its_own_lane(self, tmp_path: Path) -> None:
+        """A member repository yields the workspace root as the lane owner."""
         child_source = tmp_path / "child-source"
         child_source.mkdir()
         (child_source / "README.md").write_text("child\n", encoding="utf-8")
@@ -430,69 +448,48 @@ class TestsFlextInfraWorktreeService:
                 cwd=superproject,
             )
         )
-        attached = superproject / "attached"
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "config", "--unset", "core.worktree"], cwd=attached
-            )
-        )
+        member = superproject / "attached"
+
         tm.that(
-            tm.ok(
-                u.Infra.git_primary_worktree_root(
-                    m.Infra.GitRepoRequest(repo_root=attached)
-                )
-            ).primary_root,
-            eq=attached.resolve(),
+            tm.ok(FlextInfraWorktreeService.workspace_primary_root(member)),
+            eq=superproject.resolve(),
         )
-        linked = tmp_path / "attached-linked"
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "worktree", "add", "--detach", str(linked), "HEAD"],
-                cwd=attached,
-            )
-        )
-        tm.that(
-            tm.ok(
-                u.Infra.git_primary_worktree_root(
-                    m.Infra.GitRepoRequest(repo_root=linked)
-                )
-            ).primary_root,
-            eq=linked.resolve(),
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "worktree", "remove", "--force", str(linked)], cwd=linked
-            )
-        )
-        branch = "feature/attached"
-        primary = tm.ok(
-            u.Infra.git_primary_worktree_root(
-                m.Infra.GitRepoRequest(repo_root=attached)
-            )
-        ).primary_root
-        expected_lane = self._lane(primary, superproject, branch)
 
         lane = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=attached,
+                workspace_root=superproject,
                 operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
+                branch="feature/mro-13-member",
                 base="HEAD",
+                lane_dir="mro-13-member",
                 apply_changes=True,
             ).execute()
         )
+
+        expected_lane = self._lane(superproject, "mro-13-member")
         tm.that(lane, eq=str(expected_lane))
+        # Why: Git spells a submodule's own checkout through its gitdir under
+        # .git/modules, so the invariant under test is that the member gained no
+        # lane of its own — never how Git renders its single main worktree.
+        member_worktrees = tm.ok(
+            u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=member))
+        ).text
+        tm.that(member_worktrees, lacks=str(expected_lane))
         tm.that(
-            f"{c.Infra.WORKTREES_DIRNAME}/{c.Infra.WORKTREES_DIRNAME}"
-            not in expected_lane.as_posix(),
-            where=bool,
+            len([
+                line
+                for line in member_worktrees.splitlines()
+                if line.startswith("worktree ")
+            ]),
+            eq=1,
         )
 
         removed = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=attached,
+                workspace_root=superproject,
                 operation=c.Infra.WorktreeOperation.REMOVE,
-                branch=branch,
+                branch="feature/mro-13-member",
+                lane_dir="mro-13-member",
                 apply_changes=True,
             ).execute()
         )

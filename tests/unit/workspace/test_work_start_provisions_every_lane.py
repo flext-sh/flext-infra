@@ -36,7 +36,9 @@ def _repository(tmp_path: Path) -> Path:
         f'\t@printf "%s\\n" "$(WORKSPACE)" >> "$(CURDIR)/{_SETUP_LOG}"\n',
         encoding="utf-8",
     )
-    (repository / ".gitignore").write_text(f"{_SETUP_LOG}\n", encoding="utf-8")
+    (repository / ".gitignore").write_text(
+        f"{_SETUP_LOG}\n{c.Infra.WORKTREES_DIRNAME}/\n", encoding="utf-8"
+    )
     beads = repository / ".beads"
     beads.mkdir()
     (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
@@ -45,15 +47,49 @@ def _repository(tmp_path: Path) -> Path:
 
 
 def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
-    """Install the minimal ``bd`` surface the start saga consumes."""
+    """Install the ``bd`` surface plus the parent epic lane start requires."""
+    repository = tmp_path / "repository"
+    epic_id = f"{bead_id}-epic"
+    epic_lane = repository / c.Infra.WORKTREES_DIRNAME / f"{epic_id}-parent-epic"
+    tm.ok(
+        u.Cli.run_checked(
+            [
+                c.Infra.GIT,
+                "worktree",
+                "add",
+                "-b",
+                f"epic/{epic_id}-parent-epic",
+                str(epic_lane),
+                "HEAD",
+            ],
+            cwd=repository,
+        )
+    )
     store = tmp_path / "beads-store.json"
     store.write_text(
         json.dumps({
-            "id": bead_id,
-            "status": "open",
-            "assignee": None,
-            "metadata": {},
-            "labels": [],
+            "child": bead_id,
+            "beads": {
+                epic_id: {
+                    "id": epic_id,
+                    "status": "open",
+                    "assignee": None,
+                    "metadata": {
+                        "kind": c.Infra.WorkKind.EPIC.value,
+                        "slug": "parent-epic",
+                        "worktree": str(epic_lane),
+                    },
+                    "labels": [],
+                },
+                bead_id: {
+                    "id": bead_id,
+                    "status": "open",
+                    "assignee": None,
+                    "parent": epic_id,
+                    "metadata": {},
+                    "labels": [],
+                },
+            },
         }),
         encoding="utf-8",
     )
@@ -74,12 +110,16 @@ def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
         "        args = args[1:]\n"
         "        continue\n"
         "    break\n"
-        "data = json.loads(open(STORE, encoding='utf-8').read())\n"
+        "store = json.loads(open(STORE, encoding='utf-8').read())\n"
+        "beads = store['beads']\n"
+        "if len(args) < 2 or args[1] not in beads:\n"
+        "    raise SystemExit(f'unknown bead: {args}')\n"
+        "data = beads[args[1]]\n"
         "if args[:1] == ['show'] and '--json' in args:\n"
         "    print(json.dumps(data))\n"
         "    raise SystemExit(0)\n"
         "if args[:1] == ['update']:\n"
-        "    i = 1\n"
+        "    i = 2\n"
         "    while i < len(args):\n"
         "        if args[i] == '--set-metadata':\n"
         "            key, value = args[i + 1].split('=', 1)\n"
@@ -90,7 +130,7 @@ def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
         "            i += 2\n"
         "            continue\n"
         "        i += 1\n"
-        "    open(STORE, 'w', encoding='utf-8').write(json.dumps(data))\n"
+        "    open(STORE, 'w', encoding='utf-8').write(json.dumps(store))\n"
         "    print('updated')\n"
         "    raise SystemExit(0)\n"
         "raise SystemExit(f'unsupported bd args: {args}')\n",
