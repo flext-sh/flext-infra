@@ -47,6 +47,7 @@ class TestsCodegenGitignoreProfileAware:
         tm.that(rendered, has=".beads/")
         tm.that(rendered, has=_BEADS_CONFIG)
         tm.that(rendered, has=_BEADS_GATE_LOCK)
+        tm.that(rendered, has="uv.lock")
 
     def test_workspace_root_gitignore_keeps_member_allowlist(self) -> None:
         """The workspace-root .gitignore keeps the member-directory allowlist.
