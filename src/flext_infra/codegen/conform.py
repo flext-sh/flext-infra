@@ -1700,6 +1700,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
+                    lazy_init_enabled=(
+                        dist in config.Infra.tooling.lazy_init.enabled_projects
+                    ),
                     dist=dist,
                     infra_cli=config.Infra.name,
                     infra_repository=infra_repository.value,
@@ -1789,6 +1792,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
+                lazy_init_enabled=(
+                    repository.distribution
+                    in config.Infra.tooling.lazy_init.enabled_projects
+                ),
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1920,6 +1927,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
+                lazy_init_enabled=(
+                    repository.distribution
+                    in config.Infra.tooling.lazy_init.enabled_projects
+                ),
                 scaffold=codegen.scaffold,
                 gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,

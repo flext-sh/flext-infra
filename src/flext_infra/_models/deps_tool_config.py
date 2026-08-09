@@ -130,10 +130,14 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["worksteal"],
+            Literal["loadgroup"],
             m.Field(
                 alias="parallel-distribution",
-                description="Pytest-xdist scheduler for full runs.",
+                description=(
+                    "Pytest-xdist scheduler for full runs. `loadgroup` keeps every"
+                    " test sharing an `xdist_group` marker on one worker, so tests"
+                    " contending for a single-flight resource never race."
+                ),
             ),
         ]
         profile_sort: Annotated[
@@ -464,6 +468,14 @@ class FlextInfraModelsDepsToolSettings(
 
     class LazyInitConfig(m.ArbitraryTypesModel):
         """Declarative policy for ``__init__.py`` lazy export generation."""
+
+        enabled_projects: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="enabled-projects",
+                description="Projects whose generated Make gen verb runs lazy-init.",
+            ),
+        ] = ()
 
         root_namespace_files: Annotated[
             t.StrSequence,
