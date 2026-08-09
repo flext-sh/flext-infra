@@ -177,6 +177,10 @@ Infra:
         package:
           name: flext-core
         dependencies: [flext-cli]
+      - project: flext-cli
+        package:
+          name: flext-tests
+        dependencies: [flext-cli]
       - project: flext-tests
         package:
           name: flext-infra
