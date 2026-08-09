@@ -428,6 +428,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
@@ -436,10 +437,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         expected_ignores = self._expected_ignores(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
-        # mro-j47u (codex): pre-write manifests supply the same typed roots that
-        # filesystem discovery observes after the atomic scaffold is materialized.
-        expected_includes = declared_python_dirs or self._expected_includes(
-            is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
+        expected_includes = (
+            declared_python_dirs
+            if declared_python_dirs_are_complete
+            else self._expected_includes(
+                is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
+            )
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -451,17 +454,20 @@ class FlextInfraEnsurePyrightConfigPhase:
                 else None
             )
         )
-        expected_envs = (
-            self._declared_envs(
-                declared_python_dirs=declared_python_dirs,
-                project_dir=project_dir,
-                rules=stub_rules,
+        if declared_python_dirs_are_complete:
+            expected_envs = (
+                self._declared_envs(
+                    declared_python_dirs=declared_python_dirs,
+                    project_dir=project_dir,
+                    rules=stub_rules,
+                )
+                if declared_python_dirs
+                else ()
             )
-            if declared_python_dirs
-            else self._expected_envs(
+        else:
+            expected_envs = self._expected_envs(
                 is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
             )
-        )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
             c.Infra.PYRIGHT
         )
@@ -473,7 +479,9 @@ class FlextInfraEnsurePyrightConfigPhase:
             phase_builder = phase_builder.list(c.Infra.IGNORE, expected_ignores)
         else:
             phase_builder = phase_builder.deprecated(c.Infra.IGNORE)
-        if expected_includes:
+        if declared_python_dirs_are_complete and not expected_includes:
+            phase_builder = phase_builder.value("include", [])
+        elif expected_includes:
             phase_builder = phase_builder.list("include", expected_includes)
         else:
             phase_builder = phase_builder.deprecated("include")
@@ -529,6 +537,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply the managed pyright configuration for one TOML document."""
@@ -541,6 +550,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_kind=project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             ),
         )
@@ -555,6 +565,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply managed pyright settings directly to one normalized payload."""
@@ -567,6 +578,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_kind=project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             ),
         )
