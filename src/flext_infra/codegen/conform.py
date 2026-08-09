@@ -250,7 +250,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"declare {missing_key} in config/workspace.yaml"
             )
         current_repository = workspace.repository
-        if root != workspace_root:
+        if self.initial_workspace is not None and root != workspace_root:
             try:
                 current_path = root.relative_to(workspace_root).as_posix()
             except ValueError as exc:
@@ -342,8 +342,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             u.Cli.progress(
                 repository_index, total_repositories, repository.name, "conform"
             )
-            repository_root = self._repository_root(
-                workspace_root, workspace, repository
+            repository_root = (
+                current_target.root
+                if repository.name == current_target.repository.name
+                else self._repository_root(workspace_root, workspace, repository)
             )
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
@@ -2764,26 +2766,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
         """Resolve the principal checkout owning the workspace ledger."""
-        probe = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=workspace_root
-        )
-        if probe.failure or probe.value.strip() != "true":
-            return r[Path].ok(workspace_root)
-        # A submodule's primary worktree is itself; the workspace ledger owner
-        # is the superproject. Resolve superproject working tree first.
-        superproject = u.Infra.git_superproject_working_tree(
-            m.Infra.GitRepoRequest(repo_root=workspace_root)
-        )
-        if superproject.success and superproject.value.text.strip():
-            return r[Path].ok(Path(superproject.value.text.strip()).resolve())
-        principal = u.Infra.git_primary_worktree_root(
-            m.Infra.GitRepoRequest(repo_root=workspace_root)
-        )
-        if principal.failure:
+        topology = FlextInfraWorkspaceDetector.resolve_topology_roots(workspace_root)
+        if topology.failure:
             return r[Path].fail(
-                principal.error or "unable to resolve the principal worktree"
+                topology.error or "unable to resolve the governing workspace root"
             )
-        return r[Path].ok(principal.value.primary_root)
+        return r[Path].ok(topology.value[2])
 
     @staticmethod
     def _beads_binary(ledger_root: Path) -> p.Result[Path]:

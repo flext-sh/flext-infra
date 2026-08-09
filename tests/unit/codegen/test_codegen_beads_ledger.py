@@ -129,6 +129,116 @@ class TestCodegenBeadsLedger:
         repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.canonical_prefix, eq=repository.distribution)
 
+    def test_external_member_lane_plans_only_member_routing_surfaces(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        member_source = tmp_path / "member-source"
+        provider = config.Infra.codegen.providers[0]
+        root_repository = test_u.Tests.repository_ref("flext").model_copy(
+            update={"path": Path(), "package": False, "editable": False}
+        )
+        member = test_u.Tests.repository_ref(
+            "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        ).model_copy(update={"path": Path("flext-core")})
+        self._standalone_workspace(member_source, ledger_id=None, overlay=False)
+        (member_source / "pyproject.toml").write_text(
+            '[project]\nname = "flext-core"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n',
+            encoding="utf-8",
+        )
+        self._git(member_source, "add", "-A")
+        self._git(member_source, "commit", "-q", "-m", "Use member identity")
+        workspace.mkdir()
+        self._git(workspace, "init", "-q", "-b", provider.branch)
+        self._git(workspace, "config", "user.email", "infra@example.com")
+        self._git(workspace, "config", "user.name", "Infra Tests")
+        self._git(
+            workspace,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            "-b",
+            provider.branch,
+            str(member_source),
+            member.path.as_posix(),
+        )
+        member_root = workspace / member.path
+        self._git(member_root, "remote", "set-url", "origin", member.url)
+        self._git(
+            workspace,
+            "config",
+            "--file",
+            ".gitmodules",
+            f"submodule.{member.path.as_posix()}.url",
+            member.url,
+        )
+        spec = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="flext",
+            repository=root_repository,
+            members=(member,),
+            ledger_id="mro",
+            ledger_prefix="mro",
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                workspace / "config" / "workspace.yaml",
+                spec.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    exclude={"external_dependency_paths"},
+                ),
+            )
+        )
+        local_spec = spec.model_copy(
+            update={
+                "name": member.name,
+                "repository": member.model_copy(update={"path": Path()}),
+                "members": (),
+                "ledger_id": None,
+                "ledger_prefix": None,
+            }
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                member_root / "config" / "workspace.yaml",
+                local_spec.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    exclude={"external_dependency_paths"},
+                ),
+            )
+        )
+        self._git(member_root, "add", "-A")
+        self._git(member_root, "commit", "-q", "-m", "Declare member topology")
+        self._git(workspace, "add", "-A")
+        self._git(workspace, "commit", "-q", "-m", "Declare workspace topology")
+        lane = tmp_path / "external-member-lane"
+        self._git(member_root, "worktree", "add", "-q", "--detach", str(lane))
+
+        request = m.Infra.CodegenConformRequest(
+            root=lane,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(FlextInfraCodegenConform(workspace_root=lane).plan(request))
+        relative_paths = {
+            item.path.relative_to(lane).as_posix()
+            for item in plan.files
+            if item.path.is_relative_to(lane)
+        }
+
+        tm.that(c.Infra.BEADS_CONFIG_RELPATH in relative_paths, eq=True)
+        tm.that(c.Infra.BEADS_METADATA_RELPATH in relative_paths, eq=True)
+        tm.that(".github/workflows/ci-matrix.yml" in relative_paths, eq=False)
+        tm.that(any(path.endswith(".Dockerfile") for path in relative_paths), eq=False)
+        tm.that(plan.beads[0].repository_root, eq=lane.resolve())
+        tm.that(plan.beads[0].ledger_root, eq=workspace.resolve())
+        tm.that(plan.beads[0].enabled, eq=False)
+
     def test_principal_keeps_ledger_at_repository_root(self, tmp_path: Path) -> None:
         """Keep a principal checkout self-owned without worktree redirection."""
         principal = self._standalone_workspace(tmp_path / "principal", ledger_id=None)
