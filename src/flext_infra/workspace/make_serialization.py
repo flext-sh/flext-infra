@@ -6,8 +6,16 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_infra import c, config, m, p, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.serialization_lock import (
+    FlextInfraUtilitiesSerializationLock,
+)
+from flext_infra._utilities.workspace_fingerprint import (
+    FlextInfraUtilitiesWorkspaceFingerprint,
+)
 from flext_infra.base import s
+from flext_cli import u
 
 
 class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
@@ -123,9 +131,9 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
     ) -> p.Result[m.Infra.ProcessExit]:
         """Return one typed failure whose CLI boundary preserves process status."""
         outcome = m.Infra.ProcessExit(
-            exit_code=u.Infra.normalize_process_exit_code(raw_exit_code),
+            exit_code=FlextInfraUtilitiesBase.normalize_process_exit_code(raw_exit_code),
             raw_exit_code=raw_exit_code,
-            classification=u.Infra.classify_process_exit(raw_exit_code),
+            classification=FlextInfraUtilitiesBase.classify_process_exit(raw_exit_code),
         )
         return r[m.Infra.ProcessExit].fail(
             message, error_code=c.Infra.PROCESS_EXIT_ERROR_CODE, error_data=outcome
@@ -166,9 +174,13 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         output = result.value
         if output.exit_code != 0:
             outcome = m.Infra.ProcessExit(
-                exit_code=u.Infra.normalize_process_exit_code(output.exit_code),
+                exit_code=FlextInfraUtilitiesBase.normalize_process_exit_code(
+                    output.exit_code
+                ),
                 raw_exit_code=output.exit_code,
-                classification=u.Infra.classify_process_exit(output.exit_code),
+                classification=FlextInfraUtilitiesBase.classify_process_exit(
+                    output.exit_code
+                ),
             )
             return r[m.Infra.ProcessExit].fail(
                 (
@@ -185,7 +197,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         checkout: Path, serialization: m.Infra.MakeSerializationSpec, *, phase: str
     ) -> p.Result[m.Infra.WorkspaceFingerprint]:
         """Capture one checkout snapshot with phase-specific diagnostics."""
-        result = u.Infra.workspace_fingerprint(
+        result = FlextInfraUtilitiesWorkspaceFingerprint.workspace_fingerprint(
             checkout, excluded_paths=serialization.snapshot_excludes
         )
         if result.failure:
@@ -201,7 +213,9 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         """Render changed paths when two snapshots differ."""
         if before.digest == after.digest:
             return None
-        paths = u.Infra.workspace_fingerprint_changes(before, after)
+        paths = FlextInfraUtilitiesWorkspaceFingerprint.workspace_fingerprint_changes(
+            before, after
+        )
         return ", ".join(paths) or "HEAD/index"
 
     def _execute_locked(
@@ -346,7 +360,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 )
             return primary
 
-        return u.Infra.serialization_lock_execute(
+        return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
             (lock_path,),
             serialization.timeout_seconds,
             locked_fixed_point,
@@ -440,7 +454,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     makefile=selected_makefile,
                     lock_path=mutation_lock_path,
                 )
-            return u.Infra.serialization_lock_execute(
+            return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
                 (mutation_lock_path,),
                 serialization.timeout_seconds,
                 lambda: self._execute_locked(
@@ -463,7 +477,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             f"what={make_variables.get(make_config.selector, '')} "
             f"apply={make_variables.get(make_config.apply_variable, '')}"
         )
-        return u.Infra.serialization_lock_execute(
+        return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
             (single_flight_lock_path,),
             serialization.timeout_seconds,
             complete_operation,

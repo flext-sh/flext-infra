@@ -62,14 +62,14 @@ _GROUP_OWNERS: Final[dict[str, tuple[str, str, str]]] = {
         "validation_routes",
     ),
     c.Infra.CLI_GROUP_REFACTOR: (
-        "flext_infra.services.cli_routes_workspace",
-        "WorkspaceRoutes",
-        "workspace_routes",
+        "flext_infra.services.cli_routes_refactor",
+        "RefactorRoutes",
+        "refactor_routes",
     ),
     c.Infra.CLI_GROUP_RELEASE: (
-        "flext_infra.services.cli_routes_workspace",
-        "WorkspaceRoutes",
-        "workspace_routes",
+        "flext_infra.services.cli_routes_release",
+        "ReleaseRoutes",
+        "release_routes",
     ),
     c.Infra.CLI_GROUP_WORKSPACE: (
         "flext_infra.services.cli_routes_workspace",
@@ -92,10 +92,10 @@ class CliRouteService:
         module_path, class_name, attr_name = owner
         module = importlib.import_module(module_path)
         owner_class = getattr(module, class_name)
-        table: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = getattr(
-            owner_class, attr_name
-        )
-        return table[group]
+        table: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] | tuple[
+            m.Cli.ResultCommandRoute, ...
+        ] = getattr(owner_class, attr_name)
+        return table[group] if isinstance(table, dict) else table
 
     @classmethod
     def known_groups(cls) -> tuple[str, ...]:

@@ -512,7 +512,7 @@ Infra:
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
         parallel-workers: 4
-        parallel-distribution: worksteal
+        parallel-distribution: loadgroup
         profile-sort: cumulative
         profile-limit: 50
         min-version: "8.0"
@@ -592,6 +592,7 @@ Infra:
       app:
         pyright: {}
     lazy-init:
+      enabled-projects: [flext-infra]
       root-namespace-files:
         - api.py
         - base.py
@@ -606,6 +607,7 @@ Infra:
         - domains.py
         - exceptions.py
         - files.py
+        - git.py
         - handlers.py
         - helpers.py
         - infra.py
@@ -627,6 +629,7 @@ Infra:
         - typings.py
         - utilities.py
         - validator.py
+        - work.py
         - worktree.py
       public-file-aliases:
         base.py: s

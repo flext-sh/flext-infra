@@ -1434,6 +1434,10 @@ class FlextInfraConfigModels:
             FlextInfraModelsDepsToolSettings.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
+        lazy_init_enabled: Annotated[
+            bool,
+            m.Field(description="Whether make gen runs the lazy-init generator"),
+        ] = False
 
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""

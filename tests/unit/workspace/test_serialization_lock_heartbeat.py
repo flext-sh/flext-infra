@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -14,6 +16,7 @@ from flext_infra.workspace.serialization_lock import FlextInfraSerializationLock
 from flext_tests import tm
 
 
+@pytest.mark.xdist_group("make-single-flight")
 class TestsFlextInfraSerializationLockHeartbeat:
     """Prove waiters emit stage progress instead of silent blocking."""
 

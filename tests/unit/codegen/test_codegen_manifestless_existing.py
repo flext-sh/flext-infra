@@ -27,6 +27,9 @@ class TestCodegenManifestlessExisting:
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
         vscode_settings = root / ".vscode" / "settings.json"
         vscode_settings.parent.mkdir()
         tm.ok(

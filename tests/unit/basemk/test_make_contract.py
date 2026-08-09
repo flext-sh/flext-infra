@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import os
 import stat
 from typing import TYPE_CHECKING
@@ -54,6 +56,7 @@ _MAKE_TEST_ENV_KEYS = (
     "FLEXT_PYTEST_VERBOSE_RAW",
     "FLEXT_PYTEST_WHAT_RAW",
     "UV",
+    "WHAT",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
 
@@ -171,6 +174,7 @@ def _run_make(
     )
 
 
+@pytest.mark.xdist_group("make-single-flight")
 class TestsFlextInfraBasemkMakeContract:
     """Behavior contract for test_make_contract."""
 
