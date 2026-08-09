@@ -24,24 +24,21 @@ class FlextInfraUtilitiesBeadsLane:
     def beads_resolve_root(cls, hint: Path | None = None) -> p.Result[Path]:
         """Resolve the Beads project root that owns the workspace ledger.
 
-        Prefer the checkout under ``hint`` (git toplevel, then hint, then
-        parents) when it declares `.beads/config.yaml`, so member projects
-        with their own tracker stay local. Fall back to the Git superproject
-        only when the member has no Beads config, so orphan members still
-        reach the workspace tracker (`bd -C <workspace>`). Uses typed Git
+        A Git submodule routes to its governing superproject ledger. A
+        standalone repository keeps its own declared tracker. Uses typed Git
         root reports — never raw argv helpers.
         """
         start = (hint or Path.cwd()).expanduser().resolve()
         candidates: list[Path] = []
         request = m.Infra.GitRepoRequest(repo_root=start)
+        superproject = FlextInfraUtilitiesGit.git_superproject_working_tree(request)
+        if superproject.success and superproject.value.text.strip():
+            candidates.append(Path(superproject.value.text.strip()).resolve())
         top = FlextInfraUtilitiesGit.git_show_toplevel(request)
         if top.success:
             candidates.append(top.value.workspace_root)
         candidates.append(start)
         candidates.extend(start.parents)
-        superproject = FlextInfraUtilitiesGit.git_superproject_working_tree(request)
-        if superproject.success and superproject.value.text.strip():
-            candidates.append(Path(superproject.value.text.strip()).resolve())
         seen: set[Path] = set()
         for candidate in candidates:
             resolved = candidate.resolve()
