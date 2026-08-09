@@ -45,7 +45,7 @@ class TestsExtendedProjectRunners:
         )
         try:
             result = checker.run_projects(
-                ["p1"], ["lint", "format", "pyrefly"], reports_dir=tmp_path / "reports"
+                ["p1"], ["lint", "pyrefly"], reports_dir=tmp_path / "reports"
             )
         finally:
             if original_pythonpath:
@@ -54,7 +54,11 @@ class TestsExtendedProjectRunners:
                 os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
-        tm.that(set(result.value[0].gates), eq={"lint", "pyrefly"})
+        # 'format' is not a check gate: 73887691 gave each tool one owner and
+        # moved ruff format to the 'fmt' verb, so the check registry carries
+        # lint/pyrefly and never reports a format gate here.
+        tm.that({"lint", "pyrefly"} <= set(result.value[0].gates), eq=True)
+        tm.that("format" in set(result.value[0].gates), eq=False)
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(

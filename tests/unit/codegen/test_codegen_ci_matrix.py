@@ -128,6 +128,8 @@ class TestCodegenCiMatrix:
                 for step in workflow
                 if context in step.contexts
             )
+            if context == "pre_push":
+                commands = f"unset $(git rev-parse --local-env-vars); {commands}"
             tm.that(hooks, has=f"id: {hook_id}")
             tm.that(hooks, has=f"'{commands}'")
         tm.that(hooks, has="make test")

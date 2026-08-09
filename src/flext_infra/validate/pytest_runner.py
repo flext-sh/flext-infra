@@ -190,16 +190,7 @@ class FlextInfraPytestRunner(s[int]):
         focused = self.file is not None or self.match is not None
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
-        # Always select via testmon. Full local runs keep coverage; CI=Y and
-        # focused FILE/MATCH selectors disable it (subset cov is not fail-under).
-        if self._ci_disables_coverage() or focused:
-            coverage_args = ("--testmon", "--no-cov")
-        else:
-            coverage_args = (
-                "--testmon",
-                "--cov",
-                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
-            )
+        coverage_args = ("--testmon", "--no-cov")
         parallel_args = (
             ("-n", "0")
             if focused

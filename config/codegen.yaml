@@ -339,7 +339,8 @@ Infra:
         - name: test
           default_what: all
           # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Coverage is on unless CI=Y (no separate cov verb).
+          # Incremental subsets never enforce global coverage; full coverage is
+          # an explicit complete-suite gate, not part of default make test.
           # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
           # test in mutation_verbs (fingerprint still ignores .testmondata*).
           whats: [all, cache-status, cache-clear, cache-checkpoint]
