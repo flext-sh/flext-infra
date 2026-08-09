@@ -250,10 +250,11 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(second_changes, eq=[])
 
     def test_existing_standalone_uses_complete_declared_roots(
-        self, tmp_path: Path
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        rules = tool_config_document.tools.pyright.path_rules
         project_dir = tmp_path / "flext-sample"
-        source_dir = project_dir / "src" / "flext_sample"
+        source_dir = project_dir / rules.source_dir / "flext_sample"
         source_dir.mkdir(parents=True)
         (source_dir / "__init__.py").write_text("", encoding="utf-8")
         pyproject = project_dir / "pyproject.toml"
@@ -266,7 +267,7 @@ class TestsFlextInfraDepsModernizerPyright:
             ).conform_source(
                 source,
                 path=pyproject,
-                declared_python_dirs=("src", "tests"),
+                declared_python_dirs=(rules.source_dir, rules.test_like_dirs[0]),
                 declared_python_dirs_are_complete=True,
             )
         )
@@ -283,7 +284,39 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, none=False)
         if pyright is None:
             return
-        tm.that(u.Cli.json_as_sequence(pyright.get("include")), eq=["src", "tests"])
+        tm.that(
+            u.Cli.json_as_sequence(pyright.get("include")),
+            eq=[rules.source_dir, rules.test_like_dirs[0]],
+        )
+
+    def test_existing_standalone_complete_empty_roots_do_not_rediscover_disk(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        rules = tool_config_document.tools.pyright.path_rules
+        project_dir = tmp_path / "flext-sample"
+        source_dir = project_dir / rules.source_dir / "flext_sample"
+        source_dir.mkdir(parents=True)
+        (source_dir / "__init__.py").write_text("", encoding="utf-8")
+        doc = u.Cli.toml_document()
+
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
+            doc,
+            is_root=False,
+            project_dir=project_dir,
+            declared_python_dirs=(),
+            declared_python_dirs_are_complete=True,
+        )
+
+        tool = u.Cli.toml_unwrap_item(doc["tool"])
+        tm.that(tool, is_=MutableMapping)
+        if not isinstance(tool, MutableMapping):
+            return
+        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
+        tm.that(pyright, is_=MutableMapping)
+        if not isinstance(pyright, MutableMapping):
+            return
+        tm.that(u.Cli.toml_unwrap_item(pyright["include"]), eq=[])
+        tm.that(u.Cli.toml_unwrap_item(pyright["executionEnvironments"]), eq=[])
 
     def test_workspace_root_declared_roots_do_not_override_fleet_discovery(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
