@@ -555,26 +555,101 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.that(target.attached_standalone, eq=False)
         tm.that(target.beads_enabled, eq=False)
 
-    def test_conform_target_member_is_routing_only(self, tmp_path: Path) -> None:
-        """Project routing-only Beads client config onto a manifest member.
-
-        mro-cdzxf: a plain WORKSPACE_MEMBER was neither ``beads_enabled`` nor
-        ``routing_only``, so codegen skipped BOTH ``.beads/config.yaml`` and
-        ``.beads/metadata.json`` for every member. Runtime proof: ``bd list``
-        inside flext-core exited 1 with "no beads database found", while the
-        same cwd with ``BEADS_DIR`` pointed at the umbrella resolved 282
-        ``mro-`` issues. That also broke the whole lane lifecycle, because
-        ``make work`` resolves the bead through ``bd -C <member>``.
-
-        Routing-only is the correct class, NOT ``beads_enabled``: the member
-        consumes the workspace ledger and must never own tracker lifecycle.
-        """
+    def test_conform_target_member_is_not_routing_only(self, tmp_path: Path) -> None:
         member_root = self._attached_member(tmp_path)
 
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
-        tm.that(target.routing_only, eq=True)
+        tm.that(target.routing_only, eq=False)
         tm.that(target.beads_enabled, eq=False)
+
+    def test_external_member_worktree_inherits_governing_topology(
+        self, tmp_path: Path
+    ) -> None:
+        member_root = self._attached_member(tmp_path)
+        workspace_root = member_root.parents[1]
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=workspace_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Declare workspace topology"],
+                cwd=workspace_root,
+            )
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=member_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Declare member topology"],
+                cwd=member_root,
+            )
+        )
+        lane = tmp_path / "external-member-lane"
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "worktree", "add", "-q", "--detach", str(lane)], cwd=member_root
+            )
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(lane))
+
+        tm.that(
+            tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(lane)),
+            eq=workspace_root.resolve(),
+        )
+        tm.that(target.root, eq=lane.resolve())
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.routing_only, eq=False)
+        tm.that(target.beads_enabled, eq=False)
+
+    def test_external_standalone_worktree_stays_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        primary = tmp_path / "standalone"
+        self._initialize_repository(primary)
+        (primary / "pyproject.toml").write_text(
+            '[project]\nname = "flext-alone"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        self._write_manifest(
+            primary,
+            self._repository(
+                name="flext-alone", path=".", role=c.Infra.RepositoryRole.STANDALONE
+            ),
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=primary))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Declare standalone topology"],
+                cwd=primary,
+            )
+        )
+        lane = tmp_path / "standalone-lane"
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "worktree", "add", "-q", "--detach", str(lane)], cwd=primary
+            )
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(lane))
+
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(target.routing_only, eq=True)
+        tm.that(target.beads_enabled, eq=True)
+
+    def test_linked_worktree_without_resolvable_primary_fails_closed(
+        self, tmp_path: Path
+    ) -> None:
+        primary = tmp_path / "primary"
+        self._initialize_repository(primary)
+        lane = tmp_path / "lane"
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "worktree", "add", "-q", "--detach", str(lane)], cwd=primary
+            )
+        )
+        primary.rename(tmp_path / "unavailable-primary")
+
+        tm.fail(
+            FlextInfraWorkspaceDetector.resolve_workspace_root(lane), has="resolve Git"
+        )
 
     def test_conform_target_marker_repo_is_attached_standalone(
         self, tmp_path: Path
