@@ -208,9 +208,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         child_result = self._project_is_flext_child(path.parent)
         if child_result.failure:
             return [child_result.error or "failed to resolve project Git topology"]
-        is_root = (
-            path.parent.resolve() == self.root.resolve() and not child_result.value
-        )
+        # Why (mro-tvc03): the target's own Git topology decides this, never the
+        # scope the modernizer was invoked with. Comparing path.parent against
+        # self.root made a workspace MEMBER look like a root whenever the run
+        # started inside it, so venvPath rendered '..' from within and '.' from
+        # the fan-out and no content could satisfy both.
+        is_root = not child_result.value
         # mro-j47u (codex): scaffold (pre-write) contexts have no on-disk project
         # root yet. Derive pyright/pyrefly configuration from declared roots only;
         # disk discovery converges on the first post-write conformance pass.
