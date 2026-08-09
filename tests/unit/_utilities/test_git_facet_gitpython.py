@@ -7,10 +7,44 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, c, m, u
+from flext_tests import tm
+from tests import u as test_u
 
 
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
+
+    def test_merge_no_edit_requires_a_non_fast_forward_merge(
+        self, tmp_path: Path
+    ) -> None:
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", "topic"], cwd=repository))
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "switch", "topic"], cwd=repository))
+        (repository / "topic.txt").write_text("topic\n", encoding="utf-8")
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "add", "topic.txt"], cwd=repository))
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "topic"], cwd=repository
+            )
+        )
+        topic = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository))
+        ).oid
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "switch", "main"], cwd=repository))
+        tm.ok(
+            u.Infra.git_merge_no_edit(
+                m.Infra.GitCommitishRequest(repo_root=repository, commitish=topic)
+            )
+        )
+        parents = tm.ok(
+            u.Cli.capture(
+                [c.Infra.GIT, "rev-list", "--parents", "-n", "1", "HEAD"],
+                cwd=repository,
+            )
+        ).split()
+        assert len(parents) == 3
 
     def test_repository_head_and_status_and_service(self, real_git_repo: Path) -> None:
         """Head, porcelain status, and FlextInfraGitService share one typed path."""
