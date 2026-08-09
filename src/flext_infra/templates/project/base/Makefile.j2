@@ -33,10 +33,8 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-{{ make.apply_variable }} ?= {{ make.apply_absent_value }}
-# The seeded absent value means "not applying", so every guard compares against
-# APPLYING and a plain read-only run never trips the write-enable check.
-APPLYING := $(if $(filter-out {{ make.apply_absent_value }},$(strip $({{ make.apply_variable }}))),$(strip $({{ make.apply_variable }})))
+ACTION ?=
+{{ make.apply_variable }} ?=
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -118,7 +116,7 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 
 # === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
+# Source: config:make.verbs[*].actions, config:make.check_gates_allowed,
 #        config:make.check_gates_default
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
@@ -126,12 +124,12 @@ SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 {# Builtin whats from config, plus live `_custom_<verb>_<what>` selectors from
    custom.mk so help/allowlist stay aligned with handlers without hand-editing
    the managed Makefile after each custom surface change. #}
-{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
+{% for verb in make.verbs %}_ALLOWED_ACTIONS_{{ verb.name }} :={% for action in verb.actions %} {{ action }}{% endfor %}
+_ALLOWED_WHATS_{{ verb.name }} :={% for what in make.handler_whats[verb.name] %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
 {% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
 {% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
-DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -167,15 +165,10 @@ UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dep
 
 {% include "base_mypy_limit.mk.j2" %}
 
-{% for verb in make.verbs if verb.name != "setup" -%}
-_DEFAULT_{{ verb.name }} := {{ verb.default_what }}
-{% endfor -%}
-{# APPLY=Y alone must mutate: an apply-guarded verb defaults to `check`, so
-   `make gen APPLY=Y` used to run the read-only pass and silently change
-   nothing. With APPLY set and no explicit WHAT, the verb resolves to its
-   mutating selector instead. #}
-{% for verb in make.verbs if verb.apply_guarded or verb.accepts_apply -%}
-_APPLY_WHAT_{{ verb.name }} := {{ verb.apply_what | default("apply") }}
+{% for verb in make.verbs -%}
+_DEFAULT_ACTION_{{ verb.name }} := {{ verb.default_action }}
+_DEFAULT_APPLY_{{ verb.name }} := {{ make.apply_value if verb.default_apply else make.apply_absent_value }}
+_DEFAULT_WHAT_{{ verb.name }} := {{ make.default_whats[verb.name] }}
 {% endfor -%}
 {% for verb in extra_verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
@@ -352,17 +345,29 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	applying="$(strip $(APPLYING))"; \
-	if [ -n "$$applying" ] && [ "$$applying" != "{{ make.apply_value }}" ]; then \
-		printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} when set\n' >&2; exit 2; \
+	action="$(strip $(ACTION))"; \
+	applying="$(strip $({{ make.apply_variable }}))"; \
+	if [ -z "$$action" ]; then action="$(_DEFAULT_ACTION_$(1))"; fi; \
+	if [ -z "$$what" ]; then what="$(_DEFAULT_WHAT_$(1))"; fi; \
+	if [ -z "$$applying" ]; then applying="$(_DEFAULT_APPLY_$(1))"; fi; \
+	case " $(_ALLOWED_ACTIONS_$(1)) " in \
+		*" $$action "*) ;; \
+		*) printf 'ERROR: unsupported %s ACTION=%s (allowed:%s)\n' "$(1)" "$$action" "$(_ALLOWED_ACTIONS_$(1))" >&2; exit 2 ;; \
+	esac; \
+	case "$$applying" in \
+		{{ make.apply_value }}|{{ make.apply_absent_value }}) ;; \
+		*) printf 'ERROR: {{ make.apply_variable }} must be {{ make.apply_value }} or {{ make.apply_absent_value }}\n' >&2; exit 2 ;; \
+	esac; \
+	apply_mode=''; \
+{% for verb in make.verbs %}	if [ "$(1)" = "{{ verb.name }}" ]; then \
+		case "$$action" in {% for action_name, action in verb.actions.items() %}{{ action_name }}) apply_mode={{ action.apply_mode }} ;; {% endfor %}esac; \
 	fi; \
-	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
-		printf 'ERROR: verb %s is read-only and does not accept {{ make.apply_variable }}\n' "$(1)" >&2; exit 2; \
+{% endfor %}	if [ "$$apply_mode" = never ] && [ "$$applying" = "{{ make.apply_value }}" ]; then \
+		printf 'ERROR: %s ACTION=%s does not accept {{ make.apply_variable }}={{ make.apply_value }}\n' "$(1)" "$$action" >&2; exit 2; \
 	fi; \
-	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
-		what="$(_APPLY_WHAT_$(1))"; \
+	if [ "$$apply_mode" = required ] && [ "$$applying" != "{{ make.apply_value }}" ]; then \
+		printf 'ERROR: %s ACTION=%s requires {{ make.apply_variable }}={{ make.apply_value }}\n' "$(1)" "$$action" >&2; exit 2; \
 	fi; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
@@ -374,7 +379,7 @@ define _dispatch
 			*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
 		esac; \
 	fi; \
-	builtin="_builtin_$(1)_$$what"; \
+	builtin="_builtin_$(1)_$$action"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -395,14 +400,14 @@ define _dispatch
 			done; \
 		done; \
 		case " $(BUILTIN_VERBS) " in \
-		*" $(1) "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+			*" $(1) "*) WHAT="$$what" ACTION="$$action" {{ make.apply_variable }}="$$applying" $(SELF_MAKE) "$$builtin" || exit $$? ;; \
 		*) if [ -n "$$script" ]; then \
 			WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
 		else printf 'ERROR: declared handler script is missing for %s WHAT=%s\n' "$(1)" "$$what" >&2; exit 2; fi ;; \
 		esac; \
 {%- else %}
 	else \
-		$(SELF_MAKE) "$$builtin" || exit $$?; \
+		WHAT="$$what" ACTION="$$action" {{ make.apply_variable }}="$$applying" $(SELF_MAKE) "$$builtin" || exit $$?; \
 {%- endif %}
 	fi; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
@@ -433,7 +438,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
+.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for action in verb.actions %} _builtin_{{ verb.name }}_{{ action }}{% endfor %}{% endfor %}
 
 # Every public verb dispatches straight into its private builtin. The verbs
 # that used to round-trip through the Python serializer keep the environment
@@ -506,12 +511,12 @@ _builtin_help_usage:
    if the read-only default selector also demanded mutation authority. Only the
    lane-mutating selectors call _require_apply, so work states that itself. #}
 	@printf '  %-10s WHAT=%s\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-	@printf '  %-10s %s\n' '' '{{ verb.default_what }} is read-only; other WHATs require APPLY=Y';
+	@printf '  %-10s %s\n' '' '{{ verb.default_action }} is read-only; other ACTIONs require APPLY=Y';
 {% else %}
-	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_ACTIONS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 {% endif %}
 {% endfor %}{% for verb in extra_verbs %}
-	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
+	@printf '  %-10s WHAT=%s\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endfor %}
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
@@ -584,12 +589,8 @@ _builtin_setup_environment: _builtin_setup_submodules
 endif
 # End SECTION: setup environment
 
-_builtin_deps_check: _builtin_require_environment
+_builtin_deps_lock: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
-
-_builtin_deps_lock:
-	$(call _require_apply)
-	$(call _run_for_selected_projects,)
 
 _builtin_deps_upgrade: _builtin_require_environment
 	$(call _require_apply)
@@ -615,22 +616,26 @@ _builtin_deps_upgrade: _builtin_require_environment
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
+_builtin_build_build:
+	@$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,build,),$(SELF_MAKE) _builtin_build_artifacts)
+
 # Read-only by contract in every profile: mutation belongs to `make fix
-# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
-# omits make.ci.check_gates_skip before orchestrating members (same contract as
+# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.enabled_value }}
+# omits make.ci.rules.enabled.check_gate_exclusions before orchestrating members (same contract as
 # standalone/member Makefiles and flext_infra check run). APPLY=Y is silently
 # ignored on read-only verbs (check, test, run, status, build, help, setup,
 # release) — it only activates mutation on mutation verbs.
-_builtin_check_all: _builtin_require_environment
+_builtin_check_check: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,audit,),@true)
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
-	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
+	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.enabled_value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
+		{% for skipped in make.ci.rules["enabled"].check_gate_exclusions -%}
 			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
 			{% endfor -%}
 			if [ "$$skip" -eq 0 ]; then \
@@ -638,59 +643,50 @@ _builtin_check_all: _builtin_require_environment
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.enabled_value }} omits check gates:{% for skipped in make.ci.rules["enabled"].check_gate_exclusions %} {{ skipped }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
+		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.enabled_value }} filtering\n' >&2; \
 		exit 2; \
 	fi; \
 	$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) --make-arg "CHECK_GATES=$$gates" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
-_builtin_test_all: _builtin_require_environment
+_builtin_test_run: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,validate,),@true)
 	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
-{% for what in make.handler_whats["test"] if what != "all" %}
-_builtin_test_{{ what }}: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) --what {{ what }} $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-{% endfor %}
+_builtin_test_full: _builtin_require_environment
+	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) --what full $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
-_builtin_fmt_check: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_fmt_apply: _builtin_fmt_all
+_builtin_fmt_format: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,fix,$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check)),@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),all,check)" $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--make-arg "APPLY={{ make.apply_value }}",) $(if $(filter 1,$(FAIL_FAST)),--fail-fast))
 
 # Read-only dual of `make fix APPLY=Y` — never mutate here.
-_builtin_fix_check: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_fix_apply: _builtin_fix_all
+_builtin_fix_fix: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,fix,$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check)),@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY=$({{ make.apply_variable }})" $(if $(filter 1,$(FAIL_FAST)),--fail-fast))
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
+
+_builtin_build_build:
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,build,),@$(SELF_MAKE) _builtin_build_artifacts)
 
 # `check` is read-only by contract: it never mutates the tree. Fixing is owned
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI={{ make.ci.value }} omits make.ci.check_gates_skip (ruff + pyrefly).
-_builtin_check_all: _builtin_require_environment
+# CI={{ make.ci.enabled_value }} omits make.ci.rules.enabled.check_gate_exclusions.
+_builtin_check_check: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,audit,),@true)
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
-	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
+	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.enabled_value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
+		{% for skipped in make.ci.rules["enabled"].check_gate_exclusions -%}
 			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
 			{% endfor -%}
 			if [ "$$skip" -eq 0 ]; then \
@@ -698,7 +694,7 @@ _builtin_check_all: _builtin_require_environment
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.enabled_value }} omits check gates:{% for skipped in make.ci.rules["enabled"].check_gate_exclusions %} {{ skipped }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -706,44 +702,31 @@ _builtin_check_all: _builtin_require_environment
 		esac; \
 	done; \
 	if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
+		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.enabled_value }} filtering\n' >&2; \
 		exit 2; \
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
-_builtin_test_all: _builtin_require_environment
+_builtin_test_run: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,validate,),@true)
 {{ test_report_recipe(
     "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
 ) }}
 
-{% for what in make.handler_whats["test"] if what != "all" %}
-_builtin_test_{{ what }}: _builtin_require_environment
+_builtin_test_full: _builtin_require_environment
 {{ test_report_recipe(
     "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
 ) }}
-{% endfor %}
 
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
 # `fix` owns the mutating lint pass. Running ruff twice per gate was the
 # duplication this split removes.
-_builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
-
-_builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
-
-_builtin_fmt_apply: _builtin_fmt_all
+_builtin_fmt_format: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,fix,$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check)),@$(UV_RUN) ruff format $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),,--check) $(RUFF_PATHS))
 
 # Read-only dual of `make fix APPLY=Y` — never mutate here.
-_builtin_fix_check: _builtin_require_environment
-	@$(UV_RUN) ruff check $(RUFF_PATHS)
-
-_builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-
-_builtin_fix_apply: _builtin_fix_all
+_builtin_fix_fix: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,fix,$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check)),@$(UV_RUN) ruff check $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--fix,) $(RUFF_PATHS))
 {% endif %}
 
 _builtin_run_default: _builtin_require_environment
@@ -762,28 +745,15 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_all:
-	@set -eu; \
-	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check) ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}" $$mode $(DOCS_PROJECT_ARGS); \
-	done
-
-{% for action in make.handler_whats["docs"] if action != "all" %}
-_builtin_docs_{{ action }}:
-	@$(PROJECT_FLEXT_INFRA) docs {{ action }} --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}"{% if action in make.docs.mutable_actions %} $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check){% endif %} $(DOCS_PROJECT_ARGS)
-
-{% endfor %}
+define _run_docs_scope
+	@$(PROJECT_FLEXT_INFRA) docs $(1) --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}" $(2) $(DOCS_PROJECT_ARGS)
+endef
 
 # Disposable artifacts (caches, reports, traces) are owned by the flext-infra
 # clean service and declared in config.make.clean, so the recipe stays a thin
 # dispatch like every other verb instead of shell that drifts per project.
-_builtin_clean_status:
-	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)"
-
-_builtin_clean_generated:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)" --apply-changes
+_builtin_clean_clean:
+	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)" $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply-changes,)
 
 _builtin_release_status: _builtin_require_environment
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
@@ -795,7 +765,7 @@ _builtin_release_status: _builtin_require_environment
 # putting the release pipeline outside the Make monopoly and making Release CI
 # depend on a hand-written surface. Knobs come from the caller environment so
 # no new selector variables enter the public surface; PUSH=1 opts into pushing.
-_builtin_release_rel: _builtin_require_environment
+_builtin_release_run: _builtin_require_environment
 	$(call _require_apply)
 	@push_flag=--no-push; \
 	if [ "$${PUSH:-0}" = "1" ]; then push_flag=--push; fi; \
@@ -822,18 +792,11 @@ _builtin_release_rel: _builtin_require_environment
 # sibling. It also kept the fixed point out of reach: each run rewrote the siblings, so
 # the next run found a difference again. At the workspace root PROJECT_ROOT is
 # already the workspace, so fan-out survives exactly where it belongs.
-_builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --check
-
-_builtin_gen_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply
-
-_builtin_gen_apply: _builtin_gen_all
+_builtin_gen_generate: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,generate,$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check)),@true)
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),apply,check)
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check)
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check)
 
 _builtin_work_status:
 	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)" --branch "$(BRANCH)"
@@ -856,11 +819,5 @@ _builtin_work_finish:
 # `flext-infra refactor mod`; these handlers are the missing dispatch into it.
 # check is the read-only fixed-point (reports pending fixes); apply runs the
 # batch under the ruff/pyrefly rollback circuit.
-_builtin_mod_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
-
-_builtin_mod_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
-
-_builtin_mod_apply: _builtin_mod_all
+_builtin_mod_modify: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,)

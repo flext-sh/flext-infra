@@ -168,7 +168,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(generated.exit_code, eq=0, msg=output)
         # The verb dispatches straight into its private builtin: the Python
         # serialize-make round-trip (and its locks) was exterminated.
-        tm.that(output, has="_builtin_gen_$what")
+        tm.that(output, has="_builtin_gen_$action")
         tm.that(output, lacks="serialize-make")
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
@@ -208,7 +208,7 @@ class TestsWorkspaceRootMakeContract:
                     "-C",
                     str(workspace_root),
                     "--dry-run",
-                    "_builtin_check_all",
+                    "_builtin_check_check",
                     f"PROJECT={project_names[0]}",
                     "CHECK_GATES=lint,pyrefly",
                 ],
@@ -237,7 +237,7 @@ class TestsWorkspaceRootMakeContract:
                     "-C",
                     str(workspace_root),
                     "--dry-run",
-                    "_builtin_fmt_apply",
+                    "_builtin_fmt_format",
                     f"PROJECT={project_names[0]}",
                     "APPLY=Y",
                 ],
@@ -266,7 +266,7 @@ class TestsWorkspaceRootMakeContract:
                     "-C",
                     str(workspace_root),
                     "--dry-run",
-                    "_builtin_test_all",
+                    "_builtin_test_run",
                     f"FILE={selected}",
                     "MATCH=selected_case",
                 ],
@@ -300,7 +300,7 @@ class TestsWorkspaceRootMakeContract:
                     "-C",
                     str(workspace_root),
                     "--dry-run",
-                    "_builtin_test_all",
+                    "_builtin_test_run",
                     f"FILE={selected}",
                 ],
                 cwd=workspace_root,
@@ -327,7 +327,7 @@ class TestsWorkspaceRootMakeContract:
 
         process: cli_p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "_builtin_test_all"],
+                ["-C", str(workspace_root), "--dry-run", "_builtin_test_run"],
                 cwd=workspace_root,
             )
         )
@@ -338,88 +338,30 @@ class TestsWorkspaceRootMakeContract:
             tm.that(output, has=f"--projects {project_name}")
         tm.that(output, lacks="--projects .")
 
-    def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
-        workspace_root, project_names = _write_workspace(tmp_path)
-        docs = config.Infra.codegen.make.docs
-        # Selectors live on the docs verb: make.verbs[].whats is the single
-        # handler SSOT, so MakeDocsSpec no longer restates them.
-        docs_verb = next(
-            verb for verb in config.Infra.codegen.make.verbs if verb.name == "docs"
-        )
-        invocation_log = workspace_root / "docs.log"
-        test_u.Tests.write_executable(
-            workspace_root / ".venv" / "bin" / "python",
-            (
-                "#!/bin/sh\n"
-                "verb=''\n"
-                "previous=''\n"
-                'for argument in "$@"; do\n'
-                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
-                '  previous="$argument"\n'
-                "done\n"
-                'if [ -n "$verb" ]; then exec make --no-print-directory "_serialized_${verb}"; fi\n'
-                f'printf "%s\\n" "$*" >> "{invocation_log}"\n'
-            ),
-        )
-        uv = workspace_root / "bin" / "uv"
-        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+    def test_generated_make_routes_docs_through_standard_verbs(self, tmp_path: Path) -> None:
+        workspace_root, _ = _write_workspace(tmp_path)
 
-        for action in docs_verb.whats:
-            invocation_log.write_text("", encoding="utf-8")
-            process: cli_p.Cli.CommandOutput = tm.ok(
-                test_u.Tests.run_isolated_make(
-                    [
-                        "-C",
-                        str(workspace_root),
-                        "docs",
-                        f"WHAT={action}",
-                        f"PROJECTS={project_names[0]}",
-                        f"UV={uv}",
-                    ],
-                    cwd=workspace_root,
-                )
+        rendered_makefile = (workspace_root / "Makefile").read_text(encoding="utf-8")
+        for verb_name, docs_action, apply in (
+            ("build", "build", False),
+            ("check", "audit", False),
+            ("test", "validate", False),
+            ("fmt", "fix", True),
+            ("fix", "fix", True),
+            ("gen", "generate", True),
+        ):
+            verb = next(
+                item for item in config.Infra.codegen.make.verbs if item.name == verb_name
             )
-            tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-            output = invocation_log.read_text(encoding="utf-8")
-            expected_actions = (
-                tuple(item for item in docs_verb.whats if item != "all")
-                if action == "all"
-                else (action,)
-            )
-            for expected_action in expected_actions:
-                tm.that(output, has=f"docs {expected_action}")
-            tm.that(output, has=f"--output-dir {workspace_root / docs.reports_dir}")
-            tm.that(output, has=f"--projects {project_names[0]}")
-            tm.that(output, lacks=f"--projects {project_names[1]}")
-            if action in docs.mutable_actions:
-                tm.that(output, has="--check")
-                tm.that(output, lacks="--apply")
-                invocation_log.write_text("", encoding="utf-8")
-                applied = tm.ok(
-                    test_u.Tests.run_isolated_make(
-                        [
-                            "-C",
-                            str(workspace_root),
-                            "docs",
-                            f"WHAT={action}",
-                            "APPLY=Y",
-                            f"PROJECTS={project_names[0]}",
-                            f"UV={uv}",
-                        ],
-                        cwd=workspace_root,
-                    )
-                )
-                tm.that(applied.exit_code, eq=0, msg=applied.stdout + applied.stderr)
-                applied_output = invocation_log.read_text(encoding="utf-8")
-                tm.that(applied_output, has="--apply")
-                tm.that(applied_output, lacks="--check")
-            elif action != "all":
-                tm.that(output, lacks="--apply")
-                tm.that(output, lacks="--check")
+            tm.that(verb.actions[verb.default_action].whats, has="docs")
+            tm.that(rendered_makefile, has=f"_builtin_{verb_name}_{verb.default_action}")
+            tm.that(rendered_makefile, has=f"_run_docs_scope,{docs_action}")
+            if apply:
+                tm.that(rendered_makefile, has="--apply,--check")
 
         invalid = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "docs", "WHAT=not-a-docs-action"],
+                ["-C", str(workspace_root), "docs"],
                 cwd=workspace_root,
             )
         )

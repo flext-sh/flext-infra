@@ -26,11 +26,11 @@ class TestsFlextInfraCustomMkPolicy:
     def test_reserved_builtin_what_handler_fails_loud(self) -> None:
         """A _custom handler naming a builtin (verb, WHAT) pair is rejected."""
         result = FlextInfraCustomMkPolicy.validate_content(
-            "_custom_docs_all:\n\t@true\n"
+            "_custom_build_docs:\n\t@true\n"
         )
 
         tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="_custom_docs_all")
+        tm.that(result.error or "", has="_custom_build_docs")
 
     def test_arbitrary_custom_verb_and_what_pass(self) -> None:
         """Any non-reserved custom verb/WHAT handler is permitted."""
@@ -59,12 +59,12 @@ class TestsFlextInfraCustomMkPolicy:
         reserved = FlextInfraCustomMkPolicy.reserved_verbs()
 
         tm.that({"check", "gen", "work"} <= reserved, eq=True)
-        tm.that({"boot", "pr", "docs-serve"} <= reserved, eq=True)
+        tm.that({"boot", "pr"} <= reserved, eq=True)
 
     def test_reserved_targets_cover_builtin_what_pairs(self) -> None:
         """Reserved targets include every builtin _custom_<verb>_<what> pair."""
         targets = FlextInfraCustomMkPolicy.reserved_targets()
 
-        tm.that("_custom_docs_all" in targets, eq=True)
-        tm.that("_custom_run_default" in targets, eq=True)
+        tm.that("_custom_build_docs" in targets, eq=True)
+        tm.that("_custom_run_all" in targets, eq=True)
         tm.that("_custom_ship_fast" in targets, eq=False)

@@ -82,22 +82,24 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def _ci_token_active() -> bool:
-        """True when the Make CI environment token is exactly make.ci.value."""
+        """True when the Make CI environment token is the enabled value."""
         ci = config.Infra.codegen.make.ci
         raw = u.Cli.env_read(ci.variable).unwrap().strip()
-        return raw == ci.value
+        return raw == ci.enabled_value
 
     @staticmethod
     def _ci_skipped_gates(gates: t.StrSequence) -> tuple[str, ...]:
         """Return configured CI skip gates present in *gates* when CI=Y is active."""
         if not FlextInfraWorkspaceChecker._ci_token_active():
             return ()
-        skip = frozenset(config.Infra.codegen.make.ci.check_gates_skip)
+        skip = frozenset(
+            config.Infra.codegen.make.ci.rules["enabled"].check_gate_exclusions
+        )
         return tuple(gate for gate in gates if gate in skip)
 
     @staticmethod
     def apply_ci_gate_skips(gates: t.StrSequence) -> list[str]:
-        """Omit make.ci.check_gates_skip when the Make CI token is exact CI=Y."""
+        """Omit enabled-CI gate exclusions when the CI token is active."""
         skip = set(FlextInfraWorkspaceChecker._ci_skipped_gates(gates))
         if not skip:
             return [gate for gate in gates if gate]
@@ -123,7 +125,7 @@ class FlextInfraWorkspaceChecker(
             return r[bool].fail(
                 "no check gates remain after CI token filtering "
                 f"({config.Infra.codegen.make.ci.variable}="
-                f"{config.Infra.codegen.make.ci.value})"
+                f"{config.Infra.codegen.make.ci.enabled_value})"
             )
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,

@@ -21,9 +21,14 @@ repository:
   extra_verbs:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
-      default_what: {{ verb.default_what | tojson }}
-      whats: {{ verb.whats | tojson }}
-      apply_guarded: {{ verb.apply_guarded | tojson }}
+      default_action: {{ verb.default_action | tojson }}
+      default_apply: {{ verb.default_apply | tojson }}
+      actions:
+{%- for action_name, action in verb.actions.items() %}
+        {{ action_name }}:
+          whats: {{ action.whats | tojson }}
+          apply_mode: {{ action.apply_mode | tojson }}
+{%- endfor %}
 {%- endfor %}
 {%- endif %}
 {%- if workspace_repository.script_dispatch %}
@@ -83,9 +88,14 @@ members:
     extra_verbs:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
-        default_what: {{ verb.default_what | tojson }}
-        whats: {{ verb.whats | tojson }}
-        apply_guarded: {{ verb.apply_guarded | tojson }}
+        default_action: {{ verb.default_action | tojson }}
+        default_apply: {{ verb.default_apply | tojson }}
+        actions:
+{%- for action_name, action in verb.actions.items() %}
+          {{ action_name }}:
+            whats: {{ action.whats | tojson }}
+            apply_mode: {{ action.apply_mode | tojson }}
+{%- endfor %}
 {%- endfor %}
 {%- endif %}
 {%- if repository.script_dispatch %}

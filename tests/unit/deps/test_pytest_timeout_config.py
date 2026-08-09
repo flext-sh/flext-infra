@@ -18,6 +18,12 @@ class TestsFlextInfraPytestTimeoutConfig:
 
         tm.that(round_tripped, eq=policy)
 
+    def test_operator_timeout_law_is_config_owned(self) -> None:
+        policy = config.Infra.tooling.tools.pytest
+
+        tm.that(policy.case_timeout_seconds, eq=10)
+        tm.that(policy.run_timeout_seconds, eq=120)
+
     @pytest.mark.parametrize(
         (
             "case_timeout_seconds",

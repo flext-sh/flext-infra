@@ -69,10 +69,10 @@ jobs:
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
         env:
-          {{ make.ci.variable }}: {{ make.ci.value }}
+          {{ make.ci.variable }}: {{ make.ci.enabled_value }}
         run: |
-          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
-          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.enabled_value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.enabled_value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
           # ci-matrix proves bootstrap + check across distros; it never runs make test.
   # End SECTION: distro-matrix
 
@@ -81,7 +81,7 @@ jobs:
   macos:
     runs-on: macos-latest
     env:
-      {{ make.ci.variable }}: {{ make.ci.value }}
+          {{ make.ci.variable }}: {{ make.ci.enabled_value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
@@ -100,14 +100,14 @@ jobs:
         with:
           enable-cache: true
       - name: Bootstrap
-        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
+        run: {{ make.ci.variable }}={{ make.ci.enabled_value }} make setup
       - name: Verb surface
-        run: {{ make.ci.variable }}={{ make.ci.value }} make help
+        run: {{ make.ci.variable }}={{ make.ci.enabled_value }} make help
       # The canonical gate, not just the verb surface: this matrix exists to
       # catch platform-specific failures, and `make help` exercises none of
       # the gates. The linux job already runs it.
       - name: Canonical check
-        run: {{ make.ci.variable }}={{ make.ci.value }} make check
+        run: {{ make.ci.variable }}={{ make.ci.enabled_value }} make check
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
@@ -115,7 +115,7 @@ jobs:
   windows:
     runs-on: windows-latest
     env:
-      {{ make.ci.variable }}: {{ make.ci.value }}
+          {{ make.ci.variable }}: {{ make.ci.enabled_value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
@@ -135,14 +135,14 @@ jobs:
           enable-cache: true
       - name: Bootstrap
         shell: bash
-        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
+        run: {{ make.ci.variable }}={{ make.ci.enabled_value }} make setup
       - name: Verb surface
         shell: bash
-        run: {{ make.ci.variable }}={{ make.ci.value }} make help
+        run: {{ make.ci.variable }}={{ make.ci.enabled_value }} make help
       # The canonical gate, not just the verb surface: this matrix exists to
       # catch platform-specific failures, and `make help` exercises none of
       # the gates. The linux job already runs it.
       - name: Canonical check
         shell: bash
-        run: {{ make.ci.variable }}={{ make.ci.value }} make check
+        run: {{ make.ci.variable }}={{ make.ci.enabled_value }} make check
   # End SECTION: windows

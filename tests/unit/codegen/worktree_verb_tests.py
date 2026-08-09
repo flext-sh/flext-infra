@@ -35,13 +35,14 @@ class TestsCodegenWorkVerb:
         names = tuple(verb.name for verb in config.Infra.codegen.make.verbs)
         tm.that(names, lacks="worktree")
 
-    def test_work_defaults_to_a_read_only_selector(self) -> None:
-        """The default selector reports lane state without mutating anything."""
-        tm.that(self._verb("work").default_what, eq="status")
+    def test_work_defaults_to_the_status_action(self) -> None:
+        tm.that(self._verb("work").default_action, eq="status")
 
     def test_work_owns_the_full_lane_lifecycle(self) -> None:
         """Start, status, land, and finish are the declared saga steps."""
-        tm.that(set(self._verb("work").whats), eq={"start", "status", "land", "finish"})
+        tm.that(
+            set(self._verb("work").actions), eq={"start", "status", "land", "finish"}
+        )
 
     def test_lane_mutation_requires_the_apply_guard(self) -> None:
         """Lane mutation is authority-bearing, so the verb is apply-guarded.
@@ -49,4 +50,7 @@ class TestsCodegenWorkVerb:
         `status` stays usable without `APPLY=Y` because its recipe never calls
         `_require_apply`; the guard lives in the mutating recipes.
         """
-        tm.that(self._verb("work").apply_guarded, eq=True)
+        work = self._verb("work")
+        tm.that(work.actions["status"].apply_mode, eq="never")
+        for action in ("start", "land", "finish"):
+            tm.that(work.actions[action].apply_mode, eq="required")

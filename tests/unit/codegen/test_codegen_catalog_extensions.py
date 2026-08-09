@@ -322,9 +322,12 @@ class TestsCodegenCatalogExtensions:
                 "extra_verbs": (
                     m.Infra.MakeVerbSpec(
                         name="audit",
-                        default_what="all",
-                        whats=("all",),
-                        apply_what="all",
+                        default_action="run",
+                        actions={
+                            "run": m.Infra.MakeActionSpec(
+                                whats=("all",), apply_mode="required"
+                            )
+                        },
                     ),
                 ),
                 "script_dispatch": m.Infra.ScriptDispatchSpec(

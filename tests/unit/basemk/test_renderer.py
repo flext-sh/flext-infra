@@ -131,8 +131,8 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         text = result.value
         for part in (
-            ".PHONY: help boot build check scan fmt docs docs-serve test val clean pr",
-            "STANDARD_VERBS := boot build check scan fmt docs test val clean pr",
+            ".PHONY: help boot build check scan fmt test val clean pr",
+            "STANDARD_VERBS := boot build check scan fmt test val clean pr",
             "boot: ## Complete setup",
             "scan: ## Run all security checks",
             "fmt: ## Run code formatting",

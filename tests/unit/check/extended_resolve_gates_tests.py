@@ -68,7 +68,9 @@ class TestWorkspaceCheckerResolveGates:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """mro-v4p5: CI=Y make check omits ruff lint and pyrefly."""
-        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
+        monkeypatch.setenv(
+            c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.enabled_value
+        )
         result = FlextInfraWorkspaceChecker.resolve_gates([
             "lint",
             "pyrefly",
@@ -105,9 +107,10 @@ class TestWorkspaceCheckerCiGateSkips:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         ci = config.Infra.codegen.make.ci
-        monkeypatch.setenv(ci.variable, ci.value)
+        monkeypatch.setenv(ci.variable, ci.enabled_value)
         gates = ["lint", "format", "pyrefly", "mypy", "pyright", "security"]
-        expected = [gate for gate in gates if gate not in ci.check_gates_skip]
+        exclusions = ci.rules["enabled"].check_gate_exclusions
+        expected = [gate for gate in gates if gate not in exclusions]
         tm.that(expected, eq=["mypy", "pyright", "security"])
         tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates), eq=expected)
-        tm.that(set(ci.check_gates_skip), eq={"lint", "format", "pyrefly"})
+        tm.that(set(exclusions), eq={"lint", "format", "pyrefly"})

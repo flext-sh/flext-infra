@@ -38,8 +38,6 @@ class FlextInfraConstantsBasemk:
         "daemon-stop",
         "daemon-stop-mypy",
         "daemon-stop-pyright",
-        "docs",
-        "docs-serve",
         "fix-enforcement",
         "fmt",
         "help",

@@ -135,10 +135,23 @@ class FlextInfraPytestRunner(s[int]):
         "cache-checkpoint",
     })
 
-    def _ci_disables_coverage(self) -> bool:
-        """Coverage is off when Make CI token is exact make.ci.value (CI=Y)."""
-        raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
-        return raw == config.Infra.codegen.make.ci.value
+    def _ci_value(self) -> str:
+        return self._environment_value(c.Infra.PYTEST_ENV_CI)
+
+    def _ci_skips_pytest(self) -> bool:
+        return self._test_mode() == "skip"
+
+    def _ci_runs_full_suite(self) -> bool:
+        return self._test_mode() == "full"
+
+    def _test_mode(self) -> str:
+        ci = config.Infra.codegen.make.ci
+        raw = self._ci_value()
+        if raw == ci.enabled_value:
+            return ci.rules["enabled"].test_mode
+        if raw == ci.disabled_value:
+            return ci.rules["disabled"].test_mode
+        return ci.rules["absent"].test_mode
 
     def _coverage_requested(self) -> bool:
         """Whether this runner asks pytest to measure coverage at all.
@@ -147,13 +160,17 @@ class FlextInfraPytestRunner(s[int]):
         tests, so a coverage number computed from that subset would be a lie.
         It passes ``--testmon --no-cov``.
 
-        ``WHAT=full`` is the complete-suite gate the pre-push workflow runs:
-        testmon OFF so every test executes, coverage ON so the number measures
-        the whole suite. ``build_command`` and the artifact gate both read THIS
-        predicate, so the gate can never demand an artifact the argv told pytest
-        not to produce (mro-uwoc7).
+        ``WHAT=full`` is the complete-suite gate the pre-push workflow runs.
+        Coverage applies only when it has no FILE or MATCH selector, so the
+        number always represents the full suite. ``build_command`` and the
+        artifact gate both read THIS predicate, so the gate can never demand an
+        artifact the argv told pytest not to produce (mro-uwoc7).
         """
-        return self.what == "full" and not self._ci_disables_coverage()
+        return (
+            self._test_mode() == "full"
+            and self.file is None
+            and self.match is None
+        )
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -208,8 +225,8 @@ class FlextInfraPytestRunner(s[int]):
         # Why (mro-uwoc7): keyed to the same predicate the artifact gate reads,
         # so the argv and the gate can never disagree about coverage. WHAT=full
         # turns testmon OFF (every test runs) and coverage ON, so the measured
-        # number covers the whole suite; every other WHAT is the incremental
-        # testmon verb whose subset coverage would be meaningless.
+        # number covers the whole suite. Incremental mode uses testmon; a
+        # focused full-mode run uses its explicit selector without coverage.
         # Why (mro-q4osk): the xml lands in report_dir, the SAME path the
         # artifact gate below reads. Letting --cov-report=xml default to the
         # CWD wrote coverage.xml to the repository root, so the gate found
@@ -221,7 +238,11 @@ class FlextInfraPytestRunner(s[int]):
                 f"--cov-report=xml:{report_dir / c.Infra.PYTEST_COVERAGE_XML}",
             )
             if self._coverage_requested()
-            else ("--testmon", "--no-cov")
+            else (
+                ("--no-cov",)
+                if self._ci_runs_full_suite()
+                else ("--testmon", "--no-cov")
+            )
         )
         parallel_args = (
             ("-n", "0")
@@ -243,7 +264,7 @@ class FlextInfraPytestRunner(s[int]):
         # skips in flext-tests remain as a second fail-closed boundary for
         # unmarked tests that still call FlextTestsDocker.
         ci_marker_args = (
-            ("-m", "not docker and not remote") if self._ci_disables_coverage() else ()
+            ("-m", "not docker and not remote") if self._ci_runs_full_suite() else ()
         )
         optional_args = (
             *(("-k", self.match) if self.match is not None else ()),
@@ -353,14 +374,8 @@ class FlextInfraPytestRunner(s[int]):
         """Execute pytest, profile it, and preserve reports under one deadline."""
         if self._is_cache_maintenance():
             return self._execute_cache_maintenance()
-        # Why (mro-v4p5): CI workflows must not run pytest. Fail loud if invoked
-        # under CI=Y so regenerated jobs cannot reintroduce make test silently.
-        if self._ci_disables_coverage():
-            return r[int].fail(
-                "make test is forbidden under CI=Y (mro-v4p5); "
-                "CI workflows must not execute pytest — run make test locally "
-                "without CI=Y"
-            )
+        if self._ci_skips_pytest():
+            return r[int].ok(0)
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
         pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
@@ -455,7 +470,6 @@ class FlextInfraPytestRunner(s[int]):
         # requested. WHAT=full is the verb that requests it.
         coverage_enabled = (
             self._coverage_requested()
-            and not self._ci_disables_coverage()
             and self.file is None
             and self.match is None
         )

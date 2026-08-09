@@ -242,30 +242,29 @@ Infra:
       apply_variable: APPLY
       apply_value: Y
       apply_absent_value: N
+      action_variable: ACTION
       ci:
         variable: CI
-        value: Y
-        # Why: CI=Y check omits ruff (lint/format), pyrefly and markdown. Local
-        # make check without CI=Y keeps the full default set. Blocking CI never
-        # runs make test (pytest); local/pre_push still own that verb.
-        check_gates_skip: [lint, format, pyrefly, markdown]
+        enabled_value: Y
+        disabled_value: N
+        rules:
+          enabled:
+            check_gate_exclusions: [lint, format, pyrefly]
+            test_mode: skip
+          disabled:
+            check_gate_exclusions: []
+            test_mode: full
+          absent:
+            check_gate_exclusions: []
+            test_mode: incremental
       workflow:
-        # Why: pre-commit remains fast and mutation-only; pre-push owns the
-        # generated-artifact and read-only validation gates.
-        - { verb: setup, apply: false, contexts: [local, ci] }
-        - { verb: gen, apply: true, contexts: [local, ci, pre_push] }
-        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
-        # A hook runs the SAME gate set as a local `make check`: no context
-        # narrows it. markdown blocks a push like every other gate, because a
-        # docs defect is a defect. gates_skip stays available for a step that
-        # genuinely owns a narrower contract; check is not one of them.
-        - { verb: check, apply: false, contexts: [local, ci, pre_push] }
-        # Why (mro-v4p5): CI must not execute pytest. A hook NEVER inherits a
-        # WHAT selector: every verb runs its declared default (test -> all), so
-        # the hook can never diverge from what a plain `make test` does locally.
-        - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
-        - { verb: test, apply: false, contexts: [local, pre_push] }
+        - { verb: clean, apply: true, contexts: [local, ci, pre_commit, pre_push] }
+        - { verb: setup, apply: true, contexts: [local, ci, pre_commit, pre_push] }
+        - { verb: gen, apply: true, contexts: [local, ci, pre_commit, pre_push] }
+        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit, pre_push] }
+        - { verb: fix, apply: true, contexts: [local, ci, pre_commit, pre_push] }
+        - { verb: check, contexts: [local, ci, pre_commit, pre_push] }
+        - { verb: test, contexts: [local, ci, pre_commit, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all
@@ -301,7 +300,6 @@ Infra:
           - "*.prof"
           - ".coverage.*"
       docs:
-        mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
@@ -335,127 +333,78 @@ Infra:
             repository: invest
             branch: main
             local_checkout: ~/invest
-      serialization:
-        # Locks and the snapshot fixed-point were exterminated: both assumed a
-        # single actor per checkout, which is false under GitOps/DevOps flows.
-        # The file locks queued every verb behind peers (1800s timeout) and the
-        # fingerprint aborted valid runs with "workspace changed during
-        # serialized Make" whenever a sibling lane wrote concurrently.
-        # `verbs` now names the surface routed through the dispatcher, which
-        # only resolves WHAT from the verb matrix and validates the APPLY token.
-        # `mutation_verbs` stays the declared mutating set (it must remain equal
-        # to the apply-guarded verbs) and no longer implies any lock.
-        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs, mod, release]
-        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs, mod, release]
       verbs:
         - name: help
-          default_what: usage
-          whats: [usage]
-          apply_guarded: false
+          default_action: usage
+          actions:
+            usage: { whats: [all, usage] }
         - name: setup
-          default_what: environment
-          whats: [environment]
-          apply_guarded: false
+          default_action: environment
+          default_apply: true
+          actions:
+            environment: { whats: [all, environment], apply_mode: optional }
         - name: deps
-          default_what: check
-          whats: [check, lock, upgrade]
-          # `lock` and `upgrade` rewrite the lockfile and call _require_apply,
-          # so declaring the verb unguarded made them unreachable: the dispatch
-          # rejected APPLY=Y while the recipe demanded it.
-          apply_guarded: true
-          apply_what: upgrade
+          default_action: lock
+          actions:
+            lock: { whats: [all], apply_mode: optional }
+            upgrade: { whats: [all], apply_mode: required }
         - name: build
-          default_what: artifacts
-          whats: [artifacts]
-          apply_guarded: false
+          default_action: build
+          actions:
+            build: { whats: [all, artifacts, docs] }
         - name: check
-          default_what: all
-          whats: [all]
-          apply_guarded: false
+          default_action: check
+          actions:
+            check: { whats: [all, docs] }
         - name: test
-          default_what: all
-          # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Incremental subsets never enforce global coverage, because a number
-          # computed from an impacted subset is not the suite's coverage.
-          # full = the complete-suite gate: testmon OFF, coverage ON. Pre-push
-          # runs it so the measured number covers every test.
-          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-          # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
-          apply_guarded: false
-          accepts_apply: true
-          apply_what: all
+          default_action: run
+          actions:
+            run: { whats: [all, docs] }
+            full: { whats: [all, docs] }
+            cache-status: { whats: [all] }
+            cache-clear: { whats: [all], apply_mode: required }
+            cache-checkpoint: { whats: [all], apply_mode: required }
         - name: fmt
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
+          default_action: format
+          actions:
+            format: { whats: [all, docs], apply_mode: optional }
         - name: fix
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
+          default_action: fix
+          actions:
+            fix: { whats: [all, docs], apply_mode: optional }
         - name: run
-          default_what: default
-          whats: [default]
-          apply_guarded: false
-          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-          # entering the serialized mutation set (daemon/mcp must not take the
-          # checkout lock). accepts_apply unlocks the APPLY token only.
-          accepts_apply: true
-          apply_what: default
+          default_action: default
+          actions:
+            default: { whats: [all], apply_mode: optional }
         - name: status
-          default_what: diagnostics
-          whats: [diagnostics]
-          apply_guarded: false
-        - name: docs
-          # `validate` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          # `WHAT=all` remains the explicit full pipeline meta-selector.
-          default_what: validate
-          whats: [all, generate, fix, audit, build, validate]
-          # generate/fix materialize artifacts: the generated handler picks
-          # --apply or --check from APPLY, and the docs workflow calls
-          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
-          apply_guarded: true
-          apply_what: generate
+          default_action: diagnostics
+          actions:
+            diagnostics: { whats: [all, diagnostics] }
         - name: clean
-          default_what: status
-          whats: [status, generated]
-          # `clean generated` deletes generated output and calls _require_apply.
-          # `clean status` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          apply_guarded: true
-          apply_what: generated
+          default_action: clean
+          default_apply: true
+          actions:
+            clean: { whats: [all, generated], apply_mode: optional }
         - name: release
-          default_what: status
-          # `rel` drives the release orchestrator (validate/version/build/publish)
-          # and mutates the tree, so it calls _require_apply. `status` is the
-          # read-only fixed-point and stays the default WHAT.
-          whats: [status, rel]
-          apply_guarded: true
-          apply_what: rel
+          default_action: status
+          actions:
+            status: { whats: [all] }
+            run: { whats: [all], apply_mode: required }
         - name: gen
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
+          default_action: generate
+          actions:
+            generate: { whats: [all, docs], apply_mode: optional }
         - name: work
-          default_what: status
-          whats: [start, status, land, finish]
-          # start/land/finish mutate lane state and call _require_apply;
-          # only status is read-only, so it stays the default WHAT.
-          apply_guarded: true
-          apply_what: land
+          default_action: status
+          actions:
+            start: { whats: [all], apply_mode: required }
+            status: { whats: [all] }
+            land: { whats: [all], apply_mode: required }
+            finish: { whats: [all], apply_mode: required }
         - name: mod
-          default_what: check
-          whats: [check, all, apply]
-          # `mod` batch-applies the sgconfig ast-grep rules under the
-          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
-          # the read-only dry-run fixed-point after mutation.
-          apply_guarded: true
-          apply_what: apply
+          default_action: modify
+          actions:
+            modify: { whats: [all], apply_mode: optional }
       custom_handler_policy:
         filename: custom.mk
         # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body

@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      {{ make.ci.variable }}: {{ make.ci.value }}
+      {{ make.ci.variable }}: {{ make.ci.enabled_value }}
     steps:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
@@ -68,7 +68,7 @@ jobs:
 {% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
-        run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
+        run: {{ make.ci.variable }}={{ make.ci.enabled_value }} make {{ step.verb }}{% if step.action %} ACTION={{ step.action }}{% endif %}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {% endfor %}
       - name: Dump reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}

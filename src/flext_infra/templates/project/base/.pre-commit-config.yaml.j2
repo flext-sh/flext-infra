@@ -3,10 +3,10 @@ repos:
   - repo: local
     hooks:
       # Why: fast fixes run before each commit; expensive gates run before push.
-      # Pre-push is local operator validation and runs every BLOCKING gate: CI={{ make.ci.value }}
+      # Pre-push is local operator validation and runs every BLOCKING gate: CI={{ make.ci.enabled_value }}
       # is never injected here, because it skips the lint/format/pyrefly gates
       # that must block a push (9b604d43). make test never inherits that token
-      # either (mro-v4p5 forbids pytest under CI={{ make.ci.value }}).
+      # either (mro-v4p5 forbids pytest under CI={{ make.ci.enabled_value }}).
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
       # WHAT never leaks in from the caller: git hooks inherit the invoking
@@ -24,23 +24,25 @@ repos:
       # landing lane could not push. Each step then states its selector: the
       # declared `what` when it has one, otherwise the verb's own declared
       # default — a hook validates everything, never a caller-narrowed subset.
-      # Mutating steps pass {{ make.apply_variable }} explicitly, so the verb resolves its own
-      # apply_what (gen/fmt/fix -> apply) instead of a read-only selector.
-      - id: flext-pre-commit
-        name: FLEXT pre-commit workflow
+{% for step in make.workflow if "pre_commit" in step.contexts %}
+      - id: flext-pre-commit-{{ step.verb }}
+        name: FLEXT pre-commit {{ step.verb }}
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'unset WHAT MAKEFLAGS {{ make.apply_variable }}; {% for step in make.workflow if "pre_commit" in step.contexts %}{% if step.verb == "check" %}{{ make.ci.variable }}={{ make.ci.value }} {% endif %}{% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% elif not step.apply %} WHAT={{ make.default_whats[step.verb] }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
+          'unset WHAT MAKEFLAGS {{ make.apply_variable }}; {% if step.verb == "check" %}{{ make.ci.variable }}={{ make.ci.enabled_value }} {% endif %}{% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.action %} ACTION={{ step.action }}{% endif %}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
-      - id: flext-pre-push
-        name: FLEXT pre-push workflow
+{% endfor %}
+{% for step in make.workflow if "pre_push" in step.contexts %}
+      - id: flext-pre-push-{{ step.verb }}
+        name: FLEXT pre-push {{ step.verb }}
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'unset WHAT MAKEFLAGS {{ make.apply_variable }}; unset $(git rev-parse --local-env-vars); {% for step in make.workflow if "pre_push" in step.contexts %}{% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% elif not step.apply %} WHAT={{ make.default_whats[step.verb] }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
+          'unset WHAT MAKEFLAGS {{ make.apply_variable }}; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.action %} ACTION={{ step.action }}{% endif %}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+{% endfor %}

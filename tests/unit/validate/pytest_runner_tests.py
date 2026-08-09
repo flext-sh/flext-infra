@@ -419,7 +419,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="--cov-report")
 
     def test_full_argv_writes_coverage_where_the_gate_reads_it(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """WHAT=full must target the report dir, not the process CWD.
 
@@ -428,30 +428,84 @@ class TestsFlextInfraPytestRunner:
         nothing and failed a suite that had actually passed with 81% measured.
         The argv and the gate must name the SAME path.
         """
+        monkeypatch.setenv(
+            c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.disabled_value
+        )
         report_dir = tmp_path / ".reports" / "tests" / "run"
         runner = self._runner(tmp_path, what="full")
         command = runner.build_command(report_dir)
         tm.that(command, has=[f"--cov-report=xml:{report_dir / 'coverage.xml'}"])
         tm.that(command, lacks="--cov-report=xml")
 
-    def test_ci_y_disables_coverage_keeps_testmon(
+    def test_ci_y_returns_success_without_pytest_execute(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
+        monkeypatch.setenv(
+            c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.enabled_value
+        )
+        runner = self._runner(tmp_path, what="all")
+        called: list[bool] = []
+
+        def fake_run_to_file(*args: object, **kwargs: object) -> p.Result[int]:
+            del args, kwargs
+            called.append(True)
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+        result = runner.execute()
+        tm.that(tm.ok(result), eq=0)
+        tm.that(called, eq=[])
+
+    def test_ci_n_runs_full_coverage_without_testmon_or_external_markers(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, "N")
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--no-cov"])
-        tm.that(command, lacks="--cov-report")
-        tm.that(command, has=["-m", "not docker and not remote"])
 
-    def test_ci_y_forbids_pytest_execute(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        tm.that(command, has=["--cov", "-m", "not docker and not remote"])
+        tm.that(command, lacks="--testmon")
+        tm.that(command, lacks="--no-cov")
+
+    @pytest.mark.parametrize(
+        ("file", "match"),
+        [("tests/sample_test.py", None), (None, "sample")],
+    )
+    def test_ci_n_focused_runs_disable_coverage_and_coverage_post_gate(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        file: str | None,
+        match: str | None,
     ) -> None:
-        """mro-v4p5: make test under CI=Y must fail loud, not run the suite."""
-        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
-        runner = self._runner(tmp_path, what="all")
-        result = runner.execute()
-        tm.fail(result, has="forbidden under CI=Y")
+        test_file = tmp_path / "tests" / "sample_test.py"
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text("", encoding="utf-8")
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, "N")
+        runner = self._runner(tmp_path, file=file, match=match)
+
+        def fake_run_to_file(
+            cmd: t.StrSequence,
+            output_file: t.Cli.TextPath,
+            **_: object,
+        ) -> p.Result[int]:
+            tm.that(cmd, has=["--no-cov", "-m", "not docker and not remote"])
+            tm.that(cmd, lacks="--cov")
+            tm.that(cmd, lacks="--cov-report")
+            tm.that(cmd, lacks="--testmon")
+            report_dir = Path(output_file).parent
+            Path(output_file).write_text("1 passed in 0.01s\n", encoding="utf-8")
+            (report_dir / "junit.xml").write_text(
+                '<?xml version="1.0"?><testsuites><testsuite tests="1" '
+                'failures="0" errors="0"/></testsuites>',
+                encoding="utf-8",
+            )
+            _dump_real_profile(report_dir / "pytest.pstats")
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+
+        tm.that(tm.ok(runner.execute()), eq=0)
 
     def test_ci_true_keeps_incremental_testmon_without_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

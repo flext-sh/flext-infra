@@ -31,10 +31,8 @@ UV_LINK_MODE := copy
 # === SECTION: user overrides (managed) ===
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
-APPLY ?= N
-# The seeded absent value means "not applying", so every guard compares against
-# APPLYING and a plain read-only run never trips the write-enable check.
-APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
+ACTION ?=
+APPLY ?=
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -48,13 +46,13 @@ BRANCH ?=
 PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 1920
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 125
 # mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
 # MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
-override PYTEST_CASE_TIMEOUT_SECONDS := 30
-override PYTEST_RUN_TIMEOUT_SECONDS := 1800
+override PYTEST_CASE_TIMEOUT_SECONDS := 10
+override PYTEST_RUN_TIMEOUT_SECONDS := 120
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
@@ -116,32 +114,45 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 
 # === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
+# Source: config:make.verbs[*].actions, config:make.check_gates_allowed,
 #        config:make.check_gates_default
-PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen work mod
-BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen work mod
+PUBLIC_VERBS := help setup deps build check test fmt fix run status clean release gen work mod
+BUILTIN_VERBS := help setup deps build check test fmt fix run status clean release gen work mod
 SCRIPT_VERBS :=
 
-_ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_setup := environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_deps := check lock upgrade $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_build := artifacts $(shell sed -n 's/^_custom_build_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_check := all $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_fmt := check all apply $(shell sed -n 's/^_custom_fmt_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_fix := check all apply $(shell sed -n 's/^_custom_fix_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_run := default $(shell sed -n 's/^_custom_run_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_status := diagnostics $(shell sed -n 's/^_custom_status_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_docs := all generate fix audit build validate $(shell sed -n 's/^_custom_docs_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_clean := status generated $(shell sed -n 's/^_custom_clean_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_release := status rel $(shell sed -n 's/^_custom_release_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_gen := check all apply $(shell sed -n 's/^_custom_gen_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_work := start status land finish $(shell sed -n 's/^_custom_work_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_help := usage
+_ALLOWED_WHATS_help := all usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_setup := environment
+_ALLOWED_WHATS_setup := all environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_deps := lock upgrade
+_ALLOWED_WHATS_deps := all $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_build := build
+_ALLOWED_WHATS_build := all artifacts docs $(shell sed -n 's/^_custom_build_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_check := check
+_ALLOWED_WHATS_check := all docs $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_test := run full cache-status cache-clear cache-checkpoint
+_ALLOWED_WHATS_test := all docs $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_fmt := format
+_ALLOWED_WHATS_fmt := all docs $(shell sed -n 's/^_custom_fmt_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_fix := fix
+_ALLOWED_WHATS_fix := all docs $(shell sed -n 's/^_custom_fix_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_run := default
+_ALLOWED_WHATS_run := all $(shell sed -n 's/^_custom_run_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_status := diagnostics
+_ALLOWED_WHATS_status := all diagnostics $(shell sed -n 's/^_custom_status_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_clean := clean
+_ALLOWED_WHATS_clean := all generated $(shell sed -n 's/^_custom_clean_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_release := status run
+_ALLOWED_WHATS_release := all $(shell sed -n 's/^_custom_release_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_gen := generate
+_ALLOWED_WHATS_gen := all docs $(shell sed -n 's/^_custom_gen_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_work := start status land finish
+_ALLOWED_WHATS_work := all $(shell sed -n 's/^_custom_work_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_ACTIONS_mod := modify
+_ALLOWED_WHATS_mod := all $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
-DOCS_ACTIONS := generate fix audit build validate
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -181,33 +192,51 @@ REPORT_MYPY_FAILURE = code=$$?; signal=none; if [ "$$code" -ge 128 ]; then signa
 export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 
 
-_DEFAULT_help := usage
-_DEFAULT_deps := check
-_DEFAULT_build := artifacts
-_DEFAULT_check := all
-_DEFAULT_test := all
-_DEFAULT_fmt := check
-_DEFAULT_fix := check
-_DEFAULT_run := default
-_DEFAULT_status := diagnostics
-_DEFAULT_docs := validate
-_DEFAULT_clean := status
-_DEFAULT_release := status
-_DEFAULT_gen := check
-_DEFAULT_work := status
-_DEFAULT_mod := check
-
-_APPLY_WHAT_deps := upgrade
-_APPLY_WHAT_test := all
-_APPLY_WHAT_fmt := apply
-_APPLY_WHAT_fix := apply
-_APPLY_WHAT_run := default
-_APPLY_WHAT_docs := generate
-_APPLY_WHAT_clean := generated
-_APPLY_WHAT_release := rel
-_APPLY_WHAT_gen := apply
-_APPLY_WHAT_work := land
-_APPLY_WHAT_mod := apply
+_DEFAULT_ACTION_help := usage
+_DEFAULT_APPLY_help := N
+_DEFAULT_WHAT_help := all
+_DEFAULT_ACTION_setup := environment
+_DEFAULT_APPLY_setup := Y
+_DEFAULT_WHAT_setup := all
+_DEFAULT_ACTION_deps := lock
+_DEFAULT_APPLY_deps := N
+_DEFAULT_WHAT_deps := all
+_DEFAULT_ACTION_build := build
+_DEFAULT_APPLY_build := N
+_DEFAULT_WHAT_build := all
+_DEFAULT_ACTION_check := check
+_DEFAULT_APPLY_check := N
+_DEFAULT_WHAT_check := all
+_DEFAULT_ACTION_test := run
+_DEFAULT_APPLY_test := N
+_DEFAULT_WHAT_test := all
+_DEFAULT_ACTION_fmt := format
+_DEFAULT_APPLY_fmt := N
+_DEFAULT_WHAT_fmt := all
+_DEFAULT_ACTION_fix := fix
+_DEFAULT_APPLY_fix := N
+_DEFAULT_WHAT_fix := all
+_DEFAULT_ACTION_run := default
+_DEFAULT_APPLY_run := N
+_DEFAULT_WHAT_run := all
+_DEFAULT_ACTION_status := diagnostics
+_DEFAULT_APPLY_status := N
+_DEFAULT_WHAT_status := all
+_DEFAULT_ACTION_clean := clean
+_DEFAULT_APPLY_clean := Y
+_DEFAULT_WHAT_clean := all
+_DEFAULT_ACTION_release := status
+_DEFAULT_APPLY_release := N
+_DEFAULT_WHAT_release := all
+_DEFAULT_ACTION_gen := generate
+_DEFAULT_APPLY_gen := N
+_DEFAULT_WHAT_gen := all
+_DEFAULT_ACTION_work := status
+_DEFAULT_APPLY_work := N
+_DEFAULT_WHAT_work := all
+_DEFAULT_ACTION_mod := modify
+_DEFAULT_APPLY_mod := N
+_DEFAULT_WHAT_mod := all
 
 
 # === SECTION: profile routing (managed) ===
@@ -374,17 +403,71 @@ SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	applying="$(strip $(APPLYING))"; \
-	if [ -n "$$applying" ] && [ "$$applying" != "Y" ]; then \
-		printf 'ERROR: APPLY must be Y when set\n' >&2; exit 2; \
+	action="$(strip $(ACTION))"; \
+	applying="$(strip $(APPLY))"; \
+	if [ -z "$$action" ]; then action="$(_DEFAULT_ACTION_$(1))"; fi; \
+	if [ -z "$$what" ]; then what="$(_DEFAULT_WHAT_$(1))"; fi; \
+	if [ -z "$$applying" ]; then applying="$(_DEFAULT_APPLY_$(1))"; fi; \
+	case " $(_ALLOWED_ACTIONS_$(1)) " in \
+		*" $$action "*) ;; \
+		*) printf 'ERROR: unsupported %s ACTION=%s (allowed:%s)\n' "$(1)" "$$action" "$(_ALLOWED_ACTIONS_$(1))" >&2; exit 2 ;; \
+	esac; \
+	case "$$applying" in \
+		Y|N) ;; \
+		*) printf 'ERROR: APPLY must be Y or N\n' >&2; exit 2 ;; \
+	esac; \
+	apply_mode=''; \
+	if [ "$(1)" = "help" ]; then \
+		case "$$action" in usage) apply_mode=never ;; esac; \
 	fi; \
-	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
-		printf 'ERROR: verb %s is read-only and does not accept APPLY\n' "$(1)" >&2; exit 2; \
+	if [ "$(1)" = "setup" ]; then \
+		case "$$action" in environment) apply_mode=optional ;; esac; \
 	fi; \
-	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
-		what="$(_APPLY_WHAT_$(1))"; \
+	if [ "$(1)" = "deps" ]; then \
+		case "$$action" in lock) apply_mode=optional ;; upgrade) apply_mode=required ;; esac; \
 	fi; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
+	if [ "$(1)" = "build" ]; then \
+		case "$$action" in build) apply_mode=never ;; esac; \
+	fi; \
+	if [ "$(1)" = "check" ]; then \
+		case "$$action" in check) apply_mode=never ;; esac; \
+	fi; \
+	if [ "$(1)" = "test" ]; then \
+		case "$$action" in run) apply_mode=never ;; full) apply_mode=never ;; cache-status) apply_mode=never ;; cache-clear) apply_mode=required ;; cache-checkpoint) apply_mode=required ;; esac; \
+	fi; \
+	if [ "$(1)" = "fmt" ]; then \
+		case "$$action" in format) apply_mode=optional ;; esac; \
+	fi; \
+	if [ "$(1)" = "fix" ]; then \
+		case "$$action" in fix) apply_mode=optional ;; esac; \
+	fi; \
+	if [ "$(1)" = "run" ]; then \
+		case "$$action" in default) apply_mode=optional ;; esac; \
+	fi; \
+	if [ "$(1)" = "status" ]; then \
+		case "$$action" in diagnostics) apply_mode=never ;; esac; \
+	fi; \
+	if [ "$(1)" = "clean" ]; then \
+		case "$$action" in clean) apply_mode=optional ;; esac; \
+	fi; \
+	if [ "$(1)" = "release" ]; then \
+		case "$$action" in status) apply_mode=never ;; run) apply_mode=required ;; esac; \
+	fi; \
+	if [ "$(1)" = "gen" ]; then \
+		case "$$action" in generate) apply_mode=optional ;; esac; \
+	fi; \
+	if [ "$(1)" = "work" ]; then \
+		case "$$action" in start) apply_mode=required ;; status) apply_mode=never ;; land) apply_mode=required ;; finish) apply_mode=required ;; esac; \
+	fi; \
+	if [ "$(1)" = "mod" ]; then \
+		case "$$action" in modify) apply_mode=optional ;; esac; \
+	fi; \
+	if [ "$$apply_mode" = never ] && [ "$$applying" = "Y" ]; then \
+		printf 'ERROR: %s ACTION=%s does not accept APPLY=Y\n' "$(1)" "$$action" >&2; exit 2; \
+	fi; \
+	if [ "$$apply_mode" = required ] && [ "$$applying" != "Y" ]; then \
+		printf 'ERROR: %s ACTION=%s requires APPLY=Y\n' "$(1)" "$$action" >&2; exit 2; \
+	fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
@@ -396,7 +479,7 @@ define _dispatch
 			*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
 		esac; \
 	fi; \
-	builtin="_builtin_$(1)_$$what"; \
+	builtin="_builtin_$(1)_$$action"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
@@ -404,7 +487,7 @@ define _dispatch
 	if [ "$$custom_rc" -ne 2 ]; then \
 		$(SELF_MAKE) "$$custom" || exit $$?; \
 	else \
-		$(SELF_MAKE) "$$builtin" || exit $$?; \
+		WHAT="$$what" ACTION="$$action" APPLY="$$applying" $(SELF_MAKE) "$$builtin" || exit $$?; \
 	fi; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
@@ -434,7 +517,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_release_rel _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_work_start _builtin_work_status _builtin_work_land _builtin_work_finish _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_lock _builtin_deps_upgrade _builtin_build_build _builtin_check_check _builtin_test_run _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_format _builtin_fix_fix _builtin_run_default _builtin_status_diagnostics _builtin_clean_clean _builtin_release_status _builtin_release_run _builtin_gen_generate _builtin_work_start _builtin_work_status _builtin_work_land _builtin_work_finish _builtin_mod_modify
 
 # Every public verb dispatches straight into its private builtin. The verbs
 # that used to round-trip through the Python serializer keep the environment
@@ -501,7 +584,7 @@ _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
-	@printf '  %-10s WHAT=%s\n' 'help' "$$(printf '%s' '$(_ALLOWED_WHATS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'help' "$$(printf '%s' '$(_ALLOWED_ACTIONS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
@@ -509,61 +592,57 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'deps' "$$(printf '%s' '$(_ALLOWED_WHATS_deps)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'deps' "$$(printf '%s' '$(_ALLOWED_ACTIONS_deps)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_deps)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'build' "$$(printf '%s' '$(_ALLOWED_WHATS_build)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'build' "$$(printf '%s' '$(_ALLOWED_ACTIONS_build)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_build)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' "$$(printf '%s' '$(_ALLOWED_WHATS_check)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'check' "$$(printf '%s' '$(_ALLOWED_ACTIONS_check)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_check)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'test' "$$(printf '%s' '$(_ALLOWED_WHATS_test)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'test' "$$(printf '%s' '$(_ALLOWED_ACTIONS_test)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_test)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' "$$(printf '%s' '$(_ALLOWED_WHATS_fmt)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'fmt' "$$(printf '%s' '$(_ALLOWED_ACTIONS_fmt)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_fmt)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fix' "$$(printf '%s' '$(_ALLOWED_WHATS_fix)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'fix' "$$(printf '%s' '$(_ALLOWED_ACTIONS_fix)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_fix)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'run' "$$(printf '%s' '$(_ALLOWED_WHATS_run)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'run' "$$(printf '%s' '$(_ALLOWED_ACTIONS_run)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_run)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'status' "$$(printf '%s' '$(_ALLOWED_WHATS_status)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'status' "$$(printf '%s' '$(_ALLOWED_ACTIONS_status)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_status)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'docs' "$$(printf '%s' '$(_ALLOWED_WHATS_docs)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'clean' "$$(printf '%s' '$(_ALLOWED_ACTIONS_clean)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_clean)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'clean' "$$(printf '%s' '$(_ALLOWED_WHATS_clean)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'release' "$$(printf '%s' '$(_ALLOWED_ACTIONS_release)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_release)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'release' "$$(printf '%s' '$(_ALLOWED_WHATS_release)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-
-
-
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' "$$(printf '%s' '$(_ALLOWED_WHATS_gen)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'gen' "$$(printf '%s' '$(_ALLOWED_ACTIONS_gen)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_gen)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
 
 	@printf '  %-10s WHAT=%s\n' 'work' "$$(printf '%s' '$(_ALLOWED_WHATS_work)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-	@printf '  %-10s %s\n' '' 'status is read-only; other WHATs require APPLY=Y';
+	@printf '  %-10s %s\n' '' 'status is read-only; other ACTIONs require APPLY=Y';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'mod' "$$(printf '%s' '$(_ALLOWED_WHATS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s ACTION=%s WHAT=%s\n' 'mod' "$$(printf '%s' '$(_ALLOWED_ACTIONS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')" "$$(printf '%s' '$(_ALLOWED_WHATS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
@@ -794,12 +873,8 @@ _builtin_setup_environment: _builtin_setup_submodules
 endif
 # End SECTION: setup environment
 
-_builtin_deps_check: _builtin_require_environment
+_builtin_deps_lock: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
-
-_builtin_deps_lock:
-	$(call _require_apply)
-	$(call _run_for_selected_projects,)
 
 _builtin_deps_upgrade: _builtin_require_environment
 	$(call _require_apply)
@@ -825,12 +900,16 @@ _builtin_deps_upgrade: _builtin_require_environment
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
+_builtin_build_build:
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,build,),@$(SELF_MAKE) _builtin_build_artifacts)
+
 # `check` is read-only by contract: it never mutates the tree. Fixing is owned
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI=Y omits make.ci.check_gates_skip (ruff + pyrefly).
-_builtin_check_all: _builtin_require_environment
+# CI=Y omits make.ci.rules.enabled.check_gate_exclusions.
+_builtin_check_check: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,audit,),@true)
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
@@ -839,16 +918,15 @@ _builtin_check_all: _builtin_require_environment
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 			skip=0; \
-			if [ "$$gate" = "lint" ]; then skip=1; fi; \
+		if [ "$$gate" = "lint" ]; then skip=1; fi; \
 			if [ "$$gate" = "format" ]; then skip=1; fi; \
 			if [ "$$gate" = "pyrefly" ]; then skip=1; fi; \
-			if [ "$$gate" = "markdown" ]; then skip=1; fi; \
 			if [ "$$skip" -eq 0 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y omits check gates: lint format pyrefly markdown\n'; \
+		printf 'INFO: CI=Y omits check gates: lint format pyrefly\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -861,49 +939,24 @@ _builtin_check_all: _builtin_require_environment
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
-_builtin_test_all: _builtin_require_environment
+_builtin_test_run: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,validate,),@true)
 
 	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
-
 
 _builtin_test_full: _builtin_require_environment
 
 	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
-_builtin_test_cache-status: _builtin_require_environment
-
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
-
-_builtin_test_cache-clear: _builtin_require_environment
-
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
-
-_builtin_test_cache-checkpoint: _builtin_require_environment
-
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
-
-
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
 # `fix` owns the mutating lint pass. Running ruff twice per gate was the
 # duplication this split removes.
-_builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
-
-_builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
-
-_builtin_fmt_apply: _builtin_fmt_all
+_builtin_fmt_format: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,fix,$(if $(filter Y,$(APPLY)),--apply,--check)),@$(UV_RUN) ruff format $(if $(filter Y,$(APPLY)),,--check) $(RUFF_PATHS))
 
 # Read-only dual of `make fix APPLY=Y` — never mutate here.
-_builtin_fix_check: _builtin_require_environment
-	@$(UV_RUN) ruff check $(RUFF_PATHS)
-
-_builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
-
-_builtin_fix_apply: _builtin_fix_all
+_builtin_fix_fix: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,fix,$(if $(filter Y,$(APPLY)),--apply,--check)),@$(UV_RUN) ruff check $(if $(filter Y,$(APPLY)),--fix,) $(RUFF_PATHS))
 
 
 _builtin_run_default: _builtin_require_environment
@@ -922,44 +975,15 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_all:
-	@set -eu; \
-	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in generate|fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
-	done
-
-
-_builtin_docs_generate:
-	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(if $(filter Y,$(APPLY)),--apply,--check) $(DOCS_PROJECT_ARGS)
-
-
-_builtin_docs_fix:
-	@$(PROJECT_FLEXT_INFRA) docs fix --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(if $(filter Y,$(APPLY)),--apply,--check) $(DOCS_PROJECT_ARGS)
-
-
-_builtin_docs_audit:
-	@$(PROJECT_FLEXT_INFRA) docs audit --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
-
-
-_builtin_docs_build:
-	@$(PROJECT_FLEXT_INFRA) docs build --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
-
-
-_builtin_docs_validate:
-	@$(PROJECT_FLEXT_INFRA) docs validate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
-
-
+define _run_docs_scope
+	@$(PROJECT_FLEXT_INFRA) docs $(1) --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(2) $(DOCS_PROJECT_ARGS)
+endef
 
 # Disposable artifacts (caches, reports, traces) are owned by the flext-infra
 # clean service and declared in config.make.clean, so the recipe stays a thin
 # dispatch like every other verb instead of shell that drifts per project.
-_builtin_clean_status:
-	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)"
-
-_builtin_clean_generated:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)" --apply-changes
+_builtin_clean_clean:
+	@$(PROJECT_FLEXT_INFRA) maintenance clean --workspace "$(PROJECT_ROOT)" $(if $(filter Y,$(APPLY)),--apply-changes,)
 
 _builtin_release_status: _builtin_require_environment
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
@@ -971,7 +995,7 @@ _builtin_release_status: _builtin_require_environment
 # putting the release pipeline outside the Make monopoly and making Release CI
 # depend on a hand-written surface. Knobs come from the caller environment so
 # no new selector variables enter the public surface; PUSH=1 opts into pushing.
-_builtin_release_rel: _builtin_require_environment
+_builtin_release_run: _builtin_require_environment
 	$(call _require_apply)
 	@push_flag=--no-push; \
 	if [ "$${PUSH:-0}" = "1" ]; then push_flag=--push; fi; \
@@ -998,18 +1022,11 @@ _builtin_release_rel: _builtin_require_environment
 # sibling. It also kept the fixed point out of reach: each run rewrote the siblings, so
 # the next run found a difference again. At the workspace root PROJECT_ROOT is
 # already the workspace, so fan-out survives exactly where it belongs.
-_builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --check
-
-_builtin_gen_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply
-
-_builtin_gen_apply: _builtin_gen_all
+_builtin_gen_generate: _builtin_require_environment
+	$(if $(filter docs,$(WHAT)),$(call _run_docs_scope,generate,$(if $(filter Y,$(APPLY)),--apply,--check)),@true)
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode $(if $(filter Y,$(APPLY)),apply,check)
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" $(if $(filter Y,$(APPLY)),--apply,--check)
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" $(if $(filter Y,$(APPLY)),--apply,--check)
 
 _builtin_work_status:
 	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)" --branch "$(BRANCH)"
@@ -1032,11 +1049,5 @@ _builtin_work_finish:
 # `flext-infra refactor mod`; these handlers are the missing dispatch into it.
 # check is the read-only fixed-point (reports pending fixes); apply runs the
 # batch under the ruff/pyrefly rollback circuit.
-_builtin_mod_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
-
-_builtin_mod_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
-
-_builtin_mod_apply: _builtin_mod_all
+_builtin_mod_modify: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" $(if $(filter Y,$(APPLY)),--apply,)

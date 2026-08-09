@@ -286,42 +286,6 @@ _fmt_impl:
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
-docs: ## Run docs (WHAT={{ docs_whats | join('|') }})
-	$(call _run_verb_hooks,pre,docs,$(WHAT))
-	$(call _run_verb_body,docs,_docs_impl)
-	$(call _run_verb_hooks,post,docs,$(WHAT))
-
-_docs_impl:
-	$(Q)if python3 -c "import flext_infra.docs" >/dev/null 2>&1; then \
-		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=OK REASON=docs-module-available"; \
-	else \
-		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=FAIL REASON=docs-module-missing"; \
-		exit 1; \
-	fi
-	$(Q)if [ "$(WHAT)" = "all" ]; then \
-		actions="{% for action in docs_whats if action != 'all' %}{{ action }} {% endfor %}"; \
-	else \
-		actions="$(WHAT)"; \
-	fi; \
-	for action in $$actions; do \
-		case "$$action" in \
-{%- for action in docs_whats if action != "all" %}
-			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
-{%- endfor %}
-			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs_whats | join('|') }})"; exit 2 ;; \
-		esac; \
-		$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir {{ docs.reports_dir }} $$extra || exit $$?; \
-	done
-
-# kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
-docs-serve: ## Serve documentation via the flext-infra docs engine
-	$(call _run_verb_hooks,pre,docs-serve,$(WHAT))
-	$(call _run_verb_body,docs-serve,_docs_serve_impl)
-	$(call _run_verb_hooks,post,docs-serve,$(WHAT))
-
-_docs_serve_impl:
-	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
-
 test: ## Run pytest only
 	$(call _run_verb_hooks,pre,test,$(WHAT))
 	$(call _run_verb_body,test,_test_impl)

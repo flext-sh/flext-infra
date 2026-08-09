@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -137,57 +136,38 @@ class TestCodegenCiMatrix:
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
-        gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
-        default_whats: Mapping[str, str] = config.Infra.codegen.make.default_whats
 
-        for hook_id, context in (
-            ("flext-pre-commit", "pre_commit"),
-            ("flext-pre-push", "pre_push"),
-        ):
-            commands = " && ".join(
-                (
-                    f"{ci.variable}={ci.value} "
-                    if step.verb == "check" and context == "pre_commit"
-                    else ""
-                )
-                + (
-                    "CHECK_GATES="
-                    + ",".join(
-                        gate for gate in gates_default if gate not in step.gates_skip
+        for context in ("pre_commit", "pre_push"):
+            for step in workflow:
+                if context not in step.contexts:
+                    continue
+                hook_id = f"flext-{context.replace('_', '-')}-{step.verb}"
+                tm.that(hooks, has=f"id: {hook_id}")
+                entry = self._hook_entry(hooks, hook_id)
+                tm.that(entry.count("make "), eq=1)
+                tm.that(entry, has=f"make {step.verb}")
+                if step.action:
+                    tm.that(entry, has=f"ACTION={step.action}")
+                if step.what:
+                    tm.that(entry, has=f"WHAT={step.what}")
+                if step.apply:
+                    tm.that(
+                        entry,
+                        has=(
+                            f"{config.Infra.codegen.make.apply_variable}="
+                            f"{config.Infra.codegen.make.apply_value}"
+                        ),
                     )
-                    + " "
-                    if step.gates_skip
-                    else ""
+                cleanup = (
+                    f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
                 )
-                + f"make {step.verb}"
-                + (
-                    f" WHAT={step.what}"
-                    if step.what
-                    else (f" WHAT={default_whats[step.verb]}" if not step.apply else "")
-                )
-                + (
-                    f" {config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                    if step.apply
-                    else ""
-                )
-                for step in workflow
-                if context in step.contexts
-            )
-            tm.that(hooks, has=f"id: {hook_id}")
-            tm.that(hooks, has=commands)
-            # Every carrier that can smuggle a caller's selector or write-enable
-            # token into a hook step is cleared BEFORE the first verb runs.
-            # Position matters, not mere presence: cleanup rendered after the
-            # first `make` would leave that command reading the caller's values.
-            entry = self._hook_entry(hooks, hook_id)
-            cleanup = (
-                f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
-            )
-            tm.that(entry, has=cleanup)
-            tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
+                tm.that(entry, has=cleanup)
+                tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
+                if context == "pre_push":
+                    tm.that(entry, has="pre-push requires a clean tracked tree")
+                    tm.that(entry, has="pre-push gate mutated the tracked tree")
         tm.that(hooks, has="make test")
-        tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
+        tm.that(hooks, lacks=f"export {ci.variable}={ci.enabled_value}")
 
     def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
         """Generated CI groups competing runs by workflow and ref."""
@@ -513,7 +493,7 @@ class TestCodegenCiMatrix:
         smoke = matrix.split("Bootstrap + verb smoke", maxsplit=1)[1].split(
             "# End SECTION: distro-matrix", maxsplit=1
         )[0]
-        tm.that(smoke, has=f"-e {ci.variable}={ci.value}")
+        tm.that(smoke, has=f"-e {ci.variable}={ci.enabled_value}")
         tm.that(smoke, has="make help")
         tm.that(smoke, has="make check")
         tm.that(smoke, lacks="} make test")

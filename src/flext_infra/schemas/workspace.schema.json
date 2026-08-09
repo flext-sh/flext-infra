@@ -255,35 +255,57 @@
       "additionalProperties": false,
       "required": [
         "name",
-        "default_what",
-        "whats"
+        "default_action",
+        "actions"
       ],
       "properties": {
         "name": {
           "$ref": "#/$defs/name"
         },
-        "default_what": {
+        "default_action": {
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]*$"
         },
+        "default_apply": {
+          "type": "boolean"
+        },
+        "actions": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/makeAction"
+          }
+        }
+      }
+    },
+    "makeAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "whats"
+      ],
+      "properties": {
         "whats": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
+          "contains": {
+            "const": "all"
+          },
           "items": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$"
           }
         },
-        "apply_guarded": {
-          "type": "boolean"
-        },
-        "accepts_apply": {
-          "type": "boolean"
-        },
-        "apply_what": {
-          "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        "apply_mode": {
+          "enum": [
+            "never",
+            "optional",
+            "required"
+          ]
         }
       }
     },

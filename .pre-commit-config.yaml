@@ -24,23 +24,145 @@ repos:
       # landing lane could not push. Each step then states its selector: the
       # declared `what` when it has one, otherwise the verb's own declared
       # default — a hook validates everything, never a caller-narrowed subset.
-      # Mutating steps pass APPLY explicitly, so the verb resolves its own
-      # apply_what (gen/fmt/fix -> apply) instead of a read-only selector.
-      - id: flext-pre-commit
-        name: FLEXT pre-commit workflow
+
+      - id: flext-pre-commit-clean
+        name: FLEXT pre-commit clean
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'unset WHAT MAKEFLAGS APPLY; make fmt APPLY=Y && make fix APPLY=Y'
+          'unset WHAT MAKEFLAGS APPLY; make clean APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
-      - id: flext-pre-push
-        name: FLEXT pre-push workflow
+
+      - id: flext-pre-commit-setup
+        name: FLEXT pre-commit setup
         language: system
         entry: >-
           bash -eu -o pipefail -c
-          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); make gen APPLY=Y && make check WHAT=all && make test WHAT=cache-clear APPLY=Y && make test WHAT=all'
+          'unset WHAT MAKEFLAGS APPLY; make setup APPLY=Y'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: flext-pre-commit-gen
+        name: FLEXT pre-commit gen
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; make gen APPLY=Y'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: flext-pre-commit-fmt
+        name: FLEXT pre-commit fmt
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; make fmt APPLY=Y'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: flext-pre-commit-fix
+        name: FLEXT pre-commit fix
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; make fix APPLY=Y'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: flext-pre-commit-check
+        name: FLEXT pre-commit check
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; CI=Y make check'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: flext-pre-commit-test
+        name: FLEXT pre-commit test
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; make test'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+
+      - id: flext-pre-push-clean
+        name: FLEXT pre-push clean
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; make clean APPLY=Y; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+
+      - id: flext-pre-push-setup
+        name: FLEXT pre-push setup
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; make setup APPLY=Y; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: flext-pre-push-gen
+        name: FLEXT pre-push gen
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; make gen APPLY=Y; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: flext-pre-push-fmt
+        name: FLEXT pre-push fmt
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; make fmt APPLY=Y; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: flext-pre-push-fix
+        name: FLEXT pre-push fix
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; make fix APPLY=Y; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: flext-pre-push-check
+        name: FLEXT pre-push check
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; make check; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: flext-pre-push-test
+        name: FLEXT pre-push test
+        language: system
+        entry: >-
+          bash -eu -o pipefail -c
+          'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); before=$$(git status --porcelain); test -z "$$before" || { printf "ERROR: pre-push requires a clean tracked tree\n" >&2; exit 2; }; make test; after=$$(git status --porcelain); test "$$after" = "$$before" || { printf "ERROR: pre-push gate mutated the tracked tree\n" >&2; exit 2; }'
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+

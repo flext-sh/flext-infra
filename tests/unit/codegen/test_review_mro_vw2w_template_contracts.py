@@ -84,11 +84,13 @@ class TestsReviewTemplateContracts:
         tm.that(dump, has="junit.xml")
         tm.that(dump, has="coverage.xml")
 
-    def test_docs_workflow_uses_what_not_docs_phase(self) -> None:
+    def test_docs_workflow_uses_standard_verbs_with_docs_scope(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")
         tm.that(text, lacks="DOCS_PHASE=")
-        tm.that(text, has="make docs WHAT=audit")
-        tm.that(text, has="make docs WHAT=validate")
+        tm.that(text, lacks="make docs")
+        tm.that(text, has="make check WHAT=docs")
+        tm.that(text, has="make gen WHAT=docs APPLY=Y")
+        tm.that(text, has="make build WHAT=docs")
 
     def test_docs_upload_excludes_raw_report_logs(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")

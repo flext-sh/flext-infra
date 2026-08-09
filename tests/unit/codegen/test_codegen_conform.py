@@ -1110,12 +1110,21 @@ class TestScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="incidente",
-                    default_what="all",
-                    whats=("all",),
-                    apply_what="all",
+                    default_action="run",
+                    actions={
+                        "run": m.Infra.MakeActionSpec(
+                            whats=("all",), apply_mode="required"
+                        )
+                    },
                 ),
                 m.Infra.MakeVerbSpec(
-                    name="charts", default_what="all", whats=("all",), apply_what="all"
+                    name="charts",
+                    default_action="run",
+                    actions={
+                        "run": m.Infra.MakeActionSpec(
+                            whats=("all",), apply_mode="required"
+                        )
+                    },
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -1177,21 +1186,16 @@ class TestScriptDispatchMakefile:
 
         The convergence spine (mro-e9j0.6 C7) fuses codegen+conform under the
         single short ``gen`` verb: one verb, one meaning. The old ``codegen``
-        Make verb is fully replaced — config, serialization, fixed points,
-        rendered handlers, and the regeneration header all speak ``gen``.
+        Make verb is fully replaced across config, rendered handlers, and the
+        regeneration header.
         """
         make_config = config.Infra.codegen.make
         verb_names = {verb.name for verb in make_config.verbs}
         tm.that("gen" in verb_names, eq=True)
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
-        tm.that(gen.default_what, eq="check")
-        tm.that(gen.apply_guarded, eq=True)
-        # Serialization follows the rename: gen is serialized, codegen gone.
-        tm.that("gen" in make_config.serialization.verbs, eq=True)
-        tm.that("codegen" in make_config.serialization.verbs, eq=False)
-        tm.that("gen" in make_config.serialization.mutation_verbs, eq=True)
-        tm.that("codegen" in make_config.serialization.mutation_verbs, eq=False)
+        tm.that(gen.default_action, eq="generate")
+        tm.that(gen.actions["generate"].apply_mode, eq="optional")
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -1252,16 +1256,31 @@ class TestScriptDispatchMakefile:
             tmp_path,
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
-                    name="charts", default_what="all", whats=("all",), apply_what="all"
+                    name="charts",
+                    default_action="run",
+                    actions={
+                        "run": m.Infra.MakeActionSpec(
+                            whats=("all",), apply_mode="required"
+                        )
+                    },
                 ),
                 m.Infra.MakeVerbSpec(
                     name="chart-release",
-                    default_what="all",
-                    whats=("all",),
-                    apply_what="all",
+                    default_action="run",
+                    actions={
+                        "run": m.Infra.MakeActionSpec(
+                            whats=("all",), apply_mode="required"
+                        )
+                    },
                 ),
                 m.Infra.MakeVerbSpec(
-                    name="bead", default_what="all", whats=("all",), apply_what="all"
+                    name="bead",
+                    default_action="run",
+                    actions={
+                        "run": m.Infra.MakeActionSpec(
+                            whats=("all",), apply_mode="required"
+                        )
+                    },
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(

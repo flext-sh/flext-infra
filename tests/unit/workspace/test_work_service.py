@@ -1351,5 +1351,5 @@ class TestsFlextInfraWorkService:
         ).read_text(encoding="utf-8")
         tm.that(
             template,
-            has="{{ verb.default_what }} is read-only; other WHATs require APPLY=Y",
+            has="{{ verb.default_action }} is read-only; other ACTIONs require APPLY=Y",
         )
