@@ -818,13 +818,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ``u.Infra.analyzer_python_roots`` is the single owner shared with the
         deps modernizer and the extra-paths sync, so no surface can select a
         different set and erase what another just wrote.
+
+        mro-be9ld: a root counts only when this plan actually materializes a
+        file INSIDE it, or when it already exists on disk. Matching the first
+        path segment of every rendered destination also accepted roots the
+        plan never creates (an external scaffold declares examples/ and
+        scripts/ but writes neither), so the first pass emitted pyright
+        environments for absent directories and the verification pass removed
+        them again -- apply never reached a fixed point.
         """
         rendered_roots = {
             Path(entry.destination).parts[0]
             for entry in codegen.templates.entries
             if target.make_profile in entry.profiles
             and entry.delegate == "render"
-            and Path(entry.destination).parts
+            and len(Path(entry.destination).parts) > 1
         }
         declared = tuple(
             directory
@@ -1164,14 +1172,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
-        # mro-be9ld: an existing tree declares NO roots here. Declared roots are
-        # the pre-write scaffold contract (mro-j47u); on an existing repository
-        # they short-circuit the full pyright computation, which for the
-        # workspace root also spans member roots (flext-*/src, flext-*/tests)
-        # and per-project extra environments. Passing this repository's own
-        # roots erased both, so check reported permanent drift that apply could
-        # never fix. Filesystem discovery is the complete set here.
-        declared_python_dirs: t.StrSequence = ()
+        # Both plan paths must declare the SAME Python roots or their renders
+        # diverge and conform never converges. _existing_python_dirs unions the
+        # roots this plan renders with the roots already on disk, which is the
+        # complete set for an existing tree.
+        declared_python_dirs = self._existing_python_dirs(root, codegen, target)
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
