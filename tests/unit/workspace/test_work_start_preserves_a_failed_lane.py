@@ -154,7 +154,7 @@ class TestsWorkStartPreservesAFailedLane:
         lanes = _lane_paths(repository)
         tm.that(len(lanes), eq=1, msg="provisioning failure destroyed the lane")
         tm.that(lanes[0].is_dir(), eq=True)
-        tm.that((lanes[0] / _SETUP_MARKER).is_file(), eq=True)
+        tm.that((repository / _SETUP_MARKER).is_file(), eq=True)
         tm.that(outcome.error or "", has="preserved")
 
 

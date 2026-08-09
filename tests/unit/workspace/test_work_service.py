@@ -35,9 +35,12 @@ class TestsFlextInfraWorkService:
             "setup:\n"
             '\t@test "$(WORKSPACE)" = "$(CURDIR)"\n'
             '\t@grep -q "^\\[project\\]" "$(WORKSPACE)/pyproject.toml"\n'
+            "\t@mkdir -p .venv/bin\n"
+            "\t@printf '#!/bin/sh\\n' > .venv/bin/python\n"
             '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
             encoding="utf-8",
         )
+        (repository / ".gitignore").write_text(".venv\n", encoding="utf-8")
         beads = repository / ".beads"
         beads.mkdir()
         (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
