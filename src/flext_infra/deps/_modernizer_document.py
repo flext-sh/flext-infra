@@ -104,35 +104,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = [
-            "mise",
-            "exec",
-            f"taplo@{config.Infra.codegen.toolchain.taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
-        config_path = self.root / ".taplo.toml"
-        if config_path.is_file():
-            cmd.extend(["--config", str(config_path)])
-        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
-        format_cwd = next(
-            (candidate for candidate in self.root.parents if candidate.is_dir()),
-            self.root,
+        return u.Infra.format_toml_source(
+            rendered,
+            path=path,
+            toolchain_root=self.root,
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
-        format_result = u.Cli.run_raw(
-            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
-        )
-        if format_result.failure:
-            return r[str].fail(format_result.error or "taplo format failed")
-        output = format_result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
-        return r[str].ok(output.stdout)
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
         """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
@@ -193,6 +170,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        format_source: bool = True,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
@@ -321,10 +299,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        formatted_result = self._format_rendered_pyproject(path, rendered)
-        if formatted_result.failure:
-            return [formatted_result.error or "taplo format failed"]
-        rendered = formatted_result.value
+        if format_source:
+            formatted_result = self._format_rendered_pyproject(path, rendered)
+            if formatted_result.failure:
+                return [formatted_result.error or "taplo format failed"]
+            rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         state.rendered = normalized_rendered

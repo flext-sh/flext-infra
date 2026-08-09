@@ -37,11 +37,24 @@ class FlextInfraUtilitiesPyproject:
             return None
         return result
 
-    @staticmethod
+    @classmethod
     def format_toml_source(
-        source: str, *, path: Path, toolchain_root: Path, taplo_version: str
+        cls, source: str, *, path: Path, toolchain_root: Path, taplo_version: str
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain."""
+        config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
+        return cls._format_toml_source_cached(
+            source,
+            filename=path.name,
+            config_path=config_path if config_path.is_file() else None,
+            taplo_version=taplo_version,
+        )
+
+    @staticmethod
+    @cache
+    def _format_toml_source_cached(
+        source: str, *, filename: str, config_path: Path | None, taplo_version: str
+    ) -> p.Result[str]:
         command = [
             "mise",
             "exec",
@@ -51,18 +64,13 @@ class FlextInfraUtilitiesPyproject:
             "format",
             "-",
             "--stdin-filepath",
-            str(path),
+            filename,
         ]
-        config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
-        if config_path.is_file():
+        if config_path is not None:
             command.extend(("--config", str(config_path)))
         result = u.Cli.run_raw(
             command,
-            cwd=next(
-                candidate
-                for candidate in (toolchain_root, *toolchain_root.parents)
-                if candidate.is_dir()
-            ),
+            cwd=Path(__file__).resolve().parent,
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
         )
         if result.failure:

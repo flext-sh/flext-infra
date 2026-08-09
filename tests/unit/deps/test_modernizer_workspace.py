@@ -20,6 +20,24 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerWorkspace:
     """Validate helper behavior through public utilities and entrypoints."""
 
+    def test_tooling_context_resolution_does_not_launch_external_formatter(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        project = tmp_path / "flext-demo"
+        monkeypatch.setenv("PATH", "")
+
+        resolved = FlextInfraPyprojectModernizer(
+            workspace_root=project, skip_check=True
+        ).resolve_tooling_context(
+            project_name="flext-demo",
+            package_name="flext_demo",
+            path=project / "pyproject.toml",
+            declared_python_dirs=("src", "tests"),
+            declared_python_dirs_are_complete=True,
+        )
+
+        tm.ok(resolved)
+
     @pytest.mark.parametrize(
         ("content", "exists", "expected"),
         [
