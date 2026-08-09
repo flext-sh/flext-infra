@@ -888,11 +888,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # scaffold-only view does not know about, and the next check would
         # remove it again, forever. _existing_python_dirs is the complete set.
         declared_python_dirs = self._existing_python_dirs(root, codegen, target)
+        declared_python_dirs_are_complete = (
+            target.make_profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1070,6 +1074,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_render.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1093,6 +1098,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1188,11 +1194,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # roots this plan renders with the roots already on disk, which is the
         # complete set for an existing tree.
         declared_python_dirs = self._existing_python_dirs(root, codegen, target)
+        declared_python_dirs_are_complete = (
+            target.make_profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1234,6 +1244,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
