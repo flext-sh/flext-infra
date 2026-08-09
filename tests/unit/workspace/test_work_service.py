@@ -46,7 +46,10 @@ class TestsFlextInfraWorkService:
 
     @staticmethod
     def _install_bd_shim(
-        tmp_path: PathType, *bead_ids: str, update_fails: bool = False
+        tmp_path: PathType,
+        *bead_ids: str,
+        update_fails: bool = False,
+        issue_types: dict[str, str] | None = None,
     ) -> PathType:
         store = tmp_path / "beads-store.json"
         store.write_text(
@@ -54,6 +57,7 @@ class TestsFlextInfraWorkService:
                 bead_id: {
                     "id": bead_id,
                     "status": "open",
+                    "issue_type": (issue_types or {}).get(bead_id),
                     "assignee": None,
                     "metadata": {},
                     "labels": [],
@@ -92,7 +96,7 @@ class TestsFlextInfraWorkService:
             "    if bead_id not in store:\n"
             "        raise SystemExit(f'no issue found matching {bead_id}')\n"
             "    data = store[bead_id]\n"
-            "    i = 1\n"
+            "    i = 2\n"
             "    while i < len(args):\n"
             "        if args[i] == '--set-metadata':\n"
             "            key, value = args[i + 1].split('=', 1)\n"
@@ -1403,6 +1407,56 @@ class TestsFlextInfraWorkService:
             has="'EPIC' 'registered epic bead id; nests work start as its child lane'",
         )
 
+    @pytest.mark.parametrize(
+        ("issue_type", "expected_branch"),
+        [("epic", "feature/derived-kind"), ("bug", "bugfix/derived-kind")],
+    )
+    def test_start_derives_kind_from_issue_type(
+        self,
+        tmp_path: PathType,
+        monkeypatch: pytest.MonkeyPatch,
+        issue_type: str,
+        expected_branch: str,
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = f"mro-{issue_type}-kind"
+        shim_dir = self._install_bd_shim(
+            tmp_path, bead_id, issue_types={bead_id: issue_type}
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        started = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                name="derived-kind",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        tm.that(started, has=f"BRANCH={expected_branch}")
+
+    def test_start_refuses_missing_issue_type_without_kind_override(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-missing-kind"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            name="missing-kind",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="missing issue_type")
+
     def _started_epic_lane(
         self,
         tmp_path: PathType,
@@ -1486,7 +1540,7 @@ class TestsFlextInfraWorkService:
         tm.that(child["child_slug"], eq="child-one")
         tm.that(child["integration_base"], eq="feature/epic-alpha")
         container = epic_lane / c.Infra.WORKTREES_DIRNAME
-        tm.that(Path(child["worktree"]).is_relative_to(container), where=bool)
+        tm.that(Path(child["worktree"]), eq=container / "child-one")
         tm.that(
             self._metadata(tmp_path, epic_bead)["role"],
             eq=c.Infra.WorkLaneRole.EPIC.value,

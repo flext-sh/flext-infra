@@ -76,12 +76,27 @@ class FlextInfraWorkSagaCommon:
             return remote
         return cleaned
 
-    def _validated_kind_slug(self) -> p.Result[tuple[c.Infra.WorkKind, str]]:
-        if self.kind is None:
-            return r.fail("work start requires --kind")
+    def _validated_kind_slug(
+        self, issue_type: str | None = None
+    ) -> p.Result[tuple[c.Infra.WorkKind, str]]:
+        kind = self.kind
+        if kind is None:
+            match (issue_type or "").strip().lower():
+                case "epic":
+                    kind = c.Infra.WorkKind.FEATURE
+                case "bug":
+                    kind = c.Infra.WorkKind.BUGFIX
+                case "task" | "chore" | "feature":
+                    kind = c.Infra.WorkKind.FEATURE
+                case "":
+                    return r.fail("work start bead is missing issue_type; pass --kind")
+                case invalid:
+                    return r.fail(
+                        f"work start cannot derive kind from issue_type {invalid}"
+                    )
         # Why: mro-5bts the service model stores enum values, so re-enter the
         # enum here and keep every downstream saga step typed.
-        kind = c.Infra.WorkKind(self.kind)
+        kind = c.Infra.WorkKind(kind)
         slug = (self.name or "").strip().lower()
         if not slug:
             return r.fail("work start requires --name")

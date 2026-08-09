@@ -90,14 +90,14 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work start requires --bead")
-        kind_slug = self._validated_kind_slug()
+        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
+        if shown.failure:
+            return r.fail(shown.error or f"unknown bead {bead}")
+        kind_slug = self._validated_kind_slug(str(shown.value.get("issue_type") or ""))
         if kind_slug.failure:
             return r.fail(kind_slug.error or "invalid kind/name")
         kind, slug = kind_slug.value
         branch = self._branch_name(kind, slug)
-        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
-        if shown.failure:
-            return r.fail(shown.error or f"unknown bead {bead}")
         metadata = shown.value.get("metadata")
         if isinstance(metadata, dict):
             existing_br = str(metadata.get("branch") or "").strip()
@@ -170,12 +170,41 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             lane = reused
         if self._is_primary_path(primary_root, lane):
             return r.fail("work start refused to use the primary worktree as a lane")
+        initial_head = self._git_head(lane)
+        if initial_head.failure:
+            return r.fail(initial_head.error or "failed to read lane HEAD")
+        pending_metadata: dict[str, str] = {
+            "branch": branch,
+            "worktree": str(lane),
+            "kind": kind.value,
+            "slug": slug,
+            "integration_base": base,
+            "head_oid": initial_head.value,
+            "provisioning": "pending",
+        }
+        pending = u.Infra.beads_update_lane(
+            bead,
+            metadata=pending_metadata,
+            labels=(f"branch:{branch}",),
+            notes=f"work start: decisive=lane-registered-before-provisioning path={lane}",
+            root=self.workspace_root,
+        )
+        if pending.failure:
+            return r.fail(
+                self._rollback_started_lane(primary_root, branch, reused, pending.error)
+            )
         # Why: mro-c6di — every maintained worktree runs `make setup`, so start
         # owns that guarantee for the lane it hands back. An adopted lane used to
         # skip provisioning entirely and was handed over with whatever
         # environment an interrupted start had left behind.
         prepared = FlextInfraWorktreeService.setup_lane(primary_root, lane)
         if prepared.failure:
+            _ = u.Infra.beads_update_lane(
+                bead,
+                metadata={"provisioning": "failed"},
+                notes=f"work start: decisive=provisioning-failed path={lane}",
+                root=self.workspace_root,
+            )
             # Why: provisioning is RESUMABLE, so a failed `make setup` must not
             # destroy the checkout it already produced. Rolling back here forced
             # a manual repair and re-clone after any transient setup failure (a
@@ -206,6 +235,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             "slug": slug,
             "integration_base": base,
             "head_oid": head.value,
+            "provisioning": "ready",
         }
         labels: tuple[str, ...] = (f"branch:{branch}",)
         if epic_lane is not None:

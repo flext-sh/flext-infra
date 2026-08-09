@@ -87,7 +87,7 @@ def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
         "    print(json.dumps(data))\n"
         "    raise SystemExit(0)\n"
         "if args[:1] == ['update']:\n"
-        "    i = 1\n"
+        "    i = 2\n"
         "    while i < len(args):\n"
         "        if args[i] == '--set-metadata':\n"
         "            key, value = args[i + 1].split('=', 1)\n"
