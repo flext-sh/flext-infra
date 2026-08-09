@@ -87,7 +87,10 @@ class FlextInfraWorktreeService(s[str]):
         if root_result.failure:
             return r.fail(root_result.error or "failed to resolve worktree lanes root")
         lanes_root = root_result.value
-        lane_path = (lanes_root / branch).resolve()
+        lane_name = (
+            branch.rsplit("/", maxsplit=1)[-1] if epic_lane is not None else branch
+        )
+        lane_path = (lanes_root / lane_name).resolve()
         if not lane_path.is_relative_to(lanes_root):
             return r.fail(f"branch resolves outside {c.Infra.WORKTREES_DIRNAME}")
         return r.ok(lane_path)

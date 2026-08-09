@@ -357,12 +357,17 @@ class TestsFlextInfraWorktreeService:
         )
 
         tm.that(updated, eq=str(lane))
-        tm.that(
-            tm.ok(
-                u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
-            ).oid,
-            eq=base,
-        )
+        updated_head = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
+        ).oid
+        tm.that(updated_head, ne=base)
+        parents = tm.ok(
+            u.Cli.capture(
+                [c.Infra.GIT, "rev-list", "--parents", "-n", "1", updated_head],
+                cwd=lane,
+            )
+        ).split()
+        tm.that(len(parents), eq=3)
 
     def test_child_lane_nests_under_its_epic_container(self, tmp_path: Path) -> None:
         """A child lane is namespaced by the epic lane that owns it."""
@@ -393,7 +398,7 @@ class TestsFlextInfraWorktreeService:
         )
 
         container = epic / c.Infra.WORKTREES_DIRNAME
-        tm.that(child, eq=str(container / child_branch))
+        tm.that(child, eq=str(container / "child-one"))
         tm.that(Path(child).is_relative_to(container), where=bool)
         tm.that(
             tm.ok(
