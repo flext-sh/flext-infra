@@ -2039,8 +2039,9 @@ class FlextInfraConfigModels:
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Optional Beads issue-prefix override; when declared it must "
-                    "be distinct from ledger_id"
+                    "Beads issue prefix declared by the tracker-owning "
+                    "workspace root; declaring it equal to ledger_id states "
+                    "the namespace explicitly instead of inheriting it"
                 )
             ),
         ] = None
@@ -2093,9 +2094,14 @@ class FlextInfraConfigModels:
             if self.ledger_prefix is not None and self.ledger_id is None:
                 msg = "ledger_prefix requires ledger_id"
                 raise ValueError(msg)
-            if self.ledger_prefix == self.ledger_id and self.ledger_prefix is not None:
-                msg = "ledger_prefix must be distinct from ledger_id"
-                raise ValueError(msg)
+            # Why (mro-tvc03): a prefix EQUAL to the database identity is the
+            # explicit form of the default, never a defect. The governing
+            # manifest declares ledger_id: mro with ledger_prefix: mro exactly
+            # to state the namespace instead of inheriting it, which is what
+            # removing the canonical-name fallback demanded. Rejecting it made
+            # the real workspace invalid and broke every lane resolution:
+            # `make work WHAT=land` failed with "workspace manifest model
+            # validation failed" against /home/marlonsc/flext/config/workspace.yaml.
             invalid_external_paths = tuple(
                 path
                 for path in self.external_dependency_paths
