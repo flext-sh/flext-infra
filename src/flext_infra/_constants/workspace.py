@@ -49,15 +49,13 @@ class FlextInfraConstantsWorkspace:
         "nova-branch",
     })
     WORK_BEADS_METADATA_KEYS: Final[t.StrSequence] = (
-        "branch",
         "worktree",
         "kind",
         "slug",
         "integration_base",
-        "head_oid",
-        "pr_number",
-        "pr_url",
+        "matrix",
     )
+    WORK_BEADS_MATRIX_KEY: Final[str] = "matrix"
 
     @unique
     class WorkspaceMode(StrEnum):
