@@ -267,9 +267,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 is_root=is_root,
                 project_dir=effective_project_dir,
                 paths_manager=effective_paths_manager,
-                declared_python_dirs=(
-                    declared_python_dirs if declared_roots_are_usable else ()
-                ),
+                declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
             )
         )
         changes.extend(
