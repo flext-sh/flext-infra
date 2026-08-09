@@ -1,4 +1,4 @@
-"""Gate measurement and ast-grep batch execution for the mod safety circuit."""  # ruff:ignore[implicit-namespace-package]
+"""Gate measurement and ast-grep batch execution for the mod safety circuit."""
 
 from __future__ import annotations
 

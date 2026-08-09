@@ -13,6 +13,7 @@ from flext_tests import tm
 from tests import u as test_u
 
 
+@pytest.mark.xdist_group("make-single-flight")
 class TestsCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 

@@ -50,6 +50,7 @@ def _conform_target(
     )
 
 
+@pytest.mark.xdist_group("make-single-flight")
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
@@ -725,7 +726,9 @@ class TestCodegenConform:
                 "_custom_check_myscan:\n\t@true\n",
             )
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "help"])
+        outcome = u.Cli.run_raw(
+            ["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS", "WHAT")
+        )
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         tm.that(
@@ -865,15 +868,17 @@ class TestScriptDispatchMakefile:
         *,
         extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
         script_dispatch: m.Infra.ScriptDispatchSpec | None,
+        distribution: str = "demo-root",
     ) -> str:
         # mro-4gbp: the engine is consumer-agnostic, so this fixture models a
         # neutral downstream root and takes its provider from the engine's own
         # configured provider catalog instead of naming a real consumer.
         provider = config.Infra.codegen.providers[0]
+        package_name = distribution.replace("-", "_")
         root_repository = m.Infra.RepositoryRef(
-            name="demo-root",
-            distribution="demo-root",
-            url=f"{provider.base_url}/demo-root.git",
+            name=distribution,
+            distribution=distribution,
+            url=f"{provider.base_url}/{distribution}.git",
             path=Path(),
             # Script dispatch is a generic capability: exercise it on standalone.
             role=c.Infra.RepositoryRole.STANDALONE,
@@ -888,15 +893,15 @@ class TestScriptDispatchMakefile:
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name="demo-root",
+            name=distribution,
             repository=root_repository,
             project=m.Infra.ProjectSpec(
-                package_name="demo_root",
-                class_stem="DemoRoot",
-                namespace="DemoRoot",
-                constant_name="demo-root",
-                namespace_attribute="demo_root",
-                alias="demo_root",
+                package_name=package_name,
+                class_stem="FlextInfra" if distribution == "flext-infra" else "DemoRoot",
+                namespace="FlextInfra" if distribution == "flext-infra" else "DemoRoot",
+                constant_name=distribution,
+                namespace_attribute=package_name,
+                alias=package_name,
                 environment_prefix="DEMO_",
                 description="Demo workspace",
                 version="0.2.0",
@@ -904,14 +909,14 @@ class TestScriptDispatchMakefile:
                 author_name="Demo",
                 author_email="devops@example.com",
                 upstream="flext_cli",
-                homepage=f"{provider.base_url}/demo-root",
-                documentation=f"{provider.base_url}/demo-root",
+                homepage=f"{provider.base_url}/{distribution}",
+                documentation=f"{provider.base_url}/{distribution}",
                 workspace_root_rel=".",
                 year=2026,
             ),
             members=(),
         )
-        root = tmp_path / "demo-root"
+        root = tmp_path / distribution
         request = m.Infra.CodegenConformRequest(
             root=root,
             scope=c.Infra.CodegenConformScope.SELF,
@@ -1049,10 +1054,12 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
+        tm.that("codegen init" in gen_check_body, eq=False)
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_all_body, eq=True)
         tm.that("--mode apply" in gen_all_body, eq=True)
+        tm.that("codegen init" in gen_all_body, eq=False)
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
@@ -1065,6 +1072,32 @@ class TestScriptDispatchMakefile:
         for policy in handler_policies.values():
             tm.that("|gen|" in policy.target_pattern, eq=True)
             tm.that("|codegen|" in policy.target_pattern, eq=False)
+
+    def test_gen_runs_lazy_init_only_for_enabled_project(self, tmp_path: Path) -> None:
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(),
+            script_dispatch=None,
+            distribution="flext-infra",
+        )
+        gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split(
+            "\n\n", 1
+        )[0]
+        gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
+        tm.that(
+            'codegen init --workspace "$(PROJECT_ROOT)" --check' in gen_check_body,
+            eq=True,
+        )
+        tm.that(
+            'codegen init --workspace "$(PROJECT_ROOT)" --apply' in gen_all_body,
+            eq=True,
+        )
+        tm.that(
+            {"git.py", "work.py"}.issubset(
+                config.Infra.tooling.lazy_init.root_namespace_files
+            ),
+            eq=True,
+        )
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

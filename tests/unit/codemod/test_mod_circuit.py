@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from flext_infra import main as infra_main
 from flext_infra import u
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.batch_apply import (
-    FlextInfraCodemodBatchApply,
+from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
+from flext_infra.codemod.batch_gates import (
+    FlextInfraModGateEngine,
     FlextInfraModGateSnapshot,
 )
 from flext_tests import tm
