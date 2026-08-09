@@ -1,0 +1,191 @@
+"""Portable Make verb dispatch validated against the canonical verb matrix.
+
+This module used to serialize every state-sensitive verb behind two file locks
+(single-flight + mutation) and to bracket each run with a workspace fingerprint
+that aborted when the checkout changed. Both mechanisms assume one actor per
+checkout. Under GitOps/DevOps flows that assumption is false: parallel lanes,
+CI jobs and agents share a tree, so the locks turned every verb into a queue
+(observed: 1800s timeout, verbs waiting minutes on a peer's ``make fmt``) and
+the fingerprint aborted valid runs with "workspace changed during serialized
+Make" whenever a sibling lane wrote concurrently.
+
+What remains is the part genuinely owned here and not expressible in GNU Make:
+resolving the caller's WHAT from the verb matrix (empty WHAT means the verb's
+default, or its apply WHAT when mutating) and validating the APPLY token
+against the verb's contract. The verb's private target then runs directly.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Annotated, override
+
+from flext_core import r
+from flext_infra import c, config, m, p, t, u
+from flext_infra.base import s
+
+
+class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
+    """Resolve one public Make verb request and run its private target."""
+
+    verb: Annotated[str, m.Field(description="Configured public Make verb to run")]
+    makefile: Annotated[
+        Path, m.Field(description="Selected Make owner used for nested dispatch")
+    ]
+    selector_value: Annotated[
+        str,
+        m.Field(
+            description="Caller selector value; empty resolves from the verb matrix"
+        ),
+    ] = ""
+    apply_token: Annotated[
+        str,
+        m.Field(
+            description="Caller mutation token validated against the Make contract"
+        ),
+    ] = ""
+
+    def _command(
+        self,
+        makefile: Path,
+        make_config: m.Infra.MakeSpec,
+        *,
+        selected_what: str,
+        apply_value: str,
+    ) -> t.StrSequence:
+        """Build the nested command with validated public Make variables."""
+        return (
+            c.Infra.MAKE,
+            "--no-print-directory",
+            "-f",
+            str(makefile),
+            f"_serialized_{self.verb}",
+            *((f"{make_config.selector}={selected_what}",) if selected_what else ()),
+            *((f"{make_config.apply_variable}={apply_value}",) if apply_value else ()),
+        )
+
+    def _make_variables(self, make_config: m.Infra.MakeSpec) -> p.Result[t.StrMapping]:
+        """Resolve one caller request from the canonical verb matrix."""
+        verb_spec = next(
+            (item for item in make_config.verbs if item.name == self.verb), None
+        )
+        if verb_spec is None:
+            return r[t.StrMapping].fail(f"unknown Make verb: {self.verb}")
+        # The generated Makefile seeds the absent value and forwards it on every
+        # read-only run, so it means "not applying", not an invalid token.
+        applying = self.apply_token not in {"", make_config.apply_absent_value}
+        if applying and self.apply_token != make_config.apply_value:
+            return r[t.StrMapping].fail(
+                f"{make_config.apply_variable} must be "
+                f"{make_config.apply_value} when set"
+            )
+        if applying and not (verb_spec.apply_guarded or verb_spec.accepts_apply):
+            return r[t.StrMapping].fail(
+                f"Make verb '{self.verb}' is read-only and does not accept "
+                f"{make_config.apply_variable}"
+            )
+        selected_what = self.selector_value or (
+            verb_spec.apply_what if applying else verb_spec.default_what
+        )
+        if selected_what not in verb_spec.whats:
+            allowed = ", ".join(verb_spec.whats)
+            return r[t.StrMapping].fail(
+                f"unsupported {self.verb} {make_config.selector}={selected_what} "
+                f"(allowed: {allowed})"
+            )
+        return r[t.StrMapping].ok({
+            make_config.selector: selected_what,
+            make_config.apply_variable: self.apply_token,
+        })
+
+    @classmethod
+    def _process_failure(
+        cls, raw_exit_code: int, message: str
+    ) -> p.Result[m.Infra.ProcessExit]:
+        """Return one typed failure whose CLI boundary preserves process status."""
+        outcome = m.Infra.ProcessExit(
+            exit_code=u.Infra.normalize_process_exit_code(raw_exit_code),
+            raw_exit_code=raw_exit_code,
+            classification=u.Infra.classify_process_exit(raw_exit_code),
+        )
+        return r[m.Infra.ProcessExit].fail(
+            message, error_code=c.Infra.PROCESS_EXIT_ERROR_CODE, error_data=outcome
+        )
+
+    @staticmethod
+    def _success_exit() -> m.Infra.ProcessExit:
+        """Build the canonical successful process outcome."""
+        return m.Infra.ProcessExit(
+            exit_code=int(c.Infra.ScriptExitCode.PASS),
+            raw_exit_code=int(c.Infra.ScriptExitCode.PASS),
+            classification="success",
+        )
+
+    @classmethod
+    def _run_make(
+        cls, checkout: Path, command: t.StrSequence, *, run_context: str
+    ) -> p.Result[m.Infra.ProcessExit]:
+        """Run one private Make phase and retain its process semantics."""
+        # Why (flext-infra-6zi): success runs must not log a "failed" context —
+        # keep the INFO line neutral and reserve failure wording for fail paths.
+        u.Cli.info(f"stage=run context={run_context} command={' '.join(command)}")
+        result = u.Cli.run_raw(list(command), cwd=checkout, capture=False)
+        failure_context = f"{run_context} failed"
+        if result.failure:
+            return cls._process_failure(
+                int(c.Infra.ScriptExitCode.INFRA), result.error or failure_context
+            )
+        output = result.value
+        if output.exit_code != 0:
+            outcome = m.Infra.ProcessExit(
+                exit_code=u.Infra.normalize_process_exit_code(output.exit_code),
+                raw_exit_code=output.exit_code,
+                classification=u.Infra.classify_process_exit(output.exit_code),
+            )
+            return r[m.Infra.ProcessExit].fail(
+                (
+                    f"{failure_context} "
+                    f"({outcome.classification}, exit={outcome.exit_code})"
+                ),
+                error_code=c.Infra.PROCESS_EXIT_ERROR_CODE,
+                error_data=outcome,
+            )
+        return r[m.Infra.ProcessExit].ok(cls._success_exit())
+
+    @override
+    def execute(self) -> p.Result[m.Infra.ProcessExit]:
+        """Resolve the caller request and run the verb's private target."""
+        make_config = config.Infra.codegen.make
+        make_variables_result = self._make_variables(make_config)
+        if make_variables_result.failure:
+            return r[m.Infra.ProcessExit].fail(
+                make_variables_result.error or "invalid GNU Make variables"
+            )
+        make_variables = make_variables_result.value
+
+        checkout = self.root.resolve()
+        selected_makefile = self.makefile.resolve()
+        if not selected_makefile.is_file():
+            return r[m.Infra.ProcessExit].fail(
+                f"Selected Make owner does not exist: {selected_makefile}"
+            )
+
+        selected_what = make_variables.get(make_config.selector, "")
+        apply_value = make_variables.get(make_config.apply_variable, "")
+        u.Cli.header(f"Make {self.verb}")
+        u.Cli.info(
+            f"stage=dispatch verb={self.verb} what={selected_what} apply={apply_value}"
+        )
+        return self._run_make(
+            checkout,
+            self._command(
+                selected_makefile,
+                make_config,
+                selected_what=selected_what,
+                apply_value=apply_value,
+            ),
+            run_context=f"Make {self.verb}",
+        )
+
+
+__all__: list[str] = ["FlextInfraMakeSerializationService"]

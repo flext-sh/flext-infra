@@ -1305,6 +1305,17 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
+        # mro-zmoc6: `uv sync` inside a member lane writes a member-local
+        # uv.lock. Only the workspace root resolves and tracks a lockfile
+        # (whitelisted in "Python configuration" above); for a member the
+        # file is a local build artifact of that shared resolution. Left
+        # undeclared it surfaced as untracked in every freshly created lane
+        # and made `make work WHAT=land` refuse a fully committed increment
+        # with "requires a clean lane worktree".
+        - name: "BLOCK: member-local lockfile (the workspace root owns uv.lock)"
+          profiles: [workspace-member]
+          patterns:
+            - "uv.lock"
         # Only the workspace root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config
