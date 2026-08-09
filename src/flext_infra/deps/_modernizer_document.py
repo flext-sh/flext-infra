@@ -197,6 +197,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
@@ -223,8 +224,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
                 resolved_project_kind = kind_result.value
-        # mro-j47u (codex): declared roots are topology facts only during atomic
-        # creation; normal modernization still derives productive roots on disk.
+        declared_roots_are_usable = (
+            declared_python_dirs_are_complete or not project_root_exists
+        )
         changes: t.MutableSequenceOf[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
@@ -255,6 +257,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
                 analysis_exclusions=analysis_exclusions,
             )
         )
@@ -265,6 +268,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_dir=effective_project_dir,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
             )
         )
         changes.extend(
