@@ -65,18 +65,30 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             return r.fail(kind_slug.error or "invalid kind/name")
         kind, slug = kind_slug.value
         branch = self._branch_name(kind, slug)
-        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
+        shown = u.Infra.beads_show_json(bead, root=primary_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
         metadata = shown.value.get("metadata")
         if isinstance(metadata, dict):
-            existing_br = str(metadata.get("branch") or "").strip()
             existing_wt = str(metadata.get("worktree") or "").strip()
-            bound = bool(existing_br and existing_wt and Path(existing_wt).exists())
-            if bound and existing_br != branch:
+            existing_matrix = self._matrix_from_metadata(metadata)
+            if existing_wt and existing_matrix.success:
+                root_entries = [
+                    entry
+                    for entry in existing_matrix.value.entries
+                    if entry.project == "."
+                ]
+                if len(root_entries) != 1:
+                    return r.fail("workspace lane matrix requires exactly one root entry")
+                if root_entries[0].branch != branch:
+                    return r.fail(
+                        f"bead {bead} already bound to branch {root_entries[0].branch} "
+                        f"at {existing_wt}"
+                    )
+            elif existing_wt:
                 return r.fail(
-                    f"bead {bead} already bound to branch {existing_br} "
-                    f"at {existing_wt}"
+                    existing_matrix.error
+                    or "bead lane metadata is missing serialized matrix"
                 )
         base = self._resolve_integration_base(primary_root)
         if base.failure:
@@ -120,30 +132,30 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                 f"lane {branch} preserved at {lane} - resolve the cause and "
                 f"re-run the same work start to resume provisioning"
             )
-        head = self._git_head(lane)
-        if head.failure:
-            return r.fail(head.error or "failed to read lane HEAD")
+        matrix = self._matrix_for_started_lane(primary_root, lane, branch)
+        if matrix.failure:
+            return r.fail(matrix.error or "failed to build workspace lane matrix")
+        root_entry = next(entry for entry in matrix.value.entries if entry.project == ".")
         decisive = "lane-reused" if reused is not None else "lane-ready"
         notes = (
             f"work start: cmd=make work WHAT=start cwd={lane} "
             f"branch={branch} base={base.value} exit=0 decisive={decisive} "
-            f"head={head.value}"
+            f"head={root_entry.head_oid}"
         )
         # Why: mro-dipb.1 kind may arrive as str; coerce like _branch_name.
         kind_value = kind.value
         updated = u.Infra.beads_update_lane(
             bead,
             metadata={
-                "branch": branch,
                 "worktree": str(lane),
                 "kind": kind_value,
                 "slug": slug,
                 "integration_base": base.value,
-                "head_oid": head.value,
+                c.Infra.WORK_BEADS_MATRIX_KEY: matrix.value.model_dump_json(),
             },
             labels=(f"branch:{branch}",),
             notes=notes,
-            root=self.workspace_root,
+            root=primary_root,
         )
         if updated.failure:
             return r.fail(
@@ -156,67 +168,50 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             worktree=str(lane),
             branch=branch,
             base=base.value,
-            head_oid=head.value,
+            head_oid=root_entry.head_oid,
             pr="",
         )
         return r.ok(
             f"LANE_ID={bead} BRANCH={branch} WORKTREE={lane} "
-            f"BASE={base.value} HEAD={head.value}\n{receipt}"
+            f"BASE={base.value} HEAD={root_entry.head_oid}\n{receipt}"
         )
 
     def _status(self, primary_root: Path) -> p.Result[str]:
         bead = (self.bead or "").strip()
-        branch_result = self._resolve_lane_branch()
-        branch = branch_result.value if branch_result.success else (self.branch or "")
         lines: list[str] = ["work status"]
         if bead:
-            shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
+            shown = u.Infra.beads_show_json(bead, root=primary_root)
             if shown.failure:
-                lines.append(f"bead: error={shown.error}")
-            else:
-                meta = shown.value.get("metadata")
-                meta_obj = meta if isinstance(meta, dict) else dict[str, object]()
-                lines.extend((
-                    f"bead: {bead}",
-                    f"bead_status: {shown.value.get('status')}",
-                    f"assignee: {shown.value.get('assignee')}",
-                ))
-                for key in c.Infra.WORK_BEADS_METADATA_KEYS:
-                    value = meta_obj.get(key)
-                    if value is not None:
-                        lines.append(f"metadata.{key}: {value}")
-                stored_branch = meta_obj.get("branch")
-                if not branch and isinstance(stored_branch, str):
-                    branch = stored_branch
+                return r.fail(shown.error or f"unknown bead {bead}")
+            meta = shown.value.get("metadata")
+            if not isinstance(meta, dict):
+                return r.fail(f"bead {bead} has no root lane metadata")
+            bound = self._bound_root_matrix(primary_root, meta)
+            if bound.failure:
+                return r.fail(bound.error or "work status root lane binding failed")
+            lane, matrix = bound.value
+            lines.extend((
+                f"bead: {bead}",
+                f"bead_status: {shown.value.get('status')}",
+                f"assignee: {shown.value.get('assignee')}",
+                f"metadata.branch: {matrix.entries[0].branch}",
+                f"metadata.worktree: {lane}",
+                f"branch: {matrix.entries[0].branch}",
+            ))
+            for entry in matrix.entries:
+                lines.append(
+                    "matrix: "
+                    f"project={entry.project} branch={entry.branch} "
+                    f"head_oid={entry.head_oid} pr_number={entry.pr_number} "
+                    f"pr_url={entry.pr_url} state={entry.state}"
+                )
         listed = FlextInfraWorktreeService(
             workspace_root=primary_root, operation=c.Infra.WorktreeOperation.LIST
         ).execute()
         if listed.failure:
-            lines.append(f"worktrees: error={listed.error}")
-        else:
-            lines.extend(("worktrees:", listed.value.rstrip()))
-        if branch:
-            lines.append(f"branch: {branch}")
-            pr_list = u.Cli.capture(
-                (
-                    "gh",
-                    "pr",
-                    "list",
-                    "--head",
-                    branch,
-                    "--state",
-                    "open",
-                    "--json",
-                    "number,url,state,baseRefName",
-                ),
-                cwd=primary_root,
-            )
-            if pr_list.failure:
-                lines.append(f"pr: error={pr_list.error}")
-            else:
-                lines.append(f"pr_open: {pr_list.value or '[]'}")
-        primary_flag = self.workspace_root.resolve() == primary_root.resolve()
-        lines.append(f"primary_checkout: {primary_flag}")
+            return r.fail(listed.error or "failed to list root worktrees")
+        lines.extend(("worktrees:", listed.value.rstrip()))
+        lines.append(f"primary_checkout: {self.workspace_root.resolve() == primary_root.resolve()}")
         return r.ok("\n".join(lines))
 
 
