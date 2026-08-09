@@ -601,7 +601,7 @@ class FlextInfraWorkspaceDetector(
         )
         # Beads participation: workspace root owns; independent standalone opts in;
         # ephemeral transaction worktrees route to the principal ledger; members and
-        # attached standalones do not own tracker state.
+        # attached standalones consume the governing ledger without owning it.
         beads_enabled = (
             is_transaction_worktree
             or make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
@@ -615,7 +615,17 @@ class FlextInfraWorkspaceDetector(
             mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
             and resolved_root == governing_root
         )
-        routing_only = is_transaction_worktree or attached_standalone
+        # Routing-only projects the Beads client config (config.yaml +
+        # metadata.json) WITHOUT granting tracker-lifecycle ownership --
+        # _verify_beads_plan permits exactly that trio for a disabled plan.
+        # mro-cdzxf: a manifest member used to be neither enabled nor routing,
+        # so codegen emitted no `.beads/` at all and `bd` could not resolve the
+        # workspace ledger from inside the member, which also broke `make work`.
+        routing_only = (
+            is_transaction_worktree
+            or attached_standalone
+            or make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+        )
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
