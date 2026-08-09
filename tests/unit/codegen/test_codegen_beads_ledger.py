@@ -430,17 +430,26 @@ class TestCodegenBeadsLedger:
                 ledger_prefix=f"{repository.distribution}-prefix",
             )
 
-    def test_workspace_spec_rejects_duplicate_ledger_prefix(self) -> None:
+    def test_workspace_spec_accepts_prefix_declared_equal_to_ledger(self) -> None:
+        """Declaring the prefix equal to the ledger states the namespace.
+
+        mro-tvc03: rejecting equality invalidated the real governing manifest,
+        which declares ``ledger_id: mro`` with ``ledger_prefix: mro`` precisely
+        to state the namespace instead of inheriting it. Runtime proved it:
+        ``make work`` failed with "workspace manifest model validation failed"
+        for every lane until equality was allowed again.
+        """
         repository = test_u.Tests.repository_ref(config.Infra.name)
 
-        with pytest.raises(c.ValidationError, match="distinct"):
-            m.Infra.WorkspaceSpec(
-                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                name=repository.distribution,
-                repository=repository,
-                ledger_id=repository.distribution,
-                ledger_prefix=repository.distribution,
-            )
+        spec = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=repository.distribution,
+            repository=repository,
+            ledger_id=repository.distribution,
+            ledger_prefix=repository.distribution,
+        )
+
+        tm.that(spec.ledger_prefix, eq=spec.ledger_id)
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
