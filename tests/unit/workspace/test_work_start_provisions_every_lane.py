@@ -13,8 +13,7 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_infra import FlextInfraWorkService, c, m
-from flext_infra import u as infra_u
+from flext_infra import FlextInfraWorkService, c
 from flext_tests import tm
 from tests import u
 
@@ -38,22 +37,7 @@ def _repository(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (repository / ".gitignore").write_text(f"{_SETUP_LOG}\n", encoding="utf-8")
-    # Why (mro-tvc03): the ledger is declared by the typed workspace manifest,
-    # so a bare .beads/config.yaml no longer makes this checkout a tracker.
-    repository_ref = u.Tests.repository_ref("fixture").model_copy(
-        update={"path": Path(), "package": False, "editable": False}
-    )
-    tm.ok(
-        infra_u.Cli.yaml_dump(
-            repository / "config" / "workspace.yaml",
-            m.Infra.WorkspaceSpec(
-                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                name=repository_ref.distribution,
-                repository=repository_ref,
-                ledger_id="mro",
-            ).model_dump(mode="json", exclude_none=True),
-        )
-    )
+    u.Tests.declare_workspace_ledger(repository, "mro")
     u.Tests.initialize_git_repo(repository)
     return repository
 
