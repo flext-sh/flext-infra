@@ -17,6 +17,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
     """Start and status steps for the public work saga."""
 
     apply_changes: bool
+    epic: str | None
 
     @staticmethod
     def _reusable_lane(primary_root: Path, branch: str) -> Path | None:
@@ -54,6 +55,35 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             )
         return f"{reason}; lane {branch} rolled back"
 
+    def _registered_epic(
+        self, primary_root: Path, epic_bead: str
+    ) -> p.Result[tuple[str, Path]]:
+        """Resolve the registered epic lane a child lane must be derived from."""
+        shown = u.Infra.beads_show_json(epic_bead, root=self.workspace_root)
+        if shown.failure:
+            return r.fail(shown.error or f"unknown epic bead {epic_bead}")
+        metadata = self._typed_metadata(shown.value)
+        role = self._lane_role(metadata)
+        if role.failure:
+            return r.fail(role.error or "invalid epic lane role")
+        if role.value == c.Infra.WorkLaneRole.CHILD:
+            return r.fail(f"bead {epic_bead} is a child lane and owns no children")
+        epic_branch = str(metadata.get("branch") or "").strip()
+        epic_worktree = str(metadata.get("worktree") or "").strip()
+        if not epic_branch or not epic_worktree or epic_worktree == "removed":
+            return r.fail(
+                f"epic bead {epic_bead} is not a registered lane; "
+                "run work start for the epic first"
+            )
+        bound = self._bound_registered_lane(primary_root, epic_branch, epic_worktree)
+        if bound.failure:
+            return r.fail(
+                bound.error or f"epic lane {epic_branch} is not registered in Git"
+            )
+        if not bound.value.is_dir():
+            return r.fail(f"epic lane worktree missing: {bound.value}")
+        return r.ok((epic_branch, bound.value))
+
     def _start(self, primary_root: Path) -> p.Result[str]:
         if not self.apply_changes:
             return r.fail("work start requires --apply")
@@ -78,9 +108,42 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     f"bead {bead} already bound to branch {existing_br} "
                     f"at {existing_wt}"
                 )
-        base = self._resolve_integration_base(primary_root)
-        if base.failure:
-            return r.fail(base.error or "failed to resolve integration base")
+        epic_bead = (self.epic or "").strip()
+        epic_lane: Path | None = None
+        base = ""
+        if epic_bead:
+            if epic_bead == bead:
+                return r.fail("work start refuses a bead that is its own epic")
+            if (self.base or "").strip():
+                return r.fail(
+                    "work start derives a child base from its epic lane; drop --base"
+                )
+            resolved_epic = self._registered_epic(primary_root, epic_bead)
+            if resolved_epic.failure:
+                return r.fail(resolved_epic.error or "unresolved epic lane")
+            # Why: the child base is the epic branch Git already has checked
+            # out in the epic lane, never a literal the caller supplies.
+            base, epic_lane = resolved_epic.value
+            marked = u.Infra.beads_update_lane(
+                epic_bead,
+                metadata={"role": c.Infra.WorkLaneRole.EPIC.value},
+                notes=(
+                    f"work start: cmd=make work WHAT=start EPIC={epic_bead} "
+                    f"decisive=epic-role-registered child={bead} branch={branch}"
+                ),
+                root=self.workspace_root,
+            )
+            if marked.failure:
+                return r.fail(
+                    marked.error or f"failed to register epic role on {epic_bead}"
+                )
+        else:
+            resolved_base = self._resolve_integration_base(primary_root)
+            if resolved_base.failure:
+                return r.fail(
+                    resolved_base.error or "failed to resolve integration base"
+                )
+            base = resolved_base.value
         reused = self._reusable_lane(primary_root, branch)
         if reused is None:
             fetched = u.Infra.git_fetch_origin(
@@ -92,7 +155,12 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                 workspace_root=primary_root,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
-                base=self._git_integration_ref(primary_root, base.value),
+                base=(
+                    base
+                    if epic_lane is not None
+                    else self._git_integration_ref(primary_root, base)
+                ),
+                epic_lane=epic_lane,
                 apply_changes=True,
             ).execute()
             if created.failure:
@@ -126,22 +194,39 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         decisive = "lane-reused" if reused is not None else "lane-ready"
         notes = (
             f"work start: cmd=make work WHAT=start cwd={lane} "
-            f"branch={branch} base={base.value} exit=0 decisive={decisive} "
+            f"branch={branch} base={base} exit=0 decisive={decisive} "
             f"head={head.value}"
         )
         # Why: mro-dipb.1 kind may arrive as str; coerce like _branch_name.
         kind_value = kind.value
+        lane_metadata: dict[str, str] = {
+            "branch": branch,
+            "worktree": str(lane),
+            "kind": kind_value,
+            "slug": slug,
+            "integration_base": base,
+            "head_oid": head.value,
+        }
+        labels: tuple[str, ...] = (f"branch:{branch}",)
+        if epic_lane is not None:
+            binding = m.Infra.EpicLaneBinding(
+                epic_bead=epic_bead,
+                epic_branch=base,
+                epic_worktree=epic_lane,
+                child_slug=slug,
+            )
+            lane_metadata |= {
+                "role": c.Infra.WorkLaneRole.CHILD.value,
+                "epic_bead": binding.epic_bead,
+                "epic_branch": binding.epic_branch,
+                "epic_worktree": str(binding.epic_worktree),
+                "child_slug": binding.child_slug,
+            }
+            labels = (*labels, f"epic:{epic_bead}")
         updated = u.Infra.beads_update_lane(
             bead,
-            metadata={
-                "branch": branch,
-                "worktree": str(lane),
-                "kind": kind_value,
-                "slug": slug,
-                "integration_base": base.value,
-                "head_oid": head.value,
-            },
-            labels=(f"branch:{branch}",),
+            metadata=lane_metadata,
+            labels=labels,
             notes=notes,
             root=self.workspace_root,
         )
@@ -155,14 +240,46 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             primary=primary_root,
             worktree=str(lane),
             branch=branch,
-            base=base.value,
+            base=base,
             head_oid=head.value,
             pr="",
         )
+        epic_selector = f" EPIC={epic_bead}" if epic_bead else ""
         return r.ok(
             f"LANE_ID={bead} BRANCH={branch} WORKTREE={lane} "
-            f"BASE={base.value} HEAD={head.value}\n{receipt}"
+            f"BASE={base} HEAD={head.value}{epic_selector}\n{receipt}"
         )
+
+    @classmethod
+    def _reported_topology(
+        cls, primary_root: Path, metadata: dict[str, object]
+    ) -> list[str]:
+        """Report the epic topology one bead claims against Git's registry.
+
+        Silent for a lane that declares no role, so a plain lane keeps the
+        exact status output it had before nested lanes existed.
+        """
+        role = cls._lane_role(metadata)
+        if role.failure:
+            return [f"epic_topology: error={role.error}"]
+        if not role.value:
+            return []
+        worktree = str(metadata.get("worktree") or "").strip()
+        if not worktree or worktree == "removed":
+            return [f"epic_topology: role={role.value} lane=absent"]
+        lane = Path(worktree)
+        if role.value == c.Infra.WorkLaneRole.CHILD:
+            checked = cls._bound_child_topology(primary_root, metadata, lane)
+            if checked.failure:
+                return [f"epic_topology: error={checked.error}"]
+            return [f"epic_topology: child of {checked.value}"]
+        children = FlextInfraWorktreeService.registered_children(primary_root, lane)
+        if children.failure:
+            return [f"epic_topology: error={children.error}"]
+        rendered = " ".join(str(child) for child in children.value)
+        return [
+            f"epic_topology: epic children={len(children.value)} {rendered}".rstrip()
+        ]
 
     def _status(self, primary_root: Path) -> p.Result[str]:
         bead = (self.bead or "").strip()
@@ -185,6 +302,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     value = meta_obj.get(key)
                     if value is not None:
                         lines.append(f"metadata.{key}: {value}")
+                lines.extend(self._reported_topology(primary_root, meta_obj))
                 stored_branch = meta_obj.get("branch")
                 if not branch and isinstance(stored_branch, str):
                     branch = stored_branch

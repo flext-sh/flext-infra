@@ -55,6 +55,25 @@ class FlextInfraModelsWorktree:
             m.Field(b"", description="Binary Git patch relative to the checkpoint"),
         ] = b""
 
+    class EpicLaneBinding(m.ContractModel):
+        """Registered epic lane one nested child lane was derived from."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        epic_bead: Annotated[
+            t.NonEmptyStr, m.Field(description="Beads issue owning the epic lane")
+        ]
+        epic_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch checked out in the epic lane")
+        ]
+        epic_worktree: Annotated[
+            Path, m.Field(description="Registered epic lane worktree root")
+        ]
+        child_slug: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Child lane slug below the epic lane namespace"),
+        ]
+
     class RepositoryWorktree(m.ContractModel):
         """One source repository paired with its isolated worktree checkpoint."""
 

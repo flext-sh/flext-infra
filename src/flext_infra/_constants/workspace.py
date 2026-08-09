@@ -41,6 +41,13 @@ class FlextInfraConstantsWorkspace:
         HOTFIX = "hotfix"
         RELEASE = "release"
 
+    @unique
+    class WorkLaneRole(StrEnum):
+        """Topology role one registered lane holds inside an epic program."""
+
+        EPIC = "epic"
+        CHILD = "child"
+
     WORK_FORBIDDEN_SLUGS: Final[frozenset[str]] = frozenset({
         "teste",
         "ajuste",
@@ -57,6 +64,11 @@ class FlextInfraConstantsWorkspace:
         "head_oid",
         "pr_number",
         "pr_url",
+        "role",
+        "epic_bead",
+        "epic_branch",
+        "epic_worktree",
+        "child_slug",
     )
 
     @unique

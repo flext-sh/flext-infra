@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraWorktreeService:
@@ -366,6 +363,127 @@ class TestsFlextInfraWorktreeService:
             ).oid,
             eq=base,
         )
+
+    def test_child_lane_nests_under_its_epic_container(self, tmp_path: Path) -> None:
+        """A child lane is namespaced by the epic lane that owns it."""
+        repository = self._repository(tmp_path)
+        epic_branch = "feature/epic-alpha"
+        epic = Path(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorktreeOperation.ADD,
+                    branch=epic_branch,
+                    base="HEAD",
+                    apply_changes=True,
+                ).execute()
+            )
+        )
+        child_branch = "feature/child-one"
+
+        child = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=child_branch,
+                base=epic_branch,
+                epic_lane=epic,
+                apply_changes=True,
+            ).execute()
+        )
+
+        container = epic / c.Infra.WORKTREES_DIRNAME
+        tm.that(child, eq=str(container / child_branch))
+        tm.that(Path(child).is_relative_to(container), where=bool)
+        tm.that(
+            tm.ok(
+                u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=repository))
+            ).text,
+            has=f"worktree {child}",
+        )
+
+    def test_remove_refuses_an_epic_lane_with_registered_children(
+        self, tmp_path: Path
+    ) -> None:
+        """A registered child keeps its epic lane alive until the child is gone."""
+        repository = self._repository(tmp_path)
+        epic_branch = "feature/epic-beta"
+        epic = Path(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorktreeOperation.ADD,
+                    branch=epic_branch,
+                    base="HEAD",
+                    apply_changes=True,
+                ).execute()
+            )
+        )
+        child_branch = "feature/child-two"
+        child = Path(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorktreeOperation.ADD,
+                    branch=child_branch,
+                    base=epic_branch,
+                    epic_lane=epic,
+                    apply_changes=True,
+                ).execute()
+            )
+        )
+
+        refused = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.REMOVE,
+            branch=epic_branch,
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(refused, has="while children are registered")
+        tm.fail(refused, has=str(child))
+        tm.that(epic.is_dir(), where=bool)
+
+        tm.that(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorktreeOperation.REMOVE,
+                    branch=child_branch,
+                    apply_changes=True,
+                ).execute()
+            ),
+            eq=str(child),
+        )
+        tm.that(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorktreeOperation.REMOVE,
+                    branch=epic_branch,
+                    apply_changes=True,
+                ).execute()
+            ),
+            eq=str(epic),
+        )
+        tm.that(not epic.exists(), where=bool)
+
+    def test_child_add_refuses_an_unregistered_epic_lane(self, tmp_path: Path) -> None:
+        """A child never materializes a container for an epic that does not exist."""
+        repository = self._repository(tmp_path)
+        missing = tmp_path / "no-such-epic"
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch="feature/child-orphan",
+            base="HEAD",
+            epic_lane=missing,
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has=f"epic lane worktree does not exist: {missing}")
+        tm.that(not missing.exists(), where=bool)
 
     def test_mutation_without_apply_fails_closed(self, tmp_path: Path) -> None:
         """A branch alone never authorizes repository mutation."""

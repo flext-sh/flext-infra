@@ -154,6 +154,80 @@ class FlextInfraWorkSagaCommon:
         return r.ok(registry_lane)
 
     @staticmethod
+    def _lane_role(metadata: dict[str, object]) -> p.Result[str]:
+        """Return the validated topology role one lane records on its bead."""
+        role = str(metadata.get("role") or "").strip()
+        declared = tuple(item.value for item in c.Infra.WorkLaneRole)
+        if role and role not in declared:
+            return r.fail(f"unknown lane role on bead metadata: {role}")
+        return r.ok(role)
+
+    @staticmethod
+    def _epic_binding(metadata: dict[str, object]) -> p.Result[m.Infra.EpicLaneBinding]:
+        """Read the typed epic binding a child lane records on its bead."""
+        fields = {
+            key: str(metadata.get(key) or "").strip()
+            for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug")
+        }
+        missing = sorted(key for key, value in fields.items() if not value)
+        if missing:
+            return r.fail(f"child lane metadata missing {', '.join(missing)}")
+        return r.ok(
+            m.Infra.EpicLaneBinding(
+                epic_bead=fields["epic_bead"],
+                epic_branch=fields["epic_branch"],
+                epic_worktree=Path(fields["epic_worktree"]),
+                child_slug=fields["child_slug"],
+            )
+        )
+
+    @classmethod
+    def _bound_child_topology(
+        cls, primary_root: Path, metadata: dict[str, object], lane: Path
+    ) -> p.Result[Path]:
+        """Prove one child lane still sits under its registered epic lane."""
+        binding = cls._epic_binding(metadata)
+        if binding.failure:
+            return r.fail(binding.error or "invalid child lane metadata")
+        epic = cls._bound_registered_lane(
+            primary_root, binding.value.epic_branch, str(binding.value.epic_worktree)
+        )
+        if epic.failure:
+            return r.fail(
+                "child lane epic binding failed: "
+                f"{epic.error or 'epic lane is not registered'}"
+            )
+        container = epic.value / c.Infra.WORKTREES_DIRNAME
+        if not lane.resolve().is_relative_to(container):
+            return r.fail(
+                f"child lane {lane} is not nested under epic lane {epic.value}"
+            )
+        return r.ok(epic.value)
+
+    @classmethod
+    def _validated_lane_topology(
+        cls, primary_root: Path, metadata: dict[str, object], lane: Path
+    ) -> p.Result[str]:
+        """Validate the recorded epic/child topology against Git's registry."""
+        role = cls._lane_role(metadata)
+        if role.failure:
+            return r.fail(role.error or "invalid lane role")
+        if role.value != c.Infra.WorkLaneRole.CHILD:
+            return r.ok(role.value)
+        checked = cls._bound_child_topology(primary_root, metadata, lane)
+        if checked.failure:
+            return r.fail(checked.error or "child lane topology validation failed")
+        return r.ok(role.value)
+
+    @staticmethod
+    def _typed_metadata(payload: dict[str, object]) -> dict[str, object]:
+        """Return one bead's metadata mapping with string keys."""
+        metadata = payload.get("metadata")
+        if not isinstance(metadata, dict):
+            return {}
+        return {str(key): value for key, value in metadata.items()}
+
+    @staticmethod
     def _ensure_clean(lane: Path) -> p.Result[bool]:
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:

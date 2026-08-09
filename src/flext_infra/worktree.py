@@ -26,6 +26,10 @@ class FlextInfraWorktreeService(s[str]):
         str | None,
         m.Field(description="Commit-ish used to create or fast-forward a branch"),
     ] = None
+    epic_lane: Annotated[
+        Path | None,
+        m.Field(description="Registered epic lane owning this nested child lane"),
+    ] = None
 
     def _primary_root(self) -> p.Result[Path]:
         """Resolve the primary worktree from Git's canonical registry."""
@@ -49,8 +53,18 @@ class FlextInfraWorktreeService(s[str]):
         return r.ok(branch)
 
     @staticmethod
-    def _lanes_root(primary_root: Path) -> p.Result[Path]:
-        """Place new lanes outside every ancestor project discovery boundary."""
+    def _lanes_root(
+        primary_root: Path, epic_lane: Path | None = None
+    ) -> p.Result[Path]:
+        """Place new lanes outside every ancestor project discovery boundary.
+
+        A child lane is namespaced by its epic instead of by the repository:
+        the epic owns the container, so Git's own registry proves the
+        parent/child topology and no epic can be retired while one of its
+        children is still registered.
+        """
+        if epic_lane is not None:
+            return r.ok((epic_lane.resolve() / c.Infra.WORKTREES_DIRNAME).resolve())
         resolved_primary = primary_root.resolve()
         outermost_project = resolved_primary
         for candidate in resolved_primary.parents:
@@ -65,9 +79,11 @@ class FlextInfraWorktreeService(s[str]):
         )
 
     @classmethod
-    def _lane_path(cls, primary_root: Path, branch: str) -> p.Result[Path]:
+    def _lane_path(
+        cls, primary_root: Path, branch: str, epic_lane: Path | None = None
+    ) -> p.Result[Path]:
         """Derive an isolated lane path and reject branch traversal."""
-        root_result = cls._lanes_root(primary_root)
+        root_result = cls._lanes_root(primary_root, epic_lane)
         if root_result.failure:
             return r.fail(root_result.error or "failed to resolve worktree lanes root")
         lanes_root = root_result.value
@@ -77,22 +93,59 @@ class FlextInfraWorktreeService(s[str]):
         return r.ok(lane_path)
 
     @staticmethod
-    def registered_lane(primary_root: Path, branch: str) -> p.Result[Path]:
-        """Resolve an existing branch lane from Git's canonical registry."""
+    def _registered_worktrees(
+        primary_root: Path,
+    ) -> p.Result[tuple[tuple[Path, str], ...]]:
+        """Pair every registered worktree root with the branch it checks out."""
         listed = u.Infra.git_list_worktrees(
             m.Infra.GitRepoRequest(repo_root=primary_root)
         )
         if listed.failure:
             return r.fail(listed.error or "failed to list Git worktrees")
+        entries: list[tuple[Path, str]] = []
         current: Path | None = None
+        branch = ""
         for line in (*listed.value.text.splitlines(), ""):
             if line.startswith("worktree "):
                 current = Path(line.removeprefix("worktree ").strip()).resolve()
-            elif line == f"branch refs/heads/{branch}" and current is not None:
-                return r.ok(current)
-            elif not line:
+                branch = ""
+            elif line.startswith("branch refs/heads/"):
+                branch = line.removeprefix("branch refs/heads/").strip()
+            elif not line and current is not None:
+                entries.append((current, branch))
                 current = None
+                branch = ""
+        return r.ok(tuple(entries))
+
+    @classmethod
+    def registered_lane(cls, primary_root: Path, branch: str) -> p.Result[Path]:
+        """Resolve an existing branch lane from Git's canonical registry."""
+        entries = cls._registered_worktrees(primary_root)
+        if entries.failure:
+            return r.fail(entries.error or "failed to list Git worktrees")
+        for root, registered_branch in entries.value:
+            if registered_branch == branch:
+                return r.ok(root)
         return r.fail(f"worktree branch is not registered: {branch}")
+
+    @classmethod
+    def registered_children(
+        cls, primary_root: Path, epic_lane: Path
+    ) -> p.Result[tuple[Path, ...]]:
+        """Return every registered lane nested under one epic lane container."""
+        entries = cls._registered_worktrees(primary_root)
+        if entries.failure:
+            return r.fail(entries.error or "failed to list Git worktrees")
+        container = (epic_lane.resolve() / c.Infra.WORKTREES_DIRNAME).resolve()
+        return r.ok(
+            tuple(
+                sorted(
+                    root
+                    for root, _ in entries.value
+                    if root != container and root.is_relative_to(container)
+                )
+            )
+        )
 
     def _ref_exists(self, reference: str) -> p.Result[bool]:
         """Return whether an exact Git ref exists, preserving command failures."""
@@ -188,7 +241,9 @@ class FlextInfraWorktreeService(s[str]):
         """Create and set up one branch worktree transactionally."""
         if not self.apply_changes:
             return r.fail("worktree add requires --apply")
-        lane_result = self._lane_path(primary_root, branch)
+        if self.epic_lane is not None and not self.epic_lane.is_dir():
+            return r.fail(f"epic lane worktree does not exist: {self.epic_lane}")
+        lane_result = self._lane_path(primary_root, branch, self.epic_lane)
         if lane_result.failure:
             return r.fail(lane_result.error or "invalid worktree lane path")
         lane = lane_result.value
@@ -260,6 +315,18 @@ class FlextInfraWorktreeService(s[str]):
         if lane_result.failure:
             return r.fail(lane_result.error or "invalid worktree lane path")
         lane = lane_result.value
+        # Why: removing an epic lane deletes the directory that physically holds
+        # its children, so Git would keep registering worktrees whose checkout
+        # no longer exists. The registry is the authority on that topology.
+        children = self.registered_children(primary_root, lane)
+        if children.failure:
+            return r.fail(children.error or "failed to inspect nested child lanes")
+        if children.value:
+            nested = ", ".join(str(child) for child in children.value)
+            return r.fail(
+                f"worktree remove refuses lane {branch} while children are "
+                f"registered: {nested}"
+            )
         removed = u.Infra.git_remove_clean_worktree(primary_root, lane)
         if removed.failure:
             return r.fail(removed.error or f"failed to remove worktree for {branch}")

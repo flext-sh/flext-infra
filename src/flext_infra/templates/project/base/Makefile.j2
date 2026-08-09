@@ -518,6 +518,7 @@ _builtin_help_usage:
 	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
 	@printf '  %-10s %s\n' 'KIND/NAME' 'GitFlow kind and slug for work start';
 	@printf '  %-10s %s\n' 'BASE' 'optional integration base override for work start';
+	@printf '  %-10s %s\n' 'EPIC' 'registered epic bead id; nests work start as its child lane';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -840,7 +841,7 @@ _builtin_work_status:
 
 _builtin_work_start:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --epic "$(EPIC)" --apply
 
 _builtin_work_land:
 	$(call _require_apply)

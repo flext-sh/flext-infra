@@ -31,11 +31,12 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         meta = shown.value.get("metadata")
         if not isinstance(meta, dict):
             return r.fail(f"bead {bead} has no lane metadata")
-        branch = str(meta.get("branch") or "").strip()
-        worktree = str(meta.get("worktree") or "").strip()
-        expected = str(meta.get("head_oid") or "").strip()
-        pr_number = str(meta.get("pr_number") or "").strip()
-        integration = str(meta.get("integration_base") or "").strip()
+        metadata = self._typed_metadata(shown.value)
+        branch = str(metadata.get("branch") or "").strip()
+        worktree = str(metadata.get("worktree") or "").strip()
+        expected = str(metadata.get("head_oid") or "").strip()
+        pr_number = str(metadata.get("pr_number") or "").strip()
+        integration = str(metadata.get("integration_base") or "").strip()
         if not branch or not worktree:
             return r.fail(f"bead {bead} missing branch/worktree metadata")
         if worktree == "removed":
@@ -57,6 +58,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         if bound.failure:
             return r.fail(bound.error or "work finish lane binding failed")
         lane = bound.value
+        topology = self._validated_lane_topology(primary_root, metadata, lane)
+        if topology.failure:
+            return r.fail(topology.error or "work finish topology validation failed")
         merged = self._require_merged_pr(primary_root, branch, pr_number)
         if merged.failure:
             return r.fail(merged.error or "work finish PR state check failed")

@@ -33,6 +33,10 @@ class FlextInfraWorkService(
     branch: Annotated[
         str | None, m.Field(description="Explicit kind/slug branch override")
     ] = None
+    epic: Annotated[
+        str | None,
+        m.Field(description="Registered epic Beads issue owning this child lane"),
+    ] = None
     base: Annotated[
         str | None, m.Field(description="Integration base; config or HEAD when omitted")
     ] = None

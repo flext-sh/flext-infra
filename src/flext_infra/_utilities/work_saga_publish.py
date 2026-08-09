@@ -55,10 +55,11 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         meta = shown.value.get("metadata")
         if not isinstance(meta, dict):
             return r.fail(f"bead {bead} has no lane metadata; run work start first")
-        branch = str(meta.get("branch") or "").strip()
-        worktree = str(meta.get("worktree") or "").strip()
-        recorded_integration = str(meta.get("integration_base") or "").strip()
-        expected = str(meta.get("head_oid") or "").strip()
+        metadata = self._typed_metadata(shown.value)
+        branch = str(metadata.get("branch") or "").strip()
+        worktree = str(metadata.get("worktree") or "").strip()
+        recorded_integration = str(metadata.get("integration_base") or "").strip()
+        expected = str(metadata.get("head_oid") or "").strip()
         if not branch or not worktree:
             return r.fail(f"bead {bead} missing branch/worktree metadata")
         if not expected:
@@ -67,6 +68,16 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if base.failure:
             return r.fail(base.error or "missing integration base")
         integration = base.value
+        role = self._lane_role(metadata)
+        if role.failure:
+            return r.fail(role.error or "invalid lane role")
+        if role.value == c.Infra.WorkLaneRole.CHILD:
+            binding = self._epic_binding(metadata)
+            if binding.failure:
+                return r.fail(binding.error or "invalid child lane metadata")
+            # Why: a child lane integrates into the epic that owns it, never
+            # into the workspace integration branch the epic itself targets.
+            integration = binding.value.epic_branch
         if (
             recorded_integration
             and recorded_integration not in {"HEAD", integration}
@@ -85,6 +96,9 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if bound.failure:
             return r.fail(bound.error or "work land lane binding failed")
         lane = bound.value
+        topology = self._validated_lane_topology(primary_root, metadata, lane)
+        if topology.failure:
+            return r.fail(topology.error or "work land topology validation failed")
         if self._is_primary_path(primary_root, lane):
             return r.fail("work land refuses the primary worktree")
         if not lane.is_dir():
