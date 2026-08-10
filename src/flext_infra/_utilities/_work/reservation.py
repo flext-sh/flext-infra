@@ -14,8 +14,9 @@ class FlextInfraWorkReservation:
     def pending(
         *,
         branch: str,
+        namespace: c.Infra.WorkBranchNamespace,
         worktree: Path,
-        kind: c.Infra.WorkKind,
+        kind: c.Infra.WorkKind | None,
         slug: str,
         integration_base: str,
         topology: (
@@ -26,6 +27,7 @@ class FlextInfraWorkReservation:
     ) -> m.Infra.PendingLaneReservation:
         return m.Infra.PendingLaneReservation(
             branch=branch,
+            namespace=namespace,
             worktree=worktree,
             kind=kind,
             slug=slug,
@@ -41,8 +43,13 @@ class FlextInfraWorkReservation:
     ) -> m.Infra.ReadyLaneMetadata:
         return m.Infra.ReadyLaneMetadata(
             branch=reservation.branch,
+            namespace=c.Infra.WorkBranchNamespace(reservation.namespace),
             worktree=reservation.worktree,
-            kind=c.Infra.WorkKind(reservation.kind),
+            kind=(
+                c.Infra.WorkKind(reservation.kind)
+                if reservation.kind is not None
+                else None
+            ),
             slug=reservation.slug,
             integration_base=reservation.integration_base,
             topology=reservation.topology,
@@ -56,8 +63,13 @@ class FlextInfraWorkReservation:
     ) -> m.Infra.FailedLaneMetadata:
         return m.Infra.FailedLaneMetadata(
             branch=reservation.branch,
+            namespace=c.Infra.WorkBranchNamespace(reservation.namespace),
             worktree=reservation.worktree,
-            kind=c.Infra.WorkKind(reservation.kind),
+            kind=(
+                c.Infra.WorkKind(reservation.kind)
+                if reservation.kind is not None
+                else None
+            ),
             slug=reservation.slug,
             integration_base=reservation.integration_base,
             topology=reservation.topology,

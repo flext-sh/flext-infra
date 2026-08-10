@@ -16,6 +16,7 @@ def _plain_topology() -> m.Infra.PlainLaneTopology:
 def _pending() -> dict[str, object]:
     return {
         "branch": "feature/typed-lane",
+        "namespace": c.Infra.WorkBranchNamespace.FEATURE,
         "worktree": Path("typed-lane"),
         "kind": c.Infra.WorkKind.FEATURE,
         "slug": "typed-lane",
@@ -54,6 +55,36 @@ def test_failed_metadata_accepts_optional_head() -> None:
 def test_lane_metadata_refuses_extra_fields() -> None:
     with pytest.raises(ValidationError):
         m.Infra.PendingLaneReservation.model_validate(_pending() | {"unknown": "x"})
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "branch": "feature/typed-lane",
+            "namespace": c.Infra.WorkBranchNamespace.EPIC,
+            "kind": c.Infra.WorkKind.FEATURE,
+            "topology": {"role": "plain"},
+        },
+        {
+            "branch": "epic/typed-lane",
+            "namespace": c.Infra.WorkBranchNamespace.EPIC,
+            "kind": c.Infra.WorkKind.FEATURE,
+            "topology": {"role": "epic", "epic_bead": "mro-parent"},
+        },
+        {
+            "branch": "feature/typed-lane",
+            "namespace": c.Infra.WorkBranchNamespace.FEATURE,
+            "kind": None,
+            "topology": {"role": "plain"},
+        },
+    ],
+)
+def test_lane_metadata_refuses_inconsistent_namespace_topology(
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        m.Infra.PendingLaneReservation.model_validate(_pending() | payload)
 
 
 @pytest.mark.parametrize(

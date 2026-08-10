@@ -156,6 +156,7 @@ def test_valid_direct_parent_starts_child(
     assert child_lane.parent.parent.name == "real-epic"
     path, store = _store(tmp_path)
     assert _metadata(store, epic)["role"] == "epic"
+    assert _metadata(store, epic)["branch"] == "epic/real-epic"
     assert path.is_file()
 
 
@@ -188,7 +189,7 @@ def test_reparented_child_refuses_every_operation(
         ("status", "closed"),
         ("role", "plain"),
         ("epic_bead", "mro-other"),
-        ("branch", "feature/tampered"),
+        ("branch", "epic/tampered"),
         ("worktree", "tampered"),
         ("provisioning", "pending"),
     ],

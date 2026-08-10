@@ -65,6 +65,7 @@ def test_beads_list_returns_only_typed_reservations(
         "parent": None,
         "metadata": {
             "branch": "feature/typed-lane",
+            "namespace": "feature",
             "worktree": "typed-lane",
             "kind": "feature",
             "slug": "typed-lane",

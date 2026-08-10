@@ -42,6 +42,14 @@ class FlextInfraConstantsWorkspace:
         RELEASE = "release"
 
     @unique
+    class WorkBranchNamespace(StrEnum):
+        EPIC = "epic"
+        FEATURE = "feature"
+        BUGFIX = "bugfix"
+        HOTFIX = "hotfix"
+        RELEASE = "release"
+
+    @unique
     class WorkLaneRole(StrEnum):
         """Topology role one registered lane holds inside an epic program."""
 
@@ -93,6 +101,7 @@ class FlextInfraConstantsWorkspace:
     })
     WORK_BEADS_METADATA_KEYS: Final[t.StrSequence] = (
         "branch",
+        "namespace",
         "worktree",
         "kind",
         "slug",

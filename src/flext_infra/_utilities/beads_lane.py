@@ -105,52 +105,57 @@ class FlextInfraUtilitiesBeadsLane:
         return r.ok(tuple(issues))
 
     @staticmethod
-    def _parse_issue(payload: dict[str, object]) -> p.Result[m.Infra.BeadIssue]:
-        metadata = payload.get("metadata")
-        projected_metadata: dict[str, object] | None = None
-        if isinstance(metadata, dict) and "provisioning" in metadata:
-            role = metadata.get("role") or c.Infra.WorkLaneRole.PLAIN.value
-            topology = {"role": role}
-            for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug"):
-                if key in metadata:
-                    topology[key] = metadata[key]
-            projected_metadata = {
-                key: metadata[key]
-                for key in (
-                    "branch",
-                    "worktree",
-                    "kind",
-                    "slug",
-                    "integration_base",
-                    "provisioning",
-                    "head_oid",
-                    "pr_number",
-                    "pr_url",
-                    "recovery",
-                    "error_category",
-                )
-                if key in metadata
-            }
-            if "worktree" in projected_metadata:
-                projected_metadata["worktree"] = Path(
-                    str(projected_metadata["worktree"])
-                )
-            if "kind" in projected_metadata:
-                projected_metadata["kind"] = c.Infra.WorkKind(
-                    str(projected_metadata["kind"])
-                )
-            if "recovery" in projected_metadata:
-                projected_metadata["recovery"] = c.Infra.WorkRecoveryCategory(
-                    str(projected_metadata["recovery"])
-                )
-            if "error_category" in projected_metadata:
-                projected_metadata["error_category"] = c.Infra.WorkProvisioningError(
-                    str(projected_metadata["error_category"])
-                )
-            if "epic_worktree" in topology:
-                topology["epic_worktree"] = Path(str(topology["epic_worktree"]))
-            projected_metadata["topology"] = topology
+    def _project_lane_metadata(metadata: object) -> dict[str, object] | None:
+        if not isinstance(metadata, dict) or "provisioning" not in metadata:
+            return None
+        role = metadata.get("role") or c.Infra.WorkLaneRole.PLAIN.value
+        topology = {"role": role}
+        for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug"):
+            if key in metadata:
+                topology[key] = metadata[key]
+        projected = {
+            key: metadata[key]
+            for key in (
+                "branch",
+                "namespace",
+                "worktree",
+                "kind",
+                "slug",
+                "integration_base",
+                "provisioning",
+                "head_oid",
+                "pr_number",
+                "pr_url",
+                "recovery",
+                "error_category",
+            )
+            if key in metadata
+        }
+        if "worktree" in projected:
+            projected["worktree"] = Path(str(projected["worktree"]))
+        if "kind" in projected:
+            projected["kind"] = c.Infra.WorkKind(str(projected["kind"]))
+        if "namespace" in projected:
+            projected["namespace"] = c.Infra.WorkBranchNamespace(
+                str(projected["namespace"])
+            )
+        if "recovery" in projected:
+            projected["recovery"] = c.Infra.WorkRecoveryCategory(
+                str(projected["recovery"])
+            )
+        if "error_category" in projected:
+            projected["error_category"] = c.Infra.WorkProvisioningError(
+                str(projected["error_category"])
+            )
+        if "epic_worktree" in topology:
+            topology["epic_worktree"] = Path(str(topology["epic_worktree"]))
+        projected["topology"] = topology
+        return projected
+
+    @classmethod
+    def _parse_issue(cls, payload: dict[str, object]) -> p.Result[m.Infra.BeadIssue]:
         try:
+            projected_metadata = cls._project_lane_metadata(payload.get("metadata"))
             projected = {
                 "id": payload.get("id"),
                 "status": c.Infra.BeadIssueStatus(str(payload.get("status"))),

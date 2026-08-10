@@ -44,6 +44,7 @@ def test_foreign_bead_cannot_start_reserved_branch(
         bead_a,
         {
             "branch": branch,
+            "namespace": "feature",
             "worktree": str(path),
             "kind": "feature",
             "slug": "reserved",
@@ -83,6 +84,7 @@ def test_closed_reservation_does_not_block_new_owner(
         bead_a,
         {
             "branch": branch,
+            "namespace": "feature",
             "worktree": str(path),
             "kind": "feature",
             "slug": "history",

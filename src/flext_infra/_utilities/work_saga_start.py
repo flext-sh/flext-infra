@@ -28,11 +28,14 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         shown = u.Infra.beads_show(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
-        kind_slug = self._validated_kind_slug(shown.value.issue_type)
+        epic_bead = (self.epic or "").strip()
+        kind_slug = self._validated_kind_slug(
+            shown.value.issue_type, child=bool(epic_bead)
+        )
         if kind_slug.failure:
             return r.fail(kind_slug.error or "invalid kind/name")
-        kind, slug = kind_slug.value
-        branch = self._branch_name(kind, slug)
+        kind, namespace, slug = kind_slug.value
+        branch = self._branch_name(namespace, slug)
         existing = shown.value.metadata
         if existing is not None:
             bound = existing.worktree.exists()
@@ -41,7 +44,6 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     f"bead {bead} already bound to branch {existing.branch} "
                     f"at {existing.worktree}"
                 )
-        epic_bead = (self.epic or "").strip()
         epic_lane: Path | None = None
         base = ""
         if epic_bead:
@@ -121,6 +123,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             )
         pending_metadata = self.pending(
             branch=branch,
+            namespace=namespace,
             worktree=lane,
             kind=kind,
             slug=slug,

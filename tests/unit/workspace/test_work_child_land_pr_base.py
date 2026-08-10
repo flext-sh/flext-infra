@@ -50,7 +50,7 @@ def test_child_land_creates_pr_against_live_epic_branch(
     )
 
     receipt = fixture.pr_create_receipt()
-    assert receipt.base == "feature/live-epic"
+    assert receipt.base == "epic/live-epic"
     assert receipt.head == "feature/land-child"
     issue = fixture.issue(child_bead)
     metadata = issue.metadata

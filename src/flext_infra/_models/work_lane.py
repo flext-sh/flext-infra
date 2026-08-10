@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
-from flext_infra import c, t
+from flext_infra import c, t, u
 
 
 class _LaneContract(m.ContractModel):
@@ -69,10 +69,15 @@ class _LaneStateModels(_LaneTopologyModels):
 
     class _LaneReservation(_LaneContract):
         branch: Annotated[t.NonEmptyStr, m.Field(description="Canonical lane branch")]
+        namespace: Annotated[
+            c.Infra.WorkBranchNamespace,
+            m.Field(description="Topology-derived canonical branch namespace"),
+        ]
         worktree: Annotated[Path, m.Field(description="Canonical lane worktree path")]
         kind: Annotated[
-            c.Infra.WorkKind, m.Field(description="Canonical GitFlow lane kind")
-        ]
+            c.Infra.WorkKind | None,
+            m.Field(description="GitFlow lane kind; absent for epic lanes"),
+        ] = None
         slug: Annotated[t.NonEmptyStr, m.Field(description="Canonical lane slug")]
         integration_base: Annotated[
             t.NonEmptyStr, m.Field(description="Logical lane integration base")
@@ -80,6 +85,35 @@ class _LaneStateModels(_LaneTopologyModels):
         topology: Annotated[
             LaneTopology, m.Field(description="Validated lane topology binding")
         ]
+
+        @u.model_validator(mode="after")
+        def validate_branch_identity(self) -> Self:
+            expected_branch = f"{self.namespace}/{self.slug}"
+            if self.branch != expected_branch:
+                msg = f"lane branch must equal namespace/slug: {expected_branch}"
+                raise ValueError(msg)
+            match self.topology:
+                case _LaneTopologyModels.EpicLaneTopology():
+                    valid = (
+                        self.namespace == c.Infra.WorkBranchNamespace.EPIC
+                        and self.kind is None
+                    )
+                case (
+                    _LaneTopologyModels.PlainLaneTopology()
+                    | _LaneTopologyModels.ChildLaneTopology()
+                ):
+                    match self.kind:
+                        case None:
+                            valid = False
+                        case kind:
+                            valid = (
+                                c.Infra.WorkBranchNamespace(self.namespace).value
+                                == c.Infra.WorkKind(kind).value
+                            )
+            if not valid:
+                msg = "lane namespace, kind, and topology are inconsistent"
+                raise ValueError(msg)
+            return self
 
     class PendingLaneReservation(_LaneReservation):
         """Reserved branch and path before provisioning produces a HEAD."""

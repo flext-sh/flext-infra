@@ -82,18 +82,27 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSup
         return cleaned
 
     def _validated_kind_slug(
-        self, issue_type: str | None = None
-    ) -> p.Result[tuple[c.Infra.WorkKind, str]]:
+        self, issue_type: str | None = None, *, child: bool = False
+    ) -> p.Result[tuple[c.Infra.WorkKind | None, c.Infra.WorkBranchNamespace, str]]:
         kind = self.kind
-        if kind is None:
+        normalized_issue_type = (issue_type or "").strip().lower()
+        if normalized_issue_type == "epic":
+            if child:
+                return r.fail("work start refuses an epic issue as a child lane")
+            if kind is not None:
+                return r.fail(
+                    "epic issue derives the epic branch namespace; drop --kind"
+                )
+            namespace = c.Infra.WorkBranchNamespace.EPIC
+        else:
+            namespace = None
+        if kind is None and namespace is None:
             workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
                 self.workspace_root
             )
             if workspace.failure:
                 return r.fail(workspace.error or "failed to load workspace lane policy")
-            match (issue_type or "").strip().lower():
-                case "epic":
-                    kind = c.Infra.WorkKind.FEATURE
+            match normalized_issue_type:
                 case "bug":
                     kind = c.Infra.WorkKind.BUGFIX
                 case "feature":
@@ -108,9 +117,13 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSup
                     return r.fail(
                         f"work start cannot derive kind from issue_type {invalid}"
                     )
-        # Why: mro-5bts the service model stores enum values, so re-enter the
-        # enum here and keep every downstream saga step typed.
-        kind = c.Infra.WorkKind(kind)
+        if namespace is None:
+            match kind:
+                case None:
+                    return r.fail("work start could not resolve a GitFlow kind")
+                case resolved_kind:
+                    kind = c.Infra.WorkKind(resolved_kind)
+                    namespace = c.Infra.WorkBranchNamespace(kind.value)
         slug = (self.name or "").strip().lower()
         if not slug:
             return r.fail("work start requires --name")
@@ -118,11 +131,11 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSup
             return r.fail(f"forbidden work slug: {slug}")
         if not _SLUG_RE.fullmatch(slug):
             return r.fail(f"invalid work slug (kebab-case required): {slug}")
-        return r.ok((kind, slug))
+        return r.ok((kind, namespace, slug))
 
     @staticmethod
-    def _branch_name(kind: c.Infra.WorkKind, slug: str) -> str:
-        return f"{kind.value}/{slug}"
+    def _branch_name(namespace: c.Infra.WorkBranchNamespace, slug: str) -> str:
+        return f"{namespace.value}/{slug}"
 
     def _resolve_lane_branch(self) -> p.Result[str]:
         explicit = (self.branch or "").strip()
@@ -136,8 +149,8 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSup
         kind_slug = self._validated_kind_slug()
         if kind_slug.failure:
             return r.fail(kind_slug.error or "unable to resolve lane branch")
-        kind, slug = kind_slug.value
-        return r.ok(self._branch_name(kind, slug))
+        _, namespace, slug = kind_slug.value
+        return r.ok(self._branch_name(namespace, slug))
 
     @staticmethod
     def _is_primary_path(primary_root: Path, lane: Path) -> bool:

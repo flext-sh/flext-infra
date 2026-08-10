@@ -334,6 +334,7 @@ class TestsFlextInfraWorkService:
             bead_id,
             {
                 "branch": "feature/primary-abuse",
+                "namespace": "feature",
                 "worktree": str(repository),
                 "kind": "feature",
                 "slug": "primary-abuse",
@@ -503,7 +504,7 @@ class TestsFlextInfraWorkService:
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="permanent branch")
+        tm.fail(result, has="metadata.ready.namespace")
 
     def test_land_requires_head_oid(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -648,7 +649,7 @@ class TestsFlextInfraWorkService:
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="permanent branch")
+        tm.fail(result, has="metadata.ready.namespace")
 
     def test_finish_refuses_already_removed(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -664,6 +665,7 @@ class TestsFlextInfraWorkService:
             bead_id,
             {
                 "branch": "bugfix/gone",
+                "namespace": "bugfix",
                 "worktree": "removed",
                 "kind": "bugfix",
                 "slug": "gone",
@@ -1495,14 +1497,23 @@ class TestsFlextInfraWorkService:
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
         tm.that(template, has='--base "$(BASE)" --epic "$(EPIC)" --apply')
+        tm.that(template, has='$(if $(strip $(KIND)),--kind "$(KIND)")')
         tm.that(
             template,
             has="'EPIC' 'registered epic bead id; nests work start as its child lane'",
         )
+        tm.that(
+            template,
+            has="'KIND' 'optional feature|bugfix|hotfix|release; omitted derives from Bead issue_type'",
+        )
 
     @pytest.mark.parametrize(
         ("issue_type", "expected_branch"),
-        [("epic", "feature/derived-kind"), ("bug", "bugfix/derived-kind")],
+        [
+            ("epic", "epic/derived-kind"),
+            ("feature", "feature/derived-kind"),
+            ("bug", "bugfix/derived-kind"),
+        ],
     )
     def test_start_derives_kind_from_issue_type(
         self,
@@ -1530,6 +1541,30 @@ class TestsFlextInfraWorkService:
             ).execute()
         )
         tm.that(started, has=f"BRANCH={expected_branch}")
+
+    def test_start_refuses_explicit_gitflow_kind_for_epic_issue(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-epic-explicit-kind"
+        shim_dir = self._install_bd_shim(
+            tmp_path, bead_id, issue_types={bead_id: "epic"}
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="epic-explicit-kind",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="epic issue derives the epic branch namespace")
 
     def test_start_refuses_missing_issue_type_without_kind_override(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -1570,7 +1605,6 @@ class TestsFlextInfraWorkService:
                 workspace_root=repository,
                 operation=c.Infra.WorkOperation.START,
                 bead=epic_bead,
-                kind=c.Infra.WorkKind.FEATURE,
                 name="epic-alpha",
                 base="HEAD",
                 apply_changes=True,
@@ -1614,7 +1648,6 @@ class TestsFlextInfraWorkService:
                 workspace_root=repository,
                 operation=c.Infra.WorkOperation.START,
                 bead=epic_bead,
-                kind=c.Infra.WorkKind.FEATURE,
                 name="epic-alpha",
                 base="HEAD",
                 apply_changes=True,
@@ -1635,14 +1668,14 @@ class TestsFlextInfraWorkService:
         )
 
         tm.that(started, has=f"EPIC={epic_bead}")
-        tm.that(started, has="BASE=feature/epic-alpha")
+        tm.that(started, has="BASE=epic/epic-alpha")
         child = self._metadata(tmp_path, child_bead)
         tm.that(child["role"], eq=c.Infra.WorkLaneRole.CHILD.value)
         tm.that(child["epic_bead"], eq=epic_bead)
-        tm.that(child["epic_branch"], eq="feature/epic-alpha")
+        tm.that(child["epic_branch"], eq="epic/epic-alpha")
         tm.that(child["epic_worktree"], eq=str(epic_lane))
         tm.that(child["child_slug"], eq="child-one")
-        tm.that(child["integration_base"], eq="feature/epic-alpha")
+        tm.that(child["integration_base"], eq="epic/epic-alpha")
         container = epic_lane / c.Infra.WORKTREES_DIRNAME
         tm.that(Path(child["worktree"]), eq=container / "child-one")
         tm.that(
@@ -1661,7 +1694,13 @@ class TestsFlextInfraWorkService:
         repository = self._repository(tmp_path)
         epic_bead = "mro-test-epic-base"
         child_bead = "mro-test-child-base"
-        shim_dir = self._install_bd_shim(tmp_path, epic_bead, child_bead)
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "task"},
+            parents={child_bead: epic_bead},
+        )
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
@@ -1670,7 +1709,6 @@ class TestsFlextInfraWorkService:
                 workspace_root=repository,
                 operation=c.Infra.WorkOperation.START,
                 bead=epic_bead,
-                kind=c.Infra.WorkKind.FEATURE,
                 name="epic-alpha",
                 base="HEAD",
                 apply_changes=True,
@@ -1697,7 +1735,13 @@ class TestsFlextInfraWorkService:
         repository = self._repository(tmp_path)
         epic_bead = "mro-test-epic-absent"
         child_bead = "mro-test-child-absent"
-        shim_dir = self._install_bd_shim(tmp_path, epic_bead, child_bead)
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "task"},
+            parents={child_bead: epic_bead},
+        )
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
@@ -1721,7 +1765,13 @@ class TestsFlextInfraWorkService:
         repository = self._repository(tmp_path)
         epic_bead = "mro-test-epic-status"
         child_bead = "mro-test-child-status"
-        shim_dir = self._install_bd_shim(tmp_path, epic_bead, child_bead)
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "feature"},
+            parents={child_bead: epic_bead},
+        )
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
@@ -1834,7 +1884,7 @@ class TestsFlextInfraWorkService:
                     apply_changes=True,
                 ).execute()
             ),
-            has="FINISHED BRANCH=feature/epic-alpha",
+            has="FINISHED BRANCH=epic/epic-alpha",
         )
         assert not epic_lane.exists()
 
@@ -1845,7 +1895,13 @@ class TestsFlextInfraWorkService:
         repository = self._repository(tmp_path)
         epic_bead = "mro-test-epic-escape"
         child_bead = "mro-test-child-escape"
-        shim_dir = self._install_bd_shim(tmp_path, epic_bead, child_bead)
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "feature"},
+            parents={child_bead: epic_bead},
+        )
         self._install_gh_shim(tmp_path)
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
@@ -1855,7 +1911,6 @@ class TestsFlextInfraWorkService:
                 workspace_root=repository,
                 operation=c.Infra.WorkOperation.START,
                 bead=epic_bead,
-                kind=c.Infra.WorkKind.FEATURE,
                 name="epic-alpha",
                 base="HEAD",
                 apply_changes=True,
@@ -1877,7 +1932,7 @@ class TestsFlextInfraWorkService:
         record["metadata"] |= {
             "role": c.Infra.WorkLaneRole.CHILD.value,
             "epic_bead": epic_bead,
-            "epic_branch": "feature/epic-alpha",
+            "epic_branch": "epic/epic-alpha",
             "epic_worktree": str(epic_lane),
             "child_slug": "outside-lane",
         }

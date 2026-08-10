@@ -27,6 +27,7 @@ def test_status_rejects_tampered_child_metadata(
         bead_id,
         {
             "branch": "feature/tampered-child",
+            "namespace": "feature",
             "worktree": str(tmp_path / "tampered-child"),
             "kind": "feature",
             "slug": "tampered-child",
