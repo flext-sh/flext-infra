@@ -9,7 +9,14 @@ from typing import TYPE_CHECKING
 
 import flext_infra
 import pytest
-from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, m, u
+from flext_infra import (
+    FlextInfraWorkService,
+    FlextInfraWorktreeService,
+    c,
+    config,
+    m,
+    u,
+)
 from flext_tests import tm
 from tests import u as test_u
 
@@ -22,6 +29,7 @@ class TestsFlextInfraWorkService:
 
     @staticmethod
     def _repository(tmp_path: PathType) -> PathType:
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
         repository = tmp_path / "repository"
         repository.mkdir()
         (repository / "README.md").write_text("fixture\n", encoding="utf-8")
@@ -33,11 +41,14 @@ class TestsFlextInfraWorkService:
         (repository / "Makefile").write_text(
             ".PHONY: setup\n"
             "setup:\n"
-            '\t@test "$(WORKSPACE)" = "$(CURDIR)"\n'
-            '\t@grep -q "^\\[project\\]" "$(WORKSPACE)/pyproject.toml"\n'
-            '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
+            '\t@grep -q "^\\[project\\]" "$(CURDIR)/pyproject.toml"\n'
+            f"\t@mkdir -p {venv_name}/bin\n"
+            f"\t@printf '#!/bin/sh\\n' > {venv_name}/bin/python\n"
+            f"\t@chmod +x {venv_name}/bin/python\n"
+            '\t@printf "setting up %s\\n" "$(CURDIR)"\n',
             encoding="utf-8",
         )
+        (repository / ".gitignore").write_text(f"{venv_name}\n", encoding="utf-8")
         # Why (mro-tvc03): the ledger is resolved from the typed workspace
         # manifest, so a fixture that only drops .beads/config.yaml no longer
         # declares a tracker. Emit the manifest the runtime actually reads.

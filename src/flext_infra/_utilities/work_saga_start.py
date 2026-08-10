@@ -145,7 +145,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         # owns that guarantee for the lane it hands back. An adopted lane used to
         # skip provisioning entirely and was handed over with whatever
         # environment an interrupted start had left behind.
-        prepared = FlextInfraWorktreeService.setup_lane(primary_root, lane)
+        prepared = FlextInfraWorktreeService.setup_lane(lane)
         if prepared.failure:
             known_head = self._git_head(lane)
             failed = self.failed(

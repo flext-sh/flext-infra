@@ -13,8 +13,10 @@ from tests.unit.workspace.worktree_fixture import WorktreeFixture
 class TestsWorktreeAddContract(WorktreeFixture):
     """Group cohesive worktree behavior."""
 
-    def test_private_add_does_not_parse_project_metadata(self, tmp_path: Path) -> None:
-        """Raw ADD creates the checkout; public work start owns provisioning."""
+    def test_invalid_lane_metadata_fails_precisely_and_rolls_back(
+        self, tmp_path: Path
+    ) -> None:
+        """The typed lane ingress rejects a non-string PEP 621 description."""
         repository = self._repository(tmp_path)
         branch = "feature/invalid-metadata"
         lane = self._lane(repository, repository, branch)
@@ -25,18 +27,17 @@ class TestsWorktreeAddContract(WorktreeFixture):
         )
         self._commit_fixture(repository, "test: invalid project metadata")
 
-        result = tm.ok(
-            FlextInfraWorktreeService(
-                workspace_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch=branch,
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
 
-        tm.that(result, eq=str(lane))
-        tm.that(lane.is_dir(), where=bool)
+        tm.fail(result, has="description")
+        tm.fail(result, has="clean lane rolled back")
+        tm.that(not lane.exists(), where=bool)
         tm.that(
             tm.ok(
                 u.Infra.git_ref_exists(
@@ -45,7 +46,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
                     )
                 )
             ).value,
-            eq=True,
+            eq=False,
         )
 
     def test_private_add_does_not_execute_clean_failing_setup(
