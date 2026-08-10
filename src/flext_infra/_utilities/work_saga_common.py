@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import FlextInfraWorktreeService, c, m, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -81,13 +82,22 @@ class FlextInfraWorkSagaCommon:
     ) -> p.Result[tuple[c.Infra.WorkKind, str]]:
         kind = self.kind
         if kind is None:
+            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+                self.workspace_root
+            )
+            if workspace.failure:
+                return r.fail(workspace.error or "failed to load workspace lane policy")
             match (issue_type or "").strip().lower():
                 case "epic":
                     kind = c.Infra.WorkKind.FEATURE
                 case "bug":
                     kind = c.Infra.WorkKind.BUGFIX
-                case "task" | "chore" | "feature":
+                case "feature":
                     kind = c.Infra.WorkKind.FEATURE
+                case "task":
+                    kind = c.Infra.WorkKind(workspace.value.work.task_kind)
+                case "chore":
+                    kind = c.Infra.WorkKind(workspace.value.work.chore_kind)
                 case "":
                     return r.fail("work start bead is missing issue_type; pass --kind")
                 case invalid:

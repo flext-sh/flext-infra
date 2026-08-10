@@ -30,6 +30,19 @@ class _ConfigContract(m.ContractModel):
     )
 
 
+class _WorkspaceWorkSpec(_ConfigContract):
+    """GitFlow lane policy for Beads task and chore issue types."""
+
+    task_kind: Annotated[
+        Literal["feature", "bugfix"],
+        m.Field(description="GitFlow kind derived for task issues"),
+    ] = "feature"
+    chore_kind: Annotated[
+        Literal["feature", "bugfix"],
+        m.Field(description="GitFlow kind derived for chore issues"),
+    ] = "feature"
+
+
 class FlextInfraConfigModels:
     """Field-only models for config loading and codegen plans."""
 
@@ -2083,6 +2096,10 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        work: Annotated[
+            _WorkspaceWorkSpec,
+            m.Field(description="Typed Beads-to-GitFlow lane policy"),
+        ] = _WorkspaceWorkSpec()
         repository_policy_overlays: Annotated[
             tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
             m.Field(description="Repository-local policy exceptions keyed by project"),
