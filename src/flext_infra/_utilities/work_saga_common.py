@@ -7,7 +7,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import FlextInfraWorktreeService, c, m, u
+from flext_infra import c, m, u
+from flext_infra._utilities._work import (
+    FlextInfraWorkReservation,
+    FlextInfraWorkStartSupport,
+)
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -15,7 +20,7 @@ if TYPE_CHECKING:
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-class FlextInfraWorkSagaCommon:
+class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSupport):
     """Resolve bases, branches, and primary-worktree safety."""
 
     workspace_root: Path
@@ -76,12 +81,49 @@ class FlextInfraWorkSagaCommon:
             return remote
         return cleaned
 
-    def _validated_kind_slug(self) -> p.Result[tuple[c.Infra.WorkKind, str]]:
-        if self.kind is None:
-            return r.fail("work start requires --kind")
-        # Why: mro-5bts the service model stores enum values, so re-enter the
-        # enum here and keep every downstream saga step typed.
-        kind = c.Infra.WorkKind(self.kind)
+    def _validated_kind_slug(
+        self, issue_type: str | None = None, *, child: bool = False
+    ) -> p.Result[tuple[c.Infra.WorkKind | None, c.Infra.WorkBranchNamespace, str]]:
+        kind = self.kind
+        normalized_issue_type = (issue_type or "").strip().lower()
+        if normalized_issue_type == "epic":
+            if child:
+                return r.fail("work start refuses an epic issue as a child lane")
+            if kind is not None:
+                return r.fail(
+                    "epic issue derives the epic branch namespace; drop --kind"
+                )
+            namespace = c.Infra.WorkBranchNamespace.EPIC
+        else:
+            namespace = None
+        if kind is None and namespace is None:
+            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+                self.workspace_root
+            )
+            if workspace.failure:
+                return r.fail(workspace.error or "failed to load workspace lane policy")
+            match normalized_issue_type:
+                case "bug":
+                    kind = c.Infra.WorkKind.BUGFIX
+                case "feature":
+                    kind = c.Infra.WorkKind.FEATURE
+                case "task":
+                    kind = c.Infra.WorkKind(workspace.value.work.task_kind)
+                case "chore":
+                    kind = c.Infra.WorkKind(workspace.value.work.chore_kind)
+                case "":
+                    return r.fail("work start bead is missing issue_type; pass --kind")
+                case invalid:
+                    return r.fail(
+                        f"work start cannot derive kind from issue_type {invalid}"
+                    )
+        if namespace is None:
+            match kind:
+                case None:
+                    return r.fail("work start could not resolve a GitFlow kind")
+                case resolved_kind:
+                    kind = c.Infra.WorkKind(resolved_kind)
+                    namespace = c.Infra.WorkBranchNamespace(kind.value)
         slug = (self.name or "").strip().lower()
         if not slug:
             return r.fail("work start requires --name")
@@ -89,11 +131,11 @@ class FlextInfraWorkSagaCommon:
             return r.fail(f"forbidden work slug: {slug}")
         if not _SLUG_RE.fullmatch(slug):
             return r.fail(f"invalid work slug (kebab-case required): {slug}")
-        return r.ok((kind, slug))
+        return r.ok((kind, namespace, slug))
 
     @staticmethod
-    def _branch_name(kind: c.Infra.WorkKind, slug: str) -> str:
-        return f"{kind.value}/{slug}"
+    def _branch_name(namespace: c.Infra.WorkBranchNamespace, slug: str) -> str:
+        return f"{namespace.value}/{slug}"
 
     def _resolve_lane_branch(self) -> p.Result[str]:
         explicit = (self.branch or "").strip()
@@ -101,18 +143,14 @@ class FlextInfraWorkSagaCommon:
             return r.ok(explicit)
         bead = (self.bead or "").strip()
         if bead:
-            shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
-            if shown.success:
-                metadata = shown.value.get("metadata")
-                if isinstance(metadata, dict):
-                    stored = metadata.get("branch")
-                    if isinstance(stored, str) and stored.strip():
-                        return r.ok(stored.strip())
+            shown = u.Infra.beads_show(bead, root=self.workspace_root)
+            if shown.success and shown.value.metadata is not None:
+                return r.ok(shown.value.metadata.branch)
         kind_slug = self._validated_kind_slug()
         if kind_slug.failure:
             return r.fail(kind_slug.error or "unable to resolve lane branch")
-        kind, slug = kind_slug.value
-        return r.ok(self._branch_name(kind, slug))
+        _, namespace, slug = kind_slug.value
+        return r.ok(self._branch_name(namespace, slug))
 
     @staticmethod
     def _is_primary_path(primary_root: Path, lane: Path) -> bool:
@@ -134,24 +172,6 @@ class FlextInfraWorkSagaCommon:
         ):
             return r.fail(f"work refuses permanent branch {cleaned_branch}")
         return r.ok(True)
-
-    @staticmethod
-    def _bound_registered_lane(
-        primary_root: Path, branch: str, worktree: str
-    ) -> p.Result[Path]:
-        registered = FlextInfraWorktreeService.registered_lane(primary_root, branch)
-        if registered.failure:
-            return r.fail(
-                registered.error or f"worktree branch is not registered: {branch}"
-            )
-        meta_lane = Path(worktree).expanduser().resolve()
-        registry_lane = registered.value.resolve()
-        if meta_lane != registry_lane:
-            return r.fail(
-                "work metadata worktree does not match registered lane: "
-                f"metadata={meta_lane} registered={registry_lane}"
-            )
-        return r.ok(registry_lane)
 
     @staticmethod
     def _ensure_clean(lane: Path) -> p.Result[bool]:

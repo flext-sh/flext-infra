@@ -25,27 +25,25 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work finish requires --bead")
-        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
+        shown = u.Infra.beads_show(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
-        meta = shown.value.get("metadata")
-        if not isinstance(meta, dict):
+        metadata = shown.value.metadata
+        if metadata is None:
             return r.fail(f"bead {bead} has no lane metadata")
-        branch = str(meta.get("branch") or "").strip()
-        worktree = str(meta.get("worktree") or "").strip()
-        expected = str(meta.get("head_oid") or "").strip()
-        pr_number = str(meta.get("pr_number") or "").strip()
-        integration = str(meta.get("integration_base") or "").strip()
-        if not branch or not worktree:
-            return r.fail(f"bead {bead} missing branch/worktree metadata")
-        if worktree == "removed":
-            return r.fail(f"bead {bead} lane worktree already removed")
-        if not integration:
-            base = self._resolve_integration_base(primary_root)
-            if base.failure:
-                return r.fail(base.error or "missing integration base")
-            integration = base.value
+        if not isinstance(metadata, m.Infra.ReadyLaneMetadata):
+            return r.fail(f"bead {bead} lane is not ready for finish")
+        branch = metadata.branch
+        worktree = str(metadata.worktree)
+        expected = metadata.head_oid
+        pr_number = metadata.pr_number or ""
+        integration = metadata.integration_base
+        ownership = self._owned_reservation(bead, branch, metadata.worktree)
+        if ownership.failure:
+            return r.fail(ownership.error or "work finish reservation ownership failed")
         lane_meta = Path(worktree)
+        if lane_meta == Path("removed"):
+            return r.fail(f"bead {bead} lane worktree already removed")
         if self._is_primary_path(primary_root, lane_meta):
             return r.fail("work finish refuses the primary worktree")
         permanent = self._refuse_permanent_branch(branch, integration)
@@ -57,6 +55,15 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         if bound.failure:
             return r.fail(bound.error or "work finish lane binding failed")
         lane = bound.value
+        topology = self._validated_lane_topology(primary_root, metadata, lane)
+        if topology.failure:
+            return r.fail(topology.error or "work finish topology validation failed")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work finish child binding failed")
         merged = self._require_merged_pr(primary_root, branch, pr_number)
         if merged.failure:
             return r.fail(merged.error or "work finish PR state check failed")
@@ -71,6 +78,20 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(
                 f"CAS failed before finish: expected {expected} head={head.value}"
             )
+        ownership = self._owned_reservation(bead, branch, lane)
+        if ownership.failure:
+            return r.fail(ownership.error or "work finish reservation changed")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work finish child binding changed")
+            advanced = self._merge_remote_epic(
+                primary_root, shown.value, metadata.topology
+            )
+            if advanced.failure:
+                return r.fail(advanced.error or "work finish epic merge-forward failed")
         removed = FlextInfraWorktreeService(
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.REMOVE,
@@ -98,11 +119,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "
             f"decisive=removed {worktree} branch={branch}"
         )
+        removed_metadata = metadata.model_copy(update={"worktree": Path("removed")})
         updated = u.Infra.beads_update_lane(
-            bead,
-            metadata={"worktree": "removed", "head_oid": expected},
-            notes=notes,
-            root=self.workspace_root,
+            bead, metadata=removed_metadata, notes=notes, root=self.workspace_root
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record finish on bead")

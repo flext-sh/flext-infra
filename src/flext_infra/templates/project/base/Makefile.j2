@@ -497,8 +497,10 @@ _builtin_help_usage:
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
 	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
-	@printf '  %-10s %s\n' 'KIND/NAME' 'GitFlow kind and slug for work start';
+	@printf '  %-10s %s\n' 'NAME' 'required lane slug for work start';
+	@printf '  %-10s %s\n' 'KIND' 'optional feature|bugfix|hotfix|release; omitted derives from Bead issue_type';
 	@printf '  %-10s %s\n' 'BASE' 'optional integration base override for work start';
+	@printf '  %-10s %s\n' 'EPIC' 'registered epic bead id; nests work start as its child lane';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -800,8 +802,7 @@ _builtin_release_rel: _builtin_require_environment
 # `conform` received PROJECT_ROOT, so a gen run inside one member rewrote the
 # pyproject of ~30 siblings and left each dirty. Because gen runs inside check
 # and check runs in the pre-commit hook, one commit in any lane dirtied every
-# sibling. It also kept the fixed point out of reach: each run rewrote the siblings, so
-# the next run found a difference again. At the workspace root PROJECT_ROOT is
+# sibling. At the workspace root PROJECT_ROOT is
 # already the workspace, so fan-out survives exactly where it belongs.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
@@ -821,7 +822,7 @@ _builtin_work_status:
 
 _builtin_work_start:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" $(if $(strip $(KIND)),--kind "$(KIND)") --name "$(NAME)" --base "$(BASE)" --epic "$(EPIC)" --apply
 
 _builtin_work_land:
 	$(call _require_apply)
@@ -835,7 +836,7 @@ _builtin_work_finish:
 # handler was ever generated, so the dispatcher resolved a non-existent target
 # and the verb was unreachable. The codemod engine already exists behind
 # `flext-infra refactor mod`; these handlers are the missing dispatch into it.
-# check is the read-only fixed-point (reports pending fixes); apply runs the
+# check reports pending fixes; apply runs the
 # batch under the ruff/pyrefly rollback circuit.
 _builtin_mod_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
