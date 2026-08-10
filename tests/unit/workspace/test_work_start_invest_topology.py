@@ -52,6 +52,7 @@ def _external_consumer(tmp_path: Path) -> Path:
         '\t@test -z "$(VIRTUAL_ENV)$(UV_PROJECT)$(UV_PROJECT_ENVIRONMENT)"\n'
         f"\t@mkdir -p {_VENV_NAME}/bin\n"
         f"\t@printf '#!/bin/sh\\n' > {_VENV_NAME}/bin/python\n"
+        f"\t@chmod +x {_VENV_NAME}/bin/python\n"
         '\t@printf "%s\\n" "$(CURDIR)" > setup-owner.log\n',
         encoding="utf-8",
     )
