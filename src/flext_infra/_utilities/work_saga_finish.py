@@ -87,6 +87,11 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             )
             if live.failure:
                 return r.fail(live.error or "work finish child binding changed")
+            advanced = self._merge_remote_epic(
+                primary_root, shown.value, metadata.topology
+            )
+            if advanced.failure:
+                return r.fail(advanced.error or "work finish epic merge-forward failed")
         removed = FlextInfraWorktreeService(
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.REMOVE,

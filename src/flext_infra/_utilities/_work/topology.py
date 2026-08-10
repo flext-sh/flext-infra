@@ -61,6 +61,68 @@ class FlextInfraWorkTopology(FlextInfraWorkOwnership):
             return r.fail(f"epic bead {epic.id} HEAD binding mismatch")
         return r.ok(bound.value)
 
+    def _merge_remote_epic(
+        self,
+        primary_root: Path,
+        child_issue: m.Infra.BeadIssue,
+        child: m.Infra.ChildLaneTopology,
+    ) -> p.Result[str]:
+        lane = self._live_child_topology(primary_root, child_issue, child)
+        if lane.failure:
+            return r.fail(lane.error or "live epic binding failed")
+        shown = u.Infra.beads_show(child.epic_bead, root=self.workspace_root)
+        if shown.failure or not isinstance(
+            shown.value.metadata, m.Infra.ReadyLaneMetadata
+        ):
+            return r.fail(
+                shown.error or f"epic bead {child.epic_bead} lane is not ready"
+            )
+        metadata = shown.value.metadata
+        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane.value))
+        if status.failure or status.value.dirty:
+            return r.fail(status.error or f"epic lane is dirty: {lane.value}")
+        fetched = u.Infra.git_fetch_origin(m.Infra.GitRepoRequest(repo_root=lane.value))
+        if fetched.failure:
+            return r.fail(fetched.error or "failed to fetch remote epic")
+        remote = f"refs/remotes/origin/{metadata.branch}"
+        resolved = u.Infra.git_resolve_commit(
+            m.Infra.GitCommitishRequest(repo_root=lane.value, commitish=remote)
+        )
+        if resolved.failure:
+            return r.fail(resolved.error or f"missing remote epic ref {remote}")
+        contains = u.Infra.git_is_ancestor(
+            m.Infra.GitCommitishRequest(
+                repo_root=lane.value, commitish=resolved.value.oid
+            )
+        )
+        if contains.failure:
+            return r.fail(contains.error or "failed to inspect remote epic ancestry")
+        if not contains.value.value:
+            merged = u.Infra.git_merge_no_edit(
+                m.Infra.GitCommitishRequest(
+                    repo_root=lane.value, commitish=resolved.value.oid
+                )
+            )
+            if merged.failure:
+                return r.fail(
+                    "epic merge-forward failed; child and epic lanes preserved: "
+                    f"{merged.error or remote}"
+                )
+        head = u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane.value))
+        if head.failure:
+            return r.fail(head.error or "failed to resolve epic HEAD")
+        if head.value.oid == metadata.head_oid:
+            return r.ok(metadata.head_oid)
+        updated = u.Infra.beads_update_lane(
+            shown.value.id,
+            metadata=metadata.model_copy(update={"head_oid": head.value.oid}),
+            notes=f"work finish: decisive=child-merge-forward head={head.value.oid}",
+            root=self.workspace_root,
+        )
+        if updated.failure:
+            return r.fail(updated.error or "failed to advance epic metadata HEAD")
+        return r.ok(head.value.oid)
+
     @staticmethod
     def _bound_registered_lane(
         primary_root: Path, branch: str, worktree: str
