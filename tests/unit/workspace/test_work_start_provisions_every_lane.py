@@ -13,11 +13,12 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c
+from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, config
 from flext_tests import tm
 from tests import u
 
 _SETUP_LOG = "setup-runs.log"
+_VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
 
 
 def _repository(tmp_path: Path) -> Path:
@@ -32,12 +33,15 @@ def _repository(tmp_path: Path) -> Path:
     (repository / "Makefile").write_text(
         ".PHONY: setup\n"
         "setup:\n"
-        "\t@mkdir -p .venv/bin\n"
-        "\t@printf '#!/bin/sh\\n' > .venv/bin/python\n"
+        f"\t@mkdir -p {_VENV_NAME}/bin\n"
+        f"\t@printf '#!/bin/sh\\n' > {_VENV_NAME}/bin/python\n"
+        f"\t@chmod +x {_VENV_NAME}/bin/python\n"
         f'\t@printf "%s\\n" "$(CURDIR)" >> "$(CURDIR)/{_SETUP_LOG}"\n',
         encoding="utf-8",
     )
-    (repository / ".gitignore").write_text(f".venv\n{_SETUP_LOG}\n", encoding="utf-8")
+    (repository / ".gitignore").write_text(
+        f"{_VENV_NAME}\n{_SETUP_LOG}\n", encoding="utf-8"
+    )
     u.Tests.declare_workspace_ledger(repository, "mro")
     u.Tests.initialize_git_repo(repository)
     return repository

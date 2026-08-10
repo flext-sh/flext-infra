@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -45,8 +46,12 @@ class FlextInfraWorktreeProvisioning:
         )
         if setup.failure:
             return r.fail(setup.error or "make setup execution failed")
-        interpreter = lane_venv / "bin" / "python"
-        if not interpreter.is_file():
+        interpreter = (
+            lane_venv / "Scripts" / "python.exe"
+            if os.name == "nt"
+            else lane_venv / "bin" / "python"
+        )
+        if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
             return r.fail(f"lane setup did not create an interpreter: {interpreter}")
         return r.ok(True)
 

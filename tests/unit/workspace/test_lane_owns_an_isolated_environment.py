@@ -30,6 +30,7 @@ def _repository(tmp_path: Path) -> Path:
         "\t@git -c protocol.file.allow=always submodule update --init\n"
         f"\t@mkdir -p {_VENV_NAME}/bin\n"
         f"\t@printf '#!/bin/sh\\n' > {_VENV_NAME}/bin/python\n"
+        f"\t@chmod +x {_VENV_NAME}/bin/python\n"
         '\t@printf "%s|%s|%s|%s\\n" "$(CURDIR)" "$${MAKEFILES-unset}" '
         '"$${GNUMAKEFLAGS-unset}" "$${PYTHONPATH-unset}" >> setup-runs.log\n',
         encoding="utf-8",
