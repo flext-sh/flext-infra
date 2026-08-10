@@ -91,6 +91,9 @@ class _LaneStateModels(_LaneTopologyModels):
         def validate_branch_identity(
             cls, topology: LaneTopology, info: m.ValidationInfo
         ) -> LaneTopology:
+            required = ("branch", "namespace", "kind", "slug")
+            if not all(field in info.data for field in required):
+                return topology
             branch = info.data["branch"]
             namespace = info.data["namespace"]
             kind = info.data["kind"]

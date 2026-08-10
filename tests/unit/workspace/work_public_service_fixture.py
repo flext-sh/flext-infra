@@ -135,7 +135,7 @@ class WorkPublicServiceFixture:
     def issue(self, bead_id: str) -> m.Infra.BeadIssue:
         result = u.Infra.beads_show(bead_id, root=self.repository)
         assert result.success
-        return result.value
+        return m.Infra.BeadIssue.model_validate(result.value)
 
     def pr_create_receipt(self) -> PullRequestCreateReceipt:
         argv = json.loads(self.pr_receipt.read_text(encoding="utf-8"))
