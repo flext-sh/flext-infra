@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraWorktreeService, c, m
+import pytest
+from flext_core import r
+from flext_infra import FlextInfraWorktreeService, c, m, u as infra_u
 from flext_tests import tm
 from tests import u
 
@@ -71,6 +73,26 @@ class TestsFlextInfraWorktreeService:
         )
 
         tm.that(listed, has=f"worktree {repository}")
+
+    def test_mutation_rejects_branch_predicate_false(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        monkeypatch.setattr(
+            infra_u.Infra,
+            "git_check_branch_format",
+            staticmethod(lambda _request: r.ok(m.Infra.GitBoolReport(value=False))),
+        )
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch="feature/rejected",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="invalid branch name")
 
     def test_add_and_remove_use_the_isolated_lane_path(self, tmp_path: Path) -> None:
         """A valid PEP 621 string survives typed setup in the isolated lane."""
@@ -255,64 +277,6 @@ class TestsFlextInfraWorktreeService:
             eq=False,
         )
 
-    def test_clean_setup_failure_preserves_the_new_lane_for_resume(
-        self, tmp_path: Path
-    ) -> None:
-        """Even a clean failed setup keeps its lane so the next start resumes it.
-
-        Provisioning clones every governed submodule, so discarding a clean but
-        unprovisioned lane threw that away and forced a manual re-clone. The
-        checkout is valid; only its environment is missing.
-        """
-        repository = self._repository(tmp_path)
-        branch = "feature/clean-setup-failure"
-        lane = self._lane(repository, repository, branch)
-        (repository / "Makefile").write_text(
-            ".PHONY: setup\nsetup:\n\t@printf 'visible setup progress\\n'\n\t@exit 17\n",
-            encoding="utf-8",
-        )
-        self._commit_fixture(repository, "test: clean setup failure")
-
-        result = FlextInfraWorktreeService(
-            workspace_root=repository,
-            operation=c.Infra.WorktreeOperation.ADD,
-            branch=branch,
-            base="HEAD",
-            apply_changes=True,
-        ).execute()
-
-        tm.fail(result, has="failed (2)")
-        tm.fail(result, has=f"lane {branch} preserved at {lane}")
-        tm.that(lane.is_dir(), eq=True)
-
-    def test_setup_failure_preserves_new_lane_with_work(self, tmp_path: Path) -> None:
-        """A failed setup never destroys work it created before returning."""
-        repository = self._repository(tmp_path)
-        branch = "feature/dirty-setup-failure"
-        lane = self._lane(repository, repository, branch)
-        (repository / "Makefile").write_text(
-            ".PHONY: setup\n"
-            "setup:\n"
-            "\t@printf 'visible setup progress\\n'\n"
-            "\t@printf 'preserve me\\n' > setup-wip.txt\n"
-            "\t@exit 19\n",
-            encoding="utf-8",
-        )
-        self._commit_fixture(repository, "test: dirty setup failure")
-
-        result = FlextInfraWorktreeService(
-            workspace_root=repository,
-            operation=c.Infra.WorktreeOperation.ADD,
-            branch=branch,
-            base="HEAD",
-            apply_changes=True,
-        ).execute()
-
-        tm.fail(result, has=f"lane {branch} preserved at {lane}")
-        tm.that(
-            (lane / "setup-wip.txt").read_text(encoding="utf-8"), eq="preserve me\n"
-        )
-
     def test_update_fast_forwards_a_lane_to_the_requested_base(
         self, tmp_path: Path
     ) -> None:
@@ -392,6 +356,19 @@ class TestsFlextInfraWorktreeService:
         ).execute()
 
         tm.fail(result, has="requires --base")
+
+    def test_branch_predicate_false_is_rejected(self, tmp_path: Path) -> None:
+        repository = self._repository(tmp_path)
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch="invalid branch",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="invalid branch")
 
     def test_attached_submodule_uses_one_primary_local_container(
         self, tmp_path: Path

@@ -106,7 +106,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         # owns that guarantee for the lane it hands back. An adopted lane used to
         # skip provisioning entirely and was handed over with whatever
         # environment an interrupted start had left behind.
-        prepared = FlextInfraWorktreeService.setup_lane(primary_root, lane)
+        prepared = FlextInfraWorktreeService.setup_lane(lane)
         if prepared.failure:
             # Why: provisioning is RESUMABLE, so a failed `make setup` must not
             # destroy the checkout it already produced. Rolling back here forced

@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, u
+from flext_infra import c, m, u
+from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
+from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -44,7 +46,7 @@ class FlextInfraWorktreeService(s[str]):
         checked = u.Infra.git_check_branch_format(
             m.Infra.GitBranchRequest(repo_root=self.workspace_root, branch=branch)
         )
-        if checked.failure:
+        if checked.failure or not checked.value.value:
             return r.fail(checked.error or f"invalid branch name: {branch}")
         return r.ok(branch)
 
@@ -104,43 +106,9 @@ class FlextInfraWorktreeService(s[str]):
         return r.ok(checked.value.value)
 
     @classmethod
-    def setup_lane(cls, primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Provision the lane's own environment through the canonical surface.
-
-        An environment name that resolves to another checkout binds the lane to
-        that checkout's sources: ``uv`` records editable finders as
-        per-environment ``.pth`` files holding absolute paths, so a borrowed
-        environment makes every import in the lane load the owner's code. Each
-        lane therefore provisions its own environment through `make setup`. A
-        real local environment is never replaced, because a concurrent process
-        may be running against it.
-        """
-        _ = primary_root
-        beads_dir = lane / ".beads"
-        if beads_dir.is_dir():
-            beads_dir.chmod(0o700)
-        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
-        lane_venv = lane / venv_name
-        if lane_venv.is_symlink():
-            # A borrowed environment from an earlier lane layout is not the
-            # lane's own: drop the link so `make setup` can provision one.
-            lane_venv.unlink()
-        setup = u.Cli.run_live(
-            (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
-            cwd=lane,
-            remove_env_keys=(
-                "MAKEFLAGS",
-                "MAKELEVEL",
-                "MAKEOVERRIDES",
-                "MFLAGS",
-                "UV_PROJECT",
-                "UV_PROJECT_ENVIRONMENT",
-                "VIRTUAL_ENV",
-            ),
-        )
-        if setup.failure:
-            return r.fail(setup.error or "make setup execution failed")
-        return r.ok(True)
+    def setup_lane(cls, lane: Path) -> p.Result[bool]:
+        """Provision an isolated environment inside one lane."""
+        return FlextInfraWorktreeProvisioning.setup_lane(lane)
 
     @staticmethod
     def _rollback_new_lane(
@@ -151,38 +119,9 @@ class FlextInfraWorktreeService(s[str]):
         setup_error: str,
     ) -> p.Result[str]:
         """Roll back only a clean lane created by the current add operation."""
-        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
-        if status.failure:
-            return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
-                f"{status.error or 'cannot prove the new lane is clean'}"
-            )
-        if status.value.dirty:
-            return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane} "
-                "because setup left worktree changes"
-            )
-        cleanup = u.Infra.git_remove_clean_worktree(primary_root, lane)
-        if cleanup.failure:
-            return r.fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
-                f"{cleanup.error or 'clean lane rollback failed'}"
-            )
-        if created_branch_oid is not None:
-            branch_cleanup = u.Infra.git_delete_ref(
-                m.Infra.GitDeleteRefRequest(
-                    repo_root=primary_root,
-                    reference=f"refs/heads/{branch}",
-                    expected_oid=created_branch_oid,
-                )
-            )
-            if branch_cleanup.failure:
-                return r.fail(
-                    f"worktree setup failed: {setup_error}; "
-                    "created branch cleanup failed: "
-                    f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
-                )
-        return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
+        return FlextInfraWorktreeLifecycle.rollback_new_lane(
+            primary_root, lane, branch, created_branch_oid, setup_error
+        )
 
     def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
         """Create and set up one branch worktree transactionally."""
@@ -238,18 +177,6 @@ class FlextInfraWorktreeService(s[str]):
                 created_branch_oid,
                 metadata.error or "invalid lane project metadata",
             )
-        setup = self.setup_lane(primary_root, lane)
-        if setup.failure:
-            # A provisioning failure leaves a VALID checkout that is merely
-            # unprovisioned, unlike the invalid-metadata case above. Removing it
-            # discarded a completed clone of every governed submodule and forced
-            # a manual re-clone, so the lane is kept and the next start resumes
-            # from it once the cause is resolved.
-            return r.fail(
-                f"{setup.error or 'make setup execution failed'}; "
-                f"lane {branch} preserved at {lane} - resolve the cause and "
-                f"re-run work start to resume provisioning"
-            )
         return r.ok(str(lane))
 
     def _remove(self, primary_root: Path, branch: str) -> p.Result[str]:
@@ -273,48 +200,7 @@ class FlextInfraWorktreeService(s[str]):
         if lane_result.failure:
             return r.fail(lane_result.error or "invalid worktree lane path")
         lane = lane_result.value
-        if not lane.is_dir():
-            return r.fail(f"worktree lane does not exist: {lane}")
-        current_branch = u.Infra.git_symbolic_ref_short(
-            m.Infra.GitRepoRequest(repo_root=lane)
-        )
-        if current_branch.failure:
-            return r.fail(current_branch.error or f"failed to inspect lane {lane}")
-        if current_branch.value.text != branch:
-            return r.fail(
-                f"worktree lane branch mismatch: expected {branch}, "
-                f"found {current_branch.value.text}"
-            )
-        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
-        if status.failure:
-            return r.fail(status.error or f"failed to inspect lane state: {lane}")
-        if status.value.dirty:
-            return r.fail(
-                "worktree update requires a clean lane; commit the owned WIP "
-                "before merge-forward"
-            )
-        resolved_base = u.Infra.git_resolve_commit(
-            m.Infra.GitCommitishRequest(repo_root=lane, commitish=base)
-        )
-        if resolved_base.failure:
-            return r.fail(resolved_base.error or f"cannot resolve update base: {base}")
-        base_oid = resolved_base.value.oid
-        contains_base = u.Infra.git_is_ancestor(
-            m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid)
-        )
-        if contains_base.failure:
-            return r.fail(contains_base.error or "failed to inspect update ancestry")
-        if contains_base.value.value:
-            return r.ok(str(lane))
-        updated = u.Infra.git_merge_no_edit(
-            m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid)
-        )
-        if updated.failure:
-            return r.fail(
-                updated.error
-                or f"worktree update cannot merge-forward {branch} to {base_oid}"
-            )
-        return r.ok(str(lane))
+        return FlextInfraWorktreeLifecycle.update_lane(lane, branch, base)
 
     @override
     def execute(self) -> p.Result[str]:
