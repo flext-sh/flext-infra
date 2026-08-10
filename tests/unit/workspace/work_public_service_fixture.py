@@ -34,6 +34,8 @@ class WorkPublicServiceFixture:
     origin: Path
     store: Path
     pr_receipt: Path
+    pr_state: Path
+    update_receipt: Path
 
     @classmethod
     def create(cls, root: Path, monkeypatch: pytest.MonkeyPatch) -> Self:
@@ -84,14 +86,19 @@ class WorkPublicServiceFixture:
         store = root / "beads-store.json"
         store.write_text("{}", encoding="utf-8")
         pr_receipt = root / "gh-pr-create.json"
+        pr_state = root / "gh-pr-state.json"
+        pr_state.write_text("{}", encoding="utf-8")
+        update_receipt = root / "bd-update-events.jsonl"
         shim_dir = root / "bin"
         shim_dir.mkdir()
-        cls._write_bd(shim_dir / "bd", store)
-        cls._write_gh(shim_dir / "gh", pr_receipt)
+        cls._write_bd(shim_dir / "bd", store, update_receipt)
+        cls._write_gh(shim_dir / "gh", pr_receipt, pr_state)
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
-        return cls(root, repository, origin, store, pr_receipt)
+        return cls(
+            root, repository, origin, store, pr_receipt, pr_state, update_receipt
+        )
 
     def add_issue(
         self, bead_id: str, *, issue_type: str, parent: str | None = None
@@ -115,11 +122,22 @@ class WorkPublicServiceFixture:
         argv = json.loads(self.pr_receipt.read_text(encoding="utf-8"))
         return PullRequestCreateReceipt(tuple(argv))
 
+    def set_merged_pr(self, *, head: str) -> None:
+        self.pr_state.write_text(
+            json.dumps({"state": "MERGED", "headRefName": head}), encoding="utf-8"
+        )
+
+    def update_events(self) -> tuple[dict[str, str], ...]:
+        return tuple(
+            json.loads(line)
+            for line in self.update_receipt.read_text(encoding="utf-8").splitlines()
+        )
+
     @staticmethod
-    def _write_bd(path: Path, store: Path) -> None:
+    def _write_bd(path: Path, store: Path, receipt: Path) -> None:
         path.write_text(
             "#!/usr/bin/env python3\nimport json, sys\n"
-            f"STORE = {str(store)!r}\nargs = sys.argv[1:]\n"
+            f"STORE = {str(store)!r}\nRECEIPT = {str(receipt)!r}\nargs = sys.argv[1:]\n"
             "while args and args[0] in {'-C', '--json', '--quiet', '-q'}:\n"
             "    args = args[2:] if args[0] == '-C' else args[1:]\n"
             "data = json.loads(open(STORE, encoding='utf-8').read())\n"
@@ -138,23 +156,27 @@ class WorkPublicServiceFixture:
             "        elif args[i] == '--append-notes': i += 2\n"
             "        elif args[i] == '--claim': issue['assignee'] = 'worker'; i += 1\n"
             "        else: i += 1\n"
-            "    open(STORE, 'w', encoding='utf-8').write(json.dumps(data)); print('updated'); raise SystemExit(0)\n"
+            "    open(STORE, 'w', encoding='utf-8').write(json.dumps(data))\n"
+            "    open(RECEIPT, 'a', encoding='utf-8').write(json.dumps({'bead': bead, **issue['metadata']}) + '\\n')\n"
+            "    print('updated'); raise SystemExit(0)\n"
             "raise SystemExit(f'unsupported bd args: {args}')\n",
             encoding="utf-8",
         )
         path.chmod(0o755)
 
     @staticmethod
-    def _write_gh(path: Path, receipt: Path) -> None:
+    def _write_gh(path: Path, receipt: Path, state: Path) -> None:
         path.write_text(
             "#!/usr/bin/env python3\nimport json, sys\nargs = sys.argv[1:]\n"
-            f"RECEIPT = {str(receipt)!r}\n"
+            f"RECEIPT = {str(receipt)!r}\nSTATE = {str(state)!r}\n"
             "if args[:2] == ['pr', 'create']:\n"
             "    open(RECEIPT, 'w', encoding='utf-8').write(json.dumps(args)); print('https://example.test/pr/41'); raise SystemExit(0)\n"
             "if args[:2] == ['pr', 'list']:\n"
             "    exists = __import__('pathlib').Path(RECEIPT).exists()\n"
             "    rows = ('https://example.test/pr/41' if exists else '') if '--jq' in args else ('[{\"number\": \"41\", \"url\": \"https://example.test/pr/41\"}]' if exists else '[]')\n"
             "    print(rows); raise SystemExit(0)\n"
+            "if args[:2] == ['pr', 'view']:\n"
+            "    payload = json.loads(open(STATE, encoding='utf-8').read()); print(json.dumps(payload)); raise SystemExit(0)\n"
             "raise SystemExit(f'unsupported gh args: {args}')\n",
             encoding="utf-8",
         )
