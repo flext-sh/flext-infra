@@ -212,8 +212,9 @@ class FlextInfraWorkspaceDetector(
     @staticmethod
     def _git_origin_url(repository_root: Path) -> p.Result[str]:
         """Read the repository's own declared origin, or an empty remote."""
-        request = m.Infra.GitRemoteUrlRequest(repo_root=repository_root, remote="origin")
-        result = u.Infra.git_remote_url(request)
+        result = u.Infra.git_remote_url(
+            m.Infra.GitRemoteUrlRequest(repo_root=repository_root, remote="origin")
+        )
         if result.failure:
             # A repository with no origin is still a valid standalone checkout;
             # it simply has no provider-governed identity to match.
@@ -302,25 +303,64 @@ class FlextInfraWorkspaceDetector(
         return r[tuple[Path, ...]].ok(observed_external)
 
     @staticmethod
-    def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
-        """Resolve the manifest owner for a repository or attached member."""
+    def resolve_topology_roots(
+        repository_root: Path,
+    ) -> p.Result[tuple[Path, Path, Path]]:
+        """Resolve render, primary identity, and governing workspace roots."""
         resolved_root = repository_root.expanduser().resolve()
-        identity_result = u.Infra.git_identity(
-            m.Infra.GitRepoRequest(repo_root=resolved_root)
-        )
-        if identity_result.failure or not identity_result.value.is_inside_work_tree:
-            return r[Path].ok(resolved_root)
-        superproject_result = u.Infra.git_superproject_working_tree(
-            m.Infra.GitRepoRequest(repo_root=resolved_root)
-        )
-        if superproject_result.failure:
-            return r[Path].fail(
-                superproject_result.error or "unable to resolve Git superproject"
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
+        if identity.failure:
+            inside = u.Infra.git_is_inside_work_tree(
+                m.Infra.GitRepoRequest(repo_root=resolved_root)
             )
-        superproject_text = superproject_result.value.text
-        return r[Path].ok(
-            Path(superproject_text).resolve() if superproject_text else resolved_root
+            if inside.failure:
+                return r[tuple[Path, Path, Path]].fail(
+                    inside.error or "unable to probe Git workspace topology"
+                )
+            if not inside.value.value:
+                return r[tuple[Path, Path, Path]].ok((
+                    resolved_root,
+                    resolved_root,
+                    resolved_root,
+                ))
+            return r[tuple[Path, Path, Path]].fail(
+                identity.error or "unable to resolve Git repository identity"
+            )
+        primary = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=identity.value.repo_root)
         )
+        if primary.failure:
+            return r[tuple[Path, Path, Path]].fail(
+                primary.error or "unable to resolve primary worktree"
+            )
+        identity_root = primary.value.primary_root
+        superproject = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=identity_root)
+        )
+        if superproject.failure:
+            return r[tuple[Path, Path, Path]].fail(
+                superproject.error or "unable to resolve Git superproject"
+            )
+        governing_root = (
+            Path(superproject.value.text).resolve()
+            if superproject.value.text.strip()
+            else identity_root
+        )
+        return r[tuple[Path, Path, Path]].ok((
+            resolved_root,
+            identity_root,
+            governing_root,
+        ))
+
+    @classmethod
+    def resolve_workspace_root(cls, repository_root: Path) -> p.Result[Path]:
+        """Resolve the manifest owner for a repository or attached member."""
+        topology = cls.resolve_topology_roots(repository_root)
+        if topology.failure:
+            return r[Path].fail(
+                topology.error or "unable to resolve workspace topology"
+            )
+        return r[Path].ok(topology.value[2])
 
     @staticmethod
     def workspace_analysis_exclusion_paths(
@@ -482,13 +522,12 @@ class FlextInfraWorkspaceDetector(
         cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec | None = None
     ) -> p.Result[m.Infra.RepositoryConformTarget]:
         """Derive the sole conformance target from live Git and typed identity."""
-        resolved_root = repository_root.expanduser().resolve()
-        governing_root_result = cls.resolve_workspace_root(resolved_root)
-        if governing_root_result.failure:
+        topology_result = cls.resolve_topology_roots(repository_root)
+        if topology_result.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
-                governing_root_result.error or "unable to resolve governing root"
+                topology_result.error or "unable to resolve governing root"
             )
-        governing_root = governing_root_result.value
+        resolved_root, identity_root, governing_root = topology_result.value
         resolved_workspace = workspace_spec
         if resolved_workspace is None:
             workspace_result = cls.load_workspace_spec(governing_root)
@@ -497,11 +536,11 @@ class FlextInfraWorkspaceDetector(
                     workspace_result.error or "unable to load governing workspace"
                 )
             resolved_workspace = workspace_result.value
-        if resolved_root == governing_root:
+        if identity_root == governing_root:
             repository = resolved_workspace.repository
         else:
             try:
-                relative_path = resolved_root.relative_to(governing_root)
+                relative_path = identity_root.relative_to(governing_root)
             except ValueError as exc:
                 return r[m.Infra.RepositoryConformTarget].fail_op(
                     "Conformance target resolution", exc
@@ -521,7 +560,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external read-only dependency: {repository.name}"
             )
-        metadata = u.read_project_metadata(resolved_root)
+        metadata = u.read_project_metadata(identity_root)
         if metadata.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
                 metadata.error or f"unable to read project metadata: {resolved_root}"
@@ -568,7 +607,7 @@ class FlextInfraWorkspaceDetector(
             if overlays
             else m.Infra.RepositoryPolicyOverlaySpec(project=canonical_project_name)
         )
-        mode_result = cls().detect(resolved_root)
+        mode_result = cls().detect(identity_root)
         if mode_result.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
                 mode_result.error or "unable to infer repository topology"
@@ -584,25 +623,13 @@ class FlextInfraWorkspaceDetector(
         # Detect them from Git's canonical topology rather than from a test-only
         # environment flag, so the same code path works for real worktrees and for
         # unit fixtures that simulate CLI transaction scope.
-        primary_root_result = u.Infra.git_primary_worktree_root(
-            m.Infra.GitRepoRequest(repo_root=resolved_root)
-        )
-        if primary_root_result.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                primary_root_result.error or "unable to resolve primary worktree"
-            )
-        is_transaction_worktree = (
-            primary_root_result.value.primary_root != resolved_root
-        )
+        is_transaction_worktree = identity_root != resolved_root
         # Beads participation: workspace root owns; independent standalone opts in;
         # ephemeral transaction worktrees route to the principal ledger; members and
-        # attached standalones do not own tracker state.
-        beads_enabled = (
-            is_transaction_worktree
-            or make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-            or (
-                make_profile is c.Infra.MakeProfile.STANDALONE and overlay.beads_enabled
-            )
+        # attached standalones consume the governing ledger without owning it.
+        beads_enabled = make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT or (
+            make_profile is c.Infra.MakeProfile.STANDALONE
+            and (is_transaction_worktree or overlay.beads_enabled)
         )
         # A marker-attached standalone resolves to itself (no Git superproject
         # link); a manifest member always resolves to its governing root.
@@ -610,7 +637,9 @@ class FlextInfraWorkspaceDetector(
             mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
             and resolved_root == governing_root
         )
-        routing_only = is_transaction_worktree or attached_standalone
+        routing_only = is_transaction_worktree and (
+            make_profile is c.Infra.MakeProfile.STANDALONE or attached_standalone
+        )
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
@@ -645,13 +674,14 @@ class FlextInfraWorkspaceDetector(
             return r[tuple[str, str]].fail(
                 f"Git superproject has no {c.Infra.GITMODULES}: {superproject_root}"
             )
-        request = m.Infra.GitSubmoduleContractRequest(
-            repo_root=superproject_root, member_path=member_path
+        contract = u.Infra.gitmodule_contract(
+            m.Infra.GitSubmoduleContractRequest(
+                repo_root=superproject_root, member_path=member_path
+            )
         )
-        result = u.Infra.gitmodule_contract(request)
-        if result.failure:
-            return r[tuple[str, str]].fail(result.error)
-        return r[tuple[str, str]].ok((result.value.url, result.value.branch))
+        if contract.failure:
+            return r[tuple[str, str]].fail(contract.error)
+        return r[tuple[str, str]].ok((contract.value.url, contract.value.branch))
 
     @classmethod
     def _detect_attached(
@@ -763,26 +793,35 @@ class FlextInfraWorkspaceDetector(
         if gitmodule_result.failure:
             return r[c.Infra.WorkspaceMode].fail(gitmodule_result.error)
         gitmodule_url, gitmodule_branch = gitmodule_result.value
-        origin_result = u.Infra.git_remote_url(
+        origin = u.Infra.git_remote_url(
             m.Infra.GitRemoteUrlRequest(repo_root=member_root, remote="origin")
         )
-        if origin_result.failure or not origin_result.value.text:
+        if origin.failure or not origin.value.text:
             return r[c.Infra.WorkspaceMode].fail(
                 origin_result.error
                 or f"workspace member origin is missing: {member_path}"
             )
-        gitlink_result = u.Infra.git_gitlink_spec(
+        gitlink = u.Infra.git_gitlink_spec(
             m.Infra.GitRefRequest(repo_root=superproject_root, reference=member_path)
         )
-        if gitlink_result.failure:
-            return r[c.Infra.WorkspaceMode].fail(
-                gitlink_result.error
-                or f"workspace member gitlink is missing: {member_path}"
+        # During pre-commit/pre-push hooks the superproject gitlink may not
+        # yet be bumped to the member HEAD being pushed. Skip the gitlink
+        # presence check in that context; the superproject bump is a separate
+        # step that happens after the member push succeeds.
+        if gitlink.failure or not gitlink.value.oid:
+            if u.Cli.process_env().get("PRE_COMMIT") == "1":
+                pass  # Tolerate stale gitlink during hook execution
+            else:
+                return r[c.Infra.WorkspaceMode].fail(
+                    gitlink.error
+                    or f"workspace member gitlink is missing: {member_path}"
+                )
+        member_head = u.Infra.git_resolve_commit(
+            m.Infra.GitCommitishRequest(
+                repo_root=member_root, commitish="HEAD^{commit}"
             )
-        member_head_result = u.Infra.git_resolve_commit(
-            m.Infra.GitCommitishRequest(repo_root=member_root, commitish="HEAD^{commit}")
         )
-        if member_head_result.failure:
+        if member_head.failure or not member_head.value.oid:
             return r[c.Infra.WorkspaceMode].fail(
                 member_head_result.error
                 or f"workspace member HEAD is missing: {member_path}"
@@ -790,7 +829,7 @@ class FlextInfraWorkspaceDetector(
         declared_identity = u.Infra.git_remote_identity(declared.url)
         if (
             u.Infra.git_remote_identity(gitmodule_url) != declared_identity
-            or u.Infra.git_remote_identity(origin_result.value.text) != declared_identity
+            or u.Infra.git_remote_identity(origin.value.text) != declared_identity
         ):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
@@ -839,18 +878,16 @@ class FlextInfraWorkspaceDetector(
                 return r[c.Infra.WorkspaceMode].fail(local_contract.error)
             workspace_spec = local_spec
 
-        git_probe = u.Infra.git_identity(
+        git_probe = u.Infra.git_is_inside_work_tree(
             m.Infra.GitRepoRequest(repo_root=resolved_project_root)
         )
         if git_probe.failure:
             return r[c.Infra.WorkspaceMode].fail(
                 git_probe.error or "unable to execute Git workspace probe"
             )
-        if not git_probe.value.is_inside_work_tree:
+        if not git_probe.value.value:
             if (resolved_project_root / c.Infra.GIT_DIR).exists():
-                return r[c.Infra.WorkspaceMode].fail(
-                    "invalid Git repository metadata"
-                )
+                return r[c.Infra.WorkspaceMode].fail("invalid Git repository metadata")
             return self._unattached_mode(resolved_project_root, workspace_spec)
 
         superproject_result = u.Infra.git_superproject_working_tree(

@@ -43,7 +43,7 @@ class RefactorRoutes(CliRouteBase):
             name="apply-renames",
             help_text="Check or apply an old,new CSV rename list",
             model_cls=m.Infra.ApplyRenamesInput,
-            handler=lambda params: FlextInfraApplyRenames.execute_command(params),
+            handler=FlextInfraApplyRenames.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="migrate-mro",
@@ -152,7 +152,7 @@ class RefactorRoutes(CliRouteBase):
                 "Batch-apply all ast-grep rules under the ruff/pyrefly rollback circuit"
             ),
             model_cls=FlextInfraCodemodBatchApply,
-            handler=lambda params: FlextInfraCodemodBatchApply.execute_command(params),
+            handler=FlextInfraCodemodBatchApply.execute_command,
         ),
     )
 

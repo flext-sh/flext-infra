@@ -108,7 +108,7 @@ class FlextInfraPrivateImportBypassDetector:
             return False
         try:
             pymodule = u.Infra.get_pymodule(rope_project, resource)
-        except Exception:
+        except c.EXC_BROAD_IO_TYPE:
             return False
         return symbol in pymodule.get_attributes()
 

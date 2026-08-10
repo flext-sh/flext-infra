@@ -72,6 +72,11 @@
       }
     }
   },
+  "dependentRequired": {
+    "ledger_prefix": [
+      "ledger_id"
+    ]
+  },
   "$defs": {
     "name": {
       "type": "string",
@@ -242,6 +247,11 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "uv_exclude_newer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Project-local [tool.uv].exclude-newer cooldown. The fleet default is a rolling window, which silently ages past a security floor declared in override-dependencies and makes resolution unsatisfiable; a project carrying such a floor pins the absolute cutoff here"
         }
       }
     },

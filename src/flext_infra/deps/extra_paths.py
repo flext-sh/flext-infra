@@ -120,14 +120,20 @@ class FlextInfraExtraPathsManager(
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        # mro-j47u (codex): never reread an on-disk Pyright table while its
-        # in-memory payload is being conformed; include only real production roots.
+        # Only real productive roots belong in project-includes, and
+        # u.Infra.analyzer_python_roots is the single owner shared with conform
+        # and the modernizer, so a root one surface writes is never erased by
+        # the next. The roots conform is ABOUT to create arrive through
+        # declared_python_dirs at the modernizer boundary.
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
-                tuple(
-                    directory
-                    for directory in rules.env_dirs
-                    if (project_dir / directory).is_dir()
+                u.Infra.analyzer_python_roots(
+                    project_dir,
+                    tuple(
+                        directory
+                        for directory in rules.env_dirs
+                        if (project_dir / directory).is_dir()
+                    ),
                 )
             )
         )

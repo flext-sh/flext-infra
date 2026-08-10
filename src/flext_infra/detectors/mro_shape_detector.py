@@ -131,7 +131,6 @@ class FlextInfraMROShapeDetector:
         """Return the public class prefix for an installed or staged project."""
         try:
             class_stem: str = u.derive_class_stem(project_name)
-            return class_stem
         except RuntimeError:
             normalized_name = project_name.replace("-", "_").replace(".", "_")
             return "".join(
@@ -139,6 +138,8 @@ class FlextInfraMROShapeDetector:
                 for part in normalized_name.split("_")
                 if part
             )
+        else:
+            return class_stem
 
     @classmethod
     def _valid_alias_suffixes(cls, package_name: str) -> tuple[str, ...]:

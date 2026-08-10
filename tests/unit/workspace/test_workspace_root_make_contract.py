@@ -166,7 +166,10 @@ class TestsWorkspaceRootMakeContract:
         output = generated.stdout + generated.stderr
 
         tm.that(generated.exit_code, eq=0, msg=output)
-        tm.that(output, has='--verb "gen"')
+        # The verb dispatches straight into its private builtin: the Python
+        # serialize-make round-trip (and its locks) was exterminated.
+        tm.that(output, has="_builtin_gen_$what")
+        tm.that(output, lacks="serialize-make")
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
 

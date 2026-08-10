@@ -8,12 +8,15 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from git import GitCommandError, Repo
 from git import BaseIndexEntry
+from git import GitCommandNotFound, InvalidGitRepositoryError, NoSuchPathError
 
 from flext_core import r
 from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
+from flext_infra._utilities._git.repo import git_refresh_binary
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -41,6 +44,8 @@ _SENSITIVE_QUERY_KEYS: frozenset[str] = frozenset({
 })
 _REDACTED_PLACEHOLDER: str = "REDACTED"
 _GITLINK_MODE: str = "160000"
+# `ls-files --stage` emits "<mode> <oid> <stage>\t<path>"; mode and oid suffice.
+_STAGED_GITLINK_FIELDS: int = 2
 
 
 def _redact_query_component(component: str) -> str:
@@ -134,7 +139,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """List registered worktrees in porcelain form."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             text = repo.git.worktree("list", "--porcelain")
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
@@ -148,7 +153,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Validate a branch name with ``git check-ref-format --branch``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.git.check_ref_format("--branch", request.branch)
         except GitCommandError:
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
@@ -164,7 +169,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether an exact Git ref exists (exit 0/1 only)."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.git.show_ref("--verify", "--quiet", request.reference)
         except GitCommandError:
             # show-ref exits 1 when the ref does not exist — not an error.
@@ -179,7 +184,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Capture ``rev-parse --show-superproject-working-tree`` stdout."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             text = repo.git.rev_parse("--show-superproject-working-tree")
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
@@ -195,7 +200,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitRootReport]:
         """Resolve ``rev-parse --show-toplevel`` as a workspace root report."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             root = (
                 Path(repo.working_tree_dir).resolve() if repo.working_tree_dir else None
             )
@@ -217,7 +222,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve the current non-detached branch name."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             branch = repo.active_branch.name
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
@@ -234,7 +239,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve ``symbolic-ref --quiet --short HEAD``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             text = repo.git.symbolic_ref("--quiet", "--short", c.Infra.GIT_HEAD)
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
@@ -250,7 +255,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitOidReport]:
         """Resolve a commit-ish to an oid via ``rev-parse --verify``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             oid = repo.commit(request.commitish).hexsha
         except GitCommandError as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
@@ -264,14 +269,14 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve ``rev-parse --abbrev-ref HEAD``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             branch = repo.active_branch.name
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
         except (TypeError, OSError, ValueError):
             # Detached HEAD — fall back to the proxy for the ``HEAD`` text.
             try:
-                detached_repo = git_repo(request.repo_root)
+                detached_repo = cls._repo(request.repo_root)
                 text = detached_repo.git.rev_parse("--abbrev-ref", c.Infra.GIT_HEAD)
             except GitCommandError as exc:
                 return r[m.Infra.GitTextReport].fail(str(exc))
@@ -284,7 +289,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether ``commitish`` is an ancestor of HEAD."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             ancestor = repo.commit(request.commitish)
             head = repo.commit(c.Infra.GIT_HEAD)
             result = repo.is_ancestor(ancestor, head)
@@ -300,7 +305,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Merge ``commitish`` into HEAD with ``--no-edit``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             text = repo.git.merge("--no-edit", request.commitish)
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
@@ -316,7 +321,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """CAS-delete a ref when it still points at ``expected_oid``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.git.update_ref("-d", request.reference, request.expected_oid)
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
@@ -332,7 +337,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Fetch from origin."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.remotes[c.Infra.GIT_DEFAULT_REMOTE].fetch()
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
@@ -346,7 +351,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Push HEAD to ``remote`` as ``refs/heads/<branch>`` with ``-u``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             text = repo.git.push(
                 "-u", request.remote, f"HEAD:refs/heads/{request.branch}"
             )
@@ -364,7 +369,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitOidReport]:
         """Resolve an arbitrary rev-parse argument to stripped text oid."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             oid = repo.git.rev_parse(request.commitish).strip()
         except GitCommandError as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
@@ -380,7 +385,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Restore tracked paths via ``git checkout -- .``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.git.checkout("--", ".")
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
@@ -394,7 +399,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Move a tracked path with ``git mv``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.index.move([request.source, request.target])
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
@@ -408,7 +413,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Untrack a path with ``git rm --cached``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.index.remove([request.relative_path], cached=True, r=True, f=True)
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
@@ -422,7 +427,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Remove a tracked path with ``git rm``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.index.remove([request.relative_path], cached=False, r=True, f=True)
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
@@ -436,7 +441,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether a relative path is git-tracked."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             listed = repo.git.ls_files("-z", "--", request.relative_path)
         except GitCommandError:
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
@@ -454,7 +459,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitNumstatReport]:
         """Capture HEAD subject and ``HEAD~1..HEAD`` numstat."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             subject = repo.git.log("-1", "--format=%s")
             numstat = repo.git.diff("--numstat", "HEAD~1", c.Infra.GIT_HEAD)
         except GitCommandError as exc:
@@ -471,7 +476,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitFingerprintInputsReport]:
         """Capture byte-exact fingerprint inputs for one worktree."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             paths_z, index_z, head = cls._git_capture_fingerprint(repo)
         except GitCommandError as exc:
             return r[m.Infra.GitFingerprintInputsReport].fail(str(exc))
@@ -527,7 +532,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Stage one gitlink (mode 160000) into the index."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             entry = BaseIndexEntry((
                 c.Infra.GIT_MODE_GITLINK,
                 bytes.fromhex(request.oid),
@@ -544,12 +549,44 @@ class FlextInfraUtilitiesGitSemanticMixin(
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
+    def git_gitlink_spec(
+        cls, request: m.Infra.GitRefRequest
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Resolve the indexed gitlink oid for one submodule path.
+
+        The ``ls-files --stage`` entry is validated structurally: mode
+        ``160000``, stage ``0``, and an exact path match.
+        """
+        try:
+            repo = cls._repo(request.repo_root)
+            output = repo.git.ls_files("--stage", "--", request.reference)
+        except GitCommandError as exc:
+            return r[m.Infra.GitOidReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitOidReport].fail(f"failed to read gitlink spec: {exc}")
+        if not output.strip():
+            return r[m.Infra.GitOidReport].fail(
+                f"Git gitlink is missing from the index: {request.reference}"
+            )
+        match output.split():
+            case [mode, oid, stage, indexed_path] if (
+                mode == _GITLINK_MODE
+                and stage == str(c.Infra.GIT_STAGE_NORMAL)
+                and indexed_path == request.reference
+            ):
+                return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
+            case _:
+                return r[m.Infra.GitOidReport].fail(
+                    f"Git gitlink entry is malformed: {request.reference}"
+                )
+
+    @classmethod
     def git_rev_parse_parent(
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitOidReport]:
         """Resolve ``commitish^`` via rev-parse."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             oid = repo.commit(f"{request.commitish}^").hexsha
         except GitCommandError as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
@@ -565,7 +602,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Add a development lane worktree for an existing or new branch."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             text = cls._git_add_worktree_args(repo, request)
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
@@ -581,18 +618,22 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> str:
         """Select and execute the correct ``git worktree add`` variant."""
         if request.local_branch_exists:
-            return repo.git.worktree("add", str(request.lane), request.branch)
+            return str(repo.git.worktree("add", str(request.lane), request.branch))
         if request.track_remote:
-            return repo.git.worktree(
-                "add",
-                "--track",
-                "-b",
-                request.branch,
-                str(request.lane),
-                f"origin/{request.branch}",
+            return str(
+                repo.git.worktree(
+                    "add",
+                    "--track",
+                    "-b",
+                    request.branch,
+                    str(request.lane),
+                    f"origin/{request.branch}",
+                )
             )
-        return repo.git.worktree(
-            "add", "-b", request.branch, str(request.lane), request.base
+        return str(
+            repo.git.worktree(
+                "add", "-b", request.branch, str(request.lane), request.base
+            )
         )
 
     @classmethod
@@ -601,7 +642,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Stage multiple paths via ``git add --force``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             repo.index.add(list(request.paths), force=True)
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
@@ -615,7 +656,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Restore tracked paths via ``git checkout --``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             if request.paths:
                 repo.index.checkout(paths=list(request.paths), force=True)
             else:
@@ -632,7 +673,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitOidReport]:
         """Create a commit with the staged tree via ``git commit``."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             commit = repo.index.commit(request.message)
         except GitCommandError as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
@@ -646,7 +687,7 @@ class FlextInfraUtilitiesGitSemanticMixin(
     ) -> p.Result[m.Infra.GitTextReport]:
         """Resolve ``remote get-url <remote>`` as a text report."""
         try:
-            repo = git_repo(request.repo_root)
+            repo = cls._repo(request.repo_root)
             url = repo.remotes[request.remote].url
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
@@ -691,6 +732,37 @@ class FlextInfraUtilitiesGitSemanticMixin(
         )
         return r[m.Infra.GitIdentityReport].ok(report)
 
+    @classmethod
+    def git_is_inside_work_tree(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Return whether ``repo_root`` sits inside a Git work tree.
+
+        Three-way contract mirroring ``rev-parse --is-inside-work-tree``:
+        ``ok(False)`` when no repository owns the path (the expected
+        non-error case), ``fail`` only on genuine probe errors.
+        """
+        refreshed = git_refresh_binary()
+        if refreshed.failure:
+            return r[m.Infra.GitBoolReport].fail(
+                refreshed.error or "git binary unavailable"
+            )
+        resolved = request.repo_root.expanduser().resolve()
+        try:
+            # Why (flext-infra-c3h): same nested-path contract as git_open_repo.
+            repo = Repo(resolved, search_parent_directories=True)
+        except (InvalidGitRepositoryError, NoSuchPathError):
+            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+        except (GitCommandNotFound, OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to probe Git work tree: {exc}"
+            )
+        return r[m.Infra.GitBoolReport].ok(
+            m.Infra.GitBoolReport(
+                value=not repo.bare and repo.working_tree_dir is not None
+            )
+        )
+
     @staticmethod
     def _collect_identity_facts(
         repo: Repo, *, requested_path: Path | None = None
@@ -719,13 +791,23 @@ class FlextInfraUtilitiesGitSemanticMixin(
             pass
 
         is_worktree = git_dir != common_dir
+        # Gitlink modes live in the index, never in `status --porcelain` (which
+        # emits XY status codes and paths, never file modes). Reading them from
+        # the porcelain text made has_submodules unconditionally False, so a
+        # real submodule superproject was never recognized as one.
+        try:
+            staged_entries = repo.git.ls_files("--stage")
+        except GitCommandError:
+            staged_entries = ""
         has_submodules = any(
-            line.startswith(f"{_GITLINK_MODE} ") for line in porcelain.splitlines()
+            line.startswith(f"{_GITLINK_MODE} ") for line in staged_entries.splitlines()
         )
-        git_entry = working_tree / ".git"
-        is_submodule = (
-            superproject is not None and git_entry.exists() and not git_entry.is_dir()
-        )
+        # Why (mro-2cafk / ai-hub-n1nh.5): git rev-parse --show-superproject-
+        # working-tree already means "this working tree is a submodule".
+        # Requiring .git to be a gitfile excluded absorbed/converted submodules
+        # whose .git is a real directory (cosmos-charts under cosmos-main), so
+        # is_submodule stayed False and ai-hub demoted them to unmanaged.
+        is_submodule = superproject is not None
 
         return m.Infra.GitIdentityReport(
             repo_root=working_tree,
@@ -793,6 +875,137 @@ class FlextInfraUtilitiesGitSemanticMixin(
         return r[m.Infra.GitSubmoduleContractReport].ok(
             m.Infra.GitSubmoduleContractReport(url=url, branch=branch)
         )
+
+    @classmethod
+    def git_attach_branch_at_head(
+        cls, request: m.Infra.GitBranchRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Point ``branch`` at HEAD and attach HEAD to it without moving the tree.
+
+        A detached checkout carries real work, so it is attached by rewriting the
+        ref and the symbolic HEAD rather than by ``checkout``, which would touch
+        the working tree. Upstream tracking is best effort: a branch that has no
+        counterpart on origin yet is still a valid attachment.
+        """
+        try:
+            repo = cls._repo(request.repo_root)
+            repo.git.branch("--quiet", "-f", request.branch, "HEAD")
+            repo.git.symbolic_ref("HEAD", f"refs/heads/{request.branch}")
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to attach {request.branch} at HEAD: {exc}"
+            )
+        try:
+            repo.git.branch(
+                "--quiet",
+                "--set-upstream-to",
+                f"origin/{request.branch}",
+                request.branch,
+            )
+        except GitCommandError:
+            # No counterpart on origin yet; the attachment itself still stands.
+            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_staged_gitlink_oid(
+        cls, request: m.Infra.GitRefRequest
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Return the gitlink OID the index records for one submodule path."""
+        try:
+            repo = cls._repo(request.repo_root)
+            staged = repo.git.ls_files("--stage", "--", request.reference)
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitOidReport].fail(
+                f"failed to read the staged gitlink for {request.reference}: {exc}"
+            )
+        for line in staged.splitlines():
+            fields = line.split()
+            if len(fields) >= _STAGED_GITLINK_FIELDS and fields[0] == _GITLINK_MODE:
+                return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=fields[1]))
+        return r[m.Infra.GitOidReport].fail(
+            f"governed gitlink is absent from the index: {request.reference}"
+        )
+
+    @classmethod
+    def git_submodule_init(
+        cls, request: m.Infra.GitRefRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Initialize one declared submodule at its recorded gitlink."""
+        try:
+            repo = cls._repo(request.repo_root)
+            repo.git.submodule("update", "--init", "--", request.reference)
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"could not initialize the governed gitlink {request.reference}: {exc}"
+            )
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_submodule_config_value(
+        cls, request: m.Infra.GitSubmoduleConfigRequest
+    ) -> p.Result[m.Infra.GitTextReport]:
+        """Read one ``.gitmodules`` value, returning empty text when unset."""
+        try:
+            repo = cls._repo(request.repo_root)
+            value = repo.git.config(
+                "-f",
+                c.Infra.GITMODULES,
+                "--get",
+                "--default",
+                "",
+                f"{request.section}.{request.key}",
+            )
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to read {request.section}.{request.key}: {exc}"
+            )
+        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=value.strip()))
+
+    @classmethod
+    def git_submodule_sections(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[t.StrMapping]:
+        """Map every declared submodule path to its ``.gitmodules`` section.
+
+        A duplicated path is a declaration defect rather than a state defect, so
+        it fails here instead of silently resolving to the last writer.
+        """
+        gitmodules = request.repo_root / c.Infra.GITMODULES
+        if not gitmodules.is_file():
+            return r[t.StrMapping].ok({})
+        try:
+            repo = cls._repo(request.repo_root)
+            listed = repo.git.config(
+                "-f",
+                c.Infra.GITMODULES,
+                "--name-only",
+                "--get-regexp",
+                r"^submodule\..*\.path$",
+            )
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[t.StrMapping].fail(f"failed to read submodule declarations: {exc}")
+        sections: dict[str, str] = {}
+        for key in listed.split():
+            section = key.removesuffix(".path")
+            value = cls.git_submodule_config_value(
+                m.Infra.GitSubmoduleConfigRequest(
+                    repo_root=request.repo_root, section=section, key="path"
+                )
+            )
+            if value.failure:
+                return r[t.StrMapping].fail(
+                    value.error or f"failed to read {section}.path"
+                )
+            declared = value.value.text
+            if not declared:
+                continue
+            if declared in sections:
+                return r[t.StrMapping].fail(
+                    f"governed gitlink path is duplicated: {declared}"
+                )
+            sections[declared] = section
+        return r[t.StrMapping].ok(sections)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticMixin"]
