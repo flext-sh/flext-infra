@@ -38,6 +38,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         expected = metadata.head_oid
         pr_number = metadata.pr_number or ""
         integration = metadata.integration_base
+        ownership = self._owned_reservation(bead, branch, metadata.worktree)
+        if ownership.failure:
+            return r.fail(ownership.error or "work finish reservation ownership failed")
         lane_meta = Path(worktree)
         if lane_meta == Path("removed"):
             return r.fail(f"bead {bead} lane worktree already removed")
@@ -69,6 +72,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(
                 f"CAS failed before finish: expected {expected} head={head.value}"
             )
+        ownership = self._owned_reservation(bead, branch, lane)
+        if ownership.failure:
+            return r.fail(ownership.error or "work finish reservation changed")
         removed = FlextInfraWorktreeService(
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.REMOVE,

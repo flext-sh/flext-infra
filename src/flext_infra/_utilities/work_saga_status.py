@@ -58,6 +58,13 @@ class FlextInfraWorkSagaStatus(FlextInfraWorkSagaCommon):
             lines.extend((f"bead: {bead}", f"bead_status: {shown.value.status}"))
             metadata = shown.value.metadata
             if metadata is not None:
+                ownership = self._owned_reservation(
+                    bead, metadata.branch, metadata.worktree
+                )
+                if ownership.failure:
+                    return r.fail(
+                        ownership.error or "work status reservation ownership failed"
+                    )
                 values = metadata.model_dump(
                     mode="json", exclude_none=True, exclude={"topology"}
                 )

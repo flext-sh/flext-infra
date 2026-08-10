@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra._utilities._work import (
+    FlextInfraWorkOwnership,
     FlextInfraWorkReservation,
     FlextInfraWorkStartSupport,
 )
@@ -20,7 +21,9 @@ if TYPE_CHECKING:
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSupport):
+class FlextInfraWorkSagaCommon(
+    FlextInfraWorkOwnership, FlextInfraWorkReservation, FlextInfraWorkStartSupport
+):
     """Resolve bases, branches, and primary-worktree safety."""
 
     workspace_root: Path

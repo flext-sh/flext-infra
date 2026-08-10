@@ -144,7 +144,7 @@ class FlextInfraUtilitiesBeadsLane:
             projected_metadata["topology"] = topology
         projected = {
             "id": payload.get("id"),
-            "status": payload.get("status"),
+            "status": c.Infra.BeadIssueStatus(str(payload.get("status"))),
             "issue_type": payload.get("issue_type"),
             "parent": payload.get("parent"),
             "metadata": projected_metadata,

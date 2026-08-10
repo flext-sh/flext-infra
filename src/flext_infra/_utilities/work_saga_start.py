@@ -89,7 +89,17 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     resolved_base.error or "failed to resolve integration base"
                 )
             base = resolved_base.value
+        reserved_path = self._assert_start_reservation(
+            primary_root, bead, branch, epic_lane
+        )
+        if reserved_path.failure:
+            return r.fail(reserved_path.error or "lane reservation refused start")
         reused = self._reusable_lane(primary_root, branch)
+        if reused is not None and reused.resolve() != reserved_path.value.resolve():
+            return r.fail(
+                f"registered lane path differs from canonical reservation: "
+                f"registered={reused} canonical={reserved_path.value}"
+            )
         if reused is None:
             fetched = u.Infra.git_fetch_origin(
                 m.Infra.GitRepoRequest(repo_root=primary_root)
@@ -149,6 +159,9 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             return r.fail(
                 self._rollback_started_lane(primary_root, branch, reused, pending.error)
             )
+        ownership = self._owned_reservation(bead, branch, lane)
+        if ownership.failure:
+            return r.fail(ownership.error or "pending reservation ownership failed")
         # Why: mro-c6di — every maintained worktree runs `make setup`, so start
         # owns that guarantee for the lane it hands back. An adopted lane used to
         # skip provisioning entirely and was handed over with whatever
@@ -204,6 +217,9 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             return r.fail(
                 self._rollback_started_lane(primary_root, branch, reused, updated.error)
             )
+        ownership = self._owned_reservation(bead, branch, lane)
+        if ownership.failure:
+            return r.fail(ownership.error or "ready reservation ownership failed")
         receipt = self._format_receipt(
             bead=bead,
             operation=c.Infra.WorkOperation.START,

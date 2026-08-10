@@ -61,6 +61,9 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         worktree = str(metadata.worktree)
         recorded_integration = metadata.integration_base
         expected = metadata.head_oid
+        ownership = self._owned_reservation(bead, branch, metadata.worktree)
+        if ownership.failure:
+            return r.fail(ownership.error or "work land reservation ownership failed")
         base = self._resolve_integration_base(primary_root)
         if base.failure:
             return r.fail(base.error or "missing integration base")
@@ -88,6 +91,9 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         topology = self._validated_lane_topology(primary_root, metadata, lane)
         if topology.failure:
             return r.fail(topology.error or "work land topology validation failed")
+        ownership = self._owned_reservation(bead, branch, lane)
+        if ownership.failure:
+            return r.fail(ownership.error or "work land reservation changed")
         if self._is_primary_path(primary_root, lane):
             return r.fail("work land refuses the primary worktree")
         if not lane.is_dir():

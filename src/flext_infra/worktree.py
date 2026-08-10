@@ -95,6 +95,13 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(f"branch resolves outside {c.Infra.WORKTREES_DIRNAME}")
         return r.ok(lane_path)
 
+    @classmethod
+    def canonical_lane_path(
+        cls, primary_root: Path, branch: str, epic_lane: Path | None = None
+    ) -> p.Result[Path]:
+        """Return the canonical path reserved by one branch topology."""
+        return cls._lane_path(primary_root, branch, epic_lane)
+
     @staticmethod
     def _registered_worktrees(
         primary_root: Path,

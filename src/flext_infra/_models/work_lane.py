@@ -88,6 +88,10 @@ class _LaneStateModels(_LaneTopologyModels):
             Literal[c.Infra.WorkProvisioningState.PENDING],
             m.Field(description="Pending provisioning discriminator"),
         ]
+        head_oid: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional last-known HEAD during an identical retry"),
+        ] = None
 
     class ReadyLaneMetadata(_LaneReservation):
         """Fully provisioned lane with a CAS-protected HEAD."""
@@ -143,7 +147,7 @@ class _BeadIssueModel:
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Canonical Beads issue id")]
         status: Annotated[
-            t.NonEmptyStr, m.Field(description="Current Beads issue status")
+            c.Infra.BeadIssueStatus, m.Field(description="Current Beads issue status")
         ]
         issue_type: Annotated[
             t.NonEmptyStr | None,
