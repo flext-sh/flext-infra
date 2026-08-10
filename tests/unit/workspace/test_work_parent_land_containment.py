@@ -27,7 +27,7 @@ def test_parent_land_after_child_finish_contains_child_history(
     tm.ok(fixture.land_parent(state))
 
     receipt = fixture.finish.boundary.pr_create_receipt()
-    assert receipt.base == "main"
+    assert receipt.base == "0.12.0-dev"
     assert receipt.head == state.epic_branch
     assert fixture.remote_parent_contains_child(state)
     assert fixture.registered_children(state) == ()

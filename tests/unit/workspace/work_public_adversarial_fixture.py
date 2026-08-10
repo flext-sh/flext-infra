@@ -34,7 +34,7 @@ class WorkAdversarialFixture:
             u.Cli.files_write_text(
                 manifest,
                 manifest.read_text(encoding="utf-8")
-                + "integration:\n  provider: fixture\n  branch: main\n",
+                + "integration:\n  provider: fixture\n  branch: 0.12.0-dev\n",
             )
         )
         return cls(fixture)
