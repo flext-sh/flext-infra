@@ -177,6 +177,10 @@ Infra:
         package:
           name: flext-core
         dependencies: [flext-cli]
+      - project: flext-cli
+        package:
+          name: flext-tests
+        dependencies: [flext-cli]
       - project: flext-tests
         package:
           name: flext-infra
@@ -1126,6 +1130,10 @@ Infra:
           - mypy>=2.3.0
           - pyrefly>=1.1.1
           - pyright>=1.1.411
+          # `gen` installs the git hooks it just wrote, so the tool that owns
+          # them has to exist in the environment running codegen — including CI,
+          # which provisions only the declared groups.
+          - pre-commit>=4.6.1
           - pytest>=9.0.3
           - pytest-testmon>=2.2.0
           - ruff>=0.15.12
@@ -1305,6 +1313,17 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
+        # mro-zmoc6: `uv sync` inside a member lane writes a member-local
+        # uv.lock. Only the workspace root resolves and tracks a lockfile
+        # (whitelisted in "Python configuration" above); for a member the
+        # file is a local build artifact of that shared resolution. Left
+        # undeclared it surfaced as untracked in every freshly created lane
+        # and made `make work WHAT=land` refuse a fully committed increment
+        # with "requires a clean lane worktree".
+        - name: "BLOCK: member-local lockfile (the workspace root owns uv.lock)"
+          profiles: [workspace-member]
+          patterns:
+            - "uv.lock"
         # Only the workspace root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config

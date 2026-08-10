@@ -45,9 +45,7 @@ def _repository(tmp_path: Path, *, setup_exit: int) -> Path:
         encoding="utf-8",
     )
     (repository / ".gitignore").write_text(f"{_SETUP_MARKER}\n", encoding="utf-8")
-    beads = repository / ".beads"
-    beads.mkdir()
-    (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
+    u.Tests.declare_workspace_ledger(repository, "mro")
     u.Tests.initialize_git_repo(repository)
     return repository
 

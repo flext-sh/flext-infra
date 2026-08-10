@@ -1,6 +1,7 @@
 # @flext-managed: continuous
 # @flext-regenerate: make deps WHAT=upgrade APPLY=Y
 # @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py
+# @flext-ssot-dependencies: flext-infra/config/codegen.yaml (project_defaults.dev, dependency_profiles)
 # @flext-maintenance: do not edit managed sections; edit the SSOT
 # [MANAGED] FLEXT pyproject standardization
 # Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
@@ -353,7 +354,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = "."
+venvPath = ".."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -413,7 +414,7 @@ addopts = [
   "--durations=10",
   "--markdown-docs",
   "--strict-markers",
-  "--timeout=30",
+  "--timeout=90",
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [

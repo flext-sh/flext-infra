@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, main
+from flext_core import r
+from flext_infra import config, m, main, u as infra_u
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_tests import tm
 from tests import c, u
@@ -37,6 +38,98 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
 
         tm.ok(resolved)
+
+    def test_taplo_cache_key_tracks_config_content_and_relative_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        commands: list[tuple[str, ...]] = []
+        working_directories: list[Path] = []
+
+        def run_raw(
+            command: list[str], *, cwd: Path, input_data: bytes
+        ) -> r[m.Cli.CommandOutput]:
+            commands.append(tuple(command))
+            working_directories.append(cwd)
+            tm.that(input_data, eq=source.encode())
+            return r[m.Cli.CommandOutput].ok(
+                m.Cli.CommandOutput(stdout='name = "demo"\n', stderr="", exit_code=0)
+            )
+
+        monkeypatch.setattr(u.Cli, "run_raw", run_raw)
+        config_path = tmp_path / ".taplo.toml"
+        config_path.write_text('include = ["**/*.toml"]\n', encoding="utf-8")
+        formatter = infra_u.Infra.format_toml_source
+        taplo_version = config.Infra.codegen.toolchain.taplo_version
+        source = 'name="demo"\n'
+
+        formatted = tm.ok(
+            formatter(
+                source,
+                path=tmp_path / "first" / "pyproject.toml",
+                toolchain_root=tmp_path,
+                taplo_version=taplo_version,
+            )
+        )
+        tm.ok(
+            formatter(
+                source,
+                path=tmp_path / "first" / "pyproject.toml",
+                toolchain_root=tmp_path,
+                taplo_version=taplo_version,
+            )
+        )
+        config_path.write_text('include = ["pyproject.toml"]\n', encoding="utf-8")
+        tm.ok(
+            formatter(
+                source,
+                path=tmp_path / "first" / "pyproject.toml",
+                toolchain_root=tmp_path,
+                taplo_version=taplo_version,
+            )
+        )
+        tm.ok(
+            formatter(
+                source,
+                path=tmp_path / "second" / "pyproject.toml",
+                toolchain_root=tmp_path,
+                taplo_version=taplo_version,
+            )
+        )
+
+        tm.that(commands, len=3)
+        tm.that(formatted, eq='name = "demo"')
+        tm.that(commands[0], has="first/pyproject.toml")
+        tm.that(commands[2], has="second/pyproject.toml")
+        tm.that(working_directories, eq=[tmp_path.resolve()] * 3)
+        tm.that(commands[0], has=str(config_path.resolve()))
+
+    def test_taplo_uses_nearest_existing_root_for_scaffold_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        working_directories: list[Path] = []
+
+        def run_raw(
+            _command: list[str], *, cwd: Path, input_data: bytes
+        ) -> r[m.Cli.CommandOutput]:
+            working_directories.append(cwd)
+            tm.that(input_data, eq=b'name="demo"\n')
+            return r[m.Cli.CommandOutput].ok(
+                m.Cli.CommandOutput(stdout='name = "demo"\n', stderr="", exit_code=0)
+            )
+
+        monkeypatch.setattr(u.Cli, "run_raw", run_raw)
+        future_root = tmp_path / "future" / "project"
+
+        tm.ok(
+            infra_u.Infra.format_toml_source(
+                'name="demo"\n',
+                path=future_root / "pyproject.toml",
+                toolchain_root=future_root,
+                taplo_version=config.Infra.codegen.toolchain.taplo_version,
+            )
+        )
+
+        tm.that(working_directories, eq=[tmp_path.resolve()])
 
     @pytest.mark.parametrize(
         ("content", "exists", "expected"),

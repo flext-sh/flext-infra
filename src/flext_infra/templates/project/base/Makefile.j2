@@ -161,7 +161,7 @@ ifeq ($(strip $(FLEXT_INFRA_BOOTSTRAP_REF)),)
 FLEXT_INFRA_BOOTSTRAP_REF := {{ infra_repository_branch }}
 endif
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@$(FLEXT_INFRA_BOOTSTRAP_REF)
-FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
+FLEXT_INFRA_SOURCE_ROOT_REL :={% if infra_source_root_rel %} {{ infra_source_root_rel }}{% endif %}
 UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dependency_groups }}-groups --{{ make.bootstrap.extras }}-extras
 # End SECTION: infra bootstrap
 

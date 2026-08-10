@@ -160,8 +160,8 @@ class FlextInfraConstantsSourceCode:
     "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
     DICT_GENERIC_RE: Final[t.RegexPattern] = re.compile(r"\b(?:dict|Dict)\[")
     "Regex: opening of any ``dict[...]`` / ``Dict[...]`` annotation."
-    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9\s-]")
-    "Regex: characters to strip when generating an anchor slug."
+    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9_\s-]")
+    "Regex: characters to strip when generating an anchor slug (``_`` is kept, as python-markdown does)."
     ANCHOR_WHITESPACE_RE: Final[t.RegexPattern] = re.compile(r"\s+")
     "Regex: any run of whitespace (collapsed to single hyphen in anchors)."
     ANCHOR_DASH_COLLAPSE_RE: Final[t.RegexPattern] = re.compile(r"-+")
