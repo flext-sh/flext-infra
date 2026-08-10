@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraWorktreeService, c
+from flext_infra import FlextInfraWorktreeService, c, config
 from flext_tests import tm
 from tests import u
+
+_VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
 
 
 def _git(root: Path, *arguments: str) -> str:
@@ -30,9 +32,9 @@ def _lane(tmp_path: Path, *, managed: bool = True) -> tuple[Path, Path, str]:
     (lane / "Makefile").write_text(
         ".PHONY: setup\n"
         "setup:\n"
-        "\t@mkdir -p .venv/bin\n"
-        "\t@printf '#!/bin/sh\\n' > .venv/bin/python\n"
-        "\t@chmod +x .venv/bin/python\n",
+        f"\t@mkdir -p {_VENV_NAME}/bin\n"
+        f"\t@printf '#!/bin/sh\\n' > {_VENV_NAME}/bin/python\n"
+        f"\t@chmod +x {_VENV_NAME}/bin/python\n",
         encoding="utf-8",
     )
     u.Tests.initialize_git_repo(lane)
