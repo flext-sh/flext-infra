@@ -5,13 +5,89 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import c, config, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
 class FlextInfraWorktreeProvisioning:
+    @staticmethod
+    def _validate_governed_gitlink(lane: Path, member_path: Path) -> p.Result[bool]:
+        reference = member_path.as_posix()
+        contract = u.Infra.gitmodule_contract(
+            m.Infra.GitSubmoduleContractRequest(repo_root=lane, member_path=reference)
+        )
+        if contract.failure:
+            return r.fail(contract.error or f"invalid governed gitlink: {reference}")
+        recorded = u.Infra.git_staged_gitlink_oid(
+            m.Infra.GitRefRequest(repo_root=lane, reference=reference)
+        )
+        if recorded.failure:
+            return r.fail(recorded.error or f"missing governed gitlink: {reference}")
+        member_root = lane / member_path
+        git_marker = member_root / ".git"
+        if git_marker.is_symlink() or (
+            git_marker.exists() and not git_marker.is_file()
+        ):
+            return r.fail(f"governed gitlink has an invalid .git marker: {reference}")
+        if not git_marker.exists():
+            initialized = u.Infra.git_submodule_init(
+                m.Infra.GitRefRequest(repo_root=lane, reference=reference)
+            )
+            if initialized.failure:
+                return r.fail(
+                    initialized.error
+                    or f"failed to initialize governed gitlink: {reference}"
+                )
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member_root))
+        if identity.failure:
+            return r.fail(
+                identity.error or f"failed to inspect governed gitlink: {reference}"
+            )
+        if identity.value.dirty:
+            return r.fail(f"governed gitlink is dirty: {reference}")
+        origin = identity.value.origin_remote
+        if origin is None or u.Infra.git_remote_identity(
+            origin
+        ) != u.Infra.git_remote_identity(contract.value.url):
+            return r.fail(f"governed gitlink identity mismatch: {reference}")
+        if identity.value.head_oid != recorded.value.oid:
+            return r.fail(
+                f"governed gitlink {reference} is not at recorded oid {recorded.value.oid}"
+            )
+        return r.ok(True)
+
+    @classmethod
+    def _prepare_governed_gitlinks(cls, lane: Path) -> p.Result[bool]:
+        declared = u.Infra.git_declared_submodule_paths(lane)
+        if declared.failure:
+            return r.fail(declared.error or "failed to read lane gitlink declarations")
+        sections = u.Infra.git_submodule_sections(
+            m.Infra.GitRepoRequest(repo_root=lane)
+        )
+        if sections.failure:
+            return r.fail(sections.error or "failed to classify lane gitlinks")
+        for member_path in declared.value:
+            section = sections.value.get(member_path.as_posix())
+            if section is None:
+                return r.fail(f"lane gitlink declaration is missing: {member_path}")
+            managed = u.Infra.git_submodule_config_value(
+                m.Infra.GitSubmoduleConfigRequest(
+                    repo_root=lane, section=section, key="flext-managed"
+                )
+            )
+            if managed.failure:
+                return r.fail(
+                    managed.error or f"failed to classify gitlink: {member_path}"
+                )
+            if managed.value.text.lower() != "true":
+                continue
+            validated = cls._validate_governed_gitlink(lane, member_path)
+            if validated.failure:
+                return validated
+        return r.ok(True)
+
     @staticmethod
     def _prepare_beads_directory(lane: Path) -> p.Result[bool]:
         beads_dir = lane / ".beads"
@@ -29,6 +105,9 @@ class FlextInfraWorktreeProvisioning:
 
     @classmethod
     def setup_lane(cls, lane: Path) -> p.Result[bool]:
+        gitlinks = cls._prepare_governed_gitlinks(lane)
+        if gitlinks.failure:
+            return gitlinks
         secured = cls._prepare_beads_directory(lane)
         if secured.failure:
             return secured

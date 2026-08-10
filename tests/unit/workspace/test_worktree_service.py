@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraWorktreeService, c, m
+import pytest
+from flext_core import r
+from flext_infra import FlextInfraWorktreeService, c, m, u as infra_u
 from flext_tests import tm
 from tests import u
 
@@ -71,6 +73,26 @@ class TestsFlextInfraWorktreeService:
         )
 
         tm.that(listed, has=f"worktree {repository}")
+
+    def test_mutation_rejects_branch_predicate_false(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        monkeypatch.setattr(
+            infra_u.Infra,
+            "git_check_branch_format",
+            staticmethod(lambda _request: r.ok(m.Infra.GitBoolReport(value=False))),
+        )
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch="feature/rejected",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="invalid branch name")
 
     def test_add_and_remove_use_the_isolated_lane_path(self, tmp_path: Path) -> None:
         """A valid PEP 621 string survives typed setup in the isolated lane."""
