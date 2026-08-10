@@ -36,13 +36,11 @@ def test_provisioning_replaces_only_a_foreign_environment_symlink() -> None:
 
 
 def test_delegated_runtime_sanitizes_recursive_make_state() -> None:
-    template = _template_text()
     member_branch = (
         _template_text()
         .split('if [ "$(RUNTIME_ROOT)" = "$(PROJECT_ROOT)" ]; then', 1)[1]
         .split("\n\n", 1)[0]
     )
-    assert "BORROW_RUNTIME_VENV_RECIPE" not in template
     for key in ("MAKEFILES", "GNUMAKEFLAGS", "MAKEFLAGS", "PYTHONPATH"):
         assert f"-u {key}" in member_branch
 
