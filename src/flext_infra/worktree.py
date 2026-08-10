@@ -241,7 +241,7 @@ class FlextInfraWorktreeService(s[str]):
         return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
 
     def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
-        """Create and set up one branch worktree transactionally."""
+        """Create one branch worktree without provisioning it."""
         if not self.apply_changes:
             return r.fail("worktree add requires --apply")
         if self.epic_lane is not None and not self.epic_lane.is_dir():
@@ -273,7 +273,6 @@ class FlextInfraWorktreeService(s[str]):
         )
         if added.failure:
             return r.fail(added.error or f"failed to add worktree for {branch}")
-        created_branch_oid: str | None = None
         if not local.value:
             created_oid = u.Infra.git_repository_head(
                 m.Infra.GitRepoRequest(repo_root=lane)
@@ -286,28 +285,6 @@ class FlextInfraWorktreeService(s[str]):
                     None,
                     created_oid.error or "failed to retain created branch identity",
                 )
-            created_branch_oid = created_oid.value.oid
-        metadata = u.read_project_metadata(lane)
-        if metadata.failure:
-            return self._rollback_new_lane(
-                primary_root,
-                lane,
-                branch,
-                created_branch_oid,
-                metadata.error or "invalid lane project metadata",
-            )
-        setup = self.setup_lane(primary_root, lane)
-        if setup.failure:
-            # A provisioning failure leaves a VALID checkout that is merely
-            # unprovisioned, unlike the invalid-metadata case above. Removing it
-            # discarded a completed clone of every governed submodule and forced
-            # a manual re-clone, so the lane is kept and the next start resumes
-            # from it once the cause is resolved.
-            return r.fail(
-                f"{setup.error or 'make setup execution failed'}; "
-                f"lane {branch} preserved at {lane} - resolve the cause and "
-                f"re-run work start to resume provisioning"
-            )
         return r.ok(str(lane))
 
     def _remove(self, primary_root: Path, branch: str) -> p.Result[str]:
