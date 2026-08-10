@@ -25,28 +25,22 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work finish requires --bead")
-        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
+        shown = u.Infra.beads_show(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
-        meta = shown.value.get("metadata")
-        if not isinstance(meta, dict):
+        metadata = shown.value.metadata
+        if metadata is None:
             return r.fail(f"bead {bead} has no lane metadata")
-        metadata = self._typed_metadata(shown.value)
-        branch = str(metadata.get("branch") or "").strip()
-        worktree = str(metadata.get("worktree") or "").strip()
-        expected = str(metadata.get("head_oid") or "").strip()
-        pr_number = str(metadata.get("pr_number") or "").strip()
-        integration = str(metadata.get("integration_base") or "").strip()
-        if not branch or not worktree:
-            return r.fail(f"bead {bead} missing branch/worktree metadata")
-        if worktree == "removed":
-            return r.fail(f"bead {bead} lane worktree already removed")
-        if not integration:
-            base = self._resolve_integration_base(primary_root)
-            if base.failure:
-                return r.fail(base.error or "missing integration base")
-            integration = base.value
+        if not isinstance(metadata, m.Infra.ReadyLaneMetadata):
+            return r.fail(f"bead {bead} lane is not ready for finish")
+        branch = metadata.branch
+        worktree = str(metadata.worktree)
+        expected = metadata.head_oid
+        pr_number = metadata.pr_number or ""
+        integration = metadata.integration_base
         lane_meta = Path(worktree)
+        if lane_meta == Path("removed"):
+            return r.fail(f"bead {bead} lane worktree already removed")
         if self._is_primary_path(primary_root, lane_meta):
             return r.fail("work finish refuses the primary worktree")
         permanent = self._refuse_permanent_branch(branch, integration)
@@ -102,11 +96,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "
             f"decisive=removed {worktree} branch={branch}"
         )
+        removed_metadata = metadata.model_copy(update={"worktree": Path("removed")})
         updated = u.Infra.beads_update_lane(
-            bead,
-            metadata={"worktree": "removed", "head_oid": expected},
-            notes=notes,
-            root=self.workspace_root,
+            bead, metadata=removed_metadata, notes=notes, root=self.workspace_root
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record finish on bead")

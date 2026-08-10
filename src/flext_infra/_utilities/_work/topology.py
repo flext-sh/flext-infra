@@ -33,41 +33,12 @@ class FlextInfraWorkTopology:
             )
         return r.ok(registry_lane)
 
-    @staticmethod
-    def _lane_role(metadata: dict[str, object]) -> p.Result[str]:
-        role = str(metadata.get("role") or "").strip()
-        declared = tuple(item.value for item in c.Infra.WorkLaneRole)
-        if role and role not in declared:
-            return r.fail(f"unknown lane role on bead metadata: {role}")
-        return r.ok(role)
-
-    @staticmethod
-    def _epic_binding(metadata: dict[str, object]) -> p.Result[m.Infra.EpicLaneBinding]:
-        fields = {
-            key: str(metadata.get(key) or "").strip()
-            for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug")
-        }
-        missing = sorted(key for key, value in fields.items() if not value)
-        if missing:
-            return r.fail(f"child lane metadata missing {', '.join(missing)}")
-        return r.ok(
-            m.Infra.EpicLaneBinding(
-                epic_bead=fields["epic_bead"],
-                epic_branch=fields["epic_branch"],
-                epic_worktree=Path(fields["epic_worktree"]),
-                child_slug=fields["child_slug"],
-            )
-        )
-
     @classmethod
     def _bound_child_topology(
-        cls, primary_root: Path, metadata: dict[str, object], lane: Path
+        cls, primary_root: Path, topology: m.Infra.ChildLaneTopology, lane: Path
     ) -> p.Result[Path]:
-        binding = cls._epic_binding(metadata)
-        if binding.failure:
-            return r.fail(binding.error or "invalid child lane metadata")
         epic = cls._bound_registered_lane(
-            primary_root, binding.value.epic_branch, str(binding.value.epic_worktree)
+            primary_root, topology.epic_branch, str(topology.epic_worktree)
         )
         if epic.failure:
             return r.fail(
@@ -83,21 +54,24 @@ class FlextInfraWorkTopology:
 
     @classmethod
     def _validated_lane_topology(
-        cls, primary_root: Path, metadata: dict[str, object], lane: Path
-    ) -> p.Result[str]:
-        role = cls._lane_role(metadata)
-        if role.failure:
-            return r.fail(role.error or "invalid lane role")
-        if role.value != c.Infra.WorkLaneRole.CHILD:
-            return r.ok(role.value)
-        checked = cls._bound_child_topology(primary_root, metadata, lane)
-        if checked.failure:
-            return r.fail(checked.error or "child lane topology validation failed")
-        return r.ok(role.value)
-
-    @staticmethod
-    def _typed_metadata(payload: dict[str, object]) -> dict[str, object]:
-        metadata = payload.get("metadata")
-        if not isinstance(metadata, dict):
-            return {}
-        return {str(key): value for key, value in metadata.items()}
+        cls,
+        primary_root: Path,
+        metadata: (
+            m.Infra.PendingLaneReservation
+            | m.Infra.ReadyLaneMetadata
+            | m.Infra.FailedLaneMetadata
+        ),
+        lane: Path,
+    ) -> p.Result[c.Infra.WorkLaneRole]:
+        match metadata.topology:
+            case m.Infra.ChildLaneTopology() as child:
+                checked = cls._bound_child_topology(primary_root, child, lane)
+                if checked.failure:
+                    return r.fail(
+                        checked.error or "child lane topology validation failed"
+                    )
+                return r.ok(c.Infra.WorkLaneRole.CHILD)
+            case m.Infra.EpicLaneTopology():
+                return r.ok(c.Infra.WorkLaneRole.EPIC)
+            case m.Infra.PlainLaneTopology():
+                return r.ok(c.Infra.WorkLaneRole.PLAIN)

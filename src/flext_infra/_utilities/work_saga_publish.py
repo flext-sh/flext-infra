@@ -49,35 +49,24 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work land requires --bead")
-        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
+        shown = u.Infra.beads_show(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
-        meta = shown.value.get("metadata")
-        if not isinstance(meta, dict):
+        metadata = shown.value.metadata
+        if metadata is None:
             return r.fail(f"bead {bead} has no lane metadata; run work start first")
-        metadata = self._typed_metadata(shown.value)
-        branch = str(metadata.get("branch") or "").strip()
-        worktree = str(metadata.get("worktree") or "").strip()
-        recorded_integration = str(metadata.get("integration_base") or "").strip()
-        expected = str(metadata.get("head_oid") or "").strip()
-        if not branch or not worktree:
-            return r.fail(f"bead {bead} missing branch/worktree metadata")
-        if not expected:
-            return r.fail(f"bead {bead} missing metadata.head_oid for land CAS")
+        if not isinstance(metadata, m.Infra.ReadyLaneMetadata):
+            return r.fail(f"bead {bead} lane is not ready for land")
+        branch = metadata.branch
+        worktree = str(metadata.worktree)
+        recorded_integration = metadata.integration_base
+        expected = metadata.head_oid
         base = self._resolve_integration_base(primary_root)
         if base.failure:
             return r.fail(base.error or "missing integration base")
         integration = base.value
-        role = self._lane_role(metadata)
-        if role.failure:
-            return r.fail(role.error or "invalid lane role")
-        if role.value == c.Infra.WorkLaneRole.CHILD:
-            binding = self._epic_binding(metadata)
-            if binding.failure:
-                return r.fail(binding.error or "invalid child lane metadata")
-            # Why: a child lane integrates into the epic that owns it, never
-            # into the workspace integration branch the epic itself targets.
-            integration = binding.value.epic_branch
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            integration = metadata.topology.epic_branch
         if (
             recorded_integration
             and recorded_integration not in {"HEAD", integration}
@@ -167,20 +156,24 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if pr.failure and observed.failure:
             return r.fail(pr.error or observed.error or "work land PR failed")
         pr_number, pr_url = observed.value if observed.success else ("", "")
-        meta_update = {"head_oid": head.value, "integration_base": pr_base}
+        updated_metadata = metadata.model_copy(
+            update={"head_oid": head.value, "integration_base": pr_base}
+        )
         labels: tuple[str, ...] = ()
         if pr_number:
-            meta_update["pr_number"] = pr_number
+            updated_metadata = updated_metadata.model_copy(
+                update={"pr_number": pr_number}
+            )
             labels = (f"pr:{pr_number}",)
         if pr_url:
-            meta_update["pr_url"] = pr_url
+            updated_metadata = updated_metadata.model_copy(update={"pr_url": pr_url})
         notes = (
             f"work land: cmd=make work WHAT=land cwd={lane} exit=0 "
             f"decisive=PR {pr_url or pr_number or 'pending'} sha={head.value}"
         )
         updated = u.Infra.beads_update_lane(
             bead,
-            metadata=meta_update,
+            metadata=updated_metadata,
             labels=labels,
             notes=notes,
             root=self.workspace_root,

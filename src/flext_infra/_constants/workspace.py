@@ -45,8 +45,29 @@ class FlextInfraConstantsWorkspace:
     class WorkLaneRole(StrEnum):
         """Topology role one registered lane holds inside an epic program."""
 
+        PLAIN = "plain"
         EPIC = "epic"
         CHILD = "child"
+
+    @unique
+    class WorkProvisioningState(StrEnum):
+        """Lifecycle state persisted for one work-lane reservation."""
+
+        PENDING = "pending"
+        READY = "ready"
+        FAILED = "failed"
+
+    @unique
+    class WorkRecoveryCategory(StrEnum):
+        """Recovery action supported for a failed work-lane reservation."""
+
+        RETRY_SETUP = "retry-setup"
+
+    @unique
+    class WorkProvisioningError(StrEnum):
+        """Provisioning stage that failed after lane reservation."""
+
+        SETUP = "setup"
 
     WORK_FORBIDDEN_SLUGS: Final[frozenset[str]] = frozenset({
         "teste",
@@ -64,6 +85,9 @@ class FlextInfraConstantsWorkspace:
         "head_oid",
         "pr_number",
         "pr_url",
+        "provisioning",
+        "recovery",
+        "error_category",
         "role",
         "epic_bead",
         "epic_branch",

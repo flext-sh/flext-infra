@@ -319,12 +319,16 @@ class TestsFlextInfraWorkService:
             {
                 "branch": "feature/primary-abuse",
                 "worktree": str(repository),
+                "kind": "feature",
+                "slug": "primary-abuse",
                 "integration_base": "HEAD",
                 "head_oid": tm.ok(
                     test_u.Infra.git_repository_head(
                         m.Infra.GitRepoRequest(repo_root=repository)
                     )
                 ).oid,
+                "provisioning": "ready",
+                "role": "plain",
             },
         )
         result = FlextInfraWorkService(
@@ -469,8 +473,12 @@ class TestsFlextInfraWorkService:
             {
                 "branch": "main",
                 "worktree": str(tmp_path / "fake-lane"),
+                "kind": "feature",
+                "slug": "main",
                 "integration_base": "HEAD",
                 "head_oid": "a" * 40,
+                "provisioning": "ready",
+                "role": "plain",
             },
         )
         result = FlextInfraWorkService(
@@ -510,7 +518,7 @@ class TestsFlextInfraWorkService:
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="missing metadata.head_oid")
+        tm.fail(result, has="metadata.ready.head_oid")
 
     def test_land_refuses_metadata_worktree_mismatch(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -578,7 +586,7 @@ class TestsFlextInfraWorkService:
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="missing metadata.head_oid")
+        tm.fail(result, has="metadata.ready.head_oid")
 
     def test_finish_refuses_permanent_branch_via_config_integration(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -610,8 +618,12 @@ class TestsFlextInfraWorkService:
             {
                 "branch": "0.12.0-dev",
                 "worktree": str(tmp_path / "fake-lane"),
-                "integration_base": "",
+                "kind": "feature",
+                "slug": "integration",
+                "integration_base": "0.12.0-dev",
                 "head_oid": "a" * 40,
+                "provisioning": "ready",
+                "role": "plain",
             },
         )
         result = FlextInfraWorkService(
@@ -637,8 +649,12 @@ class TestsFlextInfraWorkService:
             {
                 "branch": "bugfix/gone",
                 "worktree": "removed",
+                "kind": "bugfix",
+                "slug": "gone",
                 "integration_base": "HEAD",
                 "head_oid": "a" * 40,
+                "provisioning": "ready",
+                "role": "plain",
             },
         )
         result = FlextInfraWorkService(

@@ -9,6 +9,7 @@ from flext_infra import c, m
 from flext_infra._utilities.work_saga_finish import FlextInfraWorkSagaFinish
 from flext_infra._utilities.work_saga_publish import FlextInfraWorkSagaPublish
 from flext_infra._utilities.work_saga_start import FlextInfraWorkSagaStart
+from flext_infra._utilities.work_saga_status import FlextInfraWorkSagaStatus
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -16,7 +17,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraWorkService(
-    FlextInfraWorkSagaStart, FlextInfraWorkSagaPublish, FlextInfraWorkSagaFinish, s[str]
+    FlextInfraWorkSagaStart,
+    FlextInfraWorkSagaStatus,
+    FlextInfraWorkSagaPublish,
+    FlextInfraWorkSagaFinish,
+    s[str],
 ):
     """Automate bead + GitFlow branch + worktree + GitHub PR as one saga."""
 

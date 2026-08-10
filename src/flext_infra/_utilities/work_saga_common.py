@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra._utilities._work import FlextInfraWorkTopology
+from flext_infra._utilities._work import (
+    FlextInfraWorkReservation,
+    FlextInfraWorkStartSupport,
+)
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -17,7 +20,7 @@ if TYPE_CHECKING:
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-class FlextInfraWorkSagaCommon(FlextInfraWorkTopology):
+class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSupport):
     """Resolve bases, branches, and primary-worktree safety."""
 
     workspace_root: Path
@@ -127,13 +130,9 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkTopology):
             return r.ok(explicit)
         bead = (self.bead or "").strip()
         if bead:
-            shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
-            if shown.success:
-                metadata = shown.value.get("metadata")
-                if isinstance(metadata, dict):
-                    stored = metadata.get("branch")
-                    if isinstance(stored, str) and stored.strip():
-                        return r.ok(stored.strip())
+            shown = u.Infra.beads_show(bead, root=self.workspace_root)
+            if shown.success and shown.value.metadata is not None:
+                return r.ok(shown.value.metadata.branch)
         kind_slug = self._validated_kind_slug()
         if kind_slug.failure:
             return r.fail(kind_slug.error or "unable to resolve lane branch")
