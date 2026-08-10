@@ -103,6 +103,34 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.that(working_directories, eq=[tmp_path.resolve()] * 3)
         tm.that(commands[0], has=str(config_path.resolve()))
 
+    def test_taplo_uses_nearest_existing_root_for_scaffold_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        working_directories: list[Path] = []
+
+        def run_raw(
+            _command: list[str], *, cwd: Path, input_data: bytes
+        ) -> r[m.Cli.CommandOutput]:
+            working_directories.append(cwd)
+            tm.that(input_data, eq=b'name="demo"\n')
+            return r[m.Cli.CommandOutput].ok(
+                m.Cli.CommandOutput(stdout='name = "demo"\n', stderr="", exit_code=0)
+            )
+
+        monkeypatch.setattr(u.Cli, "run_raw", run_raw)
+        future_root = tmp_path / "future" / "project"
+
+        tm.ok(
+            infra_u.Infra.format_toml_source(
+                'name="demo"\n',
+                path=future_root / "pyproject.toml",
+                toolchain_root=future_root,
+                taplo_version=config.Infra.codegen.toolchain.taplo_version,
+            )
+        )
+
+        tm.that(working_directories, eq=[tmp_path.resolve()])
+
     @pytest.mark.parametrize(
         ("content", "exists", "expected"),
         [

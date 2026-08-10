@@ -47,6 +47,11 @@ class FlextInfraUtilitiesPyproject:
         config_content = config_path.read_bytes() if config_path.is_file() else b""
         resolved_path = path.resolve()
         resolved_toolchain_root = toolchain_root.resolve()
+        execution_root = next(
+            candidate
+            for candidate in (resolved_toolchain_root, *resolved_toolchain_root.parents)
+            if candidate.is_dir()
+        )
         relative_path = (
             resolved_path.relative_to(resolved_toolchain_root).as_posix()
             if resolved_path.is_relative_to(resolved_toolchain_root)
@@ -57,7 +62,7 @@ class FlextInfraUtilitiesPyproject:
             relative_path=relative_path,
             config_path=config_path.resolve() if config_content else None,
             config_digest=sha256(config_content).hexdigest(),
-            toolchain_root=resolved_toolchain_root,
+            execution_root=execution_root,
             taplo_version=taplo_version,
         )
 
@@ -69,7 +74,7 @@ class FlextInfraUtilitiesPyproject:
         relative_path: str,
         config_path: Path | None,
         config_digest: str,
-        toolchain_root: Path,
+        execution_root: Path,
         taplo_version: str,
     ) -> p.Result[str]:
         del config_digest
@@ -88,7 +93,7 @@ class FlextInfraUtilitiesPyproject:
             command.extend(("--config", str(config_path)))
         result = u.Cli.run_raw(
             command,
-            cwd=toolchain_root,
+            cwd=execution_root,
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
         )
         if result.failure:
