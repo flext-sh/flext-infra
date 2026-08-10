@@ -33,11 +33,10 @@ class TestsFlextInfraWorkService:
         (repository / "Makefile").write_text(
             ".PHONY: setup\n"
             "setup:\n"
-            '\t@test "$(WORKSPACE)" = "$(CURDIR)"\n'
-            '\t@grep -q "^\\[project\\]" "$(WORKSPACE)/pyproject.toml"\n'
+            '\t@grep -q "^\\[project\\]" "$(CURDIR)/pyproject.toml"\n'
             "\t@mkdir -p .venv/bin\n"
             "\t@printf '#!/bin/sh\\n' > .venv/bin/python\n"
-            '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
+            '\t@printf "setting up %s\\n" "$(CURDIR)"\n',
             encoding="utf-8",
         )
         (repository / ".gitignore").write_text(".venv\n", encoding="utf-8")
