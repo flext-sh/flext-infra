@@ -1246,10 +1246,6 @@ Infra:
             - "!uv.lock"
             - "!ruff-shared.toml"
             - "!uv.lock"
-        - name: "Member-local workspace lockfile"
-          profiles: [workspace-member]
-          patterns:
-            - "uv.lock"
         - name: "mise toolchain pinning"
           profiles: [workspace-root]
           patterns:
