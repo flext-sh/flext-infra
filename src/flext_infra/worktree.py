@@ -48,7 +48,7 @@ class FlextInfraWorktreeService(s[str]):
         checked = u.Infra.git_check_branch_format(
             m.Infra.GitBranchRequest(repo_root=self.workspace_root, branch=branch)
         )
-        if checked.failure:
+        if checked.failure or not checked.value.value:
             return r.fail(checked.error or f"invalid branch name: {branch}")
         return r.ok(branch)
 
@@ -180,6 +180,8 @@ class FlextInfraWorktreeService(s[str]):
         """
         _ = primary_root
         beads_dir = lane / ".beads"
+        if beads_dir.is_symlink():
+            return r.fail(f"lane tracker entry is a symlink: {beads_dir}")
         if beads_dir.is_dir():
             beads_dir.chmod(0o700)
         venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
@@ -251,8 +253,38 @@ class FlextInfraWorktreeService(s[str]):
         """Create one branch worktree without provisioning it."""
         if not self.apply_changes:
             return r.fail("worktree add requires --apply")
-        if self.epic_lane is not None and not self.epic_lane.is_dir():
-            return r.fail(f"epic lane worktree does not exist: {self.epic_lane}")
+        if base.startswith("-"):
+            return r.fail(f"invalid base commitish: {base}")
+        resolved = u.Infra.git_resolve_commit(
+            m.Infra.GitCommitishRequest(repo_root=primary_root, commitish=base)
+        )
+        if resolved.failure:
+            return r.fail(
+                f"cannot resolve worktree base {base}: "
+                f"{resolved.error or 'unknown commitish'}"
+            )
+        base_oid = resolved.value.oid
+        if self.epic_lane is not None:
+            if self.epic_lane.is_symlink():
+                return r.fail(f"epic lane worktree is a symlink: {self.epic_lane}")
+            if not self.epic_lane.is_dir():
+                return r.fail(f"epic lane worktree does not exist: {self.epic_lane}")
+            registered = self._registered_worktrees(primary_root)
+            if registered.failure:
+                return r.fail(
+                    registered.error or "failed to inspect registered epic lane"
+                )
+            if self.epic_lane.resolve() not in {root for root, _ in registered.value}:
+                return r.fail(f"registered epic lane is required: {self.epic_lane}")
+            container = self.epic_lane / c.Infra.WORKTREES_DIRNAME
+            if container.is_symlink():
+                return r.fail(f"epic worktree container is a symlink: {container}")
+            beads = self.epic_lane / ".beads"
+            if beads.is_symlink():
+                return r.fail(f"epic tracker entry is a symlink: {beads}")
+        existing = self.registered_lane(primary_root, branch)
+        if existing.success:
+            return r.fail(f"worktree branch is already registered: {branch}")
         lane_result = self._lane_path(primary_root, branch, self.epic_lane)
         if lane_result.failure:
             return r.fail(lane_result.error or "invalid worktree lane path")
@@ -273,7 +305,7 @@ class FlextInfraWorktreeService(s[str]):
                 repo_root=self.workspace_root,
                 lane=lane,
                 branch=branch,
-                base=base,
+                base=base_oid,
                 local_branch_exists=local.value,
                 track_remote=not local.value and remote.value,
             )

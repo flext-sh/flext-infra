@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from git import GitCommandError, Repo
+from git import BadName, GitCommandError, Repo
 from git import BaseIndexEntry
 from git import GitCommandNotFound, InvalidGitRepositoryError, NoSuchPathError
 
@@ -254,7 +254,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         try:
             repo = cls._repo(request.repo_root)
             oid = repo.commit(request.commitish).hexsha
-        except GitCommandError as exc:
+        except (BadName, GitCommandError) as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitOidReport].fail(f"cannot resolve commitish: {exc}")
