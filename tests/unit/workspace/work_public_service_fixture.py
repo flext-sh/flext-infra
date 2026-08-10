@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Self
 
 import pytest
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -48,10 +48,17 @@ class WorkPublicServiceFixture:
             'description = "A standard PEP 621 description string"\n',
             encoding="utf-8",
         )
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
         (repository / "Makefile").write_text(
-            '.PHONY: setup\nsetup:\n\t@test "$(WORKSPACE)" = "$(CURDIR)"\n',
+            ".PHONY: setup\n"
+            "setup:\n"
+            '\t@test -z "$(WORKSPACE)"\n'
+            f"\t@mkdir -p {venv_name}/bin\n"
+            f"\t@printf '#!/bin/sh\\n' > {venv_name}/bin/python\n"
+            f"\t@chmod +x {venv_name}/bin/python\n",
             encoding="utf-8",
         )
+        (repository / ".gitignore").write_text(f"{venv_name}\n", encoding="utf-8")
         repository_ref = test_u.Tests.repository_ref("fixture").model_copy(
             update={"path": Path(), "package": False, "editable": False}
         )

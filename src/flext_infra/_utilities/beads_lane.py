@@ -139,6 +139,14 @@ class FlextInfraUtilitiesBeadsLane:
                 projected_metadata["kind"] = c.Infra.WorkKind(
                     str(projected_metadata["kind"])
                 )
+            if "recovery" in projected_metadata:
+                projected_metadata["recovery"] = c.Infra.WorkRecoveryCategory(
+                    str(projected_metadata["recovery"])
+                )
+            if "error_category" in projected_metadata:
+                projected_metadata["error_category"] = c.Infra.WorkProvisioningError(
+                    str(projected_metadata["error_category"])
+                )
             if "epic_worktree" in topology:
                 topology["epic_worktree"] = Path(str(topology["epic_worktree"]))
             projected_metadata["topology"] = topology

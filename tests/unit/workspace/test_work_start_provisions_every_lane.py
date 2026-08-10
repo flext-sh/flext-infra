@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, config
+from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, config, m
 from flext_tests import tm
 from tests import u
 
@@ -161,7 +161,7 @@ def test_start_provisions_a_new_lane_and_an_adopted_one(
     )
 
 
-def test_failed_primary_setup_preserves_lane_without_metadata(
+def test_failed_primary_setup_records_recoverable_metadata(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repository = _repository(tmp_path)
@@ -195,7 +195,14 @@ def test_failed_primary_setup_preserves_lane_without_metadata(
         )
     )
     tm.that(lane.is_dir(), eq=True)
-    tm.that(_metadata(tmp_path), eq={})
+    tm.that(_metadata(tmp_path)["provisioning"], eq="failed")
+    issue = tm.ok(u.Infra.beads_show(bead_id, root=repository))
+    metadata = issue.metadata
+    assert isinstance(metadata, m.Infra.FailedLaneMetadata)
+    tm.that(metadata.worktree, eq=lane)
+    tm.that(metadata.provisioning, eq=c.Infra.WorkProvisioningState.FAILED)
+    tm.that(metadata.recovery, eq=c.Infra.WorkRecoveryCategory.RETRY_SETUP)
+    tm.that(metadata.error_category, eq=c.Infra.WorkProvisioningError.SETUP)
 
 
 __all__: tuple[str, ...] = ()
