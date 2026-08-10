@@ -108,7 +108,7 @@ class FlextInfraUtilitiesBeadsLane:
     def _parse_issue(payload: dict[str, object]) -> p.Result[m.Infra.BeadIssue]:
         metadata = payload.get("metadata")
         projected_metadata: dict[str, object] | None = None
-        if isinstance(metadata, dict) and metadata:
+        if isinstance(metadata, dict) and "provisioning" in metadata:
             role = metadata.get("role") or c.Infra.WorkLaneRole.PLAIN.value
             topology = {"role": role}
             for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug"):
