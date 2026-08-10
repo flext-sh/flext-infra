@@ -527,15 +527,7 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
         accepts_apply: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether APPLY=Y is legal for this verb without placing it "
-                    "in the serialized mutation set. Used by run handlers that "
-                    "sometimes mutate under explicit APPLY but must not take "
-                    "the checkout lock on every invocation."
-                )
-            ),
+            bool, m.Field(description="Whether APPLY=Y is legal for this verb")
         ] = False
         apply_what: Annotated[
             t.NonEmptyStr,
@@ -563,13 +555,6 @@ class FlextInfraConfigModels:
                 msg = (
                     f"make verb {self.name} cannot set both apply_guarded and "
                     "accepts_apply"
-                )
-                raise ValueError(msg)
-            if self.apply_guarded and self.default_what == self.apply_what:
-                msg = (
-                    f"make verb {self.name} apply_guarded default_what must "
-                    "differ from apply_what so serialize-make can re-check "
-                    "without APPLY=Y"
                 )
                 raise ValueError(msg)
             missing = required - set(self.whats)
@@ -711,44 +696,6 @@ class FlextInfraConfigModels:
         allow_toolchain_declarations: bool | None = m.Field(
             default=None, description="Permit toolchain declarations"
         )
-
-    class MakeSerializationSpec(_ConfigContract):
-        """Public Make verb surface routed through the flext-infra dispatcher.
-
-        Locks and the snapshot fixed-point were exterminated: both assumed a
-        single actor per checkout, which is false under GitOps/DevOps flows.
-        """
-
-        mutation_verbs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Mutating public verbs; validation is owned by later workflow steps"
-                )
-            ),
-        ]
-        verbs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1,
-                description="Public Make verbs routed through the dispatcher",
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_mutation_verbs(self) -> Self:
-            """Keep the mutating set a subset of the dispatched surface."""
-            invalid = set(self.mutation_verbs) - set(self.verbs)
-            if invalid:
-                msg = (
-                    "make serialization mutation verbs are not dispatched: "
-                    f"{', '.join(sorted(invalid))}"
-                )
-                raise ValueError(msg)
-            if len(set(self.mutation_verbs)) != len(self.mutation_verbs):
-                msg = "make serialization mutation verbs must be unique"
-                raise ValueError(msg)
-            return self
 
     class MakeBootstrapSpec(_ConfigContract):
         """Hermetic project dependency surface used before conform."""
@@ -926,10 +873,6 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeBootstrapSpec,
             m.Field(description="Pre-conform project environment contract"),
         ]
-        serialization: Annotated[
-            FlextInfraConfigModels.MakeSerializationSpec,
-            m.Field(description="Per-checkout Make validation serialization"),
-        ]
         workflow: Annotated[
             tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
@@ -967,22 +910,11 @@ class FlextInfraConfigModels:
         ]
 
         @u.model_validator(mode="after")
-        def _validate_serialized_verbs(self) -> Self:
-            """Require serialization to target declared non-bootstrap verbs."""
+        def _validate_verbs(self) -> Self:
+            """Require workflow and docs entries to target declared public verbs."""
             declared = {verb.name for verb in self.verbs}
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
-                raise ValueError(msg)
-            serialized = set(self.serialization.verbs)
-            invalid = serialized - declared
-            if invalid:
-                msg = (
-                    "make serialization verbs are not declared public verbs: "
-                    f"{', '.join(sorted(invalid))}"
-                )
-                raise ValueError(msg)
-            if "setup" in serialized:
-                msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
             workflow_steps = tuple((step.verb, step.what) for step in self.workflow)
             if len(set(workflow_steps)) != len(workflow_steps):
@@ -1026,11 +958,6 @@ class FlextInfraConfigModels:
                     "make workflow selectors are not declared by their verbs: "
                     f"{', '.join(sorted(invalid_selectors))}"
                 )
-                raise ValueError(msg)
-            mutation_verbs = set(self.serialization.mutation_verbs)
-            guarded_verbs = {verb.name for verb in self.verbs if verb.apply_guarded}
-            if mutation_verbs != guarded_verbs:
-                msg = "serialized mutation verbs must equal apply-guarded public verbs"
                 raise ValueError(msg)
             docs_verb = next((verb for verb in self.verbs if verb.name == "docs"), None)
             if docs_verb is None:

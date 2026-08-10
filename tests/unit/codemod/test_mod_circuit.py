@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import main as infra_main
-from flext_infra import u
+from flext_infra import c, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_apply import (
     FlextInfraCodemodBatchApply,
@@ -14,11 +15,18 @@ from flext_infra.codemod.batch_apply import (
 from flext_tests import tm
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     import pytest
 
 _CHECKPOINT_SUBJECT = "chore(git): checkpoint before ast-grep batch apply"
+_MAKE_SERIALIZATION_RULE = (
+    Path(__file__).resolve().parents[3]
+    / "src"
+    / "flext_infra"
+    / "codemod"
+    / "rules"
+    / "automation-infrastructure"
+    / "ban-make-serialization.yml"
+)
 
 
 def _snapshot(ruff: int, pyrefly: int) -> FlextInfraModGateSnapshot:
@@ -99,6 +107,35 @@ class TestsFlextInfraModCircuitDecision:
 
 
 class TestsFlextInfraModCircuitApply:
+    def test_make_serialization_guard_is_detection_only(self, tmp_path: Path) -> None:
+        root = _repo(tmp_path, "u.Infra.serialization_lock_execute(paths, timeout)\n")
+
+        detection = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.SG,
+                    c.Infra.SCAN,
+                    "--rule",
+                    str(_MAKE_SERIALIZATION_RULE),
+                    "--json=stream",
+                    ".",
+                ],
+                cwd=root,
+            )
+        )
+
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(root, (_MAKE_SERIALIZATION_RULE,), fix=False)
+        )
+
+        tm.that(detection.exit_code, ne=0)
+        tm.that(
+            (detection.stdout or "") + (detection.stderr or ""),
+            has='"ruleId":"ban-make-serialization"',
+        )
+        tm.that(report.nodes, eq=0)
+        tm.that(report.files, eq=frozenset())
+
     def test_apply_reports_verified_node_and_file_counts(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

@@ -412,10 +412,10 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that(uv_log.exists(), eq=False)
 
-    def test_serialized_gate_fails_closed_before_managed_environment_exists(
+    def test_public_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
     ) -> None:
-        """A serialized gate preserves the canonical setup-required diagnostic."""
+        """A public gate preserves the canonical setup-required diagnostic."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )

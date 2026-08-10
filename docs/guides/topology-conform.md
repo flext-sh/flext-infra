@@ -39,9 +39,6 @@ Public accessors:
   `-> Result[m.Infra.RepositoryConformTarget]`
 - `u.Infra.repository_provider(repository, providers) -> Result[m.Infra.ProviderSpec]`
 - `u.Infra.repository_baseline_branch(repository, providers) -> Result[str]`
-- `u.Infra.serialization_lock_execute(lock_paths, timeout_seconds,`
-  `operation, *, timeout_failure, acquisition_failure)`
-  `-> Result[TValue]`
 
 ## Full refactor workflow
 

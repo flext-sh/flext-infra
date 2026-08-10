@@ -339,18 +339,6 @@ Infra:
             repository: invest
             branch: main
             local_checkout: ~/invest
-      serialization:
-        # Locks and the snapshot fixed-point were exterminated: both assumed a
-        # single actor per checkout, which is false under GitOps/DevOps flows.
-        # The file locks queued every verb behind peers (1800s timeout) and the
-        # fingerprint aborted valid runs with "workspace changed during
-        # serialized Make" whenever a sibling lane wrote concurrently.
-        # `verbs` now names the surface routed through the dispatcher, which
-        # only resolves WHAT from the verb matrix and validates the APPLY token.
-        # `mutation_verbs` stays the declared mutating set (it must remain equal
-        # to the apply-guarded verbs) and no longer implies any lock.
-        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs, mod, release]
-        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs, mod, release]
       verbs:
         - name: help
           default_what: usage
@@ -383,8 +371,6 @@ Infra:
           # computed from an impacted subset is not the suite's coverage.
           # full = the complete-suite gate: testmon OFF, coverage ON. Pre-push
           # runs it so the measured number covers every test.
-          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-          # test in mutation_verbs (fingerprint still ignores .testmondata*).
           whats: [all, full, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
@@ -403,9 +389,6 @@ Infra:
           default_what: default
           whats: [default]
           apply_guarded: false
-          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-          # entering the serialized mutation set (daemon/mcp must not take the
-          # checkout lock). accepts_apply unlocks the APPLY token only.
           accepts_apply: true
           apply_what: default
         - name: status
@@ -413,8 +396,6 @@ Infra:
           whats: [diagnostics]
           apply_guarded: false
         - name: docs
-          # `validate` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
           # `WHAT=all` remains the explicit full pipeline meta-selector.
           default_what: validate
           whats: [all, generate, fix, audit, build, validate]
@@ -428,8 +409,6 @@ Infra:
           default_what: status
           whats: [status, generated]
           # `clean generated` deletes generated output and calls _require_apply.
-          # `clean status` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
           apply_guarded: true
           apply_what: generated
         - name: release

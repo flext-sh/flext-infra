@@ -12,13 +12,7 @@ member therefore rewrote the ``pyproject.toml`` of every sibling -- measured as
 dirty without the caller ever touching it.
 
 The damage compounds: ``gen`` runs inside ``check``, and ``check`` runs in the
-pre-commit hook, so a single commit in any lane dirties every sibling. That is
-the "workspace changed during serialized Make check" abort every lane keeps
-hitting -- concurrent lanes were not colliding by carelessness, the verb itself
-was writing outside the scope it was invoked in.
-
-It also makes the fixed point unreachable: each run rewrites the siblings, so
-the next run finds a difference again.
+pre-commit hook, so a single commit in any lane dirties every sibling.
 
 At the workspace root ``PROJECT_ROOT`` already *is* the workspace, so a single
 root keeps the fan-out where it belongs and restricts it everywhere else. No
