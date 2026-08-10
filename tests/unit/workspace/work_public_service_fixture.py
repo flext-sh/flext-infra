@@ -36,6 +36,7 @@ class WorkPublicServiceFixture:
     pr_receipt: Path
     pr_state: Path
     update_receipt: Path
+    failed_update: Path
 
     @classmethod
     def create(cls, root: Path, monkeypatch: pytest.MonkeyPatch) -> Self:
@@ -89,15 +90,24 @@ class WorkPublicServiceFixture:
         pr_state = root / "gh-pr-state.json"
         pr_state.write_text("{}", encoding="utf-8")
         update_receipt = root / "bd-update-events.jsonl"
+        failed_update = root / "bd-failed-update.txt"
+        failed_update.write_text("", encoding="utf-8")
         shim_dir = root / "bin"
         shim_dir.mkdir()
-        cls._write_bd(shim_dir / "bd", store, update_receipt)
+        cls._write_bd(shim_dir / "bd", store, update_receipt, failed_update)
         cls._write_gh(shim_dir / "gh", pr_receipt, pr_state)
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
         return cls(
-            root, repository, origin, store, pr_receipt, pr_state, update_receipt
+            root,
+            repository,
+            origin,
+            store,
+            pr_receipt,
+            pr_state,
+            update_receipt,
+            failed_update,
         )
 
     def add_issue(
@@ -127,6 +137,9 @@ class WorkPublicServiceFixture:
             json.dumps({"state": "MERGED", "headRefName": head}), encoding="utf-8"
         )
 
+    def fail_updates_for(self, bead_id: str) -> None:
+        self.failed_update.write_text(bead_id, encoding="utf-8")
+
     def update_events(self) -> tuple[dict[str, str], ...]:
         return tuple(
             json.loads(line)
@@ -134,10 +147,10 @@ class WorkPublicServiceFixture:
         )
 
     @staticmethod
-    def _write_bd(path: Path, store: Path, receipt: Path) -> None:
+    def _write_bd(path: Path, store: Path, receipt: Path, failed: Path) -> None:
         path.write_text(
             "#!/usr/bin/env python3\nimport json, sys\n"
-            f"STORE = {str(store)!r}\nRECEIPT = {str(receipt)!r}\nargs = sys.argv[1:]\n"
+            f"STORE = {str(store)!r}\nRECEIPT = {str(receipt)!r}\nFAILED = {str(failed)!r}\nargs = sys.argv[1:]\n"
             "while args and args[0] in {'-C', '--json', '--quiet', '-q'}:\n"
             "    args = args[2:] if args[0] == '-C' else args[1:]\n"
             "data = json.loads(open(STORE, encoding='utf-8').read())\n"
@@ -147,6 +160,7 @@ class WorkPublicServiceFixture:
             "if args[:1] == ['list'] and '--json' in args:\n"
             "    print(json.dumps(list(data.values()))); raise SystemExit(0)\n"
             "if args[:1] == ['update']:\n"
+            "    if open(FAILED, encoding='utf-8').read().strip() == bead: raise SystemExit('selected bd update refused')\n"
             "    issue = data[bead]; i = 2\n"
             "    while i < len(args):\n"
             "        if args[i] == '--set-metadata':\n"
