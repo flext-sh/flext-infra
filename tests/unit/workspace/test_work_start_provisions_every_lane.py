@@ -32,10 +32,9 @@ def _repository(tmp_path: Path) -> Path:
     (repository / "Makefile").write_text(
         ".PHONY: setup\n"
         "setup:\n"
-        '\t@test "$(WORKSPACE)" = "$(CURDIR)"\n'
         "\t@mkdir -p .venv/bin\n"
         "\t@printf '#!/bin/sh\\n' > .venv/bin/python\n"
-        f'\t@printf "%s\\n" "$(WORKSPACE)" >> "$(CURDIR)/{_SETUP_LOG}"\n',
+        f'\t@printf "%s\\n" "$(CURDIR)" >> "$(CURDIR)/{_SETUP_LOG}"\n',
         encoding="utf-8",
     )
     (repository / ".gitignore").write_text(f".venv\n{_SETUP_LOG}\n", encoding="utf-8")
@@ -115,9 +114,9 @@ def _start(repository: Path, bead_id: str) -> str:
     )
 
 
-def _setup_runs(repository: Path) -> int:
-    """Return how many times ``make setup`` ran in the primary checkout."""
-    log = repository / _SETUP_LOG
+def _setup_runs(lane: Path) -> int:
+    """Return how many times ``make setup`` ran in one lane."""
+    log = lane / _SETUP_LOG
     if not log.is_file():
         return 0
     return len([line for line in log.read_text(encoding="utf-8").splitlines() if line])
@@ -140,12 +139,17 @@ def test_start_provisions_a_new_lane_and_an_adopted_one(
     monkeypatch.setenv("PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}")
 
     _ = _start(repository, bead_id)
-    created_runs = _setup_runs(repository)
+    lane = tm.ok(
+        FlextInfraWorktreeService.registered_lane(
+            repository, "feature/provisioned-lane"
+        )
+    )
+    created_runs = _setup_runs(lane)
 
     _ = _start(repository, bead_id)
 
     assert created_runs == 1, "start provisioned the created lane more than once"
-    assert _setup_runs(repository) == created_runs + 1, (
+    assert _setup_runs(lane) == created_runs + 1, (
         "start adopted the existing lane without provisioning it"
     )
 

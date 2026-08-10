@@ -46,7 +46,7 @@ class FlextInfraWorktreeService(s[str]):
         checked = u.Infra.git_check_branch_format(
             m.Infra.GitBranchRequest(repo_root=self.workspace_root, branch=branch)
         )
-        if checked.failure:
+        if checked.failure or not checked.value.value:
             return r.fail(checked.error or f"invalid branch name: {branch}")
         return r.ok(branch)
 
@@ -106,9 +106,9 @@ class FlextInfraWorktreeService(s[str]):
         return r.ok(checked.value.value)
 
     @classmethod
-    def setup_lane(cls, primary_root: Path, lane: Path) -> p.Result[bool]:
-        """Provision a lane from its primary checkout."""
-        return FlextInfraWorktreeProvisioning.setup_lane(primary_root, lane)
+    def setup_lane(cls, lane: Path) -> p.Result[bool]:
+        """Provision an isolated environment inside one lane."""
+        return FlextInfraWorktreeProvisioning.setup_lane(lane)
 
     @staticmethod
     def _rollback_new_lane(

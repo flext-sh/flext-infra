@@ -48,16 +48,11 @@ def _external_consumer(tmp_path: Path) -> Path:
     (primary / "Makefile").write_text(
         ".PHONY: setup\n"
         "setup:\n"
-        '\t@test "$(WORKSPACE)" = "$(CURDIR)"\n'
-        '\t@test -f "$(WORKSPACE)/../flext/flext-core/contract.txt"\n'
-        '\t@test -f "$(WORKSPACE)/../flext/flext-cli/contract.txt"\n'
-        '\t@test -f "$(WORKSPACE)/../flext/flext-infra/contract.txt"\n'
+        '\t@test -z "$(WORKSPACE)"\n'
         '\t@test -z "$(VIRTUAL_ENV)$(UV_PROJECT)$(UV_PROJECT_ENVIRONMENT)"\n'
-        '\t@test -f "$(WORKSPACE)/mt5linux/content.txt"\n'
-        '\t@test -f "$(WORKSPACE)/vectorbt.pro/content.txt"\n'
         f"\t@mkdir -p {_VENV_NAME}/bin\n"
         f"\t@printf '#!/bin/sh\\n' > {_VENV_NAME}/bin/python\n"
-        '\t@printf "%s\\n" "$(WORKSPACE)" > setup-owner.log\n',
+        '\t@printf "%s\\n" "$(CURDIR)" > setup-owner.log\n',
         encoding="utf-8",
     )
     (primary / ".gitignore").write_text(
@@ -149,15 +144,11 @@ def test_start_adopts_and_provisions_an_invest_shaped_lane(
     tm.that(started, has=f"receipt.worktree={lane}")
     tm.that(metadata["worktree"], eq=str(lane))
     tm.that(
-        (primary / "setup-owner.log").read_text(encoding="utf-8"),
-        eq=f"{primary.resolve()}\n",
+        (lane / "setup-owner.log").read_text(encoding="utf-8"), eq=f"{lane.resolve()}\n"
     )
-    tm.that((lane / _VENV_NAME).resolve(), eq=(primary / _VENV_NAME).resolve())
+    tm.that((lane / _VENV_NAME).is_symlink(), eq=False)
     for name in ("mt5linux", "vectorbt.pro"):
-        tm.that((primary / name / ".git").exists(), eq=True)
-        tm.that(
-            (primary / name / "content.txt").read_text(encoding="utf-8"), eq=f"{name}\n"
-        )
+        tm.that((primary / name / ".git").exists(), eq=False)
 
 
 __all__: tuple[str, ...] = ()

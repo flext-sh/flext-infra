@@ -335,6 +335,19 @@ class TestsFlextInfraWorktreeService:
 
         tm.fail(result, has="requires --base")
 
+    def test_branch_predicate_false_is_rejected(self, tmp_path: Path) -> None:
+        repository = self._repository(tmp_path)
+
+        result = FlextInfraWorktreeService(
+            workspace_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch="invalid branch",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="invalid branch")
+
     def test_attached_submodule_uses_one_primary_local_container(
         self, tmp_path: Path
     ) -> None:
