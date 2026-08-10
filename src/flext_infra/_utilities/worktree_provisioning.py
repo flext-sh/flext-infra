@@ -13,7 +13,54 @@ if TYPE_CHECKING:
 
 class FlextInfraWorktreeProvisioning:
     @staticmethod
-    def _validate_governed_gitlink(lane: Path, member_path: Path) -> p.Result[bool]:
+    def _ensure_gitlink_checkout(lane: Path, member_path: Path) -> p.Result[bool]:
+        reference = member_path.as_posix()
+        git_marker = lane / member_path / ".git"
+        if git_marker.is_symlink() or (
+            git_marker.exists() and not git_marker.is_file()
+        ):
+            return r.fail(f"governed gitlink has an invalid .git marker: {reference}")
+        if git_marker.exists():
+            return r.ok(True)
+        initialized = u.Infra.git_submodule_init(
+            m.Infra.GitRefRequest(repo_root=lane, reference=reference)
+        )
+        if initialized.failure:
+            return r.fail(
+                initialized.error
+                or f"failed to initialize governed gitlink: {reference}"
+            )
+        return r.ok(True)
+
+    @staticmethod
+    def _verify_gitlink_state(
+        lane: Path, member_path: Path, declared_url: str, recorded_oid: str
+    ) -> p.Result[bool]:
+        reference = member_path.as_posix()
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=lane / member_path)
+        )
+        if identity.failure:
+            return r.fail(
+                identity.error or f"failed to inspect governed gitlink: {reference}"
+            )
+        if identity.value.dirty:
+            return r.fail(f"governed gitlink is dirty: {reference}")
+        origin = identity.value.origin_remote
+        if origin is None or u.Infra.git_remote_identity(
+            origin
+        ) != u.Infra.git_remote_identity(declared_url):
+            return r.fail(f"governed gitlink identity mismatch: {reference}")
+        if identity.value.head_oid != recorded_oid:
+            return r.fail(
+                f"governed gitlink {reference} is not at recorded oid {recorded_oid}"
+            )
+        return r.ok(True)
+
+    @classmethod
+    def _validate_governed_gitlink(
+        cls, lane: Path, member_path: Path
+    ) -> p.Result[bool]:
         reference = member_path.as_posix()
         contract = u.Infra.gitmodule_contract(
             m.Infra.GitSubmoduleContractRequest(repo_root=lane, member_path=reference)
@@ -25,38 +72,12 @@ class FlextInfraWorktreeProvisioning:
         )
         if recorded.failure:
             return r.fail(recorded.error or f"missing governed gitlink: {reference}")
-        member_root = lane / member_path
-        git_marker = member_root / ".git"
-        if git_marker.is_symlink() or (
-            git_marker.exists() and not git_marker.is_file()
-        ):
-            return r.fail(f"governed gitlink has an invalid .git marker: {reference}")
-        if not git_marker.exists():
-            initialized = u.Infra.git_submodule_init(
-                m.Infra.GitRefRequest(repo_root=lane, reference=reference)
-            )
-            if initialized.failure:
-                return r.fail(
-                    initialized.error
-                    or f"failed to initialize governed gitlink: {reference}"
-                )
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member_root))
-        if identity.failure:
-            return r.fail(
-                identity.error or f"failed to inspect governed gitlink: {reference}"
-            )
-        if identity.value.dirty:
-            return r.fail(f"governed gitlink is dirty: {reference}")
-        origin = identity.value.origin_remote
-        if origin is None or u.Infra.git_remote_identity(
-            origin
-        ) != u.Infra.git_remote_identity(contract.value.url):
-            return r.fail(f"governed gitlink identity mismatch: {reference}")
-        if identity.value.head_oid != recorded.value.oid:
-            return r.fail(
-                f"governed gitlink {reference} is not at recorded oid {recorded.value.oid}"
-            )
-        return r.ok(True)
+        ensured = cls._ensure_gitlink_checkout(lane, member_path)
+        if ensured.failure:
+            return ensured
+        return cls._verify_gitlink_state(
+            lane, member_path, contract.value.url, recorded.value.oid
+        )
 
     @classmethod
     def _prepare_governed_gitlinks(cls, lane: Path) -> p.Result[bool]:
