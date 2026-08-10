@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from git import GitCommandError, GitConfigParser
+from git import GitCommandError, GitConfigParser, Repo
 
 from flext_cli import u
 from flext_core import r
@@ -19,6 +19,8 @@ from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+_PORCELAIN_PATH_OFFSET = 3
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -46,6 +48,31 @@ class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
     """
 
     @classmethod
+    def _lifecycle_porcelain(cls, repo: Repo, repo_path: Path, porcelain: str) -> str:
+        listed = repo.git.worktree("list", "--porcelain")
+        registered = {
+            Path(line.removeprefix("worktree ")).expanduser().resolve()
+            for line in listed.splitlines()
+            if line.startswith("worktree ")
+        }
+        administrative = {
+            path.relative_to(repo_path).as_posix().rstrip("/")
+            for path in registered
+            if path != repo_path and path.is_relative_to(repo_path)
+        }
+        retained: list[str] = []
+        for line in porcelain.splitlines():
+            candidate = (
+                line[_PORCELAIN_PATH_OFFSET:].rstrip("/")
+                if len(line) > _PORCELAIN_PATH_OFFSET
+                else ""
+            )
+            if line.startswith("?? ") and candidate in administrative:
+                continue
+            retained.append(line)
+        return "\n".join(retained)
+
+    @classmethod
     def git_status(
         cls, request: m.Infra.GitStatusRequest
     ) -> p.Result[m.Infra.GitStatusReport]:
@@ -54,13 +81,14 @@ class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitRepo):
         try:
             repo = cls._repo(repo_path)
             porcelain = repo.git.status("--porcelain", "--untracked-files=all")
+            lifecycle = cls._lifecycle_porcelain(repo, repo_path, porcelain)
         except GitCommandError as exc:
             return r[m.Infra.GitStatusReport].fail(str(exc))
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitStatusReport].fail(f"git status failed: {exc}")
         return r[m.Infra.GitStatusReport].ok(
             m.Infra.GitStatusReport(
-                repo_root=repo_path, porcelain=porcelain, dirty=bool(porcelain.strip())
+                repo_root=repo_path, porcelain=porcelain, dirty=bool(lifecycle.strip())
             )
         )
 
