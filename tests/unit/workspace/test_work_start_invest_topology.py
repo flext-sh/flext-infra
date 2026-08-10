@@ -63,11 +63,10 @@ def _external_consumer(tmp_path: Path) -> Path:
     (primary / ".gitignore").write_text(
         f"{_VENV_NAME}\nsetup-owner.log\n", encoding="utf-8"
     )
-    beads = primary / ".beads"
-    beads.mkdir()
-    (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
+    u.Tests.declare_workspace_ledger(primary, "mro")
     u.Tests.initialize_git_repo(primary)
-    for name in ("mt5linux", "vectorbt.pro"):
+    submodules = (("mt5linux", "master"), ("vectorbt.pro", "main"))
+    for name, branch in submodules:
         source = _submodule_source(tmp_path, name)
         tm.ok(
             u.Cli.run_checked(
@@ -83,12 +82,25 @@ def _external_consumer(tmp_path: Path) -> Path:
                 cwd=primary,
             )
         )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "-f",
+                    c.Infra.GITMODULES,
+                    f"submodule.{name}.branch",
+                    branch,
+                ],
+                cwd=primary,
+            )
+        )
     tm.ok(
         u.Cli.run_checked(
             [c.Infra.GIT, "commit", "-am", "declare gitlinks"], cwd=primary
         )
     )
-    for name in ("mt5linux", "vectorbt.pro"):
+    for name, _branch in submodules:
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "submodule", "deinit", "-f", name], cwd=primary

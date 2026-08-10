@@ -41,11 +41,55 @@ class TestsFlextInfraWorkService:
             encoding="utf-8",
         )
         (repository / ".gitignore").write_text(".venv\n", encoding="utf-8")
-        beads = repository / ".beads"
-        beads.mkdir()
-        (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
+        # Why (mro-tvc03): the ledger is resolved from the typed workspace
+        # manifest, so a fixture that only drops .beads/config.yaml no longer
+        # declares a tracker. Emit the manifest the runtime actually reads.
+        repository_ref = test_u.Tests.repository_ref("fixture").model_copy(
+            update={"path": Path(), "package": False, "editable": False}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                repository / "config" / "workspace.yaml",
+                m.Infra.WorkspaceSpec(
+                    version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                    name=repository_ref.distribution,
+                    repository=repository_ref,
+                    ledger_id="mro",
+                ).model_dump(mode="json", exclude_none=True),
+            )
+        )
         test_u.Tests.initialize_git_repo(repository)
         return repository
+
+    @staticmethod
+    def _member(tmp_path: PathType, workspace: PathType, name: str) -> PathType:
+        """Attach a real Git submodule the governing workspace owns."""
+        # Why (mro-tvc03): membership is Git topology, not a nested directory.
+        # Only a real submodule makes the checkout report its superproject, and
+        # that report is what routes the ledger to the governing workspace.
+        source = tmp_path / f"{name}-source"
+        source.mkdir(parents=True)
+        (source / "pyproject.toml").write_text(
+            f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
+            'description = "A standard PEP 621 description string"\n',
+            encoding="utf-8",
+        )
+        test_u.Tests.initialize_git_repo(source)
+        tm.ok(
+            test_u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    str(source),
+                    name,
+                ],
+                cwd=workspace,
+            )
+        )
+        return workspace / name
 
     @staticmethod
     def _install_bd_shim(
@@ -265,39 +309,38 @@ class TestsFlextInfraWorkService:
         ).execute()
         tm.fail(result, has="requires --bead")
 
-    def test_beads_resolve_prefers_parent_workspace_config(
+    def test_beads_resolve_reads_the_governing_workspace_manifest(
         self, tmp_path: PathType
     ) -> None:
-        workspace = tmp_path / "workspace"
-        member = workspace / "member"
-        member.mkdir(parents=True)
-        (workspace / ".beads").mkdir()
-        (workspace / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
-        )
-        test_u.Tests.initialize_git_repo(member)
+        """The governing manifest owns the ledger for the workspace and members."""
+        workspace = self._repository(tmp_path)
+        member = self._member(tmp_path, workspace, "member")
+
         resolved = tm.ok(u.Infra.beads_resolve_root(member))
         assert str(resolved) == str(workspace.resolve())
         resolved_workspace = tm.ok(u.Infra.beads_resolve_root(workspace))
         assert str(resolved_workspace) == str(workspace.resolve())
 
-    def test_beads_resolve_prefers_member_tracker_when_present(
+    def test_beads_resolve_ignores_a_member_local_tracker_file(
         self, tmp_path: PathType
     ) -> None:
-        workspace = tmp_path / "workspace"
-        member = workspace / "member"
-        member.mkdir(parents=True)
-        (workspace / ".beads").mkdir()
-        (workspace / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
+        """A member never outranks the governing workspace it belongs to.
+
+        mro-tvc03: resolution used to walk candidates positionally and return
+        the first `.beads/config.yaml` it found, so a member carrying that file
+        captured the lane and `bd` bound to the wrong ledger. Ownership is a
+        typed declaration on the governing manifest, never a file on disk.
+        """
+        workspace = self._repository(tmp_path)
+        member = self._member(tmp_path, workspace, "member")
+        member_beads = member / ".beads"
+        member_beads.mkdir()
+        (member_beads / "config.yaml").write_text(
+            'issue-prefix: "member-local"\n', encoding="utf-8"
         )
-        (member / ".beads").mkdir()
-        (member / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "flext-infra"\n', encoding="utf-8"
-        )
-        test_u.Tests.initialize_git_repo(member)
+
         resolved = tm.ok(u.Infra.beads_resolve_root(member))
-        assert str(resolved) == str(member.resolve())
+        assert str(resolved) == str(workspace.resolve())
 
     def test_finish_removes_lane_and_updates_metadata(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -504,10 +547,20 @@ class TestsFlextInfraWorkService:
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repository = self._repository(tmp_path)
-        config = repository / "config"
-        config.mkdir()
-        (config / "workspace.yaml").write_text(
-            "integration:\n  branch: 0.12.0-dev\n", encoding="utf-8"
+        # Why (mro-tvc03): the manifest is the tracker SSOT the fixture already
+        # wrote, so the integration branch is ADDED to it. Overwriting the file
+        # with a fragment produced a manifest without version/name/repository
+        # and the lane could no longer resolve its own ledger.
+        manifest = repository / "config" / "workspace.yaml"
+        declared = u.Cli.yaml_load_mapping(manifest)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **declared,
+                    "integration": {"provider": "flext-sh", "branch": "0.12.0-dev"},
+                },
+            )
         )
         bead_id = "mro-test-finish-perm"
         shim_dir = self._install_bd_shim(tmp_path, bead_id)
@@ -907,11 +960,19 @@ class TestsFlextInfraWorkService:
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repository = self._repository(tmp_path)
-        config = repository / "config"
-        config.mkdir()
-        (config / "workspace.yaml").write_text(
-            "integration:" + chr(10) + "  branch: 0.12.0-dev" + chr(10),
-            encoding="utf-8",
+        # Why (mro-tvc03): add the integration branch to the manifest the
+        # fixture already declared; replacing it with a fragment removed the
+        # tracker identity the lane resolves its ledger from.
+        manifest = repository / "config" / "workspace.yaml"
+        declared = u.Cli.yaml_load_mapping(manifest)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **declared,
+                    "integration": {"provider": "flext-sh", "branch": "0.12.0-dev"},
+                },
+            )
         )
         bead_id = "mro-test-land-base-drift"
         shim_dir = self._install_bd_shim(tmp_path, bead_id)

@@ -482,7 +482,15 @@ Infra:
         # mro-wkii.17.37.1 (1bc6379b): budgets are MEASURED, not aspirational —
         # they retain the observed coverage-run slack. The typed runner owns
         # them; never narrow them back to the pre-measurement 10s/60s.
-        case-timeout-seconds: 30
+        # Measured (mro-xzeok, 2026-08-09): the conform end-to-end cases run
+        # FOUR full conforms each (apply + verify-fixed-point, twice). One
+        # conform measured 8.05s, 7.29s and 8.59s in a single-test run with no
+        # parallelism, so the case needs ~32s of pure work and did not fit the
+        # 30s ceiling even when running alone. Raised to the measured cost plus
+        # the observed variation, per the rule above: budgets follow the
+        # measurement, and a case is never killed by a clock that never fit the
+        # operation it performs.
+        case-timeout-seconds: 90
         # Measured (ai-hub-wjmk, 2026-08-04): ai-hub unit slice alone reaches
         # only ~38 percent before the old 300s run wall (exit 124). Full suite
         # is ~1464 items. Align with consumer health-gate budget (1800s) and
