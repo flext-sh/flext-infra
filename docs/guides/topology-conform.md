@@ -20,6 +20,9 @@ implementations directly.
 - An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
   metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
   CI surface, and project runtime.
+- A development lane owns a real lane-local `.venv`. START invokes `make setup`
+  from the lane, with the lane as both project and runtime root; it never links to
+  or mutates another checkout's environment.
 - Generated `.envrc` files derive `PROJECT_ROOT` from the nearest
   `pyproject.toml` through direnv's documented `find_up` stdlib function. They
   do not depend on undocumented `DIRENV_*` variables, so strict evaluation is
