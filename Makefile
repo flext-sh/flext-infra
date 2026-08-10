@@ -276,6 +276,7 @@ else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
+CODEGEN_PROJECT_ARGS := $(if $(filter self,$(CODEGEN_SCOPE)),--projects .,)
 
 # Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
@@ -980,14 +981,14 @@ _builtin_release_rel: _builtin_require_environment
 # already the workspace, so fan-out survives exactly where it belongs.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --check
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check $(CODEGEN_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --check $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply $(CODEGEN_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_apply: _builtin_gen_all
 

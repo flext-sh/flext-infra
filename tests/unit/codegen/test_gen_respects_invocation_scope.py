@@ -99,4 +99,22 @@ def test_recipe_bodies_are_actually_parsed() -> None:
     ), f"no PROJECT_ROOT command found in {_TEMPLATE}; parser is broken"
 
 
+def test_gen_dependency_stages_follow_codegen_scope() -> None:
+    text = _template_text()
+    assert (
+        "CODEGEN_PROJECT_ARGS := $(if $(filter self,$(CODEGEN_SCOPE)),--projects .,)"
+        in text
+    )
+
+    bodies = _recipe_bodies()
+    for target in ("_builtin_gen_check", "_builtin_gen_all"):
+        dependency_lines = [
+            line
+            for line in bodies[target]
+            if "deps modernize" in line or "deps extra-paths" in line
+        ]
+        assert len(dependency_lines) == 2
+        assert all("$(CODEGEN_PROJECT_ARGS)" in line for line in dependency_lines)
+
+
 __all__: tuple[str, ...] = ()
