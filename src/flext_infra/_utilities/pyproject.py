@@ -55,8 +55,9 @@ class FlextInfraUtilitiesPyproject:
         return cls._format_toml_source_cached(
             source,
             relative_path=relative_path,
-            config_path=config_path if config_content else None,
+            config_path=config_path.resolve() if config_content else None,
             config_digest=sha256(config_content).hexdigest(),
+            toolchain_root=resolved_toolchain_root,
             taplo_version=taplo_version,
         )
 
@@ -68,6 +69,7 @@ class FlextInfraUtilitiesPyproject:
         relative_path: str,
         config_path: Path | None,
         config_digest: str,
+        toolchain_root: Path,
         taplo_version: str,
     ) -> p.Result[str]:
         del config_digest
@@ -86,7 +88,7 @@ class FlextInfraUtilitiesPyproject:
             command.extend(("--config", str(config_path)))
         result = u.Cli.run_raw(
             command,
-            cwd=Path(__file__).resolve().parent,
+            cwd=toolchain_root,
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
         )
         if result.failure:

@@ -43,11 +43,14 @@ class TestsFlextInfraDepsModernizerWorkspace:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         commands: list[tuple[str, ...]] = []
+        working_directories: list[Path] = []
 
         def run_raw(
-            command: list[str], **_kwargs: bytes | Path
+            command: list[str], *, cwd: Path, input_data: bytes
         ) -> r[m.Cli.CommandOutput]:
             commands.append(tuple(command))
+            working_directories.append(cwd)
+            tm.that(input_data, eq=source.encode())
             return r[m.Cli.CommandOutput].ok(
                 m.Cli.CommandOutput(stdout='name = "demo"\n', stderr="", exit_code=0)
             )
@@ -56,6 +59,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         config_path = tmp_path / ".taplo.toml"
         config_path.write_text('include = ["**/*.toml"]\n', encoding="utf-8")
         formatter = infra_u.Infra.format_toml_source
+        taplo_version = config.Infra.codegen.toolchain.taplo_version
         source = 'name="demo"\n'
 
         formatted = tm.ok(
@@ -63,7 +67,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 source,
                 path=tmp_path / "first" / "pyproject.toml",
                 toolchain_root=tmp_path,
-                taplo_version="1.0.0",
+                taplo_version=taplo_version,
             )
         )
         tm.ok(
@@ -71,7 +75,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 source,
                 path=tmp_path / "first" / "pyproject.toml",
                 toolchain_root=tmp_path,
-                taplo_version="1.0.0",
+                taplo_version=taplo_version,
             )
         )
         config_path.write_text('include = ["pyproject.toml"]\n', encoding="utf-8")
@@ -80,7 +84,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 source,
                 path=tmp_path / "first" / "pyproject.toml",
                 toolchain_root=tmp_path,
-                taplo_version="1.0.0",
+                taplo_version=taplo_version,
             )
         )
         tm.ok(
@@ -88,7 +92,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 source,
                 path=tmp_path / "second" / "pyproject.toml",
                 toolchain_root=tmp_path,
-                taplo_version="1.0.0",
+                taplo_version=taplo_version,
             )
         )
 
@@ -96,6 +100,8 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.that(formatted, eq='name = "demo"')
         tm.that(commands[0], has="first/pyproject.toml")
         tm.that(commands[2], has="second/pyproject.toml")
+        tm.that(working_directories, eq=[tmp_path.resolve()] * 3)
+        tm.that(commands[0], has=str(config_path.resolve()))
 
     @pytest.mark.parametrize(
         ("content", "exists", "expected"),
