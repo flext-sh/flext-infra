@@ -142,16 +142,16 @@ class FlextInfraUtilitiesBeadsLane:
             if "epic_worktree" in topology:
                 topology["epic_worktree"] = Path(str(topology["epic_worktree"]))
             projected_metadata["topology"] = topology
-        projected = {
-            "id": payload.get("id"),
-            "status": c.Infra.BeadIssueStatus(str(payload.get("status"))),
-            "issue_type": payload.get("issue_type"),
-            "parent": payload.get("parent"),
-            "metadata": projected_metadata,
-        }
         try:
+            projected = {
+                "id": payload.get("id"),
+                "status": c.Infra.BeadIssueStatus(str(payload.get("status"))),
+                "issue_type": payload.get("issue_type"),
+                "parent": payload.get("parent"),
+                "metadata": projected_metadata,
+            }
             return r.ok(m.Infra.BeadIssue.model_validate(projected))
-        except m.ValidationError as exc:
+        except (ValueError, m.ValidationError) as exc:
             return r.fail(f"Beads issue validation failed: {exc}")
 
     @classmethod
