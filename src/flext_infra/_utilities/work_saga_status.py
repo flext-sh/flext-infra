@@ -65,6 +65,12 @@ class FlextInfraWorkSagaStatus(FlextInfraWorkSagaCommon):
                     return r.fail(
                         ownership.error or "work status reservation ownership failed"
                     )
+                if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+                    live = self._live_child_topology(
+                        primary_root, shown.value, metadata.topology
+                    )
+                    if live.failure:
+                        return r.fail(live.error or "work status child binding failed")
                 values = metadata.model_dump(
                     mode="json", exclude_none=True, exclude={"topology"}
                 )

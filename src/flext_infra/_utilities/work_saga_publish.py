@@ -69,6 +69,11 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             return r.fail(base.error or "missing integration base")
         integration = base.value
         if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work land child binding failed")
             integration = metadata.topology.epic_branch
         if (
             recorded_integration
@@ -121,6 +126,12 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         ).execute()
         if synced.failure:
             return r.fail(synced.error or "work land sync failed")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work land child binding changed")
         pushed = u.Infra.git_push_upstream(
             m.Infra.GitPushRequest(repo_root=lane, branch=branch)
         )

@@ -47,25 +47,27 @@ class FlextInfraWorkStartSupport(FlextInfraWorkTopology):
         return f"{reason}; lane {branch} rolled back"
 
     def _registered_epic(
-        self, primary_root: Path, epic_bead: str
+        self, primary_root: Path, child: m.Infra.BeadIssue, epic_bead: str
     ) -> p.Result[tuple[str, Path]]:
-        shown = u.Infra.beads_show(epic_bead, root=self.workspace_root)
-        if shown.failure:
-            return r.fail(shown.error or f"unknown epic bead {epic_bead}")
-        metadata = shown.value.metadata
-        if not isinstance(metadata, m.Infra.ReadyLaneMetadata):
-            return r.fail(f"epic bead {epic_bead} is not a registered lane")
-        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
-            return r.fail(f"bead {epic_bead} is a child lane and owns no children")
-        bound = self._bound_registered_lane(
-            primary_root, metadata.branch, str(metadata.worktree)
+        topology = m.Infra.ChildLaneTopology(
+            role=c.Infra.WorkLaneRole.CHILD,
+            epic_bead=epic_bead,
+            epic_branch="pending",
+            epic_worktree=Path("pending"),
+            child_slug="pending",
         )
+        shown = u.Infra.beads_show(epic_bead, root=self.workspace_root)
+        if shown.failure or not isinstance(
+            shown.value.metadata, m.Infra.ReadyLaneMetadata
+        ):
+            return r.fail(shown.error or f"epic bead {epic_bead} lane is not ready")
+        metadata = shown.value.metadata
+        topology = topology.model_copy(
+            update={"epic_branch": metadata.branch, "epic_worktree": metadata.worktree}
+        )
+        bound = self._live_child_topology(primary_root, child, topology)
         if bound.failure:
-            return r.fail(
-                bound.error or f"epic lane {metadata.branch} is not registered in Git"
-            )
-        if not bound.value.is_dir():
-            return r.fail(f"epic lane worktree missing: {bound.value}")
+            return r.fail(bound.error or "epic binding failed")
         return r.ok((metadata.branch, bound.value))
 
 

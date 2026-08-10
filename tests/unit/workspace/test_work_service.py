@@ -94,6 +94,7 @@ class TestsFlextInfraWorkService:
         *bead_ids: str,
         update_fails: bool = False,
         issue_types: dict[str, str] | None = None,
+        parents: dict[str, str] | None = None,
     ) -> PathType:
         store = tmp_path / "beads-store.json"
         store.write_text(
@@ -102,6 +103,7 @@ class TestsFlextInfraWorkService:
                     "id": bead_id,
                     "status": "open",
                     "issue_type": (issue_types or {}).get(bead_id),
+                    "parent": (parents or {}).get(bead_id),
                     "assignee": None,
                     "metadata": {},
                     "labels": [],
@@ -1547,6 +1549,11 @@ class TestsFlextInfraWorkService:
         child_name: str = "child-one",
     ) -> tuple[PathType, PathType]:
         """Start one epic lane and one child lane nested below it."""
+        store_path = tmp_path / "beads-store.json"
+        store = json.loads(store_path.read_text(encoding="utf-8"))
+        store[epic_bead]["issue_type"] = "epic"
+        store[child_bead]["parent"] = epic_bead
+        store_path.write_text(json.dumps(store), encoding="utf-8")
         tm.ok(
             FlextInfraWorkService(
                 workspace_root=repository,
@@ -1581,7 +1588,13 @@ class TestsFlextInfraWorkService:
         repository = self._repository(tmp_path)
         epic_bead = "mro-test-epic"
         child_bead = "mro-test-child"
-        shim_dir = self._install_bd_shim(tmp_path, epic_bead, child_bead)
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "task"},
+            parents={child_bead: epic_bead},
+        )
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
@@ -1688,7 +1701,7 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
 
-        tm.fail(result, has=f"epic bead {epic_bead} is not a registered lane")
+        tm.fail(result, has=f"epic bead {epic_bead} lane is not ready")
 
     def test_status_reports_the_registered_epic_topology(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch

@@ -6,14 +6,60 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import FlextInfraWorktreeService, c, m
+from flext_infra import FlextInfraWorktreeService, c, m, u
+from flext_infra._utilities._work.ownership import FlextInfraWorkOwnership
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraWorkTopology:
+class FlextInfraWorkTopology(FlextInfraWorkOwnership):
     """Prove recorded lane topology against Git's worktree registry."""
+
+    workspace_root: Path
+
+    def _live_child_topology(
+        self,
+        primary_root: Path,
+        child_issue: m.Infra.BeadIssue,
+        child: m.Infra.ChildLaneTopology,
+    ) -> p.Result[Path]:
+        if child_issue.parent != child.epic_bead:
+            return r.fail(
+                f"child bead {child_issue.id} parent mismatch: "
+                f"live={child_issue.parent or 'none'} expected={child.epic_bead}"
+            )
+        shown = u.Infra.beads_show(child.epic_bead, root=self.workspace_root)
+        if shown.failure:
+            return r.fail(shown.error or f"unknown epic bead {child.epic_bead}")
+        epic = shown.value
+        if epic.issue_type != "epic":
+            return r.fail(f"bead {epic.id} must have issue_type=epic")
+        if epic.status not in c.Infra.WORK_ACTIVE_ISSUE_STATUSES:
+            return r.fail(f"epic bead {epic.id} is not active: {epic.status}")
+        metadata = epic.metadata
+        if not isinstance(metadata, m.Infra.ReadyLaneMetadata):
+            return r.fail(f"epic bead {epic.id} lane is not ready")
+        if not isinstance(metadata.topology, m.Infra.EpicLaneTopology):
+            return r.fail(f"epic bead {epic.id} lane role is not epic")
+        if metadata.topology.epic_bead != epic.id:
+            return r.fail(f"epic bead {epic.id} topology owner mismatch")
+        if metadata.branch != child.epic_branch:
+            return r.fail(f"epic bead {epic.id} branch binding mismatch")
+        if metadata.worktree.resolve() != child.epic_worktree.resolve():
+            return r.fail(f"epic bead {epic.id} worktree binding mismatch")
+        ownership = self._owned_reservation(epic.id, metadata.branch, metadata.worktree)
+        if ownership.failure:
+            return r.fail(ownership.error or "epic reservation ownership failed")
+        bound = self._bound_registered_lane(
+            primary_root, metadata.branch, str(metadata.worktree)
+        )
+        if bound.failure:
+            return r.fail(bound.error or "epic registry binding failed")
+        head = u.Cli.capture(("git", "rev-parse", "HEAD"), cwd=bound.value)
+        if head.failure or head.value != metadata.head_oid:
+            return r.fail(f"epic bead {epic.id} HEAD binding mismatch")
+        return r.ok(bound.value)
 
     @staticmethod
     def _bound_registered_lane(

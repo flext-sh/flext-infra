@@ -58,6 +58,12 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         topology = self._validated_lane_topology(primary_root, metadata, lane)
         if topology.failure:
             return r.fail(topology.error or "work finish topology validation failed")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work finish child binding failed")
         merged = self._require_merged_pr(primary_root, branch, pr_number)
         if merged.failure:
             return r.fail(merged.error or "work finish PR state check failed")
@@ -75,6 +81,12 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         ownership = self._owned_reservation(bead, branch, lane)
         if ownership.failure:
             return r.fail(ownership.error or "work finish reservation changed")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work finish child binding changed")
         removed = FlextInfraWorktreeService(
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.REMOVE,

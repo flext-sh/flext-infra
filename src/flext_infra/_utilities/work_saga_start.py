@@ -51,37 +51,12 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                 return r.fail(
                     "work start derives a child base from its epic lane; drop --base"
                 )
-            resolved_epic = self._registered_epic(primary_root, epic_bead)
+            resolved_epic = self._registered_epic(primary_root, shown.value, epic_bead)
             if resolved_epic.failure:
                 return r.fail(resolved_epic.error or "unresolved epic lane")
             # Why: the child base is the epic branch Git already has checked
             # out in the epic lane, never a literal the caller supplies.
             base, epic_lane = resolved_epic.value
-            epic_issue = u.Infra.beads_show(epic_bead, root=self.workspace_root)
-            if epic_issue.failure or not isinstance(
-                epic_issue.value.metadata, m.Infra.ReadyLaneMetadata
-            ):
-                return r.fail(f"epic bead {epic_bead} is not ready")
-            epic_metadata = epic_issue.value.metadata.model_copy(
-                update={
-                    "topology": m.Infra.EpicLaneTopology(
-                        role=c.Infra.WorkLaneRole.EPIC, epic_bead=epic_bead
-                    )
-                }
-            )
-            marked = u.Infra.beads_update_lane(
-                epic_bead,
-                metadata=epic_metadata,
-                notes=(
-                    f"work start: cmd=make work WHAT=start EPIC={epic_bead} "
-                    f"decisive=epic-role-registered child={bead} branch={branch}"
-                ),
-                root=self.workspace_root,
-            )
-            if marked.failure:
-                return r.fail(
-                    marked.error or f"failed to register epic role on {epic_bead}"
-                )
         else:
             resolved_base = self._resolve_integration_base(primary_root)
             if resolved_base.failure:
@@ -130,7 +105,11 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             | m.Infra.EpicLaneTopology
             | m.Infra.ChildLaneTopology
         )
-        if epic_lane is None:
+        if epic_lane is None and shown.value.issue_type == "epic":
+            topology = m.Infra.EpicLaneTopology(
+                role=c.Infra.WorkLaneRole.EPIC, epic_bead=bead
+            )
+        elif epic_lane is None:
             topology = m.Infra.PlainLaneTopology(role=c.Infra.WorkLaneRole.PLAIN)
         else:
             topology = m.Infra.ChildLaneTopology(
