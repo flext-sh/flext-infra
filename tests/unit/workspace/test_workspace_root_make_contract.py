@@ -173,6 +173,29 @@ class TestsWorkspaceRootMakeContract:
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
 
+    def test_generated_work_start_omits_kind_when_unset(self, tmp_path: Path) -> None:
+        workspace_root, _ = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_work_start",
+                    "BEAD=mro-fixture",
+                    "NAME=fixture-lane",
+                    "APPLY=Y",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--operation start")
+        tm.that(output, lacks="--kind")
+
     def test_generated_setup_runs_its_lifecycle_hooks(self, tmp_path: Path) -> None:
         """``setup`` must fire pre-/post-setup like every other public verb.
 

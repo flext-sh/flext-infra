@@ -1017,7 +1017,7 @@ _builtin_work_status:
 
 _builtin_work_start:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --epic "$(EPIC)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" $(if $(strip $(KIND)),--kind "$(KIND)") --name "$(NAME)" --base "$(BASE)" --epic "$(EPIC)" --apply
 
 _builtin_work_land:
 	$(call _require_apply)
