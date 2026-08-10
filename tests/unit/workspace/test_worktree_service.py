@@ -216,10 +216,8 @@ class TestsFlextInfraWorktreeService:
         tm.that(first_lane != second_lane, where=bool)
         tm.that(first_lane.parent.parent != second_lane.parent.parent, where=bool)
 
-    def test_invalid_lane_metadata_fails_precisely_and_rolls_back(
-        self, tmp_path: Path
-    ) -> None:
-        """The typed lane ingress rejects a non-string PEP 621 description."""
+    def test_private_add_does_not_parse_project_metadata(self, tmp_path: Path) -> None:
+        """Raw ADD creates the checkout; public work start owns provisioning."""
         repository = self._repository(tmp_path)
         branch = "feature/invalid-metadata"
         lane = self._lane(repository, repository, branch)
@@ -230,17 +228,18 @@ class TestsFlextInfraWorktreeService:
         )
         self._commit_fixture(repository, "test: invalid project metadata")
 
-        result = FlextInfraWorktreeService(
-            workspace_root=repository,
-            operation=c.Infra.WorktreeOperation.ADD,
-            branch=branch,
-            base="HEAD",
-            apply_changes=True,
-        ).execute()
+        result = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
 
-        tm.fail(result, has="description")
-        tm.fail(result, has="clean lane rolled back")
-        tm.that(not lane.exists(), where=bool)
+        tm.that(result, eq=str(lane))
+        tm.that(lane.is_dir(), where=bool)
         tm.that(
             tm.ok(
                 u.Infra.git_ref_exists(
@@ -249,18 +248,13 @@ class TestsFlextInfraWorktreeService:
                     )
                 )
             ).value,
-            eq=False,
+            eq=True,
         )
 
-    def test_clean_setup_failure_preserves_the_new_lane_for_resume(
+    def test_private_add_does_not_execute_clean_failing_setup(
         self, tmp_path: Path
     ) -> None:
-        """Even a clean failed setup keeps its lane so the next start resumes it.
-
-        Provisioning clones every governed submodule, so discarding a clean but
-        unprovisioned lane threw that away and forced a manual re-clone. The
-        checkout is valid; only its environment is missing.
-        """
+        """Raw ADD leaves setup execution to the public work-start saga."""
         repository = self._repository(tmp_path)
         branch = "feature/clean-setup-failure"
         lane = self._lane(repository, repository, branch)
@@ -270,20 +264,23 @@ class TestsFlextInfraWorktreeService:
         )
         self._commit_fixture(repository, "test: clean setup failure")
 
-        result = FlextInfraWorktreeService(
-            workspace_root=repository,
-            operation=c.Infra.WorktreeOperation.ADD,
-            branch=branch,
-            base="HEAD",
-            apply_changes=True,
-        ).execute()
+        result = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
 
-        tm.fail(result, has="failed (2)")
-        tm.fail(result, has=f"lane {branch} preserved at {lane}")
+        tm.that(result, eq=str(lane))
         tm.that(lane.is_dir(), eq=True)
 
-    def test_setup_failure_preserves_new_lane_with_work(self, tmp_path: Path) -> None:
-        """A failed setup never destroys work it created before returning."""
+    def test_private_add_does_not_execute_dirty_failing_setup(
+        self, tmp_path: Path
+    ) -> None:
+        """Raw ADD cannot create setup work before saga provisioning."""
         repository = self._repository(tmp_path)
         branch = "feature/dirty-setup-failure"
         lane = self._lane(repository, repository, branch)
@@ -297,18 +294,18 @@ class TestsFlextInfraWorktreeService:
         )
         self._commit_fixture(repository, "test: dirty setup failure")
 
-        result = FlextInfraWorktreeService(
-            workspace_root=repository,
-            operation=c.Infra.WorktreeOperation.ADD,
-            branch=branch,
-            base="HEAD",
-            apply_changes=True,
-        ).execute()
-
-        tm.fail(result, has=f"lane {branch} preserved at {lane}")
-        tm.that(
-            (lane / "setup-wip.txt").read_text(encoding="utf-8"), eq="preserve me\n"
+        result = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
         )
+
+        tm.that(result, eq=str(lane))
+        tm.that(not (lane / "setup-wip.txt").exists(), where=bool)
 
     def test_update_fast_forwards_a_lane_to_the_requested_base(
         self, tmp_path: Path
