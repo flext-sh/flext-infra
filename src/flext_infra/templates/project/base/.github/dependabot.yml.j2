@@ -7,7 +7,7 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     labels: [dependencies, github-actions]
-
+{% if has_devcontainer %}
   - package-ecosystem: devcontainers
     directory: /
     schedule:
@@ -15,6 +15,7 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies, devcontainers]
 
+{% endif %}
   - package-ecosystem: pip
     directory: /
     schedule:

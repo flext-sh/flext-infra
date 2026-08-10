@@ -385,6 +385,18 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = False
+        has_devcontainer: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "True when the repository ships a devcontainer definition. "
+                    "Dependabot aborts the whole update job when the "
+                    "devcontainers ecosystem is declared and no devcontainer "
+                    "file exists, so the entry is projected only when true"
+                ),
+            ),
+        ] = False
 
     class MakeWorkflowRenderSpec(_ConfigContract):
         """Typed input shared by generated local workflow surfaces."""

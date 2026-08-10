@@ -1788,8 +1788,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
+            # Dependabot aborts the entire update job ("Neither .devcontainer.json
+            # nor .devcontainer/devcontainer.json ... found") when the
+            # devcontainers ecosystem is declared for a repository that ships no
+            # devcontainer, so the entry is projected only where one exists.
+            has_devcontainer = (target.root / ".devcontainer.json").is_file() or any(
+                candidate.is_file()
+                for candidate in (target.root / ".devcontainer").glob(
+                    "**/devcontainer.json"
+                )
+            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
+                    has_devcontainer=has_devcontainer,
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=provider.value.branch,
