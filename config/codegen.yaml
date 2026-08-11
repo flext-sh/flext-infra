@@ -107,20 +107,20 @@ Infra:
         sha: c771a70e6277c0a99b617c7a806ffedaca235ff9
       mise:
         repository: jdx/mise-action
-        version: v4.2.3
-        sha: 9e7f7633ff6f6d6048a9418a68d48f288f50eb14
+        version: v4.2.4
+        sha: 7e36c90d9ab29c415a2384db3006f3ec8a8cc654
       kind:
         repository: helm/kind-action
         version: v1.14.0
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
       upload-artifact:
         repository: actions/upload-artifact
-        version: v4.6.2
-        sha: ea165f8d65b6e75b540449e92b4886f43607fa02
+        version: v7.0.1
+        sha: 043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       cache:
         repository: actions/cache
-        version: v4.3.0
-        sha: 0057852bfaa89a56745cba8c7296529d2fc39830
+        version: v6.1.0
+        sha: 55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       configure-pages:
         repository: actions/configure-pages
         version: v6.0.0
