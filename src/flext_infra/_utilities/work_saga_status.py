@@ -81,7 +81,10 @@ class FlextInfraWorkSagaStatus(FlextInfraWorkSagaCommon):
                     if key != "role" or value != c.Infra.WorkLaneRole.PLAIN:
                         lines.append(f"metadata.{key}: {value}")
                 lines.extend(self._reported_topology(primary_root, metadata))
-                if isinstance(metadata, m.Infra.ReadyLaneMetadata):
+                if (
+                    isinstance(metadata, m.Infra.ReadyLaneMetadata)
+                    and metadata.matrix is not None
+                ):
                     lines.extend(
                         "matrix: "
                         f"project={entry.project} branch={entry.branch} "

@@ -39,6 +39,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         kind, namespace, slug = kind_slug.value
         branch = self._branch_name(namespace, slug)
         existing = shown.value.metadata
+        existing_matrix: m.Infra.WorkLaneMatrix | None = None
         if existing is not None:
             bound = existing.worktree.exists()
             if bound and existing.branch != branch:
@@ -46,6 +47,10 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     f"bead {bead} already bound to branch {existing.branch} "
                     f"at {existing.worktree}"
                 )
+            if isinstance(existing, m.Infra.ReadyLaneMetadata):
+                if existing.matrix is None:
+                    return r.fail("ready lane start requires matrix metadata")
+                existing_matrix = existing.matrix
         epic_lane: Path | None = None
         base = ""
         if epic_bead:
@@ -238,11 +243,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     state="started",
                 )
             )
-        matrix = (
-            existing.matrix
-            if isinstance(existing, m.Infra.ReadyLaneMetadata)
-            else m.Infra.WorkLaneMatrix(entries=tuple(entries))
-        )
+        matrix = existing_matrix or m.Infra.WorkLaneMatrix(entries=tuple(entries))
         lane_metadata = self.ready(pending_metadata, head.value, matrix)
         labels: tuple[str, ...] = (f"branch:{branch}",)
         if epic_lane is not None:

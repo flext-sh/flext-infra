@@ -118,8 +118,21 @@ class FlextInfraUtilitiesBeadsLane:
         if not isinstance(metadata, dict):
             return None
         if "provisioning" not in metadata:
-            if not adopt_legacy_ready or "matrix" not in metadata:
+            if not adopt_legacy_ready:
                 return None
+            legacy_epic = (
+                issue_type == "epic"
+                and metadata.get("kind") == "epic"
+                and all(
+                    metadata.get(key)
+                    for key in ("slug", "worktree", "integration_base")
+                )
+            )
+            if not legacy_epic:
+                return None
+            if "matrix" not in metadata:
+                msg = "legacy ready lane adoption requires matrix metadata"
+                raise ValueError(msg)
             slug = str(metadata.get("slug") or "")
             branch = (
                 f"epic/{slug}"
@@ -205,23 +218,6 @@ class FlextInfraUtilitiesBeadsLane:
         if "epic_worktree" in topology:
             topology["epic_worktree"] = Path(str(topology["epic_worktree"]))
         projected["topology"] = topology
-        if (
-            adopt_legacy_ready
-            and projected.get("provisioning") == c.Infra.WorkProvisioningState.READY
-            and "matrix" not in projected
-        ):
-            branch = str(projected.get("branch") or "")
-            head_oid = str(projected.get("head_oid") or "")
-            projected["matrix"] = {
-                "entries": (
-                    {
-                        "project": ".",
-                        "branch": branch,
-                        "head_oid": head_oid,
-                        "state": "started",
-                    },
-                )
-            }
         return projected
 
     @classmethod
@@ -281,7 +277,10 @@ class FlextInfraUtilitiesBeadsLane:
             assignments = tuple(
                 f"{key}={value}" for key, value in values.items()
             ) + tuple(f"{key}={value}" for key, value in topology.items())
-            if isinstance(metadata, m.Infra.ReadyLaneMetadata):
+            if (
+                isinstance(metadata, m.Infra.ReadyLaneMetadata)
+                and metadata.matrix is not None
+            ):
                 assignments = (
                     *assignments,
                     f"matrix={metadata.matrix.model_dump_json()}",

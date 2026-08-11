@@ -68,7 +68,10 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(f"lane worktree missing: {lane}")
         if not expected:
             return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
-        for entry in metadata.matrix.entries:
+        matrix = metadata.matrix
+        if matrix is None:
+            return r.fail("work finish requires matrix metadata")
+        for entry in matrix.entries:
             project_root = self._matrix_project_root(lane, entry.project)
             if project_root.failure:
                 return r.fail(project_root.error or "matrix project is invalid")
@@ -135,7 +138,7 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         removed_matrix = m.Infra.WorkLaneMatrix(
             entries=tuple(
                 entry.model_copy(update={"state": "removed"})
-                for entry in metadata.matrix.entries
+                for entry in matrix.entries
             )
         )
         removed_metadata = metadata.model_copy(

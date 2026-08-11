@@ -111,7 +111,10 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             return r.fail("work land refuses the primary worktree")
         if not lane.is_dir():
             return r.fail(f"lane worktree missing: {lane}")
-        matrix_cas = self._validate_matrix_cas(lane, metadata.matrix)
+        matrix = metadata.matrix
+        if matrix is None:
+            return r.fail("work land requires matrix metadata")
+        matrix_cas = self._validate_matrix_cas(lane, matrix)
         if matrix_cas.failure:
             return r.fail(matrix_cas.error or "work land matrix CAS failed")
         synced = FlextInfraWorktreeService(
@@ -144,9 +147,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
                     "work land cannot open a PR with unresolved integration base HEAD"
                 )
         landed_entries: list[m.Infra.WorkLaneEntry] = []
-        for entry in sorted(
-            metadata.matrix.entries, key=lambda item: item.project == "."
-        ):
+        for entry in sorted(matrix.entries, key=lambda item: item.project == "."):
             project_root = self._matrix_project_root(lane, entry.project)
             if project_root.failure:
                 return r.fail(project_root.error or "matrix project is invalid")
@@ -205,7 +206,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
                             ),
                             current,
                         )
-                        for current in metadata.matrix.entries
+                        for current in matrix.entries
                     )
                 )
                 checkpoint = u.Infra.beads_update_lane(

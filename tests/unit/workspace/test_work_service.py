@@ -324,6 +324,104 @@ class TestsFlextInfraWorkService:
         tm.that(status, has="metadata.branch: feature/example-lane")
         tm.that(status, has="metadata.worktree:")
 
+    def test_start_rejects_matrixless_ready_before_mutation(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-matrixless-ready"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="matrixless-ready",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        record = self._record(tmp_path, bead_id)
+        record["metadata"].pop("matrix")
+        self._set_record(tmp_path, bead_id, record)
+        before_record = self._record(tmp_path, bead_id)
+        before_worktrees = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
+            ).execute()
+        )
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="matrixless-ready",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="ready lane start requires matrix metadata")
+        assert self._record(tmp_path, bead_id) == before_record
+        assert (
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
+                ).execute()
+            )
+            == before_worktrees
+        )
+
+    def test_status_renders_matrixless_ready_without_matrix_lines(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-matrixless-status"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        workspace = m.Infra.WorkspaceSpec.model_validate(
+            u.Cli.yaml_load_mapping(repository / "config" / "workspace.yaml")
+        )
+        provider = next(
+            item
+            for item in config.Infra.codegen.providers
+            if item.name == workspace.repository.provider
+        )
+        self._set_metadata(
+            tmp_path,
+            bead_id,
+            {
+                "branch": "feature/matrixless-status",
+                "namespace": "feature",
+                "worktree": str(tmp_path / "matrixless-status"),
+                "kind": "feature",
+                "slug": "matrixless-status",
+                "integration_base": u.Infra.resolve_integration_branch(
+                    workspace, provider
+                ),
+                "head_oid": "abc",
+                "provisioning": "ready",
+                "role": "plain",
+            },
+        )
+
+        status = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.STATUS,
+                bead=bead_id,
+                apply_changes=False,
+            ).execute()
+        )
+
+        tm.that(status, has="metadata.branch: feature/matrixless-status")
+        assert "matrix:" not in status
+
     def test_finish_refuses_primary_checkout(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -167,9 +167,9 @@ class _LaneStateModels(_LaneTopologyModels):
             t.NonEmptyStr, m.Field(description="CAS-protected ready lane HEAD")
         ]
         matrix: Annotated[
-            _LaneStateModels.WorkLaneMatrix,
-            m.Field(description="CAS-protected workspace project lifecycle matrix"),
-        ]
+            _LaneStateModels.WorkLaneMatrix | None,
+            m.Field(description="Workspace project lifecycle matrix when recorded"),
+        ] = None
         pr_number: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Pull request number recorded after land"),
