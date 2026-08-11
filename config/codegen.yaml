@@ -265,11 +265,11 @@ Infra:
         # docs defect is a defect. gates_skip stays available for a step that
         # genuinely owns a narrower contract; check is not one of them.
         - { verb: check, apply: false, contexts: [local, ci, pre_push] }
-        # Why (mro-v4p5): CI must not execute pytest. A hook NEVER inherits a
-        # WHAT selector: every verb runs its declared default (test -> all), so
-        # the hook can never diverge from what a plain `make test` does locally.
+        # Why (mro-q6yoi): pre-push clears testmon, then runs the complete-suite
+        # gate with testmon disabled. Incremental all starts readonly xdist workers
+        # against the just-deleted SQLite DB and aborts before collection.
         - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
-        - { verb: test, apply: false, contexts: [local, pre_push] }
+        - { verb: test, what: full, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all
