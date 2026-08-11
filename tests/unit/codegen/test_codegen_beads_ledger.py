@@ -129,6 +129,22 @@ class TestCodegenBeadsLedger:
         repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.canonical_prefix, eq=repository.distribution)
 
+    def test_owner_transaction_renders_the_integrated_ledger_projection(
+        self, tmp_path: Path
+    ) -> None:
+        principal = self._standalone_workspace(
+            tmp_path / "principal-owner", ledger_id="fleet-ledger"
+        )
+        transaction = tmp_path / "owner-transaction"
+        self._git(principal, "worktree", "add", "--detach", str(transaction))
+
+        rendered = self._beads_config_render(transaction)
+
+        if rendered is None:
+            pytest.fail("owner transaction must render the ledger config")
+        tm.that(rendered, has="Owned ledger config")
+        tm.that(rendered, lacks="Routing-only client config")
+
     def test_external_member_lane_plans_no_beads_surfaces(self, tmp_path: Path) -> None:
         workspace = tmp_path / "workspace"
         member_source = tmp_path / "member-source"
