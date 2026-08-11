@@ -114,14 +114,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
         """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
 
-        A workspace *root* owns the canonical virtualenv locally
-        (``<project>/.venv``); a *child* (any flext-based consumer repo)
-        references the parent workspace venv (``../.venv``). This keeps the
-        pyright ``venvPath`` / pyrefly interpreter classification correct even
-        when ``deps modernize`` is invoked from inside the child itself (so
-        ``workspace_root`` defaults to the child dir). The committed
-        ``Makefile`` ``MAKE_PROFILE`` assignment is the durable backstop when
-        no virtualenv exists at modernize time.
+        Git topology distinguishes workspace roots from attached members for
+        analyzer scope, packaging, and search paths. Virtualenv locations are not
+        committed analyzer settings; the governed Make runtime selects the active
+        environment for each checkout.
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
@@ -186,14 +182,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         child_result = self._project_is_flext_child(path.parent)
         if child_result.failure:
             return [child_result.error or "failed to resolve project Git topology"]
-        # Why (mro-tvc03): inside a work tree the target's own Git topology is
-        # authoritative, never the scope the modernizer was invoked with.
-        # Comparing path.parent against self.root made a workspace MEMBER look
-        # like a root whenever the run started inside it, so venvPath rendered
-        # '..' from within and '.' from the fan-out and no content satisfied
-        # both. Outside any work tree there is no topology to read, so the
-        # relative position remains the only discriminator between a root and
-        # the members nested under it.
+        # Inside a work tree the target's own Git topology is authoritative,
+        # never the scope the modernizer was invoked with. Outside a work tree,
+        # relative position distinguishes a root from its nested members.
         governed = u.Infra.git_superproject_working_tree(
             m.Infra.GitRepoRequest(repo_root=path.parent)
         )
