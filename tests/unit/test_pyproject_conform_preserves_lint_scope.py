@@ -20,6 +20,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import yaml
+
 from flext_infra import config
 from flext_tests import tm
 
@@ -39,9 +41,24 @@ def _live_per_file_ignores() -> frozenset[str]:
 
 
 def _ssot_per_file_ignores() -> frozenset[str]:
-    """Return the per-file-ignore globs the tooling SSOT declares."""
+    """Return every per-file-ignore glob the generator can reproduce.
+
+    Two sources feed the rendered pyproject, and conform merges both:
+    ``Infra.tooling`` is the FLEET policy every generated project inherits,
+    while a ``ManagedArtifacts.Ruff`` block in the project's own
+    ``config/*.yaml`` adds exemptions that belong to that repository alone.
+    A path that exists in one repository is declared project-locally so the
+    fleet policy does not write a dead exemption into every project.
+    """
     ruff = config.Infra.tooling.tools.ruff
-    return frozenset(ruff.lint.per_file_ignores)
+    fleet = frozenset(ruff.lint.per_file_ignores)
+
+    project: set[str] = set()
+    for path in sorted((_workspace_root() / "config").glob("*.yaml")):
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        managed = payload.get("ManagedArtifacts") or {}
+        project.update(managed.get("Ruff", {}).get("per_file_ignores", {}))
+    return fleet | frozenset(project)
 
 
 class TestsFlextInfraPyprojectConformPreservesLintScope:

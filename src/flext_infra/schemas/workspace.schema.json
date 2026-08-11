@@ -64,6 +64,9 @@
     "integration": {
       "$ref": "#/$defs/workspaceIntegration"
     },
+    "work": {
+      "$ref": "#/$defs/workspaceWork"
+    },
     "repository_policy_overlays": {
       "type": "array",
       "uniqueItems": true,
@@ -71,6 +74,11 @@
         "$ref": "#/$defs/repositoryPolicyOverlay"
       }
     }
+  },
+  "dependentRequired": {
+    "ledger_prefix": [
+      "ledger_id"
+    ]
   },
   "$defs": {
     "name": {
@@ -213,6 +221,18 @@
         }
       }
     },
+    "workspaceWork": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "task_kind": {
+          "enum": ["feature", "bugfix"]
+        },
+        "chore_kind": {
+          "enum": ["feature", "bugfix"]
+        }
+      }
+    },
     "repositoryPolicyOverlay": {
       "type": "object",
       "additionalProperties": false,
@@ -231,6 +251,10 @@
         "ci_enabled": {
           "type": "boolean"
         },
+        "ci_matrix_auto_run": {
+          "type": "boolean",
+          "description": "When true, projected ci-matrix also auto-runs on push to main; default false is workflow_dispatch only"
+        },
         "extra_ignored_patterns": {
           "type": "array",
           "uniqueItems": true,
@@ -238,6 +262,11 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "uv_exclude_newer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Project-local [tool.uv].exclude-newer cooldown. The fleet default is a rolling window, which silently ages past a security floor declared in override-dependencies and makes resolution unsatisfiable; a project carrying such a floor pins the absolute cutoff here"
         }
       }
     },

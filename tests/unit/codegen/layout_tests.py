@@ -108,8 +108,12 @@ def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
     tm.ok(second)
 
     gitignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
-    tm.that(gitignore.count("settings.json"), eq=1)
-    tm.that(gitignore.count(f"{_archive_root()}/"), eq=1)
+    # Why: count exact ENTRIES, never substrings. The SSOT also carries
+    # negations such as !.vscode/settings.json, so a substring count reports
+    # two occurrences for a file that was appended exactly once.
+    entries = gitignore.splitlines()
+    tm.that(entries.count("settings.json"), eq=1)
+    tm.that(entries.count(f"{_archive_root()}/"), eq=1)
     tm.that(
         (project / _archive_root() / project.name / "settings.json").is_file(), eq=True
     )
@@ -124,7 +128,7 @@ def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
     result = engine.execute()
 
     tm.ok(result)
-    tracked = u.Infra.git_capture(project, ("ls-files",))
+    tracked = u.Cli.capture([c.Infra.GIT, "ls-files"], cwd=project)
     tm.ok(tracked)
     tracked_names = set(tracked.value.split())
     tm.that("docs/guides/intro.md" in tracked_names, eq=True)

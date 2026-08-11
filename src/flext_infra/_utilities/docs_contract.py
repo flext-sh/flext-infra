@@ -102,9 +102,15 @@ class FlextInfraUtilitiesDocsContract:
 
     @staticmethod
     def docs_build_toc(content: str) -> str:
-        """Generate a managed TOC block from second- and third-level headings."""
+        """Generate a managed TOC block from second- and third-level headings.
+
+        Headings inside fenced code blocks are documentation samples, not
+        sections: markdown renders them verbatim and emits no anchor, so a TOC
+        entry pointing at them is a dead link that fails the strict docs build.
+        """
+        scannable: str = c.Infra.FENCED_BLOCK_RE.sub("", content)
         items: t.MutableSequenceOf[str] = []
-        for level, title in c.Infra.HEADING_H2_H3_RE.findall(content):
+        for level, title in c.Infra.HEADING_H2_H3_RE.findall(scannable):
             anchor = FlextInfraUtilitiesDocsContract.docs_anchorize(title)
             if anchor:
                 indent = "  " if level == "###" else ""

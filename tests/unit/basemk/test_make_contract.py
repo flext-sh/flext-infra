@@ -54,6 +54,7 @@ _MAKE_TEST_ENV_KEYS = (
     "FLEXT_PYTEST_VERBOSE_RAW",
     "FLEXT_PYTEST_WHAT_RAW",
     "UV",
+    "WHAT",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
 
@@ -834,3 +835,70 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(log_lines.index(initial_sync) < log_lines.index(extra_paths), eq=True)
         tm.that(log_lines.index(extra_paths) < log_lines.index(lock), eq=True)
         tm.that(log_lines.index(lock) < log_lines.index(reinstall_sync), eq=True)
+
+    def test_make_custom_mk_redefining_reserved_verb_fails_loud(
+        self, tmp_path: Path
+    ) -> None:
+        """A custom.mk redefining a reserved verb fails every make invocation."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text(
+            "check:\n\t@echo EVIL_CHECK\n", encoding="utf-8"
+        )
+
+        result = _run_make(tmp_path, "help")
+
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, ne=0)
+        tm.that(output, has=["custom.mk", "reserved flext-infra", "check"])
+        tm.that(output, lacks="EVIL_CHECK")
+
+    def test_make_custom_mk_redefining_reserved_builtin_what_fails_loud(
+        self, tmp_path: Path
+    ) -> None:
+        """A custom.mk shadowing a builtin _custom_<verb>_<what> pair fails."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text(
+            "_custom_docs_all:\n\t@echo EVIL_DOCS\n", encoding="utf-8"
+        )
+
+        result = _run_make(tmp_path, "help")
+
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, ne=0)
+        tm.that(output, has=["custom.mk", "reserved flext-infra", "_custom_docs_all"])
+        tm.that(output, lacks="EVIL_DOCS")
+
+    def test_make_custom_mk_arbitrary_custom_verb_and_hooks_pass(
+        self, tmp_path: Path
+    ) -> None:
+        """Any non-reserved custom verb/WHAT handler and hook is permitted."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text(
+            ".PHONY: _custom_ship_fast _custom_docs_mydoc pre-ship\n"
+            "_custom_ship_fast:\n\t@echo CUSTOM_SHIP_FAST\n"
+            "_custom_docs_mydoc:\n\t@echo CUSTOM_DOCS_MYDOC\n"
+            "pre-ship:\n\t@true\n",
+            encoding="utf-8",
+        )
+
+        custom = _run_make(tmp_path, "_custom_ship_fast")
+        tm.that(custom.exit_code, eq=0)
+        tm.that(custom.stdout, has="CUSTOM_SHIP_FAST")
+        docs = _run_make(tmp_path, "_custom_docs_mydoc")
+        tm.that(docs.exit_code, eq=0)
+        tm.that(docs.stdout, has="CUSTOM_DOCS_MYDOC")
+        help_result = _run_make(tmp_path, "help")
+        tm.that(help_result.exit_code, eq=0)
+        tm.that(help_result.stdout, has="_custom_ship_fast")

@@ -12,6 +12,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import main as infra_main
 from flext_tests import tm
 from tests import u
@@ -84,6 +86,12 @@ class TestMainCommandDispatch:
         tm.that(result, eq=0)
 
 
+# Exemplar: every test here spawns a fresh interpreter to prove the real
+# `python -m flext_infra` entry point. That import chain, not the assertion,
+# dominates the runtime, so the class declares its true end-to-end budget
+# instead of raising the global unit-test timeout and masking real hangs.
+@pytest.mark.slow
+@pytest.mark.timeout(120)
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 
@@ -108,13 +116,14 @@ class TestMainEntryPoint:
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""
-        result = u.Cli.run_raw([
-            sys.executable,
-            "-m",
-            "flext_infra",
-            "codegen",
-            "unknown-command",
-        ])
+        # The child renders through the CLI console, which honours COLUMNS and
+        # would otherwise wrap the message at the developer's terminal width,
+        # splitting the asserted phrase. Pin the width so the assertion tests
+        # the message, not the terminal the suite happens to run in.
+        result = u.Cli.run_raw(
+            [sys.executable, "-m", "flext_infra", "codegen", "unknown-command"],
+            env={"COLUMNS": "200"},
+        )
 
         tm.ok(result)
         tm.that(result.value.exit_code, eq=2)

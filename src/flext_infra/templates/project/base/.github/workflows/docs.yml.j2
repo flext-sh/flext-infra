@@ -91,7 +91,7 @@ jobs:
           }
 
       # mro-o6h5 (agent: kimi) — include-hidden-files: .reports/ is a dot-dir and
-      # upload-artifact v4 skips hidden paths by default (artifact silently empty).
+      # upload-artifact skips hidden paths by default (artifact silently empty).
       - name: Upload docs reports on failure
         if: failure()
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}
@@ -143,10 +143,15 @@ jobs:
       - name: Build site
         run: make docs WHAT=build
 
+      # Pages configure/upload exist only to feed deploy on main. Running them on
+      # every integration push fails closed when Pages is unset and is wasted
+      # work when deploy is skipped (deploy already gates on refs/heads/main).
       - name: Configure Pages
+        if: github.ref == 'refs/heads/main'
         uses: {{ github_actions["configure-pages"].repository }}@{{ github_actions["configure-pages"].sha }}  # {{ github_actions["configure-pages"].version }}
 
       - name: Upload site artifact
+        if: github.ref == 'refs/heads/main'
         uses: {{ github_actions["upload-pages-artifact"].repository }}@{{ github_actions["upload-pages-artifact"].sha }}  # {{ github_actions["upload-pages-artifact"].version }}
         with:
           path: .reports/docs/site

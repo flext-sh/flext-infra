@@ -98,9 +98,10 @@ class FlextInfraUtilitiesRefactorPolicy:
             policy: m.Infra.ClassNestingPolicy = (
                 m.Infra.ClassNestingPolicy.model_validate(raw)
             )
-            return policy
         except c.ValidationError:
             return None
+        else:
+            return policy
 
     @staticmethod
     def target_allowed(

@@ -81,6 +81,7 @@ class TestWorkspaceCheckerResolveGates:
         tm.that(result.value, lacks="lint")
         tm.that(result.value, lacks="pyrefly")
 
+
 class TestWorkspaceCheckerCiGateSkips:
     """Test FlextInfraWorkspaceChecker.apply_ci_gate_skips."""
 
@@ -90,10 +91,7 @@ class TestWorkspaceCheckerCiGateSkips:
         ci = config.Infra.codegen.make.ci
         monkeypatch.delenv(ci.variable, raising=False)
         gates = ["lint", "format", "pyrefly", "mypy", "pyright"]
-        tm.that(
-            FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates),
-            eq=gates,
-        )
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates), eq=gates)
 
     def test_github_ci_true_does_not_skip_gates(
         self, monkeypatch: pytest.MonkeyPatch
@@ -101,10 +99,7 @@ class TestWorkspaceCheckerCiGateSkips:
         ci = config.Infra.codegen.make.ci
         monkeypatch.setenv(ci.variable, "true")
         gates = ["lint", "format", "pyrefly", "pyright"]
-        tm.that(
-            FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates),
-            eq=gates,
-        )
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates), eq=gates)
 
     def test_ci_token_omits_ruff_and_pyrefly(
         self, monkeypatch: pytest.MonkeyPatch
@@ -114,8 +109,5 @@ class TestWorkspaceCheckerCiGateSkips:
         gates = ["lint", "format", "pyrefly", "mypy", "pyright", "security"]
         expected = [gate for gate in gates if gate not in ci.check_gates_skip]
         tm.that(expected, eq=["mypy", "pyright", "security"])
-        tm.that(
-            FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates),
-            eq=expected,
-        )
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates), eq=expected)
         tm.that(set(ci.check_gates_skip), eq={"lint", "format", "pyrefly"})

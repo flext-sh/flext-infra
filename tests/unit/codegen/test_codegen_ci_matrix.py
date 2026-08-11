@@ -6,7 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
+
+import pytest
 
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -34,6 +37,30 @@ class TestCodegenCiMatrix:
         result = service.execute()
         tm.ok(result)
         return root
+
+    @staticmethod
+    def _hook_entry(rendered: str, hook_id: str) -> str:
+        """Return the entry command of one rendered hook, isolated from the rest.
+
+        Searching the whole file proves only that SOME hook carries a prefix; a
+        hook that loses it while its sibling keeps it would still pass.
+        """
+        lines = rendered.splitlines()
+        start = next(
+            index
+            for index, line in enumerate(lines)
+            if line.strip() == f"- id: {hook_id}"
+        )
+        following = lines[start + 1 :]
+        end = next(
+            (
+                index
+                for index, line in enumerate(following)
+                if line.strip().startswith("- id: ")
+            ),
+            len(following),
+        )
+        return "\n".join(following[:end])
 
     def test_ci_matrix_profiles_exclude_workspace_member(self) -> None:
         """Matrix + distro Dockerfiles are root/standalone only (not members)."""
@@ -110,6 +137,8 @@ class TestCodegenCiMatrix:
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
+        gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
+        default_whats: Mapping[str, str] = config.Infra.codegen.make.default_whats
 
         for hook_id, context in (
             ("flext-pre-commit", "pre_commit"),
@@ -117,9 +146,24 @@ class TestCodegenCiMatrix:
         ):
             commands = " && ".join(
                 (
-                    f"{ci.variable}={ci.value} make {step.verb}"
-                    if step.verb == "check"
-                    else f"make {step.verb}"
+                    f"{ci.variable}={ci.value} "
+                    if step.verb == "check" and context == "pre_commit"
+                    else ""
+                )
+                + (
+                    "CHECK_GATES="
+                    + ",".join(
+                        gate for gate in gates_default if gate not in step.gates_skip
+                    )
+                    + " "
+                    if step.gates_skip
+                    else ""
+                )
+                + f"make {step.verb}"
+                + (
+                    f" WHAT={step.what}"
+                    if step.what
+                    else (f" WHAT={default_whats[step.verb]}" if not step.apply else "")
                 )
                 + (
                     f" {config.Infra.codegen.make.apply_variable}="
@@ -131,11 +175,19 @@ class TestCodegenCiMatrix:
                 if context in step.contexts
             )
             tm.that(hooks, has=f"id: {hook_id}")
-            tm.that(hooks, has=f"'{commands}'")
-            if context == "pre_push":
-                tm.that(hooks, has=f"{ci.variable}={ci.value} make check")
-                tm.that(hooks, has="make test")
-                tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
+            tm.that(hooks, has=commands)
+            # Every carrier that can smuggle a caller's selector or write-enable
+            # token into a hook step is cleared BEFORE the first verb runs.
+            # Position matters, not mere presence: cleanup rendered after the
+            # first `make` would leave that command reading the caller's values.
+            entry = self._hook_entry(hooks, hook_id)
+            cleanup = (
+                f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
+            )
+            tm.that(entry, has=cleanup)
+            tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
+        tm.that(hooks, has="make test")
+        tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
     def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
         """Generated CI groups competing runs by workflow and ref."""
@@ -301,10 +353,13 @@ class TestCodegenCiMatrix:
         for host in (macos, windows):
             tm.that(host, has="run: CI=Y make setup")
             tm.that(host, has="run: CI=Y make help")
-        tm.that(windows.count("shell: bash"), eq=2)
+            tm.that(host, has="run: CI=Y make check")
+        tm.that(windows.count("shell: bash"), eq=3)
 
-    def test_workflow_ci_policy_locks_matrix_to_main_push(self, tmp_path: Path) -> None:
-        """Blocking CI covers integration; matrix is post-merge main push only."""
+    def test_workflow_ci_policy_matrix_default_dispatch_only(
+        self, tmp_path: Path
+    ) -> None:
+        """Blocking CI covers integration; matrix defaults to dispatch-only."""
         root = self._render_project(tmp_path / "external")
         manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
         repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
@@ -328,8 +383,8 @@ class TestCodegenCiMatrix:
         triggers = matrix.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
-        tm.that(triggers, has="branches: [main]")
         tm.that(triggers, has="workflow_dispatch: {}")
+        tm.that(triggers, lacks="branches: [main]")
         tm.that(triggers, lacks="pull_request:")
         tm.that(triggers, lacks="ready_for_review")
         tm.that(triggers, lacks="repository_branch")
@@ -337,8 +392,8 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="develop")
         tm.that(triggers, lacks="branches: [dev]")
 
-    def test_ci_matrix_template_is_main_push_only(self) -> None:
-        """SSOT template binds matrix auto-run to main push only."""
+    def test_ci_matrix_template_defaults_dispatch_only(self) -> None:
+        """SSOT template gates main-push auto-run behind ci_matrix_auto_run."""
         template = (
             Path(__file__).resolve().parents[3]
             / "src"
@@ -351,7 +406,10 @@ class TestCodegenCiMatrix:
             / "ci-matrix.yml.j2"
         )
         content = template.read_text(encoding="utf-8")
-        triggers = content.split('"on":', maxsplit=1)[1].split("---", maxsplit=1)[0]
+        triggers = content.split('"on":', maxsplit=1)[1].split(
+            "# End SECTION: triggers", maxsplit=1
+        )[0]
+        tm.that(triggers, has="{%- if ci_matrix_auto_run %}")
         tm.that(triggers, has="branches: [main]")
         tm.that(triggers, has="workflow_dispatch: {}")
         tm.that(triggers, lacks="pull_request:")
@@ -361,6 +419,87 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="branches: [dev]")
         tm.that(triggers, lacks="workspace-member")
         tm.that(content, lacks="{% if make_profile")
+
+    def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
+        """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
+        from flext_infra import m
+        from flext_cli import u as cli_u
+
+        codegen = config.Infra.codegen
+        tpl = (
+            Path(__file__).resolve().parents[3]
+            / "src/flext_infra/templates/project/base/.github/workflows/ci-matrix.yml.j2"
+        )
+        disabled = m.Infra.GithubWorkflowRenderSpec(
+            dist="flext-demo",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="develop",
+            python_version=codegen.toolchain.python_version,
+            github_actions=codegen.github_actions,
+            make=codegen.make,
+            workspace_repositories=(),
+            checkout_submodules=codegen.checkout_submodules,
+            ci_matrix_auto_run=False,
+        )
+        enabled = disabled.model_copy(update={"ci_matrix_auto_run": True})
+        disabled_text = tm.ok(cli_u.Cli.template_render(tpl, disabled))
+        enabled_text = tm.ok(cli_u.Cli.template_render(tpl, enabled))
+        disabled_triggers = disabled_text.split('"on":', maxsplit=1)[1].split(
+            "# End SECTION: triggers", maxsplit=1
+        )[0]
+        enabled_triggers = enabled_text.split('"on":', maxsplit=1)[1].split(
+            "# End SECTION: triggers", maxsplit=1
+        )[0]
+        tm.that(disabled_triggers, has="workflow_dispatch: {}")
+        tm.that(disabled_triggers, lacks="branches: [main]")
+        tm.that(enabled_triggers, has="branches: [main]")
+        tm.that(enabled_triggers, has="workflow_dispatch: {}")
+        tm.that(enabled_triggers, lacks="pull_request:")
+
+    def test_no_project_overrides_ci_matrix_auto_run(self) -> None:
+        """ci-matrix stays dispatch-only fleet-wide: no project may opt in.
+
+        Operator law (2026-08-08): ci-matrix is fully OFF, owned by flext-infra,
+        with `ci_matrix_auto_run` at its default and ZERO overrides in any
+        internal or external project. The overlay field still exists as the
+        typed knob, but an override that flips it on is a governance violation,
+        so the absence is asserted rather than assumed.
+        """
+        from flext_infra import m
+
+        base = m.Infra.RepositoryRef(
+            name="flext-demo",
+            distribution="flext-demo",
+            url="https://github.com/flext-sh/flext-demo.git",
+            path=Path(),
+            provider="flext-sh",
+            role=c.Infra.RepositoryRole.STANDALONE,
+            checkout=c.Infra.CheckoutKind.INDEPENDENT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=False,
+            read_only=False,
+        )
+
+        def build(*, auto_run: bool) -> m.Infra.WorkspaceSpec:
+            return m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name="flext-demo",
+                repository=base,
+                repository_policy_overlays=(
+                    m.Infra.RepositoryPolicyOverlaySpec(
+                        project="flext-demo", ci_matrix_auto_run=auto_run
+                    ),
+                ),
+            )
+
+        # The default overlay loads: ci-matrix stays dispatch-only.
+        tm.that(len(build(auto_run=False).repository_policy_overlays), eq=1)
+        # An override is refused at load time, naming the offending project.
+        with pytest.raises(
+            c.ValidationError, match="ci_matrix_auto_run cannot be overridden"
+        ):
+            build(auto_run=True)
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path

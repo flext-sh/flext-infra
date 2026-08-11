@@ -18,7 +18,9 @@ PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INF
 # Verb hook seam: custom.mk may define pre-<verb>, post-<verb>, pre-<verb>-<what>,
 # and post-<verb>-<what> targets to append work at the start or end of any verb,
 # for all or some WHATs. Undefined hooks are no-ops (make -q returns 2 when a
-# target is absent). $(1)=phase (pre|post), $(2)=verb, $(3)=optional WHAT.
+# target is absent). custom.mk is a blacklist surface (see base_preflight.mk.j2):
+# any hook is allowed except redefinitions of reserved flext-infra verbs/WHATs.
+# $(1)=phase (pre|post), $(2)=verb, $(3)=optional WHAT.
 define _run_verb_hooks
 	@phase="$(1)"; verb="$(2)"; what="$(3)"; \
 	hooks="$$phase-$$verb"; \
@@ -51,8 +53,9 @@ endef
 
 # Verb body dispatch: if custom.mk defines _custom_<verb>_<what> for the current
 # WHAT, run that custom handler; otherwise run the builtin implementation. This
-# lets every verb accept project-specific WHATs while preserving builtin WHATs.
-# $(1)=verb, $(2)=builtin impl target.
+# lets every verb accept project-specific WHATs. Builtin (verb, WHAT) pairs are
+# reserved and rejected by the parse-time blacklist guard, so builtins keep
+# their meaning. $(1)=verb, $(2)=builtin impl target.
 define _run_verb_body
 	@verb="$(1)"; impl="$(2)"; what="$(WHAT)"; \
 	if [ -n "$$what" ]; then \
@@ -94,6 +97,7 @@ help: ## Show commands
 	$(Q)echo "  Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>"
 	$(Q)echo "  in custom.mk to run extra steps at the start or end of any verb, for"
 	$(Q)echo "  all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT."
+	$(Q)echo "  Reserved verbs/WHATs are a flext-infra monopoly; redefining one fails."
 	$(Q)if [ -f custom.mk ]; then \
 		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
@@ -294,14 +298,14 @@ _docs_impl:
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=FAIL REASON=docs-module-missing"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(WHAT)" = "{{ docs_default_what }}" ]; then \
-		actions="{% for action in docs_whats if action != docs_default_what %}{{ action }} {% endfor %}"; \
+	$(Q)if [ "$(WHAT)" = "all" ]; then \
+		actions="{% for action in docs_whats if action != 'all' %}{{ action }} {% endfor %}"; \
 	else \
 		actions="$(WHAT)"; \
 	fi; \
 	for action in $$actions; do \
 		case "$$action" in \
-{%- for action in docs_whats if action != docs_default_what %}
+{%- for action in docs_whats if action != "all" %}
 			{{ action }}) extra="{% if action in docs.mutable_actions %}$(if $(filter {{ apply_value }},$({{ apply_variable }})),--apply,--check){% endif %}" ;; \
 {%- endfor %}
 			*) echo "ERROR: invalid WHAT=$$action (allowed: {{ docs_whats | join('|') }})"; exit 2 ;; \

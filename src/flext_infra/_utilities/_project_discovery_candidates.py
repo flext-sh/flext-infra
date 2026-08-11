@@ -13,7 +13,7 @@ from flext_infra import c
 from flext_infra._utilities._project_discovery_shape import (
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
 )
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
@@ -169,7 +169,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             resolved_workspace_root,
             effective_scan_dirs=effective_scan_dirs,
             configured_member_set=configured_member_set,
-        ) and FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
+        ) and FlextInfraUtilitiesGit.project_descriptor_is_tracked(
             resolved_workspace_root, resolved_workspace_root
         ):
             roots.append(resolved_workspace_root)
@@ -191,7 +191,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
                 and not entry.name.startswith(".")
                 and (
                     entry.name in attached_child_dirs
-                    or FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
+                    or FlextInfraUtilitiesGit.project_descriptor_is_tracked(
                         resolved_workspace_root, entry.resolve()
                     )
                 )

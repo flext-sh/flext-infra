@@ -49,24 +49,32 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work land requires --bead")
-        shown = u.Infra.beads_show_json(bead, root=self.workspace_root)
+        shown = u.Infra.beads_show(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
-        meta = shown.value.get("metadata")
-        if not isinstance(meta, dict):
+        metadata = shown.value.metadata
+        if metadata is None:
             return r.fail(f"bead {bead} has no lane metadata; run work start first")
-        branch = str(meta.get("branch") or "").strip()
-        worktree = str(meta.get("worktree") or "").strip()
-        recorded_integration = str(meta.get("integration_base") or "").strip()
-        expected = str(meta.get("head_oid") or "").strip()
-        if not branch or not worktree:
-            return r.fail(f"bead {bead} missing branch/worktree metadata")
-        if not expected:
-            return r.fail(f"bead {bead} missing metadata.head_oid for land CAS")
+        if not isinstance(metadata, m.Infra.ReadyLaneMetadata):
+            return r.fail(f"bead {bead} lane is not ready for land")
+        branch = metadata.branch
+        worktree = str(metadata.worktree)
+        recorded_integration = metadata.integration_base
+        expected = metadata.head_oid
+        ownership = self._owned_reservation(bead, branch, metadata.worktree)
+        if ownership.failure:
+            return r.fail(ownership.error or "work land reservation ownership failed")
         base = self._resolve_integration_base(primary_root)
         if base.failure:
             return r.fail(base.error or "missing integration base")
         integration = base.value
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work land child binding failed")
+            integration = metadata.topology.epic_branch
         if (
             recorded_integration
             and recorded_integration not in {"HEAD", integration}
@@ -85,6 +93,21 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if bound.failure:
             return r.fail(bound.error or "work land lane binding failed")
         lane = bound.value
+        topology = self._validated_lane_topology(primary_root, metadata, lane)
+        if topology.failure:
+            return r.fail(topology.error or "work land topology validation failed")
+        if isinstance(metadata.topology, m.Infra.EpicLaneTopology):
+            children = FlextInfraWorktreeService.registered_children(primary_root, lane)
+            if children.failure:
+                return r.fail(children.error or "failed to inspect epic child lanes")
+            if children.value:
+                registered = ", ".join(str(child) for child in children.value)
+                return r.fail(
+                    f"work land refuses epic while children are registered: {registered}"
+                )
+        ownership = self._owned_reservation(bead, branch, lane)
+        if ownership.failure:
+            return r.fail(ownership.error or "work land reservation changed")
         if self._is_primary_path(primary_root, lane):
             return r.fail("work land refuses the primary worktree")
         if not lane.is_dir():
@@ -96,10 +119,10 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if head.failure:
             return r.fail(head.error or "failed to resolve lane HEAD")
         if head.value != expected:
-            contains = u.Infra.git_run(
-                lane, ("merge-base", "--is-ancestor", expected, "HEAD")
+            contains = u.Infra.git_is_ancestor(
+                m.Infra.GitCommitishRequest(repo_root=lane, commitish=expected)
             )
-            if contains.failure or contains.value.exit_code != 0:
+            if contains.failure or not contains.value.value:
                 return r.fail(
                     f"CAS failed: metadata.head_oid={expected} head={head.value}"
                 )
@@ -112,8 +135,14 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         ).execute()
         if synced.failure:
             return r.fail(synced.error or "work land sync failed")
-        pushed = u.Infra.git_capture(
-            lane, ("push", "-u", "origin", f"HEAD:refs/heads/{branch}")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work land child binding changed")
+        pushed = u.Infra.git_push_upstream(
+            m.Infra.GitPushRequest(repo_root=lane, branch=branch)
         )
         if pushed.failure:
             return r.fail(
@@ -126,14 +155,14 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             return r.fail(head.error or "failed to resolve pushed HEAD")
         pr_base = integration
         if pr_base == "HEAD":
-            resolved_base = u.Infra.git_capture(
-                primary_root, ("rev-parse", "--abbrev-ref", "HEAD")
+            resolved_base = u.Infra.git_abbrev_ref_head(
+                m.Infra.GitRepoRequest(repo_root=primary_root)
             )
             if resolved_base.failure:
                 return r.fail(
                     resolved_base.error or "failed to resolve HEAD for PR base"
                 )
-            pr_base = resolved_base.value.strip()
+            pr_base = resolved_base.value.text
             if not pr_base or pr_base == "HEAD":
                 return r.fail(
                     "work land cannot open a PR with unresolved integration base HEAD"
@@ -153,20 +182,24 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
         if pr.failure and observed.failure:
             return r.fail(pr.error or observed.error or "work land PR failed")
         pr_number, pr_url = observed.value if observed.success else ("", "")
-        meta_update = {"head_oid": head.value, "integration_base": pr_base}
+        updated_metadata = metadata.model_copy(
+            update={"head_oid": head.value, "integration_base": pr_base}
+        )
         labels: tuple[str, ...] = ()
         if pr_number:
-            meta_update["pr_number"] = pr_number
+            updated_metadata = updated_metadata.model_copy(
+                update={"pr_number": pr_number}
+            )
             labels = (f"pr:{pr_number}",)
         if pr_url:
-            meta_update["pr_url"] = pr_url
+            updated_metadata = updated_metadata.model_copy(update={"pr_url": pr_url})
         notes = (
             f"work land: cmd=make work WHAT=land cwd={lane} exit=0 "
             f"decisive=PR {pr_url or pr_number or 'pending'} sha={head.value}"
         )
         updated = u.Infra.beads_update_lane(
             bead,
-            metadata=meta_update,
+            metadata=updated_metadata,
             labels=labels,
             notes=notes,
             root=self.workspace_root,
