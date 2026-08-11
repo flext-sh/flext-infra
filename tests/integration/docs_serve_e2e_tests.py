@@ -20,7 +20,13 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-_DEADLINE_SECONDS = 25.0
+# mro-izia.1 (agent kimi): this case pays for a spawned interpreter that
+# re-imports the whole package plus a real MkDocs build, then polls a real
+# socket; measured at 32s on the full coverage gate. The internal deadline must
+# stay well inside the per-case budget so an unreachable server fails as a
+# diagnostic assertion, never as an opaque runner timeout — 25s left no room at
+# all under the previous 30s budget.
+_DEADLINE_SECONDS = 45.0
 _POLL_INTERVAL_SECONDS = 0.05
 _PROCESS_STOP_TIMEOUT_SECONDS = 1.0
 _HTTP_OK = 200
