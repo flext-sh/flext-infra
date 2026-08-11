@@ -102,7 +102,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         source_path = self._project_source_path()
         return (
             *self._diagnostic_override_envs(
-                project_dir=project_dir, root_prefix=None, source_path=source_path
+                project_dir=project_dir,
+                root_prefix=None,
+                source_path=source_path,
+                declared_roots=self._declared_top_level(declared_python_dirs),
             ),
             *self._envs_for_dirs(
                 env_dirs=self._declared_environment_dirs(declared_python_dirs),
@@ -113,7 +116,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
     def _diagnostic_override_envs(
-        self, *, project_dir: Path | None, root_prefix: Path | None, source_path: str
+        self,
+        *,
+        project_dir: Path | None,
+        root_prefix: Path | None,
+        source_path: str,
+        declared_roots: frozenset[str] = frozenset(),
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Resolve configured overrides only when their project path exists."""
         if project_dir is None:
@@ -123,7 +131,13 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         for override in rules.diagnostic_path_overrides:
-            if not (project_dir / override.root).is_dir():
+            # mro-izia.1 (agent kimi): a root this very plan materializes counts
+            # as present, so the pre-write render emits the same override blocks
+            # the post-write render keeps and apply reaches its fixed point.
+            if (
+                not (project_dir / override.root).is_dir()
+                and override.root not in declared_roots
+            ):
                 continue
             resolved_root = (
                 root_prefix / override.root if root_prefix else Path(override.root)
@@ -143,26 +157,84 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
+    @staticmethod
+    def _declared_top_level(declared_python_dirs: t.StrSequence) -> frozenset[str]:
+        """Return declared roots that belong to the repository being rendered."""
+        return frozenset(
+            declared
+            for declared in declared_python_dirs
+            if "/" not in declared
+            and declared not in c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
+        )
+
+    @staticmethod
+    def _root_is_selected(
+        env_dir: str, *, project_dir: Path | None, declared_roots: frozenset[str]
+    ) -> bool:
+        """Decide whether one canonical root belongs to this render.
+
+        A declared root counts as present even before the plan writes it. When
+        nothing is declared AND there is no tree to inspect, every canonical
+        root is in scope — that is the bare render-fixture contract. Accepting
+        every root while a declaration exists is what made the pre-write render
+        emit roots the post-write render then removed.
+        """
+        if env_dir in declared_roots:
+            return True
+        if project_dir is None:
+            return not declared_roots
+        return (project_dir / env_dir).is_dir()
+
+    @staticmethod
+    def _declared_for_member(
+        declared_python_dirs: t.StrSequence, member: str
+    ) -> frozenset[str]:
+        """Return declared roots scoped to one workspace member."""
+        prefix = f"{member}/"
+        return frozenset(
+            declared.removeprefix(prefix)
+            for declared in declared_python_dirs
+            if declared.startswith(prefix)
+            and "/" not in declared.removeprefix(prefix)
+            and declared.removeprefix(prefix) not in c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
+        )
+
     def _expected_envs(
-        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
+        self,
+        *,
+        is_root: bool,
+        workspace_root: Path | None,
+        project_dir: Path | None,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Return the expected execution environments."""
         if not is_root or workspace_root is None:
-            return self._expected_envs_for_project(project_dir=project_dir)
+            return self._expected_envs_for_project(
+                project_dir=project_dir, declared_python_dirs=declared_python_dirs
+            )
         rules = self._tool_config.tools.pyright.path_rules
         expected_envs: t.MutableSequenceOf[
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         root_source_path = self._project_source_path()
+        declared_root_dirs = self._declared_top_level(declared_python_dirs)
         # mro-j47u (codex): specific roots precede the broad source environment.
         expected_envs.extend(
             self._diagnostic_override_envs(
                 project_dir=workspace_root,
                 root_prefix=None,
                 source_path=root_source_path,
+                declared_roots=declared_root_dirs,
             )
         )
-        for env_dir in u.Infra.discover_python_dirs(workspace_root):
+        # mro-izia.1 (agent kimi): declared roots are ADDITIVE to on-disk
+        # discovery. Replacing discovery with the declared list dropped every
+        # member environment at the workspace root, so apply wrote a render the
+        # next check rejected and `make gen` never reached its fixed point.
+        root_env_dirs = sorted(
+            set(u.Infra.discover_python_dirs(workspace_root)) | declared_root_dirs
+        )
+        for env_dir in root_env_dirs:
             if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
             expected_envs.append(
@@ -198,14 +270,21 @@ class FlextInfraEnsurePyrightConfigPhase:
             relative_root = child_project.relative_to(workspace_root)
             relative_project_root = relative_root.as_posix()
             child_source_path = self._project_source_path(prefix=relative_project_root)
+            declared_member_dirs = self._declared_for_member(
+                declared_python_dirs, relative_project_root
+            )
             expected_envs.extend(
                 self._diagnostic_override_envs(
                     project_dir=child_project,
                     root_prefix=relative_root,
                     source_path=child_source_path,
+                    declared_roots=declared_member_dirs,
                 )
             )
-            for env_dir in u.Infra.discover_python_dirs(child_project):
+            member_env_dirs = sorted(
+                set(u.Infra.discover_python_dirs(child_project)) | declared_member_dirs
+            )
+            for env_dir in member_env_dirs:
                 expected_envs.append(
                     self._env_entry(
                         env_dir=env_dir,
@@ -222,20 +301,29 @@ class FlextInfraEnsurePyrightConfigPhase:
         return expected_envs
 
     def _expected_envs_for_project(
-        self, *, project_dir: Path | None
+        self, *, project_dir: Path | None, declared_python_dirs: t.StrSequence = ()
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
+        # mro-izia.1 (agent kimi): a root this very plan materializes counts as
+        # present, in the canonical `env_dirs` order, so the declared render and
+        # the next on-disk render select the same environments.
+        declared_roots = self._declared_top_level(declared_python_dirs)
         env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
-            if project_dir is None or (project_dir / env_dir).is_dir()
+            if self._root_is_selected(
+                env_dir, project_dir=project_dir, declared_roots=declared_roots
+            )
         )
         source_path = self._project_source_path()
         return (
             *self._diagnostic_override_envs(
-                project_dir=project_dir, root_prefix=None, source_path=source_path
+                project_dir=project_dir,
+                root_prefix=None,
+                source_path=source_path,
+                declared_roots=declared_roots,
             ),
             *self._envs_for_dirs(
                 env_dirs=env_dirs,
@@ -261,10 +349,16 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Apply canonical Python discovery exclusions to pre-write declarations."""
         # NOTE (multi-agent, mro-wkii.17.9.2.1): declared and on-disk roots must
         # select the same first-class analyzer environments in the first pass.
+        # mro-izia.1 (agent kimi): and in the same ORDER. On-disk discovery is
+        # alphabetical, so a pre-write declaration that kept its input order
+        # emitted the environments in a different sequence and the post-write
+        # render rewrote the file forever.
         return tuple(
-            env_dir
-            for env_dir in env_dirs
-            if env_dir not in c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
+            sorted(
+                env_dir
+                for env_dir in env_dirs
+                if env_dir not in c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
+            )
         )
 
     def _environment_payload(
@@ -365,20 +459,36 @@ class FlextInfraEnsurePyrightConfigPhase:
         return list(ignores)
 
     def _expected_includes(
-        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
+        self,
+        *,
+        is_root: bool,
+        workspace_root: Path | None,
+        project_dir: Path | None,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Return the auto-discovered top-level Python roots that pyright should analyze."""
         rules = self._tool_config.tools.pyright.path_rules
+        declared_roots = self._declared_top_level(declared_python_dirs)
         if not is_root:
             return [
                 env_dir
                 for env_dir in rules.env_dirs
-                if project_dir is None or (project_dir / env_dir).is_dir()
+                if self._root_is_selected(
+                    env_dir, project_dir=project_dir, declared_roots=declared_roots
+                )
             ]
         if workspace_root is None:
-            return ()
+            # mro-izia.1 (agent kimi): no tree to inspect yet. Declared roots are
+            # the only truth available, and dropping them here made the pre-write
+            # render omit `include` that the post-write render then re-added, so
+            # apply never converged for a freshly scaffolded project.
+            return [env_dir for env_dir in rules.env_dirs if env_dir in declared_roots]
         includes: t.MutableSequenceOf[str] = [
-            env_dir for env_dir in rules.env_dirs if (workspace_root / env_dir).is_dir()
+            env_dir
+            for env_dir in rules.env_dirs
+            if self._root_is_selected(
+                env_dir, project_dir=workspace_root, declared_roots=declared_roots
+            )
         ]
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
@@ -396,7 +506,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)
-            for env_dir in u.Infra.discover_python_dirs(child_project):
+            member_dirs = sorted(
+                set(u.Infra.discover_python_dirs(child_project))
+                | self._declared_for_member(
+                    declared_python_dirs, relative_root.as_posix()
+                )
+            )
+            for env_dir in member_dirs:
                 includes.append((relative_root / env_dir).as_posix())
         return includes
 
@@ -419,8 +535,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         # mro-j47u (codex): pre-write manifests supply the same typed roots that
         # filesystem discovery observes after the atomic scaffold is materialized.
-        expected_includes = declared_python_dirs or self._expected_includes(
-            is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
+        # mro-izia.1 (agent kimi): those manifests ADD to discovery, they do not
+        # replace it — a workspace root otherwise lost every member root.
+        expected_includes = self._expected_includes(
+            is_root=is_root,
+            workspace_root=workspace_root,
+            project_dir=project_dir,
+            declared_python_dirs=declared_python_dirs,
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -432,16 +553,11 @@ class FlextInfraEnsurePyrightConfigPhase:
                 else None
             )
         )
-        expected_envs = (
-            self._declared_envs(
-                declared_python_dirs=declared_python_dirs,
-                project_dir=project_dir,
-                rules=stub_rules,
-            )
-            if declared_python_dirs
-            else self._expected_envs(
-                is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
-            )
+        expected_envs = self._expected_envs(
+            is_root=is_root,
+            workspace_root=workspace_root,
+            project_dir=project_dir,
+            declared_python_dirs=declared_python_dirs,
         )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
             c.Infra.PYRIGHT

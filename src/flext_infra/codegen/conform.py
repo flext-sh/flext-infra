@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import time
 import os
@@ -211,12 +212,38 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         residual = tuple(file for file in verified_plan.files if file.changed)
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
+            # mro-izia.1 (agent kimi): a bare path names the symptom and hides
+            # the cause. The residual diff IS the diagnosis, so report it.
             return r[m.Infra.CodegenResult].fail(
-                f"codegen apply did not reach a fixed point: {paths}"
+                f"codegen apply did not reach a fixed point: {paths}\n"
+                + self._residual_diff(residual[0])
             )
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
         )
+
+    @staticmethod
+    def _residual_diff(file: m.Infra.CodegenFilePlan, *, max_lines: int = 40) -> str:
+        """Render the unified diff that explains one non-converging projection."""
+        current = ""
+        if file.path.is_file():
+            read = u.Cli.files_read_text(file.path)
+            current = read.value if read.success else ""
+        diff = tuple(
+            difflib.unified_diff(
+                current.splitlines(keepends=True),
+                file.rendered.splitlines(keepends=True),
+                fromfile=f"{file.path} (on disk)",
+                tofile=f"{file.path} (re-rendered)",
+                n=1,
+            )
+        )
+        if not diff:
+            return "  (byte-identical content; drift is in metadata, not text)"
+        body = "".join(diff[:max_lines]).rstrip("\n")
+        if len(diff) > max_lines:
+            body = f"{body}\n  ... {len(diff) - max_lines} more diff lines"
+        return body
 
     def plan(
         self, request: m.Infra.CodegenConformRequest
