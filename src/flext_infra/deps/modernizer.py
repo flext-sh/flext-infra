@@ -207,8 +207,6 @@ class FlextInfraPyprojectModernizer(
             c.Infra.INCLUDE,
             c.Infra.EXTRA_PATHS,
             "executionEnvironments",
-            "venv",
-            "venvPath",
         })
         raw_environments = u.Cli.json_as_sequence(pyright.get("executionEnvironments"))
         if effective_declared_python_dirs:
