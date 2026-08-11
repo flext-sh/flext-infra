@@ -48,7 +48,9 @@ class TestsFlextInfraWorkService:
             '\t@printf "setting up %s\\n" "$(CURDIR)"\n',
             encoding="utf-8",
         )
-        (repository / ".gitignore").write_text(f"{venv_name}\n", encoding="utf-8")
+        (repository / ".gitignore").write_text(
+            f"{venv_name}\n.reports/\n", encoding="utf-8"
+        )
         # Why (mro-tvc03): the ledger is resolved from the typed workspace
         # manifest, so a fixture that only drops .beads/config.yaml no longer
         # declares a tracker. Emit the manifest the runtime actually reads.
@@ -282,6 +284,24 @@ class TestsFlextInfraWorkService:
     def _metadata(cls, tmp_path: PathType, bead_id: str) -> dict[str, str]:
         """Return the lane metadata the bd shim persisted."""
         return cls._record(tmp_path, bead_id)["metadata"]
+
+    @classmethod
+    def _update_root_matrix_entry(
+        cls, tmp_path: PathType, bead_id: str, **updates: str
+    ) -> None:
+        record = cls._record(tmp_path, bead_id)
+        metadata = record["metadata"]
+        matrix = m.Infra.WorkLaneMatrix.model_validate_json(metadata["matrix"])
+        metadata["matrix"] = matrix.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update=updates) if entry.project == "." else entry
+                    for entry in matrix.entries
+                )
+            }
+        ).model_dump_json()
+        metadata.update(updates)
+        cls._set_record(tmp_path, bead_id, record)
 
     @staticmethod
     def _commit_in(lane: PathType, message: str) -> None:
@@ -578,10 +598,9 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["head_oid"] = "0" * 40
-        record["metadata"]["pr_number"] = "1"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(
+            tmp_path, bead_id, head_oid="0" * 40, pr_number="1"
+        )
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -957,9 +976,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["head_oid"] = "0" * 40
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, head_oid="0" * 40)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,
@@ -1118,9 +1135,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["pr_number"] = "9"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="9")
         gh = shim_dir / "gh"
         gh.write_text(
             "#!/usr/bin/env python3"
@@ -1454,9 +1469,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["pr_number"] = "5"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="5")
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -1489,9 +1502,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["pr_number"] = "6"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="6")
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -1964,9 +1975,7 @@ class TestsFlextInfraWorkService:
             tmp_path, repository, epic_bead, child_bead
         )
         for bead_id, pr_number in ((epic_bead, "1"), (child_bead, "2")):
-            record = self._record(tmp_path, bead_id)
-            record["metadata"]["pr_number"] = pr_number
-            self._set_record(tmp_path, bead_id, record)
+            self._update_root_matrix_entry(tmp_path, bead_id, pr_number=pr_number)
 
         refused = FlextInfraWorkService(
             workspace_root=repository,

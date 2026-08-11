@@ -58,6 +58,15 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         topology = self._validated_lane_topology(primary_root, metadata, lane)
         if topology.failure:
             return r.fail(topology.error or "work finish topology validation failed")
+        if isinstance(metadata.topology, m.Infra.EpicLaneTopology):
+            children = FlextInfraWorktreeService.registered_children(primary_root, lane)
+            if children.failure:
+                return r.fail(children.error or "failed to inspect epic child lanes")
+            if children.value:
+                registered = ", ".join(str(child) for child in children.value)
+                return r.fail(
+                    f"work finish refuses epic while children are registered: {registered}"
+                )
         if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
             live = self._live_child_topology(
                 primary_root, shown.value, metadata.topology
@@ -75,10 +84,6 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             project_root = self._matrix_project_root(lane, entry.project)
             if project_root.failure:
                 return r.fail(project_root.error or "matrix project is invalid")
-            if not entry.pr_number:
-                return r.fail(
-                    f"work finish requires recorded PR for matrix project {entry.project}"
-                )
             merged = self._require_merged_pr(
                 project_root.value, entry.branch, entry.pr_number
             )
