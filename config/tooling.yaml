@@ -500,7 +500,16 @@ Infra:
         # mro-wkii.17.37.1 (1bc6379b): budgets are MEASURED, not aspirational —
         # they retain the observed coverage-run slack. The typed runner owns
         # them; never narrow them back to the pre-measurement 10s/60s.
-        case-timeout-seconds: 30
+        # mro-izia.1 (agent kimi): re-measured on the full coverage gate
+        # (`make test WHAT=full`, coverage instrumentation + 4 xdist workers,
+        # flext-infra, 2514 items). Slowest legitimate case: 42.9s
+        # (test_public_dry_run_materializes_inner_patch_without_source_mutation,
+        # which adds a Git worktree and runs a full conform apply in a child
+        # interpreter); a further 15 cases sit between 15s and 36s. The old 30s
+        # was measured WITHOUT that instrumentation and killed passing cases,
+        # so the budget now carries 2x headroom over the measured worst case.
+        # It still bounds a genuine deadlock far below run-timeout-seconds.
+        case-timeout-seconds: 90
         # Measured (ai-hub-wjmk, 2026-08-04): ai-hub unit slice alone reaches
         # only ~38 percent before the old 300s run wall (exit 124). Full suite
         # is ~1464 items. Align with consumer health-gate budget (1800s) and
