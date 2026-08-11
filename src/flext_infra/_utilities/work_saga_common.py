@@ -47,6 +47,19 @@ class FlextInfraWorkSagaCommon:
                         return dependency_id.strip()
         return ""
 
+    @staticmethod
+    def _has_lane_metadata(primary_root: Path, bead: str) -> bool:
+        """Report whether a bead already carries lane coordinates of its own."""
+        shown = u.Infra.beads_show_json(bead, root=primary_root)
+        if shown.failure:
+            return False
+        meta = shown.value.get("metadata")
+        if not isinstance(meta, dict):
+            return False
+        return bool(
+            str(meta.get("kind") or "").strip() and str(meta.get("slug") or "").strip()
+        )
+
     def _parent_context(
         self,
         primary_root: Path,
@@ -57,10 +70,11 @@ class FlextInfraWorkSagaCommon:
     ) -> p.Result[m.Infra.WorkLaneParentContext]:
         """Resolve the parent lane a bead's own lane must be nested under.
 
-        Only an epic without a tracker parent is top-level and anchored at the
-        workspace root. Every other lane hangs off its immediate parent epic
-        lane, which must already exist and be registered exactly at its
-        canonical path.
+        An epic anchors at the workspace root when it has no tracker parent, or
+        when that parent carries no lane of its own: the tracker tree is a
+        planning tree, and only the beads that own execution carry lanes. Every
+        other lane hangs off its immediate parent epic lane, which must already
+        exist and be registered exactly at its canonical path.
         """
         parent_bead = self._tracker_parent(payload)
         if not parent_bead:
@@ -80,6 +94,23 @@ class FlextInfraWorkSagaCommon:
             )
         ancestor = self._stored_identity(primary_root, parent_bead, seen | {bead})
         if ancestor.failure:
+            # Why: the tracker tree is a PLANNING tree and only the beads that
+            # own execution carry lanes. An epic whose parent carries no lane is
+            # therefore the root of its own lane chain and anchors at the
+            # workspace root, so a planning container never has to materialize a
+            # worktree. A non-epic keeps failing here: a leaf always needs its
+            # immediate epic lane.
+            if kind is c.Infra.WorkKind.EPIC and not self._has_lane_metadata(
+                primary_root, parent_bead
+            ):
+                base = self._resolve_integration_base(primary_root)
+                if base.failure:
+                    return r.fail(base.error or "failed to resolve integration base")
+                return r.ok(
+                    m.Infra.WorkLaneParentContext(
+                        parent_lane=primary_root.resolve(), base_branch=base.value
+                    )
+                )
             return r.fail(ancestor.error or f"unusable parent epic {parent_bead}")
         if not ancestor.value.is_epic:
             return r.fail(

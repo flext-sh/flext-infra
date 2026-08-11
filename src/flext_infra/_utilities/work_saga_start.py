@@ -111,10 +111,18 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                         f"at {existing_wt}"
                     )
             elif existing_wt:
-                return r.fail(
-                    existing_matrix.error
-                    or "bead lane metadata is missing serialized matrix"
-                )
+                # Why: a lane registered by an earlier engine carries no matrix.
+                # Adopting it is safe ONLY when it is the very lane this bead
+                # derives, so start upgrades that metadata in place; a record
+                # pointing anywhere else is a real double-binding and stops here.
+                existing_branch = str(metadata.get("branch") or "").strip()
+                if Path(existing_wt).resolve() != identity.lane_path.resolve() or (
+                    existing_branch and existing_branch != branch
+                ):
+                    return r.fail(
+                        f"bead {bead} already bound to branch "
+                        f"{existing_branch or 'unknown'} at {existing_wt}"
+                    )
         # Why: a child lane lives inside its parent epic lane checkout, so an
         # unclean parent would fold uncommitted parent work into the child.
         if identity.parent_bead:
