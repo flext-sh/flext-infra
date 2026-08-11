@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar
 
-from flext_cli import m, u
+from flext_cli import m
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -160,57 +160,6 @@ class FlextInfraModelsWorkspace:
             bool, m.Field(description="Git already owns the canonical lane")
         ]
         lane_path: Annotated[Path, m.Field(description="Canonical lane worktree path")]
-
-    class WorkLaneEntry(m.ContractModel):
-        """Serialized lifecycle state for one project in a root workspace lane."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        project: Annotated[
-            t.NonEmptyStr, m.Field(description="Workspace-relative project")
-        ]
-        branch: Annotated[t.NonEmptyStr, m.Field(description="Project lane branch")]
-        head_oid: Annotated[t.NonEmptyStr, m.Field(description="CAS-protected HEAD")]
-        pr_number: Annotated[str, m.Field(description="Pull request number")] = ""
-        pr_url: Annotated[str, m.Field(description="Pull request URL")] = ""
-        state: Annotated[t.NonEmptyStr, m.Field(description="Lifecycle state")]
-
-    class WorkLaneMatrix(m.ContractModel):
-        """Pydantic-serialized project matrix for one root worktree lane."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        entries: Annotated[
-            tuple[FlextInfraModelsWorkspace.WorkLaneEntry, ...],
-            m.Field(min_length=1, description="All projects owned by the root lane"),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_projects(self) -> Self:
-            """Require exactly one root and no duplicate project entries."""
-            projects = tuple(entry.project for entry in self.entries)
-            if projects.count(".") != 1:
-                message = "workspace lane matrix requires exactly one root entry"
-                raise ValueError(message)
-            if len(set(projects)) != len(projects):
-                message = "workspace lane matrix contains duplicate projects"
-                raise ValueError(message)
-            return self
-
-    class WorkLaneBinding(m.ContractModel):
-        """One bead bound to its derived, registered lane and project matrix."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        identity: Annotated[
-            FlextInfraModelsWorkspace.WorkLaneIdentity,
-            m.Field(description="Canonical derived lane identity"),
-        ]
-        lane: Annotated[Path, m.Field(description="Registered lane worktree path")]
-        matrix: Annotated[
-            FlextInfraModelsWorkspace.WorkLaneMatrix,
-            m.Field(description="Projects owned by the lane"),
-        ]
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.

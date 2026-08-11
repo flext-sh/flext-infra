@@ -9,6 +9,11 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_tests import tm
 
+# Why: the symbol must be absent for the test to mean anything, so it
+# cannot be spelled as a static attribute access without making the file
+# ill-typed. The name is data here, and getattr is the access it tests.
+_ABSENT_SYMBOL = "nonexistent_symbol_xyz"
+
 
 class TestsFlextInfraBasemkInit:
     """Tests for flext_infra.basemk module."""
@@ -16,7 +21,7 @@ class TestsFlextInfraBasemkInit:
     def test_unknown_symbol_raises_attribute_error(self) -> None:
         """Reject symbols outside the explicit package surface."""
         with pytest.raises(AttributeError):
-            _ = getattr(basemk_module, "nonexistent_symbol_xyz")
+            _ = getattr(basemk_module, _ABSENT_SYMBOL)
 
     def test_submodule_import_exposes_template_renderer(self) -> None:
         """Import the renderer explicitly from its owning submodule."""

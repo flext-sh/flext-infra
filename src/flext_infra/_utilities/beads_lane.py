@@ -6,9 +6,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_cli import u
 from flext_core import r
-from flext_infra import u
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra.constants import c
 from flext_infra.models import m
 
@@ -23,36 +22,26 @@ class FlextInfraUtilitiesBeadsLane:
 
     @classmethod
     def beads_resolve_root(cls, hint: Path | None = None) -> p.Result[Path]:
-        """Resolve the workspace-root Beads project that owns the ledger.
+        """Resolve the Beads project root that owns the workspace ledger.
 
-        A member checkout never owns the tracker. The Git superproject chain
-        is walked to the outermost workspace repository FIRST, so a member
-        `.beads/` directory or database is refused instead of being adopted;
-        only the workspace root and its non-repository parents may declare
-        `.beads/config.yaml`. Uses typed Git root reports — never raw argv
-        helpers.
+        A Git submodule routes to its governing superproject ledger. A
+        standalone repository keeps its own declared tracker. Uses typed Git
+        root reports — never raw argv helpers.
         """
         start = (hint or Path.cwd()).expanduser().resolve()
-        cursor = start
-        for _ in range(c.Infra.WORK_LANE_MAX_DEPTH):
-            superproject = FlextInfraUtilitiesGit.git_superproject_working_tree(
-                m.Infra.GitRepoRequest(repo_root=cursor)
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+        governing = FlextInfraWorkspaceDetector.resolve_workspace_root(start)
+        if governing.failure:
+            return r.fail(governing.error or "unable to resolve governing workspace")
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(governing.value)
+        if workspace.failure:
+            return r.fail(workspace.error or "unable to load governing workspace")
+        if workspace.value.ledger_id is None:
+            return r.fail(
+                f"governing workspace declares no Beads ledger: {governing.value}"
             )
-            if superproject.failure or not superproject.value.text.strip():
-                break
-            cursor = Path(superproject.value.text.strip()).resolve()
-        else:
-            return r.fail(f"workspace superproject chain is too deep: {start}")
-        top = FlextInfraUtilitiesGit.git_show_toplevel(
-            m.Infra.GitRepoRequest(repo_root=cursor)
-        )
-        root = top.value.workspace_root.resolve() if top.success else cursor
-        for candidate in (root, *root.parents):
-            if (candidate / ".beads" / "config.yaml").is_file():
-                return r.ok(candidate)
-        return r.fail(
-            f"no workspace Beads config (.beads/config.yaml) found from {root}"
-        )
+        return r.ok(governing.value)
 
     @classmethod
     def _bd_command(
@@ -64,10 +53,10 @@ class FlextInfraUtilitiesBeadsLane:
         return r.ok(("bd", "-C", str(resolved.value), *parts))
 
     @classmethod
-    def beads_show_json(
-        cls, bead_id: str, *, root: Path | None = None
-    ) -> p.Result[dict[str, object]]:
-        """Return one issue as a JSON object."""
+    def beads_show(
+        cls, bead_id: str, *, root: Path | None = None, adopt_legacy_ready: bool = False
+    ) -> p.Result[m.Infra.BeadIssue]:
+        """Return one issue parsed through the strict lane boundary."""
         cleaned = bead_id.strip()
         if not cleaned:
             return r.fail("beads show requires a non-empty bead id")
@@ -84,17 +73,140 @@ class FlextInfraUtilitiesBeadsLane:
         if isinstance(payload, list):
             if not payload or not isinstance(payload[0], dict):
                 return r.fail(f"bd show returned empty list for {cleaned}")
-            return r.ok(payload[0])
+            payload = payload[0]
         if not isinstance(payload, dict):
             return r.fail(f"bd show returned unexpected JSON for {cleaned}")
-        return r.ok(payload)
+        return cls._parse_issue(payload, adopt_legacy_ready=adopt_legacy_ready)
+
+    @classmethod
+    def beads_list_reservations(
+        cls, *, root: Path | None = None
+    ) -> p.Result[tuple[m.Infra.BeadIssue, ...]]:
+        """List issues that currently carry a typed lane reservation."""
+        command = cls._bd_command("list", "--json", root=root)
+        if command.failure:
+            return r.fail(command.error or "failed to build bd list command")
+        captured = u.Cli.capture(command.value)
+        if captured.failure:
+            return r.fail(captured.error or "bd list failed")
+        try:
+            payload = json.loads(captured.value)
+        except json.JSONDecodeError as exc:
+            return r.fail(f"bd list returned invalid JSON: {exc}")
+        if not isinstance(payload, list):
+            return r.fail("bd list returned unexpected JSON")
+        issues: list[m.Infra.BeadIssue] = []
+        for row in payload:
+            if not isinstance(row, dict):
+                return r.fail("bd list returned a non-object issue")
+            parsed = cls._parse_issue(row)
+            if parsed.failure:
+                return r.fail(parsed.error or "bd list issue validation failed")
+            if parsed.value.metadata is not None:
+                issues.append(parsed.value)
+        return r.ok(tuple(issues))
+
+    @staticmethod
+    def _project_lane_metadata(
+        metadata: object, *, adopt_legacy_ready: bool = False
+    ) -> dict[str, object] | None:
+        if not isinstance(metadata, dict) or "provisioning" not in metadata:
+            return None
+        role = metadata.get("role") or c.Infra.WorkLaneRole.PLAIN.value
+        topology = {"role": role}
+        for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug"):
+            if key in metadata:
+                topology[key] = metadata[key]
+        projected = {
+            key: metadata[key]
+            for key in (
+                "branch",
+                "namespace",
+                "worktree",
+                "kind",
+                "slug",
+                "integration_base",
+                "provisioning",
+                "head_oid",
+                "pr_number",
+                "pr_url",
+                "recovery",
+                "error_category",
+            )
+            if key in metadata
+        }
+        if "worktree" in projected:
+            projected["worktree"] = Path(str(projected["worktree"]))
+        if "kind" in projected:
+            projected["kind"] = c.Infra.WorkKind(str(projected["kind"]))
+        if "namespace" in projected:
+            projected["namespace"] = c.Infra.WorkBranchNamespace(
+                str(projected["namespace"])
+            )
+        if "recovery" in projected:
+            projected["recovery"] = c.Infra.WorkRecoveryCategory(
+                str(projected["recovery"])
+            )
+        if "error_category" in projected:
+            projected["error_category"] = c.Infra.WorkProvisioningError(
+                str(projected["error_category"])
+            )
+        if projected.get("provisioning") == c.Infra.WorkProvisioningState.READY:
+            matrix = metadata.get("matrix")
+            if isinstance(matrix, str):
+                projected["matrix"] = m.Infra.WorkLaneMatrix.model_validate_json(matrix)
+        if "epic_worktree" in topology:
+            topology["epic_worktree"] = Path(str(topology["epic_worktree"]))
+        projected["topology"] = topology
+        if (
+            adopt_legacy_ready
+            and projected.get("provisioning") == c.Infra.WorkProvisioningState.READY
+            and "matrix" not in projected
+        ):
+            branch = str(projected.get("branch") or "")
+            head_oid = str(projected.get("head_oid") or "")
+            projected["matrix"] = {
+                "entries": (
+                    {
+                        "project": ".",
+                        "branch": branch,
+                        "head_oid": head_oid,
+                        "state": "started",
+                    },
+                )
+            }
+        return projected
+
+    @classmethod
+    def _parse_issue(
+        cls, payload: dict[str, object], *, adopt_legacy_ready: bool = False
+    ) -> p.Result[m.Infra.BeadIssue]:
+        try:
+            projected_metadata = cls._project_lane_metadata(
+                payload.get("metadata"), adopt_legacy_ready=adopt_legacy_ready
+            )
+            projected = {
+                "id": payload.get("id"),
+                "status": c.Infra.BeadIssueStatus(str(payload.get("status"))),
+                "issue_type": payload.get("issue_type"),
+                "parent": payload.get("parent"),
+                "metadata": projected_metadata,
+            }
+            return r.ok(m.Infra.BeadIssue.model_validate(projected))
+        except (ValueError, m.ValidationError) as exc:
+            return r.fail(f"Beads issue validation failed: {exc}")
 
     @classmethod
     def beads_update_lane(
         cls,
         bead_id: str,
         *,
-        metadata: dict[str, str] | None = None,
+        metadata: (
+            m.Infra.PendingLaneReservation
+            | m.Infra.ReadyLaneMetadata
+            | m.Infra.FailedLaneMetadata
+            | None
+        ) = None,
         labels: tuple[str, ...] = (),
         notes: str | None = None,
         claim: bool = False,
@@ -107,9 +219,21 @@ class FlextInfraUtilitiesBeadsLane:
         parts: list[str] = ["update", cleaned]
         if claim:
             parts.append("--claim")
-        if metadata:
-            for key, value in metadata.items():
-                parts.extend(("--set-metadata", f"{key}={value}"))
+        if metadata is not None:
+            values = metadata.model_dump(
+                mode="json", exclude_none=True, exclude={"topology", "matrix"}
+            )
+            topology = metadata.topology.model_dump(mode="json", exclude_none=True)
+            assignments = tuple(
+                f"{key}={value}" for key, value in values.items()
+            ) + tuple(f"{key}={value}" for key, value in topology.items())
+            if isinstance(metadata, m.Infra.ReadyLaneMetadata):
+                assignments = (
+                    *assignments,
+                    f"matrix={metadata.matrix.model_dump_json()}",
+                )
+            for assignment in assignments:
+                parts.extend(("--set-metadata", assignment))
         for label in labels:
             parts.extend(("--add-label", label))
         if notes:

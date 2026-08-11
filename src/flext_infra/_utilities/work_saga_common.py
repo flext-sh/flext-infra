@@ -7,7 +7,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import FlextInfraWorktreeService, c, m, u
+from flext_infra import c, m, u
+from flext_infra._utilities._work import (
+    FlextInfraWorkReservation,
+    FlextInfraWorkStartSupport,
+)
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -15,7 +20,7 @@ if TYPE_CHECKING:
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-class FlextInfraWorkSagaCommon:
+class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSupport):
     """Resolve bases, branches, and primary-worktree safety."""
 
     workspace_root: Path
@@ -26,286 +31,17 @@ class FlextInfraWorkSagaCommon:
     branch: str | None
 
     def _primary_root(self) -> p.Result[Path]:
-        """Resolve the workspace-root primary, never a member checkout lane."""
-        return FlextInfraWorktreeService.workspace_primary_root(self.workspace_root)
-
-    @staticmethod
-    def _tracker_parent(payload: dict[str, object]) -> str:
-        """Return the parent bead id the tracker records for one bead."""
-        parent = payload.get("parent")
-        if isinstance(parent, str) and parent.strip():
-            return parent.strip()
-        dependencies = payload.get("dependencies")
-        if isinstance(dependencies, list):
-            for dependency in dependencies:
-                if (
-                    isinstance(dependency, dict)
-                    and dependency.get("dependency_type") == "parent-child"
-                ):
-                    dependency_id = dependency.get("id")
-                    if isinstance(dependency_id, str) and dependency_id.strip():
-                        return dependency_id.strip()
-        return ""
-
-    @staticmethod
-    def _has_lane_metadata(primary_root: Path, bead: str) -> bool:
-        """Report whether a bead already carries lane coordinates of its own."""
-        shown = u.Infra.beads_show_json(bead, root=primary_root)
-        if shown.failure:
-            return False
-        meta = shown.value.get("metadata")
-        if not isinstance(meta, dict):
-            return False
-        return bool(
-            str(meta.get("kind") or "").strip() and str(meta.get("slug") or "").strip()
-        )
-
-    def _parent_context(
-        self,
-        primary_root: Path,
-        payload: dict[str, object],
-        bead: str,
-        kind: c.Infra.WorkKind,
-        seen: frozenset[str],
-    ) -> p.Result[m.Infra.WorkLaneParentContext]:
-        """Resolve the parent lane a bead's own lane must be nested under.
-
-        An epic anchors at the workspace root when it has no tracker parent, or
-        when that parent carries no lane of its own: the tracker tree is a
-        planning tree, and only the beads that own execution carry lanes. Every
-        other lane hangs off its immediate parent epic lane, which must already
-        exist and be registered exactly at its canonical path.
-        """
-        parent_bead = self._tracker_parent(payload)
-        if not parent_bead:
-            if kind is not c.Infra.WorkKind.EPIC:
-                return r.fail(
-                    f"bead {bead} has no tracker parent, so lane kind "
-                    f"{kind.value} has no epic lane to nest under; give it a "
-                    "parent epic or start it as KIND=epic"
-                )
-            base = self._resolve_integration_base(primary_root)
-            if base.failure:
-                return r.fail(base.error or "failed to resolve integration base")
-            return r.ok(
-                m.Infra.WorkLaneParentContext(
-                    parent_lane=primary_root.resolve(), base_branch=base.value
-                )
+        governed = u.Infra.beads_resolve_root(self.workspace_root)
+        if governed.failure:
+            return r[Path].fail(
+                governed.error or "failed to resolve governing workspace"
             )
-        ancestor = self._stored_identity(primary_root, parent_bead, seen | {bead})
-        if ancestor.failure:
-            # Why: the tracker tree is a PLANNING tree and only the beads that
-            # own execution carry lanes. An epic whose parent carries no lane is
-            # therefore the root of its own lane chain and anchors at the
-            # workspace root, so a planning container never has to materialize a
-            # worktree. A non-epic keeps failing here: a leaf always needs its
-            # immediate epic lane.
-            if kind is c.Infra.WorkKind.EPIC and not self._has_lane_metadata(
-                primary_root, parent_bead
-            ):
-                base = self._resolve_integration_base(primary_root)
-                if base.failure:
-                    return r.fail(base.error or "failed to resolve integration base")
-                return r.ok(
-                    m.Infra.WorkLaneParentContext(
-                        parent_lane=primary_root.resolve(), base_branch=base.value
-                    )
-                )
-            return r.fail(ancestor.error or f"unusable parent epic {parent_bead}")
-        if not ancestor.value.is_epic:
-            return r.fail(
-                f"lane parent {parent_bead} is not an epic lane "
-                f"(kind={ancestor.value.kind}); only epic lanes own child lanes"
-            )
-        registered = FlextInfraWorktreeService.registered_lane(
-            primary_root, ancestor.value.branch, ancestor.value.lane_path
+        primary = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=governed.value)
         )
-        if registered.failure:
-            return r.fail(
-                f"parent epic lane {parent_bead} is not usable: "
-                f"{registered.error or 'lane is not registered'}"
-            )
-        return r.ok(
-            m.Infra.WorkLaneParentContext(
-                parent_lane=ancestor.value.lane_path,
-                parent_bead=parent_bead,
-                parent_branch=ancestor.value.branch,
-                base_branch=ancestor.value.branch,
-            )
-        )
-
-    def _lane_identity(
-        self,
-        primary_root: Path,
-        payload: dict[str, object],
-        bead: str,
-        kind: c.Infra.WorkKind,
-        slug: str,
-        seen: frozenset[str] = frozenset(),
-    ) -> p.Result[m.Infra.WorkLaneIdentity]:
-        """Derive the one canonical identity of a lane from its Bead."""
-        context = self._parent_context(primary_root, payload, bead, kind, seen)
-        if context.failure:
-            return r.fail(context.error or "failed to resolve parent lane")
-        lane_dir = f"{bead}-{slug}"
-        lane_path = FlextInfraWorktreeService.derive_lane_path(
-            context.value.parent_lane, lane_dir
-        )
-        if lane_path.failure:
-            return r.fail(lane_path.error or "failed to derive lane path")
-        return r.ok(
-            m.Infra.WorkLaneIdentity(
-                bead=bead,
-                slug=slug,
-                kind=kind,
-                branch=f"{kind.value}/{lane_dir}",
-                lane_dir=lane_dir,
-                lane_path=lane_path.value,
-                parent_lane=context.value.parent_lane,
-                parent_bead=context.value.parent_bead,
-                parent_branch=context.value.parent_branch,
-                base_branch=context.value.base_branch,
-            )
-        )
-
-    def _stored_identity(
-        self, primary_root: Path, bead: str, seen: frozenset[str] = frozenset()
-    ) -> p.Result[m.Infra.WorkLaneIdentity]:
-        """Re-derive one already-started lane identity from its Bead metadata."""
-        if bead in seen:
-            return r.fail(f"lane parent chain is cyclic at bead {bead}")
-        if len(seen) >= c.Infra.WORK_LANE_MAX_DEPTH:
-            return r.fail(f"lane parent chain is too deep at bead {bead}")
-        shown = u.Infra.beads_show_json(bead, root=primary_root)
-        if shown.failure:
-            return r.fail(shown.error or f"unknown bead {bead}")
-        meta = shown.value.get("metadata")
-        stored_kind = (
-            str(meta.get("kind") or "").strip() if isinstance(meta, dict) else ""
-        )
-        stored_slug = (
-            str(meta.get("slug") or "").strip() if isinstance(meta, dict) else ""
-        )
-        if not stored_kind or not stored_slug:
-            return r.fail(
-                f"bead {bead} has no lane metadata (kind/slug); start its lane "
-                f"first: make work WHAT=start BEAD={bead} KIND=epic NAME=<slug> "
-                "APPLY=Y"
-            )
-        if stored_kind not in {kind.value for kind in c.Infra.WorkKind}:
-            return r.fail(f"bead {bead} records an unknown lane kind: {stored_kind}")
-        return self._lane_identity(
-            primary_root,
-            shown.value,
-            bead,
-            c.Infra.WorkKind(stored_kind),
-            stored_slug,
-            seen,
-        )
-
-    @staticmethod
-    def _matrix_from_metadata(
-        meta: dict[str, object],
-    ) -> p.Result[m.Infra.WorkLaneMatrix]:
-        """Parse the only accepted serialized workspace lane matrix."""
-        raw = meta.get(c.Infra.WORK_BEADS_MATRIX_KEY)
-        if not isinstance(raw, str) or not raw.strip():
-            return r.fail("bead lane metadata is missing serialized matrix")
-        try:
-            return r.ok(m.Infra.WorkLaneMatrix.model_validate_json(raw))
-        except c.ValidationError as exc:
-            return r.fail(f"invalid serialized workspace lane matrix: {exc}")
-
-    @staticmethod
-    def _matrix_project_root(lane: Path, project: str) -> p.Result[Path]:
-        """Resolve one matrix project strictly within the root worktree."""
-        candidate = (lane / project).resolve()
-        if not candidate.is_relative_to(lane.resolve()):
-            return r.fail(f"matrix project resolves outside root worktree: {project}")
-        if not candidate.is_dir():
-            return r.fail(f"matrix project checkout is missing: {project}")
-        return r.ok(candidate)
-
-    def _matrix_for_started_lane(
-        self, primary_root: Path, lane: Path, branch: str
-    ) -> p.Result[m.Infra.WorkLaneMatrix]:
-        """Attach every governed project at its lane branch and capture CAS heads."""
-        projects = u.Infra.resolve_projects(primary_root, ())
-        if projects.failure:
-            return r.fail(projects.error or "failed to resolve workspace projects")
-        entries: list[m.Infra.WorkLaneEntry] = []
-        project_paths = (
-            primary_root,
-            *(project.path.resolve() for project in projects.value),
-        )
-        for project_path in dict.fromkeys(project_paths):
-            try:
-                relative = project_path.relative_to(primary_root.resolve())
-            except ValueError:
-                return r.fail(f"workspace project is outside root: {project_path}")
-            project_name = relative.as_posix() or "."
-            lane_project = self._matrix_project_root(lane, project_name)
-            if lane_project.failure:
-                return r.fail(lane_project.error or "invalid matrix project")
-            if project_name != ".":
-                attached = u.Infra.git_attach_branch_at_head(
-                    m.Infra.GitBranchRequest(
-                        repo_root=lane_project.value, branch=branch
-                    )
-                )
-                if attached.failure:
-                    return r.fail(
-                        attached.error
-                        or f"failed to attach workspace project branch: {project_name}"
-                    )
-            head = self._git_head(lane_project.value)
-            if head.failure:
-                return r.fail(
-                    head.error or f"failed to resolve matrix head: {project_name}"
-                )
-            entries.append(
-                m.Infra.WorkLaneEntry(
-                    project=project_name,
-                    branch=branch,
-                    head_oid=head.value,
-                    state="started",
-                )
-            )
-        if not entries:
-            return r.fail("workspace lane matrix has no projects")
-        return r.ok(m.Infra.WorkLaneMatrix(entries=tuple(entries)))
-
-    def _bound_root_matrix(
-        self, primary_root: Path, bead: str, meta: dict[str, object]
-    ) -> p.Result[m.Infra.WorkLaneBinding]:
-        """Bind bead metadata to the one canonical, registered workspace lane."""
-        worktree = str(meta.get("worktree") or "").strip()
-        if not worktree:
-            return r.fail("bead lane metadata is missing root worktree")
-        matrix = self._matrix_from_metadata(meta)
-        if matrix.failure:
-            return r.fail(matrix.error or "invalid root lane matrix")
-        root_entries = [entry for entry in matrix.value.entries if entry.project == "."]
-        if len(root_entries) != 1:
-            return r.fail("workspace lane matrix requires exactly one root entry")
-        identity = self._stored_identity(primary_root, bead)
-        if identity.failure:
-            return r.fail(identity.error or f"bead {bead} has no canonical lane")
-        if root_entries[0].branch != identity.value.branch:
-            return r.fail(
-                "work metadata branch does not match the derived lane branch: "
-                f"metadata={root_entries[0].branch} derived={identity.value.branch}"
-            )
-        lane = self._bound_registered_lane(
-            primary_root, identity.value.branch, worktree, identity.value.lane_path
-        )
-        if lane.failure:
-            return r.fail(lane.error or "root lane binding failed")
-        return r.ok(
-            m.Infra.WorkLaneBinding(
-                identity=identity.value, lane=lane.value, matrix=matrix.value
-            )
-        )
+        if primary.failure:
+            return r[Path].fail(primary.error or "failed to resolve primary worktree")
+        return r[Path].ok(primary.value.primary_root)
 
     def _resolve_integration_base(self, primary_root: Path) -> p.Result[str]:
         explicit = (self.base or "").strip()
@@ -350,12 +86,49 @@ class FlextInfraWorkSagaCommon:
             return remote
         return cleaned
 
-    def _validated_kind_slug(self) -> p.Result[tuple[c.Infra.WorkKind, str]]:
-        if self.kind is None:
-            return r.fail("work start requires --kind")
-        # Why: mro-5bts the service model stores enum values, so re-enter the
-        # enum here and keep every downstream saga step typed.
-        kind = c.Infra.WorkKind(self.kind)
+    def _validated_kind_slug(
+        self, issue_type: str | None = None, *, child: bool = False
+    ) -> p.Result[tuple[c.Infra.WorkKind | None, c.Infra.WorkBranchNamespace, str]]:
+        kind = self.kind
+        normalized_issue_type = (issue_type or "").strip().lower()
+        if normalized_issue_type == "epic":
+            if child:
+                return r.fail("work start refuses an epic issue as a child lane")
+            if kind is not None:
+                return r.fail(
+                    "epic issue derives the epic branch namespace; drop --kind"
+                )
+            namespace = c.Infra.WorkBranchNamespace.EPIC
+        else:
+            namespace = None
+        if kind is None and namespace is None:
+            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+                self.workspace_root
+            )
+            if workspace.failure:
+                return r.fail(workspace.error or "failed to load workspace lane policy")
+            match normalized_issue_type:
+                case "bug":
+                    kind = c.Infra.WorkKind.BUGFIX
+                case "feature":
+                    kind = c.Infra.WorkKind.FEATURE
+                case "task":
+                    kind = c.Infra.WorkKind(workspace.value.work.task_kind)
+                case "chore":
+                    kind = c.Infra.WorkKind(workspace.value.work.chore_kind)
+                case "":
+                    return r.fail("work start bead is missing issue_type; pass --kind")
+                case invalid:
+                    return r.fail(
+                        f"work start cannot derive kind from issue_type {invalid}"
+                    )
+        if namespace is None:
+            match kind:
+                case None:
+                    return r.fail("work start could not resolve a GitFlow kind")
+                case resolved_kind:
+                    kind = c.Infra.WorkKind(resolved_kind)
+                    namespace = c.Infra.WorkBranchNamespace(kind.value)
         slug = (self.name or "").strip().lower()
         if not slug:
             return r.fail("work start requires --name")
@@ -363,7 +136,26 @@ class FlextInfraWorkSagaCommon:
             return r.fail(f"forbidden work slug: {slug}")
         if not _SLUG_RE.fullmatch(slug):
             return r.fail(f"invalid work slug (kebab-case required): {slug}")
-        return r.ok((kind, slug))
+        return r.ok((kind, namespace, slug))
+
+    @staticmethod
+    def _branch_name(namespace: c.Infra.WorkBranchNamespace, slug: str) -> str:
+        return f"{namespace.value}/{slug}"
+
+    def _resolve_lane_branch(self) -> p.Result[str]:
+        explicit = (self.branch or "").strip()
+        if explicit:
+            return r.ok(explicit)
+        bead = (self.bead or "").strip()
+        if bead:
+            shown = u.Infra.beads_show(bead, root=self.workspace_root)
+            if shown.success and shown.value.metadata is not None:
+                return r.ok(shown.value.metadata.branch)
+        kind_slug = self._validated_kind_slug()
+        if kind_slug.failure:
+            return r.fail(kind_slug.error or "unable to resolve lane branch")
+        _, namespace, slug = kind_slug.value
+        return r.ok(self._branch_name(namespace, slug))
 
     @staticmethod
     def _is_primary_path(primary_root: Path, lane: Path) -> bool:
@@ -387,33 +179,52 @@ class FlextInfraWorkSagaCommon:
         return r.ok(True)
 
     @staticmethod
-    def _bound_registered_lane(
-        primary_root: Path, branch: str, worktree: str, canonical: Path
-    ) -> p.Result[Path]:
-        """Accept a lane only when metadata, registry, and derivation agree."""
-        canonical_lane = canonical.expanduser().resolve()
-        meta_lane = Path(worktree).expanduser().resolve()
-        if meta_lane != canonical_lane:
-            return r.fail(
-                "work metadata worktree is not the derived lane path: "
-                f"metadata={meta_lane} derived={canonical_lane}"
-            )
-        registered = FlextInfraWorktreeService.registered_lane(
-            primary_root, branch, canonical_lane
-        )
-        if registered.failure:
-            return r.fail(
-                registered.error or f"worktree branch is not registered: {branch}"
-            )
-        return r.ok(registered.value.resolve())
-
-    @staticmethod
     def _ensure_clean(lane: Path) -> p.Result[bool]:
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:
             return r.fail(status.error or f"failed to inspect {lane}")
         if status.value.dirty:
             return r.fail("work land/finish requires a clean lane worktree")
+        return r.ok(True)
+
+    @staticmethod
+    def _matrix_project_root(lane: Path, project: str) -> p.Result[Path]:
+        candidate = (lane / project).resolve()
+        if not candidate.is_relative_to(lane.resolve()):
+            return r.fail(f"matrix project resolves outside root worktree: {project}")
+        if not candidate.is_dir():
+            return r.fail(f"matrix project checkout is missing: {project}")
+        return r.ok(candidate)
+
+    def _validate_matrix_cas(
+        self, lane: Path, matrix: m.Infra.WorkLaneMatrix
+    ) -> p.Result[bool]:
+        for entry in matrix.entries:
+            project_root = self._matrix_project_root(lane, entry.project)
+            if project_root.failure:
+                return r.fail(project_root.error or "matrix project is invalid")
+            clean = self._ensure_clean(project_root.value)
+            if clean.failure:
+                return r.fail(
+                    clean.error or f"matrix project is dirty: {entry.project}"
+                )
+            current = self._git_head(project_root.value)
+            if current.failure:
+                return r.fail(
+                    current.error or f"failed to resolve matrix HEAD: {entry.project}"
+                )
+            if current.value == entry.head_oid:
+                continue
+            contains = u.Infra.git_is_ancestor(
+                m.Infra.GitCommitishRequest(
+                    repo_root=project_root.value, commitish=entry.head_oid
+                )
+            )
+            if contains.failure or not contains.value.value:
+                return r.fail(
+                    f"CAS failed for {entry.project}: expected={entry.head_oid} "
+                    f"head={current.value}"
+                )
         return r.ok(True)
 
     @staticmethod

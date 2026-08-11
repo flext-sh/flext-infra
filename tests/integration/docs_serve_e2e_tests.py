@@ -14,21 +14,19 @@ import socket
 import time
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-# mro-izia.1 (agent kimi): this case pays for a spawned interpreter that
-# re-imports the whole package plus a real MkDocs build, then polls a real
-# socket; measured at 32s on the full coverage gate. The internal deadline must
-# stay well inside the per-case budget so an unreachable server fails as a
-# diagnostic assertion, never as an opaque runner timeout — 25s left no room at
-# all under the previous 30s budget.
-_DEADLINE_SECONDS = 45.0
+_PYTEST_POLICY = config.Infra.tooling.tools.pytest
+_DEADLINE_SECONDS = float(
+    _PYTEST_POLICY.case_timeout_seconds - _PYTEST_POLICY.termination_grace_seconds
+)
 _POLL_INTERVAL_SECONDS = 0.05
-_PROCESS_STOP_TIMEOUT_SECONDS = 1.0
+_PROCESS_STOP_TIMEOUT_SECONDS = float(_PYTEST_POLICY.termination_grace_seconds)
 _HTTP_OK = 200
 
 

@@ -7,10 +7,44 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, c, m, u
+from flext_tests import tm
+from tests import u as test_u
 
 
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
+
+    def test_merge_no_edit_requires_a_non_fast_forward_merge(
+        self, tmp_path: Path
+    ) -> None:
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", "topic"], cwd=repository))
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "switch", "topic"], cwd=repository))
+        (repository / "topic.txt").write_text("topic\n", encoding="utf-8")
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "add", "topic.txt"], cwd=repository))
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "topic"], cwd=repository
+            )
+        )
+        topic = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository))
+        ).oid
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "switch", "main"], cwd=repository))
+        tm.ok(
+            u.Infra.git_merge_no_edit(
+                m.Infra.GitCommitishRequest(repo_root=repository, commitish=topic)
+            )
+        )
+        parents = tm.ok(
+            u.Cli.capture(
+                [c.Infra.GIT, "rev-list", "--parents", "-n", "1", "HEAD"],
+                cwd=repository,
+            )
+        ).split()
+        assert len(parents) == 3
 
     def test_repository_head_and_status_and_service(self, real_git_repo: Path) -> None:
         """Head, porcelain status, and FlextInfraGitService share one typed path."""
@@ -55,6 +89,62 @@ class TestsFlextInfraGitFacet:
         assert dirty.success
         assert dirty.value.dirty is True
         assert "dirty.txt" in dirty.value.porcelain
+
+    def test_status_classifies_registered_nested_worktrees_as_administrative(
+        self, tmp_path: Path
+    ) -> None:
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        container = repository / ".worktrees"
+        first = container / "first"
+        second = container / "second"
+        container.mkdir()
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", "first"], cwd=repository))
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", "second"], cwd=repository))
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "add", str(first), "first"], cwd=repository
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "add", str(second), "second"], cwd=repository
+            )
+        )
+        clean = tm.ok(
+            u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repository))
+        )
+        assert clean.dirty is False
+        (repository / "rogue.txt").write_text("rogue", encoding="utf-8")
+        rogue = tm.ok(
+            u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repository))
+        )
+        assert rogue.dirty is True
+        (repository / "rogue.txt").unlink()
+        (container / "rogue.txt").write_text("rogue", encoding="utf-8")
+        nested_rogue = tm.ok(
+            u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repository))
+        )
+        assert nested_rogue.dirty is True
+        (container / "rogue.txt").unlink()
+        (repository / "README.md").write_text("changed", encoding="utf-8")
+        tracked = tm.ok(
+            u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repository))
+        )
+        assert tracked.dirty is True
+        (repository / "README.md").write_text("# Test Repository\n", encoding="utf-8")
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "remove", str(second)], cwd=repository
+            )
+        )
+        second.mkdir(parents=True)
+        (second / "stale.txt").write_text("stale", encoding="utf-8")
+        stale = tm.ok(
+            u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repository))
+        )
+        assert stale.dirty is True
 
     def test_missing_git_binary_fails_closed(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

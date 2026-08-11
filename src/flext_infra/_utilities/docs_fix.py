@@ -82,7 +82,14 @@ class FlextInfraUtilitiesDocsFix:
                 fixed_body = outcome.value.stdout
                 if fixed_body == body:
                     return match.group(0)
-                return f"{match.group('open')}{fixed_body}```"
+                # A closing fence only closes the block when it starts its own
+                # line; ruff may return a body without the trailing newline, so
+                # reassembling blindly welds the fence onto the last code line
+                # and the block swallows every heading that follows it.
+                closed_body = (
+                    fixed_body if fixed_body.endswith("\n") else f"{fixed_body}\n"
+                )
+                return f"{match.group('open')}{closed_body}```"
 
             sanitized = c.Infra.PYTHON_FENCE_FIX_RE.sub(_replace_fence, original)
             if sanitized == original:

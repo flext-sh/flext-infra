@@ -6,7 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
+
+import pytest
 
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -34,6 +37,30 @@ class TestCodegenCiMatrix:
         result = service.execute()
         tm.ok(result)
         return root
+
+    @staticmethod
+    def _hook_entry(rendered: str, hook_id: str) -> str:
+        """Return the entry command of one rendered hook, isolated from the rest.
+
+        Searching the whole file proves only that SOME hook carries a prefix; a
+        hook that loses it while its sibling keeps it would still pass.
+        """
+        lines = rendered.splitlines()
+        start = next(
+            index
+            for index, line in enumerate(lines)
+            if line.strip() == f"- id: {hook_id}"
+        )
+        following = lines[start + 1 :]
+        end = next(
+            (
+                index
+                for index, line in enumerate(following)
+                if line.strip().startswith("- id: ")
+            ),
+            len(following),
+        )
+        return "\n".join(following[:end])
 
     def test_ci_matrix_profiles_exclude_workspace_member(self) -> None:
         """Matrix + distro Dockerfiles are root/standalone only (not members)."""
@@ -111,6 +138,7 @@ class TestCodegenCiMatrix:
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
         gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
+        default_whats: Mapping[str, str] = config.Infra.codegen.make.default_whats
 
         for hook_id, context in (
             ("flext-pre-commit", "pre_commit"),
@@ -132,7 +160,11 @@ class TestCodegenCiMatrix:
                     else ""
                 )
                 + f"make {step.verb}"
-                + (f" WHAT={step.what}" if step.what else "")
+                + (
+                    f" WHAT={step.what}"
+                    if step.what
+                    else (f" WHAT={default_whats[step.verb]}" if not step.apply else "")
+                )
                 + (
                     f" {config.Infra.codegen.make.apply_variable}="
                     f"{config.Infra.codegen.make.apply_value}"
@@ -144,6 +176,16 @@ class TestCodegenCiMatrix:
             )
             tm.that(hooks, has=f"id: {hook_id}")
             tm.that(hooks, has=commands)
+            # Every carrier that can smuggle a caller's selector or write-enable
+            # token into a hook step is cleared BEFORE the first verb runs.
+            # Position matters, not mere presence: cleanup rendered after the
+            # first `make` would leave that command reading the caller's values.
+            entry = self._hook_entry(hooks, hook_id)
+            cleanup = (
+                f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
+            )
+            tm.that(entry, has=cleanup)
+            tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
@@ -311,7 +353,8 @@ class TestCodegenCiMatrix:
         for host in (macos, windows):
             tm.that(host, has="run: CI=Y make setup")
             tm.that(host, has="run: CI=Y make help")
-        tm.that(windows.count("shell: bash"), eq=2)
+            tm.that(host, has="run: CI=Y make check")
+        tm.that(windows.count("shell: bash"), eq=3)
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
         self, tmp_path: Path
@@ -412,6 +455,51 @@ class TestCodegenCiMatrix:
         tm.that(enabled_triggers, has="branches: [main]")
         tm.that(enabled_triggers, has="workflow_dispatch: {}")
         tm.that(enabled_triggers, lacks="pull_request:")
+
+    def test_no_project_overrides_ci_matrix_auto_run(self) -> None:
+        """ci-matrix stays dispatch-only fleet-wide: no project may opt in.
+
+        Operator law (2026-08-08): ci-matrix is fully OFF, owned by flext-infra,
+        with `ci_matrix_auto_run` at its default and ZERO overrides in any
+        internal or external project. The overlay field still exists as the
+        typed knob, but an override that flips it on is a governance violation,
+        so the absence is asserted rather than assumed.
+        """
+        from flext_infra import m
+
+        base = m.Infra.RepositoryRef(
+            name="flext-demo",
+            distribution="flext-demo",
+            url="https://github.com/flext-sh/flext-demo.git",
+            path=Path(),
+            provider="flext-sh",
+            role=c.Infra.RepositoryRole.STANDALONE,
+            checkout=c.Infra.CheckoutKind.INDEPENDENT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=False,
+            read_only=False,
+        )
+
+        def build(*, auto_run: bool) -> m.Infra.WorkspaceSpec:
+            return m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name="flext-demo",
+                repository=base,
+                repository_policy_overlays=(
+                    m.Infra.RepositoryPolicyOverlaySpec(
+                        project="flext-demo", ci_matrix_auto_run=auto_run
+                    ),
+                ),
+            )
+
+        # The default overlay loads: ci-matrix stays dispatch-only.
+        tm.that(len(build(auto_run=False).repository_policy_overlays), eq=1)
+        # An override is refused at load time, naming the offending project.
+        with pytest.raises(
+            c.ValidationError, match="ci_matrix_auto_run cannot be overridden"
+        ):
+            build(auto_run=True)
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path

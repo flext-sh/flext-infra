@@ -25,44 +25,57 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work finish requires --bead")
-        shown = u.Infra.beads_show_json(bead, root=primary_root)
+        shown = u.Infra.beads_show(bead, root=self.workspace_root)
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
-        meta = shown.value.get("metadata")
-        if not isinstance(meta, dict):
+        metadata = shown.value.metadata
+        if metadata is None:
             return r.fail(f"bead {bead} has no lane metadata")
-        worktree = str(meta.get("worktree") or "").strip()
-        if worktree == "removed":
+        if not isinstance(metadata, m.Infra.ReadyLaneMetadata):
+            return r.fail(f"bead {bead} lane is not ready for finish")
+        branch = metadata.branch
+        worktree = str(metadata.worktree)
+        expected = metadata.head_oid
+        pr_number = metadata.pr_number or ""
+        integration = metadata.integration_base
+        ownership = self._owned_reservation(bead, branch, metadata.worktree)
+        if ownership.failure:
+            return r.fail(ownership.error or "work finish reservation ownership failed")
+        lane_meta = Path(worktree)
+        if lane_meta == Path("removed"):
             return r.fail(f"bead {bead} lane worktree already removed")
-        if self._is_primary_path(primary_root, Path(worktree)):
+        if self._is_primary_path(primary_root, lane_meta):
             return r.fail("work finish refuses the primary worktree")
-        bound_matrix = self._bound_root_matrix(primary_root, bead, meta)
-        if bound_matrix.failure:
-            return r.fail(bound_matrix.error or "work finish root lane binding failed")
-        identity = bound_matrix.value.identity
-        lane = bound_matrix.value.lane
-        matrix = bound_matrix.value.matrix
-        root_entry = next(entry for entry in matrix.entries if entry.project == ".")
-        branch = root_entry.branch
-        # Why: a lane owns the container its child lanes live in, so removing it
-        # would delete live checkouts of other beads.
-        children = FlextInfraWorktreeService.child_lanes(primary_root, lane)
-        if children.failure:
-            return r.fail(children.error or "failed to list child lanes")
-        if children.value:
-            nested = ", ".join(str(child) for child in children.value)
+        permanent = self._refuse_permanent_branch(branch, integration)
+        if permanent.failure:
             return r.fail(
-                f"work finish refuses lane {branch}: it still owns child lanes "
-                f"({nested}); finish them first"
+                permanent.error or f"work finish refuses permanent branch {branch}"
             )
-        integration = identity.base_branch
-        for entry in matrix.entries:
-            permanent = self._refuse_permanent_branch(entry.branch, integration)
-            if permanent.failure:
-                return r.fail(permanent.error or "work finish refuses permanent branch")
+        bound = self._bound_registered_lane(primary_root, branch, worktree)
+        if bound.failure:
+            return r.fail(bound.error or "work finish lane binding failed")
+        lane = bound.value
+        topology = self._validated_lane_topology(primary_root, metadata, lane)
+        if topology.failure:
+            return r.fail(topology.error or "work finish topology validation failed")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work finish child binding failed")
+        if not lane.is_dir():
+            return r.fail(f"lane worktree missing: {lane}")
+        if not expected:
+            return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
+        for entry in metadata.matrix.entries:
             project_root = self._matrix_project_root(lane, entry.project)
             if project_root.failure:
                 return r.fail(project_root.error or "matrix project is invalid")
+            if not entry.pr_number:
+                return r.fail(
+                    f"work finish requires recorded PR for matrix project {entry.project}"
+                )
             merged = self._require_merged_pr(
                 project_root.value, entry.branch, entry.pr_number
             )
@@ -78,57 +91,58 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                     f"CAS failed before finish for {entry.project}: "
                     f"expected {entry.head_oid} head={head.value}"
                 )
+        ownership = self._owned_reservation(bead, branch, lane)
+        if ownership.failure:
+            return r.fail(ownership.error or "work finish reservation changed")
+        if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
+            live = self._live_child_topology(
+                primary_root, shown.value, metadata.topology
+            )
+            if live.failure:
+                return r.fail(live.error or "work finish child binding changed")
+            advanced = self._merge_remote_epic(
+                primary_root, shown.value, metadata.topology
+            )
+            if advanced.failure:
+                return r.fail(advanced.error or "work finish epic merge-forward failed")
         removed = FlextInfraWorktreeService(
             workspace_root=primary_root,
             operation=c.Infra.WorktreeOperation.REMOVE,
             branch=branch,
-            lane_dir=identity.lane_dir,
-            parent_lane=identity.parent_lane,
             apply_changes=True,
         ).execute()
         if removed.failure:
             return r.fail(removed.error or f"failed to remove lane {branch}")
-        for entry in matrix.entries:
-            # Why: the lane is gone by now, so every remaining ref lives in the
-            # primary checkout of its project, never under the removed lane.
-            ref_repo_root = (
-                primary_root if entry.project == "." else primary_root / entry.project
-            )
-            deleted = u.Infra.git_delete_ref(
-                m.Infra.GitDeleteRefRequest(
-                    repo_root=ref_repo_root,
-                    reference=f"refs/heads/{entry.branch}",
-                    expected_oid=entry.head_oid,
-                )
-            )
-            if deleted.failure:
-                exists = u.Infra.git_ref_exists(
-                    m.Infra.GitRefRequest(
-                        repo_root=ref_repo_root, reference=f"refs/heads/{entry.branch}"
-                    )
-                )
-                if exists.success and exists.value.value:
-                    return r.fail(
-                        deleted.error or f"failed to delete local ref {entry.branch}"
-                    )
-        finished_matrix = m.Infra.WorkLaneMatrix(
-            entries=tuple(
-                entry.model_copy(update={"state": "finished"})
-                for entry in matrix.entries
+        deleted = u.Infra.git_delete_ref(
+            m.Infra.GitDeleteRefRequest(
+                repo_root=primary_root,
+                reference=f"refs/heads/{branch}",
+                expected_oid=expected,
             )
         )
+        if deleted.failure:
+            exists = u.Infra.git_ref_exists(
+                m.Infra.GitRefRequest(
+                    repo_root=primary_root, reference=f"refs/heads/{branch}"
+                )
+            )
+            if exists.success and exists.value.value:
+                return r.fail(deleted.error or f"failed to delete local ref {branch}")
         notes = (
             f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "
             f"decisive=removed {worktree} branch={branch}"
         )
+        removed_matrix = m.Infra.WorkLaneMatrix(
+            entries=tuple(
+                entry.model_copy(update={"state": "removed"})
+                for entry in metadata.matrix.entries
+            )
+        )
+        removed_metadata = metadata.model_copy(
+            update={"worktree": Path("removed"), "matrix": removed_matrix}
+        )
         updated = u.Infra.beads_update_lane(
-            bead,
-            metadata={
-                "worktree": "removed",
-                c.Infra.WORK_BEADS_MATRIX_KEY: finished_matrix.model_dump_json(),
-            },
-            notes=notes,
-            root=primary_root,
+            bead, metadata=removed_metadata, notes=notes, root=self.workspace_root
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record finish on bead")
@@ -139,8 +153,8 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             worktree=worktree,
             branch=branch,
             base=integration,
-            head_oid=root_entry.head_oid,
-            pr=root_entry.pr_number,
+            head_oid=expected,
+            pr=pr_number,
         )
         return r.ok(f"FINISHED BRANCH={branch} WORKTREE={worktree}\n{receipt}")
 

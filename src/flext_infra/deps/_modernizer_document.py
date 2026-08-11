@@ -104,35 +104,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = [
-            "mise",
-            "exec",
-            f"taplo@{config.Infra.codegen.toolchain.taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
-        config_path = self.root / ".taplo.toml"
-        if config_path.is_file():
-            cmd.extend(["--config", str(config_path)])
-        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
-        format_cwd = next(
-            (candidate for candidate in self.root.parents if candidate.is_dir()),
-            self.root,
+        return u.Infra.format_toml_source(
+            rendered,
+            path=path,
+            toolchain_root=self.root,
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
-        format_result = u.Cli.run_raw(
-            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
-        )
-        if format_result.failure:
-            return r[str].fail(format_result.error or "taplo format failed")
-        output = format_result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
-        return r[str].ok(output.stdout)
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
         """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
@@ -193,10 +170,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        format_source: bool = True,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
@@ -207,8 +186,21 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         child_result = self._project_is_flext_child(path.parent)
         if child_result.failure:
             return [child_result.error or "failed to resolve project Git topology"]
+        # Why (mro-tvc03): inside a work tree the target's own Git topology is
+        # authoritative, never the scope the modernizer was invoked with.
+        # Comparing path.parent against self.root made a workspace MEMBER look
+        # like a root whenever the run started inside it, so venvPath rendered
+        # '..' from within and '.' from the fan-out and no content satisfied
+        # both. Outside any work tree there is no topology to read, so the
+        # relative position remains the only discriminator between a root and
+        # the members nested under it.
+        governed = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=path.parent)
+        )
         is_root = (
-            path.parent.resolve() == self.root.resolve() and not child_result.value
+            not child_result.value
+            if governed.success
+            else path.parent.resolve() == self.root.resolve()
         )
         # mro-j47u (codex): scaffold (pre-write) contexts have no on-disk project
         # root yet. Derive pyright/pyrefly configuration from declared roots only;
@@ -223,8 +215,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
                 resolved_project_kind = kind_result.value
-        # mro-j47u (codex): declared roots are topology facts only during atomic
-        # creation; normal modernization still derives productive roots on disk.
+        declared_roots_are_usable = (
+            declared_python_dirs_are_complete or not project_root_exists
+        )
         changes: t.MutableSequenceOf[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
@@ -255,6 +248,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
                 analysis_exclusions=analysis_exclusions,
             )
         )
@@ -265,6 +259,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_dir=effective_project_dir,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
             )
         )
         changes.extend(
@@ -317,10 +312,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        formatted_result = self._format_rendered_pyproject(path, rendered)
-        if formatted_result.failure:
-            return [formatted_result.error or "taplo format failed"]
-        rendered = formatted_result.value
+        if format_source:
+            formatted_result = self._format_rendered_pyproject(path, rendered)
+            if formatted_result.failure:
+                return [formatted_result.error or "taplo format failed"]
+            rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         state.rendered = normalized_rendered
