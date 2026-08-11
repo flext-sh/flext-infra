@@ -1121,6 +1121,10 @@ class TestsFlextInfraWorkService:
             ).execute()
         )
         assert self._metadata(tmp_path) == {}
+        parent_lane = repository / c.Infra.WORKTREES_DIRNAME / epic_dir
+        (parent_lane / "parent-wip.txt").write_text(
+            "later parent WIP\n", encoding="utf-8"
+        )
         started = tm.ok(
             FlextInfraWorkService(
                 workspace_root=repository,

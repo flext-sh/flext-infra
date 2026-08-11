@@ -125,7 +125,12 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     )
         # Why: a child lane lives inside its parent epic lane checkout, so an
         # unclean parent would fold uncommitted parent work into the child.
-        if identity.parent_bead:
+        candidate_reuse = self._reusable_lane(primary_root, branch, identity.lane_path)
+        if (
+            identity.parent_bead
+            and candidate_reuse.success
+            and not candidate_reuse.value.reused
+        ):
             parent_status = u.Infra.git_status(
                 m.Infra.GitStatusRequest(repo_root=identity.parent_lane)
             )
@@ -141,7 +146,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     f"the child lane {branch}"
                 )
         base = identity.base_branch
-        reusable = self._reusable_lane(primary_root, branch, identity.lane_path)
+        reusable = candidate_reuse
         if reusable.failure:
             return r.fail(reusable.error or f"lane {branch} is not usable")
         reused = reusable.value.reused
