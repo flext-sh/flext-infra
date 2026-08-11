@@ -9,12 +9,18 @@ from typing import TYPE_CHECKING
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_tests import tm
-from tests import u
+from tests import t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from tests import m
+
+
+def _assert_runtime_owned_virtualenv(pyright: t.JsonMapping) -> None:
+    """Assert shared Pyright config leaves environment selection to Make."""
+    tm.that(pyright, lacks="venv")
+    tm.that(pyright, lacks="venvPath")
 
 
 class TestsFlextInfraDepsModernizerPyright:
@@ -78,8 +84,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        tm.that(pyright, lacks="venv")
-        tm.that(pyright, lacks="venvPath")
+        _assert_runtime_owned_virtualenv(pyright)
         tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))),
@@ -148,8 +153,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        tm.that(pyright, lacks="venv")
-        tm.that(pyright, lacks="venvPath")
+        _assert_runtime_owned_virtualenv(pyright)
         tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
