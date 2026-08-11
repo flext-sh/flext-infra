@@ -157,3 +157,194 @@ class TestsFlextInfraGitFacet:
         assert result.failure
         assert result.error is not None
         assert "git executable not found" in result.error
+
+    def test_remove_clean_worktree_preserves_primary_submodule_state(
+        self, tmp_path: Path
+    ) -> None:
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        source = tmp_path / "member-source"
+        source.mkdir()
+        test_u.Tests.initialize_git_repo(source)
+        tm.ok(
+            test_u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    str(source),
+                    "member",
+                ],
+                cwd=repository,
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-am", "member"], cwd=repository
+            )
+        )
+        branch = "fixture-lane"
+        lane = tmp_path / branch
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", branch], cwd=repository))
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "add", str(lane), branch], cwd=repository
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "update",
+                    "--init",
+                    "--recursive",
+                ],
+                cwd=lane,
+            )
+        )
+        gitmodules = (repository / ".gitmodules").read_text(encoding="utf-8")
+        gitlink = tm.ok(
+            u.Cli.capture(
+                (c.Infra.GIT, "ls-files", "--stage", "member"), cwd=repository
+            )
+        )
+        configured = tm.ok(
+            u.Cli.capture(
+                (c.Infra.GIT, "config", "--get", "submodule.member.url"), cwd=repository
+            )
+        )
+
+        tm.ok(u.Infra.git_remove_clean_worktree(repository, lane))
+
+        assert not lane.exists()
+        assert (repository / "member").is_dir()
+        assert (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules
+        assert (
+            tm.ok(
+                u.Cli.capture(
+                    (c.Infra.GIT, "ls-files", "--stage", "member"), cwd=repository
+                )
+            )
+            == gitlink
+        )
+        assert (
+            tm.ok(
+                u.Cli.capture(
+                    (c.Infra.GIT, "config", "--get", "submodule.member.url"),
+                    cwd=repository,
+                )
+            )
+            == configured
+        )
+
+    def test_remove_clean_worktree_refuses_dirty_nested_submodule(
+        self, tmp_path: Path
+    ) -> None:
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        nested_source = tmp_path / "nested-source"
+        nested_source.mkdir()
+        test_u.Tests.initialize_git_repo(nested_source)
+        member_source = tmp_path / "member-source"
+        member_source.mkdir()
+        test_u.Tests.initialize_git_repo(member_source)
+        tm.ok(
+            test_u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    str(nested_source),
+                    "nested",
+                ],
+                cwd=member_source,
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-am", "nested"], cwd=member_source
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    str(member_source),
+                    "member",
+                ],
+                cwd=repository,
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-am", "member"], cwd=repository
+            )
+        )
+        branch = "dirty-lane"
+        lane = tmp_path / branch
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", branch], cwd=repository))
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "add", str(lane), branch], cwd=repository
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "update",
+                    "--init",
+                    "--recursive",
+                ],
+                cwd=lane,
+            )
+        )
+        (lane / "member" / "nested" / "dirty.txt").write_text(
+            "dirty\n", encoding="utf-8"
+        )
+
+        result = u.Infra.git_remove_clean_worktree(repository, lane)
+
+        tm.fail(result, has="dirty nested submodule")
+        assert lane.is_dir()
+
+    def test_remove_clean_worktree_refuses_locked_worktree(
+        self, tmp_path: Path
+    ) -> None:
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        branch = "locked-lane"
+        lane = tmp_path / branch
+        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", branch], cwd=repository))
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "add", str(lane), branch], cwd=repository
+            )
+        )
+        tm.ok(
+            test_u.Cli.run_checked(
+                [c.Infra.GIT, "worktree", "lock", str(lane)], cwd=repository
+            )
+        )
+
+        result = u.Infra.git_remove_clean_worktree(repository, lane)
+
+        tm.fail(result, has="locked worktree")
+        assert lane.is_dir()
