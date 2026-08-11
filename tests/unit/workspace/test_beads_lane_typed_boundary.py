@@ -117,5 +117,51 @@ def test_legacy_ready_matrix_is_adopted_only_when_start_requests_it(
     assert adopted.metadata.matrix.entries[0].project == "."
 
 
+@pytest.mark.parametrize("decoded", [False, True])
+def test_start_adopts_live_legacy_epic_matrix_payload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, decoded: bool
+) -> None:
+    repository = _repository(tmp_path)
+    entries = [
+        {
+            "project": "." if index == 0 else f"flext-member-{index}",
+            "branch": "epic/tracker-governance",
+            "head_oid": f"{index + 1:040x}",
+            "pr_number": "",
+            "pr_url": "",
+            "state": "started",
+        }
+        for index in range(32)
+    ]
+    matrix = {"entries": entries}
+    record = {
+        "id": "mro-izia",
+        "status": "in_progress",
+        "issue_type": "epic",
+        "metadata": {
+            "integration_base": "0.12.0-dev",
+            "kind": "epic",
+            "matrix": matrix if decoded else json.dumps(matrix),
+            "slug": "tracker-governance",
+            "worktree": str(repository),
+        },
+    }
+    shim_dir = _install_bd(tmp_path, json.dumps([record]))
+    monkeypatch.setenv("PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    adopted = tm.ok(
+        u.Infra.beads_show("mro-izia", root=repository, adopt_legacy_ready=True)
+    )
+
+    assert isinstance(adopted.metadata, m.Infra.ReadyLaneMetadata)
+    assert adopted.metadata.branch == "epic/tracker-governance"
+    assert adopted.metadata.namespace == c.Infra.WorkBranchNamespace.EPIC
+    assert adopted.metadata.kind is None
+    assert len(adopted.metadata.matrix.entries) == 32
+    assert adopted.metadata.matrix.entries == tuple(
+        m.Infra.WorkLaneEntry.model_validate(entry) for entry in entries
+    )
+
+
 __all__: tuple[str, ...] = ()
 """The Beads adapter is the sole untrusted JSON parsing boundary."""

@@ -28,7 +28,11 @@ def _matrix(tmp_path: Path, bead_id: str) -> m.Infra.WorkLaneMatrix:
 
 
 def _workspace(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bead_id: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    bead_id: str,
+    *,
+    issue_type: str | None = None,
 ) -> tuple[Path, Path]:
     repository = _repository(tmp_path)
     member = _member(tmp_path, repository, "member")
@@ -164,7 +168,8 @@ def _workspace(
             [c.Infra.GIT, "commit", "-am", "attach member"], cwd=repository
         )
     )
-    shim_dir = _install_bd_shim(tmp_path, bead_id)
+    issue_types = {bead_id: issue_type} if issue_type is not None else None
+    shim_dir = _install_bd_shim(tmp_path, bead_id, issue_types=issue_types)
     _install_gh_shim(
         tmp_path, pr_list='[{"number": "41", "url": "https://example.test/pr/41"}]'
     )
@@ -242,6 +247,73 @@ def test_member_start_upgrades_legacy_scalar_metadata_to_workspace_matrix(
     assert tuple(entry.project for entry in matrix.entries) == (".", "member")
     assert all(entry.branch == branch for entry in matrix.entries)
     assert all(entry.state == "started" for entry in matrix.entries)
+
+
+def test_epic_start_preserves_legacy_workspace_matrix_during_upgrade(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bead_id = "mro-legacy-epic"
+    repository, member = _workspace(tmp_path, monkeypatch, bead_id, issue_type="epic")
+    branch = "epic/tracker-governance"
+    lane = Path(
+        tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+    )
+    root_head = tm.ok(
+        test_u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
+    ).oid
+    member_head = tm.ok(
+        test_u.Infra.git_repository_head(
+            m.Infra.GitRepoRequest(repo_root=lane / "member")
+        )
+    ).oid
+    legacy_matrix = m.Infra.WorkLaneMatrix(
+        entries=(
+            m.Infra.WorkLaneEntry(
+                project=".", branch=branch, head_oid=root_head, state="started"
+            ),
+            m.Infra.WorkLaneEntry(
+                project="member",
+                branch=branch,
+                head_oid=member_head,
+                pr_number="41",
+                pr_url="https://example.test/pr/41",
+                state="landed",
+            ),
+        )
+    )
+    _set_metadata(
+        tmp_path,
+        bead_id,
+        {
+            "integration_base": "HEAD",
+            "kind": "epic",
+            "matrix": legacy_matrix.model_dump_json(),
+            "slug": "tracker-governance",
+            "worktree": str(lane),
+        },
+    )
+
+    tm.ok(
+        FlextInfraWorkService(
+            workspace_root=member,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            name="tracker-governance",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+    )
+
+    upgraded = _matrix(tmp_path, bead_id)
+    assert upgraded.entries == legacy_matrix.entries
 
 
 def test_land_publishes_every_workspace_matrix_branch(

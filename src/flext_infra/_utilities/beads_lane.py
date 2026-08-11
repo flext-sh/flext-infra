@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -108,10 +109,50 @@ class FlextInfraUtilitiesBeadsLane:
 
     @staticmethod
     def _project_lane_metadata(
-        metadata: object, *, adopt_legacy_ready: bool = False
+        metadata: object,
+        *,
+        bead_id: str,
+        issue_type: str | None,
+        adopt_legacy_ready: bool = False,
     ) -> dict[str, object] | None:
-        if not isinstance(metadata, dict) or "provisioning" not in metadata:
+        if not isinstance(metadata, dict):
             return None
+        if "provisioning" not in metadata:
+            if not adopt_legacy_ready or "matrix" not in metadata:
+                return None
+            slug = str(metadata.get("slug") or "")
+            branch = (
+                f"epic/{slug}"
+                if issue_type == "epic"
+                else str(metadata.get("branch") or "")
+            )
+            matrix = metadata["matrix"]
+            parsed_matrix = (
+                m.Infra.WorkLaneMatrix.model_validate_json(matrix)
+                if isinstance(matrix, str)
+                else m.Infra.WorkLaneMatrix.model_validate_json(json.dumps(matrix))
+            )
+            root_entry = next(
+                (entry for entry in parsed_matrix.entries if entry.project == "."),
+                parsed_matrix.entries[0],
+            )
+            namespace = branch.partition("/")[0]
+            adopted_metadata: dict[str, object] = {
+                **metadata,
+                "branch": branch,
+                "namespace": namespace,
+                "kind": None if issue_type == "epic" else namespace,
+                "head_oid": root_entry.head_oid,
+                "provisioning": c.Infra.WorkProvisioningState.READY.value,
+                "role": (
+                    c.Infra.WorkLaneRole.EPIC.value
+                    if issue_type == "epic"
+                    else c.Infra.WorkLaneRole.PLAIN.value
+                ),
+            }
+            if issue_type == "epic":
+                adopted_metadata["epic_bead"] = bead_id
+            metadata = adopted_metadata
         role = metadata.get("role") or c.Infra.WorkLaneRole.PLAIN.value
         topology = {"role": role}
         for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug"):
@@ -137,8 +178,10 @@ class FlextInfraUtilitiesBeadsLane:
         }
         if "worktree" in projected:
             projected["worktree"] = Path(str(projected["worktree"]))
-        if "kind" in projected:
+        if projected.get("kind") is not None:
             projected["kind"] = c.Infra.WorkKind(str(projected["kind"]))
+        else:
+            projected.pop("kind", None)
         if "namespace" in projected:
             projected["namespace"] = c.Infra.WorkBranchNamespace(
                 str(projected["namespace"])
@@ -155,6 +198,10 @@ class FlextInfraUtilitiesBeadsLane:
             matrix = metadata.get("matrix")
             if isinstance(matrix, str):
                 projected["matrix"] = m.Infra.WorkLaneMatrix.model_validate_json(matrix)
+            elif isinstance(matrix, Mapping):
+                projected["matrix"] = m.Infra.WorkLaneMatrix.model_validate_json(
+                    json.dumps(dict(matrix))
+                )
         if "epic_worktree" in topology:
             topology["epic_worktree"] = Path(str(topology["epic_worktree"]))
         projected["topology"] = topology
@@ -183,7 +230,14 @@ class FlextInfraUtilitiesBeadsLane:
     ) -> p.Result[m.Infra.BeadIssue]:
         try:
             projected_metadata = cls._project_lane_metadata(
-                payload.get("metadata"), adopt_legacy_ready=adopt_legacy_ready
+                payload.get("metadata"),
+                bead_id=str(payload.get("id") or ""),
+                issue_type=(
+                    str(payload["issue_type"])
+                    if payload.get("issue_type") is not None
+                    else None
+                ),
+                adopt_legacy_ready=adopt_legacy_ready,
             )
             projected = {
                 "id": payload.get("id"),
@@ -234,6 +288,8 @@ class FlextInfraUtilitiesBeadsLane:
                 )
             for assignment in assignments:
                 parts.extend(("--set-metadata", assignment))
+            if metadata.kind is None:
+                parts.extend(("--unset-metadata", "kind"))
         for label in labels:
             parts.extend(("--add-label", label))
         if notes:

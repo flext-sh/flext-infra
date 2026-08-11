@@ -238,7 +238,11 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     state="started",
                 )
             )
-        matrix = m.Infra.WorkLaneMatrix(entries=tuple(entries))
+        matrix = (
+            existing.matrix
+            if isinstance(existing, m.Infra.ReadyLaneMetadata)
+            else m.Infra.WorkLaneMatrix(entries=tuple(entries))
+        )
         lane_metadata = self.ready(pending_metadata, head.value, matrix)
         labels: tuple[str, ...] = (f"branch:{branch}",)
         if epic_lane is not None:
