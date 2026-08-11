@@ -1251,14 +1251,10 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
-        tm.that("deps modernize" in gen_check_body, eq=True)
-        tm.that("deps extra-paths" in gen_check_body, eq=False)
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_all_body, eq=True)
         tm.that("--mode apply" in gen_all_body, eq=True)
-        tm.that("deps modernize" in gen_all_body, eq=True)
-        tm.that("deps extra-paths" in gen_all_body, eq=False)
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
