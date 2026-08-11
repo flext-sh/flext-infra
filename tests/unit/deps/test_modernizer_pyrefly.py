@@ -22,10 +22,10 @@ if TYPE_CHECKING:
 class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
-    def test_modernizer_uses_git_topology_for_analyzer_virtualenvs(
+    def test_modernizer_omits_checkout_specific_analyzer_virtualenvs(
         self, tmp_path: Path
     ) -> None:
-        """Distinguish an attached submodule from an independent linked worktree."""
+        """Keep shared analyzer config invariant across checkout topologies."""
         rules = config.Infra.tooling.tools.pyright.path_rules
         (tmp_path / rules.venv_name).mkdir()
         child_origin = tmp_path / "child-origin"
@@ -104,9 +104,11 @@ class TestsFlextInfraModernizerPyrefly:
         attached_pyright = u.Cli.json_as_mapping(attached_tool["pyright"])
         linked_pyright = u.Cli.json_as_mapping(linked_tool["pyright"])
         tm.that(attached_pyrefly, lacks="python-interpreter-path")
-        tm.that(attached_pyright["venvPath"], eq=rules.project_venv_path)
+        tm.that(attached_pyright, lacks="venv")
+        tm.that(attached_pyright, lacks="venvPath")
         tm.that(linked_pyrefly, lacks="python-interpreter-path")
-        tm.that(linked_pyright["venvPath"], eq=rules.root_venv_path)
+        tm.that(linked_pyright, lacks="venv")
+        tm.that(linked_pyright, lacks="venvPath")
 
     def test_ensure_pyrefly_config_sets_fields_root(
         self, tool_config_document: m.Infra.ToolConfigDocument
