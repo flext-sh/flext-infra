@@ -839,12 +839,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for entry in codegen.templates.entries
             if target.make_profile in entry.profiles
             and entry.delegate == "render"
-            and Path(entry.destination).parts
+            and Path(entry.destination).suffix in {".py", ".pyi"}
         }
+        discovered_roots = frozenset(u.Infra.discover_python_dirs(root))
         declared = tuple(
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
-            if directory in rendered_roots or (root / directory).is_dir()
+            if directory in rendered_roots or directory in discovered_roots
         )
         roots: t.StrSequence = u.Infra.analyzer_python_roots(root, declared)
         return roots
@@ -1759,7 +1760,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     issue_prefix=issue_prefix,
                     database=database,
                     server=server,
-                    routing=target.routing_only,
+                    routing=target.routing_only and not target.beads_enabled,
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:

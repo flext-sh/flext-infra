@@ -5,8 +5,8 @@ on the whole active workspace; run it in a project and it works on that
 project alone.
 
 The ``gen`` recipe broke that by mixing two criteria in the same body:
-``codegen conform`` received ``PROJECT_ROOT`` while ``deps modernize`` and
-``deps extra-paths`` received ``WORKSPACE_ROOT``. A ``gen`` invoked inside one
+``codegen conform`` received ``PROJECT_ROOT`` while dependency stages received
+``WORKSPACE_ROOT``. A ``gen`` invoked inside one
 member therefore rewrote the ``pyproject.toml`` of every sibling -- measured as
 "INFO: Updated <sibling>/pyproject.toml" for ~30 repositories, leaving each one
 dirty without the caller ever touching it.
@@ -108,13 +108,10 @@ def test_gen_dependency_stages_follow_codegen_scope() -> None:
 
     bodies = _recipe_bodies()
     for target in ("_builtin_gen_check", "_builtin_gen_all"):
-        dependency_lines = [
-            line
-            for line in bodies[target]
-            if "deps modernize" in line or "deps extra-paths" in line
-        ]
-        assert len(dependency_lines) == 2
+        dependency_lines = [line for line in bodies[target] if "deps modernize" in line]
+        assert len(dependency_lines) == 1
         assert all("$(CODEGEN_PROJECT_ARGS)" in line for line in dependency_lines)
+        assert all("deps extra-paths" not in line for line in bodies[target])
 
 
 __all__: tuple[str, ...] = ()
