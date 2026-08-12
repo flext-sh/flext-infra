@@ -418,6 +418,22 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
 
+    def test_full_argv_writes_coverage_where_the_gate_reads_it(
+        self, tmp_path: Path
+    ) -> None:
+        """WHAT=full must target the report dir, not the process CWD.
+
+        A bare ``--cov-report=xml`` writes coverage.xml beside the invocation,
+        so the artifact gate - which only inspects the run's report dir - found
+        nothing and failed a suite that had actually passed with 81% measured.
+        The argv and the gate must name the SAME path.
+        """
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        runner = self._runner(tmp_path, what="full")
+        command = runner.build_command(report_dir)
+        tm.that(command, has=[f"--cov-report=xml:{report_dir / 'coverage.xml'}"])
+        tm.that(command, lacks="--cov-report=xml")
+
     def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -127,7 +127,7 @@ class FlextInfraRefactorFileExecutor:
             return self._apply_class_nesting_checked(
                 resource, file_path, dry_run=dry_run
             )
-        except Exception as exc:
+        except c.EXC_BROAD_IO_TYPE as exc:
             return m.Infra.Result(
                 file_path=file_path,
                 success=False,

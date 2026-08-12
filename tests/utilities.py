@@ -366,6 +366,30 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def declare_workspace_ledger(repository: Path, ledger_id: str) -> None:
+            """Declare the typed workspace manifest that owns the ledger.
+
+            A bare ``.beads/config.yaml`` no longer makes a checkout a tracker:
+            the ledger is resolved from the typed manifest. Fixtures that need a
+            tracker therefore declare it here, in one place, instead of each
+            repeating the same manifest construction.
+            """
+            repository_ref = TestsFlextInfraUtilities.Tests.repository_ref(
+                "fixture"
+            ).model_copy(update={"path": Path(), "package": False, "editable": False})
+            tm.ok(
+                u.Cli.yaml_dump(
+                    repository / "config" / "workspace.yaml",
+                    m.Infra.WorkspaceSpec(
+                        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                        name=repository_ref.distribution,
+                        repository=repository_ref,
+                        ledger_id=ledger_id,
+                    ).model_dump(mode="json", exclude_none=True),
+                )
+            )
+
+        @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
             # mro-wkii.17 (codex): tests consume the validated config singleton;
             # the removed utility loader must not survive as a hidden test path.

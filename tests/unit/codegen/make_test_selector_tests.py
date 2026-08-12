@@ -38,24 +38,10 @@ class TestsMakeTestSelector:
 
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
-        # Serialized verbs route through the managed Python, which re-enters
-        # Make on the matching _serialized_<verb> target; emulate that hop so
-        # the builtin fmt handler actually runs under the stubbed uv.
+        # Public verbs dispatch straight into their builtin, so the managed
+        # interpreter only has to exist for the environment guard.
         test_u.Tests.write_executable(
-            tmp_path / ".venv" / "bin" / "python",
-            (
-                "#!/bin/sh\n"
-                "verb=''\n"
-                "previous=''\n"
-                'for argument in "$@"; do\n'
-                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
-                '  previous="$argument"\n'
-                "done\n"
-                'if [ -n "$verb" ]; then\n'
-                '  exec make --no-print-directory "_serialized_${verb}"\n'
-                "fi\n"
-                "exit 0\n"
-            ),
+            tmp_path / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
         invocation_log = tmp_path / "uv-args.log"
         uv = tmp_path / "bin" / "uv"
@@ -125,18 +111,10 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             invocation_log.read_text(encoding="utf-8"),
-            has=[
-                str(engine_root / "src"),
-                "-m flext_infra workspace serialize-make",
-                f"--workspace {engine_root}",
-                "--verb work",
-                "--selector-value status",
-            ],
+            has=[str(engine_root / "src"), "workspace work", "--operation status"],
         )
 
-    def test_external_makefile_owns_the_serialization_engine(
-        self, tmp_path: Path
-    ) -> None:
+    def test_external_makefile_owns_the_runtime_engine(self, tmp_path: Path) -> None:
         """A selected Make owner, not its caller, owns runtime and lock routing."""
         caller_root = tmp_path / "consumer"
         caller_root.mkdir()
@@ -163,7 +141,9 @@ class TestsMakeTestSelector:
                     "--no-print-directory",
                     "-f",
                     str(selected_makefile),
-                    "test",
+                    "gen",
+                    "WHAT=all",
+                    "APPLY=Y",
                     f"UV={uv}",
                 ],
                 cwd=caller_root,
@@ -173,12 +153,7 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             invocation_log.read_text(encoding="utf-8"),
-            has=[
-                "-m flext_infra workspace serialize-make",
-                f"--workspace {engine_root}",
-                f"--makefile {selected_makefile}",
-                "--verb test",
-            ],
+            has=["-m flext_infra", f"--workspace {engine_root}"],
         )
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
@@ -189,17 +164,10 @@ class TestsMakeTestSelector:
             tmp_path / ".venv" / "bin" / "python",
             (
                 "#!/bin/sh\n"
-                "verb=''\n"
                 "mode=''\n"
-                "previous=''\n"
                 'for argument in "$@"; do\n'
-                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
                 '  if [ "$argument" = "validate" ]; then mode="validate"; fi\n'
-                '  previous="$argument"\n'
                 "done\n"
-                'if [ -n "$verb" ]; then\n'
-                '  exec make --no-print-directory "_serialized_${verb}"\n'
-                "fi\n"
                 'if [ "$mode" = "validate" ]; then\n'
                 "  printf '%s\\n' failed_count=0 error_count=0 "
                 "warning_count=0 skipped_count=0\n"

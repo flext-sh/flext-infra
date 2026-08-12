@@ -126,6 +126,7 @@ class FlextInfraConstantsMake:
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
+        "MAKEFILES",
         "MAKEFLAGS",
         "MAKELEVEL",
         "MAKEOVERRIDES",
@@ -162,6 +163,11 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
     PYTEST_ENV_CI: Final[str] = "CI"
+    # Why: the argv that writes each artifact and the gate that later verifies
+    # it must name the SAME file. A bare --cov-report=xml wrote coverage beside
+    # the invocation while the gate read the report dir, failing a green suite.
+    PYTEST_COVERAGE_XML: Final[str] = "coverage.xml"
+    PYTEST_JUNIT_XML: Final[str] = "junit.xml"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",

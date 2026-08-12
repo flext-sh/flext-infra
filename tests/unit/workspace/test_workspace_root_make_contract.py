@@ -166,9 +166,34 @@ class TestsWorkspaceRootMakeContract:
         output = generated.stdout + generated.stderr
 
         tm.that(generated.exit_code, eq=0, msg=output)
-        tm.that(output, has='--verb "gen"')
+        tm.that(output, has="_builtin_gen_$what")
+        tm.that(output, lacks="_serialized_")
+        tm.that(output, lacks="serialize-make")
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
+
+    def test_generated_work_start_omits_kind_when_unset(self, tmp_path: Path) -> None:
+        workspace_root, _ = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_work_start",
+                    "BEAD=mro-fixture",
+                    "NAME=fixture-lane",
+                    "APPLY=Y",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--operation start")
+        tm.that(output, lacks="--kind")
 
     def test_generated_setup_runs_its_lifecycle_hooks(self, tmp_path: Path) -> None:
         """``setup`` must fire pre-/post-setup like every other public verb.
@@ -354,7 +379,7 @@ class TestsWorkspaceRootMakeContract:
                 '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
                 '  previous="$argument"\n'
                 "done\n"
-                'if [ -n "$verb" ]; then exec make --no-print-directory "_serialized_${verb}"; fi\n'
+                'if [ -n "$verb" ]; then exec make --no-print-directory "$verb"; fi\n'
                 f'printf "%s\\n" "$*" >> "{invocation_log}"\n'
             ),
         )

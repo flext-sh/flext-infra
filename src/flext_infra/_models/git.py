@@ -103,6 +103,17 @@ class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         reference: Annotated[t.NonEmptyStr, m.Field(description="Exact Git ref")]
 
+    class GitSubmoduleConfigRequest(m.ContractModel):
+        """One ``.gitmodules`` section key of a declared submodule."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        repo_root: Annotated[Path, m.Field(description="Superproject worktree root")]
+        section: Annotated[
+            t.NonEmptyStr, m.Field(description="Section, e.g. submodule.flext-core")
+        ]
+        key: Annotated[t.NonEmptyStr, m.Field(description="Key inside the section")]
+
     class GitCommitishRequest(m.ContractModel):
         """Repository plus commit-ish for resolve/ancestor/merge ops."""
 
