@@ -639,8 +639,7 @@ class FlextInfraConfigModels:
             unknown = sorted(set(self.check_gates) - allowed)
             if unknown:
                 msg = (
-                    "make.ci.check_gates contains unknown gates: "
-                    f"{', '.join(unknown)}"
+                    f"make.ci.check_gates contains unknown gates: {', '.join(unknown)}"
                 )
                 raise ValueError(msg)
             return self

@@ -110,4 +110,7 @@ class TestWorkspaceCheckerCiGateRules:
         expected = [gate for gate in gates if gate in ci.check_gates]
         tm.that(expected, eq=["mypy", "pyright", "security"])
         tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=expected)
-        tm.that(set(ci.check_gates), eq={"mypy", "pyright", "security", "markdown", "smells"})
+        tm.that(
+            set(ci.check_gates),
+            eq={"mypy", "pyright", "security", "markdown", "smells"},
+        )
