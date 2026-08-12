@@ -4,10 +4,10 @@ repos:
     hooks:
       # Why: each make verb is its own pre-commit/pre-push hook so the operator
       # sees per-step status (Passed/Failed) natively via the pre-commit runner.
-      # CI=Y is never injected here, because it skips the
-      # lint/format/pyrefly gates that must block a push (9b604d43).
-      # make test never inherits that token either (mro-v4p5 forbids pytest
-      # under CI=Y).
+      # CI=Y is injected for the pre-commit check hook only:
+      # it runs the positive gate set (mypy/pyright/security/markdown/smells)
+      # while skipping ruff/pyrefly/pytest — those run in pre-push and CI.
+      # Pre-push check runs WITHOUT CI=Y so ALL gates block the push.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
 
