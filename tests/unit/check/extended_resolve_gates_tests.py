@@ -64,10 +64,10 @@ class TestWorkspaceCheckerResolveGates:
         tm.ok(result)
         tm.that(result.value, eq=["silent-failure"])
 
-    def test_resolve_gates_under_ci_y_skips_lint_and_pyrefly(
+    def test_resolve_gates_under_ci_y_runs_positive_gate_set(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """mro-v4p5: CI=Y make check omits ruff lint and pyrefly."""
+        """RULING 2: CI=Y make check runs positive gate set (check_gates)."""
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
         result = FlextInfraWorkspaceChecker.resolve_gates([
             "lint",
@@ -82,8 +82,8 @@ class TestWorkspaceCheckerResolveGates:
         tm.that(result.value, lacks="pyrefly")
 
 
-class TestWorkspaceCheckerCiGateSkips:
-    """Test FlextInfraWorkspaceChecker.apply_ci_gate_skips."""
+class TestWorkspaceCheckerCiGateRules:
+    """Test FlextInfraWorkspaceChecker.apply_ci_gate_rules."""
 
     def test_without_ci_token_keeps_all_gates(
         self, monkeypatch: pytest.MonkeyPatch
@@ -91,23 +91,23 @@ class TestWorkspaceCheckerCiGateSkips:
         ci = config.Infra.codegen.make.ci
         monkeypatch.delenv(ci.variable, raising=False)
         gates = ["lint", "format", "pyrefly", "mypy", "pyright"]
-        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates), eq=gates)
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=gates)
 
-    def test_github_ci_true_does_not_skip_gates(
+    def test_github_ci_true_does_not_filter_gates(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         ci = config.Infra.codegen.make.ci
         monkeypatch.setenv(ci.variable, "true")
         gates = ["lint", "format", "pyrefly", "pyright"]
-        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates), eq=gates)
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=gates)
 
-    def test_ci_token_omits_ruff_and_pyrefly(
+    def test_ci_token_runs_positive_gate_set(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         ci = config.Infra.codegen.make.ci
         monkeypatch.setenv(ci.variable, ci.value)
         gates = ["lint", "format", "pyrefly", "mypy", "pyright", "security"]
-        expected = [gate for gate in gates if gate not in ci.check_gates_skip]
+        expected = [gate for gate in gates if gate in ci.check_gates]
         tm.that(expected, eq=["mypy", "pyright", "security"])
-        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_skips(gates), eq=expected)
-        tm.that(set(ci.check_gates_skip), eq={"lint", "format", "pyrefly"})
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=expected)
+        tm.that(set(ci.check_gates), eq={"mypy", "pyright", "security", "markdown", "smells"})
