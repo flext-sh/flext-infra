@@ -339,8 +339,6 @@ Infra:
           source-report-private-usage: error
           test-like-report-private-usage: "none"
           other-report-private-usage: "none"
-          root-venv-path: .
-          project-venv-path: ..
           venv-name: .venv
       coverage:
         source: [src]

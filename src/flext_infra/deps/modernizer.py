@@ -61,6 +61,7 @@ class FlextInfraPyprojectModernizer(
         source: str,
         *,
         path: Path,
+        format_source: bool = True,
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         project_kind: str | None = None,
@@ -87,6 +88,7 @@ class FlextInfraPyprojectModernizer(
             canonical_dev=canonical_dev,
             dry_run=True,
             skip_comments=False,
+            format_source=format_source,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             project_kind=project_kind,
@@ -131,6 +133,7 @@ class FlextInfraPyprojectModernizer(
         conformed = self.conform_source(
             u.Cli.toml_dumps(seed),
             path=path,
+            format_source=False,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             project_kind=project_kind,
@@ -204,8 +207,6 @@ class FlextInfraPyprojectModernizer(
             c.Infra.INCLUDE,
             c.Infra.EXTRA_PATHS,
             "executionEnvironments",
-            "venv",
-            "venvPath",
         })
         raw_environments = u.Cli.json_as_sequence(pyright.get("executionEnvironments"))
         if effective_declared_python_dirs:

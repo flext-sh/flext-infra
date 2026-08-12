@@ -223,14 +223,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_root_result = FlextInfraWorkspaceDetector.resolve_workspace_root(
-                root
-            )
-            if workspace_root_result.failure:
+            topology_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
+            if topology_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
-                    workspace_root_result.error or "workspace root resolution failed"
+                    topology_result.error or "workspace topology resolution failed"
                 )
-            workspace_root = workspace_root_result.value
+            resolved_root, identity_root, governing_root = topology_result.value
+            workspace_root = (
+                resolved_root if identity_root == governing_root else governing_root
+            )
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
                 workspace_root
             )
@@ -838,12 +839,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for entry in codegen.templates.entries
             if target.make_profile in entry.profiles
             and entry.delegate == "render"
-            and Path(entry.destination).parts
+            and Path(entry.destination).suffix in {".py", ".pyi"}
         }
+        discovered_roots = frozenset(u.Infra.discover_python_dirs(root))
         declared = tuple(
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
-            if directory in rendered_roots or (root / directory).is_dir()
+            if directory in rendered_roots or directory in discovered_roots
         )
         roots: t.StrSequence = u.Infra.analyzer_python_roots(root, declared)
         return roots
@@ -1065,6 +1067,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         initial_tooling = modernizer.conform_source(
             pyproject_render.value,
             path=pyproject,
+            format_source=False,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
@@ -1757,7 +1760,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     issue_prefix=issue_prefix,
                     database=database,
                     server=server,
-                    routing=target.routing_only,
+                    routing=target.routing_only and not target.beads_enabled,
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
@@ -1787,8 +1790,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
+            # Dependabot aborts the entire update job ("Neither .devcontainer.json
+            # nor .devcontainer/devcontainer.json ... found") when the
+            # devcontainers ecosystem is declared for a repository that ships no
+            # devcontainer, so the entry is projected only where one exists.
+            has_devcontainer = (target.root / ".devcontainer.json").is_file() or any(
+                candidate.is_file()
+                for candidate in (target.root / ".devcontainer").glob(
+                    "**/devcontainer.json"
+                )
+            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
+                    has_devcontainer=has_devcontainer,
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=provider.value.branch,

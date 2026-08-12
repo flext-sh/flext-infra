@@ -15,14 +15,14 @@ SHELL := /bin/sh
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
+MAKE_PROFILE := standalone
 WORKSPACE_ROOT_REL := .
 # === SECTION: workspace members (managed) ===
 # Source: config:workspace_members (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
 # governance; standalone projects discover managed submodules at runtime from
 # .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
+WORKSPACE_MEMBERS :=
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -159,12 +159,12 @@ CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Prefer the recorded flext-infra gitlink OID (immutable) when the workspace
 # root can resolve it; otherwise fall back to the provider integration branch.
-FLEXT_INFRA_BOOTSTRAP_REF := $(shell git -C "$(WORKSPACE_ROOT)" rev-parse "HEAD:flext-infra" 2>/dev/null)
+FLEXT_INFRA_BOOTSTRAP_REF := $(shell git -C "$(WORKSPACE_ROOT)" rev-parse "HEAD:." 2>/dev/null)
 ifeq ($(strip $(FLEXT_INFRA_BOOTSTRAP_REF)),)
 FLEXT_INFRA_BOOTSTRAP_REF := 0.12.0-dev
 endif
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@$(FLEXT_INFRA_BOOTSTRAP_REF)
-FLEXT_INFRA_SOURCE_ROOT_REL := 
+FLEXT_INFRA_SOURCE_ROOT_REL :=
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 # End SECTION: infra bootstrap
 
@@ -225,7 +225,6 @@ endif
 # End SECTION: profile routing
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
-PROJECT_VENV := $(PROJECT_ROOT)/.venv
 FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
 ifeq ($(OS),Windows_NT)
 RUNTIME_BIN := $(RUNTIME_VENV)/Scripts
@@ -277,6 +276,7 @@ else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
+CODEGEN_PROJECT_ARGS := $(if $(filter self,$(CODEGEN_SCOPE)),--projects .,)
 
 # Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
@@ -289,8 +289,8 @@ endif
 # clearing a present one is destruction, so it never happens.
 # A symlinked RUNTIME_VENV points at ANOTHER checkout's environment. `uv`
 # records editable installs as per-environment `.pth` files holding absolute
-# paths, so every import through a borrowed environment loads the owner's
-# sources: a lane silently validates the owner's code instead of its own.
+# paths, so imports through that environment load the owner's sources: a lane
+# silently validates the owner's code instead of its own.
 # Each checkout therefore owns the environment its own name resolves to. The
 # link is replaced (removing a link destroys no environment); a real local
 # environment is never cleared, because a concurrent process may be using it.
@@ -316,16 +316,6 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
 	fi
 
-# A delegated runtime lives in another checkout, so this project has no local
-# environment of its own. Generated tooling still addresses the environment by
-# its project-local name (`$${workspaceFolder}/.venv`), which must never be
-# rewritten into a cross-project relative hop: the link makes that name resolve.
-# Linking is provisioning, so a real local environment is never replaced.
-BORROW_RUNTIME_VENV_RECIPE = set -eu; \
-	if [ ! -e "$(PROJECT_VENV)" ] || [ -L "$(PROJECT_VENV)" ]; then \
-		ln -sfn "$(RUNTIME_VENV)" "$(PROJECT_VENV)"; \
-	fi
-
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
 # A workspace root owns no local gate implementation: its verbs fan out to the
@@ -341,24 +331,15 @@ WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_P
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
 
-# A borrowed RUNTIME_VENV keeps the primary editable install. Clearing
-# PYTHONPATH would make `make test` in a linked worktree execute that primary
-# tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
-# always wins over the shared editable (terminus T4 / path-purity).
 UV_RUN := env -u MYPYPATH PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
-# Keyed on the environment's OWNER, not on the caller's profile. A member has
-# no local venv -- RUNTIME_VENV is RUNTIME_ROOT/.venv -- so every checkout that
-# provisions a shared environment must describe the same contents. A member
-# syncing without --all-packages treats the siblings already installed there as
-# surplus and uninstalls them, undoing the root's provisioning and leaving
-# `uv sync --check` permanently divergent. A standalone project owns its venv
-# alone and has no workspace packages to include.
-SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_MEMBERS)),1,))
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups
+# Workspace roots sync every declared package into their local runtime. A
+# standalone project has no workspace packages to include.
+WORKSPACE_SYNC := $(if $(strip $(WORKSPACE_MEMBERS)),1,)
+UV_SYNC_FLAGS := $(if $(WORKSPACE_SYNC),--all-packages ,)--all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(strip $(PROJECTS)),)
@@ -496,7 +477,7 @@ setup:
 	done
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' '';
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' "$$(printf '%s' '$(_ALLOWED_WHATS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
@@ -569,8 +550,10 @@ _builtin_help_usage:
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
 	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
-	@printf '  %-10s %s\n' 'KIND/NAME' 'GitFlow kind and slug for work start';
+	@printf '  %-10s %s\n' 'NAME' 'required lane slug for work start';
+	@printf '  %-10s %s\n' 'KIND' 'optional feature|bugfix|hotfix|release; omitted derives from Bead issue_type';
 	@printf '  %-10s %s\n' 'BASE' 'optional integration base override for work start';
+	@printf '  %-10s %s\n' 'EPIC' 'registered epic bead id; nests work start as its child lane';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -778,8 +761,8 @@ _builtin_setup_environment: _builtin_setup_submodules
 	@if [ "$(RUNTIME_ROOT)" = "$(PROJECT_ROOT)" ]; then \
 		$(SETUP_ENVIRONMENT_RECIPE); \
 	else \
-		$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment; \
-		$(BORROW_RUNTIME_VENV_RECIPE); \
+		env -u MAKEFILES -u GNUMAKEFLAGS -u MAKEFLAGS -u MAKELEVEL -u MAKEOVERRIDES -u MFLAGS -u PYTHONPATH \
+			$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment; \
 	fi
 	@$(FLEXT_BINDING_RECIPE)
 else ifeq ($(MAKE_PROFILE),workspace-root)
@@ -990,24 +973,17 @@ _builtin_release_rel: _builtin_require_environment
 		$$push_flag \
 		$$projects_args
 
-# Every command here writes to the SAME root, derived from the invocation
-# point. `deps modernize`/`extra-paths` used to receive WORKSPACE_ROOT while
-# `conform` received PROJECT_ROOT, so a gen run inside one member rewrote the
-# pyproject of ~30 siblings and left each dirty. Because gen runs inside check
-# and check runs in the pre-commit hook, one commit in any lane dirtied every
-# sibling. It also kept the fixed point out of reach: each run rewrote the siblings, so
-# the next run found a difference again. At the workspace root PROJECT_ROOT is
-# already the workspace, so fan-out survives exactly where it belongs.
+# Generation preserves the caller's scope. Conform owns analyzer roots in the
+# rendered tooling context; dependency modernization owns only dependency
+# settings that conform does not render.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --check
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_apply: _builtin_gen_all
 
@@ -1016,7 +992,7 @@ _builtin_work_status:
 
 _builtin_work_start:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" $(if $(strip $(KIND)),--kind "$(KIND)") --name "$(NAME)" --base "$(BASE)" --epic "$(EPIC)" --apply
 
 _builtin_work_land:
 	$(call _require_apply)
@@ -1030,7 +1006,7 @@ _builtin_work_finish:
 # handler was ever generated, so the dispatcher resolved a non-existent target
 # and the verb was unreachable. The codemod engine already exists behind
 # `flext-infra refactor mod`; these handlers are the missing dispatch into it.
-# check is the read-only fixed-point (reports pending fixes); apply runs the
+# check reports pending fixes; apply runs the
 # batch under the ruff/pyrefly rollback circuit.
 _builtin_mod_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
