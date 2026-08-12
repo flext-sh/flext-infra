@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from functools import cache
+from functools import cache, lru_cache
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,29 +20,64 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
-    """Validate one plain mapping through the infra adapter.
-
-    Centralizes the repeated try/except so callers only decide what sentinel
-    to surface on failure.
-    """
-    try:
-        result: t.JsonMapping | None = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-            payload
-        )
-    except (c.ValidationError, ValueError):
-        return None
-    return result
-
-
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
+    def validate_infra_payload(payload: object) -> t.JsonMapping | None:
+        """Validate one plain mapping through the infra adapter.
+
+        Centralizes the repeated try/except so callers only decide what sentinel
+        to surface on failure.
+        """
+        try:
+            result: t.JsonMapping | None = (
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+            )
+        except (c.ValidationError, ValueError):
+            return None
+        return result
+
+    @classmethod
     def format_toml_source(
-        source: str, *, path: Path, toolchain_root: Path, taplo_version: str
+        cls, source: str, *, path: Path, toolchain_root: Path, taplo_version: str
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain."""
+        config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
+        config_content = config_path.read_bytes() if config_path.is_file() else b""
+        resolved_path = path.resolve()
+        resolved_toolchain_root = toolchain_root.resolve()
+        execution_root = next(
+            candidate
+            for candidate in (resolved_toolchain_root, *resolved_toolchain_root.parents)
+            if candidate.is_dir()
+        )
+        relative_path = (
+            resolved_path.relative_to(resolved_toolchain_root).as_posix()
+            if resolved_path.is_relative_to(resolved_toolchain_root)
+            else resolved_path.relative_to(resolved_path.parent).as_posix()
+        )
+        return cls._format_toml_source_cached(
+            source,
+            relative_path=relative_path,
+            config_path=config_path.resolve() if config_content else None,
+            config_digest=sha256(config_content).hexdigest(),
+            execution_root=execution_root,
+            taplo_version=taplo_version,
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def _format_toml_source_cached(
+        source: str,
+        *,
+        relative_path: str,
+        config_path: Path | None,
+        config_digest: str,
+        execution_root: Path,
+        taplo_version: str,
+    ) -> p.Result[str]:
+        del config_digest
         command = [
             "mise",
             "exec",
@@ -51,18 +87,13 @@ class FlextInfraUtilitiesPyproject:
             "format",
             "-",
             "--stdin-filepath",
-            str(path),
+            relative_path,
         ]
-        config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
-        if config_path.is_file():
+        if config_path is not None:
             command.extend(("--config", str(config_path)))
         result = u.Cli.run_raw(
             command,
-            cwd=next(
-                candidate
-                for candidate in (toolchain_root, *toolchain_root.parents)
-                if candidate.is_dir()
-            ),
+            cwd=execution_root,
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
         )
         if result.failure:
@@ -88,7 +119,9 @@ class FlextInfraUtilitiesPyproject:
         payload_result = u.Cli.toml_read_json(pyproject_path)
         if payload_result.failure:
             return {}
-        validated = _validate_infra_payload(payload_result.value)
+        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(
+            payload_result.value
+        )
         return validated if validated is not None else {}
 
     @staticmethod
@@ -97,7 +130,7 @@ class FlextInfraUtilitiesPyproject:
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        validated = _validate_infra_payload(payload)
+        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
         return validated if validated is not None else {}
 
     @staticmethod
@@ -223,4 +256,4 @@ class FlextInfraUtilitiesPyproject:
         return ()
 
 
-__all__: list[str] = ["FlextInfraUtilitiesPyproject", "_validate_infra_payload"]
+__all__: list[str] = ["FlextInfraUtilitiesPyproject"]

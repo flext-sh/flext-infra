@@ -5,9 +5,12 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+from typing import ClassVar
+
+from flext_cli import cli as cli_facade
 from flext_core import r
 from flext_infra.constants import c
-from flext_infra.services.cli_transaction import CliTransactionService
+from flext_infra.services.cli_routes import CliRouteService
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
@@ -15,8 +18,13 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class CliDispatchService(CliTransactionService):
+class CliDispatchService(CliRouteService, type(cli_facade)):
     """Dispatch public command groups through their typed route models."""
+
+    app_name: ClassVar[str] = "flext-infra"
+    help_flags: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
+    shared_bool_flags: ClassVar[frozenset[str]] = c.Infra.SHARED_BOOL_FLAGS
+    shared_value_flags: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
@@ -33,9 +41,6 @@ class CliDispatchService(CliTransactionService):
             self.display_message(f"unknown group '{group}'", c.Cli.MessageTypes.ERROR)
             self.print_help()
             return 1
-        transaction_result = self.run_worktree_transaction(group, group_args)
-        if transaction_result is not None:
-            return transaction_result
         return self.run_group(group, group_args)
 
     def print_help(self) -> None:
@@ -156,7 +161,11 @@ class CliDispatchService(CliTransactionService):
             exit_code: int = process_exit.exit_code
             return exit_code
         error_message = result.error
-        if error_message:
+        # One emission boundary: framework_exit_result already printed plain
+        # Result-route failures (error_code is None). Coded boundary failures
+        # (validation/operation) never crossed that emitter and still need
+        # exactly one console line — same rule as PROCESS_EXIT above.
+        if error_message and result.error_code is not None:
             self.display_message(error_message, c.Cli.MessageTypes.ERROR)
         return 2 if error_message and u.Cli.cli_usage_error(error_message) else 1
 

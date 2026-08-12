@@ -25,6 +25,10 @@ from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
+from flext_infra.gates.codemod import FlextInfraCodemodGate
+from flext_infra.gates.deferred_self_reference import (
+    FlextInfraDeferredSelfReferenceGate,
+)
 
 
 class FlextInfraGateRegistry:
@@ -45,6 +49,7 @@ class FlextInfraGateRegistry:
             FlextInfraMypyGate,
             FlextInfraPyrightGate,
             FlextInfraSilentFailureGate,
+            FlextInfraDeferredSelfReferenceGate,
             FlextInfraBanditGate,
             FlextInfraMarkdownGate,
             FlextInfraLocCapGate,
@@ -55,6 +60,7 @@ class FlextInfraGateRegistry:
             FlextInfraLayoutGate,
             FlextInfraTierWhitelistGate,
             FlextInfraSmellsGate,
+            FlextInfraCodemodGate,
         )
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
@@ -70,23 +76,6 @@ class FlextInfraGateRegistry:
     def default(cls) -> FlextInfraGateRegistry:
         """Return the default registry instance for workspace checks."""
         return cls()
-
-
-class _LoopOutcome(m.ArbitraryTypesModel):
-    """Bundled results from the project-checking loop."""
-
-    results: tuple[m.Infra.ProjectResult, ...] = m.Field(
-        description="Individual project execution results."
-    )
-    failed: int = m.Field(
-        description="Number of projects that failed one or more gates."
-    )
-    skipped: int = m.Field(
-        description="Number of projects that were skipped during execution."
-    )
-    total_elapsed: float = m.Field(
-        description="Total time elapsed in seconds for the entire loop."
-    )
 
 
 class FlextInfraWorkspaceCheckGatesMixin:
@@ -148,7 +137,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ctx: m.Infra.GateContext,
         *,
         fail_fast: bool,
-    ) -> _LoopOutcome:
+    ) -> m.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing."""
         results: t.MutableSequenceOf[m.Infra.ProjectResult] = []
         total = len(projects)
@@ -163,11 +152,12 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 skipped += 1
                 continue
             results.append(project_result)
-            if not project_result.passed:
+            project_passed: bool = project_result.passed
+            if not project_passed:
                 failed += 1
                 if fail_fast:
                     break
-        return _LoopOutcome(
+        return m.Infra.LoopOutcome(
             results=tuple(results),
             failed=failed,
             skipped=skipped,

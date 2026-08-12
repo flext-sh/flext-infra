@@ -8,57 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar
-
 from flext_infra import c, m, t, u
 from flext_infra.transformers._tier0_transformer import FlextInfraTier0TransformerMixin
 
 
 class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
     """Namespace for Tier 0 import fixing logic and classes."""
-
-    class Analysis(m.Value):
-        """Detection results for a single Python file's self-import patterns."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, arbitrary_types_allowed=True
-        )
-
-        package_name: Annotated[
-            str, m.Field(description="Resolved package name for the analyzed file")
-        ]
-        file_path: Annotated[
-            Path,
-            m.Field(description="Python file analyzed for Tier 0 import violations"),
-        ]
-        alias_to_module: Annotated[
-            t.StrMapping,
-            m.Field(description="Alias names mapped to their source modules"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
-        category_a: Annotated[
-            frozenset[str],
-            m.Field(description="Top-level aliases that are informational only"),
-        ] = m.Field(default_factory=frozenset)
-        category_b: Annotated[
-            frozenset[str],
-            m.Field(description="Core aliases to redirect to the core package"),
-        ] = m.Field(default_factory=frozenset)
-        category_c: Annotated[
-            frozenset[str],
-            m.Field(description="Aliases to move into a TYPE_CHECKING block"),
-        ] = m.Field(default_factory=frozenset)
-        category_d: Annotated[
-            frozenset[str],
-            m.Field(
-                description="Runtime-used aliases requiring direct import handling"
-            ),
-        ] = m.Field(default_factory=frozenset)
-
-        @m.computed_field()
-        @property
-        def has_violations(self) -> bool:
-            """True if any imports need redirecting or moving."""
-            return bool(self.category_b or self.category_c or self.category_d)
 
     class Analyzer:
         """Analyze imports via regex to identify circular Tier 0 aliases."""
@@ -79,7 +34,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
             self._self_import_aliases: t.Infra.StrSet = set()
             self._runtime_aliases: t.Infra.StrSet = set()
 
-        def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
+        def build_analysis(self) -> m.Infra.Tier0ImportAnalysis:
             """Parse file and build violation analysis."""
             pkg_name = u.Infra.package_name(self._file_path)
             project_root = u.Infra.project_root(self._file_path)
@@ -90,7 +45,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
                 else Path()
             )
             if not pkg_name or project_root is None or not pkg_dir.is_dir():
-                return FlextInfraTransformerTier0ImportFixer.Analysis(
+                return m.Infra.Tier0ImportAnalysis(
                     package_name="", file_path=self._file_path
                 )
             source = u.Cli.files_read_text(self._file_path).unwrap()
@@ -101,7 +56,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
                 for alias_name in u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
             }
             if u.Infra.matches_module_toplevel(self._file_path):
-                return FlextInfraTransformerTier0ImportFixer.Analysis(
+                return m.Infra.Tier0ImportAnalysis(
                     package_name=pkg_name,
                     file_path=self._file_path,
                     alias_to_module=MappingProxyType(alias_map),
@@ -117,7 +72,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
                     category_d.add(alias)
                 else:
                     category_c.add(alias)
-            return FlextInfraTransformerTier0ImportFixer.Analysis(
+            return m.Infra.Tier0ImportAnalysis(
                 package_name=pkg_name,
                 file_path=self._file_path,
                 alias_to_module=MappingProxyType(alias_map),
@@ -133,8 +88,8 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
                 if module != pkg_name:
                     continue
                 names_str = match.group(2)
-                for name_part in names_str.split(","):
-                    name_part = name_part.strip()
+                for raw_name_part in names_str.split(","):
+                    name_part = raw_name_part.strip()
                     if not name_part:
                         continue
                     bound = (

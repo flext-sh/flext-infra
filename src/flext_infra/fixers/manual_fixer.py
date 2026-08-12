@@ -9,12 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
+from flext_infra import m
 from flext_infra.fixers.base import FlextInfraFixerAdapter
-from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
@@ -39,10 +39,10 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
-    ) -> fr.ProjectFixResult:
+    ) -> m.Infra.ProjectFixResult:
         """Return previews for manual fixes; fail if apply was requested."""
-        previewed: list[fr.PreviewedViolation] = []
-        failed: list[fr.FailedFix] = []
+        previewed: list[m.Infra.PreviewedViolation] = []
+        failed: list[m.Infra.FailedFix] = []
         for rule, probe in violations:
             rule_id = rule.id
             file_path = getattr(probe, "file_path", "") or getattr(probe, "file", "")
@@ -64,7 +64,7 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
             )
             if ctx.apply:
                 failed.append(
-                    fr.FailedFix(
+                    m.Infra.FailedFix(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         error=(
@@ -75,13 +75,13 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
                 )
             else:
                 previewed.append(
-                    fr.PreviewedViolation(
+                    m.Infra.PreviewedViolation(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         message=f"line {line}: {message}",
                     )
                 )
-        return fr.ProjectFixResult(
+        return m.Infra.ProjectFixResult(
             project=project_dir.name, previewed=tuple(previewed), failed=tuple(failed)
         )
 

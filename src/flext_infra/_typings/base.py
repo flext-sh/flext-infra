@@ -103,3 +103,12 @@ class FlextInfraTypesBase:
         str, t.StringConstraints(pattern=r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
     ]
     "Lowercase Git SHA-1 or SHA-256 commit object identifier."
+
+    # ── Git type aliases ─────────────────────────────────────────────
+
+    type GitOid = str
+    "Canonical hex Git object identifier."
+    type GitRef = str
+    "Fully-qualified or short Git ref name."
+    type GitPathSpec = str
+    "Git pathspec string (e.g. ``:(exclude)dir``)."

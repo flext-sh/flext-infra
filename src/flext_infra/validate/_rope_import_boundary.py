@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class _RopeImportBoundaryBase(s[bool]):
+class FlextInfraRopeImportBoundaryBase(s[bool]):
     """Base service for rope-driven module-import boundary validators.
 
     Subclasses set the four ``ClassVar`` declarations below. Optional hooks:
@@ -124,4 +124,4 @@ class _RopeImportBoundaryBase(s[bool]):
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
 
-__all__: t.StrSequence = ("_RopeImportBoundaryBase",)
+__all__: t.StrSequence = ("FlextInfraRopeImportBoundaryBase",)

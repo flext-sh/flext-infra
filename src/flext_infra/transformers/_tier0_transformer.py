@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import u
+from flext_infra import m, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
     from flext_infra import t
-    from flext_infra.transformers.tier0_import_fixer import (
-        FlextInfraTransformerTier0ImportFixer,
-    )
 
 
 class FlextInfraTier0TransformerMixin:
@@ -39,7 +36,7 @@ class FlextInfraTier0TransformerMixin:
         def __init__(
             self,
             *,
-            analysis: FlextInfraTransformerTier0ImportFixer.Analysis,
+            analysis: m.Infra.Tier0ImportAnalysis,
             alias_to_submodule: t.StrMapping,
             core_package: str,
         ) -> None:

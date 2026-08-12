@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.fixers.base import FlextInfraFixerAdapter
-from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
@@ -38,7 +37,7 @@ from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnif
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import m, p, t
+    from flext_infra import p, t
     from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
@@ -83,21 +82,21 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
-    ) -> fr.ProjectFixResult:
+    ) -> m.Infra.ProjectFixResult:
         """Apply transformer fixes file-by-file for the given violations."""
         if not violations:
-            return fr.ProjectFixResult(project=project_dir.name)
-        fixed: list[fr.FixedViolation] = []
-        previewed: list[fr.PreviewedViolation] = []
-        skipped: list[fr.SkippedViolation] = []
-        failed: list[fr.FailedFix] = []
+            return m.Infra.ProjectFixResult(project=project_dir.name)
+        fixed: list[m.Infra.FixedViolation] = []
+        previewed: list[m.Infra.PreviewedViolation] = []
+        skipped: list[m.Infra.SkippedViolation] = []
+        failed: list[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
         for target, target_violations in self._group_by_target(violations).items():
             transformer_cls = self._TRANSFORMERS.get(target)
             if transformer_cls is None:
                 rule_id = self._rule_id(target_violations)
                 failed.append(
-                    fr.FailedFix(
+                    m.Infra.FailedFix(
                         rule_id=rule_id,
                         file_path=str(project_dir),
                         error=f"transformer {target} not registered",
@@ -109,7 +108,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             for file_path in file_paths:
                 if self._is_owned_library_exempt(project_dir, fix_action, file_path):
                     skipped.append(
-                        fr.SkippedViolation(
+                        m.Infra.SkippedViolation(
                             rule_id=self._rule_id(target_violations),
                             file_path=str(file_path),
                             reason=(
@@ -134,13 +133,13 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             normalize_result = self._normalize_imports(tuple(files_modified))
             if normalize_result.failure:
                 failed.append(
-                    fr.FailedFix(
+                    m.Infra.FailedFix(
                         rule_id="",
                         file_path=str(project_dir),
                         error=normalize_result.error or "import normalization failed",
                     )
                 )
-        return fr.ProjectFixResult(
+        return m.Infra.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
             previewed=tuple(previewed),
@@ -194,13 +193,13 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         ctx: m.Infra.FixEnforcementCommand,
         *,
         rule_id: str = "",
-    ) -> fr.ProjectFixResult:
+    ) -> m.Infra.ProjectFixResult:
         """Run one transformer against one file."""
         if fix_action is None:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=file_path.parent.name,
                 skipped=(
-                    fr.SkippedViolation(
+                    m.Infra.SkippedViolation(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         reason="missing fix_action in catalog",
@@ -209,10 +208,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             )
         read = u.Cli.files_read_text(file_path)
         if read.failure:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=file_path.parent.name,
                 failed=(
-                    fr.FailedFix(
+                    m.Infra.FailedFix(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         error=read.error or "unable to read file",
@@ -225,10 +224,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         )
         updated, changes = transformer.apply_to_source(source)
         if not changes:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=file_path.parent.name,
                 skipped=(
-                    fr.SkippedViolation(
+                    m.Infra.SkippedViolation(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         reason="no changes produced",
@@ -236,10 +235,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 ),
             )
         if not ctx.apply:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=file_path.parent.name,
                 previewed=(
-                    fr.PreviewedViolation(
+                    m.Infra.PreviewedViolation(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         message=f"would apply {len(changes)} change(s)",
@@ -248,20 +247,20 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             )
         write = u.Cli.files_write_text(file_path, updated)
         if write.failure:
-            return fr.ProjectFixResult(
+            return m.Infra.ProjectFixResult(
                 project=file_path.parent.name,
                 failed=(
-                    fr.FailedFix(
+                    m.Infra.FailedFix(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         error=write.error or "unable to write file",
                     ),
                 ),
             )
-        return fr.ProjectFixResult(
+        return m.Infra.ProjectFixResult(
             project=file_path.parent.name,
             fixed=(
-                fr.FixedViolation(
+                m.Infra.FixedViolation(
                     rule_id=rule_id,
                     file_path=str(file_path),
                     message=f"applied {len(changes)} change(s)",

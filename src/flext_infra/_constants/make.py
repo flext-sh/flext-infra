@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -16,11 +17,27 @@ if TYPE_CHECKING:
 class FlextInfraConstantsMake:
     """Make-related constants for Makefile generation and CLI routing."""
 
+    # Why: conform Makefile policy classifies declarations via these patterns;
+    # they belong on c.Infra, not as leaf module re.compile copies.
+    MAKE_ASSIGNMENT_RE: Final[t.RegexPattern] = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?="
+    )
+    "GNU Make variable assignment at column 0 (``=``, ``:=``, ``::=``, ``?=``, ``+=``)."
+    MAKE_DIRECTIVE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:export|unexport|override|include|-include|sinclude|vpath)\b"
+    )
+    "GNU Make directives that scope or include a declaration rather than define a target."
+    MAKE_CONDITIONAL_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)"
+    )
+    "GNU Make conditional control flow; structural, never a target declaration."
+
     VERB_CHECK: Final[str] = "check"
     VERB_VALIDATE: Final[str] = "validate"
     VERB_PUBLISH: Final[str] = "publish"
     VERB_RUN: Final[str] = "run"
     VERB_CHECKS: Final[str] = "checks"
+    VERB_CLEAN: Final[str] = "clean"
 
     # --- Canonical make contract constants (was: class Make) ---
 
@@ -73,6 +90,12 @@ class FlextInfraConstantsMake:
         "markdown",
         "smells",
     )
+    # Why (mro-v4p5): under CI=Y, make check skips ruff lint + pyrefly — fmt/fix
+    # still mutate via ruff; CI must not re-run those read-only gates.
+    PROJECT_CHECK_GATES_CI_SKIP_VALUES: Final[tuple[str, ...]] = ("lint", "pyrefly")
+    PROJECT_CHECK_GATES_CI_SKIP: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_CI_SKIP_VALUES
+    )
     PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
         "lint",
         "format",
@@ -103,6 +126,7 @@ class FlextInfraConstantsMake:
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
+        "MAKEFILES",
         "MAKEFLAGS",
         "MAKELEVEL",
         "MAKEOVERRIDES",
@@ -138,6 +162,12 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_ENV_CI: Final[str] = "CI"
+    # Why: the argv that writes each artifact and the gate that later verifies
+    # it must name the SAME file. A bare --cov-report=xml wrote coverage beside
+    # the invocation while the gate read the report dir, failing a green suite.
+    PYTEST_COVERAGE_XML: Final[str] = "coverage.xml"
+    PYTEST_JUNIT_XML: Final[str] = "junit.xml"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",

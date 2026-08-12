@@ -12,11 +12,16 @@ import flext_infra.codegen as codegen_module
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_tests import tm
 
+# Why: the symbol must be absent for the test to mean anything, so it
+# cannot be spelled as a static attribute access without making the file
+# ill-typed. The name is data here, and getattr is the access it tests.
+_ABSENT_SYMBOL = "nonexistent_xyz_attribute"
+
 
 def test_codegen_getattr_raises_attribute_error() -> None:
     """Test that accessing nonexistent attribute raises AttributeError."""
     with pytest.raises(AttributeError):
-        _ = getattr(codegen_module, "nonexistent_xyz_attribute")
+        _ = getattr(codegen_module, _ABSENT_SYMBOL)
 
 
 def test_codegen_package_does_not_reexport_leaf_implementations() -> None:

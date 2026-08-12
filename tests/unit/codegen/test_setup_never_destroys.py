@@ -5,23 +5,9 @@ hook, so anything it mutates it mutates constantly and unattended. That makes
 it the one verb allowed to *create* what is missing and forbidden to *destroy*
 what exists.
 
-Two live incidents pinned this contract:
-
-``uv venv --clear`` wiped the shared workspace virtualenv on every single
-invocation. A concurrent lane's ``setup`` emptied the venv mid-work, and an
-unrelated run then failed with ``No module named 'flext_infra'``. The venv is
-disposable -- an operator may delete it and ``setup`` must rebuild it -- but
-rebuilding it on every call is not provisioning, it is churn.
-
-The submodule recipe ran ``git checkout``/``git pull``/``submodule update``
-against every managed gitlink. Invoked inside a member, it reached back into
-that member and tried to check out over uncommitted work: "Your local changes
-to the following files would be overwritten by checkout". Git refused, so
-nothing was lost, but the attempt is the defect.
-
-Working trees, submodules and worktrees are never disposable: they carry
-uncommitted work that exists nowhere else. ``setup`` may read and report on
-them; it may never move, reset, or overwrite them.
+``git checkout`` and ``git reset`` are completely prohibited on the setup path.
+Absent checkouts are initialized with ``submodule update --init`` only; detached
+HEAD is attached via ``branch -f`` + ``symbolic-ref`` so dirty work is carried.
 """
 
 from __future__ import annotations
@@ -33,36 +19,22 @@ _TEMPLATES = Path(__file__).resolve().parents[3] / "src" / "flext_infra" / "temp
 _MAKEFILE = _TEMPLATES / "project" / "base" / "Makefile.j2"
 _SUBMODULES = _TEMPLATES / "project" / "base" / "submodule_setup_recipe.j2"
 
-# Each pattern moves, replaces or discards tracked content. A verb that runs
-# unattended on every invocation may never reach for one of them.
 _DESTRUCTIVE_GIT = (
     r"git\b[^\n]*\bcheckout\b",
     r"git\b[^\n]*\bpull\b",
     r"git\b[^\n]*\breset\b",
     r"git\b[^\n]*\bclean\b",
-    r"git\b[^\n]*\bsubmodule\b[^\n]*\bupdate\b",
     r"git\b[^\n]*\bworktree\b[^\n]*\b(remove|prune)\b",
 )
 
 
 def _setup_recipe_text() -> str:
-    """Return every template line ``setup`` can execute.
-
-    ``_builtin_setup_environment`` is the whole of ``setup``'s body, and it
-    pulls in the submodule recipe as a prerequisite, so both files form the
-    reachable surface.
-    """
+    """Return every template line ``setup`` can execute."""
     return f"{_MAKEFILE.read_text(encoding='utf-8')}\n{_SUBMODULES.read_text(encoding='utf-8')}"
 
 
 def _offending_lines(pattern: str) -> list[str]:
-    """Return the recipe lines that EXECUTE one destructive pattern.
-
-    A recipe may name a destructive command inside a diagnostic so the operator
-    knows what to run by hand; that text is guidance, not execution. Only lines
-    that actually invoke the command count, so ``printf``/``echo`` diagnostics
-    are excluded rather than the pattern being weakened.
-    """
+    """Return executable recipe lines that match one destructive pattern."""
     return [
         stripped
         for line in _setup_recipe_text().splitlines()
@@ -73,11 +45,7 @@ def _offending_lines(pattern: str) -> list[str]:
 
 
 def test_setup_never_runs_a_destructive_git_operation() -> None:
-    """No reachable ``setup`` line may move or discard tracked content.
-
-    ``setup`` runs on every verb and every commit. A destructive git call on
-    that path is not a rare hazard, it is a scheduled one.
-    """
+    """No reachable ``setup`` line may checkout, reset, pull, or clean."""
     offenders = {
         pattern: lines
         for pattern in _DESTRUCTIVE_GIT
@@ -88,15 +56,38 @@ def test_setup_never_runs_a_destructive_git_operation() -> None:
 
 
 def test_setup_never_clears_the_virtualenv() -> None:
-    """A present virtualenv is repaired in place, never recreated.
-
-    ``uv sync`` already reconciles installs, upgrades and removals, so
-    ``--clear`` adds no correctness and costs a full reinstall while other
-    lanes are using the same environment.
-    """
+    """A present virtualenv is repaired in place, never recreated."""
     offenders = _offending_lines(r"venv\b[^\n]*--clear")
 
     assert not offenders, f"setup clears the virtualenv: {offenders}"
+
+
+def test_submodule_setup_attaches_without_checkout() -> None:
+    """Detached HEAD attach uses symbolic-ref, never checkout."""
+    content = _SUBMODULES.read_text(encoding="utf-8")
+
+    assert "symbolic-ref HEAD" in content
+    assert "attach_branch_at_head" in content
+    assert "need_fetch=1" in content
+    offenders = _offending_lines(r"git\b[^\n]*\bcheckout\b")
+    assert not offenders, f"setup still executes checkout: {offenders}"
+
+
+def test_submodule_setup_skips_fetch_when_cached_origin_is_valid() -> None:
+    """Idempotent setup must not require network when local refs already validate."""
+    content = _SUBMODULES.read_text(encoding="utf-8")
+
+    assert "need_fetch=1" in content
+    assert 'if [ "$$need_fetch" -eq 1 ]' in content
+
+
+def test_submodule_setup_does_not_require_pin_on_origin() -> None:
+    """Verify uses HEAD contains gitlink; origin lagging the pin is not a hard fail."""
+    content = _SUBMODULES.read_text(encoding="utf-8")
+
+    assert "diverges from recorded gitlink" in content
+    assert "origin/%s diverges from recorded gitlink" not in content
+    assert 'merge-base --is-ancestor "$$remote_ref" HEAD' in content
 
 
 __all__: tuple[str, ...] = ()

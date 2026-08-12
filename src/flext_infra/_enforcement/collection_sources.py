@@ -19,7 +19,6 @@ from flext_infra._enforcement.selection import FlextInfraEnforcementSelection
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
-    from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 
 class FlextInfraEnforcementSourceCollectors(
@@ -39,7 +38,7 @@ class FlextInfraEnforcementSourceCollectors(
     ) -> FlextInfraEnforcementEvaluation:
         """Collect rule probes for one project using one shared dispatcher."""
         violations: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
-        failures: list[fr.FailedFix] = []
+        failures: list[m.Infra.FailedFix] = []
         declarative_rules: list[me.EnforcementRuleSpec] = []
         for rule in rules:
             source = rule.source
@@ -73,7 +72,7 @@ class FlextInfraEnforcementSourceCollectors(
     def collect_python_file_probes(
         self, project_dir: Path, rule: me.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
+        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Return one structural probe per Python file for file-wide transformers."""
         files_result = u.Infra.iter_python_files(
@@ -90,7 +89,7 @@ class FlextInfraEnforcementSourceCollectors(
     def collect_declarative(
         self, project_dir: Path, rules: t.SequenceOf[me.EnforcementRuleSpec]
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
+        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Run catalog-driven declarative rules across one project."""
         files, errors = self.collect_python_file_probes(project_dir, rules[0])
@@ -102,7 +101,7 @@ class FlextInfraEnforcementSourceCollectors(
         if any(self.rule_requires_stub_file(rule) for rule in rules):
             file_paths.extend(self.stub_file_paths(project_dir))
         probes: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
-        failures: list[fr.FailedFix] = []
+        failures: list[m.Infra.FailedFix] = []
         with u.Infra.open_project(self._workspace_root) as rope_project:
             for file_path in file_paths:
                 ctx = m.Infra.DetectorContext(

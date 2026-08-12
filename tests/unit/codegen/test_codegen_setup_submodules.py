@@ -148,6 +148,35 @@ class TestsCodegenSetupSubmodules:
             eq="nested-dev",
         )
 
+    def test_setup_is_repeatable_with_managed_submodule(self, tmp_path: Path) -> None:
+        """Idempotent setup succeeds twice when the submodule is already valid."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        environment = self._fake_uv(project)
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
+
+    def test_submodule_setup_uses_conditional_fetch(self) -> None:
+        """Generated setup skips fetch when cached origin refs already validate."""
+        template = (
+            Path(__file__).resolve().parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / "submodule_setup_recipe.j2"
+        )
+        content = template.read_text(encoding="utf-8")
+
+        tm.that(content, has="need_fetch=1")
+        tm.that(content, has='if [ "$$need_fetch" -eq 1 ]')
+        tm.that(content, has='merge-base --is-ancestor "$$remote_ref" HEAD')
+
     def test_setup_is_repeatable_without_gitmodules(self, tmp_path: Path) -> None:
         project = tmp_path / "project"
         self._generated_project(project)
@@ -310,6 +339,33 @@ class TestsCodegenSetupSubmodules:
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"), eq="main"
         )
+
+    def test_setup_succeeds_when_gitlink_is_ahead_of_origin(
+        self, tmp_path: Path
+    ) -> None:
+        """Present pin matching HEAD must verify even when origin lags the pin."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        checkout = project / "vendor/source"
+        ahead = checkout / "ahead.txt"
+        ahead.write_text("local ahead of origin", encoding="utf-8")
+        self._git(checkout, "add", "ahead.txt")
+        self._git(checkout, "commit", "-q", "-m", "ahead of origin")
+        # Advance the superproject gitlink to the local tip without pushing origin.
+        self._git(project, "add", "-f", "vendor/source")
+        self._git(project, "commit", "-q", "-m", "pin ahead of origin")
+        dirty = checkout / "dirty.txt"
+        dirty.write_text("preserve me", encoding="utf-8")
+        environment = self._fake_uv(project)
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
 
 
 __all__: tuple[str, ...] = ()

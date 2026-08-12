@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from flext_cli import u
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.beads_lane import FlextInfraUtilitiesBeadsLane
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
@@ -25,7 +26,7 @@ from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
@@ -72,22 +73,14 @@ from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModu
 from flext_infra._utilities.rope_mro_transform import (
     FlextInfraUtilitiesRopeMroTransform,
 )
-from flext_infra._utilities.rope_patch.pep695_patch import (
-    FlextInfraUtilitiesRopePep695Patch,
-)
+from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-from flext_infra._utilities.serialization_lock import (
-    FlextInfraUtilitiesSerializationLock,
-)
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
-)
-from flext_infra._utilities.worktree_transaction import (
-    FlextInfraUtilitiesWorktreeTransaction,
 )
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
@@ -97,9 +90,9 @@ class FlextInfraUtilities(u):
 
     Usage::
 
-        from flext_infra import u
+        from flext_infra import m, u
 
-        u.Cli.run_checked(["git", "status"])
+        u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)
         u.Infra.discover_projects(workspace_root)
         u.Infra.parse_semver("1.2.3")
@@ -107,6 +100,7 @@ class FlextInfraUtilities(u):
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesBeadsLane,
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
@@ -140,7 +134,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesPyproject,
         FlextInfraUtilitiesNamespaceConfig,
         FlextInfraUtilitiesDependencies,
-        FlextInfraUtilitiesGitScope,
+        FlextInfraUtilitiesGit,
         FlextInfraUtilitiesProjectDiscovery,
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
@@ -158,12 +152,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesSerializationLock,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
-        # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing
-        # u.Infra Git owner and expose one central execution/report surface.
-        FlextInfraUtilitiesWorktreeTransaction,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

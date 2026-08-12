@@ -22,8 +22,9 @@ import flext_infra
 from flext_infra import c
 from flext_tests import tm
 
-# `NAME := $(shell ...)` -- immediate assignment, expanded at parse time.
-_IMMEDIATE_SHELL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*:=.*\$\(shell\b")
+# ``$(shell ...)`` call marker. Assignment identity uses c.Infra.MAKE_ASSIGNMENT_RE;
+# immediacy is ``:=`` / ``::=`` (name token ends with ``:`` before ``=``).
+_SHELL_CALL = re.compile(r"\$\(shell\b")
 # Executing an interpreter costs hundreds of milliseconds to seconds. Merely
 # *locating* one (`command -v python3`) is a cheap PATH lookup and is allowed:
 # the toolchain has to resolve its own interpreter before it can dispatch.
@@ -48,6 +49,19 @@ def _make_surfaces() -> tuple[Path, ...]:
     )
 
 
+def _is_immediate_shell_assignment(line: str) -> bool:
+    """True when a column-0 Make assignment is immediate and calls $(shell)."""
+    if c.Infra.MAKE_ASSIGNMENT_RE.match(line) is None:
+        return False
+    before_eq, sep, _after = line.partition("=")
+    if sep != "=" or not before_eq.rstrip().endswith(":"):
+        return False
+    return (
+        _SHELL_CALL.search(line) is not None
+        and _INTERPRETER_RUN.search(line) is not None
+    )
+
+
 def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
     """Return immediate assignments that spawn an interpreter while parsing."""
     return tuple(
@@ -55,7 +69,7 @@ def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
         for number, line in enumerate(
             surface.read_text(encoding="utf-8").splitlines(), start=1
         )
-        if _IMMEDIATE_SHELL.match(line) and _INTERPRETER_RUN.search(line) is not None
+        if _is_immediate_shell_assignment(line)
     )
 
 

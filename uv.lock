@@ -7,6 +7,10 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[options]
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer-span = "P7D"
+
 [manifest]
 excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
 
@@ -685,8 +689,8 @@ dependencies = [
 
 [[package]]
 name = "flext-core"
-version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#da106900ea50f8fc530f7adbfef97ba461586347" }
+version = "0.12.0"
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#9d2f805dc64234d1304c1d5286ee8dd481f7edb7" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -703,7 +707,6 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "python-on-whales" },
     { name = "pyyaml" },
-    { name = "returns" },
     { name = "rope" },
     { name = "structlog" },
     { name = "tomlkit" },
@@ -783,6 +786,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-randomly" },
     { name = "pytest-sugar" },
+    { name = "pytest-testmon" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "pyupgrade" },
@@ -817,108 +821,109 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "defusedxml", specifier = ">=0.7.1" },
-    { name = "filelock", specifier = ">=3.16" },
+    { name = "filelock", specifier = ">=3.32.0" },
     { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
     { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
-    { name = "gitpython", specifier = ">=3.1.49" },
+    { name = "gitpython", specifier = ">=3.1.57" },
     { name = "libcst", specifier = ">=1.8.6" },
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-exclude", specifier = ">=1.0.2" },
-    { name = "mkdocs-material", specifier = ">=9.7.6" },
+    { name = "mkdocs-material", specifier = ">=9.7.7" },
     { name = "mkdocs-section-index", specifier = ">=0.3.12" },
     { name = "mkdocstrings", specifier = ">=1.0.6" },
     { name = "mkdocstrings-python", specifier = ">=2.0.5" },
     { name = "pyrefly", specifier = ">=1.1.1" },
     { name = "rope", specifier = ">=1.14.0" },
-    { name = "ruff", specifier = ">=0.15.12" },
+    { name = "ruff", specifier = ">=0.16.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "actionlint-py", specifier = ">=1.7.12.24" },
-    { name = "autoflake", specifier = ">=2.3.1" },
+    { name = "autoflake", specifier = ">=2.3.3" },
     { name = "bandit", specifier = ">=1.8" },
-    { name = "black", specifier = ">=25.1" },
-    { name = "blacken-docs", specifier = ">=1.19" },
-    { name = "codespell", specifier = ">=2.3" },
-    { name = "deptry", specifier = ">=0.23" },
-    { name = "django-stubs", specifier = ">=5.2.2" },
-    { name = "factory-boy", specifier = ">=3.3.1" },
-    { name = "faker", specifier = ">=37.4" },
+    { name = "black", specifier = ">=26.5.1" },
+    { name = "blacken-docs", specifier = ">=1.20.0" },
+    { name = "codespell", specifier = ">=2.4.3" },
+    { name = "deptry", specifier = ">=0.25.1" },
+    { name = "django-stubs", specifier = ">=6.0.7" },
+    { name = "factory-boy", specifier = ">=3.3.3" },
+    { name = "faker", specifier = ">=40.36.0" },
     { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev" },
-    { name = "hypothesis", specifier = ">=6.125" },
-    { name = "isort", specifier = ">=6.0.1" },
-    { name = "matplotlib-stubs", specifier = ">=0.3" },
-    { name = "mkdocs", specifier = ">=1.6" },
-    { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.9" },
-    { name = "mkdocs-encryptcontent-plugin", specifier = ">=2" },
+    { name = "hypothesis", specifier = ">=6.161.8" },
+    { name = "isort", specifier = ">=8.0.1" },
+    { name = "matplotlib-stubs", specifier = ">=0.3.11" },
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.10.1" },
+    { name = "mkdocs-encryptcontent-plugin", specifier = ">=3.1.0" },
     { name = "mkdocs-exclude", specifier = ">=1.0.2" },
-    { name = "mkdocs-get-deps", specifier = ">=0.2" },
-    { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.2" },
-    { name = "mkdocs-literate-nav", specifier = ">=0.6" },
-    { name = "mkdocs-macros-plugin", specifier = ">=1" },
-    { name = "mkdocs-material", specifier = ">=9.5" },
+    { name = "mkdocs-get-deps", specifier = ">=0.2.2" },
+    { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.5.3" },
+    { name = "mkdocs-literate-nav", specifier = ">=0.6.3" },
+    { name = "mkdocs-macros-plugin", specifier = ">=1.5.0" },
+    { name = "mkdocs-material", specifier = ">=9.7.7" },
     { name = "mkdocs-material-extensions", specifier = ">=1.3.1" },
-    { name = "mkdocs-mermaid2-plugin", specifier = ">=1.1" },
-    { name = "mkdocs-minify-plugin", specifier = ">=0.7" },
-    { name = "mkdocs-print-site-plugin", specifier = ">=0.8" },
-    { name = "mkdocs-redirects", specifier = ">=1.2" },
+    { name = "mkdocs-mermaid2-plugin", specifier = ">=1.2.3" },
+    { name = "mkdocs-minify-plugin", specifier = ">=0.8.0" },
+    { name = "mkdocs-print-site-plugin", specifier = ">=2.8" },
+    { name = "mkdocs-redirects", specifier = ">=1.2.3" },
     { name = "mkdocs-section-index", specifier = ">=0.3.12" },
-    { name = "mkdocs-versioning", specifier = ">=0.2" },
-    { name = "mkdocstrings", specifier = ">=0.24" },
-    { name = "mkdocstrings-python", specifier = ">=1.7" },
+    { name = "mkdocs-versioning", specifier = ">=0.4.0" },
+    { name = "mkdocstrings", specifier = ">=1.0.6" },
+    { name = "mkdocstrings-python", specifier = ">=2.0.5" },
     { name = "mypy", specifier = ">=2.3.0" },
-    { name = "pip-audit", specifier = ">=2.7.3" },
-    { name = "pre-commit", specifier = ">=4.6.0" },
-    { name = "pylint", specifier = ">=3.3" },
+    { name = "pip-audit", specifier = ">=2.10.1" },
+    { name = "pre-commit", specifier = ">=4.6.1" },
+    { name = "pylint", specifier = ">=4.0.6" },
     { name = "pyrefly", specifier = ">=1.1.1" },
     { name = "pyright", specifier = ">=1.1.411" },
-    { name = "pytest", specifier = ">=8.4" },
-    { name = "pytest-benchmark", specifier = ">=5.1" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-benchmark", specifier = ">=5.2.3" },
     { name = "pytest-clarity", specifier = ">=1.0.1" },
-    { name = "pytest-codeblocks", specifier = ">=0.17.0" },
-    { name = "pytest-cov", specifier = ">=6.2" },
-    { name = "pytest-deadfixtures", specifier = ">=2.2.1" },
-    { name = "pytest-env", specifier = ">=1.1.5" },
+    { name = "pytest-codeblocks", specifier = ">=0.18.0" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "pytest-deadfixtures", specifier = ">=3.1.0" },
+    { name = "pytest-env", specifier = ">=1.7.0" },
     { name = "pytest-markdown-docs", specifier = ">=0.9.2" },
-    { name = "pytest-mock", specifier = ">=3.14" },
-    { name = "pytest-randomly", specifier = ">=3.16" },
-    { name = "pytest-sugar", specifier = ">=1" },
-    { name = "pytest-timeout", specifier = ">=2.4" },
-    { name = "pytest-xdist", specifier = ">=3.8" },
-    { name = "pyupgrade", specifier = ">=3.19" },
+    { name = "pytest-mock", specifier = ">=3.15.1" },
+    { name = "pytest-randomly", specifier = ">=4.1.0" },
+    { name = "pytest-sugar", specifier = ">=1.1.1" },
+    { name = "pytest-testmon", specifier = ">=2.2.0" },
+    { name = "pytest-timeout", specifier = ">=2.4.0" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "pyupgrade", specifier = ">=3.21.2" },
     { name = "radon", specifier = ">=6.0.1" },
-    { name = "ruff", specifier = ">=0.12.3" },
-    { name = "rumdl", specifier = ">=0.2.46" },
-    { name = "types-cachetools", specifier = ">=6.2" },
-    { name = "types-cffi", specifier = ">=2.0" },
-    { name = "types-click", specifier = ">=7.1" },
-    { name = "types-defusedxml", specifier = ">=0.7" },
-    { name = "types-docker", specifier = ">=7.1" },
+    { name = "ruff", specifier = ">=0.15.12" },
+    { name = "rumdl", specifier = ">=0.2.45" },
+    { name = "types-cachetools", specifier = ">=7.0.0.20260713" },
+    { name = "types-cffi", specifier = ">=2.0.0.20260518" },
+    { name = "types-click", specifier = ">=7.1.8" },
+    { name = "types-defusedxml", specifier = ">=0.7.0.20260504" },
+    { name = "types-docker", specifier = ">=7.2.0.20260724" },
     { name = "types-flask", specifier = ">=1.1.6" },
-    { name = "types-jsonschema", specifier = ">=4.26" },
-    { name = "types-ldap3", specifier = ">=2.9.13.20250622" },
-    { name = "types-paramiko", specifier = ">=4.0" },
-    { name = "types-protobuf", specifier = ">=6.30.2.20250703" },
-    { name = "types-psutil", specifier = ">=7" },
-    { name = "types-psycopg2", specifier = ">=2.9.21.20250718" },
-    { name = "types-pyasn1", specifier = ">=0.6" },
-    { name = "types-pyopenssl", specifier = ">=24.1" },
-    { name = "types-python-dateutil", specifier = ">=2.9" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260518" },
-    { name = "types-redis", specifier = ">=4.6" },
-    { name = "types-requests", specifier = ">=2.32.4" },
-    { name = "types-setuptools", specifier = ">=80.9" },
-    { name = "types-tabulate", specifier = ">=0.10" },
-    { name = "types-toml", specifier = ">=0.10.8.20240310" },
-    { name = "vulture", specifier = ">=2.13" },
+    { name = "types-jsonschema", specifier = ">=4.26.0.20260518" },
+    { name = "types-ldap3", specifier = ">=2.9.13.20260518" },
+    { name = "types-paramiko", specifier = ">=5.0.0.20260724" },
+    { name = "types-protobuf", specifier = ">=7.34.1.20260518" },
+    { name = "types-psutil", specifier = ">=7.2.2.20260518" },
+    { name = "types-psycopg2", specifier = ">=2.9.21.20260724" },
+    { name = "types-pyasn1", specifier = ">=0.6.0.20260724" },
+    { name = "types-pyopenssl", specifier = ">=24.1.0.20240722" },
+    { name = "types-python-dateutil", specifier = ">=2.9.0.20260716" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20260724" },
+    { name = "types-redis", specifier = ">=4.6.0.20241004" },
+    { name = "types-requests", specifier = ">=2.33.0.20260712" },
+    { name = "types-setuptools", specifier = ">=83.0.0.20260724" },
+    { name = "types-tabulate", specifier = ">=0.10.0.20260508" },
+    { name = "types-toml", specifier = ">=0.10.8.20260518" },
+    { name = "vulture", specifier = ">=2.16" },
     { name = "yamlfix", specifier = ">=1.19.1" },
 ]
 
 [[package]]
 name = "flext-tests"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#ebf24f768e745b98ac7051b50a1666a3312e1dd8" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#b0c073f71ee6ff0f18a27bc8b0aa008d55d8424a" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },
@@ -936,6 +941,7 @@ dependencies = [
     { name = "pytest-randomly" },
     { name = "pytest-reportlog" },
     { name = "pytest-sugar" },
+    { name = "pytest-testmon" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "python-on-whales" },
@@ -2449,6 +2455,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-testmon"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coverage" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4d/1d/3e4230cc67cd6205bbe03c3527500c0ccaf7f0c78b436537eac71590ee4a/pytest_testmon-2.2.0.tar.gz", hash = "sha256:01f488e955ed0e0049777bee598bf1f647dd524e06f544c31a24e68f8d775a51", size = 23108, upload-time = "2025-12-01T07:30:24.76Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/55/ebb3c2f59fb089f08d00f764830d35780fc4e4c41dffcadafa3264682b65/pytest_testmon-2.2.0-py3-none-any.whl", hash = "sha256:2604ca44a54d61a2e830d9ce828b41a837075e4ebc1f81b148add8e90d34815b", size = 25199, upload-time = "2025-12-01T07:30:23.623Z" },
+]
+
+[[package]]
 name = "pytest-timeout"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2709,18 +2728,6 @@ wheels = [
 ]
 
 [[package]]
-name = "returns"
-version = "0.28.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/db/8a/9f6285f3a195ef4cb400c60e10952b25f19c513f44ef739a959c403087a8/returns-0.28.0.tar.gz", hash = "sha256:0eb059d81bfd8af64c86d9286cdf19c280f5a815ee719ff838a9c20b29ce4f84", size = 105269, upload-time = "2026-06-04T09:07:26.371Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/15/7da7c0efa3ecfb2b69ef2283e17b93330109d618afe5c788b9bc81807da4/returns-0.28.0-py3-none-any.whl", hash = "sha256:2d7e28070c3fe34d1b6f6be5598b85da83b1c8ed4e567899351dcdb7e9b74a7c", size = 160134, upload-time = "2026-06-04T09:07:27.616Z" },
-]
-
-[[package]]
 name = "rich"
 version = "14.3.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2804,17 +2811,17 @@ wheels = [
 
 [[package]]
 name = "rumdl"
-version = "0.2.46"
+version = "0.2.45"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/54/3b/194f66a79e1a2d74b2e6f278f958ce3b80135b13c395114dc9fcd2ce6993/rumdl-0.2.46.tar.gz", hash = "sha256:99036f4268f4fad4915ff603618d36ba62aa585374f60b2d55bbfe0f10680bd3", size = 3034309, upload-time = "2026-07-29T21:33:24.575Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/fa/9df7db6f63b56af38c8968226a14cf4a359557553990c7bb999d672b8f5a/rumdl-0.2.45.tar.gz", hash = "sha256:fe1bfe70b1ea6e923bc0bc20c915c0c073545df24f7af9d9012146dc7b16cdbc", size = 3017283, upload-time = "2026-07-28T18:58:32.767Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/7f/01f3e6a9217e6d1a5882f43cfdadaa5832895485276edbf395d69370f1e0/rumdl-0.2.46-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:9954f53219b63f434613b7f66cba98c8b08bfea2ee544b184b1af78348ed94ac", size = 6239220, upload-time = "2026-07-29T21:33:17.048Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/b7/57e92263f1fe44737eafa3c02d4b211f837d97a689ef7e9da757ff263192/rumdl-0.2.46-py3-none-macosx_11_0_arm64.whl", hash = "sha256:8f28d90e1ca6bdbbb3b20f66333a6aeb120699d01f41d1685c026b15064aac84", size = 5884922, upload-time = "2026-07-29T21:33:10.465Z" },
-    { url = "https://files.pythonhosted.org/packages/84/c7/9e9a9eae876c631a1df63d352841858056ae45381d31daaa70c595c13a1d/rumdl-0.2.46-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:5580ff36a95030c83e103c652e0e36f565e6ab117599ba45a3fff7d6ad5a2d79", size = 6015338, upload-time = "2026-07-29T21:33:12.974Z" },
-    { url = "https://files.pythonhosted.org/packages/f4/82/8a14a86290ce859b9a821bf36a73253ab9301015431dbe90f819a27d932d/rumdl-0.2.46-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:65f16f4902a3748fffa2948264cd8ef31e258b3ae4cb294b448c8ed5882fe259", size = 6422204, upload-time = "2026-07-29T21:33:20.956Z" },
-    { url = "https://files.pythonhosted.org/packages/e1/d7/454efa369dcc2343710a49e50f69b7679fe0378024042045ead20015f55b/rumdl-0.2.46-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:9337b2a16d2a8c7a53f0a26c1d6af9ac6f21713eb2a86e754327ed497ebcf6a4", size = 6014307, upload-time = "2026-07-29T21:33:14.991Z" },
-    { url = "https://files.pythonhosted.org/packages/68/7d/a3443db44cd3a2337e82fb656f763eb77682ca3752d82e44a9805dd15d60/rumdl-0.2.46-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:b44fa1c0bb27b59c22714b7ff01894b6127a3ae5827caf2add291846cee37e66", size = 6406369, upload-time = "2026-07-29T21:33:22.795Z" },
-    { url = "https://files.pythonhosted.org/packages/2d/5d/5e95e629a2e47f0b2d524f3d9b79488fcb5593a0af539133b1798ed32079/rumdl-0.2.46-py3-none-win_amd64.whl", hash = "sha256:5757fb0211377ab8b87490a77dd9dc9079ee13170017c53ff842acd79fb11857", size = 6339300, upload-time = "2026-07-29T21:33:18.865Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/71/5f8baf4899e071f25be61f9ea21dbbe9181e7b71e2947ca0400802b280eb/rumdl-0.2.45-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:88a816acfe3692dd5d3c3051cff7ed826d93e93c5763cc423215a56d99a743e9", size = 6206492, upload-time = "2026-07-28T18:58:22.953Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/08/bd631669bcdbd4c2c8f0becba65443b19fa3f3d48b03e8624c33804304fe/rumdl-0.2.45-py3-none-macosx_11_0_arm64.whl", hash = "sha256:7161110046d73a9d527e022e4753a55aacf2837a014281a96cf7ff41b1e10ed8", size = 5875130, upload-time = "2026-07-28T18:58:15.272Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/9e/fb2af9472e6c72b4b2c9457e46492d7ae4dd2715afb62504200f9106451e/rumdl-0.2.45-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:dc6362b4f397f7372e32b34a299a0adebb9a668c19e8692be7df259d0aeda8a1", size = 6006588, upload-time = "2026-07-28T18:58:18.186Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/89/5828447a33c0fafd354ddfe97a39d3cfb4c7a0ca55069011d76dfb3bc65c/rumdl-0.2.45-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:d2b94e5fff1aa7302a18b2b911988b6c2f0ad7818761b566512b825109c3228b", size = 6403062, upload-time = "2026-07-28T18:58:27.839Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/11/dca4300bc74b54218a7709bcb44e8ac349f740e973faae796baffead4d7f/rumdl-0.2.45-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:b18ee5612c7c50d58f0fcdb62488a8b12ee41c4e3f410f66bb65ae65167155a4", size = 5996885, upload-time = "2026-07-28T18:58:20.531Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/43/af6648d1441d8477df98782fe61076ccf1c3ddaa83040e4d5142f0c5a81e/rumdl-0.2.45-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:764f9906b52f4e241cdfa38933914e14bf21334df6d3eb34b4ae3ee2d3db616f", size = 6384319, upload-time = "2026-07-28T18:58:30.552Z" },
+    { url = "https://files.pythonhosted.org/packages/74/a2/f71103e93c1ae5ee741ae3418f5e698fc850dff0b5cce3b4fdb5c9ee4e92/rumdl-0.2.45-py3-none-win_amd64.whl", hash = "sha256:b7ef2c42ce82ee6c24dd6cb09446ceca255ebb499f32bbc03d21c71d97549b27", size = 6321097, upload-time = "2026-07-28T18:58:25.4Z" },
 ]
 
 [[package]]

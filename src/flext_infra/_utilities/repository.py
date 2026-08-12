@@ -57,6 +57,31 @@ class FlextInfraUtilitiesRepository:
             )
         return r[m.Infra.ProviderSpec].ok(matches[0])
 
+    @staticmethod
+    def resolve_integration_branch(
+        workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
+    ) -> str:
+        """Return the workspace overlay branch, else the provider catalog branch."""
+        if workspace.integration is not None:
+            integration_branch: str = workspace.integration.branch
+            return integration_branch
+        provider_branch: str = provider.branch
+        return provider_branch
+
+    @staticmethod
+    def gitmodule_branch_is_governed(
+        declared_branch: str,
+        *,
+        provider_branch: str,
+        integration_branch: str | None = None,
+    ) -> bool:
+        """Accept follow-superproject (``.``) or the resolved integration line."""
+        if declared_branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH:
+            return True
+        if declared_branch == provider_branch:
+            return True
+        return integration_branch is not None and declared_branch == integration_branch
+
     @classmethod
     def repository_baseline_branch(
         cls, repository_root: Path, fallback: str | None = None
@@ -76,10 +101,10 @@ class FlextInfraUtilitiesRepository:
 
         for candidate in c.Infra.INTEGRATION_BRANCH_PREFERENCE:
             reference = f"refs/remotes/origin/{candidate}"
-            resolved = u.Infra.git_capture(
-                repository_root, ("rev-parse", "--verify", reference)
+            resolved = u.Infra.git_ref_exists(
+                m.Infra.GitRefRequest(repo_root=repository_root, reference=reference)
             )
-            if resolved.success and resolved.value.strip():
+            if resolved.success and resolved.value.value:
                 return r[str].ok(candidate)
         if fallback:
             return r[str].ok(fallback)

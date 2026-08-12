@@ -31,14 +31,20 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ]
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
-        """Resolve markdownlint settings file args."""
-        root_config = self._workspace_root / ".markdownlint.json"
-        local_config = project_dir / ".markdownlint.json"
-        if root_config.exists():
-            return ["--config", str(root_config)]
-        if local_config.exists():
-            return ["--config", str(local_config)]
-        return []
+        """Resolve markdownlint settings file args.
+
+        Member ``make check`` passes the member as ``--workspace``. Walk from
+        ``project_dir`` upward and prefer the topmost ``.markdownlint.json``
+        so umbrella workspace SSOT wins over stale partial member copies.
+        """
+        configs: t.MutableSequenceOf[Path] = []
+        for candidate_dir in (project_dir, *project_dir.parents):
+            config_path = candidate_dir / ".markdownlint.json"
+            if config_path.is_file():
+                configs.append(config_path.resolve())
+        if not configs:
+            return []
+        return ["--config", str(configs[-1])]
 
     @override
     def _get_check_dirs(

@@ -183,6 +183,7 @@ class FlextInfraConstantsBase(
     GREEN: Final[str] = "\x1b[32m"
     YELLOW: Final[str] = "\x1b[33m"
     BLUE: Final[str] = "\x1b[34m"
+    CYAN: Final[str] = "\x1b[36m"
     BOLD: Final[str] = "\x1b[1m"
 
     # Unicode/ASCII symbols
