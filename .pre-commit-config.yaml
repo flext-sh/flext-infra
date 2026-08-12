@@ -15,7 +15,7 @@ repos:
         name: make setup
         language: system
         entry: >-
-          make setup
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make setup'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -24,7 +24,7 @@ repos:
         name: make gen APPLY=Y
         language: system
         entry: >-
-          make gen APPLY=Y
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make gen APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -33,7 +33,7 @@ repos:
         name: make fmt APPLY=Y
         language: system
         entry: >-
-          make fmt APPLY=Y
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make fmt APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -42,7 +42,7 @@ repos:
         name: make fix APPLY=Y
         language: system
         entry: >-
-          make fix APPLY=Y
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make fix APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -51,7 +51,7 @@ repos:
         name: make check
         language: system
         entry: >-
-          CI=Y CHECK_GATES=lint,pyrefly,mypy,pyright,security,smells make check
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=Y make check'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -97,7 +97,7 @@ repos:
         name: make check
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CHECK_GATES=lint,pyrefly,mypy,pyright,security,smells make check'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make check'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

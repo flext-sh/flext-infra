@@ -133,6 +133,9 @@ class FlextInfraExtraPathsManager(
                         directory
                         for directory in rules.env_dirs
                         if (project_dir / directory).is_dir()
+                        and any(
+                            (project_dir / directory).rglob(c.Infra.EXT_PYTHON_GLOB)
+                        )
                     ),
                 )
             )

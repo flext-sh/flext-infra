@@ -227,10 +227,18 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
+        # mro-0ccx4: a directory that exists but holds no Python files (e.g.
+        # examples/ with only a README) is not a productive root. conform's
+        # _existing_python_dirs filters via discover_python_dirs which checks
+        # for .py files; the modernizer must agree or apply↔check ping-pong.
         env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
-            if project_dir is None or (project_dir / env_dir).is_dir()
+            if project_dir is None
+            or (
+                (project_dir / env_dir).is_dir()
+                and any((project_dir / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
+            )
         )
         source_path = self._project_source_path()
         return (
@@ -378,6 +386,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         env_dir
                         for env_dir in rules.env_dirs
                         if (project_dir / env_dir).is_dir()
+                        and any((project_dir / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
                     ),
                 )
             )
@@ -390,6 +399,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     env_dir
                     for env_dir in rules.env_dirs
                     if (workspace_root / env_dir).is_dir()
+                    and any((workspace_root / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
                 ),
             )
         )
