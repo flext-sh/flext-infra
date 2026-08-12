@@ -959,21 +959,6 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(invalid_selectors))}"
                 )
                 raise ValueError(msg)
-            docs_verb = next((verb for verb in self.verbs if verb.name == "docs"), None)
-            if docs_verb is None:
-                msg = "make docs verb must be declared"
-                raise ValueError(msg)
-            docs_actions = set(docs_verb.whats)
-            invalid_mutable = set(self.docs.mutable_actions) - docs_actions
-            if invalid_mutable:
-                msg = "make docs mutable_actions must be declared in actions"
-                raise ValueError(msg)
-            if (
-                self.docs.reports_dir.is_absolute()
-                or ".." in self.docs.reports_dir.parts
-            ):
-                msg = "make docs reports_dir must be repository-relative"
-                raise ValueError(msg)
             return self
 
         @m.computed_field()

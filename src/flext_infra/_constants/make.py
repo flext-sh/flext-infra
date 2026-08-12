@@ -117,7 +117,6 @@ class FlextInfraConstantsMake:
         "build",
         "check",
         "clean",
-        "docs",
         "fmt",
         "fix",
         "scan",
@@ -246,54 +245,6 @@ class FlextInfraConstantsMake:
         ("PR_CHECKPOINT", "1"),
         ("DEPS_REPORT", "1"),
         ("VERBOSE", ""),
-    )
-    PROJECT_CORE_VERBS: Final[t.StrPairSequence] = (
-        ("boot", "Install dependencies and hooks"),
-        ("build", "Build distributable artifacts"),
-        ("check", "Run lint gates (CHECK_GATES= to select)"),
-        (
-            "fix-enforcement",
-            "Auto-fix enforcement violations (APPLY=1, PROJECTS=..., RULES=...)",
-        ),
-        ("scan", "Run all security checks"),
-        ("fmt", "Run all formatting"),
-        ("docs", "Run docs (WHAT= to select)"),
-        ("test", "Run bounded pytest (FILE=/MATCH= selectors)"),
-        ("val", "Run validate gates (FIX=1 to auto-fix)"),
-        ("clean", "Clean build/test/type artifacts"),
-    )
-    PROJECT_DAEMON_VERBS: Final[t.StrPairSequence] = (
-        ("daemon-start", "Start all daemons (mypy + pyright)"),
-        ("daemon-stop", "Stop all daemons"),
-        ("daemon-status", "Show status of all daemons"),
-        ("daemon-restart", "Restart all daemons"),
-    )
-    PROJECT_OPTION_LINES: Final[t.StrSequence] = (
-        f"CHECK_GATES={PROJECT_CHECK_GATES_ALLOWED}",
-        f"MYPY_MEMORY_LIMIT_MB={MYPY_MEMORY_LIMIT_MB_DEFAULT}  Mypy address-space cap",
-        f"MYPY_TIMEOUT_SECONDS={MYPY_TIMEOUT_SECONDS_DEFAULT}  Mypy wall-time cap",
-        f"VALIDATE_GATES={PROJECT_VALIDATE_GATES_ALLOWED}",
-        "FILE=src/foo.py             Single file for check/fmt/test",
-        'FILES="a.py b.py"          Multiple files for check/fmt; test rejects it',
-        "CHANGED_ONLY=1              Git-changed Python files for check",
-        "CHECK_ONLY=1                Dry-run format/check (no writes)",
-        'RUFF_ARGS="--select E501"   Extra args for ruff check',
-        'PYRIGHT_ARGS="--level basic" Extra args for pyright',
-        "PYTEST_ARGS=<value>         Rejected; use FILE, MATCH, or WHAT",
-        "DEPENDENCY=<distribution>   Select one package for deps WHAT=upgrade",
-        "MATCH=test_name             Alias for pytest -k",
-        "FAIL_FAST=1                 Add -x to pytest",
-        "DIAG=1                      Emit extended pytest diagnostics",
-        "FIX=1                       Auto-fix supported gates",
-        "APPLY=1                     Apply enforcement fixes (default dry-run)",
-        "PROJECTS=p1,p2              Scope fix-enforcement to projects",
-        "RULES=ENFORCE-XXX,...       Scope fix-enforcement to rules",
-        "VERBOSE=1                   Show executed commands",
-    )
-    PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (
-        "PR_ACTION=status|create",
-        "PR_BASE=<branch>  PR_HEAD=<branch>",
-        "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
     )
     # Phase-set per verb for legacy CLI helpers. Make routing is owned by
     # the registry discovered from scripts/cmd through flext-tests.

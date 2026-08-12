@@ -100,17 +100,21 @@ def test_recipe_bodies_are_actually_parsed() -> None:
 
 
 def test_gen_dependency_stages_follow_codegen_scope() -> None:
+    """The gen recipe scopes dependency modernization through --workspace.
+
+    CODEGEN_PROJECT_ARGS was a hardcoded indirection that duplicated the scope
+    already encoded in --workspace. The modern deps modernize call relies on
+    --workspace alone, so the variable must be absent.
+    """
     text = _template_text()
-    assert (
-        "CODEGEN_PROJECT_ARGS := $(if $(filter self,$(CODEGEN_SCOPE)),--projects .,)"
-        in text
-    )
+    assert "CODEGEN_PROJECT_ARGS" not in text
 
     bodies = _recipe_bodies()
     for target in ("_builtin_gen_check", "_builtin_gen_all"):
         dependency_lines = [line for line in bodies[target] if "deps modernize" in line]
         assert len(dependency_lines) == 1
-        assert all("$(CODEGEN_PROJECT_ARGS)" in line for line in dependency_lines)
+        assert all("--workspace" in line for line in dependency_lines)
+        assert all("CODEGEN_PROJECT_ARGS" not in line for line in dependency_lines)
         assert all("deps extra-paths" not in line for line in bodies[target])
 
 

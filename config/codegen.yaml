@@ -395,16 +395,6 @@ Infra:
           default_what: diagnostics
           whats: [diagnostics]
           apply_guarded: false
-        - name: docs
-          # `WHAT=all` remains the explicit full pipeline meta-selector.
-          default_what: validate
-          whats: [all, generate, fix, audit, build, validate]
-          # generate/fix materialize artifacts: the generated handler picks
-          # --apply or --check from APPLY, and the docs workflow calls
-          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
-          apply_guarded: true
-          apply_what: generate
         - name: clean
           default_what: status
           whats: [status, generated]
@@ -441,13 +431,12 @@ Infra:
           apply_what: apply
       custom_handler_policy:
         filename: custom.mk
-        # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
-        # dispatch every unknown WHAT to a `_custom_<verb>_<what>` handler --
-        # that IS the canonical extension mechanism for new WHATs, distinct
-        # from pre-/post- lifecycle hooks. The validator must accept both
-        # shapes the runtime itself dispatches to, or every project that
-        # defines a custom WHAT handler fails `codegen conform` outright.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)_[a-z0-9][a-z0-9_-]*)$"
+        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
+        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
+        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
+        # The validator must accept both shapes the runtime itself dispatches to, or
+        # every project that defines a custom WHAT handler fails `codegen conform`.
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|clean|release|gen|work|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|clean|release|gen|work|mod)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
