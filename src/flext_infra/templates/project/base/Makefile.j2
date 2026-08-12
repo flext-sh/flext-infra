@@ -519,9 +519,21 @@ _builtin_help_usage:
 # the recorded gitlink.
 {{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
 
+# Every verb depends on this guard. When the interpreter is missing the guard
+# provisions it by invoking `setup` instead of failing: a fresh clone, a new
+# worktree, or a CI runner has no venv yet, and forcing the operator to run
+# `make setup` by hand turns every managed verb into a two-step ritual and
+# breaks git hooks (which call `make fmt`/`make fix` in a bare checkout).
+# `setup` is idempotent and cheap when the tooling already matches the lock,
+# so the auto-provision path costs nothing in the common case. Only a setup
+# that itself fails to produce the interpreter is a real error.
 _builtin_require_environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
-		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_PYTHON)" >&2; \
+		printf '==> environment interpreter missing; provisioning via setup\n' >&2; \
+		$(SELF_MAKE) setup || exit $$?; \
+	fi
+	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
+		printf 'ERROR: setup did not produce the environment interpreter %s\n' "$(RUNTIME_PYTHON)" >&2; \
 		exit 2; \
 	fi
 
@@ -797,23 +809,17 @@ _builtin_release_rel: _builtin_require_environment
 		$$push_flag \
 		$$projects_args
 
-# Every command here writes to the SAME root, derived from the invocation
-# point. `deps modernize`/`extra-paths` used to receive WORKSPACE_ROOT while
-# `conform` received PROJECT_ROOT, so a gen run inside one member rewrote the
-# pyproject of ~30 siblings and left each dirty. Because gen runs inside check
-# and check runs in the pre-commit hook, one commit in any lane dirtied every
-# sibling. At the workspace root PROJECT_ROOT is
-# already the workspace, so fan-out survives exactly where it belongs.
+# Generation preserves the caller's scope. Conform owns analyzer roots in the
+# rendered tooling context; dependency modernization owns only dependency
+# settings that conform does not render.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check $(CODEGEN_PROJECT_ARGS)
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --check $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply $(CODEGEN_PROJECT_ARGS)
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_apply: _builtin_gen_all
 

@@ -291,6 +291,41 @@ class TestCodegenConform:
         tm.ok(fixed_point)
         tm.that(fixed_point.value.written_files, eq=())
 
+    def test_empty_rendered_directory_is_not_a_python_root(
+        self, infra_git_repo: Path
+    ) -> None:
+        root = infra_git_repo
+        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / "flext_infra" / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        (root / "scripts").mkdir()
+
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+        tm.ok(result)
+        payload = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+        tm.that(
+            payload["tool"]["pyrefly"]["project-includes"], lacks="scripts/**/*.py*"
+        )
+        tm.that(payload["tool"]["pyright"]["include"], lacks="scripts")
+
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
         self, infra_git_repo: Path
     ) -> None:

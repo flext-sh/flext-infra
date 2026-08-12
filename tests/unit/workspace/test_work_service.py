@@ -651,7 +651,7 @@ class TestsFlextInfraWorkService:
         ).execute()
         tm.fail(result, has="metadata.ready.namespace")
 
-    def test_finish_refuses_already_removed(
+    def test_finish_accepts_already_removed(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repository = self._repository(tmp_path)
@@ -681,7 +681,7 @@ class TestsFlextInfraWorkService:
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="already removed")
+        tm.that(tm.ok(result), has="receipt.worktree=removed")
 
     def test_status_reports_after_start(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
