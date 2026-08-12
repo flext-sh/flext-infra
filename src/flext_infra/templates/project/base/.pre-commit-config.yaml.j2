@@ -2,45 +2,31 @@
 repos:
   - repo: local
     hooks:
-      # Why: fast fixes run before each commit; expensive gates run before push.
-      # Pre-push is local operator validation and runs every BLOCKING gate: CI={{ make.ci.value }}
-      # is never injected here, because it skips the lint/format/pyrefly gates
-      # that must block a push (9b604d43). make test never inherits that token
-      # either (mro-v4p5 forbids pytest under CI={{ make.ci.value }}).
+      # Why: each make verb is its own pre-commit/pre-push hook so the operator
+      # sees per-step status (Passed/Failed) natively via the pre-commit runner.
+      # CI={{ make.ci.value }} is never injected here, because it skips the
+      # lint/format/pyrefly gates that must block a push (9b604d43).
+      # make test never inherits that token either (mro-v4p5 forbids pytest
+      # under CI={{ make.ci.value }}).
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
-      # WHAT never leaks in from the caller: git hooks inherit the invoking
-      # environment, so `make work WHAT=land` reached these steps two ways and
-      # any step without its own WHAT (e.g. `make gen`) rejected it as an
-      # unsupported selector, making every lane unpushable. BOTH carriers are
-      # cleared: the exported shell variable, and MAKEFLAGS, which the parent
-      # make exports as ` -- WHAT=land` and a child make re-reads with
-      # command-line precedence — so unsetting the variable alone leaves the
-      # override in place (MAKEOVERRIDES is never exported and clearing it here
-      # would change nothing). {{ make.apply_variable }} leaks the same way and
-      # is cleared with them: `make work ... {{ make.apply_variable }}={{ make.apply_value }}` exports it, the hook's
-      # read-only steps inherit it, and a read-only verb rejects the token
-      # outright ("verb check is read-only and does not accept {{ make.apply_variable }}"), so a
-      # landing lane could not push. Each step then states its selector: the
-      # declared `what` when it has one, otherwise the verb's own declared
-      # default — a hook validates everything, never a caller-narrowed subset.
-      # Mutating steps pass {{ make.apply_variable }} explicitly, so the verb resolves its own
-      # apply_what (gen/fmt/fix -> apply) instead of a read-only selector.
-      - id: flext-pre-commit
-        name: FLEXT pre-commit workflow
+{% for step in make.workflow if "pre_commit" in step.contexts %}
+      - id: flext-pre-commit-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
+        name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c
-          'unset WHAT MAKEFLAGS {{ make.apply_variable }}; {% for step in make.workflow if "pre_commit" in step.contexts %}{% if step.verb == "check" %}{{ make.ci.variable }}={{ make.ci.value }} {% endif %}{% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% elif not step.apply %} WHAT={{ make.default_whats[step.verb] }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
+          {% if step.verb == "check" %}{{ make.ci.variable }}={{ make.ci.value }} {% endif %}{% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
-      - id: flext-pre-push
-        name: FLEXT pre-push workflow
+{% endfor %}
+{% for step in make.workflow if "pre_push" in step.contexts %}
+      - id: flext-pre-push-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
+        name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c
-          'unset WHAT MAKEFLAGS {{ make.apply_variable }}; unset $(git rev-parse --local-env-vars); {% for step in make.workflow if "pre_push" in step.contexts %}{% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% elif not step.apply %} WHAT={{ make.default_whats[step.verb] }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}{% if not loop.last %} && {% endif %}{% endfor %}'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+{% endfor %}
