@@ -758,12 +758,8 @@ class FlextInfraConfigModels:
         ]
 
     class MakeDocsSpec(_ConfigContract):
-        """Generated Makefile docs verb lifecycle and audit policy."""
+        """Docs policy for reports, cross-project links, and GitHub repos."""
 
-        mutable_actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
-        ]
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
         ]
@@ -958,6 +954,12 @@ class FlextInfraConfigModels:
                     "make workflow selectors are not declared by their verbs: "
                     f"{', '.join(sorted(invalid_selectors))}"
                 )
+                raise ValueError(msg)
+            if (
+                self.docs.reports_dir.is_absolute()
+                or ".." in self.docs.reports_dir.parts
+            ):
+                msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
 

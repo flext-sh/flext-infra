@@ -24,6 +24,7 @@ class FlextInfraConstantsBasemk:
     # codegen.yaml SSOT); this list adds the project-surface verbs owned only
     # by the generated base.mk templates.
     CUSTOM_MK_RESERVED_PROJECT_VERBS: Final[t.StrSequence] = (
+        "boot",
         "build",
         "check",
         "clean",
@@ -37,11 +38,14 @@ class FlextInfraConstantsBasemk:
         "daemon-stop",
         "daemon-stop-mypy",
         "daemon-stop-pyright",
+        "fix-enforcement",
         "fmt",
         "help",
         "pr",
         "run",
+        "scan",
         "test",
+        "val",
     )
     CUSTOM_MK_BLACKLIST_ERROR: Final[str] = (
         "reserved verbs/WHATs are a flext-infra monopoly; use "
