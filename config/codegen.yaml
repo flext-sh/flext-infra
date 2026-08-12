@@ -264,10 +264,8 @@ Infra:
         - { verb: gen, apply: true, contexts: [local, ci, pre_commit, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit, pre_push] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit, pre_push] }
-        # Why (mro-ucxgl): docs lint never blocks a commit or a push. markdown
-        # stays fully enforced for local `make check` and the `docs` verb; only
-        # the hook-context invocation omits it.
-        - { verb: check, apply: false, contexts: [local, ci, pre_commit, pre_push], gates_skip: [markdown] }
+        # R9: markdown gate never skipped — a docs defect is a defect in every context.
+        - { verb: check, apply: false, contexts: [local, ci, pre_commit, pre_push] }
         # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon and
         # then runs WHAT=full, the complete-suite gate: testmon OFF so every test
         # executes, coverage ON so the measured number covers the whole suite.
