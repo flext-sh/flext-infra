@@ -620,6 +620,16 @@ class FlextInfraConfigModels:
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
         value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
+        local_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Local form of the CI ternary. A hook declares this value "
+                    "explicitly so an inherited CI token from the caller can "
+                    "never revoke pytest or the lint/format/pyrefly gates."
+                )
+            ),
+        ] = "N"
         check_gates: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
