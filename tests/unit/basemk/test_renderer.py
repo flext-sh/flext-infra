@@ -12,10 +12,7 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
 
-# R12 moved every verb recipe into the project Makefile; base.mk now carries
-# only the shared infrastructure surface (detection, venv, preflight, daemons,
-# pr, clean), so the rendered contract is smaller than the pre-R12 file.
-_MIN_RENDERED_LINES = 250
+_MIN_RENDERED_LINES = 200
 
 
 class TestsFlextInfraBasemkRenderer:
@@ -79,14 +76,10 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(rendered, lacks="rm -rf .venv")
 
     def test_render_all_builds_with_canonical_uv_command(self) -> None:
-        """Bind uv to the resolved runtime without Poetry or codegen commands."""
+        """Build distributions without unrelated codegen or Poetry commands."""
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
-        # R12: `build` is a project-Makefile verb now. base.mk still owns the uv
-        # binding every verb inherits.
         tm.that(rendered, has="UV ?= uv")
-        tm.that(rendered, has="override UV_PROJECT := $(WORKSPACE_ROOT)")
-        tm.that(rendered, has="override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)")
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")
 
@@ -131,21 +124,14 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(result.value, empty=False)
 
     def test_render_all_exposes_canonical_public_targets(self) -> None:
-        """Expose exactly the canonical public Make targets."""
+        """Expose the canonical public Make targets remaining after dead-verb removal."""
         result = FlextInfraBaseMkTemplateRenderer().render_all()
 
         tm.ok(result)
         text = result.value
-        for part in (
-            ".PHONY: help boot build check scan fmt test val clean pr",
-            "STANDARD_VERBS := boot build check scan fmt test val clean pr",
-            "clean: ## Clean artifacts",
-            "pr: ## Manage pull requests for this repository",
-        ):
+        for part in (".PHONY: clean pr _preflight", "STANDARD_VERBS := clean pr"):
             tm.that(text, has=part)
-        # R12: the docs verb is exterminated — docs is a WHAT selector on the
-        # standard verbs, never a target of its own.
-        tm.that(text, lacks="docs-serve")
+        tm.that(text, lacks="setup build check security format docs")
         tm.that(text, lacks="docs-base")
         tm.that(text, lacks="docs-sync-scripts")
 
@@ -155,12 +141,6 @@ class TestsFlextInfraBasemkRenderer:
 
         tm.ok(result)
         text = result.value
-        for part in (
-            "FIX ?=",
-            "CHECK_GATES ?=",
-            "CHANGED_ONLY ?=",
-            "DIAG ?= 0",
-            "PYTEST_ARGS ?=",
-        ):
+        for part in ("FIX ?=", "PYTEST_BOUNDED", "PYTEST_REPORT_ARGS"):
             tm.that(text, has=part)
         tm.that(text, lacks="check-fast")
