@@ -1,18 +1,18 @@
-"""Execution tests for the generated base.mk contract."""
+"""Execution tests for the generated project Make verb contract."""
 
 from __future__ import annotations
 
 import os
 import stat
-from typing import TYPE_CHECKING
+import tempfile
+from pathlib import Path
 
-from flext_infra import config
+from flext_infra import c, config, m as infra_m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import m, p, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests import u as test_u
 
 _MAKE_ISOLATION_ENV_KEYS = (
     "FLEXT_ROOT",
@@ -62,6 +62,61 @@ _MAKE_TEST_ENV_KEYS = (
 def _render_base_mk() -> str:
     result = FlextInfraBaseMkGenerator().generate_basemk()
     rendered: str = tm.ok(result)
+    return rendered
+
+
+def _render_project_makefile() -> str:
+    """Render the standalone project Makefile from its single conform owner.
+
+    R12 moved every public verb out of ``base.mk`` and into the project
+    ``Makefile`` template. The verb contract therefore lives in the conform
+    projection, so these tests exercise the artifact a real checkout runs.
+    """
+    repository = test_u.Tests.repository_ref(
+        "demo-project", role=c.Infra.RepositoryRole.STANDALONE
+    )
+    workspace = infra_m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name=repository.name,
+        repository=repository,
+        project=infra_m.Infra.ProjectSpec(
+            package_name="demo_project",
+            class_stem="DemoProject",
+            namespace="DemoProject",
+            constant_name=repository.name,
+            namespace_attribute="demo_project",
+            alias="demo_project",
+            environment_prefix="DEMO_PROJECT_",
+            description="Demo project",
+            version="0.12.0.dev0",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            homepage=repository.url.removesuffix(".git"),
+            documentation=repository.url.removesuffix(".git"),
+            workspace_root_rel=".",
+            year=2026,
+        ),
+    )
+    with tempfile.TemporaryDirectory() as staging:
+        root = Path(staging) / "demo-project"
+        request = infra_m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                workspace_root=root, request=request, initial_workspace=workspace
+            ).plan(request)
+        )
+    makefile_plans = tuple(
+        file for file in plan.files if Path(file.path).name == c.Infra.MAKEFILE_FILENAME
+    )
+    tm.that(makefile_plans, len=1)
+    rendered: str = makefile_plans[0].rendered
     return rendered
 
 
@@ -139,16 +194,20 @@ def _write_pytest_diag_python_stub(
 
 
 def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
+    """Materialize a project whose Makefile is the real conform projection.
+
+    ``include_parent`` keeps the legacy shape where the shared infrastructure
+    file lives one directory up, so worktree/workspace detection still has a
+    parent ``base.mk`` to find.
+    """
     (project_root / "tests").mkdir(parents=True, exist_ok=True)
     if include_parent:
         (project_root.parent / "base.mk").write_text(
             _render_base_mk(), encoding="utf-8"
         )
-        makefile_content = "PROJECT_NAME := demo-project\ninclude ../base.mk\n"
     else:
         (project_root / "base.mk").write_text(_render_base_mk(), encoding="utf-8")
-        makefile_content = "PROJECT_NAME := demo-project\ninclude base.mk\n"
-    (project_root / "Makefile").write_text(makefile_content, encoding="utf-8")
+    (project_root / "Makefile").write_text(_render_project_makefile(), encoding="utf-8")
 
 
 def _run_make(
@@ -320,23 +379,17 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.stdout, lacks="Build complete")
 
     def test_make_help_lists_supported_options(self, tmp_path: Path) -> None:
-        """Verify generated help advertises every supported option."""
+        """Advertise every declared verb with its WHAT selectors."""
         _write_project(tmp_path)
         result = _run_make(tmp_path, "help")
         tm.that(result.exit_code, eq=0)
-        tm.that(
-            result.stdout,
-            has=[
-                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells",
-                "FILE=src/foo.py             Single file for check/fmt/test",
-                'FILES="a.py b.py"          Multiple files for check/fmt; test rejects it',
-                "CHANGED_ONLY=1              Git-changed Python files for check",
-                "CHECK_ONLY=1                Dry-run format/check (no writes)",
-                'PYRIGHT_ARGS="--level basic" Extra args for pyright',
-                "DIAG=1                      Emit extended pytest diagnostics",
-                "FIX=1                       Auto-fix supported gates",
-            ],
-        )
+        declared = tuple(config.Infra.codegen.make.verbs)
+        tm.that(bool(declared), eq=True)
+        for verb in declared:
+            tm.that(result.stdout, has=verb.name)
+        # R12: `docs` became a WHAT selector on the standard verbs, so it must
+        # never be advertised as a verb of its own.
+        tm.that(result.stdout, lacks="  docs ")
         tm.that(result.stdout, lacks="check-fast")
 
     def test_make_help_documents_and_lists_custom_hooks(self, tmp_path: Path) -> None:
@@ -364,7 +417,7 @@ class TestsFlextInfraBasemkMakeContract:
 
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:
         """Verify generated command roots use canonical CLI groups."""
-        rendered = _render_base_mk()
+        rendered = _render_project_makefile()
         tm.that(
             rendered,
             has=[
@@ -459,7 +512,7 @@ class TestsFlextInfraBasemkMakeContract:
 
     def test_rendered_base_mk_delegates_pytest_to_one_typed_runner(self) -> None:
         """Keep process policy and report ownership out of generated shell."""
-        rendered = _render_base_mk()
+        rendered = _render_project_makefile()
         tm.that(
             rendered,
             has=[
@@ -475,7 +528,7 @@ class TestsFlextInfraBasemkMakeContract:
         self,
     ) -> None:
         """The typed Python owner validates reports without shell parsing."""
-        rendered = _render_base_mk()
+        rendered = _render_project_makefile()
         tm.that(
             rendered,
             lacks=[
@@ -490,7 +543,7 @@ class TestsFlextInfraBasemkMakeContract:
 
     def test_rendered_base_mk_exports_config_owned_pytest_deadlines(self) -> None:
         """Expose immutable typed policy while rejecting command-line overrides."""
-        rendered = _render_base_mk()
+        rendered = _render_project_makefile()
         policy = config.Infra.tooling.tools.pytest
         tm.that(
             rendered,
@@ -527,7 +580,7 @@ class TestsFlextInfraBasemkMakeContract:
 
     def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
         """Verify changed-only discovery includes live tracked and untracked files."""
-        rendered = _render_base_mk()
+        rendered = _render_project_makefile()
         tm.that(
             rendered,
             has=[
@@ -560,7 +613,7 @@ class TestsFlextInfraBasemkMakeContract:
 
     def test_rendered_base_mk_bounds_every_mypy_process(self) -> None:
         """Verify generated Mypy and dmypy commands inherit the finite cap."""
-        rendered = _render_base_mk()
+        rendered = _render_project_makefile()
         tm.that(rendered, has="MYPY_MEMORY_LIMIT_MB ?= 6144")
         tm.that(rendered, has="MYPY_TIMEOUT_SECONDS ?= 600")
         tm.that(
