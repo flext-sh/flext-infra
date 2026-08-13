@@ -2654,13 +2654,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> tuple[str, str] | None:
         """Return ``(issue_prefix, database)``, or ``None`` when there is none.
 
-        The governing tracker owner declares one database identity. That
-        identity is also the issue prefix unless a distinct typed override is
-        present. Beadless manifests return no identity.
+        Both identifiers are DECLARED by the tracker-owning workspace; neither is
+        inferred from the other or from the target's name. ``WorkspaceSpec``
+        validation refuses a half-declared ledger, so a manifest that declares a
+        database has already declared its issue prefix. Beadless manifests
+        declare neither and return no identity.
         """
-        if workspace.ledger_id is None:
+        if workspace.ledger_id is None or workspace.ledger_prefix is None:
             return None
-        return workspace.ledger_prefix or workspace.ledger_id, workspace.ledger_id
+        return workspace.ledger_prefix, workspace.ledger_id
 
     @staticmethod
     def _declared_hook_stages(make_spec: m.Infra.MakeSpec) -> tuple[str, ...]:

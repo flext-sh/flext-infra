@@ -2066,14 +2066,22 @@ class FlextInfraConfigModels:
             if self.ledger_prefix is not None and self.ledger_id is None:
                 msg = "ledger_prefix requires ledger_id"
                 raise ValueError(msg)
-            # Why (mro-tvc03): a prefix EQUAL to the database identity is the
-            # explicit form of the default, never a defect. The governing
-            # manifest declares ledger_id: mro with ledger_prefix: mro exactly
-            # to state the namespace instead of inheriting it, which is what
-            # removing the canonical-name fallback demanded. Rejecting it made
-            # the real workspace invalid and broke every lane resolution:
-            # `make work WHAT=land` failed with "workspace manifest model
-            # validation failed" against /home/marlonsc/flext/config/workspace.yaml.
+            # Why (mro-cdzxf): the issue prefix and the database identity are
+            # INDEPENDENT declared facts, never inferable from one another. A
+            # Dolt database must be SQL-safe ("cosmos_main") while the issue
+            # prefix is the hyphenated namespace ("cosmos-main"). Deriving one
+            # from the other silently renames every issue namespace and binds bd
+            # to a ledger that does not exist (mro-9wv8). A tracker-owning
+            # workspace therefore declares BOTH; declaring them equal is the
+            # explicit form of "same string", never an inherited default.
+            if self.ledger_id is not None and self.ledger_prefix is None:
+                msg = (
+                    "ledger_id requires ledger_prefix: the Beads issue prefix is "
+                    "a declared fact and is never derived from the database "
+                    "identity (they legitimately differ, e.g. database "
+                    "'cosmos_main' vs issue prefix 'cosmos-main')"
+                )
+                raise ValueError(msg)
             invalid_external_paths = tuple(
                 path
                 for path in self.external_dependency_paths

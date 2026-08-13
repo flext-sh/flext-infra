@@ -63,6 +63,8 @@ class TestsFlextInfraWorkService:
                     name=repository_ref.distribution,
                     repository=repository_ref,
                     ledger_id="mro",
+                    # Tracker owner declares both identifiers (mro-cdzxf).
+                    ledger_prefix="mro",
                 ).model_dump(mode="json", exclude_none=True),
             )
         )

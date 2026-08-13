@@ -23,6 +23,8 @@ def _repository(root: Path, *, ledger_id: str) -> Path:
         name=repository.distribution,
         repository=repository,
         ledger_id=ledger_id,
+        # A tracker-owning manifest declares both identifiers (mro-cdzxf).
+        ledger_prefix=ledger_id,
     )
     tm.ok(
         u.Cli.yaml_dump(

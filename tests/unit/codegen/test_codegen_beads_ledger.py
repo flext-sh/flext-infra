@@ -32,6 +32,7 @@ class TestCodegenBeadsLedger:
         *,
         ledger_id: str | None,
         ledger_prefix: str | None = None,
+        declare_prefix: bool = True,
         overlay: bool = True,
         attached_marker: bool = False,
     ) -> Path:
@@ -77,7 +78,14 @@ class TestCodegenBeadsLedger:
             name=repository.distribution,
             repository=local_repository,
             ledger_id=ledger_id,
-            ledger_prefix=ledger_prefix,
+            # A tracker-owning manifest declares BOTH identifiers (mro-cdzxf).
+            # Tests that exercise the half-declared defect pass
+            # declare_prefix=False to build that shape deliberately.
+            ledger_prefix=(
+                ledger_prefix
+                if ledger_prefix is not None or not declare_prefix
+                else ledger_id
+            ),
             repository_policy_overlays=overlays,
         )
         tm.ok(
@@ -195,6 +203,7 @@ class TestCodegenBeadsLedger:
             repository=root_repository,
             members=(member,),
             ledger_id=root_repository.distribution,
+            ledger_prefix=root_repository.distribution,
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -354,6 +363,8 @@ class TestCodegenBeadsLedger:
             name="flext",
             repository=root_target.repository,
             ledger_id=root_target.repository.distribution,
+            # Declared, not inherited: a tracker owner states both identifiers.
+            ledger_prefix=f"{root_target.repository.distribution}-issues",
             members=(member_target.repository,),
         )
         root_identity = FlextInfraCodegenConform.ledger_identity_for_target(
@@ -363,8 +374,8 @@ class TestCodegenBeadsLedger:
             workspace, member_target
         )
 
-        tm.that(root_identity, eq=(workspace.ledger_id, workspace.ledger_id))
-        tm.that(member_identity, eq=(workspace.ledger_id, workspace.ledger_id))
+        tm.that(root_identity, eq=(workspace.ledger_prefix, workspace.ledger_id))
+        tm.that(member_identity, eq=(workspace.ledger_prefix, workspace.ledger_id))
 
     def _member_pair(
         self, tmp_path: Path, *, ledger_id: str | None, ledger_prefix: str | None
@@ -415,25 +426,29 @@ class TestCodegenBeadsLedger:
 
         tm.that(identity, eq=None)
 
-    def test_ledger_id_alone_is_valid_workspace_identity(self, tmp_path: Path) -> None:
+    def test_ledger_id_without_prefix_is_refused(self) -> None:
         """Fail closed when the governing workspace half-declares its ledger.
 
-        mro-cdzxf: ``ledger_identity_for_target`` used to silently fall back to
-        ``canonical_project_name`` for both the issue prefix and the database.
-        That is the exact mro-9wv8 failure mode -- bd binds to a ledger that
-        does not exist and every issue created from a clean clone lands in a
-        throwaway store. A half-declared ledger is a configuration defect and
-        must surface as one, never as a guess.
+        mro-cdzxf: the issue prefix is a DECLARED fact, never an inferred one.
+        Guessing it from the database identity is the mro-9wv8 failure mode --
+        bd binds to a ledger that does not exist and every issue created from a
+        clean clone lands in a throwaway store. The two identifiers are
+        independent by design: a Dolt database must be SQL-safe (``cosmos_main``)
+        while an issue prefix is the hyphenated namespace (``cosmos-main``).
+        Substituting one for the other silently renames every issue namespace.
+
+        A half-declared ledger is a configuration defect and must surface as one,
+        at manifest-validation time, never as a guess at render time.
         """
-        workspace, member_target = self._member_pair(
-            tmp_path, ledger_id="mro", ledger_prefix=None
-        )
+        repository = test_u.Tests.repository_ref(config.Infra.name)
 
-        identity = FlextInfraCodegenConform.ledger_identity_for_target(
-            workspace, member_target
-        )
-
-        tm.that(identity, eq=(workspace.ledger_id, workspace.ledger_id))
+        with pytest.raises(c.ValidationError, match="ledger_prefix"):
+            m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=repository.distribution,
+                repository=repository,
+                ledger_id="cosmos_main",
+            )
 
     def test_workspace_spec_rejects_prefix_without_ledger_id(self) -> None:
         repository = test_u.Tests.repository_ref(config.Infra.name)
