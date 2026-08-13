@@ -146,9 +146,11 @@ class TestCodegenCiMatrix:
         ):
             commands = " && ".join(
                 (
+                    # Operator law: EVERY pre-commit step carries the fast CI
+                    # token; EVERY pre-push step carries the full-suite token.
                     f"{ci.variable}={ci.value} "
-                    if step.verb == "check" and context == "pre_commit"
-                    else ""
+                    if context == "pre_commit"
+                    else f"{ci.variable}={ci.absent_value} "
                 )
                 + (
                     "CHECK_GATES="

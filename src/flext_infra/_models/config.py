@@ -620,6 +620,17 @@ class FlextInfraConfigModels:
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
         value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
+        absent_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "CI environment value that revokes the CI token. RULING 1 "
+                    "makes CI ternary: value runs the CI gate set, absent_value "
+                    "runs the full local suite. pre-commit uses value, pre-push "
+                    "uses absent_value."
+                )
+            ),
+        ] = "N"
         check_gates: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(

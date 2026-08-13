@@ -249,6 +249,7 @@ Infra:
       ci:
         variable: CI
         value: Y
+        absent_value: N
         # RULING 2 (rules not skip-list): CI=Y runs a positive gate set
         # (check_gates). Gates omitted (lint, format, pyrefly) are owned by CI
         # workflows and skipped under CI=Y. Local make check without CI=Y keeps
@@ -1607,7 +1608,11 @@ Infra:
           overwrite: false
         - source: base/.pre-commit-config.yaml.j2
           destination: .pre-commit-config.yaml
-          profiles: [workspace-root, workspace-member, standalone]
+          # Operator law (mro-68rcj): git hooks belong to the workspace ROOT
+          # only. A member never runs its own pre-commit/pre-push chain — the
+          # root hook validates the whole fleet in one pass, and a per-member
+          # chain would re-enter make recursively on every submodule commit.
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/README.md.j2

@@ -13,8 +13,14 @@ $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
 
 # === SIMPLE VERB SURFACE ===
-.PHONY: help boot build check scan fmt test val clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
-STANDARD_VERBS := boot build check scan fmt test val clean pr
+# base.mk declares ONLY the verbs it ships a recipe for. R12 moved every other
+# public verb into the generated project Makefile, and a verb declared here
+# without a recipe is not harmless: Make treats it as a satisfied target, so the
+# verb becomes a silent no-op and a gate like `check` exits 0 having validated
+# nothing. `help` (base_venv), `clean` (base_clean), `pr` (base_pr) and the
+# daemon targets (base_daemons) are the recipes this file actually composes.
+.PHONY: help clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
+STANDARD_VERBS := clean pr
 $(STANDARD_VERBS): _preflight
 
 define ENFORCE_WORKSPACE_VENV
