@@ -148,15 +148,15 @@ class TestsRootArtifactOwnership:
             )
         )
 
-        checked = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
-        )
         first = FlextInfraCodegenConform.execute_request(
             request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY})
         )
+        checked = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+        )
 
-        tm.ok(checked)
         tm.ok(first)
+        tm.ok(checked)
         tm.that(governed, empty=False)
         tm.that(
             len({file.path for file in governed}),

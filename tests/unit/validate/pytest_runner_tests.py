@@ -210,7 +210,15 @@ class TestsFlextInfraPytestRunner:
     def test_full_run_fails_when_coverage_artifact_is_missing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A zero pytest status cannot mask a missing full-suite coverage report."""
+        """A zero pytest status cannot mask a missing coverage report.
+
+        The guarantee is conditional on coverage actually being measured: the
+        default verb passes --no-cov and emits no report, so the precondition is
+        declared here rather than assumed (mro-uwoc7).
+        """
+        monkeypatch.setattr(
+            FlextInfraPytestRunner, "_coverage_requested", staticmethod(lambda: True)
+        )
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -251,7 +259,14 @@ class TestsFlextInfraPytestRunner:
     def test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """pytest-cov under xdist must not hide fail-under behind a zero exit."""
+        """pytest-cov under xdist must not hide fail-under behind a zero exit.
+
+        Only meaningful when coverage is measured; the default verb runs
+        --no-cov, so the precondition is declared explicitly (mro-uwoc7).
+        """
+        monkeypatch.setattr(
+            FlextInfraPytestRunner, "_coverage_requested", staticmethod(lambda: True)
+        )
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -402,6 +417,22 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
+
+    def test_full_argv_writes_coverage_where_the_gate_reads_it(
+        self, tmp_path: Path
+    ) -> None:
+        """WHAT=full must target the report dir, not the process CWD.
+
+        A bare ``--cov-report=xml`` writes coverage.xml beside the invocation,
+        so the artifact gate - which only inspects the run's report dir - found
+        nothing and failed a suite that had actually passed with 81% measured.
+        The argv and the gate must name the SAME path.
+        """
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        runner = self._runner(tmp_path, what="full")
+        command = runner.build_command(report_dir)
+        tm.that(command, has=[f"--cov-report=xml:{report_dir / 'coverage.xml'}"])
+        tm.that(command, lacks="--cov-report=xml")
 
     def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

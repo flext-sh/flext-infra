@@ -33,6 +33,11 @@ class FlextInfraUtilitiesPyprojectConform:
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
+        # The caller resolves the repository policy overlay: a project
+        # carrying a security floor in override-dependencies pins an absolute
+        # cutoff, because the fleet rolling window would age past that floor
+        # and make resolution unsatisfiable.
+        uv_exclude_newer: str | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -75,7 +80,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
             link_mode=toolchain.uv_link_mode,
-            exclude_newer=toolchain.uv_exclude_newer,
+            exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -502,9 +507,9 @@ class FlextInfraUtilitiesPyprojectConform:
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
         """Remove checkout-absolute type checker interpreter pins.
 
-        Search paths belong to FlextInfraExtraPathsManager. Top-level
-        ``venv`` / ``venvPath`` belong to deps modernize (root vs child
-        runtime). Conform must not strip those or gen oscillates.
+        Search paths belong to FlextInfraExtraPathsManager. Shared analyzer
+        configuration omits checkout-specific interpreter and virtualenv paths;
+        the governed Make runtime selects the active environment.
         """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
@@ -517,8 +522,8 @@ class FlextInfraUtilitiesPyprojectConform:
         if pyright is None:
             return r[bool].ok(True)
 
-        # venv / venvPath are owned by deps modernize (workspace vs child
-        # runtime). Conform only strips checkout-absolute interpreter pins.
+        # Shared config never owns interpreter or virtualenv locations; the
+        # governed Make runtime selects them for the current checkout.
         interpreter_keys = ("pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
