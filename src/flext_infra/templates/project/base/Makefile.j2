@@ -610,7 +610,8 @@ _builtin_build_artifacts:
 
 # Read-only by contract in every profile: mutation belongs to `make fix
 # APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
-# omits make.ci.check_gates_skip before orchestrating members (same contract as
+# runs the positive gate set make.ci.check_gates (RULING 2: rules not
+# skip-list) before orchestrating members (same contract as
 # standalone/member Makefiles and flext_infra check run). APPLY=Y is silently
 # ignored on read-only verbs (check, test, run, status, build, help, setup,
 # release) — it only activates mutation on mutation verbs.
@@ -620,18 +621,8 @@ _builtin_check_all: _builtin_require_environment
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-		filtered=""; \
-		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
-			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
-				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
-			fi; \
-		done; \
-		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for gate in make.ci.check_gates %} {{ gate }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
@@ -673,25 +664,15 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI={{ make.ci.value }} omits make.ci.check_gates_skip (ruff + pyrefly).
+# CI={{ make.ci.value }} runs make.ci.check_gates (RULING 2: rules not skip-list).
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-		filtered=""; \
-		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
-			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
-				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
-			fi; \
-		done; \
-		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for gate in make.ci.check_gates %} {{ gate }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
