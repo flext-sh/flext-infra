@@ -257,6 +257,20 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
+# Bytecode caching is a Make-owned guarantee, not a shell-profile convention.
+# `make` never sources .envrc (that needs direnv), so a policy expressed only
+# there is inert for every Make-driven run. An inherited PYTHONDONTWRITEBYTECODE
+# then disables the import cache and each verb pays full source recompilation
+# (measured: 3341 compile() calls, 9.1s of pure recompilation per run).
+# The variable is undefined rather than set to an empty value, because CPython
+# treats ANY non-empty value as true and an empty one as unset; clearing it here
+# keeps the caller's environment from re-disabling the cache. The prefix keeps
+# __pycache__ out of the working tree while still caching.
+override undefine PYTHONDONTWRITEBYTECODE
+PYTHONPYCACHEPREFIX ?= $(PROJECT_ROOT)/.cache/pycache
+export PYTHONPYCACHEPREFIX
+unexport PYTHONDONTWRITEBYTECODE
+
 ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
 FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
 FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
@@ -342,6 +356,26 @@ $(error ERROR: Cannot use PROJECT and PROJECTS together)
 endif
 endif
 
+
+# mro-ga9q (custom.mk blacklist): member projects may define ANY custom
+# verb/WHAT through _custom_<verb>_<what> handlers and (pre|post)-<verb>[-<what>]
+# hooks EXCEPT the reserved verbs/WHATs below, which stay a flext-infra
+# monopoly. Parse-time guard: every make invocation fails loud when custom.mk
+# redefines a reserved target; every other target is permitted.
+# R12 moved the public verbs out of base.mk into this projection, but the guard
+# stayed behind — and a generated project never includes base.mk, so the
+# monopoly was unenforced in every real checkout. The guard belongs with the
+# verbs it protects.
+CUSTOM_MK_RESERVED_TARGETS := _custom_build_artifacts _custom_check_all _custom_clean_generated _custom_clean_status _custom_deps_check _custom_deps_lock _custom_deps_upgrade _custom_fix_all _custom_fix_apply _custom_fix_check _custom_fmt_all _custom_fmt_apply _custom_fmt_check _custom_gen_all _custom_gen_apply _custom_gen_check _custom_help_usage _custom_mod_all _custom_mod_apply _custom_mod_check _custom_release_rel _custom_release_status _custom_run_default _custom_setup_environment _custom_status_diagnostics _custom_test_all _custom_test_cache-checkpoint _custom_test_cache-clear _custom_test_cache-status _custom_test_full _custom_work_finish _custom_work_land _custom_work_start _custom_work_status boot build check clean daemon-restart daemon-start daemon-start-mypy daemon-start-pyright daemon-status daemon-status-mypy daemon-status-pyright daemon-stop daemon-stop-mypy daemon-stop-pyright deps fix fix-enforcement fmt gen help mod pr release run scan setup status test val work
+ifneq ($(wildcard custom.mk),)
+# Target definitions at column 0, excluding assignments (=) and dot-directives.
+# $(shell) converts the newline-separated results to space-separated lists.
+_CUSTOM_MK_DEFINED := $(shell awk '/^[A-Za-z_][A-Za-z0-9_-]*([ \t]+[A-Za-z_][A-Za-z0-9_-]*)*[ \t]*:/ && index($$0, "=") == 0 { line = $$0; sub(/:.*/, "", line); count = split(line, names, /[ \t]+/); for (i = 1; i <= count; i++) print names[i] }' custom.mk | sort -u)
+_CUSTOM_MK_OFFENDERS := $(shell printf '%s\n' $(_CUSTOM_MK_DEFINED) | grep -xF $(foreach target,$(CUSTOM_MK_RESERVED_TARGETS),-e $(target)))
+ifneq ($(_CUSTOM_MK_OFFENDERS),)
+$(error custom.mk redefines reserved flext-infra target(s): $(_CUSTOM_MK_OFFENDERS) - reserved verbs/WHATs are a flext-infra monopoly; use _custom_<verb>_<what> with a non-reserved WHAT or (pre|post)-<verb>[-<what>] hooks)
+endif
+endif
 
 -include custom.mk
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"

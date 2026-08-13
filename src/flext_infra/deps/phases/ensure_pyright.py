@@ -228,10 +228,15 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
         # mro-0ccx4: a directory that exists but holds no Python files (e.g.
-        # examples/ with only a README) is not a productive root. conform's
-        # _existing_python_dirs filters via discover_python_dirs which checks
-        # for .py files; the modernizer must agree or apply↔check ping-pong.
-        env_dirs = tuple(
+        # examples/ with only a README) is not a productive root.
+        # mro-x0rau.1: conform selects the roots it will demand through
+        # ``u.Infra.analyzer_python_roots`` (conform._existing_python_dirs), which
+        # unions the declared env_dirs with discovered Python roots. Filtering
+        # ``rules.env_dirs`` here instead made this side structurally unable to
+        # emit a root that discovery adds (a .py under docs/), so conform rendered
+        # an executionEnvironment apply could never write and `gen check` reported
+        # drift forever. Both sides now read the same owner.
+        declared = tuple(
             env_dir
             for env_dir in rules.env_dirs
             if project_dir is None
@@ -239,6 +244,11 @@ class FlextInfraEnsurePyrightConfigPhase:
                 (project_dir / env_dir).is_dir()
                 and any((project_dir / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
             )
+        )
+        env_dirs = (
+            declared
+            if project_dir is None
+            else tuple(u.Infra.analyzer_python_roots(project_dir, declared))
         )
         source_path = self._project_source_path()
         return (

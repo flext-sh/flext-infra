@@ -82,10 +82,12 @@ class TestsFlextInfraBasemkGenerator:
             result.value,
             has=(f"PYTEST_PROCESS_TIMEOUT_SECONDS ?= {policy.process_timeout_seconds}"),
         )
-        tm.that(
-            result.value,
-            has="$(PYTEST_BOUNDED) $(VENV_PYTHON) -m flext_infra._pytest_entry",
-        )
+        # R12 (commit 2f7b8900d): base.mk declares only the verbs it ships a
+        # recipe for, so the pytest invocation moved to the generated project
+        # Makefile. base.mk's remaining duty is to PUBLISH the bounded-process
+        # wrapper built from the config budget, which the project recipe consumes.
+        tm.that(result.value, has="PYTEST_BOUNDED = ")
+        tm.that(result.value, has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s")
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(

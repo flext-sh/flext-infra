@@ -86,7 +86,7 @@ class FlextInfraModGateEngine:
             ):
                 continue
             parsed = u.Cli.yaml_parse(raw_document)
-            if parsed.failure or not isinstance(parsed.value, Mapping):
+            if parsed.failure:
                 return r[frozenset[str]].fail(
                     parsed.error or f"invalid ast-grep rule document in {rule}"
                 )

@@ -1504,6 +1504,16 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Generated custom Make policy include directive"),
         ]
+        custom_mk_reserved: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Space-joined reserved custom.mk targets. R12 moved the public "
+                    "verbs into the project projection, so the parse-time monopoly "
+                    "guard must render there instead of only in base.mk."
+                )
+            ),
+        ] = ""
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
@@ -1763,6 +1773,14 @@ class FlextInfraConfigModels:
                 description=("Make directive that includes the custom Make surface"),
             ),
         ]
+        custom_mk_reserved: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Space-joined reserved custom.mk targets guarded at parse time"
+                )
+            ),
+        ] = ""
         workspace_members: Annotated[
             tuple[str, ...], m.Field(description="Ordered workspace member paths")
         ] = ()

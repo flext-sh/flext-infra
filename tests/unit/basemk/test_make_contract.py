@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import stat
-import sys
 import tempfile
 from pathlib import Path
 
@@ -631,14 +630,9 @@ class TestsFlextInfraBasemkMakeContract:
         # Every line invoking mypy/dmypy must be bounded. Deriving this from the
         # rendered recipes keeps the contract valid when a daemon target is
         # added or removed, instead of pinning a magic number.
-        mypy_invocations = [
-            line for line in rendered.splitlines() if "-m mypy" in line
-        ]
+        mypy_invocations = [line for line in rendered.splitlines() if "-m mypy" in line]
         tm.that(bool(mypy_invocations), eq=True)
-        tm.that(
-            all("$(MYPY_BOUNDED)" in line for line in mypy_invocations),
-            eq=True,
-        )
+        tm.that(all("$(MYPY_BOUNDED)" in line for line in mypy_invocations), eq=True)
 
     def test_make_mypy_semantic_failure_is_not_reported_as_resource_limit(
         self, tmp_path: Path
@@ -976,9 +970,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
         result = _run_make(
-            tmp_path,
-            "_custom_probe_bytecode",
-            env={"PYTHONDONTWRITEBYTECODE": "1"},
+            tmp_path, "_custom_probe_bytecode", env={"PYTHONDONTWRITEBYTECODE": "1"}
         )
 
         tm.that(result.exit_code, eq=0)

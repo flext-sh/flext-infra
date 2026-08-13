@@ -28,12 +28,12 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-@lru_cache(maxsize=1)
 def _resolved_git_binary() -> str | None:
-    """Resolve the canonical git binary once per process."""
-    # mro-38p39 (cProfile evidence): git_open_repo refreshed the binary on every
-    # open, so a single-project conform paid 82 Git.refresh calls and 150 git
-    # subprocess spawns. The binary cannot move mid-process, so resolve once.
+    """Resolve the canonical git binary."""
+    # NOT cached: a missing binary must always fail closed. Caching the lookup
+    # would let a first successful resolution mask a later absent git, which is
+    # the exact fail-closed guarantee git_refresh_binary owes its callers.
+    # The expensive part is Git.refresh, cached separately below.
     return shutil.which(c.Infra.GIT)
 
 

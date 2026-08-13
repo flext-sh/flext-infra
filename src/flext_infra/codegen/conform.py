@@ -17,6 +17,7 @@ from typing import Annotated, override
 from flext_core import r
 from flext_infra import config, p
 from flext_infra.base import s
+from flext_infra.basemk.custom_policy import FlextInfraCustomMkPolicy
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
@@ -1864,6 +1865,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
+                    # R12 moved the public verbs into this projection; the custom.mk
+                    # monopoly guard must travel with them (same policy SSOT base.mk uses).
+                    custom_mk_reserved=" ".join(
+                        sorted(FlextInfraCustomMkPolicy.reserved_targets())
+                    ),
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                         workspace
                     ),
@@ -1978,6 +1984,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
+                # R12 moved the public verbs into this projection; the custom.mk
+                # monopoly guard must travel with them (same policy SSOT base.mk uses).
+                custom_mk_reserved=" ".join(
+                    sorted(FlextInfraCustomMkPolicy.reserved_targets())
+                ),
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
                 ),
@@ -2114,6 +2125,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
+                # R12 moved the public verbs into this projection; the custom.mk
+                # monopoly guard must travel with them (same policy SSOT base.mk uses).
+                custom_mk_reserved=" ".join(
+                    sorted(FlextInfraCustomMkPolicy.reserved_targets())
+                ),
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
                 ),
