@@ -12,7 +12,10 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
 
-_MIN_RENDERED_LINES = 400
+# R12 moved every verb recipe into the project Makefile; base.mk now carries
+# only the shared infrastructure surface (detection, venv, preflight, daemons,
+# pr, clean), so the rendered contract is smaller than the pre-R12 file.
+_MIN_RENDERED_LINES = 250
 
 
 class TestsFlextInfraBasemkRenderer:
@@ -76,11 +79,14 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(rendered, lacks="rm -rf .venv")
 
     def test_render_all_builds_with_canonical_uv_command(self) -> None:
-        """Build distributions without unrelated codegen or Poetry commands."""
+        """Bind uv to the resolved runtime without Poetry or codegen commands."""
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
-        tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
+        # R12: `build` is a project-Makefile verb now. base.mk still owns the uv
+        # binding every verb inherits.
         tm.that(rendered, has="UV ?= uv")
+        tm.that(rendered, has="override UV_PROJECT := $(WORKSPACE_ROOT)")
+        tm.that(rendered, has="override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)")
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")
 
@@ -131,15 +137,15 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         text = result.value
         for part in (
-            ".PHONY: help boot build check scan fmt docs docs-serve test val clean pr",
-            "STANDARD_VERBS := boot build check scan fmt docs test val clean pr",
-            "boot: ## Complete setup",
-            "scan: ## Run all security checks",
-            "fmt: ## Run code formatting",
-            "val: ## Run validate gates",
+            ".PHONY: help boot build check scan fmt test val clean pr",
+            "STANDARD_VERBS := boot build check scan fmt test val clean pr",
+            "clean: ## Clean artifacts",
+            "pr: ## Manage pull requests for this repository",
         ):
             tm.that(text, has=part)
-        tm.that(text, lacks="setup build check security format docs")
+        # R12: the docs verb is exterminated — docs is a WHAT selector on the
+        # standard verbs, never a target of its own.
+        tm.that(text, lacks="docs-serve")
         tm.that(text, lacks="docs-base")
         tm.that(text, lacks="docs-sync-scripts")
 
@@ -151,11 +157,10 @@ class TestsFlextInfraBasemkRenderer:
         text = result.value
         for part in (
             "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"',
-            'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
-            'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
-            'echo "  DIAG=1                      Emit extended pytest diagnostics"',
-            'echo "  FIX=1                       Auto-fix supported gates"',
+            "CHECK_GATES ?=",
+            "CHANGED_ONLY ?=",
+            "DIAG ?= 0",
+            "PYTEST_ARGS ?=",
         ):
             tm.that(text, has=part)
         tm.that(text, lacks="check-fast")
