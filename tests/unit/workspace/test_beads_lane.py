@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, m, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
 
@@ -59,3 +62,30 @@ def test_submodule_routes_to_governing_workspace_ledger(tmp_path: Path) -> None:
     resolved = tm.ok(u.Infra.beads_resolve_root(member))
 
     assert resolved == workspace.resolve()
+
+
+def test_beads_root_resolution_is_cached_per_anchor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Repeated resolution of one anchor does not repeat the workspace scan.
+
+    Every ``bd`` invocation resolves the governing ledger first. Re-running the
+    full detector plus workspace-spec load on each call made a single make-work
+    saga pay it 199 times (19.34s of a 120s suite budget, cProfile mro-38p39).
+    Workspace identity is immutable for the life of the process, so the second
+    resolution of the same anchor must be served without re-scanning.
+    """
+    workspace = _repository(tmp_path / "workspace", ledger_id="workspace-ledger")
+
+    first = tm.ok(u.Infra.beads_resolve_root(workspace))
+
+    def _forbidden(_start: Path) -> object:
+        message = "resolve_workspace_root re-scanned an already-resolved anchor"
+        raise AssertionError(message)
+
+    monkeypatch.setattr(
+        FlextInfraWorkspaceDetector, "resolve_workspace_root", _forbidden
+    )
+    second = tm.ok(u.Infra.beads_resolve_root(workspace))
+
+    assert second == first
