@@ -4,10 +4,21 @@ repos:
     hooks:
       # Why: each make verb is its own pre-commit/pre-push hook so the operator
       # sees per-step status (Passed/Failed) natively via the pre-commit runner.
-      # CI=Y is never injected here, because it skips the
-      # lint/format/pyrefly gates that must block a push (9b604d43).
-      # make test never inherits that token either (mro-v4p5 forbids pytest
-      # under CI=Y).
+      # Every step states the CI token instead of inheriting it. A git hook runs
+      # with the invoking environment, so a caller that already exported
+      # CI=Y would otherwise reach the pre-push steps and
+      # revoke exactly the gates a push must not skip (9b604d43: lint, format,
+      # pyrefly; mro-v4p5: pytest). Declaring the token closes that carrier.
+      # pre-commit is the fast mutation pass and runs the CI gate set
+      # (CI=Y). pre-push is the local blocking gate and runs
+      # the full set with CI=N, the local arm of the same
+      # ternary: only the exact value Y disables coverage and
+      # narrows CHECK_GATES, so N keeps every gate and the
+      # complete pytest+coverage run.
+      # pre-commit runs `entry` as an argv, not through a shell, so a leading
+      # VAR=value would be taken as the program name ("Executable CI=Y not
+      # found"). `env` is the portable way to state the variable for a step that
+      # needs no shell; the pre-push steps already own one for `unset`.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
 
@@ -15,7 +26,7 @@ repos:
         name: make setup
         language: system
         entry: >-
-          make setup
+          env CI=Y make setup
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -24,7 +35,7 @@ repos:
         name: make gen APPLY=Y
         language: system
         entry: >-
-          make gen APPLY=Y
+          env CI=Y make gen APPLY=Y
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -33,7 +44,7 @@ repos:
         name: make fmt APPLY=Y
         language: system
         entry: >-
-          make fmt APPLY=Y
+          env CI=Y make fmt APPLY=Y
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -42,7 +53,7 @@ repos:
         name: make fix APPLY=Y
         language: system
         entry: >-
-          make fix APPLY=Y
+          env CI=Y make fix APPLY=Y
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -51,7 +62,7 @@ repos:
         name: make check
         language: system
         entry: >-
-          CI=Y CHECK_GATES=lint,pyrefly,mypy,pyright,security,smells make check
+          env CI=Y make check
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -61,7 +72,7 @@ repos:
         name: make setup
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make setup'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make setup'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -70,7 +81,7 @@ repos:
         name: make gen APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make gen APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make gen APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -79,7 +90,7 @@ repos:
         name: make fmt APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make fmt APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make fmt APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -88,7 +99,7 @@ repos:
         name: make fix APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make fix APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make fix APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -97,7 +108,7 @@ repos:
         name: make check
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CHECK_GATES=lint,pyrefly,mypy,pyright,security,smells make check'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make check'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -106,7 +117,7 @@ repos:
         name: make test WHAT=cache-clear APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make test WHAT=cache-clear APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make test WHAT=cache-clear APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -115,7 +126,7 @@ repos:
         name: make test WHAT=full
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); make test WHAT=full'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make test WHAT=full'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

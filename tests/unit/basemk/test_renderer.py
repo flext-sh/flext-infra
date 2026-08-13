@@ -129,10 +129,7 @@ class TestsFlextInfraBasemkRenderer:
 
         tm.ok(result)
         text = result.value
-        for part in (
-            ".PHONY: clean pr _preflight",
-            "STANDARD_VERBS := clean pr",
-        ):
+        for part in (".PHONY: clean pr _preflight", "STANDARD_VERBS := clean pr"):
             tm.that(text, has=part)
         tm.that(text, lacks="setup build check security format docs")
         tm.that(text, lacks="docs-base")
@@ -144,10 +141,6 @@ class TestsFlextInfraBasemkRenderer:
 
         tm.ok(result)
         text = result.value
-        for part in (
-            "FIX ?=",
-            "PYTEST_BOUNDED",
-            "PYTEST_REPORT_ARGS",
-        ):
+        for part in ("FIX ?=", "PYTEST_BOUNDED", "PYTEST_REPORT_ARGS"):
             tm.that(text, has=part)
         tm.that(text, lacks="check-fast")
