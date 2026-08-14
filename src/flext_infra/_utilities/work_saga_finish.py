@@ -58,26 +58,47 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         topology = self._validated_lane_topology(primary_root, metadata, lane)
         if topology.failure:
             return r.fail(topology.error or "work finish topology validation failed")
+        if isinstance(metadata.topology, m.Infra.EpicLaneTopology):
+            children = FlextInfraWorktreeService.registered_children(primary_root, lane)
+            if children.failure:
+                return r.fail(children.error or "failed to inspect epic child lanes")
+            if children.value:
+                registered = ", ".join(str(child) for child in children.value)
+                return r.fail(
+                    f"work finish refuses epic while children are registered: {registered}"
+                )
         if isinstance(metadata.topology, m.Infra.ChildLaneTopology):
             live = self._live_child_topology(
                 primary_root, shown.value, metadata.topology
             )
             if live.failure:
                 return r.fail(live.error or "work finish child binding failed")
-        merged = self._require_merged_pr(primary_root, branch, pr_number)
-        if merged.failure:
-            return r.fail(merged.error or "work finish PR state check failed")
         if not lane.is_dir():
             return r.fail(f"lane worktree missing: {lane}")
         if not expected:
             return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
-        head = self._git_head(lane)
-        if head.failure:
-            return r.fail(head.error or "failed to resolve lane HEAD")
-        if head.value != expected:
-            return r.fail(
-                f"CAS failed before finish: expected {expected} head={head.value}"
+        matrix = metadata.matrix
+        if matrix is None:
+            return r.fail("work finish requires matrix metadata")
+        for entry in matrix.entries:
+            project_root = self._matrix_project_root(lane, entry.project)
+            if project_root.failure:
+                return r.fail(project_root.error or "matrix project is invalid")
+            merged = self._require_merged_pr(
+                project_root.value, entry.branch, entry.pr_number
             )
+            if merged.failure:
+                return r.fail(merged.error or "work finish PR state check failed")
+            head = self._git_head(project_root.value)
+            if head.failure:
+                return r.fail(
+                    head.error or f"failed to resolve matrix HEAD: {entry.project}"
+                )
+            if head.value != entry.head_oid:
+                return r.fail(
+                    f"CAS failed before finish for {entry.project}: "
+                    f"expected {entry.head_oid} head={head.value}"
+                )
         ownership = self._owned_reservation(bead, branch, lane)
         if ownership.failure:
             return r.fail(ownership.error or "work finish reservation changed")
@@ -119,7 +140,15 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "
             f"decisive=removed {worktree} branch={branch}"
         )
-        removed_metadata = metadata.model_copy(update={"worktree": Path("removed")})
+        removed_matrix = m.Infra.WorkLaneMatrix(
+            entries=tuple(
+                entry.model_copy(update={"state": "removed"})
+                for entry in matrix.entries
+            )
+        )
+        removed_metadata = metadata.model_copy(
+            update={"worktree": Path("removed"), "matrix": removed_matrix}
+        )
         updated = u.Infra.beads_update_lane(
             bead, metadata=removed_metadata, notes=notes, root=self.workspace_root
         )

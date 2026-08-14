@@ -20,7 +20,7 @@ def _pending() -> dict[str, object]:
         "worktree": Path("typed-lane"),
         "kind": c.Infra.WorkKind.FEATURE,
         "slug": "typed-lane",
-        "integration_base": "0.12.0-dev",
+        "integration_base": "HEAD",
         "topology": _plain_topology(),
         "provisioning": c.Infra.WorkProvisioningState.PENDING,
     }
@@ -37,6 +37,47 @@ def test_ready_metadata_requires_head() -> None:
 
     with pytest.raises(ValidationError):
         m.Infra.ReadyLaneMetadata.model_validate(payload)
+
+
+def test_ready_metadata_with_supplied_matrix_requires_root_cas_identity() -> None:
+    matrix = m.Infra.WorkLaneMatrix(
+        entries=(
+            m.Infra.WorkLaneEntry(
+                project=".",
+                branch="feature/typed-lane",
+                head_oid="abc",
+                state="started",
+            ),
+        )
+    )
+    ready = m.Infra.ReadyLaneMetadata.model_validate(
+        _pending()
+        | {
+            "provisioning": c.Infra.WorkProvisioningState.READY,
+            "head_oid": "abc",
+            "matrix": matrix,
+        }
+    )
+    assert ready.matrix == matrix
+
+    with pytest.raises(ValidationError):
+        m.Infra.ReadyLaneMetadata.model_validate(
+            ready.model_dump() | {"head_oid": "different"}
+        )
+
+    with pytest.raises(ValidationError):
+        m.Infra.ReadyLaneMetadata.model_validate(
+            ready.model_dump() | {"pr_number": "42", "pr_url": "https://pr/42"}
+        )
+
+
+def test_ready_metadata_accepts_omitted_matrix() -> None:
+    ready = m.Infra.ReadyLaneMetadata.model_validate(
+        _pending()
+        | {"provisioning": c.Infra.WorkProvisioningState.READY, "head_oid": "abc"}
+    )
+
+    assert ready.matrix is None
 
 
 def test_failed_metadata_accepts_optional_head() -> None:

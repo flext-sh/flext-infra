@@ -72,7 +72,7 @@ class FlextInfraWorkSagaStatus(FlextInfraWorkSagaCommon):
                     if live.failure:
                         return r.fail(live.error or "work status child binding failed")
                 values = metadata.model_dump(
-                    mode="json", exclude_none=True, exclude={"topology"}
+                    mode="json", exclude_none=True, exclude={"topology", "matrix"}
                 )
                 topology = metadata.topology.model_dump(mode="json", exclude_none=True)
                 for key, value in values.items():
@@ -81,6 +81,17 @@ class FlextInfraWorkSagaStatus(FlextInfraWorkSagaCommon):
                     if key != "role" or value != c.Infra.WorkLaneRole.PLAIN:
                         lines.append(f"metadata.{key}: {value}")
                 lines.extend(self._reported_topology(primary_root, metadata))
+                if (
+                    isinstance(metadata, m.Infra.ReadyLaneMetadata)
+                    and metadata.matrix is not None
+                ):
+                    lines.extend(
+                        "matrix: "
+                        f"project={entry.project} branch={entry.branch} "
+                        f"head_oid={entry.head_oid} pr_number={entry.pr_number} "
+                        f"pr_url={entry.pr_url} state={entry.state}"
+                        for entry in metadata.matrix.entries
+                    )
                 if not branch:
                     branch = metadata.branch
         listed = FlextInfraWorktreeService(

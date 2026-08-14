@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
@@ -109,6 +111,22 @@ class TestsCodegenSetupSubmodules:
         cls._git(superproject / path, "config", "user.name", "FLEXT Tests")
         cls._git(superproject, "add", "-f", ".gitmodules", path)
         cls._git(superproject, "commit", "-q", "-m", f"Add {path}")
+
+    @classmethod
+    def _branch_scenario(
+        cls, tmp_path: Path, *, superproject_branch: str, member_branch: str
+    ) -> tuple[Path, dict[str, str]]:
+        """Provision a project whose member sits on the requested branch."""
+        source = tmp_path / "source"
+        cls._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        cls._generated_project(project)
+        cls._add_submodule(project, source, "vendor/source", "declared-dev")
+        if superproject_branch != "main":
+            cls._git(project, "switch", "-q", "-c", superproject_branch)
+        if member_branch != "declared-dev":
+            cls._git(project / "vendor/source", "switch", "-q", "-c", member_branch)
+        return project, cls._fake_uv(project)
 
     def test_virgin_recursive_submodules_initialize_before_environment(
         self, tmp_path: Path
@@ -234,23 +252,85 @@ class TestsCodegenSetupSubmodules:
             eq=configured_url,
         )
 
+    @pytest.mark.parametrize("member_branch", ["declared-dev", "feature/lane"])
+    def test_accepted_branch_provisions_the_environment(
+        self, tmp_path: Path, member_branch: str
+    ) -> None:
+        """Declared branch and superproject lane branch are both accepted."""
+        project, environment = self._branch_scenario(
+            tmp_path, superproject_branch="feature/lane", member_branch=member_branch
+        )
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stderr, lacks="conflicting branch")
+        tm.that(
+            self._git(project / "vendor/source", "branch", "--show-current"),
+            eq=member_branch,
+        )
+        tm.that((project / "uv.log").is_file(), eq=True)
+
     def test_conflicting_branch_fails_before_environment(self, tmp_path: Path) -> None:
-        source = tmp_path / "source"
-        self._commit_repository(source, "declared-dev", "source")
-        project = tmp_path / "project"
-        self._generated_project(project)
-        self._add_submodule(project, source, "vendor/source", "declared-dev")
-        self._git(project / "vendor/source", "switch", "-q", "-c", "local-work")
-        environment = self._fake_uv(project)
+        """A branch that is neither the declared one nor the lane is still refused."""
+        project, environment = self._branch_scenario(
+            tmp_path, superproject_branch="feature/lane", member_branch="local-work"
+        )
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
         tm.that(result.exit_code, eq=2)
         tm.that(result.stderr, has="conflicting branch")
+        tm.that(result.stderr, has="expected declared-dev or feature/lane")
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"),
             eq="local-work",
         )
+        tm.that((project / "uv.log").exists(), eq=False)
+
+    def test_lane_branch_keeps_head_and_dirty_work(self, tmp_path: Path) -> None:
+        """A member on the superproject lane branch provisions without any fetch."""
+        project, environment = self._branch_scenario(
+            tmp_path, superproject_branch="feature/lane", member_branch="feature/lane"
+        )
+        checkout = project / "vendor/source"
+        dirty = checkout / "marker.txt"
+        dirty.write_text("lane wip", encoding="utf-8")
+        head = self._git(checkout, "rev-parse", "HEAD")
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stderr, lacks="fetch origin")
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
+        tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
+        tm.that(dirty.read_text(encoding="utf-8"), eq="lane wip")
+        tm.that((project / "uv.log").is_file(), eq=True)
+
+    def test_lane_branch_without_recorded_gitlink_fails(self, tmp_path: Path) -> None:
+        """The gitlink ancestry guarantee survives the lane branch acceptance."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        checkout = project / "vendor/source"
+        pinned_parent = self._git(checkout, "rev-parse", "HEAD")
+        (checkout / "advanced.txt").write_text("pinned", encoding="utf-8")
+        self._git(checkout, "add", "advanced.txt")
+        self._git(checkout, "commit", "-q", "-m", "Advance the pin")
+        self._git(project, "add", "-f", "vendor/source")
+        self._git(project, "commit", "-q", "-m", "Pin the advanced commit")
+        self._git(project, "switch", "-q", "-c", "feature/lane")
+        self._git(checkout, "switch", "-q", "-c", "feature/lane", pinned_parent)
+        environment = self._fake_uv(project)
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=2)
+        tm.that(result.stderr, has="diverges from recorded gitlink")
+        tm.that(result.stderr, lacks="fetch origin")
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that((project / "uv.log").exists(), eq=False)
 
     def test_local_changes_are_preserved_on_declared_branch(

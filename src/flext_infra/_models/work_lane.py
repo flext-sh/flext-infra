@@ -67,6 +67,26 @@ type LaneTopology = Annotated[
 class _LaneStateModels(_LaneTopologyModels):
     """Typed issue, reservation, and topology declarations."""
 
+    class WorkLaneEntry(_LaneContract):
+        """Lifecycle state for one project in a workspace-root lane."""
+
+        project: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace-relative project")
+        ]
+        branch: Annotated[t.NonEmptyStr, m.Field(description="Project lane branch")]
+        head_oid: Annotated[t.NonEmptyStr, m.Field(description="CAS-protected HEAD")]
+        pr_number: Annotated[str, m.Field(description="Pull request number")] = ""
+        pr_url: Annotated[str, m.Field(description="Pull request URL")] = ""
+        state: Annotated[t.NonEmptyStr, m.Field(description="Lifecycle state")]
+
+    class WorkLaneMatrix(_LaneContract):
+        """Project lifecycle matrix owned by one workspace-root lane."""
+
+        entries: Annotated[
+            tuple[_LaneStateModels.WorkLaneEntry, ...],
+            m.Field(min_length=1, description="Projects owned by the root lane"),
+        ]
+
     class _LaneReservation(_LaneContract):
         branch: Annotated[t.NonEmptyStr, m.Field(description="Canonical lane branch")]
         namespace: Annotated[
@@ -146,6 +166,10 @@ class _LaneStateModels(_LaneTopologyModels):
         head_oid: Annotated[
             t.NonEmptyStr, m.Field(description="CAS-protected ready lane HEAD")
         ]
+        matrix: Annotated[
+            _LaneStateModels.WorkLaneMatrix | None,
+            m.Field(description="Workspace project lifecycle matrix when recorded"),
+        ] = None
         pr_number: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Pull request number recorded after land"),
