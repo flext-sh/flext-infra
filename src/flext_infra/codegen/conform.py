@@ -833,6 +833,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ``u.Infra.analyzer_python_roots`` is the single owner shared with the
         deps modernizer and the extra-paths sync, so no surface can select a
         different set and erase what another just wrote.
+
+        mro-be9ld: a root counts only when this plan actually materializes a
+        file INSIDE it, or when it already exists on disk. Matching the first
+        path segment of every rendered destination also accepted roots the
+        plan never creates (an external scaffold declares examples/ and
+        scripts/ but writes neither), so the first pass emitted pyright
+        environments for absent directories and the verification pass removed
+        them again -- apply never reached a fixed point.
         """
         rendered_roots = {
             Path(entry.destination).parts[0]
