@@ -11,6 +11,11 @@ import flext_infra.maintenance
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_tests import tm
 
+# Why: the symbol must be absent for the test to mean anything, so it
+# cannot be spelled as a static attribute access without making the file
+# ill-typed. The name is data here, and getattr is the access it tests.
+_ABSENT_SYMBOL = "nonexistent_symbol_xyz"
+
 
 class TestsFlextInfraInfraMaintenanceInit:
     """Tests for flext_infra.maintenance module."""
@@ -18,7 +23,7 @@ class TestsFlextInfraInfraMaintenanceInit:
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:
         """Test __getattr__ raises AttributeError for unknown attributes."""
         with pytest.raises(AttributeError):
-            _ = getattr(flext_infra.maintenance, "nonexistent_symbol_xyz")
+            _ = getattr(flext_infra.maintenance, _ABSENT_SYMBOL)
 
     def test_lazy_import_python_version_enforcer(self) -> None:
         """Test lazy import of FlextInfraPythonVersionEnforcer."""

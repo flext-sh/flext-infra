@@ -1,14 +1,11 @@
-"""Typed semantic Git operations for consumers outside ``_git/``."""
+"""Typed semantic Git composition for ``u.Infra``."""
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from flext_infra._utilities._git.semantic_submodule import (
+    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
+)
 
-from git import GitCommandError, Repo
-from git import BaseIndexEntry
-from git import GitCommandNotFound, InvalidGitRepositoryError, NoSuchPathError
 
 from flext_core import r
 from flext_infra._utilities._git.repo import git_refresh_binary

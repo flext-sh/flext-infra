@@ -74,43 +74,23 @@ Infra:
             rich: "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
             typer: "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
           ignore:
-            - assert-raises-exception
             - ambiguous-unicode-character-comment
             - ambiguous-unicode-character-docstring
             - ambiguous-unicode-character-string
-            - bad-dunder-method-name
-            - bad-quotes-inline-string
-            - blank-line-with-whitespace
-            - blind-except
             - boolean-positional-value-in-call
             - camelcase-imported-as-lowercase
-            - collection-literal-concatenation
-            - commented-out-code
             - complex-structure
-            - docstring-extraneous-exception
-            - docstring-extraneous-returns
             - docstring-missing-exception
             - docstring-missing-returns
             - docstring-missing-yields
-            - get-attr-with-constant
-            - hardcoded-sql-expression
             - incorrect-blank-line-before-class
-            - invalid-first-argument-name-for-method
             - line-too-long
             - logging-f-string
             - missing-copyright-notice
-            - missing-return-type-private-function
             - missing-trailing-comma
-            - mixed-case-variable-in-global-scope
             - multi-line-summary-second-line
             - no-self-use
             - non-imperative-mood
-            - non-pep695-type-alias
-            - raise-vanilla-args
-            - raise-within-try
-            - redefined-loop-name
-            - set-attr-with-constant
-            - snake-case-type-alias
             - too-many-arguments
             - too-many-branches
             - too-many-locals
@@ -119,13 +99,9 @@ Infra:
             - too-many-public-methods
             - too-many-return-statements
             - too-many-statements
-            - try-consider-else
             - typing-only-first-party-import
             - typing-only-standard-library-import
             - typing-only-third-party-import
-            - undocumented-param
-            - unnecessary-lambda
-            - unnecessary-placeholder
           ignored-rule-rationales:
             unsorted-imports:
               Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
@@ -149,6 +125,12 @@ Infra:
             # Examples are executable documentation loaded by path, not
             # importable modules, so module-name and shebang rules do not apply.
             "**/examples/**/*.py": [invalid-module-name, shebang-not-executable]
+            # The rope PEP 695 exemption is NOT declared here: this file is the
+            # FLEET policy, and a path that exists only in flext-infra would be
+            # written into every generated project's pyproject.toml. It lives in
+            # flext-infra's own config/quality.yaml as a project-local
+            # ManagedArtifacts.Ruff addition, which conform merges over this
+            # policy for that one repository.
             # Test suites: pytest idioms that are correct-by-design
             # are exempted GLOBALLY at the codegen SSOT (operator P0, per-rule
             # justified per UNIVERSAL_CORE r19 — never a blanket mask):
@@ -357,8 +339,6 @@ Infra:
           source-report-private-usage: error
           test-like-report-private-usage: "none"
           other-report-private-usage: "none"
-          root-venv-path: .
-          project-venv-path: ..
           venv-name: .venv
       coverage:
         source: [src]
@@ -497,15 +477,17 @@ Infra:
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
-        # mro-wkii.17.37.1 (1bc6379b): budgets are MEASURED, not aspirational —
-        # they retain the observed coverage-run slack. The typed runner owns
-        # them; never narrow them back to the pre-measurement 10s/60s.
-        case-timeout-seconds: 30
-        # Measured (ai-hub-wjmk, 2026-08-04): ai-hub unit slice alone reaches
-        # only ~38 percent before the old 300s run wall (exit 124). Full suite
-        # is ~1464 items. Align with consumer health-gate budget (1800s) and
-        # keep process timeout strictly above the run budget.
-        run-timeout-seconds: 1800
+        # OPERATOR LAW mro-38p39 (2026-08-13): budgets are a CONTRACT, not a
+        # measurement. 10s per case, 60s for an explicitly slow case, 120s for
+        # the complete suite. A case that does not fit is a TEST DEFECT and is
+        # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
+        # itself a violation. This supersedes the prior measurement-driven note
+        # that told future maintainers to never narrow back to 10s/60s: that
+        # rule let the suite run 30 minutes, so make test never aborted on
+        # overrun and a push could be attempted without a full green suite.
+        case-timeout-seconds: 10
+        # Complete-suite wall clock. 120s hard ceiling per operator law.
+        run-timeout-seconds: 120
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
@@ -551,12 +533,13 @@ Infra:
           # mro-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
         # mro-99ae: hard process boundary independent of pytest hook progress.
-        # Must exceed run-timeout-seconds (1800): this caps the whole Make/pytest
-        # process (shell `timeout`), not a single session hook. Prior values
-        # (60, then 360 with run=300) killed healthy large suites with exit 124
-        # before the typed runner deadline — ai-hub CI collected ~1464 items and
-        # died at ~63s under process=60 after `make gen`.
-        process-timeout-seconds: 1920
+        # Must exceed run-timeout-seconds (120) by a small grace only: this caps
+        # the whole Make/pytest process (shell `timeout`), not a single session
+        # hook. Under OPERATOR LAW mro-38p39 the suite contract is 120s, so a
+        # wide outer wall is itself an escape hatch — it would let an overrun
+        # keep burning wall clock instead of aborting. Grace covers interpreter
+        # start, collection and teardown only.
+        process-timeout-seconds: 180
       tomlsort:
         all: true
         in_place: true
@@ -687,3 +670,25 @@ Infra:
         examples: [c, d, e, h, m, p, r, s, t, u, x]
         scripts: [c, d, e, h, m, p, r, s, t, u, x]
       main-export-files: [cli.py, main.py]
+
+# Project-local managed-artifact additions for flext-infra itself.
+#
+# `Infra.tooling` above is the FLEET policy every generated project inherits.
+# This block is the same-file project override that conform merges over it for
+# THIS repository only, matching how flext-cli and flext-auth declare theirs.
+# A path that exists only here belongs in this block, never in the fleet policy:
+# declaring it there writes a dead exemption into every project's pyproject.toml.
+ManagedArtifacts:
+  Ruff:
+    per_file_ignores:
+      # OPERATOR-AUTHORIZED 2026-08-08 (rope only, private-member-access only).
+      # Rope 1.14 and upstream master expose NO public API to register a PEP 695
+      # walker handler, so these private slots ARE the library interface.
+      # Vendoring the walker and dropping PEP 695 support were the alternatives;
+      # the operator rejected both.
+      # The access is written LITERALLY and reported honestly: routing it through
+      # getattr with a name constant was refused as a disguised suppression. The
+      # typing side is genuinely fixed (pep695_ast_walker narrows via TypeGuard
+      # and raises when rope changes its internals), so this exemption covers the
+      # ruff rule alone. Removing it reports exactly 12 SLF001, all under _rope/.
+      src/flext_infra/_utilities/_rope/**/*.py: [private-member-access]

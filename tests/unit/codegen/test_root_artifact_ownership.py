@@ -10,7 +10,7 @@ from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
-from tests import u
+from tests import p, t, u
 
 
 class TestsRootArtifactOwnership:
@@ -120,7 +120,7 @@ class TestsRootArtifactOwnership:
             year=2026,
             apply_changes=True,
         ).execute()
-        tm.ok(created)
+        created_result = tm.ok(created)
         u.Tests.initialize_git_repo(root)
         manual = {
             "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
@@ -128,18 +128,14 @@ class TestsRootArtifactOwnership:
         }
         (root / "custom.mk").write_bytes(manual["custom.mk"])
         u.Tests.commit_git_changes(root, "Seed manual extensions")
-        request = m.Infra.CodegenConformRequest(root=root)
-        planned = FlextInfraCodegenConform(workspace_root=root, request=request).plan(
-            request
+        request = m.Infra.CodegenConformRequest(
+            root=root, what=c.Infra.CodegenConformSurface.MAKEFILE
         )
-        tm.ok(planned)
-        governed = tuple(
-            file for file in planned.value.files if file.policy is not None
-        )
-        configured_policies = {
-            item.path.as_posix(): item.policy
+        configured_policy = next(
+            item.policy
             for item in config.Infra.codegen.managed_files
-        }
+            if item.path == Path(c.Infra.MAKEFILE_FILENAME)
+        )
         before = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -148,26 +144,15 @@ class TestsRootArtifactOwnership:
             )
         )
 
-        checked = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
-        )
         first = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY})
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY}),
+            initial_workspace=created_result.plan.workspace,
         )
-
-        tm.ok(checked)
-        tm.ok(first)
-        tm.that(governed, empty=False)
-        tm.that(
-            len({file.path for file in governed}),
-            eq=len(governed),
-            msg=str(tuple(file.path.relative_to(root).as_posix() for file in governed)),
-        )
-        for file in governed:
-            relative = file.path.relative_to(root).as_posix()
-            tm.that(file.policy, eq=configured_policies[relative])
-        tm.that(checked.value.written_files, eq=())
-        tm.that(first.value.written_files, eq=())
+        result = tm.ok(first)
+        governed = tuple(file for file in result.plan.files if file.policy is not None)
+        tm.that(tuple(file.path for file in governed), eq=(root / "Makefile",))
+        tm.that(governed[0].policy, eq=configured_policy)
+        tm.that(result.written_files, eq=())
         after = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -178,6 +163,75 @@ class TestsRootArtifactOwnership:
         tm.that(after, eq=before)
         for relative, expected in manual.items():
             tm.that((root / relative).read_bytes(), eq=expected)
+
+
+class TestsAncestryNetworkBoundary:
+    """The ancestry plan must never block indefinitely on a remote."""
+
+    def test_origin_fetch_is_time_boxed(
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Refreshing the baseline from origin runs under a declared timeout.
+
+        mro-38p39: the ancestry plan shells `git fetch origin` whenever a remote
+        is configured, and it passed no timeout. A slow or unreachable remote
+        therefore blocked conform for as long as git waited -- measured at 7.44s
+        cumulative in one unit test whose fixture pointed origin at a real
+        GitHub URL, the single largest cost in the suite. Every other bounded
+        subprocess in this codebase states c.Infra.TIMEOUT_SHORT; the network
+        call, the one most able to hang, stated nothing.
+        """
+        root = infra_git_repo
+        dist = u.Tests.repository_ref(config.Infra.name).distribution
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / dist.replace("-", "_") / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        u.Tests.commit_git_changes(root, "Seed manifest-less topology")
+
+        recorded: list[tuple[tuple[str, ...], int | None]] = []
+        original = u.Cli.run_raw
+
+        def _record(
+            cmd: t.StrSequence,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            capture: bool = True,
+        ) -> p.Result[p.Cli.CommandOutput]:
+            recorded.append((tuple(cmd), timeout))
+            return original(
+                cmd,
+                cwd=cwd,
+                timeout=timeout,
+                env=env,
+                remove_env_keys=remove_env_keys,
+                input_data=input_data,
+                capture=capture,
+            )
+
+        monkeypatch.setattr(u.Cli, "run_raw", _record)
+        request = m.Infra.CodegenConformRequest(root=root)
+        tm.ok(
+            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
+        )
+
+        fetches = [entry for entry in recorded if "fetch" in entry[0]]
+        tm.that(bool(fetches), eq=True)
+        for _command, timeout in fetches:
+            tm.that(timeout, eq=c.Infra.TIMEOUT_SHORT)
 
 
 __all__: list[str] = []

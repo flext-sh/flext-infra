@@ -366,6 +366,38 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def declare_workspace_ledger(
+            repository: Path, ledger_id: str, ledger_prefix: str | None = None
+        ) -> None:
+            """Declare the typed workspace manifest that owns the ledger.
+
+            A bare ``.beads/config.yaml`` no longer makes a checkout a tracker:
+            the ledger is resolved from the typed manifest. Fixtures that need a
+            tracker therefore declare it here, in one place, instead of each
+            repeating the same manifest construction.
+            """
+            repository_ref = TestsFlextInfraUtilities.Tests.repository_ref(
+                "fixture"
+            ).model_copy(update={"path": Path(), "package": False, "editable": False})
+            tm.ok(
+                u.Cli.yaml_dump(
+                    repository / "config" / "workspace.yaml",
+                    m.Infra.WorkspaceSpec(
+                        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                        name=repository_ref.distribution,
+                        repository=repository_ref,
+                        ledger_id=ledger_id,
+                        # A tracker-owning manifest declares BOTH identifiers
+                        # (mro-cdzxf); callers that need a prefix distinct from
+                        # the SQL-safe database identity state it explicitly.
+                        ledger_prefix=(
+                            ledger_id if ledger_prefix is None else ledger_prefix
+                        ),
+                    ).model_dump(mode="json", exclude_none=True),
+                )
+            )
+
+        @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
             # mro-wkii.17 (codex): tests consume the validated config singleton;
             # the removed utility loader must not survive as a hidden test path.
@@ -859,16 +891,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def isolated_git_env(*, overrides: t.StrMapping | None = None) -> t.StrMapping:
-            """Return an environment with repository-local Git variables removed.
+        def isolated_git_keys() -> t.StrSequence:
+            """Return the repository-local Git variables a fixture must not inherit.
 
             Git exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE while running
             hooks. A fixture that inherits them silently operates on the calling
             repository instead of its own tmp_path, so repository construction
-            must never inherit them. The removed set is whatever the installed
-            Git declares, never a hardcoded list. ``overrides`` carries topology
-            the fixture itself requires, such as permitting the file transport
-            for a local bare origin.
+            must never inherit them. The set is whatever the installed Git
+            declares, never a hardcoded list.
             """
             declared = cli_facade.capture([
                 c.Infra.GIT,
@@ -876,23 +906,33 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "--local-env-vars",
             ])
             tm.ok(declared)
-            return cli_facade.process_env(
-                overrides=overrides, remove_keys=tuple(declared.value.split())
-            )
+            return tuple(declared.value.split())
 
         @staticmethod
-        def git_bootstrap(repo_root: Path, command: t.StrSequence) -> None:
+        def git_bootstrap(
+            repo_root: Path,
+            command: t.StrSequence,
+            *,
+            overrides: t.StrMapping | None = None,
+        ) -> None:
             """Run one repository-construction command isolated from the caller.
 
             Only repository creation belongs here: once a worktree exists, every
             behavioral operation is expressed through the typed ``u.Infra.git_*``
             facade, which binds the repository explicitly.
+
+            Isolation is expressed with ``remove_env_keys`` because ``env`` is an
+            overlay that can only add or replace keys, never remove them
+            (mro-wt8qp). ``overrides`` carries topology the fixture itself
+            requires, such as permitting the file transport for a local bare
+            origin.
             """
             tm.ok(
                 cli_facade.run_checked(
                     [c.Infra.GIT, *command],
                     cwd=repo_root,
-                    env=TestsFlextInfraUtilities.Tests.isolated_git_env(),
+                    env=overrides,
+                    remove_env_keys=TestsFlextInfraUtilities.Tests.isolated_git_keys(),
                 )
             )
 

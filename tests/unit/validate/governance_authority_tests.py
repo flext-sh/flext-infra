@@ -5,7 +5,21 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
+import flext_infra
+from flext_infra import u
+from flext_tests import tm
+
+ROOT = Path(flext_infra.__file__).resolve().parents[2]
+COMMON_DIR = Path(
+    tm.ok(
+        u.Cli.capture(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT
+        )
+    )
+)
+WORKSPACE_ROOT = next(
+    parent.parent for parent in COMMON_DIR.parents if parent.name == ".git"
+)
 
 
 def test_prompt_skills_resolve_to_existing_paths() -> None:
@@ -25,8 +39,8 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
 
 
 def test_governance_authority_sequence_matches_agents() -> None:
-    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    governance = (ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
+    agents = (WORKSPACE_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    governance = (WORKSPACE_ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
     assert "USER REQUEST > BEADS" in agents
     assert "AIHUB-INVIOLABLE-LAW-PRELUDE" in agents
     assert "quality-gates skill" not in governance
@@ -35,12 +49,12 @@ def test_governance_authority_sequence_matches_agents() -> None:
 
 def test_docs_validation_required_skills_exist_with_adr() -> None:
     config = json.loads(
-        (ROOT / "docs" / "architecture" / "architecture_config.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            WORKSPACE_ROOT / "docs" / "architecture" / "architecture_config.json"
+        ).read_text(encoding="utf-8")
     )
     required = config["docs_validation"]["required_skills"]
-    skills_root = ROOT / ".agents" / "skills"
+    skills_root = WORKSPACE_ROOT / ".agents" / "skills"
     for name in required:
         skill = skills_root / name / "SKILL.md"
         assert skill.is_file(), name
@@ -49,12 +63,12 @@ def test_docs_validation_required_skills_exist_with_adr() -> None:
 
 def test_july_handoff_plans_are_marked_historical() -> None:
     plans = (
-        ROOT
+        WORKSPACE_ROOT
         / "docs"
         / "superpowers"
         / "plans"
         / "2026-07-29-flext-beads-governance-reorganization-handoff.md",
-        ROOT
+        WORKSPACE_ROOT
         / "docs"
         / "superpowers"
         / "plans"

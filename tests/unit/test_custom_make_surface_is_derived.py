@@ -31,9 +31,12 @@ def _engine_modules() -> tuple[Path, ...]:
     )
 
 
-def _string_literals(module: Path) -> tuple[str, ...]:
+def _string_literals(module: Path, *, containing: str) -> tuple[str, ...]:
     """Return every string literal in *module*, excluding docstrings."""
-    tree = ast.parse(module.read_text(encoding="utf-8"))
+    source = module.read_text(encoding="utf-8")
+    if containing not in source:
+        return ()
+    tree = ast.parse(source)
     docstrings = {
         ast.get_docstring(node, clean=False)
         for node in ast.walk(tree)
@@ -63,13 +66,10 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
         package_root = Path(flext_infra.__file__).resolve().parent
         ssot = package_root / "_constants"
         # Grandfathered projection debt, owned by the src SSOT: operator-facing
-        # prose (Field descriptions, failure messages) and one pre-cutover path
-        # join embed the filename today. The guard stays closed for every NEW
-        # re-type; a module only leaves this list through a flext-infra change.
-        stable_debt = frozenset({
-            "basemk/custom_policy.py",
-            "workspace/make_serialization.py",
-        })
+        # prose (Field descriptions, failure messages) embeds the filename today.
+        # The guard stays closed for every NEW re-type; a module only leaves this
+        # list through a flext-infra change.
+        stable_debt = frozenset({"basemk/custom_policy.py"})
         offenders = sorted(
             str(module.relative_to(package_root))
             for module in _engine_modules()
@@ -77,7 +77,9 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
             and str(module.relative_to(package_root)) not in stable_debt
             and any(
                 c.Infra.CUSTOM_MAKE_FILENAME in literal
-                for literal in _string_literals(module)
+                for literal in _string_literals(
+                    module, containing=c.Infra.CUSTOM_MAKE_FILENAME
+                )
             )
         )
 

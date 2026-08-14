@@ -20,12 +20,16 @@ from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.namespace import FlextInfraNamespaceGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
+from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
 from flext_infra.gates.codemod import FlextInfraCodemodGate
+from flext_infra.gates.deferred_self_reference import (
+    FlextInfraDeferredSelfReferenceGate,
+)
 
 
 class FlextInfraGateRegistry:
@@ -42,10 +46,12 @@ class FlextInfraGateRegistry:
         """Return the runtime gate classes registered for workspace checks."""
         return (
             FlextInfraRuffLintGate,
+            FlextInfraRuffFormatGate,
             FlextInfraPyreflyGate,
             FlextInfraMypyGate,
             FlextInfraPyrightGate,
             FlextInfraSilentFailureGate,
+            FlextInfraDeferredSelfReferenceGate,
             FlextInfraBanditGate,
             FlextInfraMarkdownGate,
             FlextInfraLocCapGate,

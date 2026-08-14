@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, t, u
+import pytest
+from flext_infra import c, config, m, t, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -34,6 +36,30 @@ class TestCodegenCiMatrix:
         result = service.execute()
         tm.ok(result)
         return root
+
+    @staticmethod
+    def _hook_entry(rendered: str, hook_id: str) -> str:
+        """Return the entry command of one rendered hook, isolated from the rest.
+
+        Searching the whole file proves only that SOME hook carries a prefix; a
+        hook that loses it while its sibling keeps it would still pass.
+        """
+        lines = rendered.splitlines()
+        start = next(
+            index
+            for index, line in enumerate(lines)
+            if line.strip() == f"- id: {hook_id}"
+        )
+        following = lines[start + 1 :]
+        end = next(
+            (
+                index
+                for index, line in enumerate(following)
+                if line.strip().startswith("- id: ")
+            ),
+            len(following),
+        )
+        return "\n".join(following[:end])
 
     def test_ci_matrix_profiles_exclude_workspace_member(self) -> None:
         """Matrix + distro Dockerfiles are root/standalone only (not members)."""
@@ -110,29 +136,75 @@ class TestCodegenCiMatrix:
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
+<<<<<<< HEAD
+        for step in workflow:
+            for context, stage, ci_value in (
+                ("pre_commit", "pre-commit", ci.value),
+                ("pre_push", "pre-push", ci.local_value),
+            ):
+                if context not in step.contexts:
+                    continue
+                suffix = f"-{step.what}" if step.what else ""
+                hook_id = f"flext-{stage}-{step.verb}{suffix}"
+                entry = self._hook_entry(hooks, hook_id)
+                cleanup = (
+                    "unset WHAT MAKEFLAGS "
+                    f"{config.Infra.codegen.make.apply_variable}; "
+                    "unset $(git rev-parse --local-env-vars); "
+                )
+                tm.that(entry, has="bash -eu -o pipefail -c")
+                tm.that(entry, has=cleanup)
+                tm.that(entry, has=f"{ci.variable}={ci_value}")
+                tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
+=======
+        gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
 
-        for hook_id, context in (
+        for hook_prefix, context in (
             ("flext-pre-commit", "pre_commit"),
             ("flext-pre-push", "pre_push"),
         ):
-            commands = " && ".join(
-                f"make {step.verb}"
-                + (
-                    f" {config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                    if step.apply
-                    else ""
+            for step in (step for step in workflow if context in step.contexts):
+                command = (
+                    # Operator law: EVERY pre-commit step carries the fast CI
+                    # token; EVERY pre-push step carries the full-suite token.
+                    (
+                        f"{ci.variable}={ci.value} "
+                        if context == "pre_commit"
+                        else f"{ci.variable}={ci.local_value} "
+                    )
+                    + (
+                        "CHECK_GATES="
+                        + ",".join(
+                            gate
+                            for gate in gates_default
+                            if gate not in step.gates_skip
+                        )
+                        + " "
+                        if step.gates_skip
+                        else ""
+                    )
+                    + f"make {step.verb}"
+                    + (f" WHAT={step.what}" if step.what else "")
+                    + (
+                        f" {config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                        if step.apply
+                        else ""
+                    )
                 )
-                for step in workflow
-                if context in step.contexts
-            )
-            if context == "pre_push":
-                commands = f"unset $(git rev-parse --local-env-vars); {commands}"
-            tm.that(hooks, has=f"id: {hook_id}")
-            tm.that(hooks, has=f"'{commands}'")
-        # Pre-push is the operator's local gate: it runs EVERY check gate.
-        # CI=Y (which skips lint/format/pyrefly) belongs to CI workflows only,
-        # never to a hook that must catch what CI does not run.
+                hook_id = f"{hook_prefix}-{step.verb}"
+                if step.what:
+                    hook_id += f"-{step.what}"
+                entry = self._hook_entry(hooks, hook_id)
+                tm.that(entry, has=command)
+                # Every carrier that can smuggle a caller's selector or
+                # write-enable token into a hook step is cleared before Make.
+                cleanup = (
+                    f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
+                )
+                tm.that(entry, has=cleanup)
+                tm.that(entry.index(cleanup) < entry.index(command), eq=True)
+>>>>>>> refs/remotes/origin/0.12.0-dev
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
@@ -168,9 +240,6 @@ class TestCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        from flext_infra import config, m
-        from flext_cli import u as cli_u
-
         codegen = config.Infra.codegen
         private = codegen.ci_private_submodules.get("cosmos-main")
         tm.that(private is not None, eq=True)
@@ -190,7 +259,7 @@ class TestCodegenCiMatrix:
             checkout_submodules=codegen.checkout_submodules,
             private_submodules=private,
         )
-        rendered_text = tm.ok(cli_u.Cli.template_render(tpl, spec))
+        rendered_text = tm.ok(u.Cli.template_render(tpl, spec))
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
@@ -300,7 +369,8 @@ class TestCodegenCiMatrix:
         for host in (macos, windows):
             tm.that(host, has="run: CI=Y make setup")
             tm.that(host, has="run: CI=Y make help")
-        tm.that(windows.count("shell: bash"), eq=2)
+            tm.that(host, has="run: CI=Y make check")
+        tm.that(windows.count("shell: bash"), eq=3)
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
         self, tmp_path: Path
@@ -368,9 +438,6 @@ class TestCodegenCiMatrix:
 
     def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
         """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
-        from flext_infra import m
-        from flext_cli import u as cli_u
-
         codegen = config.Infra.codegen
         tpl = (
             Path(__file__).resolve().parents[3]
@@ -388,8 +455,8 @@ class TestCodegenCiMatrix:
             ci_matrix_auto_run=False,
         )
         enabled = disabled.model_copy(update={"ci_matrix_auto_run": True})
-        disabled_text = tm.ok(cli_u.Cli.template_render(tpl, disabled))
-        enabled_text = tm.ok(cli_u.Cli.template_render(tpl, enabled))
+        disabled_text = tm.ok(u.Cli.template_render(tpl, disabled))
+        enabled_text = tm.ok(u.Cli.template_render(tpl, enabled))
         disabled_triggers = disabled_text.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
@@ -401,6 +468,51 @@ class TestCodegenCiMatrix:
         tm.that(enabled_triggers, has="branches: [main]")
         tm.that(enabled_triggers, has="workflow_dispatch: {}")
         tm.that(enabled_triggers, lacks="pull_request:")
+
+    def test_no_project_overrides_ci_matrix_auto_run(self) -> None:
+        """ci-matrix stays dispatch-only fleet-wide: no project may opt in.
+
+        Operator law (2026-08-08): ci-matrix is fully OFF, owned by flext-infra,
+        with `ci_matrix_auto_run` at its default and ZERO overrides in any
+        internal or external project. The overlay field still exists as the
+        typed knob, but an override that flips it on is a governance violation,
+        so the absence is asserted rather than assumed.
+        """
+        from flext_infra import m
+
+        base = m.Infra.RepositoryRef(
+            name="flext-demo",
+            distribution="flext-demo",
+            url="https://github.com/flext-sh/flext-demo.git",
+            path=Path(),
+            provider="flext-sh",
+            role=c.Infra.RepositoryRole.STANDALONE,
+            checkout=c.Infra.CheckoutKind.INDEPENDENT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=False,
+            read_only=False,
+        )
+
+        def build(*, auto_run: bool) -> m.Infra.WorkspaceSpec:
+            return m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name="flext-demo",
+                repository=base,
+                repository_policy_overlays=(
+                    m.Infra.RepositoryPolicyOverlaySpec(
+                        project="flext-demo", ci_matrix_auto_run=auto_run
+                    ),
+                ),
+            )
+
+        # The default overlay loads: ci-matrix stays dispatch-only.
+        tm.that(len(build(auto_run=False).repository_policy_overlays), eq=1)
+        # An override is refused at load time, naming the offending project.
+        with pytest.raises(
+            c.ValidationError, match="ci_matrix_auto_run cannot be overridden"
+        ):
+            build(auto_run=True)
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path
@@ -435,10 +547,6 @@ class TestCodegenCiMatrix:
         self, tmp_path: Path
     ) -> None:
         """Profile-excluded member ci-matrix orphans are planned as absent."""
-        from flext_infra import m
-        from flext_infra.codegen.conform import FlextInfraCodegenConform
-        from tests import u as test_u
-
         name = "flext-core"
         root = tmp_path / name
         orphan = root / ".github" / "workflows" / "ci-matrix.yml"
@@ -447,7 +555,7 @@ class TestCodegenCiMatrix:
             'name: ci-matrix\n"on":\n  push:\n    branches: [0.12.0-dev]\n',
             encoding="utf-8",
         )
-        repository = test_u.Tests.repository_ref(
+        repository = u.Tests.repository_ref(
             name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
         )
         workspace = m.Infra.WorkspaceSpec(

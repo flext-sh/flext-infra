@@ -152,6 +152,8 @@ class FlextInfraConstantsSharedInfra:
     "``.gitmodules`` path assignment value inside a submodule section."
     FOLLOW_SUPERPROJECT_BRANCH: Final[str] = "."
     GITIGNORE: Final[str] = ".gitignore"
+    PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
+    "Hook-config projection whose presence decides whether a checkout runs hooks."
     BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
