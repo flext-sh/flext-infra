@@ -52,6 +52,22 @@ def test_failed_metadata_accepts_optional_head() -> None:
     assert failed.head_oid is None
 
 
+def test_bead_issue_accepts_failed_lane_metadata() -> None:
+    issue = m.Infra.BeadIssue.model_validate({
+        "id": "mro-failed-lane",
+        "status": c.Infra.BeadIssueStatus.IN_PROGRESS,
+        "issue_type": "bug",
+        "metadata": _pending()
+        | {
+            "provisioning": c.Infra.WorkProvisioningState.FAILED,
+            "recovery": c.Infra.WorkRecoveryCategory.RETRY_SETUP,
+            "error_category": c.Infra.WorkProvisioningError.SETUP,
+        },
+    })
+
+    assert isinstance(issue.metadata, m.Infra.FailedLaneMetadata)
+
+
 def test_lane_metadata_refuses_extra_fields() -> None:
     with pytest.raises(ValidationError):
         m.Infra.PendingLaneReservation.model_validate(_pending() | {"unknown": "x"})
