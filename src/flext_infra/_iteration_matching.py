@@ -9,7 +9,7 @@ from __future__ import annotations
 import fnmatch
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,7 +28,7 @@ class FlextInfraUtilitiesIterationMatching:
         if not root.is_dir():
             return []
         root = root.resolve()
-        tracked_files = FlextInfraUtilitiesGitScope.git_tracked_scope_paths(root)
+        tracked_files = FlextInfraUtilitiesGit.git_tracked_scope_paths(root)
         candidates = (
             tracked_files
             if tracked_files is not None

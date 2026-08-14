@@ -12,7 +12,7 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
 
-_MIN_RENDERED_LINES = 400
+_MIN_RENDERED_LINES = 200
 
 
 class TestsFlextInfraBasemkRenderer:
@@ -49,7 +49,7 @@ class TestsFlextInfraBasemkRenderer:
             tm.that(rendered, has=required)
         for forbidden in (
             "SETUP_UV ?= uv",
-            "venv --clear",
+            "python -m venv",
             "BOOTSTRAP_PIP",
             "pip install",
             "poetry",
@@ -79,7 +79,6 @@ class TestsFlextInfraBasemkRenderer:
         """Build distributions without unrelated codegen or Poetry commands."""
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
-        tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
         tm.that(rendered, has="UV ?= uv")
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")
@@ -125,19 +124,12 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(result.value, empty=False)
 
     def test_render_all_exposes_canonical_public_targets(self) -> None:
-        """Expose exactly the canonical public Make targets."""
+        """Expose the canonical public Make targets remaining after dead-verb removal."""
         result = FlextInfraBaseMkTemplateRenderer().render_all()
 
         tm.ok(result)
         text = result.value
-        for part in (
-            ".PHONY: help boot build check scan fmt docs docs-serve test val clean pr",
-            "STANDARD_VERBS := boot build check scan fmt docs test val clean pr",
-            "boot: ## Complete setup",
-            "scan: ## Run all security checks",
-            "fmt: ## Run code formatting",
-            "val: ## Run validate gates",
-        ):
+        for part in (".PHONY: clean pr _preflight", "STANDARD_VERBS := clean pr"):
             tm.that(text, has=part)
         tm.that(text, lacks="setup build check security format docs")
         tm.that(text, lacks="docs-base")
@@ -149,13 +141,6 @@ class TestsFlextInfraBasemkRenderer:
 
         tm.ok(result)
         text = result.value
-        for part in (
-            "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"',
-            'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
-            'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
-            'echo "  DIAG=1                      Emit extended pytest diagnostics"',
-            'echo "  FIX=1                       Auto-fix supported gates"',
-        ):
+        for part in ("FIX ?=", "PYTEST_BOUNDED", "PYTEST_REPORT_ARGS"):
             tm.that(text, has=part)
         tm.that(text, lacks="check-fast")

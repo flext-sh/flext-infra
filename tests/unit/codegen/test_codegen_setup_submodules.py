@@ -340,7 +340,9 @@ class TestsCodegenSetupSubmodules:
             self._git(project / "vendor/source", "branch", "--show-current"), eq="main"
         )
 
-    def test_setup_succeeds_when_gitlink_is_ahead_of_origin(self, tmp_path: Path) -> None:
+    def test_setup_succeeds_when_gitlink_is_ahead_of_origin(
+        self, tmp_path: Path
+    ) -> None:
         """Present pin matching HEAD must verify even when origin lags the pin."""
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")

@@ -6,7 +6,7 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -55,7 +55,11 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve and validate requested gate names."""
+        """Resolve and validate requested gate names.
+
+        Under ``CI=Y`` (exact Make CI token), drop lint/ruff and pyrefly so CI
+        does not re-run gates already covered by ``make fmt`` / ``make fix``.
+        """
         resolved: t.MutableSequenceOf[str] = []
         for gate in gates:
             name = gate.strip()
@@ -65,7 +69,39 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
+        owned = FlextInfraWorkspaceChecker._ci_owned_gates(resolved)
+        if owned:
+            FlextInfraWorkspaceChecker._gate_logger.info(
+                "ci_run_check_gates",
+                gates=list(owned),
+                reason="CI=Y runs positive gate set from make.ci.check_gates",
+            )
+            owned_set = frozenset(owned)
+            resolved = [gate for gate in resolved if gate in owned_set]
         return r[list[str]].ok(list(resolved))
+
+    @staticmethod
+    def _ci_token_active() -> bool:
+        """True when the Make CI environment token is exactly make.ci.value."""
+        ci = config.Infra.codegen.make.ci
+        raw = u.Cli.env_read(ci.variable).unwrap().strip()
+        return raw == ci.value
+
+    @staticmethod
+    def _ci_owned_gates(gates: t.StrSequence) -> tuple[str, ...]:
+        """Return gates from *gates* that CI owns (in check_gates) when CI=Y."""
+        if not FlextInfraWorkspaceChecker._ci_token_active():
+            return ()
+        owned = frozenset(config.Infra.codegen.make.ci.check_gates)
+        return tuple(gate for gate in gates if gate in owned)
+
+    @staticmethod
+    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
+        """Apply make.ci.check_gates positive gate set when CI=Y (RULING 2)."""
+        if not FlextInfraWorkspaceChecker._ci_token_active():
+            return [gate for gate in gates if gate]
+        owned = set(FlextInfraWorkspaceChecker._ci_owned_gates(gates))
+        return [gate for gate in gates if gate and gate in owned]
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -82,7 +118,13 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
-        gates = params.gates
+        gates = cls.apply_ci_gate_rules(params.gates)
+        if not gates:
+            return r[bool].fail(
+                "no check gates remain after CI token filtering "
+                f"({config.Infra.codegen.make.ci.variable}="
+                f"{config.Infra.codegen.make.ci.value})"
+            )
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,

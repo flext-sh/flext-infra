@@ -58,6 +58,24 @@ class FlextInfraModelsLayout:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Directories archived once emptied by moves"),
         ] = ()
+        keep_root_files: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Extra root files allowed to remain at project root "
+                    "(strict allowlist exceptions declared only here)"
+                )
+            ),
+        ] = ()
+        ignore_globs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Root entry name globs skipped entirely for this project "
+                    "(neither move nor review)"
+                )
+            ),
+        ] = ()
 
     class LayoutSpec(_LayoutContract):
         """Fully modeled content of the ``layout`` section of ``codegen.yaml``."""
@@ -126,6 +144,24 @@ class FlextInfraModelsLayout:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Root entry globs archived into archive_root"),
         ]
+        special_root_dirs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Root directories skipped by the layout engine "
+                    "(e.g. content submodule trees under data/)"
+                )
+            ),
+        ] = ()
+        reference_root_dirs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "External reference corpora allowed at root "
+                    "(same class as docs/references; not product docs)"
+                )
+            ),
+        ] = ()
         project_overrides: Annotated[
             Mapping[str, FlextInfraModelsLayout.LayoutProjectOverrideSpec],
             m.Field(description="Per-project layout deltas keyed by project name"),

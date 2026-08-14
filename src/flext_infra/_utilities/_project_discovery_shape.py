@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesProjectDiscoveryShapeMixin:
     def _attached_top_level_dir_names(cls, scope_root: Path) -> frozenset[str]:
         """Return top-level dir names opted into workspace iteration as attached."""
         workspace_submodule_names = (
-            FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(scope_root)
+            FlextInfraUtilitiesGit.git_tracked_top_level_dir_names(scope_root)
             or frozenset()
         )
         attached: list[str] = []

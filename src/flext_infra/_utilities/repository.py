@@ -59,8 +59,7 @@ class FlextInfraUtilitiesRepository:
 
     @staticmethod
     def resolve_integration_branch(
-        workspace: m.Infra.WorkspaceSpec,
-        provider: m.Infra.ProviderSpec,
+        workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
     ) -> str:
         """Return the workspace overlay branch, else the provider catalog branch."""
         if workspace.integration is not None:
@@ -81,9 +80,7 @@ class FlextInfraUtilitiesRepository:
             return True
         if declared_branch == provider_branch:
             return True
-        return (
-            integration_branch is not None and declared_branch == integration_branch
-        )
+        return integration_branch is not None and declared_branch == integration_branch
 
     @classmethod
     def repository_baseline_branch(
@@ -104,10 +101,10 @@ class FlextInfraUtilitiesRepository:
 
         for candidate in c.Infra.INTEGRATION_BRANCH_PREFERENCE:
             reference = f"refs/remotes/origin/{candidate}"
-            resolved = u.Infra.git_capture(
-                repository_root, ("rev-parse", "--verify", reference)
+            resolved = u.Infra.git_ref_exists(
+                m.Infra.GitRefRequest(repo_root=repository_root, reference=reference)
             )
-            if resolved.success and resolved.value.strip():
+            if resolved.success and resolved.value.value:
                 return r[str].ok(candidate)
         if fallback:
             return r[str].ok(fallback)

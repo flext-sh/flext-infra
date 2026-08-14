@@ -25,9 +25,7 @@ class FlextInfraGateContractReportMixin:
         return root / ".claude" / "skills" / "scripts-infra" / "report.json"
 
     @staticmethod
-    def _severity_count(
-        script: m.Infra.GateContractScriptInfo, severity: str
-    ) -> int:
+    def _severity_count(script: m.Infra.GateContractScriptInfo, severity: str) -> int:
         return sum(
             1 for violation in script.violations if violation.severity == severity
         )
@@ -66,9 +64,7 @@ class FlextInfraGateContractReportMixin:
         ]
         return ", ".join(details) if details else "contract compliant"
 
-    def _print_script_result(
-        self, script: m.Infra.GateContractScriptInfo
-    ) -> None:
+    def _print_script_result(self, script: m.Infra.GateContractScriptInfo) -> None:
         errors = self._severity_count(script, c.Infra.GateSeverity.ERROR.value)
         warnings = self._severity_count(script, c.Infra.GateSeverity.WARNING.value)
         u.Cli.formatters_print(

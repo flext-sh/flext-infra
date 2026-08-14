@@ -41,8 +41,23 @@ class FlextInfraPytestSelectorValidator(s[bool]):
         for field_name, value in (("file", file), ("match", match), ("what", what)):
             if value is not None and any(character in value for character in "\0\r\n"):
                 return f"{field_name} must not contain control separators"
-        if what not in {None, "all"}:
-            return "what must be: all"
+        allowed = {
+            None,
+            "all",
+            "full",
+            "cache-status",
+            "cache-clear",
+            "cache-checkpoint",
+        }
+        if what not in allowed:
+            return (
+                "what must be: all, full, cache-status, cache-clear, "
+                "or cache-checkpoint"
+            )
+        if what in {"cache-status", "cache-clear", "cache-checkpoint"} and (
+            file is not None or match is not None
+        ):
+            return f"{what} rejects FILE and MATCH"
         if file is None:
             return None
         path_prefix = file.split("::", maxsplit=1)[0]

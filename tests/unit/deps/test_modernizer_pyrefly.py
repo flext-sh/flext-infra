@@ -22,10 +22,10 @@ if TYPE_CHECKING:
 class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
-    def test_modernizer_uses_git_topology_for_analyzer_virtualenvs(
+    def test_modernizer_omits_checkout_specific_analyzer_virtualenvs(
         self, tmp_path: Path
     ) -> None:
-        """Distinguish an attached submodule from an independent linked worktree."""
+        """Keep shared analyzer config invariant across checkout topologies."""
         rules = config.Infra.tooling.tools.pyright.path_rules
         (tmp_path / rules.venv_name).mkdir()
         child_origin = tmp_path / "child-origin"
@@ -104,9 +104,11 @@ class TestsFlextInfraModernizerPyrefly:
         attached_pyright = u.Cli.json_as_mapping(attached_tool["pyright"])
         linked_pyright = u.Cli.json_as_mapping(linked_tool["pyright"])
         tm.that(attached_pyrefly, lacks="python-interpreter-path")
-        tm.that(attached_pyright["venvPath"], eq=rules.project_venv_path)
+        tm.that(attached_pyright, lacks="venv")
+        tm.that(attached_pyright, lacks="venvPath")
         tm.that(linked_pyrefly, lacks="python-interpreter-path")
-        tm.that(linked_pyright["venvPath"], eq=rules.root_venv_path)
+        tm.that(linked_pyright, lacks="venv")
+        tm.that(linked_pyright, lacks="venvPath")
 
     def test_ensure_pyrefly_config_sets_fields_root(
         self, tool_config_document: m.Infra.ToolConfigDocument
@@ -242,6 +244,8 @@ class TestsFlextInfraModernizerPyrefly:
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Keep pre-write import roots identical to post-write discovery."""
+        rules = tool_config_document.tools.pyrefly.path_rules
+        declared_python_dirs = (rules.source_dir, rules.env_dirs[1])
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
         doc = u.Cli.toml_document()
@@ -251,18 +255,49 @@ class TestsFlextInfraModernizerPyrefly:
             is_root=False,
             project_dir=project_dir,
             paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
-            declared_python_dirs=("src", "tests"),
+            declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=True,
         )
 
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=["src", "."])
+        tm.that(
+            u.Cli.toml_unwrap_item(pyrefly["search-path"]),
+            eq=[rules.source_dir, *rules.project_shared_search_paths],
+        )
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]),
-            eq=["src/**/*.py*", "tests/**/*.py*"],
+            eq=[f"{directory}/**/*.py*" for directory in declared_python_dirs],
         )
+
+    def test_ensure_pyrefly_config_complete_empty_roots_do_not_rediscover_disk(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        rules = tool_config_document.tools.pyrefly.path_rules
+        project_dir = tmp_path / "flext-core"
+        (project_dir / rules.source_dir).mkdir(parents=True)
+        doc = u.Cli.toml_document()
+
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
+            doc,
+            is_root=False,
+            project_dir=project_dir,
+            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            declared_python_dirs=(),
+            declared_python_dirs_are_complete=True,
+        )
+
+        tool = doc["tool"]
+        tm.that(tool, is_=MutableMapping)
+        pyrefly = tool["pyrefly"]
+        tm.that(pyrefly, is_=MutableMapping)
+        tm.that(
+            u.Cli.toml_unwrap_item(pyrefly["search-path"]),
+            eq=list(rules.project_shared_search_paths),
+        )
+        tm.that(u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]), eq=[])
 
     def test_ensure_pyrefly_config_uses_pyright_include_when_available(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
@@ -297,7 +332,7 @@ class TestsFlextInfraModernizerPyrefly:
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Verify root context includes workspace dependency source paths."""
+        """Verify root context keeps workspace dependencies out of search-path."""
         for directory in ("src", "tests"):
             (tmp_path / directory).mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
@@ -339,7 +374,7 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        tm.that(search_path, eq=["src", ".", "flext-core/src"])
+        tm.that(search_path, eq=["src", "."])
 
     def test_ensure_pyrefly_config_phase_apply_errors(
         self, tool_config_document: m.Infra.ToolConfigDocument
