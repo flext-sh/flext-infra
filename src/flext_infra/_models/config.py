@@ -1008,6 +1008,12 @@ class FlextInfraConfigModels:
 
         @m.computed_field()
         @property
+        def check_gates_fixable(self) -> tuple[str, ...]:
+            """Gates that repair what they report, driving ``make fix APPLY=Y``."""
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_FIXABLE_VALUES
+
+        @m.computed_field()
+        @property
         def custom_handler_policies(
             self,
         ) -> Mapping[str, FlextInfraConfigModels.CustomHandlerPolicy]:
@@ -1508,7 +1514,9 @@ class FlextInfraConfigModels:
             str,
             m.Field(
                 description=(
-                    "Space-joined reserved custom.mk targets. R12 moved the public "
+                    "Space-joined reserved "
+                    f"{FlextInfraConstantsCodegenProject.CUSTOM_MAKE_FILENAME} "
+                    "targets. R12 moved the public "
                     "verbs into the project projection, so the parse-time monopoly "
                     "guard must render there instead of only in base.mk."
                 )
@@ -1777,7 +1785,9 @@ class FlextInfraConfigModels:
             str,
             m.Field(
                 description=(
-                    "Space-joined reserved custom.mk targets guarded at parse time"
+                    "Space-joined reserved "
+                    f"{FlextInfraConstantsCodegenProject.CUSTOM_MAKE_FILENAME} "
+                    "targets guarded at parse time"
                 )
             ),
         ] = ""
@@ -2851,7 +2861,16 @@ class FlextInfraConfigModels:
         ]
         stages: Annotated[
             tuple[str, ...],
-            m.Field(description="Hook stages declared by the workflow SSOT"),
+            m.Field(description="Hook stages this checkout must have installed"),
+        ] = ()
+        retired_stages: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "Hook stages this checkout must NOT carry, uninstalled on "
+                    "apply and reported as drift on check"
+                )
+            ),
         ] = ()
 
     class CodegenPlan(_ConfigContract):

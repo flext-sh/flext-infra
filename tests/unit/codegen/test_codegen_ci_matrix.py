@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -138,56 +137,52 @@ class TestCodegenCiMatrix:
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
         gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
-        default_whats: Mapping[str, str] = config.Infra.codegen.make.default_whats
 
-        for hook_id, context in (
+        for hook_prefix, context in (
             ("flext-pre-commit", "pre_commit"),
             ("flext-pre-push", "pre_push"),
         ):
-            commands = " && ".join(
-                (
+            for step in (step for step in workflow if context in step.contexts):
+                command = (
                     # Operator law: EVERY pre-commit step carries the fast CI
                     # token; EVERY pre-push step carries the full-suite token.
-                    f"{ci.variable}={ci.value} "
-                    if context == "pre_commit"
-                    else f"{ci.variable}={ci.absent_value} "
-                )
-                + (
-                    "CHECK_GATES="
-                    + ",".join(
-                        gate for gate in gates_default if gate not in step.gates_skip
+                    (
+                        f"{ci.variable}={ci.value} "
+                        if context == "pre_commit"
+                        else f"{ci.variable}={ci.absent_value} "
                     )
-                    + " "
-                    if step.gates_skip
-                    else ""
+                    + (
+                        "CHECK_GATES="
+                        + ",".join(
+                            gate
+                            for gate in gates_default
+                            if gate not in step.gates_skip
+                        )
+                        + " "
+                        if step.gates_skip
+                        else ""
+                    )
+                    + f"make {step.verb}"
+                    + (f" WHAT={step.what}" if step.what else "")
+                    + (
+                        f" {config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                        if step.apply
+                        else ""
+                    )
                 )
-                + f"make {step.verb}"
-                + (
-                    f" WHAT={step.what}"
-                    if step.what
-                    else (f" WHAT={default_whats[step.verb]}" if not step.apply else "")
+                hook_id = f"{hook_prefix}-{step.verb}"
+                if step.what:
+                    hook_id += f"-{step.what}"
+                entry = self._hook_entry(hooks, hook_id)
+                tm.that(entry, has=command)
+                # Every carrier that can smuggle a caller's selector or
+                # write-enable token into a hook step is cleared before Make.
+                cleanup = (
+                    f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
                 )
-                + (
-                    f" {config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                    if step.apply
-                    else ""
-                )
-                for step in workflow
-                if context in step.contexts
-            )
-            tm.that(hooks, has=f"id: {hook_id}")
-            tm.that(hooks, has=commands)
-            # Every carrier that can smuggle a caller's selector or write-enable
-            # token into a hook step is cleared BEFORE the first verb runs.
-            # Position matters, not mere presence: cleanup rendered after the
-            # first `make` would leave that command reading the caller's values.
-            entry = self._hook_entry(hooks, hook_id)
-            cleanup = (
-                f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
-            )
-            tm.that(entry, has=cleanup)
-            tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
+                tm.that(entry, has=cleanup)
+                tm.that(entry.index(cleanup) < entry.index(command), eq=True)
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 

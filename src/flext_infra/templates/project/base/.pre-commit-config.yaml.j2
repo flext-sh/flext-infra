@@ -10,13 +10,13 @@ repos:
       # EVERY pre-push step runs with {{ make.ci.variable }}={{ make.ci.absent_value }} — full pytest+coverage and
       # every gate, so nothing broken is ever shared.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
-      # context only: local `make check` and the `docs` verb keep the full set.
+      # context only: local `make check` keeps the full set.
 {% for step in make.workflow if "pre_commit" in step.contexts %}
       - id: flext-pre-commit-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -26,7 +26,7 @@ repos:
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); {{ make.ci.variable }}={{ make.ci.absent_value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.absent_value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
