@@ -206,6 +206,10 @@ class TestsFlextInfraDepsModernizerPyright:
             "def test_smoke() -> None:\n    assert True\n", encoding="utf-8"
         )
         (project_dir / "tests" / "fixtures").mkdir(parents=True, exist_ok=True)
+        extra_root = "docs"
+        docs_tool = project_dir / extra_root / "tools" / "validate_docs.py"
+        docs_tool.parent.mkdir(parents=True, exist_ok=True)
+        docs_tool.write_text("VALUE = 1\n", encoding="utf-8")
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -233,7 +237,16 @@ class TestsFlextInfraDepsModernizerPyright:
             tm.that(pyright, lacks="ignore")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
-            eq=sorted([rules.source_dir, rules.test_like_dirs[0]]),
+            eq=sorted([extra_root, rules.source_dir, rules.test_like_dirs[0]]),
+        )
+        tm.that(
+            [
+                u.Tests.toml_mapping(environment).get("root")
+                for environment in u.Tests.toml_list(
+                    u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
+                )
+            ],
+            has=extra_root,
         )
         exclude = list(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"])))
         tm.that(exclude, has="**/tests/fixtures")
