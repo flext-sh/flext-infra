@@ -11,6 +11,7 @@ import flext_infra
 import pytest
 from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, m, u
 from flext_tests import tm
+
 from tests import u as test_u
 
 if TYPE_CHECKING:
@@ -828,6 +829,9 @@ class TestsFlextInfraWorkService:
         tm.that(
             template, has='workspace work --workspace "$(WORKSPACE)" --operation land'
         )
+        tm.that(template, has='$(if $(strip $(KIND)),--kind "$(KIND)")')
+        tm.that(template, lacks='--kind "$(KIND)" --name')
+        tm.that(template, has='--epic "$(EPIC)"')
 
     def test_finish_refuses_missing_lane(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
