@@ -104,47 +104,20 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = [
-            "mise",
-            "exec",
-            f"taplo@{config.Infra.codegen.toolchain.taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
-        config_path = self.root / ".taplo.toml"
-        if config_path.is_file():
-            cmd.extend(["--config", str(config_path)])
-        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
-        format_cwd = next(
-            (candidate for candidate in self.root.parents if candidate.is_dir()),
-            self.root,
+        return u.Infra.format_toml_source(
+            rendered,
+            path=path,
+            toolchain_root=self.root,
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
-        format_result = u.Cli.run_raw(
-            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
-        )
-        if format_result.failure:
-            return r[str].fail(format_result.error or "taplo format failed")
-        output = format_result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
-        return r[str].ok(output.stdout)
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
         """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
 
-        A workspace *root* owns the canonical virtualenv locally
-        (``<project>/.venv``); a *child* (any flext-based consumer repo)
-        references the parent workspace venv (``../.venv``). This keeps the
-        pyright ``venvPath`` / pyrefly interpreter classification correct even
-        when ``deps modernize`` is invoked from inside the child itself (so
-        ``workspace_root`` defaults to the child dir). The committed
-        ``Makefile`` ``MAKE_PROFILE`` assignment is the durable backstop when
-        no virtualenv exists at modernize time.
+        Git topology distinguishes workspace roots from attached members for
+        analyzer scope, packaging, and search paths. Virtualenv locations are not
+        committed analyzer settings; the governed Make runtime selects the active
+        environment for each checkout.
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
@@ -193,6 +166,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        format_source: bool = True,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
@@ -208,14 +182,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         child_result = self._project_is_flext_child(path.parent)
         if child_result.failure:
             return [child_result.error or "failed to resolve project Git topology"]
-        # Why (mro-tvc03): inside a work tree the target's own Git topology is
-        # authoritative, never the scope the modernizer was invoked with.
-        # Comparing path.parent against self.root made a workspace MEMBER look
-        # like a root whenever the run started inside it, so venvPath rendered
-        # '..' from within and '.' from the fan-out and no content satisfied
-        # both. Outside any work tree there is no topology to read, so the
-        # relative position remains the only discriminator between a root and
-        # the members nested under it.
+        # Inside a work tree the target's own Git topology is authoritative,
+        # never the scope the modernizer was invoked with. Outside a work tree,
+        # relative position distinguishes a root from its nested members.
         governed = u.Infra.git_superproject_working_tree(
             m.Infra.GitRepoRequest(repo_root=path.parent)
         )
@@ -334,10 +303,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        formatted_result = self._format_rendered_pyproject(path, rendered)
-        if formatted_result.failure:
-            return [formatted_result.error or "taplo format failed"]
-        rendered = formatted_result.value
+        if format_source:
+            formatted_result = self._format_rendered_pyproject(path, rendered)
+            if formatted_result.failure:
+                return [formatted_result.error or "taplo format failed"]
+            rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         state.rendered = normalized_rendered

@@ -126,6 +126,7 @@ class FlextInfraConstantsMake:
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
+        "MAKEFILES",
         "MAKEFLAGS",
         "MAKELEVEL",
         "MAKEOVERRIDES",
@@ -138,6 +139,13 @@ class FlextInfraConstantsMake:
         "MISE_VERBOSE",
         "MFLAGS",
         "MYPYPATH",
+        # mro-izia.1 (agent kimi): workspace selection is an ARGUMENT of the
+        # invocation that owns it, never ambient state a nested make inherits.
+        # A selection exported here (directly, or smuggled through
+        # GNUMAKEFLAGS/MAKEFLAGS) reached generated project makes that never
+        # declare that name and failed them with `undeclared project <name>`.
+        "PROJECT",
+        "PROJECTS",
         "PYTHONPATH",
         "UV_PROJECT",
         "UV_PROJECT_ENVIRONMENT",

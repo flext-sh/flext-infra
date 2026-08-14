@@ -14,15 +14,19 @@ import socket
 import time
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-_DEADLINE_SECONDS = 25.0
+_PYTEST_POLICY = config.Infra.tooling.tools.pytest
+_DEADLINE_SECONDS = float(
+    _PYTEST_POLICY.case_timeout_seconds - _PYTEST_POLICY.termination_grace_seconds
+)
 _POLL_INTERVAL_SECONDS = 0.05
-_PROCESS_STOP_TIMEOUT_SECONDS = 1.0
+_PROCESS_STOP_TIMEOUT_SECONDS = float(_PYTEST_POLICY.termination_grace_seconds)
 _HTTP_OK = 200
 
 

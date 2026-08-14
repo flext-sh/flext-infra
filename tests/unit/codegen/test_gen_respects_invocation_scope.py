@@ -12,13 +12,7 @@ member therefore rewrote the ``pyproject.toml`` of every sibling -- measured as
 dirty without the caller ever touching it.
 
 The damage compounds: ``gen`` runs inside ``check``, and ``check`` runs in the
-pre-commit hook, so a single commit in any lane dirties every sibling. That is
-the "workspace changed during serialized Make check" abort every lane keeps
-hitting -- concurrent lanes were not colliding by carelessness, the verb itself
-was writing outside the scope it was invoked in.
-
-It also makes the fixed point unreachable: each run rewrites the siblings, so
-the next run finds a difference again.
+pre-commit hook, so a single commit in any lane dirties every sibling.
 
 At the workspace root ``PROJECT_ROOT`` already *is* the workspace, so a single
 root keeps the fan-out where it belongs and restricts it everywhere else. No
@@ -103,6 +97,24 @@ def test_recipe_bodies_are_actually_parsed() -> None:
     assert any(
         "$(PROJECT_ROOT)" in line for lines in bodies.values() for line in lines
     ), f"no PROJECT_ROOT command found in {_TEMPLATE}; parser is broken"
+
+
+def test_gen_dependency_stages_follow_codegen_scope() -> None:
+    text = _template_text()
+    assert (
+        "CODEGEN_PROJECT_ARGS := $(if $(filter self,$(CODEGEN_SCOPE)),--projects .,)"
+        in text
+    )
+
+    bodies = _recipe_bodies()
+    for target in ("_builtin_gen_check", "_builtin_gen_all"):
+        dependency_lines = [
+            line
+            for line in bodies[target]
+            if "deps modernize" in line or "deps extra-paths" in line
+        ]
+        assert len(dependency_lines) == 2
+        assert all("$(CODEGEN_PROJECT_ARGS)" in line for line in dependency_lines)
 
 
 __all__: tuple[str, ...] = ()

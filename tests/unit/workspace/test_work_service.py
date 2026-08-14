@@ -9,7 +9,14 @@ from typing import TYPE_CHECKING
 
 import flext_infra
 import pytest
-from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c, m, u
+from flext_infra import (
+    FlextInfraWorkService,
+    FlextInfraWorktreeService,
+    c,
+    config,
+    m,
+    u,
+)
 from flext_tests import tm
 
 from tests import u as test_u
@@ -23,6 +30,7 @@ class TestsFlextInfraWorkService:
 
     @staticmethod
     def _repository(tmp_path: PathType) -> PathType:
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
         repository = tmp_path / "repository"
         repository.mkdir()
         (repository / "README.md").write_text("fixture\n", encoding="utf-8")
@@ -34,10 +42,15 @@ class TestsFlextInfraWorkService:
         (repository / "Makefile").write_text(
             ".PHONY: setup\n"
             "setup:\n"
-            '\t@test "$(WORKSPACE)" = "$(CURDIR)"\n'
-            '\t@grep -q "^\\[project\\]" "$(WORKSPACE)/pyproject.toml"\n'
-            '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
+            '\t@grep -q "^\\[project\\]" "$(CURDIR)/pyproject.toml"\n'
+            f"\t@mkdir -p {venv_name}/bin\n"
+            f"\t@printf '#!/bin/sh\\n' > {venv_name}/bin/python\n"
+            f"\t@chmod +x {venv_name}/bin/python\n"
+            '\t@printf "setting up %s\\n" "$(CURDIR)"\n',
             encoding="utf-8",
+        )
+        (repository / ".gitignore").write_text(
+            f"{venv_name}\n.reports/\n", encoding="utf-8"
         )
         # Why (mro-tvc03): the ledger is resolved from the typed workspace
         # manifest, so a fixture that only drops .beads/config.yaml no longer
@@ -91,16 +104,25 @@ class TestsFlextInfraWorkService:
 
     @staticmethod
     def _install_bd_shim(
-        tmp_path: PathType, bead_id: str, *, update_fails: bool = False
+        tmp_path: PathType,
+        *bead_ids: str,
+        update_fails: bool = False,
+        issue_types: dict[str, str] | None = None,
+        parents: dict[str, str] | None = None,
     ) -> PathType:
         store = tmp_path / "beads-store.json"
         store.write_text(
             json.dumps({
-                "id": bead_id,
-                "status": "open",
-                "assignee": None,
-                "metadata": {},
-                "labels": [],
+                bead_id: {
+                    "id": bead_id,
+                    "status": "open",
+                    "issue_type": (issue_types or {}).get(bead_id),
+                    "parent": (parents or {}).get(bead_id),
+                    "assignee": None,
+                    "metadata": {},
+                    "labels": [],
+                }
+                for bead_id in bead_ids
             }),
             encoding="utf-8",
         )
@@ -121,18 +143,31 @@ class TestsFlextInfraWorkService:
             "        args = args[1:]\n"
             "        continue\n"
             "    break\n"
-            "data = json.loads(open(STORE, encoding='utf-8').read())\n"
+            "store = json.loads(open(STORE, encoding='utf-8').read())\n"
+            "bead_id = args[1] if len(args) > 1 else ''\n"
             "if args[:1] == ['show'] and '--json' in args:\n"
-            "    print(json.dumps(data))\n"
+            "    if bead_id not in store:\n"
+            "        raise SystemExit(f'no issue found matching {bead_id}')\n"
+            "    print(json.dumps(store[bead_id]))\n"
+            "    raise SystemExit(0)\n"
+            "if args[:1] == ['list'] and '--json' in args:\n"
+            "    print(json.dumps(list(store.values())))\n"
             "    raise SystemExit(0)\n"
             "if args[:1] == ['update']:\n"
             f"    if {update_fails!r}:\n"
             "        raise SystemExit('bd update refused')\n"
-            "    i = 1\n"
+            "    if bead_id not in store:\n"
+            "        raise SystemExit(f'no issue found matching {bead_id}')\n"
+            "    data = store[bead_id]\n"
+            "    i = 2\n"
             "    while i < len(args):\n"
             "        if args[i] == '--set-metadata':\n"
             "            key, value = args[i + 1].split('=', 1)\n"
             "            data.setdefault('metadata', {})[key] = value\n"
+            "            i += 2\n"
+            "            continue\n"
+            "        if args[i] == '--unset-metadata':\n"
+            "            data.setdefault('metadata', {}).pop(args[i + 1], None)\n"
             "            i += 2\n"
             "            continue\n"
             "        if args[i] == '--add-label':\n"
@@ -151,7 +186,8 @@ class TestsFlextInfraWorkService:
             "            i += 1\n"
             "            continue\n"
             "        i += 1\n"
-            "    open(STORE, 'w', encoding='utf-8').write(json.dumps(data))\n"
+            "    store[bead_id] = data\n"
+            "    open(STORE, 'w', encoding='utf-8').write(json.dumps(store))\n"
             "    print('updated')\n"
             "    raise SystemExit(0)\n"
             "raise SystemExit(f'unsupported bd args: {args}')\n",
@@ -217,12 +253,56 @@ class TestsFlextInfraWorkService:
         return origin
 
     @staticmethod
-    def _metadata(tmp_path: PathType) -> dict[str, str]:
-        """Return the lane metadata the bd shim persisted."""
-        payload: dict[str, dict[str, str]] = json.loads(
+    def _record(tmp_path: PathType, bead_id: str) -> dict[str, dict[str, str]]:
+        """Return the bead record the bd shim persisted."""
+        store: dict[str, dict[str, dict[str, str]]] = json.loads(
             (tmp_path / "beads-store.json").read_text(encoding="utf-8")
         )
-        return payload["metadata"]
+        return store[bead_id]
+
+    @staticmethod
+    def _set_record(
+        tmp_path: PathType, bead_id: str, record: dict[str, dict[str, str]]
+    ) -> None:
+        """Persist one bead record back into the bd shim store."""
+        path = tmp_path / "beads-store.json"
+        store: dict[str, dict[str, dict[str, str]]] = json.loads(
+            path.read_text(encoding="utf-8")
+        )
+        store[bead_id] = record
+        path.write_text(json.dumps(store), encoding="utf-8")
+
+    @classmethod
+    def _set_metadata(
+        cls, tmp_path: PathType, bead_id: str, metadata: dict[str, str]
+    ) -> None:
+        """Replace the lane metadata of one bead."""
+        record = cls._record(tmp_path, bead_id)
+        record["metadata"] = metadata
+        cls._set_record(tmp_path, bead_id, record)
+
+    @classmethod
+    def _metadata(cls, tmp_path: PathType, bead_id: str) -> dict[str, str]:
+        """Return the lane metadata the bd shim persisted."""
+        return cls._record(tmp_path, bead_id)["metadata"]
+
+    @classmethod
+    def _update_root_matrix_entry(
+        cls, tmp_path: PathType, bead_id: str, **updates: str
+    ) -> None:
+        record = cls._record(tmp_path, bead_id)
+        metadata = record["metadata"]
+        matrix = m.Infra.WorkLaneMatrix.model_validate_json(metadata["matrix"])
+        metadata["matrix"] = matrix.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update=updates) if entry.project == "." else entry
+                    for entry in matrix.entries
+                )
+            }
+        ).model_dump_json()
+        metadata.update(updates)
+        cls._set_record(tmp_path, bead_id, record)
 
     @staticmethod
     def _commit_in(lane: PathType, message: str) -> None:
@@ -265,6 +345,104 @@ class TestsFlextInfraWorkService:
         tm.that(status, has="metadata.branch: feature/example-lane")
         tm.that(status, has="metadata.worktree:")
 
+    def test_start_rejects_matrixless_ready_before_mutation(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-matrixless-ready"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="matrixless-ready",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        record = self._record(tmp_path, bead_id)
+        record["metadata"].pop("matrix")
+        self._set_record(tmp_path, bead_id, record)
+        before_record = self._record(tmp_path, bead_id)
+        before_worktrees = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
+            ).execute()
+        )
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="matrixless-ready",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="ready lane start requires matrix metadata")
+        assert self._record(tmp_path, bead_id) == before_record
+        assert (
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
+                ).execute()
+            )
+            == before_worktrees
+        )
+
+    def test_status_renders_matrixless_ready_without_matrix_lines(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-matrixless-status"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        workspace = m.Infra.WorkspaceSpec.model_validate(
+            u.Cli.yaml_load_mapping(repository / "config" / "workspace.yaml")
+        )
+        provider = next(
+            item
+            for item in config.Infra.codegen.providers
+            if item.name == workspace.repository.provider
+        )
+        self._set_metadata(
+            tmp_path,
+            bead_id,
+            {
+                "branch": "feature/matrixless-status",
+                "namespace": "feature",
+                "worktree": str(tmp_path / "matrixless-status"),
+                "kind": "feature",
+                "slug": "matrixless-status",
+                "integration_base": u.Infra.resolve_integration_branch(
+                    workspace, provider
+                ),
+                "head_oid": "abc",
+                "provisioning": "ready",
+                "role": "plain",
+            },
+        )
+
+        status = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.STATUS,
+                bead=bead_id,
+                apply_changes=False,
+            ).execute()
+        )
+
+        tm.that(status, has="metadata.branch: feature/matrixless-status")
+        assert "matrix:" not in status
+
     def test_finish_refuses_primary_checkout(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -274,19 +452,25 @@ class TestsFlextInfraWorkService:
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
-        store = tmp_path / "beads-store.json"
-        payload = json.loads(store.read_text(encoding="utf-8"))
-        payload["metadata"] = {
-            "branch": "feature/primary-abuse",
-            "worktree": str(repository),
-            "integration_base": "HEAD",
-            "head_oid": tm.ok(
-                test_u.Infra.git_repository_head(
-                    m.Infra.GitRepoRequest(repo_root=repository)
-                )
-            ).oid,
-        }
-        store.write_text(json.dumps(payload), encoding="utf-8")
+        self._set_metadata(
+            tmp_path,
+            bead_id,
+            {
+                "branch": "feature/primary-abuse",
+                "namespace": "feature",
+                "worktree": str(repository),
+                "kind": "feature",
+                "slug": "primary-abuse",
+                "integration_base": "HEAD",
+                "head_oid": tm.ok(
+                    test_u.Infra.git_repository_head(
+                        m.Infra.GitRepoRequest(repo_root=repository)
+                    )
+                ).oid,
+                "provisioning": "ready",
+                "role": "plain",
+            },
+        )
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -362,11 +546,24 @@ class TestsFlextInfraWorkService:
             ).execute()
         )
         tm.that(started, has="BRANCH=bugfix/finish-lane")
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        lane = store["metadata"]["worktree"]
-        head = store["metadata"]["head_oid"]
-        store["metadata"]["pr_number"] = "1"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        record = self._record(tmp_path, bead_id)
+        lane = record["metadata"]["worktree"]
+        head = record["metadata"]["head_oid"]
+        matrix = m.Infra.WorkLaneMatrix.model_validate_json(
+            record["metadata"]["matrix"]
+        )
+        record["metadata"]["matrix"] = matrix.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update={"pr_number": "1"})
+                    if entry.project == "."
+                    else entry
+                    for entry in matrix.entries
+                )
+            }
+        ).model_dump_json()
+        record["metadata"]["pr_number"] = "1"
+        self._set_record(tmp_path, bead_id, record)
         finished = tm.ok(
             FlextInfraWorkService(
                 workspace_root=repository,
@@ -377,11 +574,9 @@ class TestsFlextInfraWorkService:
         )
         tm.that(finished, has="FINISHED BRANCH=bugfix/finish-lane")
         assert not Path(lane).exists()
-        updated = json.loads(
-            (tmp_path / "beads-store.json").read_text(encoding="utf-8")
-        )
-        assert updated["metadata"]["worktree"] == "removed"
-        assert updated["metadata"]["head_oid"] == head
+        updated = self._metadata(tmp_path, bead_id)
+        assert updated["worktree"] == "removed"
+        assert updated["head_oid"] == head
 
     def test_finish_cas_mismatch_fails(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -404,10 +599,9 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["head_oid"] = "0" * 40
-        store["metadata"]["pr_number"] = "1"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        self._update_root_matrix_entry(
+            tmp_path, bead_id, head_oid="0" * 40, pr_number="1"
+        )
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -425,22 +619,27 @@ class TestsFlextInfraWorkService:
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
-        store = tmp_path / "beads-store.json"
-        payload = json.loads(store.read_text(encoding="utf-8"))
-        payload["metadata"] = {
-            "branch": "main",
-            "worktree": str(tmp_path / "fake-lane"),
-            "integration_base": "HEAD",
-            "head_oid": "a" * 40,
-        }
-        store.write_text(json.dumps(payload), encoding="utf-8")
+        self._set_metadata(
+            tmp_path,
+            bead_id,
+            {
+                "branch": "main",
+                "worktree": str(tmp_path / "fake-lane"),
+                "kind": "feature",
+                "slug": "main",
+                "integration_base": "HEAD",
+                "head_oid": "a" * 40,
+                "provisioning": "ready",
+                "role": "plain",
+            },
+        )
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="permanent branch")
+        tm.fail(result, has="metadata.ready.namespace")
 
     def test_land_requires_head_oid(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -462,16 +661,16 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["head_oid"] = ""
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        record = self._record(tmp_path, bead_id)
+        record["metadata"]["head_oid"] = ""
+        self._set_record(tmp_path, bead_id, record)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="missing metadata.head_oid")
+        tm.fail(result, has="metadata.ready.head_oid")
 
     def test_land_refuses_metadata_worktree_mismatch(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -497,9 +696,9 @@ class TestsFlextInfraWorkService:
         poison.mkdir()
         (poison / "README.md").write_text("poison\n", encoding="utf-8")
         test_u.Tests.initialize_git_repo(poison)
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["worktree"] = str(poison)
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        record = self._record(tmp_path, bead_id)
+        record["metadata"]["worktree"] = str(poison)
+        self._set_record(tmp_path, bead_id, record)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,
@@ -529,17 +728,17 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["head_oid"] = ""
-        store["metadata"]["pr_number"] = "1"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        record = self._record(tmp_path, bead_id)
+        record["metadata"]["head_oid"] = ""
+        record["metadata"]["pr_number"] = "1"
+        self._set_record(tmp_path, bead_id, record)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="missing metadata.head_oid")
+        tm.fail(result, has="metadata.ready.head_oid")
 
     def test_finish_refuses_permanent_branch_via_config_integration(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -565,22 +764,27 @@ class TestsFlextInfraWorkService:
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
-        store = tmp_path / "beads-store.json"
-        payload = json.loads(store.read_text(encoding="utf-8"))
-        payload["metadata"] = {
-            "branch": "0.12.0-dev",
-            "worktree": str(tmp_path / "fake-lane"),
-            "integration_base": "",
-            "head_oid": "a" * 40,
-        }
-        store.write_text(json.dumps(payload), encoding="utf-8")
+        self._set_metadata(
+            tmp_path,
+            bead_id,
+            {
+                "branch": "0.12.0-dev",
+                "worktree": str(tmp_path / "fake-lane"),
+                "kind": "feature",
+                "slug": "integration",
+                "integration_base": "0.12.0-dev",
+                "head_oid": "a" * 40,
+                "provisioning": "ready",
+                "role": "plain",
+            },
+        )
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="permanent branch")
+        tm.fail(result, has="metadata.ready.namespace")
 
     def test_finish_refuses_already_removed(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -591,15 +795,21 @@ class TestsFlextInfraWorkService:
         monkeypatch.setenv(
             "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         )
-        store = tmp_path / "beads-store.json"
-        payload = json.loads(store.read_text(encoding="utf-8"))
-        payload["metadata"] = {
-            "branch": "bugfix/gone",
-            "worktree": "removed",
-            "integration_base": "HEAD",
-            "head_oid": "a" * 40,
-        }
-        store.write_text(json.dumps(payload), encoding="utf-8")
+        self._set_metadata(
+            tmp_path,
+            bead_id,
+            {
+                "branch": "bugfix/gone",
+                "namespace": "bugfix",
+                "worktree": "removed",
+                "kind": "bugfix",
+                "slug": "gone",
+                "integration_base": "HEAD",
+                "head_oid": "a" * 40,
+                "provisioning": "ready",
+                "role": "plain",
+            },
+        )
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -664,10 +874,10 @@ class TestsFlextInfraWorkService:
         poison.mkdir()
         (poison / "README.md").write_text("poison\n", encoding="utf-8")
         test_u.Tests.initialize_git_repo(poison)
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["worktree"] = str(poison)
-        store["metadata"]["pr_number"] = "1"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        record = self._record(tmp_path, bead_id)
+        record["metadata"]["worktree"] = str(poison)
+        record["metadata"]["pr_number"] = "1"
+        self._set_record(tmp_path, bead_id, record)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -767,9 +977,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["head_oid"] = "0" * 40
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        self._update_root_matrix_entry(tmp_path, bead_id, head_oid="0" * 40)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,
@@ -799,8 +1007,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        lane = Path(store["metadata"]["worktree"])
+        lane = Path(self._metadata(tmp_path, bead_id)["worktree"])
         (lane / "dirty.txt").write_text("dirty\n", encoding="utf-8")
         result = FlextInfraWorkService(
             workspace_root=repository,
@@ -854,10 +1061,10 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        lane = Path(store["metadata"]["worktree"])
-        store["metadata"]["pr_number"] = "1"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        record = self._record(tmp_path, bead_id)
+        lane = Path(record["metadata"]["worktree"])
+        record["metadata"]["pr_number"] = "1"
+        self._set_record(tmp_path, bead_id, record)
         for child in sorted(lane.rglob("*"), reverse=True):
             if child.is_file() or child.is_symlink():
                 child.unlink()
@@ -871,10 +1078,7 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="lane worktree missing")
-        updated = json.loads(
-            (tmp_path / "beads-store.json").read_text(encoding="utf-8")
-        )
-        assert updated["metadata"]["worktree"] != "removed"
+        assert self._metadata(tmp_path, bead_id)["worktree"] != "removed"
 
     def test_finish_fails_when_pr_list_errors(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -935,9 +1139,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["pr_number"] = "9"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="9")
         gh = shim_dir / "gh"
         gh.write_text(
             "#!/usr/bin/env python3"
@@ -992,9 +1194,9 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["integration_base"] = "attacker-base"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        record = self._record(tmp_path, bead_id)
+        record["metadata"]["integration_base"] = "attacker-base"
+        self._set_record(tmp_path, bead_id, record)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,
@@ -1025,8 +1227,8 @@ class TestsFlextInfraWorkService:
             ).execute()
         )
         tm.that(first, has="receipt.operation=start")
-        lane = Path(self._metadata(tmp_path)["worktree"])
-        stale_head = self._metadata(tmp_path)["head_oid"]
+        lane = Path(self._metadata(tmp_path, bead_id)["worktree"])
+        stale_head = self._metadata(tmp_path, bead_id)["head_oid"]
         self._commit_in(lane, "lane work")
         second = tm.ok(
             FlextInfraWorkService(
@@ -1039,7 +1241,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        refreshed = self._metadata(tmp_path)
+        refreshed = self._metadata(tmp_path, bead_id)
         assert refreshed["worktree"] == str(lane)
         assert refreshed["head_oid"] != stale_head
         tm.that(second, has=f"receipt.head_oid={refreshed['head_oid']}")
@@ -1065,7 +1267,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        assert self._metadata(tmp_path) == {}
+        assert self._metadata(tmp_path, bead_id) == {}
         started = tm.ok(
             FlextInfraWorkService(
                 workspace_root=repository,
@@ -1079,7 +1281,7 @@ class TestsFlextInfraWorkService:
         )
         tm.that(started, has=f"receipt.worktree={orphan}")
         tm.that(started, has="receipt.branch=feature/recover-lane")
-        assert self._metadata(tmp_path)["worktree"] == orphan
+        assert self._metadata(tmp_path, bead_id)["worktree"] == orphan
 
     def test_start_rolls_back_lane_when_beads_update_fails(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -1140,7 +1342,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        metadata = self._metadata(tmp_path)
+        metadata = self._metadata(tmp_path, bead_id)
         tm.that(landed, has="receipt.operation=land")
         tm.that(landed, has="receipt.pr=7")
         tm.that(landed, has="receipt.base=main")
@@ -1182,8 +1384,8 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        recorded = self._metadata(tmp_path)["head_oid"]
-        lane = Path(self._metadata(tmp_path)["worktree"])
+        recorded = self._metadata(tmp_path, bead_id)["head_oid"]
+        lane = Path(self._metadata(tmp_path, bead_id)["worktree"])
         self._commit_in(lane, "lane advance")
         landed = tm.ok(
             FlextInfraWorkService(
@@ -1193,7 +1395,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        advanced = self._metadata(tmp_path)["head_oid"]
+        advanced = self._metadata(tmp_path, bead_id)["head_oid"]
         assert advanced != recorded
         tm.that(landed, has=f"receipt.head_oid={advanced}")
 
@@ -1220,7 +1422,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        lane = Path(self._metadata(tmp_path)["worktree"])
+        lane = Path(self._metadata(tmp_path, bead_id)["worktree"])
         self._commit_in(repository, "remote advance")
         remote_oid = tm.ok(
             test_u.Infra.git_repository_head(
@@ -1271,9 +1473,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["pr_number"] = "5"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="5")
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -1306,9 +1506,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        store = json.loads((tmp_path / "beads-store.json").read_text(encoding="utf-8"))
-        store["metadata"]["pr_number"] = "6"
-        (tmp_path / "beads-store.json").write_text(json.dumps(store), encoding="utf-8")
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="6")
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -1316,7 +1514,7 @@ class TestsFlextInfraWorkService:
             apply_changes=True,
         ).execute()
         tm.fail(result, has="requires merged PR #6; state=CLOSED")
-        assert self._metadata(tmp_path)["worktree"] != "removed"
+        assert self._metadata(tmp_path, bead_id)["worktree"] != "removed"
 
     def test_finish_refuses_open_pr_without_pr_number(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -1403,7 +1601,7 @@ class TestsFlextInfraWorkService:
         tm.that(finished, has="receipt.operation=finish")
         tm.that(finished, has="receipt.pr=9")
         tm.that(finished, has="receipt.branch=feature/lifecycle-lane")
-        assert self._metadata(tmp_path)["worktree"] == "removed"
+        assert self._metadata(tmp_path, bead_id)["worktree"] == "removed"
 
     def test_makefile_j2_help_scopes_apply_to_mutating_work_selectors(self) -> None:
         """Help must not demand APPLY=Y for the read-only default selector."""
@@ -1418,3 +1616,462 @@ class TestsFlextInfraWorkService:
             template,
             has="{{ verb.default_what }} is read-only; other WHATs require APPLY=Y",
         )
+
+    def test_makefile_j2_exposes_the_public_epic_selector(self) -> None:
+        """One public selector nests a child lane, and it names a bead id."""
+        template = (
+            Path(flext_infra.__file__).resolve().parent
+            / "templates"
+            / "project"
+            / "base"
+            / "Makefile.j2"
+        ).read_text(encoding="utf-8")
+        tm.that(template, has='--base "$(BASE)" --epic "$(EPIC)" --apply')
+        tm.that(template, has='$(if $(strip $(KIND)),--kind "$(KIND)")')
+        tm.that(
+            template,
+            has="'EPIC' 'registered epic bead id; nests work start as its child lane'",
+        )
+        tm.that(
+            template,
+            has="'KIND' 'optional feature|bugfix|hotfix|release; omitted derives from Bead issue_type'",
+        )
+
+    @pytest.mark.parametrize(
+        ("issue_type", "expected_branch"),
+        [
+            ("epic", "epic/derived-kind"),
+            ("feature", "feature/derived-kind"),
+            ("bug", "bugfix/derived-kind"),
+        ],
+    )
+    def test_start_derives_kind_from_issue_type(
+        self,
+        tmp_path: PathType,
+        monkeypatch: pytest.MonkeyPatch,
+        issue_type: str,
+        expected_branch: str,
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = f"mro-{issue_type}-kind"
+        shim_dir = self._install_bd_shim(
+            tmp_path, bead_id, issue_types={bead_id: issue_type}
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        started = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                name="derived-kind",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        tm.that(started, has=f"BRANCH={expected_branch}")
+
+    def test_start_refuses_explicit_gitflow_kind_for_epic_issue(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-epic-explicit-kind"
+        shim_dir = self._install_bd_shim(
+            tmp_path, bead_id, issue_types={bead_id: "epic"}
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="epic-explicit-kind",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="epic issue derives the epic branch namespace")
+
+    def test_start_refuses_missing_issue_type_without_kind_override(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-missing-kind"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            name="missing-kind",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+        tm.fail(result, has="missing issue_type")
+
+    def _started_epic_lane(
+        self,
+        tmp_path: PathType,
+        repository: PathType,
+        epic_bead: str,
+        child_bead: str,
+        *,
+        child_name: str = "child-one",
+    ) -> tuple[PathType, PathType]:
+        """Start one epic lane and one child lane nested below it."""
+        store_path = tmp_path / "beads-store.json"
+        store = json.loads(store_path.read_text(encoding="utf-8"))
+        store[epic_bead]["issue_type"] = "epic"
+        store[child_bead]["parent"] = epic_bead
+        store_path.write_text(json.dumps(store), encoding="utf-8")
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=epic_bead,
+                name="epic-alpha",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=child_bead,
+                kind=c.Infra.WorkKind.FEATURE,
+                name=child_name,
+                epic=epic_bead,
+                apply_changes=True,
+            ).execute()
+        )
+        return (
+            Path(self._metadata(tmp_path, epic_bead)["worktree"]),
+            Path(self._metadata(tmp_path, child_bead)["worktree"]),
+        )
+
+    def test_start_child_nests_under_the_registered_epic(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A child lane derives its base and its container from its epic."""
+        repository = self._repository(tmp_path)
+        epic_bead = "mro-test-epic"
+        child_bead = "mro-test-child"
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "task"},
+            parents={child_bead: epic_bead},
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=epic_bead,
+                name="epic-alpha",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        epic_lane = Path(self._metadata(tmp_path, epic_bead)["worktree"])
+
+        started = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=child_bead,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="child-one",
+                epic=epic_bead,
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(started, has=f"EPIC={epic_bead}")
+        tm.that(started, has="BASE=epic/epic-alpha")
+        child = self._metadata(tmp_path, child_bead)
+        tm.that(child["role"], eq=c.Infra.WorkLaneRole.CHILD.value)
+        tm.that(child["epic_bead"], eq=epic_bead)
+        tm.that(child["epic_branch"], eq="epic/epic-alpha")
+        tm.that(child["epic_worktree"], eq=str(epic_lane))
+        tm.that(child["child_slug"], eq="child-one")
+        tm.that(child["integration_base"], eq="epic/epic-alpha")
+        container = epic_lane / c.Infra.WORKTREES_DIRNAME
+        tm.that(Path(child["worktree"]), eq=container / "child-one")
+        tm.that(
+            self._metadata(tmp_path, epic_bead)["role"],
+            eq=c.Infra.WorkLaneRole.EPIC.value,
+        )
+        tm.that(
+            tm.ok(FlextInfraWorktreeService.registered_children(repository, epic_lane)),
+            eq=(Path(child["worktree"]),),
+        )
+
+    def test_start_child_refuses_a_literal_base_beside_its_epic(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The epic alone decides where a child branches from."""
+        repository = self._repository(tmp_path)
+        epic_bead = "mro-test-epic-base"
+        child_bead = "mro-test-child-base"
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "task"},
+            parents={child_bead: epic_bead},
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=epic_bead,
+                name="epic-alpha",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=child_bead,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="child-one",
+            epic=epic_bead,
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="drop --base")
+
+    def test_start_child_refuses_an_epic_that_owns_no_lane(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A child never precedes the epic lane it must nest under."""
+        repository = self._repository(tmp_path)
+        epic_bead = "mro-test-epic-absent"
+        child_bead = "mro-test-child-absent"
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "task"},
+            parents={child_bead: epic_bead},
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=child_bead,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="child-one",
+            epic=epic_bead,
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has=f"epic bead {epic_bead} lane is not ready")
+
+    def test_status_reports_the_registered_epic_topology(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Status proves the recorded topology against Git's registry."""
+        repository = self._repository(tmp_path)
+        epic_bead = "mro-test-epic-status"
+        child_bead = "mro-test-child-status"
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "feature"},
+            parents={child_bead: epic_bead},
+        )
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        epic_lane, child_lane = self._started_epic_lane(
+            tmp_path, repository, epic_bead, child_bead
+        )
+
+        epic_status = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.STATUS,
+                bead=epic_bead,
+                apply_changes=False,
+            ).execute()
+        )
+        child_status = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.STATUS,
+                bead=child_bead,
+                apply_changes=False,
+            ).execute()
+        )
+
+        tm.that(epic_status, has=f"epic_topology: epic children=1 {child_lane}")
+        tm.that(child_status, has=f"epic_topology: child of {epic_lane}")
+
+    def test_status_of_a_plain_lane_reports_no_epic_topology(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A lane without an epic keeps the exact status it always had."""
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-plain-status"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="plain-lane",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+
+        status = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.STATUS,
+                bead=bead_id,
+                apply_changes=False,
+            ).execute()
+        )
+
+        assert "epic_topology" not in status
+        assert "metadata.role" not in status
+
+    def test_finish_refuses_the_epic_until_its_child_is_finished(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A child lane pins its epic lane, and finishing the child frees it."""
+        repository = self._repository(tmp_path)
+        epic_bead = "mro-test-epic-finish"
+        child_bead = "mro-test-child-finish"
+        shim_dir = self._install_bd_shim(tmp_path, epic_bead, child_bead)
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        epic_lane, child_lane = self._started_epic_lane(
+            tmp_path, repository, epic_bead, child_bead
+        )
+        for bead_id, pr_number in ((epic_bead, "1"), (child_bead, "2")):
+            self._update_root_matrix_entry(tmp_path, bead_id, pr_number=pr_number)
+
+        refused = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=epic_bead,
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(refused, has="while children are registered")
+        tm.fail(refused, has=str(child_lane))
+        tm.that(epic_lane.is_dir(), where=bool)
+
+        tm.that(
+            tm.ok(
+                FlextInfraWorkService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorkOperation.FINISH,
+                    bead=child_bead,
+                    apply_changes=True,
+                ).execute()
+            ),
+            has="FINISHED BRANCH=feature/child-one",
+        )
+        tm.that(
+            tm.ok(
+                FlextInfraWorkService(
+                    workspace_root=repository,
+                    operation=c.Infra.WorkOperation.FINISH,
+                    bead=epic_bead,
+                    apply_changes=True,
+                ).execute()
+            ),
+            has="FINISHED BRANCH=epic/epic-alpha",
+        )
+        assert not epic_lane.exists()
+
+    def test_finish_refuses_a_child_lane_outside_its_epic_namespace(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Recorded child metadata never overrides the real lane topology."""
+        repository = self._repository(tmp_path)
+        epic_bead = "mro-test-epic-escape"
+        child_bead = "mro-test-child-escape"
+        shim_dir = self._install_bd_shim(
+            tmp_path,
+            epic_bead,
+            child_bead,
+            issue_types={epic_bead: "epic", child_bead: "feature"},
+            parents={child_bead: epic_bead},
+        )
+        self._install_gh_shim(tmp_path)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=epic_bead,
+                name="epic-alpha",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        epic_lane = Path(self._metadata(tmp_path, epic_bead)["worktree"])
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=child_bead,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="outside-lane",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        record = self._record(tmp_path, child_bead)
+        record["metadata"] |= {
+            "role": c.Infra.WorkLaneRole.CHILD.value,
+            "epic_bead": epic_bead,
+            "epic_branch": "epic/epic-alpha",
+            "epic_worktree": str(epic_lane),
+            "child_slug": "outside-lane",
+        }
+        self._set_record(tmp_path, child_bead, record)
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.FINISH,
+            bead=child_bead,
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="is not nested under epic lane")
+        tm.fail(result, has=str(epic_lane))
