@@ -13,6 +13,10 @@ $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
 
 # === SIMPLE VERB SURFACE ===
+<<<<<<< HEAD
+.PHONY: clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
+STANDARD_VERBS := clean pr
+=======
 # base.mk declares ONLY the verbs it ships a recipe for. R12 moved every other
 # public verb into the generated project Makefile, and a verb declared here
 # without a recipe is not harmless: Make treats it as a satisfied target, so the
@@ -22,6 +26,7 @@ $(LINT_CACHE_DIR):
 # recipes this file composes.
 .PHONY: help clean _preflight
 STANDARD_VERBS := clean
+>>>>>>> refs/remotes/origin/0.12.0-dev
 $(STANDARD_VERBS): _preflight
 
 define ENFORCE_WORKSPACE_VENV

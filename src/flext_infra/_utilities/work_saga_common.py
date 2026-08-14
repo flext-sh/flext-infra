@@ -31,8 +31,13 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSup
     branch: str | None
 
     def _primary_root(self) -> p.Result[Path]:
+        governed = u.Infra.beads_resolve_root(self.workspace_root)
+        if governed.failure:
+            return r[Path].fail(
+                governed.error or "failed to resolve governing workspace"
+            )
         primary = u.Infra.git_primary_worktree_root(
-            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
+            m.Infra.GitRepoRequest(repo_root=governed.value)
         )
         if primary.failure:
             return r[Path].fail(primary.error or "failed to resolve primary worktree")
@@ -180,6 +185,46 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSup
             return r.fail(status.error or f"failed to inspect {lane}")
         if status.value.dirty:
             return r.fail("work land/finish requires a clean lane worktree")
+        return r.ok(True)
+
+    @staticmethod
+    def _matrix_project_root(lane: Path, project: str) -> p.Result[Path]:
+        candidate = (lane / project).resolve()
+        if not candidate.is_relative_to(lane.resolve()):
+            return r.fail(f"matrix project resolves outside root worktree: {project}")
+        if not candidate.is_dir():
+            return r.fail(f"matrix project checkout is missing: {project}")
+        return r.ok(candidate)
+
+    def _validate_matrix_cas(
+        self, lane: Path, matrix: m.Infra.WorkLaneMatrix
+    ) -> p.Result[bool]:
+        for entry in matrix.entries:
+            project_root = self._matrix_project_root(lane, entry.project)
+            if project_root.failure:
+                return r.fail(project_root.error or "matrix project is invalid")
+            clean = self._ensure_clean(project_root.value)
+            if clean.failure:
+                return r.fail(
+                    clean.error or f"matrix project is dirty: {entry.project}"
+                )
+            current = self._git_head(project_root.value)
+            if current.failure:
+                return r.fail(
+                    current.error or f"failed to resolve matrix HEAD: {entry.project}"
+                )
+            if current.value == entry.head_oid:
+                continue
+            contains = u.Infra.git_is_ancestor(
+                m.Infra.GitCommitishRequest(
+                    repo_root=project_root.value, commitish=entry.head_oid
+                )
+            )
+            if contains.failure or not contains.value.value:
+                return r.fail(
+                    f"CAS failed for {entry.project}: expected={entry.head_oid} "
+                    f"head={current.value}"
+                )
         return r.ok(True)
 
     @staticmethod

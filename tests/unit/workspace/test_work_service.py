@@ -18,6 +18,7 @@ from flext_infra import (
     u,
 )
 from flext_tests import tm
+
 from tests import u as test_u
 
 if TYPE_CHECKING:
@@ -48,7 +49,9 @@ class TestsFlextInfraWorkService:
             '\t@printf "setting up %s\\n" "$(CURDIR)"\n',
             encoding="utf-8",
         )
-        (repository / ".gitignore").write_text(f"{venv_name}\n", encoding="utf-8")
+        (repository / ".gitignore").write_text(
+            f"{venv_name}\n.reports/\n", encoding="utf-8"
+        )
         # Why (mro-tvc03): the ledger is resolved from the typed workspace
         # manifest, so a fixture that only drops .beads/config.yaml no longer
         # declares a tracker. Emit the manifest the runtime actually reads.
@@ -163,6 +166,10 @@ class TestsFlextInfraWorkService:
             "        if args[i] == '--set-metadata':\n"
             "            key, value = args[i + 1].split('=', 1)\n"
             "            data.setdefault('metadata', {})[key] = value\n"
+            "            i += 2\n"
+            "            continue\n"
+            "        if args[i] == '--unset-metadata':\n"
+            "            data.setdefault('metadata', {}).pop(args[i + 1], None)\n"
             "            i += 2\n"
             "            continue\n"
             "        if args[i] == '--add-label':\n"
@@ -281,6 +288,24 @@ class TestsFlextInfraWorkService:
         """Return the lane metadata the bd shim persisted."""
         return cls._record(tmp_path, bead_id)["metadata"]
 
+    @classmethod
+    def _update_root_matrix_entry(
+        cls, tmp_path: PathType, bead_id: str, **updates: str
+    ) -> None:
+        record = cls._record(tmp_path, bead_id)
+        metadata = record["metadata"]
+        matrix = m.Infra.WorkLaneMatrix.model_validate_json(metadata["matrix"])
+        metadata["matrix"] = matrix.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update=updates) if entry.project == "." else entry
+                    for entry in matrix.entries
+                )
+            }
+        ).model_dump_json()
+        metadata.update(updates)
+        cls._set_record(tmp_path, bead_id, record)
+
     @staticmethod
     def _commit_in(lane: PathType, message: str) -> None:
         tm.ok(
@@ -321,6 +346,104 @@ class TestsFlextInfraWorkService:
         )
         tm.that(status, has="metadata.branch: feature/example-lane")
         tm.that(status, has="metadata.worktree:")
+
+    def test_start_rejects_matrixless_ready_before_mutation(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-matrixless-ready"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.START,
+                bead=bead_id,
+                kind=c.Infra.WorkKind.FEATURE,
+                name="matrixless-ready",
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+        record = self._record(tmp_path, bead_id)
+        record["metadata"].pop("matrix")
+        self._set_record(tmp_path, bead_id, record)
+        before_record = self._record(tmp_path, bead_id)
+        before_worktrees = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
+            ).execute()
+        )
+
+        result = FlextInfraWorkService(
+            workspace_root=repository,
+            operation=c.Infra.WorkOperation.START,
+            bead=bead_id,
+            kind=c.Infra.WorkKind.FEATURE,
+            name="matrixless-ready",
+            base="HEAD",
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(result, has="ready lane start requires matrix metadata")
+        assert self._record(tmp_path, bead_id) == before_record
+        assert (
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
+                ).execute()
+            )
+            == before_worktrees
+        )
+
+    def test_status_renders_matrixless_ready_without_matrix_lines(
+        self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repository = self._repository(tmp_path)
+        bead_id = "mro-test-matrixless-status"
+        shim_dir = self._install_bd_shim(tmp_path, bead_id)
+        monkeypatch.setenv(
+            "PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+        workspace = m.Infra.WorkspaceSpec.model_validate(
+            u.Cli.yaml_load_mapping(repository / "config" / "workspace.yaml")
+        )
+        provider = next(
+            item
+            for item in config.Infra.codegen.providers
+            if item.name == workspace.repository.provider
+        )
+        self._set_metadata(
+            tmp_path,
+            bead_id,
+            {
+                "branch": "feature/matrixless-status",
+                "namespace": "feature",
+                "worktree": str(tmp_path / "matrixless-status"),
+                "kind": "feature",
+                "slug": "matrixless-status",
+                "integration_base": u.Infra.resolve_integration_branch(
+                    workspace, provider
+                ),
+                "head_oid": "abc",
+                "provisioning": "ready",
+                "role": "plain",
+            },
+        )
+
+        status = tm.ok(
+            FlextInfraWorkService(
+                workspace_root=repository,
+                operation=c.Infra.WorkOperation.STATUS,
+                bead=bead_id,
+                apply_changes=False,
+            ).execute()
+        )
+
+        tm.that(status, has="metadata.branch: feature/matrixless-status")
+        assert "matrix:" not in status
 
     def test_finish_refuses_primary_checkout(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -428,6 +551,19 @@ class TestsFlextInfraWorkService:
         record = self._record(tmp_path, bead_id)
         lane = record["metadata"]["worktree"]
         head = record["metadata"]["head_oid"]
+        matrix = m.Infra.WorkLaneMatrix.model_validate_json(
+            record["metadata"]["matrix"]
+        )
+        record["metadata"]["matrix"] = matrix.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update={"pr_number": "1"})
+                    if entry.project == "."
+                    else entry
+                    for entry in matrix.entries
+                )
+            }
+        ).model_dump_json()
         record["metadata"]["pr_number"] = "1"
         self._set_record(tmp_path, bead_id, record)
         finished = tm.ok(
@@ -465,10 +601,9 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["head_oid"] = "0" * 40
-        record["metadata"]["pr_number"] = "1"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(
+            tmp_path, bead_id, head_oid="0" * 40, pr_number="1"
+        )
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -844,9 +979,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["head_oid"] = "0" * 40
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, head_oid="0" * 40)
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.LAND,
@@ -905,6 +1038,9 @@ class TestsFlextInfraWorkService:
         tm.that(
             template, has='workspace work --workspace "$(WORKSPACE)" --operation land'
         )
+        tm.that(template, has='$(if $(strip $(KIND)),--kind "$(KIND)")')
+        tm.that(template, lacks='--kind "$(KIND)" --name')
+        tm.that(template, has='--epic "$(EPIC)"')
 
     def test_finish_refuses_missing_lane(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -1005,9 +1141,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["pr_number"] = "9"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="9")
         gh = shim_dir / "gh"
         gh.write_text(
             "#!/usr/bin/env python3"
@@ -1341,9 +1475,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["pr_number"] = "5"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="5")
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -1376,9 +1508,7 @@ class TestsFlextInfraWorkService:
                 apply_changes=True,
             ).execute()
         )
-        record = self._record(tmp_path, bead_id)
-        record["metadata"]["pr_number"] = "6"
-        self._set_record(tmp_path, bead_id, record)
+        self._update_root_matrix_entry(tmp_path, bead_id, pr_number="6")
         result = FlextInfraWorkService(
             workspace_root=repository,
             operation=c.Infra.WorkOperation.FINISH,
@@ -1851,9 +1981,7 @@ class TestsFlextInfraWorkService:
             tmp_path, repository, epic_bead, child_bead
         )
         for bead_id, pr_number in ((epic_bead, "1"), (child_bead, "2")):
-            record = self._record(tmp_path, bead_id)
-            record["metadata"]["pr_number"] = pr_number
-            self._set_record(tmp_path, bead_id, record)
+            self._update_root_matrix_entry(tmp_path, bead_id, pr_number=pr_number)
 
         refused = FlextInfraWorkService(
             workspace_root=repository,

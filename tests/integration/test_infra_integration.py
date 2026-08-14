@@ -93,6 +93,9 @@ class TestsFlextInfraIntegrationInfraIntegration:
         generated = generator.execute()
         tm.ok(generated)
         tm.that(generated.value, is_=str)
+<<<<<<< HEAD
+        tm.that(generated.value, has="STANDARD_VERBS := clean pr")
+=======
         tm.that(generated.value, has="check")
 
     @pytest.mark.integration
@@ -121,6 +124,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
 
         tm.that(execution.result.passed, eq=True)
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
+>>>>>>> refs/remotes/origin/0.12.0-dev
 
     @pytest.mark.integration
     def test_basemk_renders_shell_continuations_without_blank_lines(self) -> None:

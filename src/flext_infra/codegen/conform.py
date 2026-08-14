@@ -2529,6 +2529,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current_branch = current_branch_result.value.stdout.strip()
             if current_branch != "HEAD":
                 current_branch_ref = f"refs/heads/{current_branch}"
+        merge_heads: tuple[str, ...] = ()
+        merge_head_path = u.Cli.run_raw(
+            (c.Infra.GIT, "rev-parse", "--git-path", "MERGE_HEAD"), cwd=root
+        )
+        if merge_head_path.success and merge_head_path.value.exit_code == 0:
+            resolved_merge_head = root / merge_head_path.value.stdout.strip()
+            if resolved_merge_head.is_file():
+                merge_heads = tuple(
+                    line.strip()
+                    for line in resolved_merge_head.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                    if line.strip()
+                )
         refs_command = (
             c.Infra.GIT,
             "for-each-ref",
@@ -2660,6 +2674,32 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
                     )
                 ancestor = ancestry_result.value.exit_code == 0
+                if not ancestor and policy_reference == current_branch_ref:
+                    for merge_head in merge_heads:
+                        merge_ancestry = u.Cli.run_raw(
+                            (
+                                c.Infra.GIT,
+                                "merge-base",
+                                "--is-ancestor",
+                                baseline_sha,
+                                merge_head,
+                            ),
+                            cwd=root,
+                        )
+                        if merge_ancestry.failure:
+                            return r[m.Infra.BranchAncestryPlan].fail(
+                                "cannot validate merge parent ancestry: "
+                                f"{merge_head}; error={merge_ancestry.error}"
+                            )
+                        if merge_ancestry.value.exit_code not in {0, 1}:
+                            return r[m.Infra.BranchAncestryPlan].fail(
+                                "Git merge parent ancestry validation failed: "
+                                f"{merge_head}; exit={merge_ancestry.value.exit_code}; "
+                                f"stderr={merge_ancestry.value.stderr.strip() or '<empty>'}"
+                            )
+                        if merge_ancestry.value.exit_code == 0:
+                            ancestor = True
+                            break
             references.append(
                 m.Infra.BranchAncestryRef(
                     reference=reference, sha=sha, excluded=excluded, ancestor=ancestor
