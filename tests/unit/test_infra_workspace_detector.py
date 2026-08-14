@@ -615,6 +615,39 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.that(target.routing_only, eq=False)
         tm.that(target.beads_enabled, eq=False)
 
+    def test_external_member_worktree_reads_lane_metadata(self, tmp_path: Path) -> None:
+        """Keep dirty primary metadata outside the lane target boundary."""
+        member_root = self._attached_member(tmp_path)
+        workspace_root = member_root.parents[1]
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=workspace_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Declare workspace topology"],
+                cwd=workspace_root,
+            )
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=member_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Declare member topology"],
+                cwd=member_root,
+            )
+        )
+        lane = tmp_path / "external-member-metadata-lane"
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "worktree", "add", "-q", "--detach", str(lane)], cwd=member_root
+            )
+        )
+        (member_root / "pyproject.toml").write_text(
+            "invalid [[[ primary WIP", encoding="utf-8"
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(lane))
+
+        tm.that(target.root, eq=lane.resolve())
+        tm.that(target.canonical_project_name, eq="flext-member")
+
     def test_external_standalone_worktree_stays_standalone(
         self, tmp_path: Path
     ) -> None:

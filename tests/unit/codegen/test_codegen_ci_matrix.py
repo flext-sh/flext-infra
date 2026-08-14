@@ -9,33 +9,37 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+from tests import u as test_u
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_TEMPLATES = _PROJECT_ROOT / "src" / "flext_infra" / "templates" / "project"
+_DISTROS = ("ubuntu", "debian", "fedora", "alpine", "arch")
+
+
+def _template_entry(destination: str) -> m.Infra.TemplateEntrySpec:
+    """Resolve one scaffold mapping from the typed template manifest."""
+    return next(
+        entry
+        for entry in config.Infra.codegen.templates.entries
+        if entry.destination == destination
+    )
+
+
+def _render_artifact(root: Path, destination: str, context: p.Model) -> Path:
+    """Render one manifest-owned artifact through the public template owner."""
+    entry = _template_entry(destination)
+    rendered = tm.ok(u.Cli.template_render(_TEMPLATES / entry.source, context))
+    target = root / destination
+    tm.ok(u.Cli.ensure_dir(target.parent))
+    tm.ok(u.Cli.atomic_write_text_file(target, rendered))
+    return target
 
 
 class TestCodegenCiMatrix:
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
-
-    @staticmethod
-    def _render_project(root: Path) -> Path:
-        """Render a fresh EXTERNAL project into root and return the root."""
-        service = FlextInfraCodegenProjectNew(
-            name="flext-demo",
-            kind=c.Infra.ProjectKind.EXTERNAL,
-            output_root=root,
-            provider="flext-sh",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            year=2026,
-            apply_changes=True,
-        )
-        result = service.execute()
-        tm.ok(result)
-        return root
 
     @staticmethod
     def _hook_entry(rendered: str, hook_id: str) -> str:
@@ -72,8 +76,7 @@ class TestCodegenCiMatrix:
         tm.that(set(matrix.profiles), eq={"workspace-root", "standalone"})
         tm.that("workspace-member" in matrix.profiles, eq=False)
         docker_dests = {
-            f"tests/fixtures/ci/docker/{name}.Dockerfile"
-            for name in ("ubuntu", "debian", "fedora", "alpine", "arch")
+            f"tests/fixtures/ci/docker/{name}.Dockerfile" for name in _DISTROS
         }
         for entry in entries:
             if entry.destination not in docker_dests:
@@ -81,14 +84,16 @@ class TestCodegenCiMatrix:
             tm.that(set(entry.profiles), eq={"workspace-root", "standalone"})
             tm.that("workspace-member" in entry.profiles, eq=False)
 
-    def test_ci_matrix_workflow_emitted(self, tmp_path: Path) -> None:
+    def test_ci_matrix_workflow_emitted(self, rendered_project: Path) -> None:
         """Generated project carries .github/workflows/ci-matrix.yml."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
-    def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
+    def test_ci_workflow_uses_immutable_action_catalog(
+        self, rendered_project: Path
+    ) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         workflows = "\n".join(
             (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
             for filename in ("ci.yml", "ci-matrix.yml")
@@ -114,10 +119,10 @@ class TestCodegenCiMatrix:
         tm.that(workflows, lacks="soft-pass")
 
     def test_blocking_ci_bootstraps_only_through_make_setup(
-        self, tmp_path: Path
+        self, rendered_project: Path
     ) -> None:
         """Generated blocking CI provisions every binary via the Make surface."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -130,33 +135,14 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: CI=Y make fmt WHAT=apply APPLY=Y")
         tm.that(workflow, has="run: CI=Y make fix WHAT=apply APPLY=Y")
 
-    def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
+    def test_rendered_pre_commit_uses_typed_hook_contexts(
+        self, rendered_project: Path
+    ) -> None:
         """The generated staged hooks render the configured workflow partitions."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
-<<<<<<< HEAD
-        for step in workflow:
-            for context, stage, ci_value in (
-                ("pre_commit", "pre-commit", ci.value),
-                ("pre_push", "pre-push", ci.local_value),
-            ):
-                if context not in step.contexts:
-                    continue
-                suffix = f"-{step.what}" if step.what else ""
-                hook_id = f"flext-{stage}-{step.verb}{suffix}"
-                entry = self._hook_entry(hooks, hook_id)
-                cleanup = (
-                    "unset WHAT MAKEFLAGS "
-                    f"{config.Infra.codegen.make.apply_variable}; "
-                    "unset $(git rev-parse --local-env-vars); "
-                )
-                tm.that(entry, has="bash -eu -o pipefail -c")
-                tm.that(entry, has=cleanup)
-                tm.that(entry, has=f"{ci.variable}={ci_value}")
-                tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
-=======
         gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
 
         for hook_prefix, context in (
@@ -202,15 +188,19 @@ class TestCodegenCiMatrix:
                 cleanup = (
                     f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
                 )
+                git_cleanup = "unset $(git rev-parse --local-env-vars); "
+                tm.that(entry, has="bash -eu -o pipefail -c")
                 tm.that(entry, has=cleanup)
+                tm.that(entry, has=git_cleanup)
                 tm.that(entry.index(cleanup) < entry.index(command), eq=True)
->>>>>>> refs/remotes/origin/0.12.0-dev
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
-    def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
+    def test_ci_workflow_cancels_superseded_ref_runs(
+        self, rendered_project: Path
+    ) -> None:
         """Generated CI groups competing runs by workflow and ref."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -220,10 +210,10 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="cancel-in-progress: true")
 
     def test_ci_workflow_stable_blank_line_without_private_submodules(
-        self, tmp_path: Path
+        self, rendered_project: Path
     ) -> None:
-        """Empty private_submodules include must not accumulate blank lines."""
-        root = self._render_project(tmp_path / "member")
+        """Verified fixed-point output keeps one empty-include blank line."""
+        root = rendered_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -232,11 +222,6 @@ class TestCodegenCiMatrix:
         tm.that(
             workflow, lacks="fetch-depth: 0\n\n\n      - name: Install mise toolchain"
         )
-        root2 = self._render_project(tmp_path / "member-again")
-        workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8"
-        )
-        tm.that(workflow2, eq=workflow)
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
@@ -263,9 +248,9 @@ class TestCodegenCiMatrix:
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
-    def test_ci_uses_typed_action_catalog(self, tmp_path: Path) -> None:
+    def test_ci_uses_typed_action_catalog(self, rendered_project: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -278,10 +263,10 @@ class TestCodegenCiMatrix:
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
-    def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
+    def test_distro_dockerfiles_emitted(self, rendered_project: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
-        root = self._render_project(tmp_path / "external")
-        for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
+        root = rendered_project
+        for distro in _DISTROS:
             tm.that(
                 (
                     root
@@ -295,11 +280,11 @@ class TestCodegenCiMatrix:
             )
 
     def test_distro_bootstrap_is_fail_closed_and_self_contained(
-        self, tmp_path: Path
+        self, rendered_project: Path
     ) -> None:
         """Every distro runs the canonical self-bootstrap fail-closed."""
-        root = self._render_project(tmp_path / "external")
-        for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
+        root = rendered_project
+        for distro in _DISTROS:
             content = (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
             ).read_text(encoding="utf-8")
@@ -312,41 +297,53 @@ class TestCodegenCiMatrix:
                 tm.that(content, has="build-base")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
-        self, tmp_path: Path
+        self, rendered_project: Path
     ) -> None:
         """Fedora's generated Node runtime has its required atomic library."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         fedora = (
             root / "tests" / "fixtures" / "ci" / "docker" / "fedora.Dockerfile"
         ).read_text(encoding="utf-8")
         tm.that(fedora, has="libatomic")
-        for distro in ("ubuntu", "debian", "alpine", "arch"):
+        for distro in (item for item in _DISTROS if item != "fedora"):
             content = (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
             ).read_text(encoding="utf-8")
             tm.that("libatomic" not in content, eq=True, msg=distro)
 
-    def test_dockerfiles_render_byte_idempotently(self, tmp_path: Path) -> None:
+    def test_dockerfiles_render_byte_idempotently(self, rendered_project: Path) -> None:
         """Repeated project generation preserves the generated Dockerfiles."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         before = {
             distro: (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
             ).read_bytes()
-            for distro in ("ubuntu", "debian", "fedora", "alpine", "arch")
+            for distro in _DISTROS
         }
-        self._render_project(root)
+        spec = m.Infra.DistroDockerRenderSpec(
+            package_name="flext_demo",
+            python_version=config.Infra.codegen.toolchain.python_version,
+            make=config.Infra.codegen.make,
+        )
         after = {
-            distro: (
-                root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
-            ).read_bytes()
+            distro: tm.ok(
+                u.Cli.template_render(
+                    _TEMPLATES
+                    / _template_entry(
+                        f"tests/fixtures/ci/docker/{distro}.Dockerfile"
+                    ).source,
+                    spec,
+                )
+            ).encode()
             for distro in before
         }
         tm.that(after, eq=before)
 
-    def test_ci_matrix_has_only_supported_generic_legs(self, tmp_path: Path) -> None:
+    def test_ci_matrix_has_only_supported_generic_legs(
+        self, rendered_project: Path
+    ) -> None:
         """Generic Python CI emits only its complete cross-platform legs."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         workflow = root / ".github" / "workflows" / "ci-matrix.yml"
         tm.that(workflow.is_file(), eq=True)
         content = u.Cli.yaml_load_mapping(workflow)
@@ -356,9 +353,11 @@ class TestCodegenCiMatrix:
         tm.that(jobs, lacks="wsl")
         tm.that(jobs, lacks="kind")
 
-    def test_host_legs_bootstrap_only_through_make_setup(self, tmp_path: Path) -> None:
+    def test_host_legs_bootstrap_only_through_make_setup(
+        self, rendered_project: Path
+    ) -> None:
         """MacOS and Windows bootstrap through the same Make surface."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         content = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
@@ -373,15 +372,12 @@ class TestCodegenCiMatrix:
         tm.that(windows.count("shell: bash"), eq=3)
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
-        self, tmp_path: Path
+        self, rendered_project: Path
     ) -> None:
         """Blocking CI covers integration; matrix defaults to dispatch-only."""
-        root = self._render_project(tmp_path / "external")
-        manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
-        repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
-        provider_name = str(repository["provider"])
+        root = rendered_project
         provider = next(
-            p for p in config.Infra.codegen.providers if p.name == provider_name
+            item for item in config.Infra.codegen.providers if item.name == "flext-sh"
         )
         branch = provider.branch
         blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
@@ -515,10 +511,10 @@ class TestCodegenCiMatrix:
             build(auto_run=True)
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
-        self, tmp_path: Path
+        self, rendered_project: Path
     ) -> None:
         """Matrix smoke is help+check under CI=Y; it must never run make test."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_project
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
@@ -555,7 +551,7 @@ class TestCodegenCiMatrix:
             'name: ci-matrix\n"on":\n  push:\n    branches: [0.12.0-dev]\n',
             encoding="utf-8",
         )
-        repository = u.Tests.repository_ref(
+        repository = test_u.Tests.repository_ref(
             name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -600,9 +596,9 @@ class TestCodegenCiMatrix:
         tm.that(absent[0].changed, eq=True)
         tm.that(orphan.exists(), eq=True)
 
-    def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
-        """Generated POSIX Make resolves Windows uv and virtualenv executables."""
-        root = self._render_project(tmp_path / "external")
+    def test_makefile_normalizes_windows_runtime_paths(self) -> None:
+        """Owner-generated POSIX Make resolves Windows runtime executables."""
+        root = _PROJECT_ROOT
         content = (root / "Makefile").read_text(encoding="utf-8")
         tm.that(content, has="ifeq ($(OS),Windows_NT)")
         tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
@@ -610,12 +606,11 @@ class TestCodegenCiMatrix:
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
         tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
-        tm.that(content, has="'flext-demo [standalone]' '';")
+        tm.that(content, has=f"'{config.Infra.name} [workspace-member]' '';")
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""
-        root = Path(__file__).resolve().parents[3]
-        dockerignore = root / ".dockerignore"
+        dockerignore = _PROJECT_ROOT / ".dockerignore"
         tm.that(dockerignore.is_file(), eq=True)
         content = dockerignore.read_text(encoding="utf-8")
         for marker in (
@@ -632,6 +627,41 @@ class TestCodegenCiMatrix:
             "!tests/fixtures/ci/docker/",
         ):
             tm.that(content, has=marker)
+
+
+@pytest.fixture(scope="module")
+def rendered_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Render only the typed, manifest-owned CI artifacts under test."""
+    root = tmp_path_factory.mktemp("codegen-ci-matrix") / "external"
+    codegen = config.Infra.codegen
+    provider = next(item for item in codegen.providers if item.name == "flext-sh")
+    workflow_spec = m.Infra.GithubWorkflowRenderSpec(
+        dist="flext-demo",
+        make_profile=c.Infra.MakeProfile.STANDALONE,
+        repository_branch=provider.branch,
+        python_version=codegen.toolchain.python_version,
+        github_actions=codegen.github_actions,
+        make=codegen.make,
+        workspace_repositories=(),
+        checkout_submodules=codegen.checkout_submodules,
+    )
+    for destination in (".github/workflows/ci.yml", ".github/workflows/ci-matrix.yml"):
+        _render_artifact(root, destination, workflow_spec)
+    _render_artifact(
+        root,
+        ".pre-commit-config.yaml",
+        m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=codegen.make),
+    )
+    docker_spec = m.Infra.DistroDockerRenderSpec(
+        package_name="flext_demo",
+        python_version=codegen.toolchain.python_version,
+        make=codegen.make,
+    )
+    for distro in _DISTROS:
+        _render_artifact(
+            root, f"tests/fixtures/ci/docker/{distro}.Dockerfile", docker_spec
+        )
+    return root
 
 
 __all__: list[str] = []

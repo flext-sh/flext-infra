@@ -12,14 +12,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
-<<<<<<< HEAD
 from flext_infra import config
-=======
-
-from flext_infra import c, config, m, u
-
-from tests import u as test_u
->>>>>>> refs/remotes/origin/0.12.0-dev
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -28,7 +21,7 @@ from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
-from tests import c, m, p, u
+from tests import c, m, u
 
 
 def _conform_target(
@@ -57,6 +50,47 @@ def _conform_target(
 
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
+
+    def test_apply_recovers_declared_managed_pyproject_conflict(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Repair a committed managed block through the normal apply plan."""
+        root = infra_git_repo
+        distribution = u.Tests.repository_ref(config.Infra.name).distribution
+        (root / "pyproject.toml").write_text(
+            f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "\n"
+            "[tool.pytest.ini_options]\n"
+            "<<<<<<< HEAD\n"
+            'addopts = ["--timeout=90"]\n'
+            "=======\n"
+            'addopts = ["--timeout=10"]\n'
+            ">>>>>>> origin/0.12.0-dev\n",
+            encoding="utf-8",
+        )
+        package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        package_init.write_text("", encoding="utf-8")
+
+        applied = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.PYPROJECT,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+        tm.ok(applied)
+        rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
+        tm.that(rendered, lacks="<<<<<<<")
+        payload = tomllib.loads(rendered)
+        addopts = payload["tool"]["pytest"]["ini_options"]["addopts"]
+        tm.that(
+            addopts,
+            has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
+        )
 
     def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
         root = tmp_path / "repository"
