@@ -106,19 +106,19 @@ class TestsFlextInfraWorkLaneModels:
         [
             {
                 "branch": "feature/typed-lane",
-                "namespace": c.Infra.WorkBranchNamespace.EPIC,
-                "kind": c.Infra.WorkKind.FEATURE,
+                "namespace": "epic",
+                "kind": "feature",
                 "topology": {"role": "plain"},
             },
             {
                 "branch": "epic/typed-lane",
-                "namespace": c.Infra.WorkBranchNamespace.EPIC,
-                "kind": c.Infra.WorkKind.FEATURE,
+                "namespace": "epic",
+                "kind": "feature",
                 "topology": {"role": "epic", "epic_bead": "mro-parent"},
             },
             {
                 "branch": "feature/typed-lane",
-                "namespace": c.Infra.WorkBranchNamespace.FEATURE,
+                "namespace": "feature",
                 "kind": None,
                 "topology": {"role": "plain"},
             },

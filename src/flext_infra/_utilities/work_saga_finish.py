@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
 from flext_infra import FlextInfraWorktreeService, c, m, u
 from flext_infra._utilities.work_saga_common import FlextInfraWorkSagaCommon
 
@@ -43,7 +44,18 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(ownership.error or "work finish reservation ownership failed")
         lane_meta = Path(worktree)
         if lane_meta == Path("removed"):
-            return r.fail(f"bead {bead} lane worktree already removed")
+            return r.ok(
+                self._format_receipt(
+                    bead=bead,
+                    operation=c.Infra.WorkOperation.FINISH,
+                    primary=primary_root,
+                    worktree=worktree,
+                    branch=branch,
+                    base=integration,
+                    head_oid=expected,
+                    pr=pr_number,
+                )
+            )
         if self._is_primary_path(primary_root, lane_meta):
             return r.fail("work finish refuses the primary worktree")
         permanent = self._refuse_permanent_branch(branch, integration)
@@ -51,6 +63,29 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(
                 permanent.error or f"work finish refuses permanent branch {branch}"
             )
+        branch_ref = f"refs/heads/{branch}"
+        exists = u.Infra.git_ref_exists(
+            m.Infra.GitRefRequest(repo_root=primary_root, reference=branch_ref)
+        )
+        if exists.failure:
+            return r.fail(exists.error or f"failed to inspect local ref {branch}")
+        if not lane_meta.is_dir():
+            registered = FlextInfraWorktreeService.registered_lane(primary_root, branch)
+            if registered.success:
+                return r.fail(f"lane worktree missing: {lane_meta}")
+            if exists.value.value:
+                deleted = u.Infra.git_delete_ref(
+                    m.Infra.GitDeleteRefRequest(
+                        repo_root=primary_root,
+                        reference=branch_ref,
+                        expected_oid=expected,
+                    )
+                )
+                if deleted.failure:
+                    return r.fail(
+                        deleted.error or f"failed to delete local ref {branch}"
+                    )
+            return self._record_finished_lane(primary_root, bead, metadata)
         bound = self._bound_registered_lane(primary_root, branch, worktree)
         if bound.failure:
             return r.fail(bound.error or "work finish lane binding failed")
@@ -75,6 +110,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
                 return r.fail(live.error or "work finish child binding failed")
         if not lane.is_dir():
             return r.fail(f"lane worktree missing: {lane}")
+        merged = self._require_merged_pr(primary_root, branch, pr_number)
+        if merged.failure:
+            return r.fail(merged.error or "work finish PR state check failed")
         if not expected:
             return r.fail(f"bead {bead} missing metadata.head_oid for finish CAS")
         matrix = metadata.matrix
@@ -123,19 +161,25 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             return r.fail(removed.error or f"failed to remove lane {branch}")
         deleted = u.Infra.git_delete_ref(
             m.Infra.GitDeleteRefRequest(
-                repo_root=primary_root,
-                reference=f"refs/heads/{branch}",
-                expected_oid=expected,
+                repo_root=primary_root, reference=branch_ref, expected_oid=expected
             )
         )
         if deleted.failure:
             exists = u.Infra.git_ref_exists(
-                m.Infra.GitRefRequest(
-                    repo_root=primary_root, reference=f"refs/heads/{branch}"
-                )
+                m.Infra.GitRefRequest(repo_root=primary_root, reference=branch_ref)
             )
             if exists.success and exists.value.value:
                 return r.fail(deleted.error or f"failed to delete local ref {branch}")
+        return self._record_finished_lane(primary_root, bead, metadata)
+
+    def _record_finished_lane(
+        self, primary_root: Path, bead: str, metadata: m.Infra.ReadyLaneMetadata
+    ) -> p.Result[str]:
+        worktree = str(metadata.worktree)
+        branch = metadata.branch
+        matrix = metadata.matrix
+        if matrix is None:
+            return r.fail("work finish requires matrix metadata")
         notes = (
             f"work finish: cmd=make work WHAT=finish cwd={primary_root} exit=0 "
             f"decisive=removed {worktree} branch={branch}"
@@ -160,9 +204,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             primary=primary_root,
             worktree=worktree,
             branch=branch,
-            base=integration,
-            head_oid=expected,
-            pr=pr_number,
+            base=metadata.integration_base,
+            head_oid=metadata.head_oid,
+            pr=metadata.pr_number or "",
         )
         return r.ok(f"FINISHED BRANCH={branch} WORKTREE={worktree}\n{receipt}")
 

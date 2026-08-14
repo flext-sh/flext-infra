@@ -57,7 +57,7 @@ jobs:
       # upload as artifact so the real error is always reachable.
       - name: Docs audit (blocking)
         run: |
-          make docs WHAT=audit || {
+          flext-infra docs audit || {
             while IFS= read -r -d '' f; do
               echo "::group::$f"
               tail -n 80 "$f"
@@ -72,11 +72,11 @@ jobs:
           }
 
       - name: Docs generate (materialize contract artifacts)
-        run: make docs WHAT=generate APPLY=Y
+        run: flext-infra docs generate --apply
 
       - name: Docs validate (blocking)
         run: |
-          make docs WHAT=validate || {
+          flext-infra docs validate || {
             while IFS= read -r -d '' f; do
               echo "::group::$f"
               tail -n 80 "$f"
@@ -138,10 +138,10 @@ jobs:
         run: make setup
 
       - name: Generate docs
-        run: make docs WHAT=generate APPLY=Y
+        run: flext-infra docs generate --apply
 
       - name: Build site
-        run: make docs WHAT=build
+        run: flext-infra docs build
 
       # Pages configure/upload exist only to feed deploy on main. Running them on
       # every integration push fails closed when Pages is unset and is wasted

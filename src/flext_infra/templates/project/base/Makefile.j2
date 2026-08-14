@@ -132,7 +132,6 @@ SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 {% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
-DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -304,7 +303,6 @@ SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
-DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
 UV_RUN := env -u MYPYPATH PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
@@ -520,9 +518,21 @@ _builtin_help_usage:
 # the recorded gitlink.
 {{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
 
+# Every verb depends on this guard. When the interpreter is missing the guard
+# provisions it by invoking `setup` instead of failing: a fresh clone, a new
+# worktree, or a CI runner has no venv yet, and forcing the operator to run
+# `make setup` by hand turns every managed verb into a two-step ritual and
+# breaks git hooks (which call `make fmt`/`make fix` in a bare checkout).
+# `setup` is idempotent and cheap when the tooling already matches the lock,
+# so the auto-provision path costs nothing in the common case. Only a setup
+# that itself fails to produce the interpreter is a real error.
 _builtin_require_environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
-		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_PYTHON)" >&2; \
+		printf '==> environment interpreter missing; provisioning via setup\n' >&2; \
+		$(SELF_MAKE) setup || exit $$?; \
+	fi
+	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
+		printf 'ERROR: setup did not produce the environment interpreter %s\n' "$(RUNTIME_PYTHON)" >&2; \
 		exit 2; \
 	fi
 
@@ -601,7 +611,8 @@ _builtin_build_artifacts:
 
 # Read-only by contract in every profile: mutation belongs to `make fix
 # APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
-# omits make.ci.check_gates_skip before orchestrating members (same contract as
+# runs the positive gate set make.ci.check_gates (RULING 2: rules not
+# skip-list) before orchestrating members (same contract as
 # standalone/member Makefiles and flext_infra check run). APPLY=Y is silently
 # ignored on read-only verbs (check, test, run, status, build, help, setup,
 # release) — it only activates mutation on mutation verbs.
@@ -611,18 +622,8 @@ _builtin_check_all: _builtin_require_environment
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-		filtered=""; \
-		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
-			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
-				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
-			fi; \
-		done; \
-		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for gate in make.ci.check_gates %} {{ gate }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
@@ -664,25 +665,15 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI={{ make.ci.value }} omits make.ci.check_gates_skip (ruff + pyrefly).
+# CI={{ make.ci.value }} runs make.ci.check_gates (RULING 2: rules not skip-list).
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
 	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
 	gates="$$(printf '%s' "$$gates" | tr -d '[:space:]')"; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-		filtered=""; \
-		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
-			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
-				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
-			fi; \
-		done; \
-		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for gate in make.ci.check_gates %} {{ gate }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -746,19 +737,6 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_all:
-	@set -eu; \
-	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=$(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check) ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}" $$mode $(DOCS_PROJECT_ARGS); \
-	done
-
-{% for action in make.handler_whats["docs"] if action != "all" %}
-_builtin_docs_{{ action }}:
-	@$(PROJECT_FLEXT_INFRA) docs {{ action }} --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}"{% if action in make.docs.mutable_actions %} $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),--apply,--check){% endif %} $(DOCS_PROJECT_ARGS)
-
-{% endfor %}
-
 # Disposable artifacts (caches, reports, traces) are owned by the flext-infra
 # clean service and declared in config.make.clean, so the recipe stays a thin
 # dispatch like every other verb instead of shell that drifts per project.
@@ -798,23 +776,17 @@ _builtin_release_rel: _builtin_require_environment
 		$$push_flag \
 		$$projects_args
 
-# Every command here writes to the SAME root, derived from the invocation
-# point. `deps modernize`/`extra-paths` used to receive WORKSPACE_ROOT while
-# `conform` received PROJECT_ROOT, so a gen run inside one member rewrote the
-# pyproject of ~30 siblings and left each dirty. Because gen runs inside check
-# and check runs in the pre-commit hook, one commit in any lane dirtied every
-# sibling. At the workspace root PROJECT_ROOT is
-# already the workspace, so fan-out survives exactly where it belongs.
+# Generation preserves the caller's scope. Conform owns analyzer roots in the
+# rendered tooling context; dependency modernization owns only dependency
+# settings that conform does not render.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check $(CODEGEN_PROJECT_ARGS)
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --check $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply $(CODEGEN_PROJECT_ARGS)
-	@$(PROJECT_FLEXT_INFRA) deps extra-paths --workspace "$(PROJECT_ROOT)" --apply $(CODEGEN_PROJECT_ARGS)
 
 _builtin_gen_apply: _builtin_gen_all
 

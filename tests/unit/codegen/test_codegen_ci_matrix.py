@@ -6,14 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-
-from flext_infra import c, config, t, u
+from flext_infra import c, config, m, t, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+
+from tests import u as test_u
 
 
 class TestCodegenCiMatrix:
@@ -137,55 +138,25 @@ class TestCodegenCiMatrix:
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
-        gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
-        default_whats: Mapping[str, str] = config.Infra.codegen.make.default_whats
-
-        for hook_id, context in (
-            ("flext-pre-commit", "pre_commit"),
-            ("flext-pre-push", "pre_push"),
-        ):
-            commands = " && ".join(
-                (
-                    f"{ci.variable}={ci.value} "
-                    if step.verb == "check" and context == "pre_commit"
-                    else ""
+        for step in workflow:
+            for context, stage, ci_value in (
+                ("pre_commit", "pre-commit", ci.value),
+                ("pre_push", "pre-push", ci.local_value),
+            ):
+                if context not in step.contexts:
+                    continue
+                suffix = f"-{step.what}" if step.what else ""
+                hook_id = f"flext-{stage}-{step.verb}{suffix}"
+                entry = self._hook_entry(hooks, hook_id)
+                cleanup = (
+                    "unset WHAT MAKEFLAGS "
+                    f"{config.Infra.codegen.make.apply_variable}; "
+                    "unset $(git rev-parse --local-env-vars); "
                 )
-                + (
-                    "CHECK_GATES="
-                    + ",".join(
-                        gate for gate in gates_default if gate not in step.gates_skip
-                    )
-                    + " "
-                    if step.gates_skip
-                    else ""
-                )
-                + f"make {step.verb}"
-                + (
-                    f" WHAT={step.what}"
-                    if step.what
-                    else (f" WHAT={default_whats[step.verb]}" if not step.apply else "")
-                )
-                + (
-                    f" {config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                    if step.apply
-                    else ""
-                )
-                for step in workflow
-                if context in step.contexts
-            )
-            tm.that(hooks, has=f"id: {hook_id}")
-            tm.that(hooks, has=commands)
-            # Every carrier that can smuggle a caller's selector or write-enable
-            # token into a hook step is cleared BEFORE the first verb runs.
-            # Position matters, not mere presence: cleanup rendered after the
-            # first `make` would leave that command reading the caller's values.
-            entry = self._hook_entry(hooks, hook_id)
-            cleanup = (
-                f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
-            )
-            tm.that(entry, has=cleanup)
-            tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
+                tm.that(entry, has="bash -eu -o pipefail -c")
+                tm.that(entry, has=cleanup)
+                tm.that(entry, has=f"{ci.variable}={ci_value}")
+                tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
@@ -221,9 +192,6 @@ class TestCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        from flext_infra import config, m
-        from flext_cli import u as cli_u
-
         codegen = config.Infra.codegen
         private = codegen.ci_private_submodules.get("cosmos-main")
         tm.that(private is not None, eq=True)
@@ -243,7 +211,7 @@ class TestCodegenCiMatrix:
             checkout_submodules=codegen.checkout_submodules,
             private_submodules=private,
         )
-        rendered_text = tm.ok(cli_u.Cli.template_render(tpl, spec))
+        rendered_text = tm.ok(u.Cli.template_render(tpl, spec))
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
@@ -422,9 +390,6 @@ class TestCodegenCiMatrix:
 
     def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
         """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
-        from flext_infra import m
-        from flext_cli import u as cli_u
-
         codegen = config.Infra.codegen
         tpl = (
             Path(__file__).resolve().parents[3]
@@ -442,8 +407,8 @@ class TestCodegenCiMatrix:
             ci_matrix_auto_run=False,
         )
         enabled = disabled.model_copy(update={"ci_matrix_auto_run": True})
-        disabled_text = tm.ok(cli_u.Cli.template_render(tpl, disabled))
-        enabled_text = tm.ok(cli_u.Cli.template_render(tpl, enabled))
+        disabled_text = tm.ok(u.Cli.template_render(tpl, disabled))
+        enabled_text = tm.ok(u.Cli.template_render(tpl, enabled))
         disabled_triggers = disabled_text.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
@@ -534,10 +499,6 @@ class TestCodegenCiMatrix:
         self, tmp_path: Path
     ) -> None:
         """Profile-excluded member ci-matrix orphans are planned as absent."""
-        from flext_infra import m
-        from flext_infra.codegen.conform import FlextInfraCodegenConform
-        from tests import u as test_u
-
         name = "flext-core"
         root = tmp_path / name
         orphan = root / ".github" / "workflows" / "ci-matrix.yml"

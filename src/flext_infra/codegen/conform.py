@@ -839,12 +839,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for entry in codegen.templates.entries
             if target.make_profile in entry.profiles
             and entry.delegate == "render"
-            and Path(entry.destination).parts
+            and Path(entry.destination).suffix in {".py", ".pyi"}
         }
+        discovered_roots = frozenset(u.Infra.discover_python_dirs(root))
         declared = tuple(
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
-            if directory in rendered_roots or (root / directory).is_dir()
+            if directory in rendered_roots or directory in discovered_roots
         )
         roots: t.StrSequence = u.Infra.analyzer_python_roots(root, declared)
         return roots
@@ -1759,7 +1760,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     issue_prefix=issue_prefix,
                     database=database,
                     server=server,
-                    routing=target.routing_only,
+                    routing=target.routing_only and not target.beads_enabled,
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
@@ -2433,6 +2434,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current_branch = current_branch_result.value.stdout.strip()
             if current_branch != "HEAD":
                 current_branch_ref = f"refs/heads/{current_branch}"
+        merge_heads: tuple[str, ...] = ()
+        merge_head_path = u.Cli.run_raw(
+            (c.Infra.GIT, "rev-parse", "--git-path", "MERGE_HEAD"), cwd=root
+        )
+        if merge_head_path.success and merge_head_path.value.exit_code == 0:
+            resolved_merge_head = root / merge_head_path.value.stdout.strip()
+            if resolved_merge_head.is_file():
+                merge_heads = tuple(
+                    line.strip()
+                    for line in resolved_merge_head.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                    if line.strip()
+                )
         refs_command = (
             c.Infra.GIT,
             "for-each-ref",
@@ -2564,6 +2579,32 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
                     )
                 ancestor = ancestry_result.value.exit_code == 0
+                if not ancestor and policy_reference == current_branch_ref:
+                    for merge_head in merge_heads:
+                        merge_ancestry = u.Cli.run_raw(
+                            (
+                                c.Infra.GIT,
+                                "merge-base",
+                                "--is-ancestor",
+                                baseline_sha,
+                                merge_head,
+                            ),
+                            cwd=root,
+                        )
+                        if merge_ancestry.failure:
+                            return r[m.Infra.BranchAncestryPlan].fail(
+                                "cannot validate merge parent ancestry: "
+                                f"{merge_head}; error={merge_ancestry.error}"
+                            )
+                        if merge_ancestry.value.exit_code not in {0, 1}:
+                            return r[m.Infra.BranchAncestryPlan].fail(
+                                "Git merge parent ancestry validation failed: "
+                                f"{merge_head}; exit={merge_ancestry.value.exit_code}; "
+                                f"stderr={merge_ancestry.value.stderr.strip() or '<empty>'}"
+                            )
+                        if merge_ancestry.value.exit_code == 0:
+                            ancestor = True
+                            break
             references.append(
                 m.Infra.BranchAncestryRef(
                     reference=reference, sha=sha, excluded=excluded, ancestor=ancestor
