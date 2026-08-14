@@ -21,20 +21,6 @@ repos:
       # ungenerated, repository-local customization surface.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
-{% for hook in make.hooks.stages %}
-{% set stage = hook.context | replace("_", "-") %}
-{% for step in make.workflow if hook.context in step.contexts %}
-      - id: flext-{{ stage }}-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
-        name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
-        language: system
-        entry: >-
-          bash -eu -o pipefail -c 'unset {{ make.hooks.clear_environment | join(" ") }}; {% if hook.clear_git_environment %}unset $(git rev-parse --local-env-vars); {% endif %}{{ make.ci.variable }}={{ hook.ci_value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}; local_hook="$(git rev-parse --git-path hooks/flext-{{ stage }}-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}{{ make.hooks.local_suffix }})"; [ ! -x "$local_hook" ] || "$local_hook"'
-        pass_filenames: false
-        always_run: true
-        stages: [{{ stage }}]
-{% endfor -%}
-      # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
-      # context only: local `make check` keeps the full set.
 {% for step in make.workflow if "pre_commit" in step.contexts %}
       - id: flext-pre-commit-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
