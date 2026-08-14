@@ -1061,6 +1061,27 @@ class TestGitHookConformance:
             tm.that(hook.read_text(encoding="utf-8"), has=f"--hook-type={stage}")
         tm.ok(self._check(root))
 
+    def test_check_rejects_unmanaged_hook_shims(self, tmp_path: Path) -> None:
+        """Presence alone is insufficient: make gen owns both stage shims."""
+        hooks_dir = tmp_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+        for stage in ("pre-commit", "pre-push"):
+            (hooks_dir / stage).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        plan = m.Infra.HooksPlan(
+            repository_root=tmp_path,
+            hooks_directory=hooks_dir,
+            stages=("pre-commit", "pre-push"),
+        )
+
+        result = FlextInfraCodegenConform._verify_hooks_plan(  # ruff: ignore[private-member-access]
+            plan, allow_missing=False
+        )
+
+        tm.fail(result)
+        tm.that(result.error, has="git hook is not managed by pre-commit")
+        tm.that(result.error, has="pre-commit")
+        tm.that(result.error, has="pre-push")
+
 
 class TestScriptDispatchMakefile:
     """Prove per-repo extra verbs and script-dispatch WHAT normalization."""

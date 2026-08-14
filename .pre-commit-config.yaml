@@ -15,18 +15,20 @@ repos:
       # ternary: only the exact value Y disables coverage and
       # narrows CHECK_GATES, so N keeps every gate and the
       # complete pytest+coverage run.
-      # pre-commit runs `entry` as an argv, not through a shell, so a leading
-      # VAR=value would be taken as the program name ("Executable CI=Y not
-      # found"). `env` is the portable way to state the variable for a step that
-      # needs no shell; the pre-push steps already own one for `unset`.
+      # Hook isolation and the local extension suffix are business policy from
+      # config/codegen.yaml. After the managed command succeeds, an executable
+      # hooks/<generated-hook-id>.local is invoked when present. That sibling is the
+      # ungenerated, repository-local customization surface.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
+
+
 
       - id: flext-pre-commit-setup
         name: make setup
         language: system
         entry: >-
-          env CI=Y make setup
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; CI=Y make setup; local_hook="$(git rev-parse --git-path hooks/flext-pre-commit-setup.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -35,7 +37,7 @@ repos:
         name: make gen APPLY=Y
         language: system
         entry: >-
-          env CI=Y make gen APPLY=Y
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; CI=Y make gen APPLY=Y; local_hook="$(git rev-parse --git-path hooks/flext-pre-commit-gen.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -44,7 +46,7 @@ repos:
         name: make fmt APPLY=Y
         language: system
         entry: >-
-          env CI=Y make fmt APPLY=Y
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; CI=Y make fmt APPLY=Y; local_hook="$(git rev-parse --git-path hooks/flext-pre-commit-fmt.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -53,7 +55,7 @@ repos:
         name: make fix APPLY=Y
         language: system
         entry: >-
-          env CI=Y make fix APPLY=Y
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; CI=Y make fix APPLY=Y; local_hook="$(git rev-parse --git-path hooks/flext-pre-commit-fix.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -62,17 +64,18 @@ repos:
         name: make check
         language: system
         entry: >-
-          env CI=Y make check
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; CI=Y make check; local_hook="$(git rev-parse --git-path hooks/flext-pre-commit-check.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
+
 
 
       - id: flext-pre-push-setup
         name: make setup
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make setup'
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); CI=N make setup; local_hook="$(git rev-parse --git-path hooks/flext-pre-push-setup.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -81,7 +84,7 @@ repos:
         name: make gen APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make gen APPLY=Y'
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); CI=N make gen APPLY=Y; local_hook="$(git rev-parse --git-path hooks/flext-pre-push-gen.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -90,7 +93,7 @@ repos:
         name: make fmt APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make fmt APPLY=Y'
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); CI=N make fmt APPLY=Y; local_hook="$(git rev-parse --git-path hooks/flext-pre-push-fmt.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -99,7 +102,7 @@ repos:
         name: make fix APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make fix APPLY=Y'
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); CI=N make fix APPLY=Y; local_hook="$(git rev-parse --git-path hooks/flext-pre-push-fix.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -108,7 +111,7 @@ repos:
         name: make check
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make check'
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); CI=N make check; local_hook="$(git rev-parse --git-path hooks/flext-pre-push-check.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -117,7 +120,7 @@ repos:
         name: make test WHAT=cache-clear APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make test WHAT=cache-clear APPLY=Y'
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); CI=N make test WHAT=cache-clear APPLY=Y; local_hook="$(git rev-parse --git-path hooks/flext-pre-push-test-cache-clear.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -126,7 +129,7 @@ repos:
         name: make test WHAT=full
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make test WHAT=full'
+          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS APPLY; unset $(git rev-parse --local-env-vars); CI=N make test WHAT=full; local_hook="$(git rev-parse --git-path hooks/flext-pre-push-test-full.local)"; [ ! -x "$local_hook" ] || "$local_hook"'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

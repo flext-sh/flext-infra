@@ -2656,19 +2656,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _declared_hook_stages(make_spec: m.Infra.MakeSpec) -> tuple[str, ...]:
-        """Derive the hook stages from the workflow SSOT, never a literal list.
+        """Derive hook stages from their explicit config-owned policies.
 
-        A context named ``pre_commit``/``pre_push`` in config/codegen.yaml is
-        what makes the corresponding git hook part of the contract, so adding a
-        hook context to the SSOT extends this check with no code change.
+        MakeSpec validation guarantees these policies exactly cover the hook
+        contexts consumed by workflow rows.
         """
-        contexts = {
-            context
-            for step in make_spec.workflow
-            for context in step.contexts
-            if context.startswith("pre_")
-        }
-        return tuple(sorted(context.replace("_", "-") for context in contexts))
+        return tuple(
+            stage.context.replace("_", "-") for stage in make_spec.hooks.stages
+        )
 
     @classmethod
     def _hooks_directory(cls, repository_root: Path) -> p.Result[Path]:
@@ -2707,7 +2702,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if not (plan.hooks_directory / stage).is_file()
         )
         if not missing:
-            return r[bool].ok(True)
+            drifted: list[str] = []
+            for stage in plan.stages:
+                hook_path = plan.hooks_directory / stage
+                content = u.Cli.files_read_text(hook_path)
+                marker = f"--hook-type={stage}"
+                if content.failure or marker not in content.value:
+                    drifted.append(f"{stage} ({hook_path})")
+            if not drifted:
+                return r[bool].ok(True)
+            if allow_missing:
+                return r[bool].ok(True)
+            return r[bool].fail(
+                "git hook is not managed by pre-commit: " + ", ".join(drifted)
+            )
         if allow_missing:
             return r[bool].ok(True)
         return r[bool].fail(

@@ -278,6 +278,17 @@ Infra:
         # WHAT=all (incremental testmon, --no-cov) stays the local default.
         - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
         - { verb: test, what: full, apply: false, contexts: [local, pre_push] }
+      # Git hook behavior is policy, not template logic. Each generated stage
+      # clears inherited Make selectors and then, on success, runs an optional
+      # executable sibling named <generated-hook-id>.local from the real Git hooks dir.
+      hooks:
+        clear_environment: [WHAT, MAKEFLAGS, APPLY]
+        local_suffix: .local
+        stages:
+          # pre-push deliberately mirrors every pre-commit workflow row while
+          # selecting CI=N; its additional full-test rows remain workflow data.
+          - { context: pre_commit, ci_value: Y, clear_git_environment: false }
+          - { context: pre_push, ci_value: N, clear_git_environment: true }
       bootstrap:
         environment: isolated
         dependency_groups: all

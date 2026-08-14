@@ -107,22 +107,30 @@ class TestsCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         self, codegen: CodegenSpec
     ) -> None:
-        """Keep the fast commit and full push workflows separate in the typed SSOT."""
+        """Keep hook behavior and its local extension in the typed SSOT."""
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
 
         tm.that(bool(pre_commit), eq=True)
         tm.that(bool(pre_push), eq=True)
-        tm.that(all(step.apply for step in pre_commit), eq=True)
+        tm.that(any(step.apply for step in pre_commit), eq=True)
         tm.that(any(step.apply for step in pre_push), eq=True)
         tm.that(any(not step.apply for step in pre_push), eq=True)
         tm.that(
-            {step.verb for step in pre_commit}.isdisjoint({
-                step.verb for step in pre_push
-            }),
-            eq=True,
+            codegen.make.hooks.clear_environment,
+            eq=("WHAT", "MAKEFLAGS", codegen.make.apply_variable),
         )
+        tm.that(codegen.make.hooks.local_suffix, eq=".local")
+        hook_stages = {stage.context: stage for stage in codegen.make.hooks.stages}
+        tm.that(set(hook_stages), eq={"pre_commit", "pre_push"})
+        tm.that(hook_stages["pre_commit"].ci_value, eq=codegen.make.ci.value)
+        tm.that(hook_stages["pre_push"].ci_value, eq=codegen.make.ci.local_value)
+        tm.that(hook_stages["pre_commit"].clear_git_environment, eq=False)
+        tm.that(hook_stages["pre_push"].clear_git_environment, eq=True)
+        commit_commands = {(step.verb, step.what) for step in pre_commit}
+        push_commands = {(step.verb, step.what) for step in pre_push}
+        tm.that(commit_commands <= push_commands, eq=True)
 
     def test_rendered_vscode_document_consumes_projection_maps(
         self, tmp_path: Path, codegen: CodegenSpec
