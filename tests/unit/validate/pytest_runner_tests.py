@@ -503,6 +503,7 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(report_dir)
         tm.that(command, has=[f"--cov-report=xml:{report_dir / 'coverage.xml'}"])
         tm.that(command, lacks="--cov-report=xml")
+        tm.that(command, lacks="--cov-report=term-missing")
 
     def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

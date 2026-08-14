@@ -218,10 +218,12 @@ class FlextInfraPytestRunner(s[int]):
         # artifact gate below reads. Letting --cov-report=xml default to the
         # CWD wrote coverage.xml to the repository root, so the gate found
         # nothing and failed a run whose coverage had in fact been measured.
+        # The XML is also the durable complete report. Rendering term-missing
+        # for the whole fleet duplicates that evidence and can consume the
+        # remaining suite budget after every item has already passed.
         if self._coverage_requested():
             coverage_args = (
                 "--cov",
-                "--cov-report=term-missing",
                 f"--cov-report=xml:{report_dir / c.Infra.PYTEST_COVERAGE_XML}",
             )
         elif self._profiling_requested() or focused:
