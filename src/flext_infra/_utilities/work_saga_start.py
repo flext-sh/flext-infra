@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
 from flext_infra import FlextInfraWorktreeService, c, m, u
 from flext_infra._utilities.work_saga_common import FlextInfraWorkSagaCommon
 
@@ -243,7 +244,27 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     state="started",
                 )
             )
-        matrix = existing_matrix or m.Infra.WorkLaneMatrix(entries=tuple(entries))
+        existing_entries: dict[str, m.Infra.WorkLaneEntry] = (
+            {entry.project: entry for entry in existing_matrix.entries}
+            if existing_matrix is not None
+            else {}
+        )
+        refreshed_entries: list[m.Infra.WorkLaneEntry] = []
+        for entry in entries:
+            previous = existing_entries.get(entry.project)
+            if previous is not None and previous.head_oid == entry.head_oid:
+                refreshed_entries.append(
+                    entry.model_copy(
+                        update={
+                            "pr_number": previous.pr_number,
+                            "pr_url": previous.pr_url,
+                            "state": previous.state,
+                        }
+                    )
+                )
+            else:
+                refreshed_entries.append(entry)
+        matrix = m.Infra.WorkLaneMatrix(entries=tuple(refreshed_entries))
         lane_metadata = self.ready(pending_metadata, head.value, matrix)
         labels: tuple[str, ...] = (f"branch:{branch}",)
         if epic_lane is not None:
