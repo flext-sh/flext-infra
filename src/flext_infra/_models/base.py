@@ -123,6 +123,13 @@ class FlextInfraModelsBase:
         workspace: Annotated[
             Path, m.Field(description="Workspace root used for lint and pytest checks")
         ]
+        expected_sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(
+                default_factory=dict,
+                description="Expected current source bytes keyed by updated path",
+            ),
+        ] = m.Field(default_factory=dict)
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve .bak copies before editing")
         ] = False

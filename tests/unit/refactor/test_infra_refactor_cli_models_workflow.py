@@ -6,7 +6,6 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import TYPE_CHECKING
 
-
 from flext_infra import main as infra_main
 from flext_tests import tm
 from tests import u

@@ -218,8 +218,8 @@ class TestCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        from flext_infra import config, m
         from flext_cli import u as cli_u
+        from flext_infra import config, m
 
         codegen = config.Infra.codegen
         private = codegen.ci_private_submodules.get("cosmos-main")
@@ -419,8 +419,8 @@ class TestCodegenCiMatrix:
 
     def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
         """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
-        from flext_infra import m
         from flext_cli import u as cli_u
+        from flext_infra import m
 
         codegen = config.Infra.codegen
         tpl = (

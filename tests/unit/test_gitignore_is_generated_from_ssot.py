@@ -14,10 +14,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_tests import tm
-
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 from tests import u as test_u
 
 

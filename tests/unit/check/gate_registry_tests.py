@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, r, u
-from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
-from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
-from flext_tests import tm
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.gates import FlextInfraCanonicalAliasGate
+
+from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,6 +51,13 @@ class TestGateRegistry:
             "VALUE = c.MAX_SIZE\n",
             encoding="utf-8",
         )
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo": ("c",)}
+        )
 
         def _fail_read(path: Path) -> p.Result[str]:
             return r[str].fail(f"read failed: {path.name}")
@@ -66,6 +73,223 @@ class TestGateRegistry:
 
         tm.that(result.result.passed, eq=False)
         tm.that(result.raw_output, has="read failed: service.py")
+
+    def test_canonical_alias_check_detects_root_tests_consumer(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        project_dir = tmp_path / "demo-project"
+        package_init = project_dir / "src" / "demo_pkg" / "__init__.py"
+        test_file = project_dir / "tests" / "unit" / "test_consumer.py"
+        package_init.parent.mkdir(parents=True)
+        test_file.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        (project_dir / "tests" / "__init__.py").write_text("", encoding="utf-8")
+        test_file.write_text(
+            "from flext_core import c\n\nVALUE = c.VALUE\n", encoding="utf-8"
+        )
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c",)},
+        )
+        gate = FlextInfraCanonicalAliasGate(tmp_path)
+        result = gate.check(
+            project_dir,
+            m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path / "reports"),
+        )
+        tm.that(result.result.passed, eq=False)
+        tm.that(result.raw_output, has="canonical alias 'c'")
+        tm.that(result.raw_output, has="from tests import c")
+
+    def test_canonical_alias_fix_rejects_prospective_import_cycle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        project_dir = tmp_path / "demo-project"
+        package_init = project_dir / "src" / "demo_pkg" / "__init__.py"
+        tests_init = project_dir / "tests" / "__init__.py"
+        unit_init = project_dir / "tests" / "unit" / "__init__.py"
+        test_file = project_dir / "tests" / "unit" / "test_consumer.py"
+        package_init.parent.mkdir(parents=True)
+        unit_init.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        unit_init.write_text("", encoding="utf-8")
+        tests_init.write_text(
+            "from tests.unit.test_consumer import VALUE\n", encoding="utf-8"
+        )
+        original = "from flext_core import c\n\nVALUE = c.VALUE\n"
+        test_file.write_text(original, encoding="utf-8")
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c",)},
+        )
+        gate = FlextInfraCanonicalAliasGate(tmp_path)
+        result = gate.fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            ),
+        )
+        tm.that(result.result.passed, eq=False)
+        tm.that(result.raw_output, has="import cycle")
+        tm.that(test_file.read_text(encoding="utf-8"), eq=original)
+
+    def test_canonical_alias_fix_plans_only_detected_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        project_dir = tmp_path / "demo-project"
+        package_init = project_dir / "src" / "demo_pkg" / "__init__.py"
+        tests_init = project_dir / "tests" / "__init__.py"
+        test_file = project_dir / "tests" / "unit" / "test_consumer.py"
+        clean_file = project_dir / "tests" / "unit" / "test_clean.py"
+        package_init.parent.mkdir(parents=True)
+        test_file.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        tests_init.write_text("", encoding="utf-8")
+        original = "from flext_core import c\n\nVALUE = c.VALUE\n"
+        clean_source = "VALUE = 1\n"
+        test_file.write_text(original, encoding="utf-8")
+        clean_file.write_text(clean_source, encoding="utf-8")
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c",)},
+        )
+        planned_reads: list[Path] = []
+        original_read = u.Cli.files_read_text
+
+        def _record_read(path: Path) -> p.Result[str]:
+            planned_reads.append(path)
+            return original_read(path)
+
+        monkeypatch.setattr(u.Cli, "files_read_text", _record_read)
+        gate = FlextInfraCanonicalAliasGate(tmp_path)
+        result = gate.fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            ),
+        )
+        tm.that(result.result.passed, eq=True)
+        tm.that(planned_reads, eq=[test_file])
+        tm.that(test_file.read_text(encoding="utf-8"), has="from tests import c")
+        tm.that(clean_file.read_text(encoding="utf-8"), eq=clean_source)
+
+    def test_canonical_alias_fix_allows_preexisting_unrelated_cycle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        project_dir = tmp_path / "demo-project"
+        package_dir = project_dir / "src" / "demo_pkg"
+        package_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        (package_dir / "a.py").write_text("from demo_pkg import b\n", encoding="utf-8")
+        (package_dir / "b.py").write_text("from demo_pkg import a\n", encoding="utf-8")
+        consumer = package_dir / "consumer.py"
+        consumer.write_text(
+            "from flext_core import c\n\nVALUE = c.VALUE\n", encoding="utf-8"
+        )
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c",)},
+        )
+        gate = FlextInfraCanonicalAliasGate(tmp_path)
+        result = gate.fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            ),
+        )
+        tm.that(result.result.passed, eq=True)
+        tm.that(
+            consumer.read_text(encoding="utf-8"), has="from demo_pkg.constants import c"
+        )
+
+    def test_canonical_alias_fix_rejects_new_cycle_beside_existing_cycle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A baseline cycle must not hide an independent prospective cycle."""
+        project_dir = tmp_path / "demo-project"
+        package_dir = project_dir / "src" / "demo_pkg"
+        tests_dir = project_dir / "tests"
+        unit_dir = tests_dir / "unit"
+        package_dir.mkdir(parents=True)
+        unit_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        (package_dir / "a.py").write_text("from demo_pkg import b\n", encoding="utf-8")
+        (package_dir / "b.py").write_text("from demo_pkg import a\n", encoding="utf-8")
+        consumer = unit_dir / "test_consumer.py"
+        original = "from flext_core import c\n\nVALUE = c.VALUE\n"
+        consumer.write_text(original, encoding="utf-8")
+        (tests_dir / "__init__.py").write_text(
+            "from tests.unit.test_consumer import VALUE\n", encoding="utf-8"
+        )
+        (unit_dir / "__init__.py").write_text("", encoding="utf-8")
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c",)},
+        )
+
+        result = FlextInfraCanonicalAliasGate(tmp_path).fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            ),
+        )
+
+        tm.that(result.result.passed, eq=False)
+        tm.that(result.raw_output, has="import cycle")
+        tm.that(consumer.read_text(encoding="utf-8"), eq=original)
+
+    def test_canonical_alias_fix_aborts_on_source_cas_conflict(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        project_dir = tmp_path / "demo-project"
+        package_dir = project_dir / "src" / "demo_pkg"
+        package_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        consumer = package_dir / "consumer.py"
+        original = "from flext_core import c\n\nVALUE = c.VALUE\n"
+        concurrent = original + "CONCURRENT = True\n"
+        consumer.write_text(original, encoding="utf-8")
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c",)},
+        )
+        original_writer = u.Infra.protected_source_writes
+
+        def _concurrent_write(
+            updates: t.MappingKV[Path, str],
+            *,
+            request: m.Infra.ProtectedSourceWritesRequest,
+        ) -> t.Infra.EditResult:
+            consumer.write_text(concurrent, encoding="utf-8")
+            return original_writer(updates, request=request)
+
+        monkeypatch.setattr(u.Infra, "protected_source_writes", _concurrent_write)
+        result = FlextInfraCanonicalAliasGate(tmp_path).fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            ),
+        )
+        tm.that(result.result.passed, eq=False)
+        tm.that(result.raw_output, has="CAS")
+        tm.that(consumer.read_text(encoding="utf-8"), eq=concurrent)
 
 
 def test_every_allowed_gate_resolves_in_the_registry() -> None:

@@ -598,6 +598,13 @@ class FlextInfraUtilitiesRopeAnalysis:
         return None
 
     @staticmethod
+    def public_export_names_source(source: str) -> t.StrSequence:
+        """Return the explicit public ABI declared by one module source."""
+        return FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
+            source, c.Infra.DUNDER_ALL
+        )
+
+    @staticmethod
     def _is_local_name(
         pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
     ) -> bool:
