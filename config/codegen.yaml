@@ -1104,6 +1104,7 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
+        conflict_sections: [tool.pytest.ini_options, tool.uv]
 
     scaffold:
       build:
