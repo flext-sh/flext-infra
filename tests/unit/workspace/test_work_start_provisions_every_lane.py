@@ -21,24 +21,33 @@ _SETUP_LOG = "setup-runs.log"
 _VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
 
 
-def _repository(tmp_path: Path) -> Path:
+def _repository(tmp_path: Path, *, content_only: bool = False) -> Path:
     """Return a committed repository whose ``setup`` records every invocation."""
     repository = tmp_path / "repository"
     repository.mkdir()
-    (repository / "pyproject.toml").write_text(
-        '[project]\nname = "fixture"\nversion = "0.1.0"\n'
-        'description = "A standard PEP 621 description string"\n',
-        encoding="utf-8",
-    )
-    (repository / "Makefile").write_text(
-        ".PHONY: setup\n"
-        "setup:\n"
-        f"\t@mkdir -p {_VENV_NAME}/bin\n"
-        f"\t@printf '#!/bin/sh\\n' > {_VENV_NAME}/bin/python\n"
-        f"\t@chmod +x {_VENV_NAME}/bin/python\n"
-        f'\t@printf "%s\\n" "$(CURDIR)" >> "$(CURDIR)/{_SETUP_LOG}"\n',
-        encoding="utf-8",
-    )
+    (repository / "README.md").write_text("content fixture\n", encoding="utf-8")
+    config_dir = repository / "config"
+    config_dir.mkdir()
+    (config_dir / "project.yaml").write_text("governed: true\n", encoding="utf-8")
+    if content_only:
+        (repository / "Makefile").write_text(
+            ".PHONY: setup\nsetup:\n\t@exit 23\n", encoding="utf-8"
+        )
+    else:
+        (repository / "pyproject.toml").write_text(
+            '[project]\nname = "fixture"\nversion = "0.1.0"\n'
+            'description = "A standard PEP 621 description string"\n',
+            encoding="utf-8",
+        )
+        (repository / "Makefile").write_text(
+            ".PHONY: setup\n"
+            "setup:\n"
+            f"\t@mkdir -p {_VENV_NAME}/bin\n"
+            f"\t@printf '#!/bin/sh\\n' > {_VENV_NAME}/bin/python\n"
+            f"\t@chmod +x {_VENV_NAME}/bin/python\n"
+            f'\t@printf "%s\\n" "$(CURDIR)" >> "$(CURDIR)/{_SETUP_LOG}"\n',
+            encoding="utf-8",
+        )
     (repository / ".gitignore").write_text(
         f"{_VENV_NAME}\n{_SETUP_LOG}\n", encoding="utf-8"
     )
@@ -159,6 +168,28 @@ def test_start_provisions_a_new_lane_and_an_adopted_one(
     assert _setup_runs(lane) == created_runs + 1, (
         "start adopted the existing lane without provisioning it"
     )
+
+
+def test_start_preserves_content_only_repository_without_python_setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = _repository(tmp_path, content_only=True)
+    bead_id = "mro-test-content-only"
+    shim_dir = _install_bd_shim(tmp_path, bead_id)
+    monkeypatch.setenv("PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    receipt = _start(repository, bead_id)
+
+    lane = tm.ok(
+        FlextInfraWorktreeService.registered_lane(
+            repository, "feature/provisioned-lane"
+        )
+    )
+    tm.that(receipt, has=f"WORKTREE={lane}")
+    tm.that((lane / "README.md").read_text(encoding="utf-8"), eq="content fixture\n")
+    tm.that((lane / "config" / "project.yaml").is_file(), eq=True)
+    tm.that((lane / "pyproject.toml").exists(), eq=False)
+    tm.that((lane / _VENV_NAME).exists(), eq=False)
 
 
 def test_failed_primary_setup_records_recoverable_metadata(
