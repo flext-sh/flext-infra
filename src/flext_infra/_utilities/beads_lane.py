@@ -12,10 +12,6 @@ from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 
-<<<<<<< HEAD
-=======
-_BD_UPDATE_BASE_ARGV_LENGTH = 2
-
 # mro-38p39 (cProfile evidence): every `bd` invocation resolves the governing
 # ledger first, and each resolution re-ran the workspace detector plus a full
 # workspace-spec load. One make-work saga paid it 199 times — 19.34s cumulative
@@ -24,7 +20,6 @@ _BD_UPDATE_BASE_ARGV_LENGTH = 2
 # NOT cached: an unresolvable anchor must stay fail-closed and be re-evaluated.
 _BEADS_ROOT_CACHE: dict[Path, Path] = {}
 
->>>>>>> refs/remotes/origin/0.12.0-dev
 if TYPE_CHECKING:
     from flext_infra import p
 

@@ -58,6 +58,8 @@ class FlextInfraPytestSelectorValidator(s[bool]):
             file is not None or match is not None
         ):
             return f"{what} rejects FILE and MATCH"
+        if what == "full" and (file is not None or match is not None):
+            return "full rejects FILE and MATCH"
         if file is None:
             return None
         path_prefix = file.split("::", maxsplit=1)[0]

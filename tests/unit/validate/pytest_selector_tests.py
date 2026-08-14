@@ -72,6 +72,17 @@ class TestsFlextInfraPytestSelectorValidator:
                 workspace_root=Path.cwd(), what="cache-status", match="x"
             )
 
+    def test_full_rejects_focused_selectors(self) -> None:
+        """The complete-suite coverage gate cannot describe a subset."""
+        with pytest.raises(c.ValidationError, match="full rejects FILE and MATCH"):
+            FlextInfraPytestSelectorValidator(
+                workspace_root=Path.cwd(), what="full", file="tests/test_sample.py"
+            )
+        with pytest.raises(c.ValidationError, match="full rejects FILE and MATCH"):
+            FlextInfraPytestSelectorValidator(
+                workspace_root=Path.cwd(), what="full", match="sample"
+            )
+
     def test_file_rejects_symlink_hop(self, tmp_path: Path) -> None:
         target = tmp_path / "target.py"
         target.write_text("", encoding="utf-8")
