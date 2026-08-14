@@ -83,8 +83,7 @@ class TestsFlextInfraPytestTimeoutConfig:
 
         payload["slow-timeout-seconds"] = policy.run_timeout_seconds
         with pytest.raises(
-            c.ValidationError,
-            match="pytest slow timeout must be less than run timeout",
+            c.ValidationError, match="pytest slow timeout must be less than run timeout"
         ):
             type(policy).model_validate(payload)
 

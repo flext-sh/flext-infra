@@ -42,8 +42,7 @@ class TestsFlextInfraDepsModernizerPytest:
             has=[f"--timeout={policy.case_timeout_seconds}"],
         )
         tm.that(
-            ini[c.Infra.FLEXT_SLOW_TIMEOUT_INI_OPTION],
-            eq=policy.slow_timeout_seconds,
+            ini[c.Infra.FLEXT_SLOW_TIMEOUT_INI_OPTION], eq=policy.slow_timeout_seconds
         )
 
     def test_apply_sets_expected_ini_options(self) -> None:

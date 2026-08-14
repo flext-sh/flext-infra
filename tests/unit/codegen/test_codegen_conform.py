@@ -176,14 +176,10 @@ class TestCodegenConform:
 
         tm.that(merging_current.ancestor, eq=True)
 
-    # Exemplar: a genuine end-to-end scenario -- scaffold a project, then run
-    # its console entry point in a fresh interpreter -- legitimately costs more
-    # than the suite-wide 30s budget, because importing the generated package's
-    # dependency chain dominates. Declaring the real budget with an explicit
-    # marker and timeout keeps the scenario honest instead of hiding it behind
-    # a global timeout bump that would mask genuine hangs elsewhere.
+    # This end-to-end scenario scaffolds a project and runs its console entry
+    # point in a fresh interpreter. The slow marker opts into the single
+    # config-owned slow-item budget; tests must not restate that policy locally.
     @pytest.mark.slow
-    @pytest.mark.timeout(180)
     @pytest.mark.parametrize(
         ("kind", "name"),
         [
@@ -342,14 +338,12 @@ class TestCodegenConform:
     ) -> None:
         """The gen verb converges for a Python root beyond declarative env_dirs.
 
-        ``make gen`` runs conform and then the deps modernizer over the same
-        manifest. Two derivations used to select the pyright execution
-        environments: the modernizer discovered roots ON DISK, while conform
-        planned them from the declarative ``env_dirs``. A project owning a
-        Python directory outside that list therefore had the environment
-        appended by the modernizer and erased by conform, so apply rewrote the
-        manifest forever and the next check reported permanent drift. One owner
-        must decide, so the extra root survives a whole gen cycle.
+        Two derivations used to select the pyright execution environments: the
+        dependency command discovered roots ON DISK, while conform planned them
+        from declarative ``env_dirs``. A project owning a Python directory
+        outside that list therefore oscillated between two writers. Conform is
+        the sole generation owner, so it must discover and preserve the extra
+        root by itself and immediately reach a fixed point.
         """
         root = infra_git_repo
         dist = u.Tests.repository_ref(config.Infra.name).distribution
@@ -392,13 +386,6 @@ class TestCodegenConform:
             )
         )
         tm.ok(applied)
-        # gen runs the modernizer over the same manifest right after conform, so
-        # the fixed point belongs to the pair, never to conform alone.
-        tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=root, apply_changes=True
-            ).execute()
-        )
 
         fixed_point = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
