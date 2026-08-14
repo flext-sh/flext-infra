@@ -25,7 +25,9 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         bead = (self.bead or "").strip()
         if not bead:
             return r.fail("work start requires --bead")
-        shown = u.Infra.beads_show(bead, root=self.workspace_root)
+        shown = u.Infra.beads_show(
+            bead, root=self.workspace_root, adopt_legacy_ready=True
+        )
         if shown.failure:
             return r.fail(shown.error or f"unknown bead {bead}")
         epic_bead = (self.epic or "").strip()
@@ -37,6 +39,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
         kind, namespace, slug = kind_slug.value
         branch = self._branch_name(namespace, slug)
         existing = shown.value.metadata
+        existing_matrix: m.Infra.WorkLaneMatrix | None = None
         if existing is not None:
             bound = existing.worktree.exists()
             if bound and existing.branch != branch:
@@ -44,6 +47,10 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                     f"bead {bead} already bound to branch {existing.branch} "
                     f"at {existing.worktree}"
                 )
+            if isinstance(existing, m.Infra.ReadyLaneMetadata):
+                if existing.matrix is None:
+                    return r.fail("ready lane start requires matrix metadata")
+                existing_matrix = existing.matrix
         epic_lane: Path | None = None
         base = ""
         if epic_bead:
@@ -184,7 +191,60 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             f"head={head.value}"
         )
         # Why: mro-dipb.1 kind may arrive as str; coerce like _branch_name.
-        lane_metadata = self.ready(pending_metadata, head.value)
+        projects = u.Infra.resolve_projects(primary_root, ())
+        if projects.failure:
+            return r.fail(projects.error or "failed to resolve workspace projects")
+        entries: list[m.Infra.WorkLaneEntry] = []
+        project_paths = (
+            primary_root.resolve(),
+            *(project.path.resolve() for project in projects.value),
+        )
+        for project_path in dict.fromkeys(project_paths):
+            try:
+                relative = project_path.relative_to(primary_root.resolve())
+            except ValueError:
+                return r.fail(f"workspace project is outside root: {project_path}")
+            project_name = relative.as_posix() or "."
+            lane_project = (lane / project_name).resolve()
+            if (
+                not lane_project.is_relative_to(lane.resolve())
+                or not lane_project.is_dir()
+            ):
+                return r.fail(f"matrix project checkout is missing: {project_name}")
+            if project_name != ".":
+                current_branch = u.Infra.git_abbrev_ref_head(
+                    m.Infra.GitRepoRequest(repo_root=lane_project)
+                )
+                if current_branch.failure:
+                    return r.fail(
+                        current_branch.error
+                        or f"failed to resolve workspace project branch: {project_name}"
+                    )
+                if current_branch.value.text != branch:
+                    attached = u.Infra.git_attach_branch_at_head(
+                        m.Infra.GitBranchRequest(repo_root=lane_project, branch=branch)
+                    )
+                    if attached.failure:
+                        return r.fail(
+                            attached.error
+                            or f"failed to attach workspace project branch: {project_name}"
+                        )
+            project_head = self._git_head(lane_project)
+            if project_head.failure:
+                return r.fail(
+                    project_head.error
+                    or f"failed to resolve matrix head: {project_name}"
+                )
+            entries.append(
+                m.Infra.WorkLaneEntry(
+                    project=project_name,
+                    branch=branch,
+                    head_oid=project_head.value,
+                    state="started",
+                )
+            )
+        matrix = existing_matrix or m.Infra.WorkLaneMatrix(entries=tuple(entries))
+        lane_metadata = self.ready(pending_metadata, head.value, matrix)
         labels: tuple[str, ...] = (f"branch:{branch}",)
         if epic_lane is not None:
             labels = (*labels, f"epic:{epic_bead}")

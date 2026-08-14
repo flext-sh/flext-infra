@@ -59,7 +59,12 @@ class TestsFlextInfraCustomMkPolicy:
         reserved = FlextInfraCustomMkPolicy.reserved_verbs()
 
         tm.that({"check", "gen", "work"} <= reserved, eq=True)
-        tm.that({"pr", "clean"} <= reserved, eq=True)
+        # mro-x0rau.3 unreserved `pr` with the recipe it named; `clean` and
+        # `help` are the project-surface verbs base.mk still ships.
+        tm.that({"clean", "help"} <= reserved, eq=True)
+        tm.that(
+            reserved.isdisjoint({"pr", "boot", "daemon-start", "scan", "val"}), eq=True
+        )
 
     def test_reserved_targets_cover_builtin_what_pairs(self) -> None:
         """Reserved targets include every builtin _custom_<verb>_<what> pair."""

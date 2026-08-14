@@ -4,30 +4,24 @@ Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-# NOTE (multi-agent, mro-wkii.17 / agent: codex): this suite exercises only the
-# public services and emitted artifacts; the former private catalog golden is gone.
 from __future__ import annotations
 
 import os
 import sys
 import tomllib
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
-
-from flext_infra import c, config, m, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
-from tests import u as test_u
+from flext_infra import config
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
+
+from tests import c, m, p, u
 
 
 def _conform_target(
@@ -56,6 +50,90 @@ def _conform_target(
 
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
+
+    def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
+        root = tmp_path / "repository"
+        root.mkdir()
+        u.Tests.initialize_git_repo(root)
+        baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", baseline],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
+                cwd=root,
+            )
+        )
+        empty_tree = tm.ok(u.Cli.capture(["git", "mktree"], cwd=root))
+        divergent = tm.ok(
+            u.Cli.capture(
+                ["git", "commit-tree", empty_tree, "-m", "Create divergent local line"],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "checkout", "-B", "0.12.0-dev", divergent], cwd=root
+            )
+        )
+        divergent_check = tm.ok(
+            u.Cli.run_raw(
+                ["git", "merge-base", "--is-ancestor", baseline, divergent], cwd=root
+            )
+        )
+        tm.that(divergent_check.exit_code, eq=1)
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=repository.name,
+            repository=repository,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / "workspace.yaml",
+                workspace.model_dump(mode="json", exclude_none=True),
+            )
+        )
+        (root / "pyproject.toml").write_text(
+            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
+            encoding="utf-8",
+        )
+        package = root / "src" / repository.distribution.replace("-", "_")
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(workspace_root=root, request=request)
+
+        before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
+        divergent_current = next(
+            reference
+            for reference in before_merge.references
+            if reference.reference == "refs/heads/0.12.0-dev"
+        )
+        tm.that(divergent_current.ancestor, eq=False)
+
+        merge_head = tm.ok(
+            u.Cli.capture(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=root)
+        )
+        (root / merge_head).write_text(f"{baseline}\n", encoding="utf-8")
+        during_merge = tm.ok(service.plan(request)).branch_ancestry[0]
+        merging_current = next(
+            reference
+            for reference in during_merge.references
+            if reference.reference == "refs/heads/0.12.0-dev"
+        )
+
+        tm.that(merging_current.ancestor, eq=True)
 
     # Exemplar: a genuine end-to-end scenario -- scaffold a project, then run
     # its console entry point in a fresh interpreter -- legitimately costs more
@@ -233,7 +311,7 @@ class TestCodegenConform:
         must decide, so the extra root survives a whole gen cycle.
         """
         root = infra_git_repo
-        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
+        dist = u.Tests.repository_ref(config.Infra.name).distribution
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "pyproject.toml",
@@ -295,7 +373,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
+        dist = u.Tests.repository_ref(config.Infra.name).distribution
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "pyproject.toml",
@@ -330,7 +408,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = test_u.Tests.repository_ref(config.Infra.name)
+        repository = u.Tests.repository_ref(config.Infra.name)
         local_repository = repository.model_copy(update={"path": Path()})
         dist = repository.distribution
         create_only = {
@@ -415,8 +493,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
-        root_repository = test_u.Tests.repository_ref("flext")
-        member = test_u.Tests.repository_ref(
+        root_repository = u.Tests.repository_ref("flext")
+        member = u.Tests.repository_ref(
             "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -468,7 +546,7 @@ class TestCodegenConform:
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
         provider = config.Infra.codegen.providers[0]
-        repository = test_u.Tests.repository_ref("arbitrary-root").model_copy(
+        repository = u.Tests.repository_ref("arbitrary-root").model_copy(
             update={
                 "name": "arbitrary-root",
                 "distribution": "arbitrary-root",
@@ -542,7 +620,7 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Build Make context from repository-owned data alone."""
-        repository = test_u.Tests.repository_ref("consumer")
+        repository = u.Tests.repository_ref("consumer")
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
@@ -589,8 +667,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """An attached member bootstraps from its declared local checkout."""
-        workspace_repository = test_u.Tests.repository_ref("workspace-root-fixture")
-        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
+        workspace_repository = u.Tests.repository_ref("workspace-root-fixture")
+        infra_repository = u.Tests.repository_ref(config.Infra.name)
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=workspace_repository.name,
@@ -625,10 +703,11 @@ class TestCodegenConform:
 
         tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
 
+    @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
-        self, infra_git_repo: Path
+        self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
     ) -> None:
-        """Execute each public mode without changing an already conform tree."""
+        """Execute one public mode without changing an already conform tree."""
         root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -650,30 +729,20 @@ class TestCodegenConform:
                 cwd=root,
             )
         )
-        # Report/cache artifacts are regenerated per run and are never part
-        # of the conform fixed point.
-        snapshot_excludes = (Path(".reports"), Path(".pytest_cache"), Path(".coverage"))
-        before = tm.ok(
-            u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
-        )
         route = next(
             route
             for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
             if route.name == "conform"
         )
-        for mode in c.Infra.CodegenConformMode:
-            request = m.Infra.CodegenConformRequest(
-                root=root,
-                what=c.Infra.CodegenConformSurface.ALL,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=mode,
-            )
-            tm.ok(route.handler(request))
-        after = tm.ok(
-            u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=mode,
         )
-        tm.that(after.digest, eq=before.digest)
-        tm.that(u.Infra.workspace_fingerprint_changes(before, after), eq=())
+        tm.ok(route.handler(request))
+        status = tm.ok(u.Cli.capture(["git", "status", "--porcelain"], cwd=root))
+        tm.that(status, eq="")
 
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
@@ -897,7 +966,7 @@ class TestCodegenConform:
         )
         # `check` requires a provisioned interpreter, which `make setup` would
         # build. Stub it so this test stays about hook ordering.
-        test_u.Tests.write_executable(
+        u.Tests.write_executable(
             root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])

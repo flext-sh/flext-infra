@@ -90,22 +90,28 @@ class FlextInfraConstantsMake:
         "markdown",
         "smells",
     )
-    PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
-        "lint",
+    # mro-38p39: the gates that can repair what they report. `make fix APPLY=Y`
+    # routes through `check run --fix`, which without a selector would execute
+    # every gate -- including pyright and mypy, which fix nothing and cost ~37s,
+    # timing the verb out. Kept equal to the registry's can_fix set by
+    # gate_registry_tests.test_fixable_gate_vocabulary_matches_the_registry, so a
+    # gate that flips can_fix joins `make fix` without a template edit.
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = (
         "format",
-        "pyrefly",
-        "mypy",
-        "pyright",
+        "markdown",
+        "smells",
     )
+    # mro-x0rau.3: the FILE/FILES/CHANGED_ONLY fast-path gate restriction was
+    # deleted with base_verbs.mk.j2 (commit 2a4a8ea7a). File-scoped runs now go
+    # through the same typed gate pipeline as a full run, so every allowed gate
+    # is file-scopable and no separate fast-path allowlist exists.
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
     PROJECT_CHECK_GATES_DEFAULT: Final[str] = ",".join(
         PROJECT_CHECK_GATES_DEFAULT_VALUES
     )
-    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = ",".join(
-        PROJECT_FAST_PATH_CHECK_GATE_VALUES
-    )
+
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
         "build",
@@ -132,6 +138,13 @@ class FlextInfraConstantsMake:
         "MISE_VERBOSE",
         "MFLAGS",
         "MYPYPATH",
+        # mro-izia.1 (agent kimi): workspace selection is an ARGUMENT of the
+        # invocation that owns it, never ambient state a nested make inherits.
+        # A selection exported here (directly, or smuggled through
+        # GNUMAKEFLAGS/MAKEFLAGS) reached generated project makes that never
+        # declare that name and failed them with `undeclared project <name>`.
+        "PROJECT",
+        "PROJECTS",
         "PYTHONPATH",
         "UV_PROJECT",
         "UV_PROJECT_ENVIRONMENT",

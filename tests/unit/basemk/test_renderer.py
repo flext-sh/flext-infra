@@ -13,6 +13,36 @@ if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
 
 _MIN_RENDERED_LINES = 200
+_STANDARD_VERBS_ASSIGNMENT = "STANDARD_VERBS :="
+
+
+def _declared_standard_verbs(rendered: str) -> tuple[str, ...]:
+    """Return the verbs base.mk declares through STANDARD_VERBS."""
+    for line in rendered.splitlines():
+        if line.startswith(_STANDARD_VERBS_ASSIGNMENT):
+            declared = line.removeprefix(_STANDARD_VERBS_ASSIGNMENT)
+            return tuple(declared.split())
+    return ()
+
+
+def _target_has_recipe(rendered: str, target: str) -> bool:
+    """Report whether ``target`` owns at least one recipe line in the render.
+
+    A Make target carries a recipe when a tab-indented line follows its rule.
+    Prerequisite-only rules (``$(STANDARD_VERBS): _preflight``) never do, which
+    is exactly the silent no-op this predicate detects.
+    """
+    lines = rendered.splitlines()
+    prefix = f"{target}:"
+    for index, line in enumerate(lines):
+        if not line.startswith(prefix):
+            continue
+        for candidate in lines[index + 1 :]:
+            if candidate.startswith("\t"):
+                return True
+            if candidate.strip() and not candidate.startswith("#"):
+                break
+    return False
 
 
 class TestsFlextInfraBasemkRenderer:
@@ -123,14 +153,27 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(result.value, is_=str)
         tm.that(result.value, empty=False)
 
-    def test_render_all_exposes_canonical_public_targets(self) -> None:
-        """Expose the canonical public Make targets remaining after dead-verb removal."""
-        result = FlextInfraBaseMkTemplateRenderer().render_all()
+    def test_render_all_declares_only_verbs_it_ships_a_recipe_for(self) -> None:
+        """Every verb base.mk declares must own a recipe in base.mk.
 
-        tm.ok(result)
-        text = result.value
-        for part in (".PHONY: clean pr _preflight", "STANDARD_VERBS := clean pr"):
-            tm.that(text, has=part)
+        R12 moved the public verb recipes into the project Makefile. A verb left
+        in STANDARD_VERBS without a recipe is not a cosmetic leftover: Make
+        treats it as a satisfied target and the verb becomes a silent no-op,
+        so a gate like `check` exits 0 having validated nothing.
+
+        The expected set is therefore derived from the rendered text itself -
+        never from a hardcoded verb list - by intersecting what is declared with
+        what actually carries a recipe.
+        """
+        text = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
+
+        declared = _declared_standard_verbs(text)
+        tm.that(declared, empty=False)
+
+        recipeless = tuple(
+            verb for verb in declared if not _target_has_recipe(text, verb)
+        )
+        tm.that(recipeless, eq=())
         tm.that(text, lacks="setup build check security format docs")
         tm.that(text, lacks="docs-base")
         tm.that(text, lacks="docs-sync-scripts")

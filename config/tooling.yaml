@@ -477,23 +477,17 @@ Infra:
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
-        # mro-wkii.17.37.1 (1bc6379b): budgets are MEASURED, not aspirational —
-        # they retain the observed coverage-run slack. The typed runner owns
-        # them; never narrow them back to the pre-measurement 10s/60s.
-        # Measured (mro-xzeok, 2026-08-09): the conform end-to-end cases run
-        # FOUR full conforms each (apply + verify-fixed-point, twice). One
-        # conform measured 8.05s, 7.29s and 8.59s in a single-test run with no
-        # parallelism, so the case needs ~32s of pure work and did not fit the
-        # 30s ceiling even when running alone. Raised to the measured cost plus
-        # the observed variation, per the rule above: budgets follow the
-        # measurement, and a case is never killed by a clock that never fit the
-        # operation it performs.
-        case-timeout-seconds: 90
-        # Measured (ai-hub-wjmk, 2026-08-04): ai-hub unit slice alone reaches
-        # only ~38 percent before the old 300s run wall (exit 124). Full suite
-        # is ~1464 items. Align with consumer health-gate budget (1800s) and
-        # keep process timeout strictly above the run budget.
-        run-timeout-seconds: 1800
+        # OPERATOR LAW mro-38p39 (2026-08-13): budgets are a CONTRACT, not a
+        # measurement. 10s per case, 60s for an explicitly slow case, 120s for
+        # the complete suite. A case that does not fit is a TEST DEFECT and is
+        # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
+        # itself a violation. This supersedes the prior measurement-driven note
+        # that told future maintainers to never narrow back to 10s/60s: that
+        # rule let the suite run 30 minutes, so make test never aborted on
+        # overrun and a push could be attempted without a full green suite.
+        case-timeout-seconds: 10
+        # Complete-suite wall clock. 120s hard ceiling per operator law.
+        run-timeout-seconds: 120
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
@@ -539,12 +533,13 @@ Infra:
           # mro-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
         # mro-99ae: hard process boundary independent of pytest hook progress.
-        # Must exceed run-timeout-seconds (1800): this caps the whole Make/pytest
-        # process (shell `timeout`), not a single session hook. Prior values
-        # (60, then 360 with run=300) killed healthy large suites with exit 124
-        # before the typed runner deadline — ai-hub CI collected ~1464 items and
-        # died at ~63s under process=60 after `make gen`.
-        process-timeout-seconds: 1920
+        # Must exceed run-timeout-seconds (120) by a small grace only: this caps
+        # the whole Make/pytest process (shell `timeout`), not a single session
+        # hook. Under OPERATOR LAW mro-38p39 the suite contract is 120s, so a
+        # wide outer wall is itself an escape hatch — it would let an overrun
+        # keep burning wall clock instead of aborting. Grace covers interpreter
+        # start, collection and teardown only.
+        process-timeout-seconds: 180
       tomlsort:
         all: true
         in_place: true
