@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
+from flext_infra import config
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -183,7 +184,7 @@ class TestAuditorGithubLinks:
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         types = {issue.issue_type for issue in issues}
-        tm.that("stale_github_organization" in types, eq=True)
+        tm.that("invalid_github_artifact_reference" in types, eq=True)
 
     def test_github_wrong_branch(self, tmp_path: Path) -> None:
         """Wrong working-line branch is reported for governed repos."""
@@ -197,10 +198,44 @@ class TestAuditorGithubLinks:
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         types = {issue.issue_type for issue in issues}
-        tm.that("wrong_github_branch" in types, eq=True)
+        tm.that("invalid_github_artifact_reference" in types, eq=True)
 
-    def test_github_rewrite_fix(self, tmp_path: Path) -> None:
-        """Fix rewrites organization/main flext URLs to governed org/branch."""
+    def test_github_builder_uses_arbitrary_configured_branch(self) -> None:
+        repo = next(
+            item
+            for item in config.Infra.codegen.repository_artifact_authorities
+            if item.organization == "datacosmos-br" and item.repository == "ai-hub"
+        )
+
+        url = u.Infra.docs_canonical_github_url(
+            repo.organization, repo.repository, "docs/index.md"
+        )
+
+        tm.that(
+            url,
+            eq=(
+                f"https://github.com/{repo.organization}/{repo.repository}/"
+                f"blob/{repo.ref}/docs/index.md"
+            ),
+        )
+
+    def test_github_builder_rejects_traversal_and_absolute_paths(self) -> None:
+        tm.that(
+            u.Infra.docs_canonical_github_url(
+                "flext-sh", "flext", "../flext-core/README.md"
+            ),
+            eq=None,
+        )
+        tm.that(
+            u.Infra.docs_canonical_github_url(
+                "flext-sh", "flext", "/home/user/README.md"
+            ),
+            eq=None,
+        )
+
+    def test_github_rewrite_does_not_guess_unknown_authority(
+        self, tmp_path: Path
+    ) -> None:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         target = docs_dir / "test.md"
@@ -208,7 +243,8 @@ class TestAuditorGithubLinks:
             "[x](https://github.com/organization/flext/blob/main/README.md)\n"
         )
         item = u.Infra.docs_process_markdown_file(target, apply=True)
-        tm.that(item.links, gte=1)
+        tm.that(item.links, eq=0)
         text = target.read_text()
-        tm.that("flext-sh/flext" in text, eq=True)
-        tm.that("0.12.0-dev" in text, eq=True)
+        tm.that(
+            text, has="[x](https://github.com/organization/flext/blob/main/README.md)"
+        )

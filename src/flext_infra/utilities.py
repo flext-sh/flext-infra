@@ -17,6 +17,7 @@ from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_audit import FlextInfraUtilitiesDocsAudit
 from flext_infra._utilities.docs_build import FlextInfraUtilitiesDocsBuild
@@ -56,6 +57,7 @@ from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
 )
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+from flext_infra._utilities.references import FlextInfraUtilitiesReferences
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -120,6 +122,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRopeStructure,
         FlextInfraUtilitiesRopePep695Patch,
         FlextInfraUtilitiesDocs,
+        FlextInfraUtilitiesDocsGithubLinks,
         FlextInfraUtilitiesDocsApi,
         FlextInfraUtilitiesDocsAudit,
         FlextInfraUtilitiesDocsBuild,
@@ -150,6 +153,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
+        FlextInfraUtilitiesReferences,
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,

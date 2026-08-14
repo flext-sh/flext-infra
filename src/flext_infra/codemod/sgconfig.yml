@@ -1,7 +1,7 @@
 # ast-grep configuration for skill rule testing
 # Reference: https://ast-grep.github.io/guide/test-rule.html
 #
-# Canonical engineering authority: AGENTS.md plus universal ~/.agents/skills/.
+# Canonical engineering authority: repository AGENTS.md plus configured universal skills.
 # These package-owned rule fixtures do not depend on retired project skill links.
 # .claude/skills/** is non-canonical and MUST NOT be referenced here.
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config
+from flext_infra import c
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_tests import tm
@@ -200,11 +200,8 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     tm.that(first_readme, has=f"{c.Infra.GITHUB_REPO_URL}/blob/")
     tm.that(first_readme, lacks="](../AGENTS.md)")
     for generated_page in (first_readme, first_index):
-        tm.that(
-            generated_page,
-            has=("`config.AiHub.paths.agents_home`/`skills/make-check/SKILL.md`"),
-        )
-        tm.that(generated_page, lacks="the agents_home `make-check` skill")
+        tm.that(generated_page, has="configured universal `make-check` skill")
+        tm.that(generated_page, lacks="config.AiHub.paths.agents_home")
     tm.that(
         first_readme.index("FlextAAlpha") < first_readme.index("FlextABeta"), eq=True
     )
@@ -235,12 +232,6 @@ def test_generated_markdown_starts_with_level_one_heading(tmp_path: Path) -> Non
     for path in generated:
         first_line = path.read_text(encoding="utf-8").splitlines()[0]
         tm.that(first_line.startswith("# "), eq=True, msg=path.as_posix())
-
-
-def test_docs_policy_declares_cross_project_relative_link_pattern() -> None:
-    tm.that(
-        config.Infra.codegen.make.docs.cross_project_relative_link_pattern, empty=False
-    )
 
 
 def test_generated_mkdocstrings_directive_preserves_indented_options(

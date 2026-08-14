@@ -200,6 +200,25 @@ class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
         ]
         head: Annotated[bytes, m.Field(description="HEAD oid bytes or UNBORN")]
 
+    class GitCandidatePayload(m.ContractModel):
+        """One current candidate file or symlink payload."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        path: Annotated[t.NonEmptyStr, m.Field(description="Repository-relative path")]
+        mode: Annotated[t.NonEmptyStr, m.Field(description="Git candidate file mode")]
+        content: Annotated[bytes, m.Field(description="Current candidate payload")]
+
+    class GitCandidatePayloadsReport(m.ContractModel):
+        """Deterministically ordered candidate repository payloads."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        payloads: Annotated[
+            tuple[FlextInfraModelsGit.GitCandidatePayload, ...],
+            m.Field(description="Tracked and nonignored untracked payloads"),
+        ]
+
     class GitUpdateIndexGitlinkRequest(m.ContractModel):
         """Stage one gitlink (mode 160000) into the index."""
 

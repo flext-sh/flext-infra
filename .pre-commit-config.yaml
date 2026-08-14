@@ -22,7 +22,7 @@ repos:
       # WHAT/MAKEFLAGS/APPLY are cleared in the same prefix so caller selectors
       # and write intent cannot leak into an independently declared hook step.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
-      # context only: local `make check` and the `docs` verb keep the full set.
+      # context only: local `make check` keeps the full set.
 
       - id: flext-pre-commit-setup
         name: make setup
@@ -74,7 +74,7 @@ repos:
         name: make setup
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make setup'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS APPLY; CI=N make setup'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -83,7 +83,7 @@ repos:
         name: make gen APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make gen APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS APPLY; CI=N make gen APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -92,7 +92,7 @@ repos:
         name: make fmt APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make fmt APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS APPLY; CI=N make fmt APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -101,7 +101,7 @@ repos:
         name: make fix APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make fix APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS APPLY; CI=N make fix APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -110,7 +110,7 @@ repos:
         name: make check
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make check'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS APPLY; CI=N make check'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -119,7 +119,7 @@ repos:
         name: make test WHAT=cache-clear APPLY=Y
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make test WHAT=cache-clear APPLY=Y'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS APPLY; CI=N make test WHAT=cache-clear APPLY=Y'
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -128,7 +128,7 @@ repos:
         name: make test WHAT=full
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); CI=N make test WHAT=full'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS APPLY; CI=N make test WHAT=full'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

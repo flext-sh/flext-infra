@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import m, t, u
+from flext_infra import m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraValidateTestImportDag(s[bool]):
@@ -92,12 +92,7 @@ class FlextInfraValidateTestImportDag(s[bool]):
         parts = imported.split(".")
         if not parts or parts[0] != "tests":
             return None
-        for part in parts[1:]:
-            for facet, filename in rules.facet_files.items():
-                if part == filename.removesuffix(".py"):
-                    imported_facet: str = t.Infra.STR_ADAPTER.validate_python(facet)
-                    return imported_facet
-        return None
+        return next((facet for facet in rules.facet_order if facet in parts[1:]), None)
 
     @classmethod
     def _edge_violation(

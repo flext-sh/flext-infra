@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, t, config
+from flext_infra import c, m, t
+from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -112,13 +113,13 @@ class FlextInfraUtilitiesDocsRender:
         so governance pointers must be absolute GitHub URLs.
         """
         if prefix.startswith(("http://", "https://")):
-            kind = "tree" if is_dir else "blob"
-            branch = "0.12.0-dev"
-            for repo in config.Infra.codegen.make.docs.github_repos:
-                if repo.organization == "flext-sh" and repo.repository == "flext":
-                    branch = repo.branch
-                    break
-            return f"{prefix}/{kind}/{branch}/{path}"
+            url = FlextInfraUtilitiesDocsGithubLinks.docs_canonical_github_url(
+                "flext-sh", "flext", path, is_dir=is_dir
+            )
+            if url is None:
+                msg = f"unconfigured FLEXT governance artifact: {path}"
+                raise ValueError(msg)
+            return url
         return f"{prefix}/{path}"
 
     @staticmethod
@@ -239,8 +240,7 @@ class FlextInfraUtilitiesDocsRender:
                 f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, "
                 f"`val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` "
                 f"and `Required Python quality gates`; selector routing is owned "
-                f"universally by `config.AiHub.paths.agents_home`/"
-                f"`skills/make-check/SKILL.md`."
+                f"by the configured universal `make-check` skill."
             ),
         ]
 

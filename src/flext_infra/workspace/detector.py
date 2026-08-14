@@ -560,7 +560,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external read-only dependency: {repository.name}"
             )
-        metadata = u.read_project_metadata(identity_root)
+        metadata = u.read_project_metadata(resolved_root)
         if metadata.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
                 metadata.error or f"unable to read project metadata: {resolved_root}"

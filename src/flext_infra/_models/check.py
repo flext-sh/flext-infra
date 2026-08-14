@@ -218,6 +218,13 @@ class FlextInfraModelsCheck:
                 1 for issue in self.issues if issue.severity.lower() == c.Infra.ERROR
             )
 
+    class PersistedReferenceValidationReport(m.ContractModel):
+        """Typed result of inactive semantic persisted-reference validation."""
+
+        issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
+            default_factory=tuple, description="Detected persisted-reference issues"
+        )
+
     class ProjectResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Aggregated gate results for a single project.
 

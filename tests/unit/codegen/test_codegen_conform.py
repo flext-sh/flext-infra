@@ -12,23 +12,16 @@ import tomllib
 from pathlib import Path
 
 import pytest
-<<<<<<< HEAD
+
 from flext_infra import config
-=======
-
-from flext_infra import c, config, m, u
-
-from tests import u as test_u
->>>>>>> refs/remotes/origin/0.12.0-dev
-from flext_infra import main as infra_main
+from flext_infra.cli import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
-from tests import c, m, p, u
+from tests import c, m, u
 
 
 def _conform_target(

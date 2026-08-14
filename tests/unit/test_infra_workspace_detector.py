@@ -92,6 +92,53 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
 
+    def test_foreign_standalone_conformance_keeps_consumer_metadata(
+        self, tmp_path: Path
+    ) -> None:
+        primary_root = tmp_path / "foreign-primary"
+        repository_root = tmp_path / "foreign-consumer"
+        self._initialize_repository(primary_root)
+        project_name = "foreign-consumer"
+        (primary_root / "pyproject.toml").write_text(
+            f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "pyproject.toml"], cwd=primary_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Declare consumer metadata"],
+                cwd=primary_root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "worktree",
+                    "add",
+                    "-q",
+                    "-b",
+                    "feature/consumer",
+                    str(repository_root),
+                ],
+                cwd=primary_root,
+            )
+        )
+        (primary_root / "pyproject.toml").write_text(
+            '[project]\nname = "engine-owner"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        repository = self._repository(
+            name=project_name, path=".", role=c.Infra.RepositoryRole.STANDALONE
+        )
+        self._write_manifest(repository_root, repository)
+
+        target = FlextInfraWorkspaceDetector.conform_target(
+            repository_root,
+            tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)),
+        )
+
+        tm.that(target.success, eq=True, msg=target.error or "")
+        tm.that(target.value.repository.distribution, eq=project_name)
+
     @classmethod
     def _attached_member(cls, tmp_path: Path, *, declare_member: bool = True) -> Path:
         """Create a real Git superproject and checked-out submodule."""

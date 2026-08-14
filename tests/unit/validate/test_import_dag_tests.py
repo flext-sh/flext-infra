@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraValidateTestImportDag
+from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
 from flext_tests import tm
 from tests import m
 
@@ -33,10 +33,10 @@ class TestsTestImportDag:
     @pytest.mark.parametrize(
         ("source", "imported"),
         [
-            ("tests/constants.py", "from tests.typings import T\n"),
-            ("tests/typings.py", "from tests.protocols import P\n"),
-            ("tests/protocols.py", "from tests.models import M\n"),
-            ("tests/models.py", "from tests.utilities import U\n"),
+            ("tests/typings.py", "from tests import c\n"),
+            ("tests/protocols.py", "from tests import t\n"),
+            ("tests/models.py", "from tests import p\n"),
+            ("tests/utilities.py", "from tests import m\n"),
             ("tests/constants.py", "from tests import c\n"),
             ("tests/models.py", "from tests.fixtures.users import user\n"),
             ("tests/__init__.py", "from tests.conftest import fixture\n"),
@@ -58,15 +58,15 @@ class TestsTestImportDag:
         project = self._project(
             tmp_path,
             {
-                "tests/typings.py": "from tests.constants import c\n",
-                "tests/protocols.py": "from tests.typings import t\n",
-                "tests/models.py": "from tests.protocols import p\n",
-                "tests/utilities.py": "from tests.models import m\n",
-                "tests/constants.py": (
+                "tests/constants.py": "from tests.typings import t\n",
+                "tests/typings.py": "from tests.protocols import p\n",
+                "tests/protocols.py": "from tests.models import m\n",
+                "tests/models.py": "from tests.utilities import u\n",
+                "tests/utilities.py": (
                     "from __future__ import annotations\n"
                     "from typing import TYPE_CHECKING\n"
                     "if TYPE_CHECKING:\n"
-                    "    from tests.utilities import u\n"
+                    "    from tests.constants import c\n"
                 ),
             },
         )

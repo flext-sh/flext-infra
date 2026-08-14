@@ -7,9 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
+from urllib.parse import unquote
 
 from flext_cli import m, u
 from flext_infra import t
@@ -722,25 +724,16 @@ class FlextInfraConfigModels:
             m.Field(description="Project optional-dependency selection policy"),
         ]
 
-    class DocsGithubRepoSpec(_ConfigContract):
-        """One governed GitHub repository used for cross-repo doc links."""
+    class RepositoryArtifactAuthoritySpec(_ConfigContract):
+        """One configured cross-repository GitHub artifact authority."""
 
         organization: Annotated[
             t.NonEmptyStr, m.Field(description="GitHub organization")
         ]
         repository: Annotated[t.NonEmptyStr, m.Field(description="GitHub repository")]
-        branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Working-line branch for doc links")
+        ref: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured Git ref for artifacts")
         ]
-        local_checkout: Annotated[
-            str,
-            m.Field(
-                default="",
-                description=(
-                    "Optional local checkout path (~ expanded) for existence checks"
-                ),
-            ),
-        ] = ""
 
     class MakeCleanSpec(_ConfigContract):
         """Disposable artifacts the generated clean verb removes.
@@ -773,12 +766,6 @@ class FlextInfraConfigModels:
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
         ]
-        cross_project_relative_link_pattern: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Regex rejecting cross-project relative Markdown links"
-            ),
-        ]
         stale_github_organizations: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -786,13 +773,6 @@ class FlextInfraConfigModels:
                 description="Placeholder GitHub orgs that must be rewritten",
             ),
         ] = ("organization",)
-        github_repos: Annotated[
-            tuple[FlextInfraConfigModels.DocsGithubRepoSpec, ...],
-            m.Field(
-                default=(),
-                description="Governed org/repo/branch map for cross-repo doc URLs",
-            ),
-        ] = ()
 
     class TestmonCacheSpec(_ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy (mro-dipb)."""
@@ -1270,6 +1250,85 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+
+    class RepositoryArtifactKind(StrEnum):
+        """GitHub artifact URL kind."""
+
+        BLOB = "blob"
+        TREE = "tree"
+
+    class RepositoryArtifactAuthority(_ConfigContract):
+        """Configured repository authority with its exact effective Git ref."""
+
+        host: Annotated[t.NonEmptyStr, m.Field(description="GitHub host")]
+        organization: Annotated[
+            t.NonEmptyStr, m.Field(description="GitHub organization")
+        ]
+        repository: Annotated[t.NonEmptyStr, m.Field(description="GitHub repository")]
+        ref: Annotated[t.NonEmptyStr, m.Field(description="Exact configured Git ref")]
+
+        @u.model_validator(mode="after")
+        def _validate_authority(self) -> Self:
+            if self.host != "github.com":
+                msg = "repository artifact host must be github.com"
+                raise ValueError(msg)
+            if not self._safe_segment(self.organization):
+                msg = "repository artifact organization is not path-safe"
+                raise ValueError(msg)
+            if not self._safe_segment(self.repository):
+                msg = "repository artifact repository is not path-safe"
+                raise ValueError(msg)
+            if not self.path_segments_safe(self.ref):
+                msg = "repository artifact ref is not path-safe"
+                raise ValueError(msg)
+            return self
+
+        @staticmethod
+        def _safe_segment(value: str) -> bool:
+            return (
+                bool(value)
+                and value not in {".", ".."}
+                and all(char not in "/\\" and char.isprintable() for char in value)
+            )
+
+        @classmethod
+        def path_segments_safe(cls, value: str) -> bool:
+            parts = value.split("/")
+            return bool(parts) and all(cls._safe_segment(part) for part in parts)
+
+    class RepositoryArtifactReference(_ConfigContract):
+        """Validated repository artifact path under one configured authority."""
+
+        authority: Annotated[
+            FlextInfraConfigModels.RepositoryArtifactAuthority,
+            m.Field(description="Configured repository authority"),
+        ]
+        kind: Annotated[
+            FlextInfraConfigModels.RepositoryArtifactKind,
+            m.Field(description="GitHub blob or tree artifact kind"),
+        ]
+        path: Annotated[t.NonEmptyStr, m.Field(description="Repository-relative path")]
+        fragment: Annotated[
+            str | None, m.Field(description="Optional URL fragment")
+        ] = None
+
+        @u.model_validator(mode="after")
+        def _validate_reference(self) -> Self:
+            decoded = self.path
+            for _ in range(3):
+                next_value = unquote(decoded)
+                if next_value == decoded:
+                    break
+                decoded = next_value
+            if decoded != self.path or not self.authority.path_segments_safe(self.path):
+                msg = "repository artifact path is not canonical repository-relative"
+                raise ValueError(msg)
+            if self.fragment is not None and any(
+                not char.isprintable() for char in self.fragment
+            ):
+                msg = "repository artifact fragment contains control characters"
+                raise ValueError(msg)
+            return self
 
     class WorkspaceIntegrationSpec(_ConfigContract):
         """Workspace overlay adjusting flext-infra provider defaults.
@@ -2261,6 +2320,13 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
         ]
+        repository_artifact_authorities: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryArtifactAuthoritySpec, ...],
+            m.Field(
+                default=(),
+                description="Configured cross-repository GitHub artifact authorities",
+            ),
+        ] = ()
         branch_policy: Annotated[
             FlextInfraConfigModels.BranchPolicySpec,
             m.Field(description="Global governed branch ancestry policy"),

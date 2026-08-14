@@ -481,7 +481,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             log_path.read_text(encoding="utf-8"),
             has=(
-                f"PYTHONPATH={tmp_path / 'src'} MYPYPATH=unset "
+                "PYTHONPATH=unset MYPYPATH=unset "
                 f"python -m flext_infra check run --workspace {tmp_path}"
             ),
         )
@@ -719,11 +719,10 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
         tm.that(result.exit_code, eq=0)
-        expected_src = tmp_path / "src"
         tm.that(
             log_path.read_text(encoding="utf-8"),
             has=(
-                f"PYTHONPATH={expected_src} MYPYPATH=unset "
+                "PYTHONPATH=unset MYPYPATH=unset "
                 f"python -m flext_infra check run --workspace {tmp_path} --gates mypy"
             ),
         )
@@ -755,11 +754,10 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
         tm.that(result.exit_code, eq=0)
-        expected_src = tmp_path / "src"
         tm.that(
             log_path.read_text(encoding="utf-8"),
             has=(
-                f"PYTHONPATH={expected_src} MYPYPATH=unset "
+                "PYTHONPATH=unset MYPYPATH=unset "
                 f"python -m flext_infra check run --workspace {tmp_path} --gates mypy"
             ),
         )

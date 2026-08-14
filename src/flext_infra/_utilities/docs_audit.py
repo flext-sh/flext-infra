@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c, config, m
+from flext_infra import c, m
 from flext_infra._utilities._docs_audit_detectors import (
     FlextInfraUtilitiesDocsAuditDetectorsMixin,
 )
@@ -137,9 +136,9 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                     clean_line
                 ):
                     target = FlextInfraUtilitiesDocsAudit.docs_normalize_link(raw)
-                    if re.match(
-                        config.Infra.codegen.make.docs.cross_project_relative_link_pattern,
-                        target,
+                    resolved = (md_file.parent / target).resolve()
+                    if target.startswith("../") and not resolved.is_relative_to(
+                        scope.path.resolve()
                     ):
                         issues.append(
                             m.Infra.AuditIssue(

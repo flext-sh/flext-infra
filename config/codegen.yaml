@@ -201,6 +201,14 @@ Infra:
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
         branch: develop
+    repository_artifact_authorities:
+      - {organization: flext-sh, repository: flext, ref: 0.12.0-dev}
+      - {organization: flext-sh, repository: flext-core, ref: 0.12.0-dev}
+      - {organization: flext-sh, repository: flext-infra, ref: 0.12.0-dev}
+      - {organization: datacosmos-br, repository: ai-hub, ref: dev}
+      - {organization: datacosmos-br, repository: cosmos-docgen, ref: develop}
+      - {organization: datacosmos-br, repository: cosmos-main, ref: develop}
+      - {organization: marlonsc, repository: invest, ref: main}
     branch_policy:
       technical_branch_patterns:
         - __dolt_remote_info__
@@ -339,38 +347,8 @@ Infra:
           - ".coverage.*"
       docs:
         reports_dir: .reports/docs
-        cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
           - organization
-        github_repos:
-          - organization: flext-sh
-            repository: flext
-            branch: 0.12.0-dev
-            local_checkout: ~/flext
-          - organization: flext-sh
-            repository: flext-core
-            branch: 0.12.0-dev
-            local_checkout: ~/flext/flext-core
-          - organization: flext-sh
-            repository: flext-infra
-            branch: 0.12.0-dev
-            local_checkout: ~/flext/flext-infra
-          - organization: datacosmos-br
-            repository: ai-hub
-            branch: develop
-            local_checkout: ~/.ai-hub
-          - organization: datacosmos-br
-            repository: cosmos-docgen
-            branch: develop
-            local_checkout: ~/cosmos-docgen
-          - organization: datacosmos-br
-            repository: cosmos-main
-            branch: develop
-            local_checkout: ~/cosmos-main
-          - organization: marlonsc
-            repository: invest
-            branch: main
-            local_checkout: ~/invest
       verbs:
         - name: help
           default_what: usage
@@ -1644,7 +1622,7 @@ Infra:
           # only. A member never runs its own pre-commit/pre-push chain — the
           # root hook validates the whole fleet in one pass, and a per-member
           # chain would re-enter make recursively on every submodule commit.
-          profiles: [workspace-root, standalone]
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/README.md.j2

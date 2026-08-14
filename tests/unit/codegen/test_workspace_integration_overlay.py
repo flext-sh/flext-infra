@@ -77,6 +77,28 @@ def test_resolve_integration_branch_uses_workspace_overlay() -> None:
     tm.that(u.Infra.resolve_integration_branch(workspace, provider), eq="hotfix/lane")
 
 
+def test_resolve_integration_branch_ignores_other_provider_overlay() -> None:
+    provider = _provider(branch="0.12.0-dev")
+    workspace = _workspace(
+        integration=m.Infra.WorkspaceIntegrationSpec(
+            provider="datacosmos-br", branch="feature/other"
+        )
+    )
+
+    tm.that(u.Infra.resolve_integration_branch(workspace, provider), eq=provider.branch)
+
+
+def test_repository_artifact_authority_uses_repository_url() -> None:
+    provider = _provider(branch="0.12.0-dev")
+    workspace = _workspace(integration=None)
+    repository = workspace.members[0].model_copy(update={"name": "catalog-alias"})
+
+    authority = u.Infra.repository_artifact_authority(repository, provider, workspace)
+
+    tm.that(authority.repository, eq="flext-core")
+    tm.that(authority.organization, eq=provider.organization)
+
+
 def test_gitmodule_branch_dot_is_governed() -> None:
     tm.that(
         u.Infra.gitmodule_branch_is_governed(

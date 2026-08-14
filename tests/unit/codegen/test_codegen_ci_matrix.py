@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, t
+from tests import u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
@@ -136,27 +137,6 @@ class TestCodegenCiMatrix:
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
-<<<<<<< HEAD
-        for step in workflow:
-            for context, stage, ci_value in (
-                ("pre_commit", "pre-commit", ci.value),
-                ("pre_push", "pre-push", ci.local_value),
-            ):
-                if context not in step.contexts:
-                    continue
-                suffix = f"-{step.what}" if step.what else ""
-                hook_id = f"flext-{stage}-{step.verb}{suffix}"
-                entry = self._hook_entry(hooks, hook_id)
-                cleanup = (
-                    "unset WHAT MAKEFLAGS "
-                    f"{config.Infra.codegen.make.apply_variable}; "
-                    "unset $(git rev-parse --local-env-vars); "
-                )
-                tm.that(entry, has="bash -eu -o pipefail -c")
-                tm.that(entry, has=cleanup)
-                tm.that(entry, has=f"{ci.variable}={ci_value}")
-                tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
-=======
         gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
 
         for hook_prefix, context in (
@@ -204,7 +184,6 @@ class TestCodegenCiMatrix:
                 )
                 tm.that(entry, has=cleanup)
                 tm.that(entry.index(cleanup) < entry.index(command), eq=True)
->>>>>>> refs/remotes/origin/0.12.0-dev
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
