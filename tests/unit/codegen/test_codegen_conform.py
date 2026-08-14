@@ -218,6 +218,79 @@ class TestCodegenConform:
         )
         tm.that(existing_tree, eq=new_tree)
 
+    def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
+        self, infra_git_repo: Path
+    ) -> None:
+        """The gen verb converges for a Python root beyond declarative env_dirs.
+
+        ``make gen`` runs conform and then the deps modernizer over the same
+        manifest. Two derivations used to select the pyright execution
+        environments: the modernizer discovered roots ON DISK, while conform
+        planned them from the declarative ``env_dirs``. A project owning a
+        Python directory outside that list therefore had the environment
+        appended by the modernizer and erased by conform, so apply rewrote the
+        manifest forever and the next check reported permanent drift. One owner
+        must decide, so the extra root survives a whole gen cycle.
+        """
+        root = infra_git_repo
+        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / "flext_infra" / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        # The defect needs a Python root the declarative env_dirs never lists.
+        extra_root = "tools"
+        module = root / extra_root / "maintenance.py"
+        module.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(module, "VALUE = 1\n"))
+        tm.that(extra_root in u.Infra.discover_python_dirs(root), eq=True)
+        tm.that(
+            extra_root in config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+            eq=False,
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Seed python root beyond env_dirs"],
+                cwd=root,
+            )
+        )
+
+        applied = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+        tm.ok(applied)
+        # gen runs the modernizer over the same manifest right after conform, so
+        # the fixed point belongs to the pair, never to conform alone.
+        tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=root, apply_changes=True
+            ).execute()
+        )
+
+        fixed_point = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.ok(fixed_point)
+        tm.that(fixed_point.value.written_files, eq=())
+
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
         self, infra_git_repo: Path
     ) -> None:
@@ -542,7 +615,9 @@ class TestCodegenConform:
                 cwd=root,
             )
         )
-        snapshot_excludes = config.Infra.codegen.make.serialization.snapshot_excludes
+        # Report/cache artifacts are regenerated per run and are never part
+        # of the conform fixed point.
+        snapshot_excludes = (Path(".reports"), Path(".pytest_cache"), Path(".coverage"))
         before = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
@@ -776,9 +851,6 @@ class TestCodegenConform:
                 apply_changes=True,
             ).execute()
         )
-        # The private target is the dispatcher entry point invoked while the
-        # public verb holds the serialization lock. Exercising it directly
-        # keeps this test focused on hook ordering and independent of bootstrap.
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
@@ -788,13 +860,12 @@ class TestCodegenConform:
                 "post-check:\n\t@echo HOOK_POST\n",
             )
         )
-        outcome = u.Cli.run_raw([
-            "make",
-            "-C",
-            str(root),
-            "_serialized_check",
-            "WHAT=probe",
-        ])
+        # `check` requires a provisioned interpreter, which `make setup` would
+        # build. Stub it so this test stays about hook ordering.
+        test_u.Tests.write_executable(
+            root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
+        )
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
@@ -1103,8 +1174,8 @@ class TestScriptDispatchMakefile:
 
         The convergence spine (mro-e9j0.6 C7) fuses codegen+conform under the
         single short ``gen`` verb: one verb, one meaning. The old ``codegen``
-        Make verb is fully replaced — config, serialization, fixed points,
-        rendered handlers, and the regeneration header all speak ``gen``.
+        Make verb is fully replaced across config, rendered handlers, and the
+        regeneration header.
         """
         make_config = config.Infra.codegen.make
         verb_names = {verb.name for verb in make_config.verbs}
@@ -1113,11 +1184,7 @@ class TestScriptDispatchMakefile:
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
         tm.that(gen.default_what, eq="check")
         tm.that(gen.apply_guarded, eq=True)
-        # Serialization follows the rename: gen is serialized, codegen gone.
-        tm.that("gen" in make_config.serialization.verbs, eq=True)
-        tm.that("codegen" in make_config.serialization.verbs, eq=False)
-        tm.that("gen" in make_config.serialization.mutation_verbs, eq=True)
-        tm.that("codegen" in make_config.serialization.mutation_verbs, eq=False)
+        tm.that(hasattr(make_config, "serialization"), eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )

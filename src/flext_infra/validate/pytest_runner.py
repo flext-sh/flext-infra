@@ -210,6 +210,10 @@ class FlextInfraPytestRunner(s[int]):
         # turns testmon OFF (every test runs) and coverage ON, so the measured
         # number covers the whole suite; every other WHAT is the incremental
         # testmon verb whose subset coverage would be meaningless.
+        # Why (mro-q4osk): the xml lands in report_dir, the SAME path the
+        # artifact gate below reads. Letting --cov-report=xml default to the
+        # CWD wrote coverage.xml to the repository root, so the gate found
+        # nothing and failed a run whose coverage had in fact been measured.
         coverage_args = (
             (
                 "--cov",

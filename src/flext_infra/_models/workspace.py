@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar
 
-from flext_cli import m, u
+from flext_cli import m
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -85,37 +85,81 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Operational role relative to the uv workspace root"),
         ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
-    class WorkLaneEntry(m.ContractModel):
-        """Serialized lifecycle state for one project in a root workspace lane."""
+    class WorkLaneParentContext(m.ContractModel):
+        """Resolved anchor a lane is nested under and based on."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        project: Annotated[t.NonEmptyStr, m.Field(description="Workspace-relative project")]
-        branch: Annotated[t.NonEmptyStr, m.Field(description="Project lane branch")]
-        head_oid: Annotated[t.NonEmptyStr, m.Field(description="CAS-protected HEAD")]
-        pr_number: Annotated[str, m.Field(description="Pull request number")] = ""
-        pr_url: Annotated[str, m.Field(description="Pull request URL")] = ""
-        state: Annotated[t.NonEmptyStr, m.Field(description="Lifecycle state")]
-
-    class WorkLaneMatrix(m.ContractModel):
-        """Pydantic-serialized project matrix for one root worktree lane."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        entries: Annotated[
-            tuple[FlextInfraModelsWorkspace.WorkLaneEntry, ...],
-            m.Field(min_length=1, description="All projects owned by the root lane"),
+        parent_lane: Annotated[
+            Path, m.Field(description="Workspace root or parent epic lane path")
+        ]
+        parent_bead: Annotated[
+            str, m.Field(description="Parent epic bead id; empty at the workspace root")
+        ] = ""
+        parent_branch: Annotated[
+            str, m.Field(description="Parent epic branch; empty at the workspace root")
+        ] = ""
+        base_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch the lane is created from")
         ]
 
-        @u.model_validator(mode="after")
-        def _validate_projects(self) -> Self:
-            """Require exactly one root and no duplicate project entries."""
-            projects = tuple(entry.project for entry in self.entries)
-            if projects.count(".") != 1:
-                raise ValueError("workspace lane matrix requires exactly one root entry")
-            if len(set(projects)) != len(projects):
-                raise ValueError("workspace lane matrix contains duplicate projects")
-            return self
+    class WorkLaneIdentity(m.ContractModel):
+        """Canonical recursive identity of one workspace lane.
+
+        A lane always lives at ``<parent_lane>/.worktrees/<lane_dir>`` and is
+        always a worktree of the workspace-root repository. ``parent_lane`` is
+        the workspace root for a top-level epic and the immediate parent epic
+        lane for every other lane.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        bead: Annotated[t.NonEmptyStr, m.Field(description="Bead owning the lane")]
+        slug: Annotated[t.NonEmptyStr, m.Field(description="Kebab-case lane slug")]
+        kind: Annotated[
+            c.Infra.WorkKind, m.Field(description="GitFlow kind of this lane")
+        ]
+        branch: Annotated[t.NonEmptyStr, m.Field(description="Lane branch name")]
+        lane_dir: Annotated[
+            t.NonEmptyStr, m.Field(description="Directory name under .worktrees")
+        ]
+        lane_path: Annotated[Path, m.Field(description="Canonical lane worktree path")]
+        parent_lane: Annotated[
+            Path, m.Field(description="Workspace root or parent epic lane path")
+        ]
+        parent_bead: Annotated[
+            str, m.Field(description="Parent epic bead id; empty for top-level epics")
+        ] = ""
+        parent_branch: Annotated[
+            str, m.Field(description="Parent epic branch; empty for top-level epics")
+        ] = ""
+        base_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch this lane is based on")
+        ]
+
+        @property
+        def is_epic(self) -> bool:
+            """Whether this lane may own child lanes.
+
+            WorkKind is a StrEnum and the contract model stores enum values, so
+            the field arrives as its string form; normalizing before comparing
+            keeps this true for both storage shapes.
+            """
+            return c.Infra.WorkKind(self.kind) is c.Infra.WorkKind.EPIC
+
+    class WorkLaneReuse(m.ContractModel):
+        """Whether Git already owns the canonical lane, and where it sits.
+
+        Modelled instead of an optional payload because a success result never
+        carries ``None``: "no lane to reuse" is a state, not an absent value.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        reused: Annotated[
+            bool, m.Field(description="Git already owns the canonical lane")
+        ]
+        lane_path: Annotated[Path, m.Field(description="Canonical lane worktree path")]
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.

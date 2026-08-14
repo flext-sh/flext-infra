@@ -20,6 +20,9 @@ implementations directly.
 - An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
   metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
   CI surface, and project runtime.
+- A development lane owns a real lane-local `.venv`. START invokes `make setup`
+  from the lane, with the lane as both project and runtime root; it never links to
+  or mutates another checkout's environment.
 - Generated `.envrc` files derive `PROJECT_ROOT` from the nearest
   `pyproject.toml` through direnv's documented `find_up` stdlib function. They
   do not depend on undocumented `DIRENV_*` variables, so strict evaluation is
@@ -39,9 +42,6 @@ Public accessors:
   `-> Result[m.Infra.RepositoryConformTarget]`
 - `u.Infra.repository_provider(repository, providers) -> Result[m.Infra.ProviderSpec]`
 - `u.Infra.repository_baseline_branch(repository, providers) -> Result[str]`
-- `u.Infra.serialization_lock_execute(lock_paths, timeout_seconds,`
-  `operation, *, timeout_failure, acquisition_failure)`
-  `-> Result[TValue]`
 
 ## Full refactor workflow
 
