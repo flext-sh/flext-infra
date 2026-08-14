@@ -229,13 +229,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
         # mro-0ccx4: a directory that exists but holds no Python files (e.g.
         # examples/ with only a README) is not a productive root.
-        # mro-x0rau.1: conform selects the roots it will demand through
-        # ``u.Infra.analyzer_python_roots`` (conform._existing_python_dirs), which
-        # unions the declared env_dirs with discovered Python roots. Filtering
-        # ``rules.env_dirs`` here instead made this side structurally unable to
-        # emit a root that discovery adds (a .py under docs/), so conform rendered
-        # an executionEnvironment apply could never write and `gen check` reported
-        # drift forever. Both sides now read the same owner.
+        # mro-be9ld: u.Infra.analyzer_python_roots is the single owner conform
+        # and the extra-paths sync already share. Filtering rules.env_dirs alone
+        # missed every Python root outside that list (flext-grpc/docs), so
+        # conform emitted its execution environment and this phase removed it on
+        # the next pass -- gen check reported drift gen apply could never fix.
         declared = tuple(
             env_dir
             for env_dir in rules.env_dirs
