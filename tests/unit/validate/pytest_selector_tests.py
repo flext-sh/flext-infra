@@ -59,6 +59,13 @@ class TestsFlextInfraPytestSelectorValidator:
                     workspace_root=Path.cwd(), what=what
                 ).execute()
             )
+        tm.ok(
+            FlextInfraPytestSelectorValidator(
+                workspace_root=Path.cwd(), what="profile", match="focused"
+            ).execute()
+        )
+        with pytest.raises(c.ValidationError, match="profile requires FILE or MATCH"):
+            FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="profile")
         with pytest.raises(c.ValidationError, match="what must be"):
             FlextInfraPytestSelectorValidator(
                 workspace_root=Path.cwd(), what="$(shell touch marker)"

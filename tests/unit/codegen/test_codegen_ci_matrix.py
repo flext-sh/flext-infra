@@ -15,27 +15,33 @@ from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
 
+def _render_project(root: Path) -> Path:
+    """Render a fresh EXTERNAL project into root and return the root."""
+    service = FlextInfraCodegenProjectNew(
+        name="flext-demo",
+        kind=c.Infra.ProjectKind.EXTERNAL,
+        output_root=root,
+        provider="flext-sh",
+        license="MIT",
+        author_name="FLEXT Team",
+        author_email="team@flext.dev",
+        upstream="flext_cli",
+        year=2026,
+        apply_changes=True,
+    )
+    result = service.execute()
+    tm.ok(result)
+    return root
+
+
+@pytest.fixture(scope="class")
+def rendered_external_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Render one immutable external project for read-only workflow contracts."""
+    return _render_project(tmp_path_factory.mktemp("rendered-external-project"))
+
+
 class TestCodegenCiMatrix:
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
-
-    @staticmethod
-    def _render_project(root: Path) -> Path:
-        """Render a fresh EXTERNAL project into root and return the root."""
-        service = FlextInfraCodegenProjectNew(
-            name="flext-demo",
-            kind=c.Infra.ProjectKind.EXTERNAL,
-            output_root=root,
-            provider="flext-sh",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            year=2026,
-            apply_changes=True,
-        )
-        result = service.execute()
-        tm.ok(result)
-        return root
 
     @staticmethod
     def _hook_entry(rendered: str, hook_id: str) -> str:
@@ -81,14 +87,16 @@ class TestCodegenCiMatrix:
             tm.that(set(entry.profiles), eq={"workspace-root", "standalone"})
             tm.that("workspace-member" in entry.profiles, eq=False)
 
-    def test_ci_matrix_workflow_emitted(self, tmp_path: Path) -> None:
+    def test_ci_matrix_workflow_emitted(self, rendered_external_project: Path) -> None:
         """Generated project carries .github/workflows/ci-matrix.yml."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
-    def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
+    def test_ci_workflow_uses_immutable_action_catalog(
+        self, rendered_external_project: Path
+    ) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         workflows = "\n".join(
             (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
             for filename in ("ci.yml", "ci-matrix.yml")
@@ -114,10 +122,10 @@ class TestCodegenCiMatrix:
         tm.that(workflows, lacks="soft-pass")
 
     def test_blocking_ci_bootstraps_only_through_make_setup(
-        self, tmp_path: Path
+        self, rendered_external_project: Path
     ) -> None:
         """Generated blocking CI provisions every binary via the Make surface."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -130,9 +138,11 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: CI=Y make fmt WHAT=apply APPLY=Y")
         tm.that(workflow, has="run: CI=Y make fix WHAT=apply APPLY=Y")
 
-    def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
+    def test_rendered_pre_commit_uses_typed_hook_contexts(
+        self, rendered_external_project: Path
+    ) -> None:
         """The generated staged hooks render the configured workflow partitions."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
@@ -186,9 +196,11 @@ class TestCodegenCiMatrix:
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
-    def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
+    def test_ci_workflow_cancels_superseded_ref_runs(
+        self, rendered_external_project: Path
+    ) -> None:
         """Generated CI groups competing runs by workflow and ref."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -198,10 +210,10 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="cancel-in-progress: true")
 
     def test_ci_workflow_stable_blank_line_without_private_submodules(
-        self, tmp_path: Path
+        self, tmp_path: Path, rendered_external_project: Path
     ) -> None:
         """Empty private_submodules include must not accumulate blank lines."""
-        root = self._render_project(tmp_path / "member")
+        root = rendered_external_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -210,7 +222,7 @@ class TestCodegenCiMatrix:
         tm.that(
             workflow, lacks="fetch-depth: 0\n\n\n      - name: Install mise toolchain"
         )
-        root2 = self._render_project(tmp_path / "member-again")
+        root2 = _render_project(tmp_path / "member-again")
         workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -244,9 +256,11 @@ class TestCodegenCiMatrix:
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
-    def test_ci_uses_typed_action_catalog(self, tmp_path: Path) -> None:
+    def test_ci_uses_typed_action_catalog(
+        self, rendered_external_project: Path
+    ) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -259,9 +273,9 @@ class TestCodegenCiMatrix:
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
-    def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
+    def test_distro_dockerfiles_emitted(self, rendered_external_project: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             tm.that(
                 (
@@ -276,10 +290,10 @@ class TestCodegenCiMatrix:
             )
 
     def test_distro_bootstrap_is_fail_closed_and_self_contained(
-        self, tmp_path: Path
+        self, rendered_external_project: Path
     ) -> None:
         """Every distro runs the canonical self-bootstrap fail-closed."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             content = (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
@@ -293,10 +307,10 @@ class TestCodegenCiMatrix:
                 tm.that(content, has="build-base")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
-        self, tmp_path: Path
+        self, rendered_external_project: Path
     ) -> None:
         """Fedora's generated Node runtime has its required atomic library."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         fedora = (
             root / "tests" / "fixtures" / "ci" / "docker" / "fedora.Dockerfile"
         ).read_text(encoding="utf-8")
@@ -309,14 +323,14 @@ class TestCodegenCiMatrix:
 
     def test_dockerfiles_render_byte_idempotently(self, tmp_path: Path) -> None:
         """Repeated project generation preserves the generated Dockerfiles."""
-        root = self._render_project(tmp_path / "external")
+        root = _render_project(tmp_path / "external")
         before = {
             distro: (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
             ).read_bytes()
             for distro in ("ubuntu", "debian", "fedora", "alpine", "arch")
         }
-        self._render_project(root)
+        _render_project(root)
         after = {
             distro: (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
@@ -325,9 +339,11 @@ class TestCodegenCiMatrix:
         }
         tm.that(after, eq=before)
 
-    def test_ci_matrix_has_only_supported_generic_legs(self, tmp_path: Path) -> None:
+    def test_ci_matrix_has_only_supported_generic_legs(
+        self, rendered_external_project: Path
+    ) -> None:
         """Generic Python CI emits only its complete cross-platform legs."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         workflow = root / ".github" / "workflows" / "ci-matrix.yml"
         tm.that(workflow.is_file(), eq=True)
         content = u.Cli.yaml_load_mapping(workflow)
@@ -337,9 +353,11 @@ class TestCodegenCiMatrix:
         tm.that(jobs, lacks="wsl")
         tm.that(jobs, lacks="kind")
 
-    def test_host_legs_bootstrap_only_through_make_setup(self, tmp_path: Path) -> None:
+    def test_host_legs_bootstrap_only_through_make_setup(
+        self, rendered_external_project: Path
+    ) -> None:
         """MacOS and Windows bootstrap through the same Make surface."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         content = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
@@ -354,10 +372,10 @@ class TestCodegenCiMatrix:
         tm.that(windows.count("shell: bash"), eq=3)
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
-        self, tmp_path: Path
+        self, rendered_external_project: Path
     ) -> None:
         """Blocking CI covers integration; matrix defaults to dispatch-only."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
         repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
         provider_name = str(repository["provider"])
@@ -499,10 +517,10 @@ class TestCodegenCiMatrix:
             build(auto_run=True)
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
-        self, tmp_path: Path
+        self, rendered_external_project: Path
     ) -> None:
         """Matrix smoke is help+check under CI=Y; it must never run make test."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
@@ -588,9 +606,11 @@ class TestCodegenCiMatrix:
         tm.that(absent[0].changed, eq=True)
         tm.that(orphan.exists(), eq=True)
 
-    def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
+    def test_makefile_normalizes_windows_runtime_paths(
+        self, rendered_external_project: Path
+    ) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""
-        root = self._render_project(tmp_path / "external")
+        root = rendered_external_project
         content = (root / "Makefile").read_text(encoding="utf-8")
         tm.that(content, has="ifeq ($(OS),Windows_NT)")
         tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
