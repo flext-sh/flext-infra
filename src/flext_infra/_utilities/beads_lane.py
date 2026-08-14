@@ -12,14 +12,14 @@ from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 
-_BD_UPDATE_BASE_ARGV_LENGTH = 2
-
 if TYPE_CHECKING:
     from flext_infra import p
 
 
 class FlextInfraUtilitiesBeadsLane:
     """Shell `bd` for lane metadata, labels, and evidence notes."""
+
+    _UPDATE_BASE_ARGV_LENGTH = 2
 
     @classmethod
     def beads_resolve_root(cls, hint: Path | None = None) -> p.Result[Path]:
@@ -171,6 +171,12 @@ class FlextInfraUtilitiesBeadsLane:
         for key in ("epic_bead", "epic_branch", "epic_worktree", "child_slug"):
             if key in metadata:
                 topology[key] = metadata[key]
+        provisioning = metadata.get("provisioning")
+        state_fields: tuple[str, ...] = ()
+        if provisioning == c.Infra.WorkProvisioningState.READY:
+            state_fields = ("pr_number", "pr_url")
+        elif provisioning == c.Infra.WorkProvisioningState.FAILED:
+            state_fields = ("recovery", "error_category")
         projected = {
             key: metadata[key]
             for key in (
@@ -182,10 +188,7 @@ class FlextInfraUtilitiesBeadsLane:
                 "integration_base",
                 "provisioning",
                 "head_oid",
-                "pr_number",
-                "pr_url",
-                "recovery",
-                "error_category",
+                *state_fields,
             )
             if key in metadata
         }
@@ -289,11 +292,26 @@ class FlextInfraUtilitiesBeadsLane:
                 parts.extend(("--set-metadata", assignment))
             if metadata.kind is None:
                 parts.extend(("--unset-metadata", "kind"))
+            stale_fields: tuple[str, ...]
+            if isinstance(metadata, m.Infra.PendingLaneReservation):
+                stale_fields = (
+                    "recovery",
+                    "error_category",
+                    "pr_number",
+                    "pr_url",
+                    "matrix",
+                )
+            elif isinstance(metadata, m.Infra.ReadyLaneMetadata):
+                stale_fields = ("recovery", "error_category")
+            else:
+                stale_fields = ("pr_number", "pr_url", "matrix")
+            for stale_field in stale_fields:
+                parts.extend(("--unset-metadata", stale_field))
         for label in labels:
             parts.extend(("--add-label", label))
         if notes:
             parts.extend(("--append-notes", notes))
-        if len(parts) == _BD_UPDATE_BASE_ARGV_LENGTH:
+        if len(parts) == cls._UPDATE_BASE_ARGV_LENGTH:
             return r.fail("beads update requires metadata, labels, notes, or claim")
         command = cls._bd_command(*parts, root=root)
         if command.failure:
