@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-
 from flext_infra import FlextInfraValidateTestImportDag
 from flext_tests import tm
+
 from tests import m
 
 if TYPE_CHECKING:
