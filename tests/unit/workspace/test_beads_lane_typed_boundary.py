@@ -9,11 +9,59 @@ from pathlib import Path
 import pytest
 from flext_infra import c, config, m, u
 from flext_tests import tm
+
 from tests import u as test_u
 
 
 class TestsFlextInfraBeadsLaneTypedBoundary:
     """Exercise the public Beads lane boundary through typed lifecycle states."""
+
+    def test_work_lane_models_keep_type_aliases_inside_nested_classes(self) -> None:
+        """Reject loose declarations outside the governed model hierarchy."""
+        source = (
+            Path(__file__).resolve().parents[3]
+            / "src"
+            / "flext_infra"
+            / "_models"
+            / "work_lane.py"
+        ).read_text(encoding="utf-8")
+        loose_aliases = [
+            statement
+            for statement in u.Infra.logical_statements(source)
+            if statement.category == c.Infra.StatementCategory.TYPE_ALIAS
+            and statement.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+        ]
+        module_classes = [
+            u.Infra.header_name(statement)
+            for statement in u.Infra.logical_statements(source)
+            if statement.category == c.Infra.StatementCategory.CLASS_DEF
+            and statement.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+        ]
+
+        tm.that(loose_aliases, eq=[])
+        tm.that(module_classes, eq=["FlextInfraModelsWorkLane"])
+
+    def test_work_lane_model_tests_keep_behavior_inside_test_class(self) -> None:
+        """Reject loose helpers and tests outside the governed test class."""
+        source = (
+            Path(__file__).resolve().parent / "test_work_lane_models.py"
+        ).read_text(encoding="utf-8")
+        statements = u.Infra.logical_statements(source)
+        loose_functions = [
+            u.Infra.header_name(statement)
+            for statement in statements
+            if statement.category == c.Infra.StatementCategory.FUNC_DEF
+            and statement.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+        ]
+        module_classes = [
+            u.Infra.header_name(statement)
+            for statement in statements
+            if statement.category == c.Infra.StatementCategory.CLASS_DEF
+            and statement.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+        ]
+
+        tm.that(loose_functions, eq=[])
+        tm.that(module_classes, eq=["TestsFlextInfraWorkLaneModels"])
 
     @staticmethod
     def _repository(tmp_path: Path) -> Path:
