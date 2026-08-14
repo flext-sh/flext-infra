@@ -478,11 +478,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         hooks_directory.error
                         or f"unable to resolve git hooks directory: {repository_root}"
                     )
+                declared_stages = self._declared_hook_stages(
+                    config_spec.make, target.make_profile
+                )
                 hooks_plans.append(
                     m.Infra.HooksPlan(
                         repository_root=repository_root,
                         hooks_directory=hooks_directory.value,
-                        stages=self._declared_hook_stages(config_spec.make),
+                        stages=declared_stages,
+                        # Every workflow stage this profile does NOT declare is
+                        # retired here, so a profile losing its hook config also
+                        # loses the installed shim that pointed at it.
+                        retired_stages=tuple(
+                            stage
+                            for stage in self._workflow_hook_stages(config_spec.make)
+                            if stage not in declared_stages
+                        ),
                     )
                 )
             if self.initial_workspace is None:
@@ -1108,6 +1119,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pyproject_plan.error or f"pyproject planning failed: {pyproject}"
             )
         planned.append(pyproject_plan.value)
+        # mro-68rcj: a projection this profile must not carry is RETIRED, not
+        # merely skipped. Skipping left 31 members owning an orphan hook config
+        # that gen neither rendered nor removed.
+        retired = self.retired_projection_plans(root, profile)
+        if retired.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                retired.error or f"retired projection planning failed: {root}"
+            )
+        planned.extend(retired.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     def _plan_existing_repository(
@@ -1454,6 +1474,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"managed file planning failed: {entry.destination}"
                 )
             planned.append(file_plan.value)
+        # mro-68rcj: an existing tree that still carries a projection excluded
+        # from its profile has it RETIRED here. Skipping the entry left the file
+        # orphaned -- owned by nobody, never re-rendered, never removed.
+        retired = self.retired_projection_plans(root, profile)
+        if retired.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                retired.error or f"retired projection planning failed: {root}"
+            )
+        planned.extend(retired.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
@@ -1467,6 +1496,41 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             changed=True,
             absent=True,
         )
+
+    @classmethod
+    def retired_projection_plans(
+        cls, root: Path, profile: c.Infra.MakeProfile
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        r"""Plan removal of generated files this profile must not carry.
+
+        Operator law mro-68rcj: git hooks belong to the workspace ROOT only, and
+        the template already encodes that by excluding workspace-member from its
+        profiles. But a non-matching profile was merely SKIPPED, never retired,
+        so 31 members kept an orphan .pre-commit-config.yaml that ``make gen``
+        neither owned nor removed -- each carrying a stale entry shape that
+        failed with \"Executable `CI=Y` not found\".
+
+        A projection excluded from a profile is retired for that profile. Only
+        files still carrying the generator banner are removed, so a hand-written
+        file that happens to share the name is never touched.
+        """
+        codegen = config.Infra.codegen
+        planned: list[m.Infra.CodegenFilePlan] = []
+        for entry in codegen.templates.entries:
+            if profile in entry.profiles or "{" in entry.destination:
+                continue
+            path = root / Path(entry.destination)
+            if not path.is_file():
+                continue
+            current = u.Cli.files_read_text(path)
+            if current.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    current.error or f"retired projection read failed: {path}"
+                )
+            if c.Infra.TEMPLATE_GENERATED_MARKER not in current.value:
+                continue
+            planned.append(cls._absent_file_plan(path, current.value))
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     def _plan_ast_grep_surfaces(
         self,
@@ -2391,6 +2455,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Refresh the provider baseline from origin when a remote exists so
         # CI/local gates do not compare against a stale remote-tracking SHA.
         # Fixtures and offline clones keep the existing tracking ref.
+        # mro-38p39: this is the only network call in the plan, so it is the one
+        # most able to hang. An unreachable or slow remote blocked conform for as
+        # long as git waited (measured 7.44s cumulative in a single unit test).
+        # It is time-boxed like every other bounded subprocess here; exceeding the
+        # box is soft, exactly like a failed fetch below.
         remote_probe = u.Cli.run_raw(
             (c.Infra.GIT, "remote", "get-url", "origin"), cwd=root
         )
@@ -2410,7 +2479,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"refs/remotes/origin/{target.baseline_branch}"
                 ),
             )
-            fetch_result = u.Cli.run_raw(fetch_command, cwd=root)
+            fetch_result = u.Cli.run_raw(
+                fetch_command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT
+            )
             if fetch_result.failure or fetch_result.value.exit_code != 0:
                 # Soft: ancestry still validates against the local tracking ref
                 # when present; hard-fail only if that ref is missing below.
@@ -2665,12 +2736,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return workspace.ledger_prefix, workspace.ledger_id
 
     @staticmethod
-    def _declared_hook_stages(make_spec: m.Infra.MakeSpec) -> tuple[str, ...]:
-        """Derive the hook stages from the workflow SSOT, never a literal list.
+    def _declares_hook_config(profile: c.Infra.MakeProfile) -> bool:
+        """Answer whether the SSOT projects a hook config onto this profile.
+
+        Operator law mro-68rcj: pre-* hooks belong to the workspace ROOT only.
+        The template manifest already encodes that by excluding
+        ``workspace-member`` from the ``.pre-commit-config.yaml`` entry, so the
+        manifest -- not a second literal list here -- is what decides.
+        """
+        return any(
+            profile in entry.profiles
+            for entry in config.Infra.codegen.templates.entries
+            if entry.destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME
+        )
+
+    @staticmethod
+    def _workflow_hook_stages(make_spec: m.Infra.MakeSpec) -> tuple[str, ...]:
+        """Derive every git hook stage the workflow SSOT knows about.
 
         A context named ``pre_commit``/``pre_push`` in config/codegen.yaml is
         what makes the corresponding git hook part of the contract, so adding a
-        hook context to the SSOT extends this check with no code change.
+        hook context to the SSOT extends this with no code change.
         """
         contexts = {
             context
@@ -2679,6 +2765,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if context.startswith("pre_")
         }
         return tuple(sorted(context.replace("_", "-") for context in contexts))
+
+    @classmethod
+    def _declared_hook_stages(
+        cls, make_spec: m.Infra.MakeSpec, profile: c.Infra.MakeProfile
+    ) -> tuple[str, ...]:
+        """Narrow the workflow stages to those this profile must have installed.
+
+        A profile the manifest gives no hook config to declares no stages: it
+        must end with its hooks UNINSTALLED. Deriving stages from the workflow
+        alone installed pre-commit/pre-push into all 31 members whose config
+        the same SSOT retires, leaving a shim pointing at a deleted file.
+        """
+        if not cls._declares_hook_config(profile):
+            return ()
+        return cls._workflow_hook_stages(make_spec)
 
     @classmethod
     def _hooks_directory(cls, repository_root: Path) -> p.Result[Path]:
@@ -2704,11 +2805,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _verify_hooks_plan(
         cls, plan: m.Infra.HooksPlan, *, allow_missing: bool
     ) -> p.Result[bool]:
-        """Fail closed when a declared workflow hook is not actually installed.
+        """Fail closed when the installed hooks disagree with the contract.
 
         Emitting .pre-commit-config.yaml without activating it left every lane
         committing and pushing ungated while conform still reported success.
+        The reverse is drift too: a checkout the SSOT gives no hook config to
+        must not carry an installed shim pointing at that absent file.
         """
+        retired = tuple(
+            stage
+            for stage in plan.retired_stages
+            if (plan.hooks_directory / stage).is_file()
+        )
+        if retired and not allow_missing:
+            return r[bool].fail(
+                "git hook is installed for a profile that declares none: "
+                + ", ".join(
+                    f"{stage} ({plan.hooks_directory / stage})" for stage in retired
+                )
+            )
         if not plan.stages:
             return r[bool].ok(True)
         missing = tuple(
@@ -2729,13 +2844,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @classmethod
     def _install_hooks_plan(cls, plan: m.Infra.HooksPlan) -> p.Result[bool]:
-        """Activate every declared workflow hook through pre-commit itself.
+        """Converge installed hooks onto the contract, both ways.
 
-        pre-commit owns the hook shim it emits, so installation delegates to it
-        rather than writing a second, divergent shim here.
+        pre-commit owns the hook shim it emits, so installation AND retirement
+        delegate to it rather than writing or deleting a second, divergent shim
+        here. ``pre-commit uninstall`` needs no config present and leaves a
+        foreign hook it did not write untouched, so retiring is safe on a
+        checkout whose config the same run just removed.
         """
+        retired = cls._retire_hooks_plan(plan)
+        if retired.failure:
+            return retired
         if not plan.stages:
-            return r[bool].ok(True)
+            return cls._verify_hooks_plan(plan, allow_missing=False)
         command = [sys.executable, "-m", "pre_commit", "install"]
         for stage in plan.stages:
             command.extend(("-t", stage))
@@ -2746,6 +2867,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or f"git hook installation failed: {plan.repository_root}"
             )
         return cls._verify_hooks_plan(plan, allow_missing=False)
+
+    @classmethod
+    def _retire_hooks_plan(cls, plan: m.Infra.HooksPlan) -> p.Result[bool]:
+        """Uninstall every hook stage this checkout must not carry."""
+        retired = tuple(
+            stage
+            for stage in plan.retired_stages
+            if (plan.hooks_directory / stage).is_file()
+        )
+        if not retired:
+            return r[bool].ok(True)
+        command = [sys.executable, "-m", "pre_commit", "uninstall"]
+        for stage in retired:
+            command.extend(("-t", stage))
+        uninstalled = u.Cli.run_checked(command, cwd=plan.repository_root)
+        if uninstalled.failure:
+            return r[bool].fail(
+                uninstalled.error
+                or f"git hook retirement failed: {plan.repository_root}"
+            )
+        return r[bool].ok(True)
 
     @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:

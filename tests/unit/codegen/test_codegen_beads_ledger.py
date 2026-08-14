@@ -188,7 +188,16 @@ class TestCodegenBeadsLedger:
             member.path.as_posix(),
         )
         member_root = workspace / member.path
+        # The declared https URL is the real external-member shape and the
+        # schema requires it, so .gitmodules and the remote both state it.
+        # mro-38p39: a unit test must never touch the network. url.insteadOf
+        # rewrites that declared URL to the member's own bare origin, so the
+        # topology under test is unchanged while every git operation stays
+        # local. Without it this single test paid 7.44s of real GitHub
+        # latency -- the largest cost in the suite.
+        member_origin = member_source.parent / f"{member_source.name}-origin.git"
         self._git(member_root, "remote", "set-url", "origin", member.url)
+        self._git(member_root, "config", f"url.{member_origin}.insteadOf", member.url)
         self._git(
             workspace,
             "config",
@@ -644,6 +653,7 @@ class TestCodegenBeadsLedger:
         result = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )

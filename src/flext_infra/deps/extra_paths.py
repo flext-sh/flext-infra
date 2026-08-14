@@ -123,8 +123,9 @@ class FlextInfraExtraPathsManager(
         # Only real productive roots belong in project-includes, and
         # u.Infra.analyzer_python_roots is the single owner shared with conform
         # and the modernizer, so a root one surface writes is never erased by
-        # the next. The roots conform is ABOUT to create arrive through
-        # declared_python_dirs at the modernizer boundary.
+        # the next. A directory listed in env_dirs that exists on disk is a
+        # tracked root — it may not yet contain .py files in a fresh scaffold,
+        # but it is still part of the project structure the analyzer must cover.
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
                 u.Infra.analyzer_python_roots(
@@ -133,9 +134,6 @@ class FlextInfraExtraPathsManager(
                         directory
                         for directory in rules.env_dirs
                         if (project_dir / directory).is_dir()
-                        and any(
-                            (project_dir / directory).rglob(c.Infra.EXT_PYTHON_GLOB)
-                        )
                     ),
                 )
             )

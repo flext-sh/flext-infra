@@ -31,9 +31,12 @@ def _engine_modules() -> tuple[Path, ...]:
     )
 
 
-def _string_literals(module: Path) -> tuple[str, ...]:
+def _string_literals(module: Path, *, containing: str) -> tuple[str, ...]:
     """Return every string literal in *module*, excluding docstrings."""
-    tree = ast.parse(module.read_text(encoding="utf-8"))
+    source = module.read_text(encoding="utf-8")
+    if containing not in source:
+        return ()
+    tree = ast.parse(source)
     docstrings = {
         ast.get_docstring(node, clean=False)
         for node in ast.walk(tree)
@@ -74,7 +77,9 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
             and str(module.relative_to(package_root)) not in stable_debt
             and any(
                 c.Infra.CUSTOM_MAKE_FILENAME in literal
-                for literal in _string_literals(module)
+                for literal in _string_literals(
+                    module, containing=c.Infra.CUSTOM_MAKE_FILENAME
+                )
             )
         )
 

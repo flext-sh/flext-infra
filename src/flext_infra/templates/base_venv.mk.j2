@@ -5,9 +5,6 @@ UV ?= uv
 FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
 export FLEXT_INFRA_PYTHON
 
-DMPY_SOCKET := .dmypy/socket.$(PROJECT_NAME)
-PYRIGHT_PIDFILE := .pyright/daemon.pid
-PYRIGHT_LOG := .pyright/daemon.log
 
 # Export for subprocesses
 export PROJECT_NAME PYTHON_VERSION
@@ -35,6 +32,6 @@ help: ## Show commands
 	$(Q)echo "================================================"
 	$(Q)echo ""
 	$(Q)echo "FLEXT base.mk (standalone bootstrap)"
-	$(Q)echo "  clean pr daemon-* setup"
+	$(Q)echo "  clean help"
 	$(Q)echo ""
 	$(Q)echo "After codegen: see 'make help' for the full verb surface."

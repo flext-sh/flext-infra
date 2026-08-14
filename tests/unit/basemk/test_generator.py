@@ -31,39 +31,10 @@ class TestsFlextInfraBasemkGenerator:
         tm.ok(result)
         tm.that(result.value, has="PROJECT_NAME ?=")
 
-    def test_generator_pr_booleans_do_not_render_as_positional_values(self) -> None:
-        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
-
-        tm.ok(result)
-        for variable in (
-            "PR_DRAFT",
-            "PR_AUTO",
-            "PR_DELETE_BRANCH",
-            "PR_CHECKS_STRICT",
-            "PR_RELEASE_ON_MERGE",
-        ):
-            tm.that(
-                f'--{variable[3:].lower().replace("_", "-")} "$({variable})"'
-                not in result.value,
-                eq=True,
-            )
-
-    def test_generator_pr_booleans_render_click_dual_flags(self) -> None:
-        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
-
-        tm.ok(result)
-        expected_flags = {
-            "PR_DRAFT": ("--draft", "--no-draft"),
-            "PR_AUTO": ("--auto", "--no-auto"),
-            "PR_DELETE_BRANCH": ("--delete-branch", "--no-delete-branch"),
-            "PR_CHECKS_STRICT": ("--checks-strict", "--no-checks-strict"),
-            "PR_RELEASE_ON_MERGE": ("--release-on-merge", "--no-release-on-merge"),
-        }
-        for variable, (enabled_flag, disabled_flag) in expected_flags.items():
-            tm.that(
-                result.value,
-                has=f"$(if $(filter 1,$({variable})),{enabled_flag},{disabled_flag})",
-            )
+    # mro-x0rau.3 deleted the `pr` recipe (base_pr.mk.j2) with the rest of the
+    # unreachable verb surface, so the two tests that guarded its PR_* flag
+    # rendering are removed with the feature rather than kept asserting a
+    # template that no longer exists.
 
     def test_generator_enforces_pytest_process_deadline(self) -> None:
         """The rendered base.mk carries the config-owned invocation deadline.
