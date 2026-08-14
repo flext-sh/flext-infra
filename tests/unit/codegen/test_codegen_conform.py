@@ -12,14 +12,10 @@ import tomllib
 from pathlib import Path
 
 import pytest
-<<<<<<< HEAD
-from flext_infra import config
-=======
 
 from flext_infra import c, config, m, u
 
 from tests import u as test_u
->>>>>>> refs/remotes/origin/0.12.0-dev
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew

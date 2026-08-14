@@ -36,8 +36,6 @@ class TestsFlextInfraBasemkGenerator:
     # rendering are removed with the feature rather than kept asserting a
     # template that no longer exists.
 
-<<<<<<< HEAD
-=======
     def test_generator_enforces_pytest_process_deadline(self) -> None:
         """The rendered base.mk carries the config-owned invocation deadline.
 
@@ -62,7 +60,6 @@ class TestsFlextInfraBasemkGenerator:
         tm.that(result.value, has="PYTEST_BOUNDED = ")
         tm.that(result.value, has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s")
 
->>>>>>> refs/remotes/origin/0.12.0-dev
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(
             project_name="test-proj",
