@@ -16,9 +16,9 @@ repos:
       # narrows CHECK_GATES, so {{ make.ci.local_value }} keeps every gate and the
       # complete pytest+coverage run.
       # Every hook step owns one shell because Git exports repository-local state,
-      # including GIT_INDEX_FILE during pre-commit. Clearing Git-local variables,
-      # Make selectors, and write intent before the declared command prevents the
-      # caller from changing the generated workflow contract. Project-specific
+      # including GIT_INDEX_FILE during pre-commit. Git-local variables are cleared
+      # before Make selectors and write intent so neither repository state nor the
+      # caller can change the generated workflow contract. Project-specific
       # behavior remains behind the generated Make/custom.mk extension surface.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
