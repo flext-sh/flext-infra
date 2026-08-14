@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
 from flext_infra import c, m, u
 from flext_infra._utilities._github_pr_execution import (
     FlextInfraUtilitiesGithubPrExecutionMixin,
@@ -50,9 +51,14 @@ class FlextInfraUtilitiesGithubPrSingleMixin(FlextInfraUtilitiesGithubPrExecutio
     ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
+        common_dir = cls.git_common_dir(m.Infra.GitRepoRequest(repo_root=repo_root))
+        if common_dir.failure:
+            return r[m.Infra.GithubPullRequestOutcome].fail(
+                common_dir.error or "failed to resolve Git report owner"
+            )
         report_dir = (
-            workspace_root
-            / c.Infra.REPORTS_DIR_NAME
+            common_dir.value.common_dir
+            / "flext-reports"
             / c.Infra.RK_WORKSPACE
             / c.Infra.PR
         ).resolve()

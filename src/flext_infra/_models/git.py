@@ -50,6 +50,15 @@ class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
             Path, m.Field(description="Canonical primary worktree root")
         ]
 
+    class GitCommonDirReport(m.ContractModel):
+        """Resolved Git common directory shared by all worktrees."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        common_dir: Annotated[
+            Path, m.Field(description="Canonical Git common directory")
+        ]
+
     class GitRootReport(m.ContractModel):
         """Resolved workspace or superproject root."""
 

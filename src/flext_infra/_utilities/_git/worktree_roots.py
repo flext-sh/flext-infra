@@ -5,14 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_core import r
 from git import GitCommandError
 
-from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra._utilities._git.worktree_status import (
     FlextInfraUtilitiesGitWorktreeStatusMixin,
 )
+from flext_infra.constants import c
+from flext_infra.models import m
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -22,6 +22,26 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
     FlextInfraUtilitiesGitWorktreeStatusMixin
 ):
     """Own worktree roots operations."""
+
+    @classmethod
+    def git_common_dir(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[m.Infra.GitCommonDirReport]:
+        """Resolve the Git common directory shared by all worktrees."""
+        try:
+            repo = cls._repo(request.repo_root)
+            common_dir = Path(
+                repo.git.rev_parse("--path-format=absolute", "--git-common-dir").strip()
+            ).resolve()
+        except GitCommandError as exc:
+            return r[m.Infra.GitCommonDirReport].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitCommonDirReport].fail(
+                f"failed to resolve Git common directory: {exc}"
+            )
+        return r[m.Infra.GitCommonDirReport].ok(
+            m.Infra.GitCommonDirReport(common_dir=common_dir)
+        )
 
     @classmethod
     def git_workspace_root(
