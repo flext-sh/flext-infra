@@ -15,10 +15,11 @@ repos:
       # ternary: only the exact value {{ make.ci.value }} disables coverage and
       # narrows CHECK_GATES, so {{ make.ci.local_value }} keeps every gate and the
       # complete pytest+coverage run.
-      # Hook isolation and the local extension suffix are business policy from
-      # config/codegen.yaml. After the managed command succeeds, an executable
-      # hooks/<generated-hook-id>{{ make.hooks.local_suffix }} is invoked when present. That sibling is the
-      # ungenerated, repository-local customization surface.
+      # Every hook step owns one shell because Git exports repository-local state,
+      # including GIT_INDEX_FILE during pre-commit. Clearing Git-local variables,
+      # Make selectors, and write intent before the declared command prevents the
+      # caller from changing the generated workflow contract. Project-specific
+      # behavior remains behind the generated Make/custom.mk extension surface.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
 {% for step in make.workflow if "pre_commit" in step.contexts %}
@@ -26,7 +27,6 @@ repos:
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS {{ make.apply_variable }}; unset $(git rev-parse --local-env-vars); {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
           bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true

@@ -2806,9 +2806,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         what makes the corresponding git hook part of the contract, so adding a
         hook context to the SSOT extends this with no code change.
         """
-        return tuple(
-            stage.context.replace("_", "-") for stage in make_spec.hooks.stages
-        )
+        contexts = {
+            context
+            for step in make_spec.workflow
+            for context in step.contexts
+            if context.startswith("pre_")
+        }
+        return tuple(sorted(context.replace("_", "-") for context in contexts))
 
     @classmethod
     def _declared_hook_stages(
@@ -2884,8 +2888,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if content.failure or marker not in content.value:
                     drifted.append(f"{stage} ({hook_path})")
             if not drifted:
-                return r[bool].ok(True)
-            if allow_missing:
                 return r[bool].ok(True)
             return r[bool].fail(
                 "git hook is not managed by pre-commit: " + ", ".join(drifted)

@@ -615,60 +615,6 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-    class MakeHookStageSpec(_ConfigContract):
-        """One generated Git hook stage and its explicit environment policy."""
-
-        context: Annotated[
-            Literal["pre_commit", "pre_push"],
-            m.Field(description="Workflow context rendered by this Git hook stage"),
-        ]
-        ci_value: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Explicit CI token supplied to every stage command"),
-        ]
-        clear_git_environment: Annotated[
-            bool,
-            m.Field(description="Clear repository-local Git variables before Make"),
-        ] = False
-
-    class MakeHooksSpec(_ConfigContract):
-        """Config-owned policy shared by generated Git hook stages."""
-
-        clear_environment: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1,
-                description="Inherited variables cleared before a hook runs Make",
-            ),
-        ]
-        local_suffix: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Suffix of the optional executable beside each generated hook"
-                )
-            ),
-        ] = ".local"
-        stages: Annotated[
-            tuple[FlextInfraConfigModels.MakeHookStageSpec, ...],
-            m.Field(min_length=1, description="Ordered generated Git hook policies"),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_hook_policy(self) -> Self:
-            """Keep cleanup deterministic and the extension inside hooks/."""
-            if len(set(self.clear_environment)) != len(self.clear_environment):
-                msg = "hook clear_environment entries must be unique"
-                raise ValueError(msg)
-            if "/" in self.local_suffix or not self.local_suffix.startswith("."):
-                msg = "hook local_suffix must be a filename suffix starting with '.'"
-                raise ValueError(msg)
-            contexts = tuple(stage.context for stage in self.stages)
-            if len(set(contexts)) != len(contexts):
-                msg = "hook stage contexts must be unique"
-                raise ValueError(msg)
-            return self
-
     class MakeCiSpec(_ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
@@ -937,10 +883,6 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
-        hooks: Annotated[
-            FlextInfraConfigModels.MakeHooksSpec,
-            m.Field(description="Generated Git hook isolation and extension policy"),
-        ]
         ci: Annotated[
             FlextInfraConfigModels.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
@@ -990,20 +932,6 @@ class FlextInfraConfigModels:
                 msg = (
                     "make workflow verbs are not declared public verbs: "
                     f"{', '.join(sorted(unknown_workflow))}"
-                )
-                raise ValueError(msg)
-            workflow_hook_contexts = {
-                context
-                for step in self.workflow
-                for context in step.contexts
-                if context in {"pre_commit", "pre_push"}
-            }
-            declared_hook_contexts = {stage.context for stage in self.hooks.stages}
-            if workflow_hook_contexts != declared_hook_contexts:
-                msg = (
-                    "hook stage policy must exactly cover workflow hook contexts: "
-                    f"workflow={sorted(workflow_hook_contexts)}, "
-                    f"hooks={sorted(declared_hook_contexts)}"
                 )
                 raise ValueError(msg)
             verb_specs = {verb.name: verb for verb in self.verbs}
