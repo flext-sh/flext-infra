@@ -13,7 +13,6 @@ from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 
@@ -73,11 +72,6 @@ class WorkspaceRoutes(RefactorRoutes):
                         "orchestrate",
                         "Run make verb across projects",
                         FlextInfraOrchestratorService,
-                    ),
-                    (
-                        "serialize-make",
-                        "Run one state-sensitive Make verb under its checkout lock",
-                        FlextInfraMakeSerializationService,
                     ),
                     (
                         "work",

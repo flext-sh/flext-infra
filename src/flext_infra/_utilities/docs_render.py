@@ -239,7 +239,8 @@ class FlextInfraUtilitiesDocsRender:
                 f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, "
                 f"`val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` "
                 f"and `Required Python quality gates`; selector routing is owned "
-                f"universally by the agents_home `make-check` skill."
+                f"universally by `config.AiHub.paths.agents_home`/"
+                f"`skills/make-check/SKILL.md`."
             ),
         ]
 

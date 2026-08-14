@@ -40,6 +40,8 @@ class FlextInfraConstantsDeps:
         "# @flext-managed: continuous\n"
         "# @flext-regenerate: make deps WHAT=upgrade APPLY=Y\n"
         "# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py\n"
+        "# @flext-ssot-dependencies: flext-infra/config/codegen.yaml"
+        " (project_defaults.dev, dependency_profiles)\n"
         "# @flext-maintenance: do not edit managed sections; edit the SSOT\n"
         "# [MANAGED] FLEXT pyproject standardization\n"
         "# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n"

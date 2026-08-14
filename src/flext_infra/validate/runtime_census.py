@@ -67,7 +67,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         """Return all importable module names under ``package_name``."""
         try:
             package = importlib.import_module(package_name)
-        except Exception as exc:
+        except c.EXC_BROAD_IO_TYPE as exc:
             return [f"{package_name}: import failed: {exc}"]
         prefix = package.__name__ + "."
         modules: list[str] = [package.__name__]
@@ -76,7 +76,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 package.__path__, prefix=prefix, onerror=lambda _name: None
             ):
                 modules.append(modname)
-        except Exception as exc:
+        except c.EXC_BROAD_IO_TYPE as exc:
             modules.append(f"{package_name}: walk_packages failed: {exc}")
         return modules
 
@@ -84,7 +84,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         """Import one module and run runtime enforcement on its local classes."""
         try:
             module = importlib.import_module(module_name)
-        except Exception as exc:
+        except c.EXC_BROAD_IO_TYPE as exc:
             return [
                 m.Infra.ValidationReport(
                     passed=False,
@@ -98,7 +98,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 continue
             try:
                 report = u.check(obj)
-            except Exception as exc:
+            except c.EXC_BROAD_IO_TYPE as exc:
                 violations.append(
                     f"{module_name}:{obj.__qualname__}: check raised: {exc}"
                 )
