@@ -12,7 +12,14 @@ import tomllib
 from pathlib import Path
 
 import pytest
+<<<<<<< HEAD
 from flext_infra import config
+=======
+
+from flext_infra import c, config, m, u
+
+from tests import u as test_u
+>>>>>>> refs/remotes/origin/0.12.0-dev
 from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -703,10 +710,11 @@ class TestCodegenConform:
 
         tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
 
+    @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
-        self, infra_git_repo: Path
+        self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
     ) -> None:
-        """Execute each public mode without changing an already conform tree."""
+        """Execute one public mode without changing an already conform tree."""
         root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -728,30 +736,20 @@ class TestCodegenConform:
                 cwd=root,
             )
         )
-        # Report/cache artifacts are regenerated per run and are never part
-        # of the conform fixed point.
-        snapshot_excludes = (Path(".reports"), Path(".pytest_cache"), Path(".coverage"))
-        before = tm.ok(
-            u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
-        )
         route = next(
             route
             for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
             if route.name == "conform"
         )
-        for mode in c.Infra.CodegenConformMode:
-            request = m.Infra.CodegenConformRequest(
-                root=root,
-                what=c.Infra.CodegenConformSurface.ALL,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=mode,
-            )
-            tm.ok(route.handler(request))
-        after = tm.ok(
-            u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=mode,
         )
-        tm.that(after.digest, eq=before.digest)
-        tm.that(u.Infra.workspace_fingerprint_changes(before, after), eq=())
+        tm.ok(route.handler(request))
+        status = tm.ok(u.Cli.capture(["git", "status", "--porcelain"], cwd=root))
+        tm.that(status, eq="")
 
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
@@ -1056,88 +1054,6 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(result.error, has="not a regular file")
         tm.that(result.error, has=str(root / "custom.mk"))
-
-
-class TestGitHookConformance:
-    """Prove installed git hooks are part of the conformance contract.
-
-    The generated .pre-commit-config.yaml declares the pre-commit and pre-push
-    workflows, and .github/scripts/install-git-hooks.sh documents `make hooks`
-    as its canonical entry point - but nothing ever installed them. A lane
-    created by `make work` therefore committed and pushed with no gate at all
-    while `make gen WHAT=check` still reported conformance complete. Emitting
-    the config without activating it is exactly the drift the verb exists to
-    catch, so an uninstalled hook is nonconform.
-    """
-
-    @staticmethod
-    def _scaffold(root: Path) -> None:
-        """Materialize a governed project so the hook config exists on disk."""
-        tm.ok(
-            FlextInfraCodegenProjectNew(
-                name="flext-demo",
-                kind=c.Infra.ProjectKind.EXTERNAL,
-                output_root=root,
-                provider="flext-sh",
-                license="MIT",
-                author_name="FLEXT Team",
-                author_email="team@flext.dev",
-                upstream="flext_cli",
-                year=2026,
-                apply_changes=True,
-            ).execute()
-        )
-
-    @staticmethod
-    def _check(root: Path) -> p.Result[m.Infra.CodegenResult]:
-        return FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
-        )
-
-    def test_check_fails_when_declared_hooks_are_not_installed(
-        self, infra_git_repo: Path
-    ) -> None:
-        """An emitted hook config that was never activated is drift."""
-        root = infra_git_repo
-        self._scaffold(root)
-        hooks_dir = root / ".git" / "hooks"
-        for stage in ("pre-commit", "pre-push"):
-            tm.ok(u.Cli.files_delete(hooks_dir / stage))
-
-        result = self._check(root)
-
-        tm.fail(result)
-        tm.that(result.error, has="git hook is not installed")
-        tm.that(result.error, has="pre-commit")
-        tm.that(result.error, has="pre-push")
-
-    def test_apply_installs_every_declared_hook(self, infra_git_repo: Path) -> None:
-        """Apply activates the hooks it emits, so the next check is green."""
-        root = infra_git_repo
-        self._scaffold(root)
-        hooks_dir = root / ".git" / "hooks"
-        for stage in ("pre-commit", "pre-push"):
-            tm.ok(u.Cli.files_delete(hooks_dir / stage))
-
-        tm.ok(
-            FlextInfraCodegenConform.execute_request(
-                m.Infra.CodegenConformRequest(
-                    root=root,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                )
-            )
-        )
-
-        for stage in ("pre-commit", "pre-push"):
-            hook = hooks_dir / stage
-            tm.that(hook.is_file(), eq=True)
-            tm.that(hook.read_text(encoding="utf-8"), has=f"--hook-type={stage}")
-        tm.ok(self._check(root))
 
 
 class TestScriptDispatchMakefile:

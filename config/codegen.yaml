@@ -266,17 +266,42 @@ Infra:
       workflow:
         # Why: pre-commit remains fast and mutation-only; pre-push owns the
         # generated-artifact and read-only validation gates.
-        - { verb: setup, apply: false, contexts: [local, ci, pre_commit, pre_push] }
-        - { verb: gen, apply: true, contexts: [local, ci, pre_commit, pre_push] }
-        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit, pre_push] }
-        - { verb: fix, apply: true, contexts: [local, ci, pre_commit, pre_push] }
+        - {
+            verb: setup,
+            apply: false,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        - {
+            verb: gen,
+            apply: true,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        - {
+            verb: fmt,
+            apply: true,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        - {
+            verb: fix,
+            apply: true,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
         # R9: markdown gate never skipped — a docs defect is a defect in every context.
-        - { verb: check, apply: false, contexts: [local, ci, pre_commit, pre_push] }
+        - {
+            verb: check,
+            apply: false,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
         # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon and
         # then runs WHAT=full, the complete-suite gate: testmon OFF so every test
         # executes, coverage ON so the measured number covers the whole suite.
         # WHAT=all (incremental testmon, --no-cov) stays the local default.
-        - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
+        - {
+            verb: test,
+            what: cache-clear,
+            apply: true,
+            contexts: [local, pre_push],
+          }
         - { verb: test, what: full, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
@@ -1615,7 +1640,11 @@ Infra:
           overwrite: false
         - source: base/.pre-commit-config.yaml.j2
           destination: .pre-commit-config.yaml
-          profiles: [workspace-root, workspace-member, standalone]
+          # Operator law (mro-68rcj): git hooks belong to the workspace ROOT
+          # only. A member never runs its own pre-commit/pre-push chain — the
+          # root hook validates the whole fleet in one pass, and a per-member
+          # chain would re-enter make recursively on every submodule commit.
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/README.md.j2

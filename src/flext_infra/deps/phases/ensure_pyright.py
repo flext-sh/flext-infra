@@ -227,10 +227,26 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
-        env_dirs = tuple(
+        # mro-0ccx4: a directory that exists but holds no Python files (e.g.
+        # examples/ with only a README) is not a productive root.
+        # mro-be9ld: u.Infra.analyzer_python_roots is the single owner conform
+        # and the extra-paths sync already share. Filtering rules.env_dirs alone
+        # missed every Python root outside that list (flext-grpc/docs), so
+        # conform emitted its execution environment and this phase removed it on
+        # the next pass -- gen check reported drift gen apply could never fix.
+        declared = tuple(
             env_dir
             for env_dir in rules.env_dirs
-            if project_dir is None or (project_dir / env_dir).is_dir()
+            if project_dir is None
+            or (
+                (project_dir / env_dir).is_dir()
+                and any((project_dir / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
+            )
+        )
+        env_dirs = (
+            declared
+            if project_dir is None
+            else tuple(u.Infra.analyzer_python_roots(project_dir, declared))
         )
         source_path = self._project_source_path()
         return (
@@ -378,6 +394,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         env_dir
                         for env_dir in rules.env_dirs
                         if (project_dir / env_dir).is_dir()
+                        and any((project_dir / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
                     ),
                 )
             )
@@ -390,6 +407,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     env_dir
                     for env_dir in rules.env_dirs
                     if (workspace_root / env_dir).is_dir()
+                    and any((workspace_root / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
                 ),
             )
         )

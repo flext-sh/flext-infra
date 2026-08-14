@@ -136,6 +136,7 @@ class TestCodegenCiMatrix:
         hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
         workflow = config.Infra.codegen.make.workflow
         ci = config.Infra.codegen.make.ci
+<<<<<<< HEAD
         for step in workflow:
             for context, stage, ci_value in (
                 ("pre_commit", "pre-commit", ci.value),
@@ -155,6 +156,55 @@ class TestCodegenCiMatrix:
                 tm.that(entry, has=cleanup)
                 tm.that(entry, has=f"{ci.variable}={ci_value}")
                 tm.that(entry.index(cleanup) < entry.index("make "), eq=True)
+=======
+        gates_default: tuple[str, ...] = config.Infra.codegen.make.check_gates_default
+
+        for hook_prefix, context in (
+            ("flext-pre-commit", "pre_commit"),
+            ("flext-pre-push", "pre_push"),
+        ):
+            for step in (step for step in workflow if context in step.contexts):
+                command = (
+                    # Operator law: EVERY pre-commit step carries the fast CI
+                    # token; EVERY pre-push step carries the full-suite token.
+                    (
+                        f"{ci.variable}={ci.value} "
+                        if context == "pre_commit"
+                        else f"{ci.variable}={ci.local_value} "
+                    )
+                    + (
+                        "CHECK_GATES="
+                        + ",".join(
+                            gate
+                            for gate in gates_default
+                            if gate not in step.gates_skip
+                        )
+                        + " "
+                        if step.gates_skip
+                        else ""
+                    )
+                    + f"make {step.verb}"
+                    + (f" WHAT={step.what}" if step.what else "")
+                    + (
+                        f" {config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                        if step.apply
+                        else ""
+                    )
+                )
+                hook_id = f"{hook_prefix}-{step.verb}"
+                if step.what:
+                    hook_id += f"-{step.what}"
+                entry = self._hook_entry(hooks, hook_id)
+                tm.that(entry, has=command)
+                # Every carrier that can smuggle a caller's selector or
+                # write-enable token into a hook step is cleared before Make.
+                cleanup = (
+                    f"unset WHAT MAKEFLAGS {config.Infra.codegen.make.apply_variable}; "
+                )
+                tm.that(entry, has=cleanup)
+                tm.that(entry.index(cleanup) < entry.index(command), eq=True)
+>>>>>>> refs/remotes/origin/0.12.0-dev
         tm.that(hooks, has="make test")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 

@@ -366,7 +366,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def declare_workspace_ledger(repository: Path, ledger_id: str) -> None:
+        def declare_workspace_ledger(
+            repository: Path, ledger_id: str, ledger_prefix: str | None = None
+        ) -> None:
             """Declare the typed workspace manifest that owns the ledger.
 
             A bare ``.beads/config.yaml`` no longer makes a checkout a tracker:
@@ -385,6 +387,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         name=repository_ref.distribution,
                         repository=repository_ref,
                         ledger_id=ledger_id,
+                        # A tracker-owning manifest declares BOTH identifiers
+                        # (mro-cdzxf); callers that need a prefix distinct from
+                        # the SQL-safe database identity state it explicitly.
+                        ledger_prefix=(
+                            ledger_id if ledger_prefix is None else ledger_prefix
+                        ),
                     ).model_dump(mode="json", exclude_none=True),
                 )
             )

@@ -16,12 +16,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import r, u
+from flext_infra import m, r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
+from tests import TestsFlextInfraUtilities as tu
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -91,7 +93,38 @@ class TestsFlextInfraIntegrationInfraIntegration:
         generated = generator.execute()
         tm.ok(generated)
         tm.that(generated.value, is_=str)
+<<<<<<< HEAD
         tm.that(generated.value, has="STANDARD_VERBS := clean pr")
+=======
+        tm.that(generated.value, has="check")
+
+    @pytest.mark.integration
+    def test_markdown_fix_formats_instead_of_linting(self, tmp_path: Path) -> None:
+        """The mutating verb must format Markdown, never lint it.
+
+        ``rumdl check --fix`` is a linter: it exits non-zero whenever a finding
+        has no autofix, so a run that repaired every fixable file still failed
+        the verb. ``rumdl fmt`` carries formatter-style exit codes, which is
+        the contract the mutating verb promises.
+
+        R12 moved every public verb out of ``base.mk`` into the gate pipeline,
+        so the owner of this contract is the markdown gate. The document below
+        carries an unfixable finding (MD041: no top-level heading) next to a
+        fixable one (MD009: trailing whitespace): the linter fails on it, the
+        formatter repairs what it can and still succeeds.
+        """
+        project_dir = tu.Tests.mk_project(tmp_path, "markdown-fmt-contract")
+        document = project_dir / "README.md"
+        document.write_text("not a heading   \n", encoding="utf-8")
+        context = m.Infra.GateContext(
+            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+        )
+
+        execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
+
+        tm.that(execution.result.passed, eq=True)
+        tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
+>>>>>>> refs/remotes/origin/0.12.0-dev
 
     @pytest.mark.integration
     def test_basemk_renders_shell_continuations_without_blank_lines(self) -> None:

@@ -31,40 +31,38 @@ class TestsFlextInfraBasemkGenerator:
         tm.ok(result)
         tm.that(result.value, has="PROJECT_NAME ?=")
 
-    def test_generator_pr_booleans_do_not_render_as_positional_values(self) -> None:
+    # mro-x0rau.3 deleted the `pr` recipe (base_pr.mk.j2) with the rest of the
+    # unreachable verb surface, so the two tests that guarded its PR_* flag
+    # rendering are removed with the feature rather than kept asserting a
+    # template that no longer exists.
+
+<<<<<<< HEAD
+=======
+    def test_generator_enforces_pytest_process_deadline(self) -> None:
+        """The rendered base.mk carries the config-owned invocation deadline.
+
+        mro-wkii.17.37 renamed the hard process boundary to
+        ``PYTEST_RUN_TIMEOUT_SECONDS`` and moved enforcement into the typed
+        Python runner, so the generated Make surface publishes the budget and
+        delegates execution instead of wrapping pytest in a shell timeout.
+        """
+        policy = config.Infra.tooling.tools.pytest
+
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
 
         tm.ok(result)
-        for variable in (
-            "PR_DRAFT",
-            "PR_AUTO",
-            "PR_DELETE_BRANCH",
-            "PR_CHECKS_STRICT",
-            "PR_RELEASE_ON_MERGE",
-        ):
-            tm.that(
-                f'--{variable[3:].lower().replace("_", "-")} "$({variable})"'
-                not in result.value,
-                eq=True,
-            )
+        tm.that(
+            result.value,
+            has=(f"PYTEST_PROCESS_TIMEOUT_SECONDS ?= {policy.process_timeout_seconds}"),
+        )
+        # R12 (commit 2f7b8900d): base.mk declares only the verbs it ships a
+        # recipe for, so the pytest invocation moved to the generated project
+        # Makefile. base.mk's remaining duty is to PUBLISH the bounded-process
+        # wrapper built from the config budget, which the project recipe consumes.
+        tm.that(result.value, has="PYTEST_BOUNDED = ")
+        tm.that(result.value, has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s")
 
-    def test_generator_pr_booleans_render_click_dual_flags(self) -> None:
-        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
-
-        tm.ok(result)
-        expected_flags = {
-            "PR_DRAFT": ("--draft", "--no-draft"),
-            "PR_AUTO": ("--auto", "--no-auto"),
-            "PR_DELETE_BRANCH": ("--delete-branch", "--no-delete-branch"),
-            "PR_CHECKS_STRICT": ("--checks-strict", "--no-checks-strict"),
-            "PR_RELEASE_ON_MERGE": ("--release-on-merge", "--no-release-on-merge"),
-        }
-        for variable, (enabled_flag, disabled_flag) in expected_flags.items():
-            tm.that(
-                result.value,
-                has=f"$(if $(filter 1,$({variable})),{enabled_flag},{disabled_flag})",
-            )
-
+>>>>>>> refs/remotes/origin/0.12.0-dev
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(
             project_name="test-proj",

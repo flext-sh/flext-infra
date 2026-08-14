@@ -107,21 +107,25 @@ class TestsCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         self, codegen: CodegenSpec
     ) -> None:
-        """Keep the fast commit and full push workflows separate in the typed SSOT."""
+        """Pre-push runs every commit-stage verb plus the deferred full gates."""
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
 
         tm.that(bool(pre_commit), eq=True)
         tm.that(bool(pre_push), eq=True)
-        tm.that(all(step.apply for step in pre_commit), eq=True)
-        tm.that(any(step.apply for step in pre_push), eq=True)
-        tm.that(any(not step.apply for step in pre_push), eq=True)
+        commit_verbs = {step.verb for step in pre_commit}
+        push_verbs = {step.verb for step in pre_push}
+        # Nothing reaches the remote without first passing every commit-stage
+        # verb, so pre-push must cover the commit set completely.
+        tm.that(commit_verbs.issubset(push_verbs), eq=True)
+        # Push additionally owns the gates deferred from commit (mro-v4p5), so
+        # the push set is strictly larger. Deriving the delta from the SSOT
+        # keeps this contract valid when the declared verbs change.
+        tm.that(bool(push_verbs - commit_verbs), eq=True)
+        # Every declared step must name a verb the public Make surface exposes.
         tm.that(
-            {step.verb for step in pre_commit}.isdisjoint({
-                step.verb for step in pre_push
-            }),
-            eq=True,
+            push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True
         )
 
     def test_rendered_vscode_document_consumes_projection_maps(
