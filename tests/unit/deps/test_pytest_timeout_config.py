@@ -21,15 +21,17 @@ class TestsFlextInfraPytestTimeoutConfig:
     @pytest.mark.parametrize(
         (
             "case_timeout_seconds",
+            "slow_timeout_seconds",
             "run_timeout_seconds",
             "termination_grace_seconds",
             "parallel_workers",
         ),
-        [(1, 2, 1, 1), (7, 20, 2, 8)],
+        [(1, 2, 3, 1, 1), (7, 11, 20, 2, 8)],
     )
     def test_arbitrary_valid_execution_policy_round_trips(
         self,
         case_timeout_seconds: int,
+        slow_timeout_seconds: int,
         run_timeout_seconds: int,
         termination_grace_seconds: int,
         parallel_workers: int,
@@ -38,6 +40,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True)
         payload.update({
             "case-timeout-seconds": case_timeout_seconds,
+            "slow-timeout-seconds": slow_timeout_seconds,
             "run-timeout-seconds": run_timeout_seconds,
             "termination-grace-seconds": termination_grace_seconds,
             "parallel-workers": parallel_workers,
@@ -52,7 +55,12 @@ class TestsFlextInfraPytestTimeoutConfig:
 
     @pytest.mark.parametrize(
         "field",
-        ["case-timeout-seconds", "run-timeout-seconds", "termination-grace-seconds"],
+        [
+            "case-timeout-seconds",
+            "slow-timeout-seconds",
+            "run-timeout-seconds",
+            "termination-grace-seconds",
+        ],
     )
     def test_operator_caps_are_hard_typed_boundaries(self, field: str) -> None:
         policy = config.Infra.tooling.tools.pytest
@@ -60,6 +68,24 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload[field] = 0
 
         with pytest.raises(c.ValidationError, match="greater than"):
+            type(policy).model_validate(payload)
+
+    def test_slow_budget_is_between_regular_item_and_run_budgets(self) -> None:
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True)
+        payload["slow-timeout-seconds"] = policy.case_timeout_seconds
+
+        with pytest.raises(
+            c.ValidationError,
+            match="pytest case timeout must be less than slow timeout",
+        ):
+            type(policy).model_validate(payload)
+
+        payload["slow-timeout-seconds"] = policy.run_timeout_seconds
+        with pytest.raises(
+            c.ValidationError,
+            match="pytest slow timeout must be less than run timeout",
+        ):
             type(policy).model_validate(payload)
 
     @pytest.mark.parametrize(
@@ -80,7 +106,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True)
         payload["run-timeout-seconds"] = (
-            policy.case_timeout_seconds + policy.termination_grace_seconds - 1
+            policy.slow_timeout_seconds + policy.termination_grace_seconds - 1
         )
 
         with pytest.raises(

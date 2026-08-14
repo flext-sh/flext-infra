@@ -486,6 +486,8 @@ Infra:
         # rule let the suite run 30 minutes, so make test never aborted on
         # overrun and a push could be attempted without a full green suite.
         case-timeout-seconds: 10
+        # Explicitly slow items receive this owner-projected pytest budget.
+        slow-timeout-seconds: 60
         # Complete-suite wall clock. 120s hard ceiling per operator law.
         run-timeout-seconds: 120
         termination-grace-seconds: 2
