@@ -249,7 +249,12 @@ Infra:
       ci:
         variable: CI
         value: Y
-        absent_value: N
+        # The local form of the same ternary. Mirrors apply_absent_value so no
+        # surface spells a bare "N": pre_push declares CI explicitly instead of
+        # relying on the token being unset, because a git hook inherits the
+        # invoking environment and a stray CI=Y from the caller would otherwise
+        # revoke pytest and the lint/format/pyrefly gates on a push.
+        local_value: N
         # RULING 2 (rules not skip-list): CI=Y runs a positive gate set
         # (check_gates). Gates omitted (lint, format, pyrefly) are owned by CI
         # workflows and skipped under CI=Y. Local make check without CI=Y keeps

@@ -4,11 +4,19 @@ repos:
     hooks:
       # Why: each make verb is its own pre-commit/pre-push hook so the operator
       # sees per-step status (Passed/Failed) natively via the pre-commit runner.
-      # Operator law: EVERY pre-commit step runs with {{ make.ci.variable }}={{ make.ci.value }} — the fast
-      # positive gate set (mypy/pyright/security/markdown/smells), skipping
-      # ruff/pyrefly/pytest which are owned by pre-push and CI workflows.
-      # EVERY pre-push step runs with {{ make.ci.variable }}={{ make.ci.absent_value }} — full pytest+coverage and
-      # every gate, so nothing broken is ever shared.
+      # Every step states the CI token instead of inheriting it. A git hook runs
+      # with the invoking environment, so a caller that already exported
+      # CI={{ make.ci.value }} would otherwise reach the pre-push steps and
+      # revoke exactly the gates a push must not skip (9b604d43: lint, format,
+      # pyrefly; mro-v4p5: pytest). Declaring the token closes that carrier.
+      # pre-commit is the fast mutation pass and runs the CI gate set
+      # (CI={{ make.ci.value }}). pre-push is the local blocking gate and runs
+      # the full set with CI={{ make.ci.local_value }}, the local arm of the same
+      # ternary: only the exact value {{ make.ci.value }} disables coverage and
+      # narrows CHECK_GATES, so {{ make.ci.local_value }} keeps every gate and the
+      # complete pytest+coverage run.
+      # Every shell also clears inherited Make selectors before invoking the
+      # declared step, so callers cannot override its WHAT or APPLY contract.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` keeps the full set.
 {% for step in make.workflow if "pre_commit" in step.contexts %}
@@ -26,7 +34,7 @@ repos:
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.absent_value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
+                              bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.local_value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

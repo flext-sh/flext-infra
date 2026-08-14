@@ -174,6 +174,9 @@ class TestsFlextInfraBasemkRenderer:
             verb for verb in declared if not _target_has_recipe(text, verb)
         )
         tm.that(recipeless, eq=())
+        tm.that(text, lacks="setup build check security format docs")
+        tm.that(text, lacks="docs-base")
+        tm.that(text, lacks="docs-sync-scripts")
 
     def test_render_all_declares_and_documents_runtime_options(self) -> None:
         """Document the runtime options accepted by generated targets."""

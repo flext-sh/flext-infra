@@ -620,14 +620,13 @@ class FlextInfraConfigModels:
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
         value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
-        absent_value: Annotated[
+        local_value: Annotated[
             t.NonEmptyStr,
             m.Field(
                 description=(
-                    "CI environment value that revokes the CI token. RULING 1 "
-                    "makes CI ternary: value runs the CI gate set, absent_value "
-                    "runs the full local suite. pre-commit uses value, pre-push "
-                    "uses absent_value."
+                    "Local form of the CI ternary. A hook declares this value "
+                    "explicitly so an inherited CI token from the caller can "
+                    "never revoke pytest or the lint/format/pyrefly gates."
                 )
             ),
         ] = "N"

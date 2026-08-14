@@ -149,7 +149,7 @@ class TestCodegenCiMatrix:
                     (
                         f"{ci.variable}={ci.value} "
                         if context == "pre_commit"
-                        else f"{ci.variable}={ci.absent_value} "
+                        else f"{ci.variable}={ci.local_value} "
                     )
                     + (
                         "CHECK_GATES="
