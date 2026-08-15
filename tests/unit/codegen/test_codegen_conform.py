@@ -22,8 +22,6 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
 
-from tests import c, m, u
-
 
 def _conform_target(
     root: Path, repository: m.Infra.RepositoryRef, *, make_profile: c.Infra.MakeProfile
@@ -51,7 +49,7 @@ def _conform_target(
 
 def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
     """Load the smallest owner-written standalone manifest for conform tests."""
-    u.Tests.write_standalone_workspace_manifest(
+    test_u.Tests.write_standalone_workspace_manifest(
         root, "flext-demo", upstream="flext_cli"
     )
     package_root = root / "src" / "flext_demo"
@@ -110,7 +108,7 @@ class TestCodegenConform:
     ) -> None:
         """Repair a committed managed block through the normal apply plan."""
         root = infra_git_repo
-        distribution = u.Tests.repository_ref(config.Infra.name).distribution
+        distribution = test_u.Tests.repository_ref(config.Infra.name).distribution
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n'
@@ -149,7 +147,7 @@ class TestCodegenConform:
     def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
         root = tmp_path / "repository"
         root.mkdir()
-        u.Tests.initialize_git_repo(root)
+        test_u.Tests.initialize_git_repo(root)
         baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -181,7 +179,7 @@ class TestCodegenConform:
             )
         )
         tm.that(divergent_check.exit_code, eq=1)
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
+        repository = test_u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -379,7 +377,7 @@ class TestCodegenConform:
         must decide, so the extra root survives a whole gen cycle.
         """
         root = infra_git_repo
-        dist = u.Tests.repository_ref(config.Infra.name).distribution
+        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "pyproject.toml",
@@ -441,7 +439,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        dist = u.Tests.repository_ref(config.Infra.name).distribution
+        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "pyproject.toml",
@@ -476,7 +474,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = u.Tests.repository_ref(config.Infra.name)
+        repository = test_u.Tests.repository_ref(config.Infra.name)
         local_repository = repository.model_copy(update={"path": Path()})
         dist = repository.distribution
         create_only = {
@@ -561,8 +559,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
-        root_repository = u.Tests.repository_ref("flext")
-        member = u.Tests.repository_ref(
+        root_repository = test_u.Tests.repository_ref("flext")
+        member = test_u.Tests.repository_ref(
             "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -614,7 +612,7 @@ class TestCodegenConform:
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
         provider = config.Infra.codegen.providers[0]
-        repository = u.Tests.repository_ref("arbitrary-root").model_copy(
+        repository = test_u.Tests.repository_ref("arbitrary-root").model_copy(
             update={
                 "name": "arbitrary-root",
                 "distribution": "arbitrary-root",
@@ -688,7 +686,7 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Build Make context from repository-owned data alone."""
-        repository = u.Tests.repository_ref("consumer")
+        repository = test_u.Tests.repository_ref("consumer")
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
@@ -735,8 +733,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """An attached member bootstraps from its declared local checkout."""
-        workspace_repository = u.Tests.repository_ref("workspace-root-fixture")
-        infra_repository = u.Tests.repository_ref(config.Infra.name)
+        workspace_repository = test_u.Tests.repository_ref("workspace-root-fixture")
+        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=workspace_repository.name,
@@ -968,7 +966,7 @@ class TestCodegenConform:
         )
         # `check` requires a provisioned interpreter, which `make setup` would
         # build. Stub it so this test stays about hook ordering.
-        u.Tests.write_executable(
+        test_u.Tests.write_executable(
             root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
