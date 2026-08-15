@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra._utilities._git.semantic_submodule import (
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
 )
