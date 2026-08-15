@@ -326,7 +326,25 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         project_includes = u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES])
-        tm.that(project_includes, eq=["src/**/*.py*", "tests/**/*.py*"])
+        tm.that(project_includes, eq=["src/**/*.py*"])
+
+    def test_pyright_include_globs_preserve_declared_files_and_patterns(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep explicit file/glob selectors while expanding directory roots."""
+        project_dir = tmp_path / "flext-core"
+        project_dir.mkdir()
+        (project_dir / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[tool.pyright]\n"
+            "include = ['src', 'tests/unit/**/*.py', 'scripts/check.py']\n",
+            encoding="utf-8",
+        )
+
+        includes = FlextInfraExtraPathsManager(
+            workspace_root=tmp_path
+        ).pyrefly_project_includes(project_dir=project_dir, is_root=False)
+
+        tm.that(includes, eq=["scripts/check.py", "src/**/*.py*", "tests/unit/**/*.py"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument

@@ -481,7 +481,13 @@ Infra:
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
-        parallel-workers: 4
+        # Direct pytest completed 76% with four workers and 90% with eight
+        # before the immutable 120s wall. Fourteen and sixteen workers
+        # oversubscribed the subprocess-heavy cases and breached their 10s item
+        # budgets. Twelve leaves eight of the host's 20 CPUs for child work.
+        parallel-workers: 12
+        # Work stealing drains uneven codegen/subprocess tails without the
+        # serialized 99% tail measured under loadscope.
         parallel-distribution: worksteal
         profile-sort: cumulative
         profile-limit: 50

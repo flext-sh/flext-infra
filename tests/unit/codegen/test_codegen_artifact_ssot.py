@@ -116,14 +116,8 @@ class TestsCodegenArtifactSsot:
         tm.that(bool(pre_push), eq=True)
         commit_verbs = {step.verb for step in pre_commit}
         push_verbs = {step.verb for step in pre_push}
-        # Nothing reaches the remote without first passing every commit-stage
-        # verb, so pre-push must cover the commit set completely.
         tm.that(commit_verbs.issubset(push_verbs), eq=True)
-        # Push additionally owns the gates deferred from commit (mro-v4p5), so
-        # the push set is strictly larger. Deriving the delta from the SSOT
-        # keeps this contract valid when the declared verbs change.
         tm.that(bool(push_verbs - commit_verbs), eq=True)
-        # Every declared step must name a verb the public Make surface exposes.
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True
         )

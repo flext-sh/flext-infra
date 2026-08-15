@@ -93,7 +93,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         generated = generator.execute()
         tm.ok(generated)
         tm.that(generated.value, is_=str)
-        tm.that(generated.value, has="check")
+        tm.that(generated.value, has="STANDARD_VERBS := clean")
 
     @pytest.mark.integration
     def test_markdown_fix_formats_instead_of_linting(self, tmp_path: Path) -> None:
