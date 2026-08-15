@@ -5,18 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m
-from flext_infra import c, t
+from flext_infra import c, m, t
 
 
-class _LaneContract(m.ContractModel):
-    """Immutable strict base for externally persisted lane data."""
+class FlextInfraModelsWorkLane:
+    """Public MRO composition for typed lane contracts."""
 
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+    class LaneContract(m.ContractModel):
+        """Immutable strict base for externally persisted lane data."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-class _LaneTopologyModels:
-    class PlainLaneTopology(_LaneContract):
+    class PlainLaneTopology(LaneContract):
         """Standalone lane with no epic relationship."""
 
         role: Annotated[
@@ -24,7 +24,7 @@ class _LaneTopologyModels:
             m.Field(description="Standalone lane topology discriminator"),
         ]
 
-    class EpicLaneTopology(_LaneContract):
+    class EpicLaneTopology(LaneContract):
         """Epic lane that may own nested child lanes."""
 
         role: Annotated[
@@ -35,7 +35,7 @@ class _LaneTopologyModels:
             t.NonEmptyStr, m.Field(description="Beads issue that owns the epic lane")
         ]
 
-    class ChildLaneTopology(_LaneContract):
+    class ChildLaneTopology(LaneContract):
         """Child lane bound to one registered epic lane."""
 
         role: Annotated[
@@ -55,19 +55,32 @@ class _LaneTopologyModels:
             t.NonEmptyStr, m.Field(description="Child slug within the epic lane")
         ]
 
+    type LaneTopology = Annotated[
+        PlainLaneTopology | EpicLaneTopology | ChildLaneTopology,
+        m.Field(discriminator="role", description="Discriminated lane topology"),
+    ]
 
-type LaneTopology = Annotated[
-    _LaneTopologyModels.PlainLaneTopology
-    | _LaneTopologyModels.EpicLaneTopology
-    | _LaneTopologyModels.ChildLaneTopology,
-    m.Field(discriminator="role", description="Discriminated lane topology"),
-]
+    class WorkLaneEntry(LaneContract):
+        """Lifecycle state for one project in a workspace-root lane."""
 
+        project: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace-relative project")
+        ]
+        branch: Annotated[t.NonEmptyStr, m.Field(description="Project lane branch")]
+        head_oid: Annotated[t.NonEmptyStr, m.Field(description="CAS-protected HEAD")]
+        pr_number: Annotated[str, m.Field(description="Pull request number")] = ""
+        pr_url: Annotated[str, m.Field(description="Pull request URL")] = ""
+        state: Annotated[t.NonEmptyStr, m.Field(description="Lifecycle state")]
 
-class _LaneStateModels(_LaneTopologyModels):
-    """Typed issue, reservation, and topology declarations."""
+    class WorkLaneMatrix(LaneContract):
+        """Project lifecycle matrix owned by one workspace-root lane."""
 
-    class _LaneReservation(_LaneContract):
+        entries: Annotated[
+            tuple[FlextInfraModelsWorkLane.WorkLaneEntry, ...],
+            m.Field(min_length=1, description="Projects owned by the root lane"),
+        ]
+
+    class _LaneReservation(LaneContract):
         branch: Annotated[t.NonEmptyStr, m.Field(description="Canonical lane branch")]
         namespace: Annotated[
             c.Infra.WorkBranchNamespace,
@@ -83,14 +96,15 @@ class _LaneStateModels(_LaneTopologyModels):
             t.NonEmptyStr, m.Field(description="Logical lane integration base")
         ]
         topology: Annotated[
-            LaneTopology, m.Field(description="Validated lane topology binding")
+            FlextInfraModelsWorkLane.LaneTopology,
+            m.Field(description="Validated lane topology binding"),
         ]
 
         @m.field_validator("topology", mode="after")
         @classmethod
         def validate_branch_identity(
-            cls, topology: LaneTopology, info: m.ValidationInfo
-        ) -> LaneTopology:
+            cls, topology: FlextInfraModelsWorkLane.LaneTopology, info: m.ValidationInfo
+        ) -> FlextInfraModelsWorkLane.LaneTopology:
             required = ("branch", "namespace", "kind", "slug")
             if not all(field in info.data for field in required):
                 return topology
@@ -103,13 +117,13 @@ class _LaneStateModels(_LaneTopologyModels):
                 msg = f"lane branch must equal namespace/slug: {expected_branch}"
                 raise ValueError(msg)
             match topology:
-                case _LaneTopologyModels.EpicLaneTopology():
+                case FlextInfraModelsWorkLane.EpicLaneTopology():
                     valid = (
                         namespace == c.Infra.WorkBranchNamespace.EPIC and kind is None
                     )
                 case (
-                    _LaneTopologyModels.PlainLaneTopology()
-                    | _LaneTopologyModels.ChildLaneTopology()
+                    FlextInfraModelsWorkLane.PlainLaneTopology()
+                    | FlextInfraModelsWorkLane.ChildLaneTopology()
                 ):
                     match kind:
                         case None:
@@ -146,6 +160,10 @@ class _LaneStateModels(_LaneTopologyModels):
         head_oid: Annotated[
             t.NonEmptyStr, m.Field(description="CAS-protected ready lane HEAD")
         ]
+        matrix: Annotated[
+            FlextInfraModelsWorkLane.WorkLaneMatrix | None,
+            m.Field(description="Workspace project lifecycle matrix when recorded"),
+        ] = None
         pr_number: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Pull request number recorded after land"),
@@ -175,17 +193,12 @@ class _LaneStateModels(_LaneTopologyModels):
             m.Field(description="Provisioning stage that failed"),
         ]
 
+    type LaneMetadata = Annotated[
+        PendingLaneReservation | ReadyLaneMetadata | FailedLaneMetadata,
+        m.Field(discriminator="provisioning", description="Discriminated lane state"),
+    ]
 
-type LaneMetadata = Annotated[
-    _LaneStateModels.PendingLaneReservation
-    | _LaneStateModels.ReadyLaneMetadata
-    | _LaneStateModels.FailedLaneMetadata,
-    m.Field(discriminator="provisioning", description="Discriminated lane state"),
-]
-
-
-class _BeadIssueModel:
-    class BeadIssue(_LaneContract):
+    class BeadIssue(LaneContract):
         """Trusted subset of one Beads issue consumed by the work saga."""
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Canonical Beads issue id")]
@@ -201,13 +214,9 @@ class _BeadIssueModel:
             m.Field(description="Parent Beads issue id when this is a child"),
         ] = None
         metadata: Annotated[
-            LaneMetadata | None,
+            FlextInfraModelsWorkLane.LaneMetadata | None,
             m.Field(description="Validated lane reservation or lifecycle state"),
         ] = None
-
-
-class FlextInfraModelsWorkLane(_BeadIssueModel, _LaneStateModels):
-    """Public MRO composition for typed lane contracts."""
 
 
 __all__: list[str] = ["FlextInfraModelsWorkLane"]

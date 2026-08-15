@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import pytest
+
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -77,13 +79,9 @@ class TestsFlextInfraCodegenViolationKey:
         """ViolationKey is immutable (frozen=True)."""
         v = _violation()
         key = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
-        tm.rejects_assignment(
-            key,
-            "module",
-            "changed",
-            expected=c.ValidationError,
-            match="frozen_instance",
-        )
+        field_name = "module"
+        with pytest.raises(c.ValidationError, match="frozen_instance"):
+            setattr(key, field_name, "changed")
 
     def test_frozenset_reconciliation(self) -> None:
         """Two sets of ViolationKeys can be compared for fixed/remaining violations."""

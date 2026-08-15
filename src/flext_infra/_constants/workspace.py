@@ -36,6 +36,7 @@ class FlextInfraConstantsWorkspace:
     class WorkKind(StrEnum):
         """GitFlow lane kinds owned by configuration policy."""
 
+        EPIC = "epic"
         FEATURE = "feature"
         BUGFIX = "bugfix"
         HOTFIX = "hotfix"

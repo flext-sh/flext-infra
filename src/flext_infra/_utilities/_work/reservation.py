@@ -40,6 +40,7 @@ class FlextInfraWorkReservation:
     def ready(
         reservation: m.Infra.PendingLaneReservation | m.Infra.FailedLaneMetadata,
         head_oid: str,
+        matrix: m.Infra.WorkLaneMatrix,
     ) -> m.Infra.ReadyLaneMetadata:
         return m.Infra.ReadyLaneMetadata(
             branch=reservation.branch,
@@ -55,6 +56,7 @@ class FlextInfraWorkReservation:
             topology=reservation.topology,
             provisioning=c.Infra.WorkProvisioningState.READY,
             head_oid=head_oid,
+            matrix=matrix,
         )
 
     @staticmethod

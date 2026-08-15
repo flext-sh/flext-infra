@@ -9,8 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-from flext_infra import c, config, t, u
+from flext_infra import c, config, m, t, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -240,7 +240,7 @@ class TestCodegenCiMatrix:
             checkout_submodules=codegen.checkout_submodules,
             private_submodules=private,
         )
-        rendered_text = tm.ok(cli_u.Cli.template_render(tpl, spec))
+        rendered_text = tm.ok(u.Cli.template_render(tpl, spec))
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
@@ -439,8 +439,8 @@ class TestCodegenCiMatrix:
             ci_matrix_auto_run=False,
         )
         enabled = disabled.model_copy(update={"ci_matrix_auto_run": True})
-        disabled_text = tm.ok(cli_u.Cli.template_render(tpl, disabled))
-        enabled_text = tm.ok(cli_u.Cli.template_render(tpl, enabled))
+        disabled_text = tm.ok(u.Cli.template_render(tpl, disabled))
+        enabled_text = tm.ok(u.Cli.template_render(tpl, enabled))
         disabled_triggers = disabled_text.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
@@ -531,10 +531,6 @@ class TestCodegenCiMatrix:
         self, tmp_path: Path
     ) -> None:
         """Profile-excluded member ci-matrix orphans are planned as absent."""
-        from flext_infra import m
-        from flext_infra.codegen.conform import FlextInfraCodegenConform
-        from tests import u as test_u
-
         name = "flext-core"
         root = tmp_path / name
         orphan = root / ".github" / "workflows" / "ci-matrix.yml"
@@ -543,7 +539,7 @@ class TestCodegenCiMatrix:
             'name: ci-matrix\n"on":\n  push:\n    branches: [0.12.0-dev]\n',
             encoding="utf-8",
         )
-        repository = test_u.Tests.repository_ref(
+        repository = u.Tests.repository_ref(
             name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
         )
         workspace = m.Infra.WorkspaceSpec(
