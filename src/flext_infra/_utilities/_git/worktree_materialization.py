@@ -9,12 +9,12 @@ from git import GitCommandError
 
 from flext_cli import u
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.typings import t
-from flext_infra._utilities._git.worktree_io import git_stdin
 from flext_infra._utilities._git.worktree_discovery import (
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
 )
+from flext_infra._utilities._git.worktree_io import git_stdin
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from flext_infra import p

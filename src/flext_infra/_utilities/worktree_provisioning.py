@@ -132,6 +132,8 @@ class FlextInfraWorktreeProvisioning:
         secured = cls._prepare_beads_directory(lane)
         if secured.failure:
             return secured
+        if not (lane / c.Infra.PYPROJECT_FILENAME).is_file():
+            return r.ok(True)
         venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
         lane_venv = lane / venv_name
         if lane_venv.is_symlink():

@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import time
 import os
-import sys
 import re
+import sys
+import time
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -18,6 +18,7 @@ from flext_core import r
 from flext_infra import config, p
 from flext_infra.base import s
 from flext_infra.basemk.custom_policy import FlextInfraCustomMkPolicy
+from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
@@ -29,6 +30,47 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
+
+    @staticmethod
+    def _managed_pyproject_state(
+        root: Path, codegen: m.Infra.CodegenConfigSpec
+    ) -> p.Result[tuple[str, p.ProjectMetadata]]:
+        """Load metadata from the recoverable owner projection without writing."""
+        pyproject = root / c.Infra.PYPROJECT_FILENAME
+        read = u.Cli.files_read_text(pyproject)
+        if read.failure:
+            return r[tuple[str, p.ProjectMetadata]].fail(
+                read.error or f"pyproject read failed: {pyproject}"
+            )
+        owners = tuple(
+            managed
+            for managed in codegen.managed_files
+            if managed.path.as_posix() == c.Infra.PYPROJECT_FILENAME
+        )
+        if len(owners) != 1:
+            return r[tuple[str, p.ProjectMetadata]].fail(
+                "pyproject managed owner must resolve exactly once"
+            )
+        recovered = FlextInfraCodegenManagedConflicts.recover_toml(
+            read.value, conflict_sections=owners[0].conflict_sections
+        )
+        if recovered.failure:
+            return r[tuple[str, p.ProjectMetadata]].fail(
+                recovered.error or f"managed pyproject recovery failed: {pyproject}"
+            )
+        payload = u.Cli.toml_mapping_from_text(recovered.value)
+        if payload is None:
+            return r[tuple[str, p.ProjectMetadata]].fail(
+                f"managed pyproject remains invalid TOML after recovery: {pyproject}"
+            )
+        try:
+            document = m.PyprojectDocument.model_validate(payload)
+        except c.ValidationError as exc:
+            return r[tuple[str, p.ProjectMetadata]].fail_op(
+                f"managed pyproject metadata validation ({pyproject})", exc
+            )
+        metadata = u.build_project_metadata(root.resolve(), document)
+        return r[tuple[str, p.ProjectMetadata]].ok((recovered.value, metadata))
 
     @classmethod
     def _surface_contract(
@@ -223,6 +265,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root = request.root.expanduser().resolve()
         workspace_root = root
         workspace = self.initial_workspace
+        prepared_pyprojects: dict[Path, tuple[str, p.ProjectMetadata]] = {}
+        current_pyproject_state: tuple[str, p.ProjectMetadata] | None = None
+        if self.initial_workspace is None:
+            current_pyproject = self._managed_pyproject_state(root, config_spec)
+            if current_pyproject.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    current_pyproject.error
+                    or f"managed pyproject preparation failed: {root}"
+                )
+            current_pyproject_state = current_pyproject.value
+            prepared_pyprojects[root] = current_pyproject_state
         if workspace is None:
             topology_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
             if topology_result.failure:
@@ -234,7 +287,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 resolved_root if identity_root == governing_root else governing_root
             )
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                workspace_root
+                workspace_root,
+                project_metadata=(
+                    current_pyproject_state[1]
+                    if workspace_root == root and current_pyproject_state is not None
+                    else None
+                ),
             )
             if workspace_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -260,8 +318,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             current_repository = current_matches[0]
         if self.initial_workspace is None:
+            if current_pyproject_state is None:
+                return r[m.Infra.CodegenPlan].fail(
+                    f"existing repository has no prepared pyproject: {root}"
+                )
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
-                root, workspace
+                root, workspace, project_metadata=current_pyproject_state[1]
             )
             if current_target_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -339,6 +401,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if repository.name == current_target.repository.name
                 else self._repository_root(workspace_root, workspace, repository)
             )
+            repository_root = repository_root.resolve()
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository path is not a directory: {repository_root}"
@@ -347,11 +410,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository checkout is missing: {repository_root}"
                 )
+            pyproject_state = prepared_pyprojects.get(repository_root)
+            is_scaffold_root = (
+                self.initial_workspace is not None
+                and repository.name == workspace.repository.name
+            )
+            if pyproject_state is None and not is_scaffold_root:
+                prepared = self._managed_pyproject_state(repository_root, config_spec)
+                if prepared.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        prepared.error
+                        or f"managed pyproject preparation failed: {repository_root}"
+                    )
+                pyproject_state = prepared.value
+                prepared_pyprojects[repository_root] = pyproject_state
             if repository.name == current_target.repository.name:
                 target = current_target
             else:
+                if pyproject_state is None:
+                    return r[m.Infra.CodegenPlan].fail(
+                        f"existing repository has no prepared pyproject: {repository_root}"
+                    )
                 target_result = FlextInfraWorkspaceDetector.conform_target(
-                    repository_root, workspace
+                    repository_root, workspace, project_metadata=pyproject_state[1]
                 )
                 if target_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
@@ -363,10 +444,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # topology SSOT; a duplicate member-local manifest is never required.
             # mro-j47u (codex): existing repositories cannot reach the scaffold
             # catalog. Project creation is the only template-rendering lifecycle.
-            if (
-                self.initial_workspace is not None
-                and repository.name == workspace.repository.name
-            ):
+            if is_scaffold_root:
                 repository_plan = self._plan_scaffold_repository(
                     root=repository_root,
                     repository=repository,
@@ -376,6 +454,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     contract=contract,
                 )
             else:
+                if pyproject_state is None:
+                    return r[m.Infra.CodegenPlan].fail(
+                        f"existing repository has no prepared pyproject: {repository_root}"
+                    )
                 repository_plan = self._plan_existing_repository(
                     root=repository_root,
                     workspace_root=workspace_root,
@@ -384,6 +466,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace=workspace,
                     codegen=config_spec,
                     contract=contract,
+                    pyproject_source=pyproject_state[0],
+                    project_metadata=pyproject_state[1],
                 )
             if repository_plan.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -939,6 +1023,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
+        has_devcontainer = self._has_devcontainer(target.root)
         seen_destinations: set[str] = set()
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
@@ -1037,6 +1122,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
+                has_devcontainer=has_devcontainer,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1148,6 +1234,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         contract: m.Infra.CodegenConformSurfaceContract,
+        pyproject_source: str,
+        project_metadata: p.ProjectMetadata,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
         u.Cli.info(f"  stage=pyproject repository={repository.name}")
@@ -1157,21 +1245,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"existing repository has no pyproject.toml: {root}; "
                 "scaffold templates are available only through codegen new"
             )
-        metadata = u.read_project_metadata(root)
-        if metadata.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                metadata.error or f"project metadata load failed: {root}"
-            )
-        dist = metadata.value.project.name
+        dist = project_metadata.project.name
         if dist != repository.distribution:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}"
-            )
-        pyproject_read = u.Cli.files_read_text(pyproject)
-        if pyproject_read.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
         workspace_mode = (
             c.Infra.WorkspaceMode.WORKSPACE
@@ -1191,7 +1269,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
-                pyproject_read.value,
+                pyproject_source,
                 providers=codegen.providers,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
@@ -1223,7 +1301,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
-            package_name=metadata.value.package_name,
+            package_name=project_metadata.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
@@ -1243,7 +1321,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 contract=contract,
             )
         prepared_result = u.Infra.pyproject_conform(
-            pyproject_read.value,
+            pyproject_source,
             providers=codegen.providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -1329,6 +1407,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
         planned: list[m.Infra.CodegenFilePlan] = []
+        has_devcontainer = self._has_devcontainer(target.root)
         owned_destinations = frozenset(
             destination
             for claim in codegen.managed_destination_ownership
@@ -1448,6 +1527,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
+                has_devcontainer=has_devcontainer,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1777,6 +1857,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
+        has_devcontainer: bool,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
@@ -1867,12 +1948,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # nor .devcontainer/devcontainer.json ... found") when the
             # devcontainers ecosystem is declared for a repository that ships no
             # devcontainer, so the entry is projected only where one exists.
-            has_devcontainer = (target.root / ".devcontainer.json").is_file() or any(
-                candidate.is_file()
-                for candidate in (target.root / ".devcontainer").glob(
-                    "**/devcontainer.json"
-                )
-            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     has_devcontainer=has_devcontainer,
@@ -1986,6 +2061,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or f"managed artifact context failed: {destination}"
             )
         return r[p.Model].ok(context_result.value)
+
+    @staticmethod
+    def _has_devcontainer(root: Path) -> bool:
+        return (root / ".devcontainer.json").is_file() or any(
+            candidate.is_file()
+            for candidate in (root / ".devcontainer").glob("**/devcontainer.json")
+        )
 
     @staticmethod
     def make_render_context(
@@ -2224,6 +2306,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
+                inherited_facets=project.inherited_facets,
                 description=project.description,
                 version=project.version,
                 license=project.license,
@@ -2880,7 +2963,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if not (plan.hooks_directory / stage).is_file()
         )
         if not missing:
-            return r[bool].ok(True)
+            drifted: list[str] = []
+            for stage in plan.stages:
+                hook_path = plan.hooks_directory / stage
+                content = u.Cli.files_read_text(hook_path)
+                marker = f"--hook-type={stage}"
+                if content.failure or marker not in content.value:
+                    drifted.append(f"{stage} ({hook_path})")
+            if not drifted:
+                return r[bool].ok(True)
+            return r[bool].fail(
+                "git hook is not managed by pre-commit: " + ", ".join(drifted)
+            )
         if allow_missing:
             return r[bool].ok(True)
         return r[bool].fail(

@@ -263,15 +263,17 @@ class FlextInfraWorktreeService(s[str]):
                     created_oid.error or "failed to retain created branch identity",
                 )
             created_branch_oid = created_oid.value.oid
-        metadata = u.read_project_metadata(lane)
-        if metadata.failure:
-            return self._rollback_new_lane(
-                primary_root,
-                lane,
-                branch,
-                created_branch_oid,
-                metadata.error or "invalid lane project metadata",
-            )
+        pyproject = lane / c.Infra.PYPROJECT_FILENAME
+        if pyproject.is_file():
+            metadata = u.read_project_metadata(lane)
+            if metadata.failure:
+                return self._rollback_new_lane(
+                    primary_root,
+                    lane,
+                    branch,
+                    created_branch_oid,
+                    metadata.error or "invalid lane project metadata",
+                )
         return r.ok(str(lane))
 
     def _remove(self, primary_root: Path, branch: str) -> p.Result[str]:

@@ -7,8 +7,9 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import flext_infra
 import pytest
+
+import flext_infra
 from flext_infra import (
     FlextInfraWorkService,
     FlextInfraWorktreeService,

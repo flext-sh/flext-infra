@@ -1,4 +1,4 @@
-"""Discover ast-grep rules from installed FLEXT packages in cascade order."""  # ruff:ignore[implicit-namespace-package]
+"""Discover ast-grep rules from installed FLEXT packages in cascade order."""
 
 from __future__ import annotations
 

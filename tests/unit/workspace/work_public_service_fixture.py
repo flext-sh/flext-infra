@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Self
 
 import pytest
+
 from flext_infra import c, config, m, u
 from flext_tests import tm
 from tests import u as test_u
@@ -58,7 +59,9 @@ class WorkPublicServiceFixture:
             f"\t@chmod +x {venv_name}/bin/python\n",
             encoding="utf-8",
         )
-        (repository / ".gitignore").write_text(f"{venv_name}\n", encoding="utf-8")
+        (repository / ".gitignore").write_text(
+            f"{venv_name}\n{c.Infra.REPORTS_DIR_NAME}/\n", encoding="utf-8"
+        )
         repository_ref = test_u.Tests.repository_ref("fixture").model_copy(
             update={"path": Path(), "package": False, "editable": False}
         )
