@@ -148,38 +148,42 @@ def infra_safe_command_output(
 
 
 @pytest.fixture
-def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
-    """Initialize a local Git repository through the public CLI facade."""
+def infra_git_repo(infra_test_workspace: Path) -> Path:
+    """Provide a provider-governed clone whose upstream is a local bare repo.
+
+    Conformance reads this repository twice and both reads must agree. Detection
+    only accepts a remote whose host and organization match the provider, while
+    baseline ancestry resolves the provider branch by fetching that same remote.
+    Declaring the real upstream URL satisfies detection but grades the fixture
+    against the live repository; declaring a local path fails detection outright.
+    The fixture therefore declares the provider URL and rewrites it to a local
+    bare origin through Git's own ``url.<base>.insteadOf`` mechanism, so the two
+    reads observe one self-consistent topology without any network access.
+    """
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    tm.ok(infra_subprocess.run_checked(["git", "init"], cwd=repo))
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "config", "user.email", "infra@example.com"], cwd=repo
-        )
-    )
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "config", "user.name", "Infra Fixtures"], cwd=repo
-        )
-    )
-    # mro-j47u (codex): existing-repository conformance inventories refs against the
-    # provider baseline. Seed a commit and a fake remote ref so tests exercise the
-    # same topology a real clone would have.
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
-    tm.ok(infra_subprocess.run_checked(["git", "add", str(baseline_file)], cwd=repo))
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "commit", "-q", "-m", "infra fixture baseline"], cwd=repo
-        )
+    provider = config.Infra.codegen.providers[0]
+    upstream = u.Tests.repository_ref(config.Infra.name).url
+    origin = infra_test_workspace / "origin.git"
+    origin.mkdir(parents=True, exist_ok=True)
+    u.Tests.git_bootstrap(origin, ("init", "--bare"))
+    u.Tests.initialize_git_repo(repo, origin_url=upstream)
+    u.Tests.git_bootstrap(
+        repo, ("config", "--local", f"url.{origin}.insteadOf", upstream)
     )
-    baseline_branch = config.Infra.codegen.providers[0].branch
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "update-ref", f"refs/remotes/origin/{baseline_branch}", "HEAD"],
-            cwd=repo,
-        )
+    u.Tests.git_bootstrap(
+        repo, ("push", "-q", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{provider.branch}")
+    )
+    u.Tests.git_bootstrap(
+        repo,
+        (
+            "fetch",
+            "-q",
+            c.Infra.GIT_ORIGIN,
+            f"+refs/heads/{provider.branch}:refs/remotes/origin/{provider.branch}",
+        ),
     )
     return repo
 

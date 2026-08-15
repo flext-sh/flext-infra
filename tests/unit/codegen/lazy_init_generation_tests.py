@@ -66,8 +66,8 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
         )
-        tm.that(content, contains="from .api import Demo")
-        tm.that(content, lacks="if TYPE_CHECKING:")
+        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="    from .api import Demo")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
@@ -80,7 +80,12 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from .api import Demo")
+        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="    from .api import Demo")
+        runtime_prefix = content.split("_LAZY_MODULES:", maxsplit=1)[0].split(
+            "if TYPE_CHECKING:", maxsplit=1
+        )[0]
+        tm.that(runtime_prefix, lacks="from .api import Demo")
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
@@ -213,6 +218,7 @@ class TestsFlextInfraCodegenGeneration:
         module_offsets = tuple(
             import_block.index(module)
             for module in (
+                "from flext_tests import tm",
                 "from .base import",
                 "from .constants import",
                 "from .models import",
@@ -220,12 +226,11 @@ class TestsFlextInfraCodegenGeneration:
                 "from .settings import",
                 "from .typings import",
                 "from .utilities import",
-                "from flext_tests import tm",
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
         tm.that(import_block, contains="from flext_tests import tm\n")
-        tm.that(init_content, lacks="if TYPE_CHECKING:")
+        tm.that(init_content, contains="if TYPE_CHECKING:")
         tm.that(init_content, contains="install_lazy_exports")
         tm.that(init_content, lacks="TestsDemoCase")
         tm.that(init_content, lacks=".unit.test_demo")

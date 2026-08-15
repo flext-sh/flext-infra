@@ -1,14 +1,11 @@
-"""Typed semantic Git operations for consumers outside ``_git/``."""
+"""Typed semantic Git composition for ``u.Infra``."""
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from flext_infra._utilities._git.semantic_submodule import (
+    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
+)
 
-from git import GitCommandError, Repo
-from git import BaseIndexEntry
-from git import GitCommandNotFound, InvalidGitRepositoryError, NoSuchPathError
 
 from flext_core import r
 from flext_infra._utilities._git.repo import git_refresh_binary
@@ -703,7 +700,8 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         resolved = request.repo_root.expanduser().resolve()
         try:
-            repo = Repo(resolved)
+            # Why (flext-infra-c3h): same nested-path contract as git_open_repo.
+            repo = Repo(resolved, search_parent_directories=True)
         except (InvalidGitRepositoryError, NoSuchPathError):
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
@@ -744,13 +742,24 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             pass
 
         is_worktree = git_dir != common_dir
+        # Gitlink modes live in the index, never in `status --porcelain` (which
+        # emits XY status codes and paths, never file modes). Reading them from
+        # the porcelain text made has_submodules unconditionally False, so a
+        # real submodule superproject was never recognized as one.
+        try:
+            staged_entries = repo.git.ls_files("--stage")
+        except GitCommandError:
+            staged_entries = ""
         has_submodules = any(
-            line.startswith(f"{_GITLINK_MODE} ") for line in porcelain.splitlines()
+            line.startswith(f"{_GITLINK_MODE} ") for line in staged_entries.splitlines()
         )
-        git_entry = working_tree / ".git"
-        is_submodule = (
-            superproject is not None and git_entry.exists() and not git_entry.is_dir()
-        )
+        # Why (flext-infra-c3h / ai-hub-n1nh.5): rev-parse
+        # --show-superproject-working-tree already means this working tree is a
+        # submodule. Requiring .git to be a gitfile excluded absorbed/converted
+        # submodules whose .git is a real directory (e.g. cosmos-charts under
+        # cosmos-main), so is_submodule stayed False while superproject_root was
+        # set and consumers demoted owned nested repos to unmanaged.
+        is_submodule = superproject is not None
 
         return m.Infra.GitIdentityReport(
             repo_root=working_tree,

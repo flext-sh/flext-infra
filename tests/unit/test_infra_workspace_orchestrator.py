@@ -207,6 +207,7 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         result = orchestrator.orchestrate(["flext-demo"], "test")
 
         tm.ok(result, len=1)
+        tm.that("MAKEFILES" in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, eq=True)
         tm.that(observed_remove_keys, eq=[c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS])
         tm.that(observed_envs[0][c.Infra.ORCHESTRATOR_ENV_NO_COLOR], eq="1")
         tm.that(

@@ -69,15 +69,15 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
-        skipped = FlextInfraWorkspaceChecker._ci_skipped_gates(resolved)
-        if skipped:
+        owned = FlextInfraWorkspaceChecker._ci_owned_gates(resolved)
+        if owned:
             FlextInfraWorkspaceChecker._gate_logger.info(
-                "ci_skip_check_gates",
-                skipped=list(skipped),
-                reason="CI=Y omits lint and pyrefly from make check",
+                "ci_run_check_gates",
+                gates=list(owned),
+                reason="CI=Y runs positive gate set from make.ci.check_gates",
             )
-            skip_set = frozenset(skipped)
-            resolved = [gate for gate in resolved if gate not in skip_set]
+            owned_set = frozenset(owned)
+            resolved = [gate for gate in resolved if gate in owned_set]
         return r[list[str]].ok(list(resolved))
 
     @staticmethod
@@ -88,20 +88,20 @@ class FlextInfraWorkspaceChecker(
         return raw == ci.value
 
     @staticmethod
-    def _ci_skipped_gates(gates: t.StrSequence) -> tuple[str, ...]:
-        """Return configured CI skip gates present in *gates* when CI=Y is active."""
+    def _ci_owned_gates(gates: t.StrSequence) -> tuple[str, ...]:
+        """Return gates from *gates* that CI owns (in check_gates) when CI=Y."""
         if not FlextInfraWorkspaceChecker._ci_token_active():
             return ()
-        skip = frozenset(config.Infra.codegen.make.ci.check_gates_skip)
-        return tuple(gate for gate in gates if gate in skip)
+        owned = frozenset(config.Infra.codegen.make.ci.check_gates)
+        return tuple(gate for gate in gates if gate in owned)
 
     @staticmethod
-    def apply_ci_gate_skips(gates: t.StrSequence) -> list[str]:
-        """Omit make.ci.check_gates_skip when the Make CI token is exact CI=Y."""
-        skip = set(FlextInfraWorkspaceChecker._ci_skipped_gates(gates))
-        if not skip:
+    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
+        """Apply make.ci.check_gates positive gate set when CI=Y (RULING 2)."""
+        if not FlextInfraWorkspaceChecker._ci_token_active():
             return [gate for gate in gates if gate]
-        return [gate for gate in gates if gate and gate not in skip]
+        owned = set(FlextInfraWorkspaceChecker._ci_owned_gates(gates))
+        return [gate for gate in gates if gate and gate in owned]
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -118,7 +118,7 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
-        gates = cls.apply_ci_gate_skips(params.gates)
+        gates = cls.apply_ci_gate_rules(params.gates)
         if not gates:
             return r[bool].fail(
                 "no check gates remain after CI token filtering "

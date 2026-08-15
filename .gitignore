@@ -7,6 +7,9 @@
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
 
+# BLOCK: member-local lockfile (the workspace root owns uv.lock)
+uv.lock
+
 # BLOCK: Agent surface outside the workspace root
 .agents/
 
@@ -218,6 +221,14 @@ secrets.yml
 .beads-credential-key
 .worktrees/
 legado/
+.beads.gate.lock
+*.gate.lock*
+
+# Beads ledger identity (all Beads-participating profiles; see mro-9wv8, mro-cdzxf)
+!.beads/metadata.json
+
+# Beads ledger identity (workspace-root and standalone; see mro-9wv8)
+!.beads/metadata.json
 
 # Beads ledger identity (workspace-root and standalone; see mro-9wv8)
 !.beads/metadata.json

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -104,20 +106,15 @@ def _build_consolidator_workspace(tmp_path: Path) -> Path:
     return workspace_root
 
 
-def _write_wrapper_consumers(workspace_root: Path) -> t.SequenceOf[Path]:
-    """Create wrapper-surface consumers for constants consolidation."""
+def _write_wrapper_consumer(workspace_root: Path, segment: str) -> Path:
+    """Create one wrapper-surface consumer for constants consolidation."""
     project_root = workspace_root / "flext-demo"
-    consumer_paths = (
-        project_root / "examples" / "consumer.py",
-        project_root / "scripts" / "consumer.py",
-        project_root / "tests" / "test_consumer.py",
+    consumer_path = project_root / segment / "consumer.py"
+    consumer_path.parent.mkdir(parents=True, exist_ok=True)
+    consumer_path.write_text(
+        'from __future__ import annotations\n\nVALUE = "demo"\n', encoding="utf-8"
     )
-    for consumer_path in consumer_paths:
-        consumer_path.parent.mkdir(parents=True, exist_ok=True)
-        consumer_path.write_text(
-            'from __future__ import annotations\n\nVALUE = "demo"\n', encoding="utf-8"
-        )
-    return consumer_paths
+    return consumer_path
 
 
 def test_execute_apply_mode_replaces_literal_with_canonical_reference(
@@ -135,12 +132,21 @@ def test_execute_apply_mode_replaces_literal_with_canonical_reference(
     tm.that(updated_source, has="from flext_demo import c")
 
 
-def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "wrapper_segment", sorted(c.Infra.ROOT_WRAPPER_SEGMENTS - {"src"})
+)
+def test_execute_apply_mode_scans_wrapper_surfaces(
+    tmp_path: Path, wrapper_segment: str
+) -> None:
     workspace_root = _build_consolidator_workspace(tmp_path)
     package_consumer_path = (
         workspace_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
     )
-    wrapper_consumer_paths = _write_wrapper_consumers(workspace_root)
+    package_consumer_path.write_text(
+        'from __future__ import annotations\n\nVALUE = "covered-elsewhere"\n',
+        encoding="utf-8",
+    )
+    wrapper_consumer_path = _write_wrapper_consumer(workspace_root, wrapper_segment)
     constants_family_path = (
         workspace_root
         / "flext-demo"
@@ -161,14 +167,17 @@ def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
 
     tm.ok(result)
     payload = _consolidator_payload(result.value)
-    tm.that(payload.total_found, eq=4)
-    tm.that(payload.total_applied, eq=4)
+    tm.that(payload.total_found, eq=1)
+    tm.that(payload.total_applied, eq=1)
     tm.that(payload.total_failed, eq=0)
-    tm.that(len(payload.files), eq=4)
-    for consumer_path in (package_consumer_path, *wrapper_consumer_paths):
-        updated_source = consumer_path.read_text(encoding="utf-8")
-        tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
-        tm.that(updated_source, has="from flext_demo import c")
+    tm.that(len(payload.files), eq=1)
+    updated_source = wrapper_consumer_path.read_text(encoding="utf-8")
+    tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
+    tm.that(updated_source, has="from flext_demo import c")
+    tm.that(
+        package_consumer_path.read_text(encoding="utf-8"),
+        has='VALUE = "covered-elsewhere"',
+    )
     constants_family_source = constants_family_path.read_text(encoding="utf-8")
     tm.that(constants_family_source, has='VALUE = "demo"')
     tm.that(constants_family_source, lacks="c.DEMO_VALUE")

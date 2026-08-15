@@ -84,11 +84,19 @@ class TestsReviewTemplateContracts:
         tm.that(dump, has="junit.xml")
         tm.that(dump, has="coverage.xml")
 
-    def test_docs_workflow_uses_what_not_docs_phase(self) -> None:
+    def test_docs_workflow_uses_public_cli_not_removed_make_verb(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")
         tm.that(text, lacks="DOCS_PHASE=")
-        tm.that(text, has="make docs WHAT=audit")
-        tm.that(text, has="make docs WHAT=validate")
+        tm.that(text, lacks="make docs")
+        tm.that(text, has="python -m flext_infra docs audit")
+        tm.that(text, has="python -m flext_infra docs generate")
+        tm.that(text, has="python -m flext_infra docs validate")
+        tm.that(text, has="python -m flext_infra docs build")
+
+    def test_docs_pages_environment_avoids_static_schema_enum(self) -> None:
+        text = _DOCS.read_text(encoding="utf-8")
+        tm.that(text, has="name: {% raw %}${{ 'github-pages' }}{% endraw %}")
+        tm.that(text, lacks="      name: github-pages")
 
     def test_docs_upload_excludes_raw_report_logs(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")

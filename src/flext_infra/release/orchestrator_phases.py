@@ -220,12 +220,6 @@ class FlextInfraReleaseOrchestratorPhases(
         parse_result = u.Infra.parse_semver(target)
         if parse_result.failure:
             return r[bool].fail(parse_result.error or "invalid version")
-        process_environment = u.Cli.process_env()
-        if (
-            not ctx.dry_run
-            and process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV) != "1"
-        ):
-            return self._version_worktree_transaction(ctx)
         manifest_result = self._version_workspace_manifest_plan(
             ctx.workspace_root, target
         )
@@ -267,52 +261,6 @@ class FlextInfraReleaseOrchestratorPhases(
             "release_phase_version_summary",
             files_changed=changed_result.value,
             manifest_changed=manifest_changed,
-        )
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _version_worktree_transaction(
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> p.Result[bool]:
-        """Apply one complete version delta through the canonical transaction."""
-        command: t.MutableSequenceOf[str] = [
-            c.Infra.CLI_GROUP_RELEASE,
-            c.Infra.VERB_RUN,
-            "--workspace",
-            str(ctx.workspace_root),
-            "--phase",
-            c.Infra.ReleasePhase.VERSION,
-            "--version",
-            ctx.version,
-            "--interactive",
-            "0",
-            "--create-branches",
-            "0",
-            "--apply",
-        ]
-        if ctx.project_names:
-            command.extend(("--projects", ",".join(ctx.project_names)))
-        if ctx.dev_suffix:
-            command.append("--dev-suffix")
-        transaction_result = u.Infra.execute_worktree_transaction(
-            m.Infra.WorktreeTransactionRequest(
-                workspace_root=ctx.workspace_root,
-                command=tuple(command),
-                apply_patch=True,
-                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
-            )
-        )
-        if transaction_result.failure:
-            return r[bool].fail(
-                transaction_result.error or "release version transaction failed"
-            )
-        report = transaction_result.value
-        if report.breakage_detected or not report.applied:
-            return r[bool].fail(u.Infra.render_worktree_transaction_report(report))
-        logger.info(
-            "release_phase_version_transaction",
-            transaction_id=report.transaction_id,
-            summary=report.summary,
         )
         return r[bool].ok(True)
 
