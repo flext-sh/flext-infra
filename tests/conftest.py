@@ -51,8 +51,13 @@ def infra_public_root() -> Iterator[ModuleType]:
     finally:
         for name, module in stdlib_snapshots.items():
             sys.modules[name] = module
+        # Why (review #355): a wrapper the reload imported but that was absent
+        # before the fixture must be dropped, not kept — leaving it would leak
+        # the reloaded module identity into later tests.
         for name, module in wrapper_snapshots.items():
-            if module is not None:
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
                 sys.modules[name] = module
 
 
