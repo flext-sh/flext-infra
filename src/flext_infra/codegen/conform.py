@@ -1023,6 +1023,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
+        has_devcontainer = self._has_devcontainer(target.root)
         seen_destinations: set[str] = set()
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
@@ -1121,6 +1122,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
+                has_devcontainer=has_devcontainer,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1405,6 +1407,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
         planned: list[m.Infra.CodegenFilePlan] = []
+        has_devcontainer = self._has_devcontainer(target.root)
         owned_destinations = frozenset(
             destination
             for claim in codegen.managed_destination_ownership
@@ -1524,6 +1527,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
+                has_devcontainer=has_devcontainer,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1853,6 +1857,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
+        has_devcontainer: bool,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
@@ -1943,12 +1948,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # nor .devcontainer/devcontainer.json ... found") when the
             # devcontainers ecosystem is declared for a repository that ships no
             # devcontainer, so the entry is projected only where one exists.
-            has_devcontainer = (target.root / ".devcontainer.json").is_file() or any(
-                candidate.is_file()
-                for candidate in (target.root / ".devcontainer").glob(
-                    "**/devcontainer.json"
-                )
-            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     has_devcontainer=has_devcontainer,
@@ -2062,6 +2061,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or f"managed artifact context failed: {destination}"
             )
         return r[p.Model].ok(context_result.value)
+
+    @staticmethod
+    def _has_devcontainer(root: Path) -> bool:
+        return (root / ".devcontainer.json").is_file() or any(
+            candidate.is_file()
+            for candidate in (root / ".devcontainer").glob("**/devcontainer.json")
+        )
 
     @staticmethod
     def make_render_context(

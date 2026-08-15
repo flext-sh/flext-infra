@@ -249,6 +249,31 @@ class TestCodegenCiMatrix:
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
+    def test_docs_workflow_permissions_are_job_scoped(
+        self, rendered_project: Path
+    ) -> None:
+        """Each docs job receives only the GitHub token permissions it needs."""
+        workflow = u.Cli.yaml_load_mapping(
+            rendered_project / ".github" / "workflows" / "docs.yml"
+        )
+        permissions = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            workflow["permissions"]
+        )
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        expected = {
+            "docs-quality": {"contents": "read"},
+            "build": {"contents": "read"},
+            "deploy": {"pages": "write", "id-token": "write"},
+        }
+
+        tm.that(dict(permissions), eq={})
+        for job_name, expected_permissions in expected.items():
+            job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs[job_name])
+            job_permissions = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                job["permissions"]
+            )
+            tm.that(dict(job_permissions), eq=expected_permissions)
+
     def test_ci_uses_typed_action_catalog(self, rendered_project: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = rendered_project
@@ -646,7 +671,11 @@ def rendered_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
         workspace_repositories=(),
         checkout_submodules=codegen.checkout_submodules,
     )
-    for destination in (".github/workflows/ci.yml", ".github/workflows/ci-matrix.yml"):
+    for destination in (
+        ".github/workflows/ci.yml",
+        ".github/workflows/ci-matrix.yml",
+        ".github/workflows/docs.yml",
+    ):
         _render_artifact(root, destination, workflow_spec)
     _render_artifact(
         root,
