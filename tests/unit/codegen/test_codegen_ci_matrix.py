@@ -37,8 +37,6 @@ def _render_artifact(root: Path, destination: str, context: p.Model) -> Path:
     tm.ok(u.Cli.atomic_write_text_file(target, rendered))
     return target
 
-from tests import u as test_u
-
 
 class TestCodegenCiMatrix:
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""

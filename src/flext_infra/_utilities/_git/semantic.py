@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING, override
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+from flext_core import r
+from git import (
+    BaseIndexEntry,
+    GitCommandError,
+    GitCommandNotFound,
+    InvalidGitRepositoryError,
+    NoSuchPathError,
+    Repo,
+)
+
+from flext_infra._utilities._git.repo import git_refresh_binary
 from flext_infra._utilities._git.semantic_submodule import (
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
 )
-
-
-from flext_core import r
-from flext_infra._utilities._git.repo import git_refresh_binary
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -121,9 +132,16 @@ def _redact_origin_remote(url: str) -> str:
     return urlunsplit((parsed.scheme, netloc, parsed.path, query, fragment))
 
 
-class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
-    """Monomorphic Request/Report Git ops used by work/layout/saga consumers."""
+class FlextInfraUtilitiesGitSemanticMixin(
+    FlextInfraUtilitiesGitSemanticSubmoduleMixin, FlextInfraUtilitiesGitWorktreeMixin
+):
+    """Compose the canonical ``u.Infra`` Git surface.
 
+    Semantic ref, publication, path, index, identity, submodule and worktree
+    operations are exposed through one monomorphic Request/Report facade.
+    """
+
+    @override
     @classmethod
     def git_list_worktrees(
         cls, request: m.Infra.GitRepoRequest
@@ -138,6 +156,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitTextReport].fail(f"failed to list Git worktrees: {exc}")
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
+    @override
     @classmethod
     def git_check_branch_format(
         cls, request: m.Infra.GitBranchRequest
@@ -154,6 +173,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_ref_exists(
         cls, request: m.Infra.GitRefRequest
@@ -169,6 +189,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"failed to inspect Git ref: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_superproject_working_tree(
         cls, request: m.Infra.GitRepoRequest
@@ -185,6 +206,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
+    @override
     @classmethod
     def git_show_toplevel(
         cls, request: m.Infra.GitRepoRequest
@@ -207,6 +229,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitRootReport].ok(m.Infra.GitRootReport(workspace_root=root))
 
+    @override
     @classmethod
     def git_current_branch(
         cls, request: m.Infra.GitRepoRequest
@@ -224,6 +247,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=branch))
 
+    @override
     @classmethod
     def git_symbolic_ref_short(
         cls, request: m.Infra.GitRepoRequest
@@ -240,6 +264,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text.strip()))
 
+    @override
     @classmethod
     def git_resolve_commit(
         cls, request: m.Infra.GitCommitishRequest
@@ -254,6 +279,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitOidReport].fail(f"cannot resolve commitish: {exc}")
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
+    @override
     @classmethod
     def git_abbrev_ref_head(
         cls, request: m.Infra.GitRepoRequest
@@ -274,6 +300,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text.strip()))
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=branch))
 
+    @override
     @classmethod
     def git_is_ancestor(
         cls, request: m.Infra.GitCommitishRequest
@@ -290,6 +317,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"failed to inspect ancestry: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=result))
 
+    @override
     @classmethod
     def git_merge_no_edit(
         cls, request: m.Infra.GitCommitishRequest
@@ -306,6 +334,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
+    @override
     @classmethod
     def git_delete_ref(
         cls, request: m.Infra.GitDeleteRefRequest
@@ -322,6 +351,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_fetch_origin(
         cls, request: m.Infra.GitRepoRequest
@@ -336,6 +366,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"failed to fetch origin: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_push_upstream(
         cls, request: m.Infra.GitPushRequest
@@ -354,6 +385,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
+    @override
     @classmethod
     def git_rev_parse(
         cls, request: m.Infra.GitCommitishRequest
@@ -370,6 +402,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
+    @override
     @classmethod
     def git_checkout_restore(
         cls, request: m.Infra.GitRepoRequest
@@ -384,6 +417,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"git checkout restore failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_mv_path(
         cls, request: m.Infra.GitPathPairRequest
@@ -398,6 +432,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"git mv failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_rm_cached(
         cls, request: m.Infra.GitRelativePathRequest
@@ -412,6 +447,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"git rm --cached failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_rm_path(
         cls, request: m.Infra.GitRelativePathRequest
@@ -426,6 +462,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"git rm failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_is_tracked(
         cls, request: m.Infra.GitRelativePathRequest
@@ -444,6 +481,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             m.Infra.GitBoolReport(value=bool(listed.strip()))
         )
 
+    @override
     @classmethod
     def git_head_numstat(
         cls, request: m.Infra.GitRepoRequest
@@ -461,6 +499,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             m.Infra.GitNumstatReport(subject=subject.strip(), numstat=numstat)
         )
 
+    @override
     @classmethod
     def git_fingerprint_inputs(
         cls, request: m.Infra.GitRepoRequest
@@ -481,6 +520,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         )
 
+    @override
     @staticmethod
     def _git_capture_fingerprint(repo: Repo) -> tuple[bytes, bytes, bytes]:
         """Capture (paths_z, index_z, head) bytes for fingerprinting."""
@@ -494,6 +534,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             head = b"UNBORN"
         return paths_z, index_z, head
 
+    @override
     @classmethod
     def git_update_index_gitlink(
         cls, request: m.Infra.GitUpdateIndexGitlinkRequest
@@ -516,6 +557,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_gitlink_spec(
         cls, request: m.Infra.GitRefRequest
@@ -548,6 +590,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
                     f"Git gitlink entry is malformed: {request.reference}"
                 )
 
+    @override
     @classmethod
     def git_rev_parse_parent(
         cls, request: m.Infra.GitCommitishRequest
@@ -564,6 +607,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
+    @override
     @classmethod
     def git_add_lane_worktree(
         cls, request: m.Infra.GitWorktreeAddRequest
@@ -580,6 +624,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
+    @override
     @staticmethod
     def _git_add_worktree_args(
         repo: Repo, request: m.Infra.GitWorktreeAddRequest
@@ -604,6 +649,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         )
 
+    @override
     @classmethod
     def git_add_paths(
         cls, request: m.Infra.GitPathsRequest
@@ -618,6 +664,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"git add failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_restore_paths(
         cls, request: m.Infra.GitCheckoutPathsRequest
@@ -635,6 +682,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitBoolReport].fail(f"git restore failed: {exc}")
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
+    @override
     @classmethod
     def git_commit(
         cls, request: m.Infra.GitCommitRequest
@@ -649,6 +697,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitOidReport].fail(f"git commit failed: {exc}")
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
 
+    @override
     @classmethod
     def git_remote_url(
         cls, request: m.Infra.GitRemoteUrlRequest
@@ -663,6 +712,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             return r[m.Infra.GitTextReport].fail(f"failed to resolve remote URL: {exc}")
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=url))
 
+    @override
     @classmethod
     def git_identity(
         cls, request: m.Infra.GitRepoRequest
@@ -683,6 +733,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         return r[m.Infra.GitIdentityReport].ok(report)
 
+    @override
     @classmethod
     def git_is_inside_work_tree(
         cls, request: m.Infra.GitRepoRequest
@@ -714,6 +765,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
             )
         )
 
+    @override
     @staticmethod
     def _collect_identity_facts(
         repo: Repo, *, requested_path: Path | None = None
