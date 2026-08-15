@@ -312,6 +312,11 @@ class TestsCodegenCatalogExtensions:
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
         )
 
+    # Conforming a real local manifest runs the full render pipeline, so the
+    # honest cost exceeds the suite-wide per-case budget. The explicit marker
+    # keeps the case visible instead of hiding it behind a global bump.
+    @pytest.mark.slow
+    @pytest.mark.timeout(60)
     def test_local_manifest_conforms_without_global_repository_rows(
         self, tmp_path: Path
     ) -> None:

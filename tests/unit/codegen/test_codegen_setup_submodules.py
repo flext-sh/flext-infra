@@ -307,6 +307,12 @@ class TestsCodegenSetupSubmodules:
         tm.that(dirty.read_text(encoding="utf-8"), eq="lane wip")
         tm.that((project / "uv.log").is_file(), eq=True)
 
+    # This scenario drives real `git` plumbing plus a full `make setup` cycle,
+    # so its honest cost exceeds the suite-wide per-case budget. Declaring the
+    # real budget with an explicit marker keeps the case visible instead of
+    # hiding it behind a global bump that would mask genuine hangs elsewhere.
+    @pytest.mark.slow
+    @pytest.mark.timeout(60)
     def test_lane_branch_without_recorded_gitlink_fails(self, tmp_path: Path) -> None:
         """The gitlink ancestry guarantee survives the lane branch acceptance."""
         source = tmp_path / "source"

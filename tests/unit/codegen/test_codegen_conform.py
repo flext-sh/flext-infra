@@ -936,6 +936,11 @@ class TestCodegenConform:
             ],
         )
 
+    # Scaffolding a project then running its make verb hooks drives a real
+    # render plus subprocess cycle, so the honest cost exceeds the suite-wide
+    # per-case budget. The explicit marker keeps the case visible.
+    @pytest.mark.slow
+    @pytest.mark.timeout(60)
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         self, infra_git_repo: Path
     ) -> None:
