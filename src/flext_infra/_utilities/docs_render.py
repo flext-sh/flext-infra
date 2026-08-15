@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, t, config
+from flext_infra import c, config, m, t
 
 
 class FlextInfraUtilitiesDocsRender:

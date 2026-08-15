@@ -6,7 +6,7 @@ rule discovered through the package cascade (``flext_infra.codemod.discovery``)
 plus the project's own hand-written ``ast-grep-rules/``, then re-measure. Any
 count increase rolls the tree back to the checkpoint and fails loud; equal or
 lower counts keep the applied fixes.
-"""  # ruff:ignore[implicit-namespace-package]
+"""
 
 from __future__ import annotations
 
@@ -16,10 +16,7 @@ from typing import Final, override
 from flext_cli import cli
 from flext_infra import config, m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codemod.batch_gates import (
-    FlextInfraModGateEngine,
-    FlextInfraModGateSnapshot,
-)
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.discovery import discover_rules
 
 _CHECKPOINT_MESSAGE: Final[str] = "chore(git): checkpoint before ast-grep batch apply"
@@ -167,4 +164,4 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return r[t.Cli.ResultValue].fail(f"{detail}; rolled back to {checkpoint_sha}")
 
 
-__all__: list[str] = ["FlextInfraCodemodBatchApply", "FlextInfraModGateSnapshot"]
+__all__: list[str] = ["FlextInfraCodemodBatchApply"]

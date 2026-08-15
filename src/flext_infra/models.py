@@ -20,6 +20,7 @@ from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._models.docs import FlextInfraModelsDocs
 from flext_infra._models.enforcement import FlextInfraModelsEnforcement
 from flext_infra._models.gates import FlextInfraModelsGates
+from flext_infra._models.git import FlextInfraModelsGit
 from flext_infra._models.github import FlextInfraModelsGithub
 from flext_infra._models.layout import FlextInfraModelsLayout
 from flext_infra._models.mixins import FlextInfraModelsMixins
@@ -29,10 +30,9 @@ from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra._models.scan import FlextInfraModelsScan
 from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._models.validate import FlextInfraModelsCore
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
 from flext_infra._models.work_lane import FlextInfraModelsWorkLane
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 from flext_infra._models.worktree import FlextInfraModelsWorktree
-from flext_infra._models.git import FlextInfraModelsGit
 
 
 class FlextInfraModels(m):
