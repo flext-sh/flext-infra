@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_infra import config, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 
