@@ -106,6 +106,10 @@ class TestsRootArtifactOwnership:
         with pytest.raises(ValueError, match="must be full-managed"):
             type(spec).model_validate(mutated)
 
+    # Why (suite budget): conform runs a full plan/apply cycle twice here; the
+    # default 10s case timeout only holds on an idle machine, so this carries
+    # the same per-test budget the other conform suites declare.
+    @pytest.mark.timeout(180)
     def test_conform_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(

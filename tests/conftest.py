@@ -21,13 +21,39 @@ pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture
-def infra_public_root() -> ModuleType:
-    """Reload the root public package after clearing lazy-export caches."""
-    for export_name in c.Tests.INFRA_PUBLIC_ROOT_EXPORTS:
-        _ = infra_pkg.__dict__.pop(export_name, None)
-    for module_name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
-        _ = sys.modules.pop(module_name, None)
-    return importlib.reload(infra_pkg)
+def infra_public_root() -> Iterator[ModuleType]:
+    """Reload the root public package after clearing lazy-export caches.
+
+    Why (root cause, reload isolation): ``importlib.reload(flext_infra)``
+    re-executes the package ``__init__``, which re-imports ``pathlib`` and
+    binds a NEW ``Path`` class. Any ``Path`` instance created before the
+    reload keeps the OLD class, whose private slots (``_str``/``_drv``) no
+    longer match, so every later ``path.exists()`` on a pre-reload instance
+    raises ``AttributeError`` — corrupting every test that runs after this
+    fixture. The purge also drops the lazy-export registry the ``tests``
+    package shares, so ``tests.u`` resolved to the infra facade without
+    ``Tests``. Both module snapshots are restored after the fixture so the
+    process-global interpreter state is left exactly as found.
+    """
+    stdlib_snapshots = {
+        name: module
+        for name, module in sys.modules.items()
+        if name == "pathlib" or name.startswith("pathlib.")
+    }
+    wrapper_snapshots = {
+        name: sys.modules.pop(name, None)
+        for name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES
+    }
+    try:
+        for export_name in c.Tests.INFRA_PUBLIC_ROOT_EXPORTS:
+            _ = infra_pkg.__dict__.pop(export_name, None)
+        yield importlib.reload(infra_pkg)
+    finally:
+        for name, module in stdlib_snapshots.items():
+            sys.modules[name] = module
+        for name, module in wrapper_snapshots.items():
+            if module is not None:
+                sys.modules[name] = module
 
 
 def _is_collectable_test_module(collection_path: Path) -> bool:
