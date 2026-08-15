@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import time
 import os
-import sys
 import re
+import sys
+import time
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override

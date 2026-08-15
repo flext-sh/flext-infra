@@ -15,11 +15,12 @@ repos:
       # ternary: only the exact value {{ make.ci.value }} disables coverage and
       # narrows CHECK_GATES, so {{ make.ci.local_value }} keeps every gate and the
       # complete pytest+coverage run.
-      # Every hook step owns one shell because Git exports repository-local state,
-      # including GIT_INDEX_FILE during pre-commit. Git-local variables are cleared
-      # before Make selectors and write intent so neither repository state nor the
-      # caller can change the generated workflow contract. Project-specific
-      # behavior remains behind the generated Make/custom.mk extension surface.
+      # Every hook step owns a shell because Git exports repository-local state,
+      # including GIT_INDEX_FILE during pre-commit. A member hook that delegates
+      # setup to its workspace root must clear those variables first or the root
+      # reads the member's temporary index and reports governed gitlinks missing.
+      # WHAT/MAKEFLAGS/APPLY are cleared in the same prefix so caller selectors
+      # and write intent cannot leak into an independently declared hook step.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
 {% for step in make.workflow if "pre_commit" in step.contexts %}

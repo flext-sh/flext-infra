@@ -1,6 +1,48 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Enforcement package."""
+"""Flext Infra. Enforcement package."""
 
 from __future__ import annotations
 
-__all__: tuple[str, ...] = ()
+from typing import TYPE_CHECKING
+
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+
+if TYPE_CHECKING:
+    from .collection_base import (
+        FlextInfraEnforcementCollectionBase,
+        FlextInfraEnforcementEvaluation,
+    )
+    from .collection_sources import FlextInfraEnforcementSourceCollectors
+    from .engine import FlextInfraEnforcementEngine
+    from .metadata import FlextInfraEnforcementMetadata
+    from .selection import FlextInfraEnforcementSelection
+
+_LAZY_MODULES: dict[str, tuple[str, ...]] = {
+    ".collection_base": (
+        "FlextInfraEnforcementCollectionBase",
+        "FlextInfraEnforcementEvaluation",
+    ),
+    ".collection_sources": ("FlextInfraEnforcementSourceCollectors",),
+    ".engine": ("FlextInfraEnforcementEngine",),
+    ".metadata": ("FlextInfraEnforcementMetadata",),
+    ".selection": ("FlextInfraEnforcementSelection",),
+}
+
+
+_LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
+
+
+_LAZY_IMPORTS = build_lazy_import_map(
+    _LAZY_MODULES, alias_groups=_LAZY_ALIAS_GROUPS, sort_keys=False
+)
+
+__all__: tuple[str, ...] = (
+    "FlextInfraEnforcementCollectionBase",
+    "FlextInfraEnforcementEngine",
+    "FlextInfraEnforcementEvaluation",
+    "FlextInfraEnforcementMetadata",
+    "FlextInfraEnforcementSelection",
+    "FlextInfraEnforcementSourceCollectors",
+)
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_infra import c, m
 from pydantic import ValidationError
+
+from flext_infra import c, m
 
 
 class TestsFlextInfraWorkLaneModels:

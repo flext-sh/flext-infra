@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 from flext_infra import c, t, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import m, p
 
 
@@ -19,16 +17,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         lazy_init: m.Infra.LazyInitConfig
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
-    def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]:
-        """Return the package-root ABI declared by its existing ``__all__``."""
-        init_path = pkg_dir / c.Infra.INIT_PY
-        if self.rope_workspace.resource(init_path) is None:
-            return frozenset()
-        source = u.Cli.files_read_text(init_path).unwrap()
-        return frozenset(
-            u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)
-        )
-
     def _filter_public_root_exports(
         self,
         *,
@@ -38,17 +26,8 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         eager_names: frozenset[str],
     ) -> tuple[set[str], t.MutableLazyAliasMap]:
         """Keep only direct facades in one generated root contract."""
-        explicit_exports = (
-            frozenset()
-            if context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
-            else self._root_public_contract_exports(context.pkg_dir)
-        )
-        if explicit_exports:
-            missing_owners = explicit_exports.difference(export_names)
-            if missing_owners:
-                missing = ", ".join(sorted(missing_owners))
-                msg = f"public root contract has no source owner: {missing}"
-                raise ValueError(msg)
+        # Why (mro-27a9e.1, multi-agent): generated __all__ is a projection,
+        # never an ABI input. Configured source owners and MRO parents are SSOT.
         module_export_names = {
             name
             for name, target in lazy_map.items()
@@ -68,10 +47,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
                 )
             )
         } | module_export_names
-        if explicit_exports:
-            # NOTE (multi-agent): mro-pulj keeps regeneration ABI-stable while
-            # module-local helper exports remain available only from their owner.
-            public_export_names.intersection_update(explicit_exports)
         filtered_lazy_map = {
             name: target
             for name, target in lazy_map.items()

@@ -27,11 +27,11 @@ if TYPE_CHECKING:
     from .base_selection import FlextInfraProjectSelectionServiceBase
     from .cli import FlextInfraCli, docs_main, main
     from .constants import FlextInfraConstants, FlextInfraConstants as c
+    from .git import FlextInfraGitService
     from .models import FlextInfraModels, FlextInfraModels as m
     from .protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from .typings import FlextInfraTypes, FlextInfraTypes as t
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
-    from .git import FlextInfraGitService
     from .work import FlextInfraWorkService
     from .worktree import FlextInfraWorktreeService
 
@@ -44,11 +44,11 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".basemk": ("basemk",),
     ".cli": ("FlextInfraCli", "docs_main", "main"),
     ".constants": ("FlextInfraConstants", "c"),
+    ".git": ("FlextInfraGitService",),
     ".models": ("FlextInfraModels", "m"),
     ".protocols": ("FlextInfraProtocols", "p"),
     ".typings": ("FlextInfraTypes", "t"),
     ".utilities": ("FlextInfraUtilities", "u"),
-    ".git": ("FlextInfraGitService",),
     ".work": ("FlextInfraWorkService",),
     ".worktree": ("FlextInfraWorktreeService",),
     "flext_cli": ("d", "e", "h", "r", "x"),

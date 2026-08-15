@@ -133,7 +133,8 @@ class FlextInfraCodegenLazyInitPlanner(
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
             and "." not in context.current_pkg
-            and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+            # Why (mro-27a9e.1, multi-agent): governed consumers such as ai_hub
+            # are first-class project roots; package prefixes are not architecture.
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
         is_test_facade_root = (

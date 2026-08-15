@@ -37,6 +37,8 @@ def _render_artifact(root: Path, destination: str, context: p.Model) -> Path:
     tm.ok(u.Cli.atomic_write_text_file(target, rendered))
     return target
 
+from tests import u as test_u
+
 
 class TestCodegenCiMatrix:
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
@@ -226,6 +228,8 @@ class TestCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
+        from flext_infra import config, m
+
         codegen = config.Infra.codegen
         private = codegen.ci_private_submodules.get("cosmos-main")
         tm.that(private is not None, eq=True)
@@ -460,6 +464,8 @@ class TestCodegenCiMatrix:
 
     def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
         """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
+        from flext_infra import m
+
         codegen = config.Infra.codegen
         tpl = (
             Path(__file__).resolve().parents[3]

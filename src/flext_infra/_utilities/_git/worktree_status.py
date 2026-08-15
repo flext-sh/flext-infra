@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from git import GitCommandError, Repo
 
 from flext_core import r
-from flext_infra.models import m
 from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
+from flext_infra.models import m
 
 _PORCELAIN_PATH_OFFSET = 3
 
