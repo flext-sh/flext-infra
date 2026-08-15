@@ -90,6 +90,22 @@ class TestCodegenConform:
         tm.that(rejected.error, has=str(root))
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
+        monkeypatch.undo()
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        applied = FlextInfraCodegenConform.execute_request(request)
+        tm.ok(applied)
+        tm.that(target.read_text(encoding="utf-8"), lacks="<<<<<<< ")
+        fixed_point = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+        )
+        tm.ok(fixed_point)
+        tm.that(fixed_point.value.written_files, eq=())
+
     def test_apply_recovers_declared_managed_pyproject_conflict(
         self, infra_git_repo: Path
     ) -> None:
