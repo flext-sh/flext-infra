@@ -500,9 +500,9 @@ Infra:
         # oversubscribed the subprocess-heavy cases and breached their 10s item
         # budgets. Twelve leaves eight of the host's 20 CPUs for child work.
         parallel-workers: 12
-        # Work stealing drains uneven codegen/subprocess tails without the
-        # serialized 99% tail measured under loadscope.
-        parallel-distribution: worksteal
+        # Unmarked tests remain one-item load units; xdist_group co-locates only
+        # tests that share process-global runtimes, ports, or persistent state.
+        parallel-distribution: loadgroup
         profile-sort: cumulative
         profile-limit: 50
         min-version: "8.0"
