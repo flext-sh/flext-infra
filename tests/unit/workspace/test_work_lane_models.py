@@ -66,15 +66,13 @@ class TestsFlextInfraWorkLaneModels:
         )
         assert ready.matrix == matrix
 
+        different_head = ready.model_dump() | {"head_oid": "different"}
         with pytest.raises(ValidationError):
-            m.Infra.ReadyLaneMetadata.model_validate(
-                ready.model_dump() | {"head_oid": "different"}
-            )
+            m.Infra.ReadyLaneMetadata.model_validate(different_head)
 
+        partial_pr = ready.model_dump() | {"pr_number": "42", "pr_url": "https://pr/42"}
         with pytest.raises(ValidationError):
-            m.Infra.ReadyLaneMetadata.model_validate(
-                ready.model_dump() | {"pr_number": "42", "pr_url": "https://pr/42"}
-            )
+            m.Infra.ReadyLaneMetadata.model_validate(partial_pr)
 
     def test_ready_metadata_accepts_omitted_matrix(self) -> None:
         ready = m.Infra.ReadyLaneMetadata.model_validate(
@@ -97,10 +95,9 @@ class TestsFlextInfraWorkLaneModels:
         assert failed.head_oid is None
 
     def test_lane_metadata_refuses_extra_fields(self) -> None:
+        payload = self._pending() | {"unknown": "x"}
         with pytest.raises(ValidationError):
-            m.Infra.PendingLaneReservation.model_validate(
-                self._pending() | {"unknown": "x"}
-            )
+            m.Infra.PendingLaneReservation.model_validate(payload)
 
     @pytest.mark.parametrize(
         "payload",
@@ -128,8 +125,9 @@ class TestsFlextInfraWorkLaneModels:
     def test_lane_metadata_refuses_inconsistent_namespace_topology(
         self, payload: dict[str, object]
     ) -> None:
+        candidate = self._pending() | payload
         with pytest.raises(ValidationError):
-            m.Infra.PendingLaneReservation.model_validate(self._pending() | payload)
+            m.Infra.PendingLaneReservation.model_validate(candidate)
 
     @pytest.mark.parametrize(
         "topology",
@@ -142,10 +140,9 @@ class TestsFlextInfraWorkLaneModels:
     def test_lane_topology_refuses_illegal_variant_fields(
         self, topology: dict[str, str]
     ) -> None:
+        payload = self._pending() | {"topology": topology}
         with pytest.raises(ValidationError):
-            m.Infra.PendingLaneReservation.model_validate(
-                self._pending() | {"topology": topology}
-            )
+            m.Infra.PendingLaneReservation.model_validate(payload)
 
 
 __all__: tuple[str, ...] = ()

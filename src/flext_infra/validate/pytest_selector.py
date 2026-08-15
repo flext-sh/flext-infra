@@ -34,6 +34,22 @@ class FlextInfraPytestSelectorValidator(s[bool]):
     ] = None
 
     @staticmethod
+    def _file_path_violation(file: str | None) -> str | None:
+        """Return the normalized-path violation independently of mode syntax."""
+        if file is None:
+            return None
+        path_prefix = file.split("::", maxsplit=1)[0]
+        parts = path_prefix.split("/")
+        if (
+            not path_prefix
+            or path_prefix.startswith(("-", "/"))
+            or "\\" in path_prefix
+            or any(part in {"", ".", ".."} for part in parts)
+        ):
+            return "file must have a normalized repository-relative path prefix"
+        return None
+
+    @staticmethod
     def syntax_violation(
         *, file: str | None, match: str | None, what: str | None
     ) -> str | None:
@@ -63,18 +79,7 @@ class FlextInfraPytestSelectorValidator(s[bool]):
             return f"{what} rejects FILE and MATCH"
         if what == "full" and (file is not None or match is not None):
             return "full rejects FILE and MATCH"
-        if file is None:
-            return None
-        path_prefix = file.split("::", maxsplit=1)[0]
-        parts = path_prefix.split("/")
-        if (
-            not path_prefix
-            or path_prefix.startswith(("-", "/"))
-            or "\\" in path_prefix
-            or any(part in {"", ".", ".."} for part in parts)
-        ):
-            return "file must have a normalized repository-relative path prefix"
-        return None
+        return FlextInfraPytestSelectorValidator._file_path_violation(file)
 
     @staticmethod
     def resolve_file(root: Path, file: str) -> p.Result[Path]:
