@@ -129,7 +129,7 @@ class FlextInfraReferenceExtraction:
     ) -> bool:
         """Report whether target resolves outside the repository root."""
         normalized = target.split("#", maxsplit=1)[0].split("?", maxsplit=1)[0]
-        if not normalized or normalized.startswith(("http://", "https://")):
+        if not normalized or normalized.split(":", 1)[0] in {"http", "https"}:
             return False
         if normalized.startswith(("file://", "~/", "~\\", "$", "/", "\\")):
             return True

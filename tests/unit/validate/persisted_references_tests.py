@@ -74,14 +74,15 @@ class TestsRepositoryArtifactFoundation:
     def test_reference_rejects_escaping_path(self) -> None:
         repo = config.Infra.codegen.repository_artifact_authorities[0]
 
+        authority = m.Infra.RepositoryArtifactAuthority(
+            host="github.com",
+            organization=repo.organization,
+            repository=repo.repository,
+            ref=repo.ref,
+        )
         with pytest.raises(ValueError, match="canonical repository-relative"):
             m.Infra.RepositoryArtifactReference(
-                authority=m.Infra.RepositoryArtifactAuthority(
-                    host="github.com",
-                    organization=repo.organization,
-                    repository=repo.repository,
-                    ref=repo.ref,
-                ),
+                authority=authority,
                 kind=m.Infra.RepositoryArtifactKind.BLOB,
                 path="docs" + "/../" + "index.md",
             )

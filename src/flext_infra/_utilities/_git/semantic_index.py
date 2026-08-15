@@ -39,7 +39,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
                 "\0"
             )
             payloads = cls._candidate_payloads(repo, entries, untracked)
-        except (GitCommandError, OSError, UnicodeError, ValueError) as exc:
+        except (GitCommandError, OSError, UnicodeError) as exc:
             return r[m.Infra.GitCandidatePayloadsReport].fail(
                 f"failed to read Git candidate payloads: {exc}"
             )

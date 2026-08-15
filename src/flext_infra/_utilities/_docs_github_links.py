@@ -106,6 +106,20 @@ class FlextInfraUtilitiesDocsGithubLinks:
         return None
 
     @staticmethod
+    def _invalid_reference_issue(
+        *, file: str, line_number: int, raw: str, error: str
+    ) -> tuple[m.Infra.AuditIssue, ...]:
+        """Build the single-issue tuple for one non-canonical GitHub URL."""
+        return (
+            m.Infra.AuditIssue(
+                file=file,
+                issue_type="invalid_github_artifact_reference",
+                severity="high",
+                message=f"line {line_number}: {error} -> {raw}",
+            ),
+        )
+
+    @staticmethod
     def docs_github_link_issues(
         *, file: str, line_number: int, raw: str, target: str
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
@@ -117,13 +131,9 @@ class FlextInfraUtilitiesDocsGithubLinks:
         )
         if parsed.success:
             return ()
-        issue = m.Infra.AuditIssue(
-            file=file,
-            issue_type="invalid_github_artifact_reference",
-            severity="high",
-            message=f"line {line_number}: {parsed.error} -> {raw}",
+        return FlextInfraUtilitiesDocsGithubLinks._invalid_reference_issue(
+            file=file, line_number=line_number, raw=raw, error=parsed.error or ""
         )
-        return (issue,)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGithubLinks"]
