@@ -8,7 +8,7 @@ from flext_infra._utilities._git.semantic_submodule import (
 
 
 class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitSemanticSubmoduleMixin):
-    """Compose semantic ref, publication, path, index, identity, and submodule ops."""
+    pass
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticMixin"]

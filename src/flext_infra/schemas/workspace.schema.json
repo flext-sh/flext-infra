@@ -383,6 +383,15 @@
             "flext_cli"
           ]
         },
+        "inherited_facets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "uniqueItems": true,
+          "default": []
+        },
         "homepage": {
           "type": "string",
           "format": "uri"

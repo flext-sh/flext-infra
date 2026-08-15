@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import u
+from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.beads_lane import FlextInfraUtilitiesBeadsLane
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
@@ -38,7 +39,6 @@ from flext_infra._utilities.namespace_analysis import (
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
-from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.namespace_facades import (
     FlextInfraUtilitiesRefactorNamespaceFacades,
 )
@@ -47,9 +47,7 @@ from flext_infra._utilities.namespace_moves import (
 )
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.refactor_discovery import (
@@ -58,7 +56,6 @@ from flext_infra._utilities.refactor_discovery import (
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
@@ -73,7 +70,6 @@ from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModu
 from flext_infra._utilities.rope_mro_transform import (
     FlextInfraUtilitiesRopeMroTransform,
 )
-from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
@@ -108,7 +104,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
-        FlextInfraUtilitiesRopeAnalysis,
         FlextInfraUtilitiesRopeAnalysisWorkspace,
         FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRopeHelpers,
@@ -131,11 +126,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsValidate,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesGithubPr,
-        FlextInfraUtilitiesPyproject,
-        FlextInfraUtilitiesNamespaceConfig,
         FlextInfraUtilitiesDependencies,
         FlextInfraUtilitiesGit,
-        FlextInfraUtilitiesProjectDiscovery,
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesProtectedEdit,
