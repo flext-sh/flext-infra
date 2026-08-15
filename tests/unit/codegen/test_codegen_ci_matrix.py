@@ -14,6 +14,8 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
+from tests import u as test_u
+
 
 class TestCodegenCiMatrix:
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
@@ -218,7 +220,6 @@ class TestCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        from flext_cli import u as cli_u
         from flext_infra import config, m
 
         codegen = config.Infra.codegen
@@ -419,7 +420,6 @@ class TestCodegenCiMatrix:
 
     def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
         """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
-        from flext_cli import u as cli_u
         from flext_infra import m
 
         codegen = config.Infra.codegen
@@ -539,7 +539,7 @@ class TestCodegenCiMatrix:
             'name: ci-matrix\n"on":\n  push:\n    branches: [0.12.0-dev]\n',
             encoding="utf-8",
         )
-        repository = u.Tests.repository_ref(
+        repository = test_u.Tests.repository_ref(
             name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
         )
         workspace = m.Infra.WorkspaceSpec(
