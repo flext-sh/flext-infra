@@ -117,14 +117,13 @@ class FlextInfraUtilitiesDocsGithubLinks:
         )
         if parsed.success:
             return ()
-        return (
-            m.Infra.AuditIssue(
-                file=file,
-                issue_type="invalid_github_artifact_reference",
-                severity="high",
-                message=f"line {line_number}: {parsed.error} -> {raw}",
-            ),
+        issue = m.Infra.AuditIssue(
+            file=file,
+            issue_type="invalid_github_artifact_reference",
+            severity="high",
+            message=f"line {line_number}: {parsed.error} -> {raw}",
         )
+        return (issue,)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGithubLinks"]

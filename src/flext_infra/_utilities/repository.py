@@ -13,6 +13,7 @@ from flext_infra.protocols import p
 from flext_infra.typings import t
 
 _MINIMUM_ARTIFACT_URL_PARTS = 5
+_PATH_DECODE_ROUNDS = 3
 _REPOSITORY_URL_PARTS = 2
 
 
@@ -160,6 +161,28 @@ class FlextInfraUtilitiesRepository:
         return url
 
     @staticmethod
+    def _decode_path_parts(encoded_parts: t.SequenceOf[str]) -> list[str] | None:
+        """Decode URL path parts once; None flags noncanonical double-encoding."""
+        decoded_parts: list[str] = []
+        for encoded_part in encoded_parts:
+            decoded = FlextInfraUtilitiesRepository._fully_decoded(encoded_part)
+            if decoded is None or decoded != unquote(encoded_part):
+                return None
+            decoded_parts.append(decoded)
+        return decoded_parts
+
+    @staticmethod
+    def _fully_decoded(value: str) -> str | None:
+        """Return the fully-decoded value or None past the encoding round budget."""
+        decoded = value
+        for _ in range(_PATH_DECODE_ROUNDS):
+            next_value = unquote(decoded)
+            if next_value == decoded:
+                return decoded
+            decoded = next_value
+        return None
+
+    @staticmethod
     def repository_artifact_parse(
         value: str, authorities: t.SequenceOf[m.Infra.RepositoryArtifactAuthority]
     ) -> p.Result[m.Infra.RepositoryArtifactReference]:
@@ -201,17 +224,11 @@ class FlextInfraUtilitiesRepository:
         encoded_ref = tail[: len(ref_parts)]
         if [unquote(part) for part in encoded_ref] != ref_parts:
             return r.fail("repository artifact URL uses the wrong configured ref")
-        path_parts: list[str] = []
-        for encoded_part in tail[len(ref_parts) :]:
-            decoded = encoded_part
-            for _ in range(3):
-                next_value = unquote(decoded)
-                if next_value == decoded:
-                    break
-                decoded = next_value
-            if decoded != unquote(encoded_part):
-                return r.fail("repository artifact URL path uses noncanonical encoding")
-            path_parts.append(decoded)
+        path_parts = FlextInfraUtilitiesRepository._decode_path_parts(
+            tail[len(ref_parts) :]
+        )
+        if path_parts is None:
+            return r.fail("repository artifact URL path uses noncanonical encoding")
         if not path_parts or any(
             not part or part in {".", ".."} or "\\" in part or "/" in part
             for part in path_parts

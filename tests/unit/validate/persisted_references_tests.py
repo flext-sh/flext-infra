@@ -60,7 +60,7 @@ class TestsRepositoryArtifactFoundation:
         tm.that(authority.repository, eq=repo.repository)
         tm.that(authority.ref, eq=repo.ref)
 
-    def test_authority_and_reference_models_reject_invalid_segments(self) -> None:
+    def test_authority_rejects_non_github_host(self) -> None:
         repo = config.Infra.codegen.repository_artifact_authorities[0]
 
         with pytest.raises(ValueError, match="host"):
@@ -70,6 +70,10 @@ class TestsRepositoryArtifactFoundation:
                 repository=repo.repository,
                 ref=repo.ref,
             )
+
+    def test_reference_rejects_escaping_path(self) -> None:
+        repo = config.Infra.codegen.repository_artifact_authorities[0]
+
         with pytest.raises(ValueError, match="canonical repository-relative"):
             m.Infra.RepositoryArtifactReference(
                 authority=m.Infra.RepositoryArtifactAuthority(

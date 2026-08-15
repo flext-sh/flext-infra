@@ -58,32 +58,48 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         for entry in entries:
             if not entry:
                 continue
-            metadata, path = entry.split("\t", maxsplit=1)
-            mode, oid, stage = metadata.split(" ")
-            tracked_paths.add(path)
-            if (
-                stage != str(c.Infra.GIT_STAGE_NORMAL)
-                or mode not in _CANDIDATE_FILE_MODES
-            ):
-                continue
-            candidate = FlextInfraUtilitiesGitSemanticIndexMixin._candidate_payload(
-                repo, path, mode, oid
+            candidate = FlextInfraUtilitiesGitSemanticIndexMixin._tracked_candidate(
+                repo, entry, tracked_paths
             )
             if candidate is not None:
                 payloads.append(candidate)
         for path in untracked:
-            if path and path not in tracked_paths:
-                candidate = FlextInfraUtilitiesGitSemanticIndexMixin._candidate_payload(
-                    repo,
-                    path,
-                    "120000"
-                    if (Path(repo.working_tree_dir or repo.git_dir) / path).is_symlink()
-                    else "100644",
-                    "",
-                )
-                if candidate is not None:
-                    payloads.append(candidate)
+            candidate = FlextInfraUtilitiesGitSemanticIndexMixin._untracked_candidate(
+                repo, path, tracked_paths
+            )
+            if candidate is not None:
+                payloads.append(candidate)
         return payloads
+
+    @staticmethod
+    def _tracked_candidate(
+        repo: Repo, entry: str, tracked_paths: set[str]
+    ) -> m.Infra.GitCandidatePayload | None:
+        """Return the staged candidate for one index line, if it is governable."""
+        metadata, path = entry.split("\t", maxsplit=1)
+        mode, oid, stage = metadata.split(" ")
+        tracked_paths.add(path)
+        if stage != str(c.Infra.GIT_STAGE_NORMAL) or mode not in _CANDIDATE_FILE_MODES:
+            return None
+        return FlextInfraUtilitiesGitSemanticIndexMixin._candidate_payload(
+            repo, path, mode, oid
+        )
+
+    @staticmethod
+    def _untracked_candidate(
+        repo: Repo, path: str, tracked_paths: set[str]
+    ) -> m.Infra.GitCandidatePayload | None:
+        """Return the worktree candidate for one untracked path, if governable."""
+        if not path or path in tracked_paths:
+            return None
+        mode = (
+            "120000"
+            if (Path(repo.working_tree_dir or repo.git_dir) / path).is_symlink()
+            else "100644"
+        )
+        return FlextInfraUtilitiesGitSemanticIndexMixin._candidate_payload(
+            repo, path, mode, ""
+        )
 
     @staticmethod
     def _candidate_payload(

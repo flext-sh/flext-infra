@@ -24,8 +24,23 @@ class FlextInfraReferenceExtraction:
         r"\b(?:canonical|authority|reference|pointer|read|load|see|lives in)\b",
         re.IGNORECASE,
     )
-    _LOCATOR: ClassVar[t.RegexPattern] = re.compile(
-        r"(?:https://github\.com/\S+|file://\S+|~[/\\]\S+|\$\{?[A-Z_]+\}?[/\\]\S+|(?:[A-Za-z]:[\\/]|/)[^\s`'\"<>]+|(?:\.\./)+[^\s`'\"<>]+)"
+    _GITHUB_LOCATOR: ClassVar[t.RegexPattern] = re.compile(r"https://github\.com/\S+")
+    _FILE_LOCATOR: ClassVar[t.RegexPattern] = re.compile(r"file://\S+")
+    _HOME_LOCATOR: ClassVar[t.RegexPattern] = re.compile(r"~[/\\]\S+")
+    _VAR_LOCATOR: ClassVar[t.RegexPattern] = re.compile(r"\$\{?[A-Z_]+\}?[/\\]\S+")
+    # Ordered: the escape alternative precedes the plain absolute one so a
+    # `../` sequence is reported once, never re-matched by the absolute form.
+    _ESCAPE_LOCATOR: ClassVar[t.RegexPattern] = re.compile(r"(?:\.\./)+[^\s`'\"<>]+")
+    _ABSOLUTE_LOCATOR: ClassVar[t.RegexPattern] = re.compile(
+        r"(?:[A-Za-z]:[\\/]|/)[^\s`'\"<>]+"
+    )
+    _LOCATORS: ClassVar[tuple[t.RegexPattern, ...]] = (
+        _GITHUB_LOCATOR,
+        _FILE_LOCATOR,
+        _HOME_LOCATOR,
+        _VAR_LOCATOR,
+        _ABSOLUTE_LOCATOR,
+        _ESCAPE_LOCATOR,
     )
 
     @classmethod
@@ -33,9 +48,9 @@ class FlextInfraReferenceExtraction:
         cls, payload: m.Infra.GitCandidatePayload
     ) -> t.SequenceOf[tuple[int, str]]:
         """Return one-based line numbers paired with each reference candidate."""
-        if payload.mode == "120000":
-            return ((1, payload.content.decode(c.Cli.ENCODING_DEFAULT)),)
         text = payload.content.decode(c.Cli.ENCODING_DEFAULT)
+        if payload.mode == "120000":
+            return ((1, text),)
         name = Path(payload.path).name
         semantic_agent_file = payload.path.endswith(".prompt.md") or name in {
             "AGENTS.md",
@@ -47,9 +62,9 @@ class FlextInfraReferenceExtraction:
             payload.path.endswith((".py", ".j2", ".md"))
             or "/tests/" in f"/{payload.path}"
         )
-        if not semantic_agent_file and not semantic_source:
-            return ()
         targets: list[tuple[int, str]] = []
+        if not semantic_agent_file and not semantic_source:
+            return tuple(targets)
         in_fence = False
         for number, line in enumerate(text.splitlines(), start=1):
             if line.lstrip().startswith("```"):
@@ -75,7 +90,11 @@ class FlextInfraReferenceExtraction:
             if cls._looks_like_locator(match.group(1))
         )
         if not targets and cls._AUTHORITY_CUE.search(line):
-            targets.extend(match.group(0) for match in cls._LOCATOR.finditer(line))
+            for locator in cls._LOCATORS:
+                matches = [match.group(0) for match in locator.finditer(line)]
+                if matches:
+                    targets.extend(matches)
+                    break
         return targets
 
     @staticmethod
