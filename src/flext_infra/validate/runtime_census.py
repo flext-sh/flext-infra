@@ -231,7 +231,6 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         operator a histogram and a per-rule file list in one read.
         """
         import re
-
         from collections import defaultdict
 
         rule_buckets: dict[str, list[str]] = defaultdict(list)

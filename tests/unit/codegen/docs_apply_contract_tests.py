@@ -16,10 +16,11 @@ class TestsDocsApplyContract:
             / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
         ).read_text(encoding="utf-8")
 
-        tm.that(workflow, has="flext-infra docs audit")
-        tm.that(workflow, has="flext-infra docs generate --apply")
-        tm.that(workflow, has="flext-infra docs validate")
-        tm.that(workflow, has="flext-infra docs build")
+        tm.that(workflow, has="python -m flext_infra docs audit")
+        tm.that(workflow, has="python -m flext_infra docs generate")
+        tm.that(workflow, has="python -m flext_infra docs validate")
+        tm.that(workflow, has="python -m flext_infra docs build")
+        tm.that(workflow, has="--workspace . --output-dir .reports/docs")
         tm.that(workflow, lacks="make docs")
 
 
