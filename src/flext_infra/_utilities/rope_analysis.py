@@ -50,6 +50,15 @@ class FlextInfraUtilitiesRopeAnalysis:
         return (str(project_root), resource.path, mtime_ns)
 
     @staticmethod
+    def package_name_for_module(
+        module_name: str, resource: t.Infra.RopeResource
+    ) -> str:
+        """Return the dotted package prefix for one Rope module."""
+        return FlextInfraUtilitiesRopeAnalysis._package_name_for_module(
+            module_name, resource
+        )
+
+    @staticmethod
     def _package_name_for_module(
         module_name: str, resource: t.Infra.RopeResource
     ) -> str:
@@ -60,6 +69,15 @@ class FlextInfraUtilitiesRopeAnalysis:
         ):
             return module_name
         return module_name.rsplit(".", maxsplit=1)[0] if "." in module_name else ""
+
+    @staticmethod
+    def resolve_import_module(
+        *, current_package: str, module_name: str, level: int
+    ) -> str:
+        """Resolve one declared import to an absolute module name."""
+        return FlextInfraUtilitiesRopeAnalysis._resolve_import_module(
+            current_package=current_package, module_name=module_name, level=level
+        )
 
     @staticmethod
     def _resolve_import_module(

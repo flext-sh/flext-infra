@@ -6,19 +6,19 @@ ALLOWED_GATES and resolve through the registry.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraCanonicalAliasGate
+from flext_infra.utilities import FlextInfraUtilities
 
-from tests import c, m, p, r, tm, u
+from tests import c, m, p, r, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
-
-    from tests import t
 
 
 class TestGateRegistry:
@@ -270,7 +270,9 @@ class TestGateRegistry:
             "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
             {"demo_pkg": ("c",)},
         )
-        original_writer = u.Infra.protected_source_writes
+        original_writer: Callable[..., t.Infra.EditResult] = (
+            FlextInfraUtilities.Infra.protected_source_writes
+        )
 
         def _concurrent_write(
             updates: t.MappingKV[Path, str],

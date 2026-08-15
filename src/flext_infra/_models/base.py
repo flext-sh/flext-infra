@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
+
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -126,10 +128,10 @@ class FlextInfraModelsBase:
         expected_sources: Annotated[
             t.MappingKV[Path, str],
             m.Field(
-                default_factory=dict,
+                default_factory=lambda: MappingProxyType({}),
                 description="Expected current source bytes keyed by updated path",
             ),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve .bak copies before editing")
         ] = False

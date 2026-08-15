@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -94,7 +94,18 @@ class FlextInfraCyclicImportDetector:
         """Return Rope-resolved import targets for one proposed source."""
         pymodule = u.Infra.get_string_module(rope_project, source, resource=resource)
         module_imports = u.Infra.module_imports_for_pymodule(rope_project, pymodule)
-        return u.Infra.imported_module_paths(module_imports)
+        module_name = pymodule.get_name()
+        current_package = (
+            module_name
+            if resource.path == c.Infra.INIT_PY
+            or resource.path.endswith(f"/{c.Infra.INIT_PY}")
+            else module_name.rsplit(".", maxsplit=1)[0]
+            if "." in module_name
+            else ""
+        )
+        return u.Infra.imported_module_paths(
+            module_imports, current_package=current_package
+        )
 
 
 __all__: list[str] = ["FlextInfraCyclicImportDetector"]
