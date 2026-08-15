@@ -4,6 +4,7 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
+
 from flext_core import r
 from flext_tests import tm
 from tests import c, m, u

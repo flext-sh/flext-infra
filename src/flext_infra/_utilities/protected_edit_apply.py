@@ -306,6 +306,26 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             path.resolve(): content
             for path, content in sorted(updates.items(), key=lambda item: str(item[0]))
         }
+        expected_sources = {
+            path.resolve(): content
+            for path, content in request.expected_sources.items()
+        }
+        for path, expected_source in expected_sources.items():
+            current_source = (
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                if path.is_file()
+                else None
+            )
+            if current_source != expected_source:
+                return (
+                    False,
+                    [
+                        (
+                            "CAS failed before protected source writes: "
+                            f"source changed for {path}"
+                        )
+                    ],
+                )
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditApply._preview_write_baselines(
                 normalized_updates, request.workspace, gates=request.gates

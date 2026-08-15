@@ -8,7 +8,7 @@ import pytest
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import p, t, u
 
@@ -106,31 +106,38 @@ class TestsRootArtifactOwnership:
         with pytest.raises(ValueError, match="must be full-managed"):
             type(spec).model_validate(mutated)
 
-    def test_conform_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
-        root = tmp_path / "flext-demo"
-        created = FlextInfraCodegenProjectNew(
-            name="flext-demo",
-            kind=c.Infra.ProjectKind.EXTERNAL,
-            output_root=root,
-            provider="flext-sh",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            year=2026,
-            apply_changes=True,
-        ).execute()
-        created_result = tm.ok(created)
-        u.Tests.initialize_git_repo(root)
+    def test_conform_uses_one_fixed_point_plan(self, infra_git_repo: Path) -> None:
+        root = infra_git_repo
+        u.Tests.write_standalone_workspace_manifest(
+            root, "flext-demo", upstream="flext_cli"
+        )
+        package_root = root / "src" / "flext_demo"
+        tm.ok(u.Cli.ensure_dir(package_root))
+        tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                (
+                    "[project]\n"
+                    'name = "flext-demo"\n'
+                    'version = "0.1.0"\n'
+                    'requires-python = ">=3.13,<3.14"\n'
+                    "dependencies = []\n"
+                ),
+            )
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        tm.ok(FlextInfraCodegenConform.execute_request(request, workspace))
         manual = {
             "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
             "custom.mk": b"# manual project extension\n",
         }
         (root / "custom.mk").write_bytes(manual["custom.mk"])
-        u.Tests.commit_git_changes(root, "Seed manual extensions")
-        request = m.Infra.CodegenConformRequest(
-            root=root, what=c.Infra.CodegenConformSurface.MAKEFILE
-        )
         configured_policy = next(
             item.policy
             for item in config.Infra.codegen.managed_files
@@ -145,8 +152,7 @@ class TestsRootArtifactOwnership:
         )
 
         first = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY}),
-            initial_workspace=created_result.plan.workspace,
+            request, initial_workspace=workspace
         )
         result = tm.ok(first)
         governed = tuple(file for file in result.plan.files if file.policy is not None)
