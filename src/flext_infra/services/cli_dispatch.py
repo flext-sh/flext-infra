@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
-
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
 from flext_core import r

@@ -13,16 +13,14 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, u
-
-from tests import u as test_u
-from flext_infra import main as infra_main
+from flext_infra import c, config, m, main as infra_main, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
+from tests import u as test_u
 
 from tests import c, m, p, u
 
@@ -1241,10 +1239,18 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
+        tm.that(
+            'codegen init --workspace "$(PROJECT_ROOT)" --check' in gen_check_body,
+            eq=True,
+        )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_all_body, eq=True)
         tm.that("--mode apply" in gen_all_body, eq=True)
+        tm.that(
+            'codegen init --workspace "$(PROJECT_ROOT)" --apply' in gen_all_body,
+            eq=True,
+        )
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)

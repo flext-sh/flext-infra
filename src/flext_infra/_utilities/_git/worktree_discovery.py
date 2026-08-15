@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
+from configparser import Error as ConfigParserError
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from git import GitCommandError, GitConfigParser
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from configparser import Error as ConfigParserError
-from urllib.parse import urlparse
 from flext_infra._utilities._git.worktree_roots import (
     FlextInfraUtilitiesGitWorktreeRootsMixin,
 )
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from flext_infra import p
