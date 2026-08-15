@@ -1037,6 +1037,15 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        conflict_sections: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "TOML sections whose merge conflicts this owner can recover "
+                    "before rendering"
+                )
+            ),
+        ] = ()
 
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""

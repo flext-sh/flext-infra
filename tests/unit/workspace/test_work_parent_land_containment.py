@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+
 from flext_tests import tm
 from tests.unit.workspace.work_public_adversarial_fixture import WorkAdversarialFixture
 

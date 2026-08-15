@@ -53,7 +53,7 @@ class TestsTestImportDag:
         )
         tm.that(report.passed, eq=False)
 
-    def test_later_facets_import_earlier_and_type_checking_reverse_edges_pass(
+    def test_forward_facets_and_type_checking_reverse_edges_pass(
         self, tmp_path: Path
     ) -> None:
         project = self._project(

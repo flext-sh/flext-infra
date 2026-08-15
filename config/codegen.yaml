@@ -381,7 +381,10 @@ Infra:
           # computed from an impacted subset is not the suite's coverage.
           # full = the complete-suite gate: testmon OFF, coverage ON. Pre-push
           # runs it so the measured number covers every test.
-          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
+          # profile = one explicit focused cProfile run (FILE and/or MATCH required).
+          # Normal all/full gates run pytest directly so profiling overhead cannot
+          # consume the suite's fixed execution budget.
+          whats: [all, full, profile, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all
@@ -1079,6 +1082,7 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
+        conflict_sections: [tool.pytest.ini_options, tool.uv]
 
     scaffold:
       build:

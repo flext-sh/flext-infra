@@ -79,12 +79,14 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def load_workspace_spec(
-        cls, repository_root: Path
+        cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.WorkspaceSpec]:
         """Load the repository-local manifest, or derive it from the SSOT catalog."""
         manifest_path = cls._manifest_path(repository_root)
         if not manifest_path.is_file():
-            return cls._derive_workspace_spec(repository_root)
+            return cls._derive_workspace_spec(
+                repository_root, project_metadata=project_metadata
+            )
         loaded = u.Cli.config_load(
             manifest_path, schema_path=cls._schema_path(), expand_env=False
         )
@@ -113,7 +115,7 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def _derive_workspace_spec(
-        cls, repository_root: Path
+        cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.WorkspaceSpec]:
         """Derive the spec from the repository itself, never from a registry.
 
@@ -124,13 +126,19 @@ class FlextInfraWorkspaceDetector(
         live Git submodule contract for members. Nothing is fabricated and
         nothing is looked up in flext-infra.
         """
-        metadata = u.read_project_metadata(repository_root)
-        if metadata.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                metadata.error
-                or f"cannot derive workspace spec without metadata: {repository_root}"
-            )
-        project_name = metadata.value.project.name
+        resolved_metadata = project_metadata
+        if resolved_metadata is None:
+            metadata = u.read_project_metadata(repository_root)
+            if metadata.failure:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    metadata.error
+                    or (
+                        "cannot derive workspace spec without metadata: "
+                        f"{repository_root}"
+                    )
+                )
+            resolved_metadata = metadata.value
+        project_name = resolved_metadata.project.name
         origin = cls._git_origin_url(repository_root)
         if origin.failure:
             return r[m.Infra.WorkspaceSpec].fail(
@@ -519,7 +527,11 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def conform_target(
-        cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec | None = None
+        cls,
+        repository_root: Path,
+        workspace_spec: m.Infra.WorkspaceSpec | None = None,
+        *,
+        project_metadata: p.ProjectMetadata | None = None,
     ) -> p.Result[m.Infra.RepositoryConformTarget]:
         """Derive the sole conformance target from live Git and typed identity."""
         topology_result = cls.resolve_topology_roots(repository_root)
@@ -560,12 +572,16 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external read-only dependency: {repository.name}"
             )
-        metadata = u.read_project_metadata(resolved_root)
-        if metadata.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                metadata.error or f"unable to read project metadata: {resolved_root}"
-            )
-        canonical_project_name = metadata.value.project.name
+        resolved_metadata = project_metadata
+        if resolved_metadata is None:
+            metadata = u.read_project_metadata(resolved_root)
+            if metadata.failure:
+                return r[m.Infra.RepositoryConformTarget].fail(
+                    metadata.error
+                    or f"unable to read project metadata: {resolved_root}"
+                )
+            resolved_metadata = metadata.value
+        canonical_project_name = resolved_metadata.project.name
         if canonical_project_name != repository.distribution:
             return r[m.Infra.RepositoryConformTarget].fail(
                 "project metadata and repository identity differ: "

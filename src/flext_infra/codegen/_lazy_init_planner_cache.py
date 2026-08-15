@@ -47,6 +47,10 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         init_path = package_dir / c.Infra.INIT_PY
         if self.rope_workspace.resource(init_path) is None:
             return frozenset()
+        if init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).startswith(
+            c.Infra.AUTOGEN_HEADER
+        ):
+            return frozenset()
         return frozenset(
             self.rope_workspace.exports(
                 init_path, export_options=m.Infra.ExportOptions(allow_assignments=True)

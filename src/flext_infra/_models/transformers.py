@@ -17,6 +17,35 @@ from flext_infra import t
 class FlextInfraModelsTransformers:
     """Models for source transformers — exposed through the ``m.Infra`` facade."""
 
+    class AliasMigrationContext(m.ContractModel):
+        """Resolved ownership and import-root context for one alias migration."""
+
+        policy_owner: Annotated[
+            str,
+            m.Field(description="Project package that owns the canonical alias policy"),
+        ]
+        import_root: Annotated[
+            str, m.Field(description="Public facade root from which consumers import")
+        ]
+
+    class AliasMigrationEdit(m.ContractModel):
+        """One validated in-memory canonical alias source rewrite."""
+
+        # Why (mro-ygc2k): source bytes must survive validation byte-exact;
+        # the strict base strips whitespace, which corrupts CAS comparisons.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+
+        file_path: Annotated[Path, m.Field(description="Source file to rewrite")]
+        original_source: Annotated[
+            str, m.Field(description="Source bytes before migration")
+        ]
+        updated_source: Annotated[
+            str, m.Field(description="Prospective source bytes after migration")
+        ]
+        changes: Annotated[
+            tuple[str, ...], m.Field(description="Recorded migration operations")
+        ] = ()
+
     class Tier0ImportAnalysis(m.Value):
         """Detection results for a single Python file self-import patterns."""
 

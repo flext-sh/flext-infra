@@ -99,31 +99,20 @@ class FlextInfraCodegenGenerationStandardMixin(
             (current_pkg, frozenset(plan.child_packages_for_lazy), True),
         )
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
-        # mro-wkii.17.26 (codex): public root re-exports are imported at runtime
-        # so they appear in __all__ without tripping Ruff TC004; the lazy map
-        # still provides the canonical install_lazy_exports contract.
-        public_runtime_imports = cls._type_checking_filtered(plan)
-        compacted_public_runtime_imports = {
-            name: (cls._compact_lazy_module_path(current_pkg, mod), attr)
-            for name, (mod, attr) in public_runtime_imports.items()
-        }
-        public_lines = list(
-            cls._generate_import_lines(
-                cls._group_imports(compacted_public_runtime_imports)
+        public_type_checking_imports = cls._type_checking_filtered(plan)
+        type_checking_lines = "\n".join(
+            cls.generate_type_checking(
+                cls._group_imports(public_type_checking_imports),
+                include_flext_types=False,
+                child_packages=plan.child_packages_for_lazy,
+                local_package_root=current_pkg,
             )
         )
-        eager_wildcard_lines = cls._runtime_import_lines(plan)
-        if public_lines and eager_wildcard_lines:
-            runtime_import_lines = "\n".join([*public_lines, "", eager_wildcard_lines])
-        elif public_lines:
-            runtime_import_lines = "\n".join(public_lines)
-        else:
-            runtime_import_lines = eager_wildcard_lines
         return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(current_pkg),
-            runtime_import_lines=runtime_import_lines,
-            type_checking_lines="",
+            runtime_import_lines=cls._runtime_import_lines(plan),
+            type_checking_lines=type_checking_lines,
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
             exports=cls._build_published_exports(plan.exports, lazy_map),

@@ -45,19 +45,24 @@ class FlextInfraPytestSelectorValidator(s[bool]):
             None,
             "all",
             "full",
+            "profile",
             "cache-status",
             "cache-clear",
             "cache-checkpoint",
         }
         if what not in allowed:
             return (
-                "what must be: all, full, cache-status, cache-clear, "
+                "what must be: all, full, profile, cache-status, cache-clear, "
                 "or cache-checkpoint"
             )
+        if what == "profile" and file is None and match is None:
+            return "profile requires FILE or MATCH"
         if what in {"cache-status", "cache-clear", "cache-checkpoint"} and (
             file is not None or match is not None
         ):
             return f"{what} rejects FILE and MATCH"
+        if what == "full" and (file is not None or match is not None):
+            return "full rejects FILE and MATCH"
         if file is None:
             return None
         path_prefix = file.split("::", maxsplit=1)[0]

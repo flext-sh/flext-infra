@@ -51,6 +51,47 @@ def _conform_target(
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
+    def test_apply_recovers_declared_managed_pyproject_conflict(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Repair a committed managed block through the normal apply plan."""
+        root = infra_git_repo
+        distribution = u.Tests.repository_ref(config.Infra.name).distribution
+        (root / "pyproject.toml").write_text(
+            f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "\n"
+            "[tool.pytest.ini_options]\n"
+            "<<<<<<< HEAD\n"
+            'addopts = ["--timeout=90"]\n'
+            "=======\n"
+            'addopts = ["--timeout=10"]\n'
+            ">>>>>>> origin/0.12.0-dev\n",
+            encoding="utf-8",
+        )
+        package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        package_init.write_text("", encoding="utf-8")
+
+        applied = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.PYPROJECT,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+        tm.ok(applied)
+        rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
+        tm.that(rendered, lacks="<<<<<<<")
+        payload = tomllib.loads(rendered)
+        addopts = payload["tool"]["pytest"]["ini_options"]["addopts"]
+        tm.that(
+            addopts,
+            has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
+        )
+
     def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
         root = tmp_path / "repository"
         root.mkdir()
@@ -1243,10 +1284,18 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
+        tm.that(
+            'codegen init --workspace "$(PROJECT_ROOT)" --check' in gen_check_body,
+            eq=True,
+        )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_all_body, eq=True)
         tm.that("--mode apply" in gen_all_body, eq=True)
+        tm.that(
+            'codegen init --workspace "$(PROJECT_ROOT)" --apply' in gen_all_body,
+            eq=True,
+        )
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)

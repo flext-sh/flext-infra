@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
