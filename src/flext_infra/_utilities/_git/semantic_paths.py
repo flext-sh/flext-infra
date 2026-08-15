@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 from git import GitCommandError
 
 from flext_core import r
-from flext_infra.models import m
 from flext_infra._utilities._git.semantic_publish import (
     FlextInfraUtilitiesGitSemanticPublishMixin,
 )
+from flext_infra.models import m
 
 if TYPE_CHECKING:
     from flext_infra import p

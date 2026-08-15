@@ -5,13 +5,13 @@ from __future__ import annotations
 import os
 import shlex
 import sys
-from defusedxml import ElementTree as DefusedET
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
-from flext_core import r
+from defusedxml import ElementTree as DefusedET
 
+from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport

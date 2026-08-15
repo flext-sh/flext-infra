@@ -11,8 +11,7 @@ from flext_infra import c, config, m as infra_m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import m, p, u
-from tests import u as test_u
+from tests import m, p, u, u as test_u
 
 _MAKE_ISOLATION_ENV_KEYS = (
     "FLEXT_ROOT",

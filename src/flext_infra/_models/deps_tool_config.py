@@ -5,7 +5,6 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-
 from flext_cli import m, u
 from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (

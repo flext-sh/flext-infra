@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_tests import tm

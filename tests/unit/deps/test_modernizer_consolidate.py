@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
 from flext_tests import tm
 from tests import u

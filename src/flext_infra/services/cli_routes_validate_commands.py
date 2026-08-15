@@ -6,8 +6,8 @@ from typing import ClassVar
 
 from flext_infra import m
 from flext_infra.services.cli_route_base import CliRouteBase
-from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
 from flext_infra.validate.inventory import FlextInfraInventoryService
