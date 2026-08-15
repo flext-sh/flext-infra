@@ -114,6 +114,39 @@ class FlextInfraWorkspaceDetector(
         )
 
     @classmethod
+    def _derive_governed_member(
+        cls, repository_root: Path, path: Path
+    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
+        """Derive zero or one governed member from a declared Git submodule."""
+        contract = cls._gitmodule_contract(repository_root, path.as_posix())
+        if contract.failure:
+            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                contract.error or f"invalid Git submodule: {path.as_posix()}"
+            )
+        member_url, member_branch = contract.value
+        member_provider = cls._provider_for_url(member_url)
+        if not u.Infra.gitmodule_branch_is_governed(
+            member_branch, provider_branch=member_provider.branch
+        ):
+            return r[tuple[m.Infra.RepositoryRef, ...]].ok(())
+        member = m.Infra.RepositoryRef(
+            name=path.name,
+            distribution=path.name,
+            url=member_url,
+            path=path,
+            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            provider=member_provider.name,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
+        )
+        if not cls.repository_is_governed(member, member_provider):
+            return r[tuple[m.Infra.RepositoryRef, ...]].ok(())
+        return r[tuple[m.Infra.RepositoryRef, ...]].ok((member,))
+
+    @classmethod
     def _derive_workspace_spec(
         cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.WorkspaceSpec]:
@@ -172,38 +205,13 @@ class FlextInfraWorkspaceDetector(
         members: t.MutableSequenceOf[m.Infra.RepositoryRef] = []
         governed_paths: set[Path] = set()
         for path in declared_paths.value:
-            contract = cls._gitmodule_contract(repository_root, path.as_posix())
-            if contract.failure:
+            derived = cls._derive_governed_member(repository_root, path)
+            if derived.failure:
                 return r[m.Infra.WorkspaceSpec].fail(
-                    contract.error or f"invalid Git submodule: {path.as_posix()}"
+                    derived.error or f"invalid Git submodule: {path.as_posix()}"
                 )
-            member_url, member_branch = contract.value
-            member_provider = cls._provider_for_url(member_url)
-            # A submodule is governed only when its declared origin matches a
-            # known provider on that provider's integration branch. Anything
-            # else is a vendored or third-party dependency the workspace
-            # observes but never mutates.
-            if not u.Infra.gitmodule_branch_is_governed(
-                member_branch, provider_branch=member_provider.branch
-            ):
-                continue
-            member = m.Infra.RepositoryRef(
-                name=path.name,
-                distribution=path.name,
-                url=member_url,
-                path=path,
-                role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-                provider=member_provider.name,
-                checkout=c.Infra.CheckoutKind.SUBMODULE,
-                codegen=c.Infra.CodegenKind.CONFORM,
-                package=True,
-                editable=True,
-                read_only=False,
-            )
-            if not cls.repository_is_governed(member, member_provider):
-                continue
-            members.append(member)
-            governed_paths.add(path)
+            members.extend(derived.value)
+            governed_paths.update(member.path for member in derived.value)
         external_dependency_paths = tuple(
             path for path in declared_paths.value if path not in governed_paths
         )
