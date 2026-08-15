@@ -2306,6 +2306,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
+                inherited_facets=project.inherited_facets,
                 description=project.description,
                 version=project.version,
                 license=project.license,
