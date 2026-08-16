@@ -118,6 +118,9 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
         matrix = metadata.matrix
         if matrix is None:
             return r.fail("work finish requires matrix metadata")
+        matrix_cas = self._validate_matrix_cas(lane, matrix)
+        if matrix_cas.failure:
+            return r.fail(matrix_cas.error or "work finish matrix CAS failed")
         for entry in matrix.entries:
             project_root = self._matrix_project_root(lane, entry.project)
             if project_root.failure:
@@ -127,16 +130,6 @@ class FlextInfraWorkSagaFinish(FlextInfraWorkSagaCommon):
             )
             if merged.failure:
                 return r.fail(merged.error or "work finish PR state check failed")
-            head = self._git_head(project_root.value)
-            if head.failure:
-                return r.fail(
-                    head.error or f"failed to resolve matrix HEAD: {entry.project}"
-                )
-            if head.value != entry.head_oid:
-                return r.fail(
-                    f"CAS failed before finish for {entry.project}: "
-                    f"expected {entry.head_oid} head={head.value}"
-                )
         ownership = self._owned_reservation(bead, branch, lane)
         if ownership.failure:
             return r.fail(ownership.error or "work finish reservation changed")

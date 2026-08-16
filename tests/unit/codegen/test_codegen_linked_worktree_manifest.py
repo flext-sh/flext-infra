@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
 
+# Exemplar: conform materializes a full managed tree on disk, so the render
+# itself dominates the runtime. The class declares its true end-to-end budget
+# instead of raising the global unit-test timeout and masking real hangs.
+@pytest.mark.slow
+@pytest.mark.timeout(180)
 class TestCodegenLinkedWorktreeManifest:
     """Render generated artifacts from the active lane's declared manifest."""
 

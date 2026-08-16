@@ -26,10 +26,7 @@ class FlextInfraConstantsCodegenLazy:
     )
     "Regex matching every generated lazy-export sidecar filename "
     "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
-    "``_lazy_exports.py``); these reserved names are superseded by the inline "
-    "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
-    # mro-pulj (codex): these parallel root registries are superseded atomically
-    # by the inline map and must never participate in source discovery.
+    "``_lazy_exports.py``); legacy variants are excluded from discovery and cleanup."
     OBSOLETE_ROOT_SUPPORT_NAMES: Final[frozenset[str]] = frozenset({
         "_root_exports",
         "_root_exports_parts",
