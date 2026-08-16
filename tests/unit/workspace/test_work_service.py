@@ -1028,7 +1028,7 @@ class TestsFlextInfraWorkService:
             / "base"
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
-        tm.that(template, has="override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)")
+        tm.that(template, has="override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)")
         tm.that(template, has="_builtin_work_status:")
         tm.that(template, has="_builtin_work_start:")
         tm.that(template, has="_builtin_work_land:")

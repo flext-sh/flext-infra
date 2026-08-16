@@ -194,6 +194,7 @@ Infra:
           extra_checks: true
           local_partial_types: true
           no_implicit_reexport: true
+          show_traceback: true
           # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
           strict_equality: true
           warn_redundant_casts: true

@@ -68,4 +68,4 @@ class TestsFlextInfraMakeSurfaceNeverSilencesFailures:
             if (lines := _silencing_lines(surface))
         }
 
-        tm.that(offenders, eq={})
+        tm.that(len(offenders), eq=0)
