@@ -38,6 +38,35 @@ class TestsRootArtifactOwnership:
             tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
         tm.that(config.Infra.tooling.tools.markdown.exclude, has=".serena/**")
 
+    def test_standalone_conform_projects_markdown_policy(
+        self, infra_git_repo: Path
+    ) -> None:
+        root = infra_git_repo
+        u.Tests.write_standalone_workspace_manifest(
+            root, "flext-demo", upstream="flext_cli"
+        )
+        package_root = root / "src" / "flext_demo"
+        tm.ok(u.Cli.ensure_dir(package_root))
+        tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
+            )
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.ALL,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+
+        tm.ok(FlextInfraCodegenConform.execute_request(request, workspace))
+
+        tm.that((root / ".markdownlint.json").is_file(), eq=True)
+        ignore = (root / ".markdownlintignore").read_text(encoding="utf-8")
+        tm.that(ignore, has=".serena/**")
+
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
         configured = config.Infra.codegen.managed_files
         paths = tuple(item.path.as_posix() for item in configured)
