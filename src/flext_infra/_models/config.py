@@ -30,6 +30,15 @@ class _ConfigContract(m.ContractModel):
     )
 
 
+def _default_make_work_in_progress_spec() -> FlextInfraConfigModels.MakeWorkInProgressSpec:
+    """Return the default work-in-progress predicate for make gates."""
+    return FlextInfraConfigModels.MakeWorkInProgressSpec(
+        draft_pr=True,
+        branch_patterns=(r"^wip/", r"WIP"),
+        merge_lock_target_branches=("dev", "develop", "0.12.0-dev"),
+    )
+
+
 class _WorkspaceWorkSpec(_ConfigContract):
     """GitFlow lane policy for Beads task and chore issue types."""
 
@@ -851,6 +860,28 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+    class MakeWorkInProgressSpec(_ConfigContract):
+        """Predicate for work-in-progress branches and draft PR gate behavior."""
+
+        draft_pr: Annotated[
+            bool,
+            m.Field(description="Treat GitHub draft PRs as work-in-progress"),
+        ]
+        branch_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Regex patterns that mark a branch as work-in-progress",
+            ),
+        ]
+        merge_lock_target_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Target branches that are blocked for WIP merges",
+            ),
+        ]
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -912,6 +943,13 @@ class FlextInfraConfigModels:
             m.Field(
                 default_factory=lambda: MappingProxyType({}),
                 description="Per-profile overrides of the custom handler policy",
+            ),
+        ]
+        work_in_progress: Annotated[
+            FlextInfraConfigModels.MakeWorkInProgressSpec,
+            m.Field(
+                default_factory=_default_make_work_in_progress_spec,
+                description="Work-in-progress predicate for gates and merge locks",
             ),
         ]
 

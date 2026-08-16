@@ -263,6 +263,18 @@ Infra:
         # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
         # full pytest+coverage; absent=testmon incremental.
         check_gates: [mypy, pyright, security, markdown, smells]
+      work_in_progress:
+        # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
+        # draft PRs; merges into dev/develop/0.12.0-dev are blocked for those states.
+        draft_pr: true
+        branch_patterns:
+          - '^wip/'
+          - 'WIP'
+        merge_lock_target_branches:
+          - dev
+          - develop
+          - 0.12.0-dev
+
       workflow:
         # Why: pre-commit remains fast and mutation-only; pre-push owns the
         # generated-artifact and read-only validation gates.
