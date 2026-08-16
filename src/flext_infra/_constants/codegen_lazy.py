@@ -88,7 +88,9 @@ class FlextInfraConstantsCodegenLazy:
     "Regex: malformed ``from import`` statement (missing module name)."
 
     LINT_TOOLS: Final[t.StrSequencePairTuple] = (
-        ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
+        # Ruff runs with NO --select override: the project's pyproject.toml
+        # (select=ALL + narrow whitelist + preview) is the ONLY rule policy.
+        ("ruff", ("ruff", "check", "{file}", "--no-fix")),
         ("pyright", ("pyright", "{file}")),
         ("mypy", ("mypy", "{file}", "--no-error-summary")),
         ("pyrefly", ("pyrefly", "check", "{file}")),

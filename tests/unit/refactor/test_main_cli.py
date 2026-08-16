@@ -55,9 +55,7 @@ class TestsFlextInfraRefactorMainCli:
             "disable-project-excludes-heuristics = true\n"
             "project-excludes = []\n"
             'search-path = [".", "src"]\n\n'
-            "[tool.ruff.lint.per-file-ignores]\n"
-            "# PEP 562 lazy facades resolve TYPE_CHECKING names via __getattr__.\n"
-            '"**/__init__.py" = ["TC004"]\n',
+            + u.Tests.ruff_per_file_ignores_toml(),
         )
 
     @staticmethod
@@ -788,7 +786,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(test_source, has="only_for_tests")
         # Free functions are lazy exports only for fixture modules, so the
         # regenerated init keeps the generated shape without function names.
-        tm.that(init_source, has="_LAZY_MODULES")
+        tm.that(init_source, has="_LAZY_IMPORTS")
         tm.that(init_source, lacks="helper_used")
         tm.that(helpers_source, has="helper_used")
         tm.that(_parse_source_ast(init_source), none=False)
@@ -901,7 +899,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(clone_helpers.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_init.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_test.read_text(encoding="utf-8"), has="only_for_tests")
-        tm.that(clone_init.read_text(encoding="utf-8"), has="_LAZY_MODULES")
+        tm.that(clone_init.read_text(encoding="utf-8"), has="_LAZY_IMPORTS")
 
         report_result = FlextInfraRefactorCensus(
             workspace_root=clone,
