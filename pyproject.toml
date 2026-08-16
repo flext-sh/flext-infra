@@ -419,7 +419,6 @@ filterwarnings = [
   "error",
   "module::flext_core._constants.enforcement.FlextMroViolation",
 ]
-flext_slow_timeout_seconds = 60
 markers = [
   "core: core functionality tests",
   "docker: tests requiring Docker",

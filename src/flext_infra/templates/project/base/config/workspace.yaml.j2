@@ -48,6 +48,7 @@ project:
   author_name: {{ author_name | tojson }}
   author_email: {{ author_email | tojson }}
   upstream: {{ upstream | tojson }}
+  inherited_facets: {{ inherited_facets | list | tojson }}
   homepage: {{ homepage | tojson }}
   documentation: {{ documentation | tojson }}
   workspace_root_rel: {{ workspace_root_rel | tojson }}

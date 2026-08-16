@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import c, config
+from flext_infra import config
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
 from flext_tests import tm
 from tests import t, u
@@ -26,7 +26,7 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
 class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
-    def test_tooling_policy_enforces_configured_item_timeouts(self) -> None:
+    def test_tooling_policy_enforces_configured_case_timeout(self) -> None:
         policy = config.Infra.tooling.tools.pytest
         phase = FlextInfraEnsurePytestConfigPhase(config.Infra.tooling)
         doc = u.Cli.toml_document()
@@ -39,9 +39,6 @@ class TestsFlextInfraDepsModernizerPytest:
         tm.that(
             set(_strings(ini["addopts"])),
             has=[f"--timeout={policy.case_timeout_seconds}"],
-        )
-        tm.that(
-            ini[c.Infra.FLEXT_SLOW_TIMEOUT_INI_OPTION], eq=policy.slow_timeout_seconds
         )
 
     def test_apply_sets_expected_ini_options(self) -> None:
@@ -56,10 +53,6 @@ class TestsFlextInfraDepsModernizerPytest:
         )
         pytest_policy = tool_config.tools.pytest
         tm.that(ini["minversion"], eq=pytest_policy.min_version)
-        tm.that(
-            ini[c.Infra.FLEXT_SLOW_TIMEOUT_INI_OPTION],
-            eq=pytest_policy.slow_timeout_seconds,
-        )
         tm.that(
             set(_strings(ini["python_classes"])), eq=set(pytest_policy.python_classes)
         )
@@ -83,6 +76,7 @@ class TestsFlextInfraDepsModernizerPytest:
             """
 [tool.pytest.ini_options]
 minversion = "7.0"
+flext_slow_timeout_seconds = 60
 python_classes = ["Spec*"]
 python_files = ["spec_*.py"]
 addopts = ["--maxfail=1"]
@@ -97,10 +91,7 @@ markers = ["custom: custom marker"]
         )
         pytest_policy = tool_config.tools.pytest
         tm.that(ini["minversion"], eq=pytest_policy.min_version)
-        tm.that(
-            ini[c.Infra.FLEXT_SLOW_TIMEOUT_INI_OPTION],
-            eq=pytest_policy.slow_timeout_seconds,
-        )
+        assert "flext_slow_timeout_seconds" not in ini
         tm.that(
             set(_strings(ini["python_classes"])),
             eq={"Spec*", *pytest_policy.python_classes},

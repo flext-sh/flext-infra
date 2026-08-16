@@ -1697,6 +1697,10 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
+        inherited_facets: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Upstream facets re-exported by the project root"),
+        ] = ()
         homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
@@ -1910,6 +1914,10 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
+        inherited_facets: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Declared upstream facets re-exported at the root"),
+        ] = ()
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Project description")
         ]

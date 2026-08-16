@@ -72,14 +72,6 @@ class FlextInfraModelsDepsToolSettings(
                 description="Hard maximum runtime for one pytest item.",
             ),
         ]
-        slow_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                alias="slow-timeout-seconds",
-                gt=0,
-                description="Hard maximum runtime for an explicitly slow pytest item.",
-            ),
-        ]
         run_timeout_seconds: Annotated[
             int,
             m.Field(
@@ -137,7 +129,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["loadgroup", "worksteal"],
+            Literal["worksteal"],
             m.Field(
                 alias="parallel-distribution",
                 description="Pytest-xdist scheduler for full runs.",
@@ -225,17 +217,14 @@ class FlextInfraModelsDepsToolSettings(
         @u.model_validator(mode="after")
         def _validate_execution_limits(self) -> Self:
             """Keep item and termination budgets inside the hard invocation cap."""
-            if self.case_timeout_seconds >= self.slow_timeout_seconds:
-                msg = "pytest case timeout must be less than slow timeout"
-                raise ValueError(msg)
-            if self.slow_timeout_seconds >= self.run_timeout_seconds:
-                msg = "pytest slow timeout must be less than run timeout"
+            if self.case_timeout_seconds >= self.run_timeout_seconds:
+                msg = "pytest case timeout must be less than run timeout"
                 raise ValueError(msg)
             if self.termination_grace_seconds >= self.run_timeout_seconds:
                 msg = "pytest termination grace must be less than run timeout"
                 raise ValueError(msg)
             if (
-                self.slow_timeout_seconds + self.termination_grace_seconds
+                self.case_timeout_seconds + self.termination_grace_seconds
                 > self.run_timeout_seconds
             ):
                 msg = "pytest run timeout must include item and termination budgets"

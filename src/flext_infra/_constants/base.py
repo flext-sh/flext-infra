@@ -85,8 +85,6 @@ class FlextInfraConstantsBase(
     "Isort tool section key (ruff.lint.isort)."
     INI_OPTIONS: Final[str] = "ini_options"
     "Pytest ini_options subsection key."
-    FLEXT_SLOW_TIMEOUT_INI_OPTION: Final[str] = "flext_slow_timeout_seconds"
-    "Pytest ini option consumed by the flext-tests slow-item policy."
     LINT_SECTION: Final[str] = "lint"
     "Ruff lint subsection key."
     SEARCH_PATH: Final[str] = "search-path"
