@@ -218,6 +218,13 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         edit_completed = False
         try:
             request.edit_fn()
+            # Canonical normalization: the SAME tool that validates also fixes.
+            # Auto-fixable style fallout of a mechanical edit (blank lines,
+            # import order, stray pass) is repaired by ruff --fix, never by
+            # per-transform hand formatting.
+            FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
+                (py_file,), request.workspace
+            )
             edit_completed = True
         finally:
             if not edit_completed:
@@ -342,6 +349,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
             if request.post_write is not None:
                 request.post_write()
+            FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
+                tuple(normalized_updates), request.workspace
+            )
             write_completed = True
         finally:
             if not write_completed:
