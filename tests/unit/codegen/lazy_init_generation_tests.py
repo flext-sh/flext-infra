@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from types import MappingProxyType
 
+import flext_core
 from flext_infra import c, m, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_tests import tm
@@ -21,6 +23,7 @@ class TestsFlextInfraCodegenGeneration:
         *,
         eager_dunders: t.LazyAliasMap | None = None,
         child_packages: t.StrSequence = (),
+        initializer_shape: c.Infra.LazyInitShape = c.Infra.LazyInitShape.LAZY,
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
         package_dir = Path.cwd() / current_pkg.replace(".", "/")
@@ -30,6 +33,7 @@ class TestsFlextInfraCodegenGeneration:
                 init_path=package_dir / c.Infra.INIT_PY,
                 current_pkg=current_pkg,
                 surface=current_pkg.split(".", maxsplit=1)[0],
+                initializer_shape=initializer_shape,
                 importable=True,
             ),
             action=c.Infra.LazyInitAction.WRITE,
@@ -71,6 +75,21 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
+    def test_generated_runtime_surfaces_import_without_bootstrap_cycles(self) -> None:
+        lazy_parts = import_module("flext_core._lazy_parts")
+        typings = import_module("flext_core._typings")
+        infra_utilities = import_module("flext_infra._utilities")
+
+        tm.that(lazy_parts.__all__, eq=())
+        tm.that(typings.__all__, eq=())
+        tm.that(flext_core.__all__, has="c")
+        tm.that(dir(flext_core), has="c")
+        tm.that(flext_core.c.__name__, eq="FlextConstants")
+        tm.that(
+            infra_utilities.FlextInfraUtilitiesRopeCore.__name__,
+            eq="FlextInfraUtilitiesRopeCore",
+        )
+
     def test_root_initializer_contains_static_and_lazy_contracts(self) -> None:
         """Public root initializer keeps typing and runtime targets aligned."""
         plan = self._plan(
@@ -90,13 +109,14 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
-    def test_lazy_helper_package_initializer_is_static(self) -> None:
+    def test_nested_package_initializer_is_static(self) -> None:
         plan = self._plan(
             "flext_core._lazy_parts",
             ("FlextLazy",),
             MappingProxyType({
                 "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
             }),
+            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
@@ -141,8 +161,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, lacks="from flext_cli._settings import")
         tm.that(content, lacks="    _ = (")
 
-    def test_non_root_package_uses_lazy_package_facade(self) -> None:
-        """Subpackages expose their owned symbols lazily through one facade."""
+    def test_public_nested_package_preserves_lazy_exports(self) -> None:
         plan = self._plan(
             "demo_pkg.services",
             ("Demo", "Nested"),
@@ -155,11 +174,8 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from .demo import Demo")
-        tm.that(init_content, contains='".demo": ("Demo",)')
-        tm.that(init_content, contains='".nested.item": ("Nested",)')
-        tm.that(init_content, contains='"Demo"')
-        tm.that(init_content, contains='"Nested"')
+        tm.that(init_content, contains="from flext_core.lazy import")
+        tm.that(init_content, contains='__all__: tuple[str, ...] = ("Demo", "Nested")')
         tm.that(init_content, contains="install_lazy_exports")
 
     def test_private_fixture_package_initializer_is_side_effect_free(self) -> None:
@@ -170,6 +186,7 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({
                 "DemoFixture": ("demo_pkg._fixtures.settings", "DemoFixture")
             }),
+            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
