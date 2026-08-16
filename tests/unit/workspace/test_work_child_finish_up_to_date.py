@@ -11,6 +11,10 @@ from flext_tests import tm
 from tests.unit.workspace.work_public_finish_fixture import WorkPublicFinishFixture
 
 
+# The public finish saga drives real git subprocesses across three lanes; the
+# slow marker consumes the config-owned 60s budget under worker contention.
+@pytest.mark.slow
+@pytest.mark.timeout(60)
 def test_child_finish_retires_without_redundant_epic_merge(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

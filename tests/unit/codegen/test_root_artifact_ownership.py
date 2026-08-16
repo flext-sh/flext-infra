@@ -38,6 +38,10 @@ class TestsRootArtifactOwnership:
             tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
         tm.that(config.Infra.tooling.tools.markdown.exclude, has=".serena/**")
 
+    # A full-surface conform materializes the complete managed tree plus git
+    # hook installation; the slow marker consumes the config-owned 60s budget.
+    @pytest.mark.slow
+    @pytest.mark.timeout(60)
     def test_standalone_conform_projects_markdown_policy(
         self, infra_git_repo: Path
     ) -> None:
