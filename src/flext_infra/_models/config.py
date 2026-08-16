@@ -154,6 +154,10 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        uv_exclude_newer_package: t.StrMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Package-specific uv exclude-newer timestamps.",
+        )
         kubectl_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
         ]
@@ -1363,6 +1367,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.RepositoryRef,
             m.Field(description="Declared immutable repository identity"),
         ]
+        uv_exclude_newer_package: t.StrMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Package-specific uv exclude-newer timestamps.",
+        )
         root: Annotated[
             Path, m.Field(description="Resolved repository root receiving conformance")
         ]
@@ -1501,6 +1509,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
         ]
+        uv_exclude_newer_package: t.StrMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Package-specific uv exclude-newer timestamps.",
+        )
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -1737,6 +1749,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
+        uv_exclude_newer_package: t.StrMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Package-specific uv exclude-newer timestamps.",
+        )
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
         ]

@@ -26,10 +26,7 @@ class FlextInfraConstantsCodegenLazy:
     )
     "Regex matching every generated lazy-export sidecar filename "
     "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
-    "``_lazy_exports.py``); these reserved names are superseded by the inline "
-    "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
-    # mro-pulj (codex): these parallel root registries are superseded atomically
-    # by the inline map and must never participate in source discovery.
+    "``_lazy_exports.py``); legacy variants are excluded from discovery and cleanup."
     OBSOLETE_ROOT_SUPPORT_NAMES: Final[frozenset[str]] = frozenset({
         "_root_exports",
         "_root_exports_parts",
@@ -72,6 +69,11 @@ class FlextInfraConstantsCodegenLazy:
     # them, so their private package initializer is always side-effect free.
     PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
     "Private pytest-plugin package whose generated initializer stays empty."
+    LAZY_BOOTSTRAP_STATIC_SEGMENTS: Final[frozenset[str]] = frozenset({
+        "_lazy_parts",
+        "_typings",
+    })
+    "Exact package segments imported while ``flext_core.lazy`` initializes."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE

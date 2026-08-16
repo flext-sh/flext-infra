@@ -15,6 +15,8 @@ Infra:
       # Supply-chain cooldown: refuse packages newer than this relative window
       # (CWE-829 / uv dependency cooldowns). Projected to every [tool.uv].
       uv_exclude_newer: "7 days"
+      uv_exclude_newer_package:
+        mypy: "2026-08-15T03:04:00Z"
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
@@ -1131,7 +1133,7 @@ Infra:
           - flext-tests
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.
-          - mypy>=2.3.0
+          - mypy>=2.3.1
           - pyrefly>=1.1.1
           - pyright>=1.1.411
           # `gen` installs the git hooks it just wrote, so the tool that owns
@@ -1663,6 +1665,16 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
