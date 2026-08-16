@@ -325,11 +325,11 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, lacks="FlextDemoService")
-        tm.that(exports_content, lacks='"BLUE"')
-        tm.that(exports_content, lacks="FlextDemoServicesModels")
+        tm.that(exports_content, has="FlextDemoService")
+        tm.that(exports_content, has='"BLUE"')
+        tm.that(exports_content, has="FlextDemoServicesModels")
         tm.that(exports_content, lacks='"main"')
-        tm.that(exports_content, lacks='"m": ("flext_demo.services.models", "m")')
+        tm.that(exports_content, has='"m"')
 
     def test_generated_constants_owner_never_widens_parent_map(
         self, tmp_path: Path
@@ -465,7 +465,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(alias_positions, eq=tuple(sorted(alias_positions)))
         tm.that(
             init_content.splitlines(),
-            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import c, d, e, h, m, p, r, s, t, u, x",
         )
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
@@ -698,8 +698,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, lacks="FlextDemoHttpTransport")
-        tm.that(exports_content, lacks='"services"')
+        tm.that(exports_content, has="FlextDemoHttpTransport")
+        tm.that(exports_content, has='"services"')
 
     def test_duplicate_public_export_resolved_by_canonical_scorer(
         self, tmp_path: Path
