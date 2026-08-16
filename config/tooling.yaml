@@ -490,9 +490,12 @@ Infra:
         # Complete-suite wall clock. The consumer fleet outgrew 120s: ai-hub's
         # 1751-case suite reached only 62% (1094 passed, 0 failed) inside the
         # immutable wall at 12 workers, so every checkout was structurally red
-        # on `make test WHAT=full`. The operator raised the standard pre-push
-        # contract to 300s: it keeps the abort-on-overrun guarantee (an
-        # unbounded hang still dies) with headroom over the measured ~190s run.
+        # on `make test WHAT=full`. OPERATOR LAW mro-2zwxl / ai-hub-88h1
+        # (2026-08-15) sets the canonical pre-push run wall at 300s: it keeps
+        # the abort-on-overrun guarantee (an unbounded hang still dies) with
+        # headroom over the measured ~190s run, which 240s did not leave on a
+        # loaded multi-lane host. The per-case budget stays 10s — this raises
+        # only the whole-suite wall, never a per-test ceiling.
         run-timeout-seconds: 300
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
