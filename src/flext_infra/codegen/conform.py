@@ -1906,6 +1906,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
+        if destination in {".markdownlint.json", ".markdownlintignore"}:
+            # These render only tooling.tools.markdown; the full project
+            # context would wrongly demand project metadata on manifestless
+            # existing trees.
+            return r[p.Model].ok(
+                m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
+            )
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
             server = codegen.toolchain.beads.server
             if server is None:

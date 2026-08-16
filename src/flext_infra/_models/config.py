@@ -1643,6 +1643,19 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class MarkdownLintRenderSpec(_ConfigContract):
+        """Typed input for the generated markdown lint projections.
+
+        The templates read only ``tooling.tools.markdown`` (rules/excludes),
+        so this spec carries the tooling document alone — the full project
+        context would wrongly demand project metadata on manifestless trees.
+        """
+
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical validated tooling policy"),
+        ]
+
     class SgconfigRenderSpec(_ConfigContract):
         """Typed input for the generated ast-grep project config.
 
