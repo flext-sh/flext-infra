@@ -88,10 +88,8 @@ class TestMainCommandDispatch:
 
 # Exemplar: every test here spawns a fresh interpreter to prove the real
 # `python -m flext_infra` entry point. That import chain, not the assertion,
-# dominates the runtime, so the class declares its true end-to-end budget
-# instead of raising the global unit-test timeout and masking real hangs.
+# dominates the runtime, so the class opts into the config-owned slow budget.
 @pytest.mark.slow
-@pytest.mark.timeout(120)
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 

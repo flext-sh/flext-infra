@@ -1099,7 +1099,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         or "initial workspace manifest validation failed"
                     )
                 manifest_plan = self._file_plan(
-                    root, destination, rendered_manifest.value
+                    root,
+                    destination,
+                    rendered_manifest.value,
+                    source_template=Path(entry.source),
                 )
                 if manifest_plan.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1140,7 +1143,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"template={entry.source}: template render failed"
                     )
                 )
-            file_plan = self._file_plan(root, destination, rendered.value)
+            file_plan = self._file_plan(
+                root, destination, rendered.value, source_template=Path(entry.source)
+            )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     file_plan.error
@@ -1555,7 +1560,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         member.path.as_posix() for member in workspace.members
                     ),
                 )
-            file_plan = self._file_plan(root, entry.destination, rendered_content)
+            file_plan = self._file_plan(
+                root,
+                entry.destination,
+                rendered_content,
+                source_template=Path(entry.source),
+            )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     file_plan.error
@@ -1894,6 +1904,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
+        if destination in {".markdownlint.json", ".markdownlintignore"}:
+            # The markdown templates read only tooling.tools.markdown, so the
+            # render input carries exactly that: demanding the full project
+            # context broke the standalone flext-infra checkout, which has no
+            # project metadata to give.
+            return r[p.Model].ok(
+                m.Infra.MarkdownlintRenderSpec(tooling=config.Infra.tooling)
+            )
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
@@ -2026,6 +2044,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
+                    uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                     uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                         repository, workspace, codegen
                     ),
@@ -2125,6 +2144,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                 uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                     repository, workspace, codegen
                 ),
@@ -2266,6 +2286,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                 uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                     repository, workspace, codegen
                 ),
@@ -2492,11 +2513,45 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         return r[bool].ok(True)
 
+    @staticmethod
+    def _rendered_conflict_marker(rendered: str) -> str | None:
+        """Return the first Git conflict delimiter, or ``None`` when clean.
+
+        Every unambiguous fence is reported: ``<<<<<<<`` opens a conflict,
+        ``|||||||`` is the diff3 common ancestor, and ``>>>>>>>`` closes it.
+        A lone ``=======`` is NOT reported, because it is also a Markdown
+        Setext underline; a real conflict always carries one of the fences
+        above, so nothing is missed by ignoring the ambiguous separator.
+        """
+        fences = ("<<<<<<<", "|||||||", ">>>>>>>")
+        return next(
+            (
+                line
+                for line in rendered.splitlines()
+                if line.rstrip() in fences
+                or line.startswith(tuple(f"{fence} " for fence in fences))
+            ),
+            None,
+        )
+
     def _file_plan(
-        self, root: Path, relative_path: str, rendered: str
+        self,
+        root: Path,
+        relative_path: str,
+        rendered: str,
+        *,
+        source_template: Path | None = None,
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Compare one expected output and mark whether it changed."""
         path = root / relative_path
+        marker = self._rendered_conflict_marker(rendered)
+        if marker is not None:
+            source = source_template or Path("<derived conform output>")
+            return r[m.Infra.CodegenFilePlan].fail(
+                "rendered managed artifact contains Git conflict delimiter: "
+                f"template={source} destination={relative_path} "
+                f"repository={root} path={path} delimiter={marker}"
+            )
         if path.exists() and not path.is_file():
             return r[m.Infra.CodegenFilePlan].fail(
                 f"managed destination is not a regular file: {path}"

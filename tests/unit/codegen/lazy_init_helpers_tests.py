@@ -30,7 +30,6 @@ class TestsFlextInfraLazyInitHelpers:
 
     @staticmethod
     def _generated_exports(package_root: Path) -> str:
-        # mro-wkii.17 (Codex): the generated initializer owns the inline ABI.
         return TestsFlextInfraLazyInitHelpers._generated_init(package_root)
 
     def test_discover_package_from_standard_roots(self) -> None:
@@ -64,11 +63,9 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(
-            init_content,
-            has="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
-        )
-        tm.that(init_content, has="_LAZY_IMPORTS")
+        tm.that(init_content, has="build_lazy_import_map, install_lazy_exports")
+        # _LAZY_IMPORTS is the canonical metadata binding flext_core reads.
+        tm.that(init_content, has="_LAZY_IMPORTS = MappingProxyType(")
         tm.that(exports_content, has='"FlextDemoModels"')
         tm.that(exports_content, has='"m"')
 
@@ -334,10 +331,23 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, lacks='"main"')
         tm.that(exports_content, lacks='"m": ("flext_demo.services.models", "m")')
 
-    def test_tests_root_remains_outside_production_codegen(
+    def test_generated_constants_owner_never_widens_parent_map(
         self, tmp_path: Path
     ) -> None:
-        """Leave test package initializers untouched by production codegen."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        first = self._generated_exports(package_root)
+        tm.that(u.Tests.run_lazy_init(workspace_root, check_only=True), eq=0)
+
+        tm.that(self._generated_exports(package_root), eq=first)
+        tm.that(first, lacks='"._constants"')
+
+    def test_tests_root_facade_is_generated_lazily(self, tmp_path: Path) -> None:
+        """Generate the tests root facade with local publics and inherited aliases."""
         workspace_root, _package_root = self._workspace(tmp_path)
         tests_root = workspace_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
@@ -367,9 +377,10 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): test code is validated by its own gates, not
-        # rewritten by the production-root generator.
-        tm.that(init_content, empty=True)
+        # Lazy inits cover EVERY python surface (src, tests, examples,
+        # scripts): the tests root is a generated PEP 562 facade too.
+        tm.that(init_content, has="_LAZY_IMPORTS = MappingProxyType(")
+        tm.that(init_content, has='"TestsFlextDemoConstants"')
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
         check_service = u.Tests.create_lazy_init_service(workspace_root)
@@ -435,15 +446,16 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(init_content, has="_LAZY_MODULES: dict[str, tuple[str, ...]]")
+        tm.that(init_content, lacks="_LAZY_MODULES")
+        tm.that(exports_content, has='"flext_cli": (')
         tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
         tm.that(init_content, lacks="_root_typing_parts")
         ruff_ordered_aliases = ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x")
         for alias_name in ruff_ordered_aliases:
-            tm.that(exports_content, has=f'    "{alias_name}",')
-        has_all, public_exports = u.Tests.extract_lazy_init_exports(exports_content)
+            tm.that(init_content, has=f'    "{alias_name}",')
+        has_all, public_exports = u.Tests.extract_lazy_init_exports(init_content)
         tm.that(has_all, eq=True)
         # mro-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
         # exclusively in the static facade imports.
@@ -477,9 +489,9 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
         exports = self._generated_exports(package_root)
-        tm.that(generated, lacks='"flext_cli": (\n        "r",')
-        tm.that(exports, lacks='    "r",')
-        tm.that(exports, has='    "c",')
+        tm.that(exports, lacks='"flext_cli": (\n        "r",')
+        tm.that(generated, lacks='    "r",')
+        tm.that(generated, has='    "c",')
 
         u.Tests.write_standalone_workspace_manifest(
             workspace_root, "flext-demo", inherited_facets=("r",)
@@ -487,9 +499,9 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         declared_generated = self._generated_init(package_root)
         declared_exports = self._generated_exports(package_root)
-        tm.that(declared_generated, has='"flext_cli": ("r",)')
-        tm.that(declared_exports, has='    "r",')
-        tm.that(declared_exports, has='    "c",')
+        tm.that(declared_exports, has='"flext_cli": ("r",)')
+        tm.that(declared_generated, has='    "r",')
+        tm.that(declared_generated, has='    "c",')
 
     def test_generated_parent_initializer_is_not_an_alias_owner(
         self, tmp_path: Path
@@ -522,7 +534,7 @@ class TestsFlextInfraLazyInitHelpers:
             update={"target_module": "flext_child"}
         )
         tm.that(service.generate_inits(), eq=0)
-        generated = self._generated_init(package_root)
+        generated = self._generated_exports(package_root)
 
         tm.that(generated, lacks='"x"')
         tm.that(generated, lacks='"flext_parent": ("x",)')
@@ -558,7 +570,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        generated = self._generated_init(package_root)
+        generated = self._generated_exports(package_root)
 
         tm.that(generated, has='"owner_parent": ("r",)')
         tm.that(generated, lacks='"nearest_parent": ("r",)')
@@ -617,16 +629,17 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
+        exports = self._generated_exports(package_root)
 
         tm.that(generated, has='"FlextDemoGitService"')
         tm.that(generated, has='"FlextDemoWorkService"')
-        tm.that(generated, has='".git": ("FlextDemoGitService",)')
-        tm.that(generated, has='".work": ("FlextDemoWorkService",)')
+        tm.that(exports, has='".git": ("FlextDemoGitService",)')
+        tm.that(exports, has='".work": ("FlextDemoWorkService",)')
 
     def test_nested_tests_namespace_exports_local_symbols_only(
         self, tmp_path: Path
     ) -> None:
-        """Leave nested test namespaces unchanged by production codegen."""
+        """Generate nested test namespaces with their local publics."""
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.RESULT_PY).write_text(
             "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
@@ -654,8 +667,11 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): nested tests remain explicit handwritten code.
-        tm.that(init_content, empty=True)
+        # Lazy inits cover every python surface: nested test dirs publish
+        # their LOCAL symbols (production publics never leak into tests).
+        tm.that(init_content, has='"TestsFlextDemoUnitConstants"')
+        tm.that(init_content, has='"TestsFlextDemoUnitModels"')
+        tm.that(init_content, lacks="FlextDemoResult")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 
     def test_root_rejects_symbols_from_deep_descendant_packages(

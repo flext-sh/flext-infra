@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from types import MappingProxyType
+
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
@@ -23,33 +25,6 @@ if TYPE_CHECKING:
     from .py_typed import FlextInfraCodegenPyTyped
     from .scaffolder import FlextInfraCodegenScaffolder
     from .version_file import FlextInfraCodegenVersionFile
-
-_LAZY_MODULES: dict[str, tuple[str, ...]] = {
-    ".census": ("FlextInfraCodegenCensus",),
-    ".codegen_generation": ("FlextInfraCodegenGeneration",),
-    ".conform": ("FlextInfraCodegenConform",),
-    ".consolidator": ("FlextInfraCodegenConsolidator",),
-    ".constants_quality_gate": ("FlextInfraCodegenQualityGate",),
-    ".fixer": ("FlextInfraCodegenFixer",),
-    ".layout": ("FlextInfraCodegenLayout",),
-    ".lazy_init": ("FlextInfraCodegenLazyInit",),
-    ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
-    ".managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
-    ".pipeline": ("FlextInfraCodegenPipeline",),
-    ".project_new": ("FlextInfraCodegenProjectNew",),
-    ".py_typed": ("FlextInfraCodegenPyTyped",),
-    ".scaffolder": ("FlextInfraCodegenScaffolder",),
-    ".version_file": ("FlextInfraCodegenVersionFile",),
-}
-
-
-_LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
-
-
-_LAZY_IMPORTS = build_lazy_import_map(
-    _LAZY_MODULES, alias_groups=_LAZY_ALIAS_GROUPS, sort_keys=False
-)
-
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
@@ -66,6 +41,30 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
+)
+
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".census": ("FlextInfraCodegenCensus",),
+            ".codegen_generation": ("FlextInfraCodegenGeneration",),
+            ".conform": ("FlextInfraCodegenConform",),
+            ".consolidator": ("FlextInfraCodegenConsolidator",),
+            ".constants_quality_gate": ("FlextInfraCodegenQualityGate",),
+            ".fixer": ("FlextInfraCodegenFixer",),
+            ".layout": ("FlextInfraCodegenLayout",),
+            ".lazy_init": ("FlextInfraCodegenLazyInit",),
+            ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
+            ".managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
+            ".pipeline": ("FlextInfraCodegenPipeline",),
+            ".project_new": ("FlextInfraCodegenProjectNew",),
+            ".py_typed": ("FlextInfraCodegenPyTyped",),
+            ".scaffolder": ("FlextInfraCodegenScaffolder",),
+            ".version_file": ("FlextInfraCodegenVersionFile",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

@@ -153,7 +153,12 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             invocation_log.read_text(encoding="utf-8"),
-            has=["-m flext_infra", f"--workspace {engine_root}"],
+            has=[
+                "-m flext_infra codegen conform",
+                f"--root {engine_root}",
+                "--scope self",
+                "--mode apply",
+            ],
         )
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:

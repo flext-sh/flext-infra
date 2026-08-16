@@ -15,6 +15,8 @@ Infra:
       # Supply-chain cooldown: refuse packages newer than this relative window
       # (CWE-829 / uv dependency cooldowns). Projected to every [tool.uv].
       uv_exclude_newer: "7 days"
+      uv_exclude_newer_package:
+        mypy: "2026-08-15T03:04:00Z"
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
@@ -253,16 +255,21 @@ Infra:
         # surface spells a bare "N": pre_push declares CI explicitly instead of
         # relying on the token being unset, because a git hook inherits the
         # invoking environment and a stray CI=Y from the caller would otherwise
-        # revoke pytest and the lint/format/pyrefly gates on a push.
+        # revoke pytest and the type-checker gates on a push.
         local_value: N
-        # RULING 2 (rules not skip-list): CI=Y runs a positive gate set
-        # (check_gates). Gates omitted (lint, format, pyrefly) are owned by CI
-        # workflows and skipped under CI=Y. Local make check without CI=Y keeps
-        # the full default set. Blocking CI never runs make test (pytest);
-        # local/pre_push still own that verb.
+        # RULING 2 (rules not skip-list): local_check_gates is the ONLY declared
+        # set — the slow whole-program type checkers. CI=N (pre-push) runs
+        # exactly this set; CI=Y runs its strict complement derived in
+        # MakeCiSpec.check_gates (never a second list); an unset CI runs every
+        # allowed gate, always.
         # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
         # full pytest+coverage; absent=testmon incremental.
-        check_gates: [mypy, pyright, security, markdown, smells]
+        local_check_gates: [pyrefly, mypy]
+        # Wall-clock budget per verb/what/project for each CI form: CI=Y owns
+        # the fast gates (everything must land inside 60s); CI=N owns the slow
+        # whole-program analyses and full pytest (300s each).
+        verb_timeout_seconds: 60
+        local_verb_timeout_seconds: 300
       workflow:
         # Why: pre-commit remains fast and mutation-only; pre-push owns the
         # generated-artifact and read-only validation gates.
@@ -1071,6 +1078,17 @@ Infra:
       - path: .gitmodules
         owner: codegen
         policy: merge
+      # mro-6szaq.13.1: the markdown gate resolves its rule set by walking
+      # upward for these files. A member checked out standalone in CI has no
+      # parent holding the workspace copies, so rumdl fell back to stock
+      # defaults and reported hundreds of findings the workspace rejects.
+      # Projecting both files makes every checkout evaluate one rule set.
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
+      - path: .markdownlintignore
+        owner: codegen
+        policy: full
       - path: .mise.toml
         owner: codegen
         policy: full
@@ -1131,7 +1149,7 @@ Infra:
           - flext-tests
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.
-          - mypy>=2.3.0
+          - mypy>=2.3.1
           - pyrefly>=1.1.1
           - pyright>=1.1.411
           # `gen` installs the git hooks it just wrote, so the tool that owns
@@ -1663,6 +1681,16 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

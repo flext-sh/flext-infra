@@ -258,12 +258,22 @@ select = ["E501"]
             list(u.Tests.toml_strings(isort["known-first-party"])),
             eq=["flext_core", "flext_sample"],
         )
+        per_file_ignores = u.Tests.toml_mapping(lint_section["per-file-ignores"])
         tm.that(
-            u.Tests.toml_mapping(lint_section["per-file-ignores"]),
+            per_file_ignores,
             eq={
                 pattern: sorted(rules)
                 for pattern, rules in tool_config_document.tools.ruff.lint.per_file_ignores.items()
             },
+        )
+        tm.that(
+            list(u.Tests.toml_strings(per_file_ignores["**/__init__.py"])),
+            eq=sorted(
+                tool_config_document.tools.ruff.lint.per_file_ignores["**/__init__.py"]
+            ),
+        )
+        tm.that(
+            list(u.Tests.toml_strings(per_file_ignores["**/__init__.py"])), lacks="ALL"
         )
 
     def test_ruff_phase_is_idempotent(

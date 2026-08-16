@@ -50,6 +50,7 @@ class TestsFlextInfraDepsModernizerMypy:
         )
         for key, value in tool_config_document.tools.mypy.boolean_settings.items():
             tm.that(mypy_mapping[key], eq=value)
+        tm.that(mypy_mapping["show_traceback"], eq=True)
 
     def test_mypy_phase_keeps_misc_globally_disabled(
         self, tool_config_document: m.Infra.ToolConfigDocument
