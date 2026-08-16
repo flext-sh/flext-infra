@@ -79,8 +79,12 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
             u.Cli.error(f"generating {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
         cleanup_exit = self._cleanup_generated_support_files(plan)
-        self._write_generated_file(init_path, generated, previous)
         if cleanup_exit < 0:
+            return (-1, dict(plan.lazy_map))
+        try:
+            self._write_generated_file(init_path, generated, previous)
+        except OSError as exc:
+            u.Cli.error(f"writing generated init {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
         return (0, dict(plan.lazy_map))
 
