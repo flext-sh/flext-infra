@@ -413,7 +413,8 @@ Infra:
           # profile = one explicit focused cProfile run (FILE and/or MATCH required).
           # Normal all/full gates run pytest directly so profiling overhead cannot
           # consume the suite's fixed execution budget.
-          whats: [all, full, profile, cache-status, cache-clear, cache-checkpoint]
+          whats:
+            [all, full, profile, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all
@@ -1663,11 +1664,12 @@ Infra:
           overwrite: false
         - source: base/.pre-commit-config.yaml.j2
           destination: .pre-commit-config.yaml
-          # Operator law (mro-68rcj): git hooks belong to the workspace ROOT
-          # only. A member never runs its own pre-commit/pre-push chain — the
-          # root hook validates the whole fleet in one pass, and a per-member
-          # chain would re-enter make recursively on every submodule commit.
-          profiles: [workspace-root, standalone]
+          # Every checkout that receives a commit owns its own gate. A member is
+          # committed and pushed independently of the root, so a root-only chain
+          # leaves those commits ungated. Each rendered step clears the inherited
+          # git/make environment, so a member chain scopes to itself instead of
+          # re-entering the root recursively.
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/README.md.j2

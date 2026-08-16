@@ -2925,10 +2925,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _declares_hook_config(profile: c.Infra.MakeProfile) -> bool:
         """Answer whether the SSOT projects a hook config onto this profile.
 
-        Operator law mro-68rcj: pre-* hooks belong to the workspace ROOT only.
-        The template manifest already encodes that by excluding
-        ``workspace-member`` from the ``.pre-commit-config.yaml`` entry, so the
-        manifest -- not a second literal list here -- is what decides.
+        The template manifest entry for ``.pre-commit-config.yaml`` -- not a
+        second literal list here -- decides which profiles own a hook chain.
         """
         return any(
             profile in entry.profiles

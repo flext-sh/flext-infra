@@ -24,4 +24,3 @@ Coluna **Decisão**: `corrigir` / `falso-positivo` / `risco-aceito`.
 2. Classificar: **corrigir** (entrada externa alcança o sink sem sanitização), **falso-positivo** (credencial de fixture, path de constante — registrar em `.snyk` com justificativa), **risco-aceito** (com prazo de revisão).
 
 Dados brutos: `~/snyk-violations/sast/flext-sh__flext-infra.sast.json`
-
