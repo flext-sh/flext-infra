@@ -76,6 +76,7 @@ class TestsFlextInfraDepsModernizerPytest:
             """
 [tool.pytest.ini_options]
 minversion = "7.0"
+flext_slow_timeout_seconds = "5"
 python_classes = ["Spec*"]
 python_files = ["spec_*.py"]
 addopts = ["--maxfail=1"]
@@ -90,6 +91,10 @@ markers = ["custom: custom marker"]
         )
         pytest_policy = tool_config.tools.pytest
         tm.that(ini["minversion"], eq=pytest_policy.min_version)
+        tm.that(
+            ini["flext_slow_timeout_seconds"],
+            eq=str(pytest_policy.slow_timeout_seconds),
+        )
         tm.that(
             set(_strings(ini["python_classes"])),
             eq={"Spec*", *pytest_policy.python_classes},

@@ -85,6 +85,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         package_dir.resolve()
                         for package_dir in workspace_index.package_dirs
                         if package_dir.is_relative_to(resolved_workspace_root)
+                        and package_dir.name != c.Infra.ROOT_EXPORTS_DIR
                     ),
                     key=lambda path: len(path.parts),
                     reverse=True,
@@ -118,16 +119,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     return 1
                 target_package_dir = sorted_target_dirs[0]
             if target_package_dir is None:
-                # mro-pulj (codex): default production generation leaves
-                # wrapper surfaces untouched; an explicit --module selects one.
-                package_dirs = tuple(
-                    package_dir
-                    for package_dir in indexed_package_dirs
-                    if not frozenset(
-                        package_dir.relative_to(resolved_workspace_root).parts
-                    )
-                    & c.Infra.NON_PUBLIC_LAZY_ROOTS
-                )
+                # ALL_SCAN_PATTERNS is the contract: every Python surface
+                # (src, tests, examples, scripts) is generated, no exceptions.
+                package_dirs = indexed_package_dirs
             else:
                 target_parts = target_package_dir.relative_to(
                     resolved_workspace_root
@@ -191,9 +185,11 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 target_package_dir=target_package_dir,
             )
         # mro-96j2.4 (agent: claude): Ruff check runs once over the changed
-        # artifact set instead of per rendered template, eliminating one cold
-        # Ruff subprocess per generated __init__.py.
-        errors += self.batch_lint_generated(self.modified_files)
+        # artifact set instead of per rendered template. Apply mode only:
+        # check mode never writes, so the on-disk files still hold the OLD
+        # content and linting them would report drift as false lint errors.
+        if not check_only:
+            errors += self.batch_lint_generated(self.modified_files)
         warnings = planner.collision_count
         u.Cli.info(
             f"Lazy-init summary: {ok} generated, {errors} errors, {warnings} warnings"

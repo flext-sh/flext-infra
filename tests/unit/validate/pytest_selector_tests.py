@@ -45,49 +45,54 @@ class TestsFlextInfraPytestSelectorValidator:
         ],
     )
     def test_file_rejects_non_normalized_or_control_text(self, file: str) -> None:
+        workspace_root = Path.cwd()
         with pytest.raises(c.ValidationError, match="file must"):
-            FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), file=file)
+            FlextInfraPytestSelectorValidator(workspace_root=workspace_root, file=file)
 
     def test_what_accepts_only_canonical_test_modes(self) -> None:
+        workspace_root = Path.cwd()
         validator = FlextInfraPytestSelectorValidator(
-            workspace_root=Path.cwd(), what="all"
+            workspace_root=workspace_root, what="all"
         )
         tm.ok(validator.execute())
         for what in ("cache-status", "cache-clear", "cache-checkpoint"):
             tm.ok(
                 FlextInfraPytestSelectorValidator(
-                    workspace_root=Path.cwd(), what=what
+                    workspace_root=workspace_root, what=what
                 ).execute()
             )
         tm.ok(
             FlextInfraPytestSelectorValidator(
-                workspace_root=Path.cwd(), what="profile", match="focused"
+                workspace_root=workspace_root, what="profile", match="focused"
             ).execute()
         )
         with pytest.raises(c.ValidationError, match="profile requires FILE or MATCH"):
-            FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="profile")
-        with pytest.raises(c.ValidationError, match="what must be"):
             FlextInfraPytestSelectorValidator(
-                workspace_root=Path.cwd(), what="$(shell touch marker)"
+                workspace_root=workspace_root, what="profile"
             )
         with pytest.raises(c.ValidationError, match="what must be"):
-            FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+            FlextInfraPytestSelectorValidator(
+                workspace_root=workspace_root, what="$(shell touch marker)"
+            )
+        with pytest.raises(c.ValidationError, match="what must be"):
+            FlextInfraPytestSelectorValidator(workspace_root=workspace_root, what="cov")
         with pytest.raises(
             c.ValidationError, match="cache-status rejects FILE and MATCH"
         ):
             FlextInfraPytestSelectorValidator(
-                workspace_root=Path.cwd(), what="cache-status", match="x"
+                workspace_root=workspace_root, what="cache-status", match="x"
             )
 
     def test_full_rejects_focused_selectors(self) -> None:
         """The complete-suite coverage gate cannot describe a subset."""
+        workspace_root = Path.cwd()
         with pytest.raises(c.ValidationError, match="full rejects FILE and MATCH"):
             FlextInfraPytestSelectorValidator(
-                workspace_root=Path.cwd(), what="full", file="tests/test_sample.py"
+                workspace_root=workspace_root, what="full", file="tests/test_sample.py"
             )
         with pytest.raises(c.ValidationError, match="full rejects FILE and MATCH"):
             FlextInfraPytestSelectorValidator(
-                workspace_root=Path.cwd(), what="full", match="sample"
+                workspace_root=workspace_root, what="full", match="sample"
             )
 
     def test_file_rejects_symlink_hop(self, tmp_path: Path) -> None:

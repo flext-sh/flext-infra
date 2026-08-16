@@ -382,10 +382,8 @@ class TestsEnforcementFixerOrchestrator:
 
     # Exemplar: this drives the real CLI entry point against a real Git
     # repository, so its cost is the runtime's import chain plus several git
-    # invocations. That is a true end-to-end budget, declared explicitly rather
-    # than absorbed by raising the global timeout for every unit test.
+    # invocations. The slow marker opts into the config-owned slow-item budget.
     @pytest.mark.slow
-    @pytest.mark.timeout(120)
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

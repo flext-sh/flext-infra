@@ -161,6 +161,7 @@ namespace_packages = true
 no_implicit_reexport = true
 plugins = ["pydantic.mypy"]
 python_version = "3.13"
+show_traceback = true
 strict_equality = true
 warn_redundant_casts = true
 warn_return_any = true
@@ -353,8 +354,6 @@ reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
-venv = ".venv"
-venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -421,6 +420,7 @@ filterwarnings = [
   "error",
   "module::flext_core._constants.enforcement.FlextMroViolation",
 ]
+flext_slow_timeout_seconds = "60"
 markers = [
   "core: core functionality tests",
   "docker: tests requiring Docker",
@@ -567,9 +567,20 @@ known-first-party = ["flext_cli", "flext_core", "flext_infra", "flext_tests"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
-"**/.vulture_whitelist.py" = ["ALL"]
-"**/*_pb2*.py" = ["ALL"]
-"**/__init__.py" = ["ALL"]
+"**/__init__.py" = [
+  "any-type",
+  "builtin-import-shadowing",
+  "implicit-namespace-package",
+  "import-private-name",
+  "invalid-module-name",
+  "non-empty-init-module",
+  "runtime-import-in-type-checking-block",
+  "undefined-export",
+  "undefined-local-with-import-star",
+  "undefined-local-with-import-star-usage",
+  "undocumented-public-init",
+  "unused-import",
+]
 "**/tests/**" = [
   "assert",
   "compare-to-empty-string",
@@ -597,6 +608,9 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
+
+[tool.uv.exclude-newer-package]
+mypy = "2026-08-15T03:04:00Z"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]
@@ -646,7 +660,7 @@ dev = [
   "mkdocs-versioning>=0.4.0",
   "mkdocstrings>=1.0.6",
   "mkdocstrings-python>=2.0.5",
-  "mypy>=2.3.0",
+  "mypy>=2.3.1",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.1",
   "pylint>=4.0.6",

@@ -77,6 +77,26 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """Return the canonical lint tool names selected for a gate set."""
         return tuple(tool for tool, _ in cls._selected_lint_tools(gates))
 
+    @classmethod
+    def ruff_fix_files(cls, paths: t.SequenceOf[Path], workspace: Path) -> None:
+        """Run ``ruff check --fix`` on *paths* with snapshot-identical resolution.
+
+        Same venv-resolved binary and same working directory as the lint
+        snapshots, so the fix pass and the before/after diff always resolve
+        the SAME Ruff configuration for the same file.
+        """
+        for py_file in paths:
+            _ = u.Cli.run_checked(
+                [
+                    *cls._workspace_tool_command(workspace, "ruff"),
+                    c.Infra.CHECK,
+                    "--fix",
+                    str(py_file),
+                ],
+                cwd=cls._command_cwd(py_file, workspace),
+                env=cls._command_env(),
+            )
+
     @staticmethod
     def _relative_path(py_file: Path, workspace: Path) -> Path:
         """Relative path."""

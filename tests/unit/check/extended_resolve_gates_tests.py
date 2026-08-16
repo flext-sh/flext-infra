@@ -67,7 +67,12 @@ class TestWorkspaceCheckerResolveGates:
     def test_resolve_gates_under_ci_y_runs_positive_gate_set(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """RULING 2: CI=Y make check runs positive gate set (check_gates)."""
+        """RULING 2: CI=Y runs the fast set -- the type checkers stay local.
+
+        Runtime evidence (flext-ldap lane): `CI=Y make check WHAT=all` ran
+        lint pyright security markdown smells; `CI=N make check WHAT=all`
+        ran pyrefly mypy. The test states that observed contract.
+        """
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
         result = FlextInfraWorkspaceChecker.resolve_gates([
             "lint",
@@ -77,8 +82,8 @@ class TestWorkspaceCheckerResolveGates:
             "security",
         ])
         tm.ok(result)
-        tm.that(result.value, eq=["mypy", "pyright", "security"])
-        tm.that(result.value, lacks="lint")
+        tm.that(result.value, eq=["lint", "pyright", "security"])
+        tm.that(result.value, lacks="mypy")
         tm.that(result.value, lacks="pyrefly")
 
 
@@ -108,9 +113,19 @@ class TestWorkspaceCheckerCiGateRules:
         monkeypatch.setenv(ci.variable, ci.value)
         gates = ["lint", "format", "pyrefly", "mypy", "pyright", "security"]
         expected = [gate for gate in gates if gate in ci.check_gates]
-        tm.that(expected, eq=["mypy", "pyright", "security"])
+        tm.that(expected, eq=["lint", "pyright", "security"])
         tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=expected)
+        # CI=Y is the strict complement of the declared local set: fast gates
+        # only, derived from the allowed vocabulary minus local_check_gates.
         tm.that(
             set(ci.check_gates),
-            eq={"mypy", "pyright", "security", "markdown", "smells"},
+            eq={"lint", "pyright", "security", "markdown", "smells"},
         )
+        # CI=N is exactly the declared slow set -- the whole-program type
+        # checkers -- and the two sets partition the check vocabulary.
+        tm.that(set(ci.local_check_gates), eq={"pyrefly", "mypy"})
+        tm.that(
+            set(ci.check_gates) | set(ci.local_check_gates),
+            eq=set(c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES),
+        )
+        tm.that(set(ci.check_gates) & set(ci.local_check_gates), eq=set())
