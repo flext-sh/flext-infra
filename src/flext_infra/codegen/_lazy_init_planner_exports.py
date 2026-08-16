@@ -102,9 +102,17 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 or not module_entry.module_name
             ):
                 continue
-            require_explicit_all = not (
-                context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
-                or any(part.startswith("_") for part in context.pkg_dir.parts)
+            # In public src packages, public submodules (without expected_alias) derive
+            # from their explicit __all__; non-public/private subpackages auto-discover.
+            require_explicit_all = (
+                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+                and not any(part.startswith("_") for part in context.pkg_dir.parts)
+                and not py_file.stem.startswith("_")
+                and (
+                    u.Infra.matches_root_namespace_file(py_file.name)
+                    or policy.expected_alias is not None
+                    or "." in context.current_pkg
+                )
             )
             targets = self._module_exports(
                 py_file,
