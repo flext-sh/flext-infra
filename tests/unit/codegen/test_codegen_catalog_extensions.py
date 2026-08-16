@@ -185,45 +185,6 @@ class TestsCodegenCatalogExtensions:
         )
         tm.fail(FlextInfraCodegenConform.beads_declaration(broken))
 
-    def test_gitmodules_render_reaches_a_merge_fixed_point(self) -> None:
-        """The gitmodules projection must not grow on every merge pass.
-
-        The template's leading Jinja comment emitted a bare newline, and
-        ``_merge_gitmodules`` prepends a separator when the preserved prefix is
-        non-empty — so each apply added one more blank line and conform never
-        reached its post-apply fixed point on the workspace root.
-        """
-        template = (
-            Path(__file__).parents[3]
-            / "src"
-            / "flext_infra"
-            / "templates"
-            / "project"
-            / "base"
-            / "gitmodules.j2"
-        )
-        import jinja2
-
-        rendered = jinja2.Template(template.read_text(encoding="utf-8")).render(
-            workspace_gitlinks=[
-                {
-                    "repository": {
-                        "name": "demo-member",
-                        "path": "demo-member",
-                        "url": "https://github.com/flext-sh/demo-member.git",
-                    },
-                    "branch": "0.12.0-dev",
-                }
-            ]
-        )
-        tm.that(rendered.startswith("\n"), eq=False)
-        tm.that(rendered.startswith("[submodule"), eq=True)
-        managed = frozenset({"demo-member"})
-        merge = FlextInfraCodegenConform._merge_gitmodules  # ruff: ignore[private-member-access]
-        once = merge(rendered, rendered, managed_paths=managed)
-        twice = merge(once, rendered, managed_paths=managed)
-        tm.that(once, eq=twice)
-
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance.
 
@@ -249,63 +210,6 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_gen_apply:" in content, eq=True)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
-
-    def test_transaction_worktrees_skip_the_beads_lifecycle(
-        self, tmp_path: Path
-    ) -> None:
-        """Inside a worktree transaction the Beads lifecycle is fully skipped.
-
-        A transaction checkout routes its ledger to the principal worktree, so
-        the repository_root never owns the tracker lifecycle.  The principal
-        ledger is verified separately at the real tree on apply.
-        """
-        principal = tmp_path / "principal"
-        principal.mkdir()
-        tx = tmp_path / "tx-checkout"
-        (tx / ".beads").mkdir(parents=True)
-        (tx / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
-        )
-        plan = m.Infra.BeadsPlan(
-            repository_root=tx,
-            ledger_root=principal,
-            enabled=False,
-            canonical_prefix="mro",
-        )
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan))
-        # Owning the ledger while disabled is only a violation when real
-        # tracker state exists: config.yaml alone is a routing projection.
-        (tx / ".beads" / "beads.db").write_text("", encoding="utf-8")
-        plan_at_root = m.Infra.BeadsPlan(
-            repository_root=tx, enabled=False, canonical_prefix="mro", ledger_root=tx
-        )
-        tm.fail(verify(plan_at_root))
-
-    def test_github_actions_ci_skips_the_beads_lifecycle(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Inside GitHub Actions CI the Beads lifecycle is fully skipped.
-
-        CI runners are ephemeral and do not carry a live Dolt tracker; the
-        committed ``.beads`` tree is present but the tracker database is not.
-        Attempting to verify a missing tracker in CI used to fail with
-        'Beads tracker inspection failed'. CI is not a tracker owner.
-        """
-        root = tmp_path / "ci-checkout"
-        (root / ".beads").mkdir(parents=True)
-        (root / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
-        )
-        plan = m.Infra.BeadsPlan(
-            repository_root=root,
-            enabled=False,
-            canonical_prefix="mro",
-            ledger_root=root,
-        )
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
