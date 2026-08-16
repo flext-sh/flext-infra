@@ -1092,15 +1092,6 @@ Infra:
       - path: .mise.toml
         owner: codegen
         policy: full
-      # The markdown gate reads these projections of tooling.yaml markdown
-      # rules/excludes; without a managed owner an EXISTING repository never
-      # receives them and the gate runs on rumdl defaults (mass MD013 noise).
-      - path: .markdownlint.json
-        owner: codegen
-        policy: full
-      - path: .markdownlintignore
-        owner: codegen
-        policy: full
       - path: .pre-commit-config.yaml
         owner: pre-commit
         policy: full
