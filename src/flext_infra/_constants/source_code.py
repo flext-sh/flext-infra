@@ -632,8 +632,8 @@ class FlextInfraConstantsSourceCode:
     # --- Lint output parsing patterns ---
     LINE_COL_RE: Final[t.RegexPattern] = re.compile(r":\d+(?::\d+)?")
     "Regex: line:col or line:col:col reference in lint output."
-    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s+\|")
-    "Regex: code frame lines (e.g. '  5 | ...' from ruff output)."
+    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s*[|+-]")
+    "Regex: code/suggestion frame lines ('5 | code', '5 + added', '5 - removed')."
     CODE_FRAME_BODY_RE: Final[t.RegexPattern] = re.compile(r"^\s*\|")
     "Regex: code frame continuation lines."
     UNUSED_IMPORT_RE: Final[t.RegexPattern] = re.compile(

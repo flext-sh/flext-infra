@@ -145,8 +145,10 @@ class FlextInfraRefactorMROImportRewriter(
                     gates=request.gates,
                 )
                 if not ok:
+                    # Never truncate: the failure cause (NEW <tool> errors /
+                    # pytest failure) is appended AFTER the diff lines.
                     errors.extend(
-                        f"{file_path}: {line.strip()}" for line in report[:10]
+                        f"{file_path}: {line.strip()}" for line in report
                     )
                     continue
             rewrites.append(

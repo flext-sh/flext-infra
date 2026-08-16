@@ -1682,6 +1682,20 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class MarkdownlintRenderSpec(_ConfigContract):
+        """Typed input for the generated markdown lint projections.
+
+        The markdown templates read only the tooling policy, so their render
+        input carries exactly that: requiring the full project context made
+        the standalone flext-infra checkout fail (`workspace has no project
+        metadata`) for a file that never consumes project metadata.
+        """
+
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical validated tooling policy"),
+        ]
+
     class SgconfigRenderSpec(_ConfigContract):
         """Typed input for the generated ast-grep project config.
 
