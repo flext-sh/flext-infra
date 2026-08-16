@@ -13,8 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from flext_infra.cli import main as infra_main
+from flext_infra import config, main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -104,6 +103,97 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
 
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
+
+    def _conform_with_rendered_makefile(
+        self, root: Path, monkeypatch: pytest.MonkeyPatch, suffix: str
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Apply conform with ``suffix`` appended to the rendered Makefile."""
+        distribution = test_u.Tests.repository_ref(config.Infra.name).distribution
+        (root / "pyproject.toml").write_text(
+            f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n',
+            encoding="utf-8",
+        )
+        package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        package_init.write_text("", encoding="utf-8")
+        original_render = u.Cli.template_render
+
+        def _render(path: Path, context: p.Model) -> p.Result[str]:
+            rendered = original_render(path, context)
+            if rendered.failure or path.name != f"{c.Infra.MAKEFILE_FILENAME}.j2":
+                return rendered
+            return r[str].ok(f"{rendered.value}{suffix}")
+
+        monkeypatch.setattr(u.Cli, "template_render", _render)
+        return FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+    def test_rendered_conflict_marker_is_rejected_before_target_changes(
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        root = infra_git_repo
+        target = root / c.Infra.MAKEFILE_FILENAME
+        original = "existing generated makefile\n"
+        target.write_text(original, encoding="utf-8")
+
+        rejected = self._conform_with_rendered_makefile(
+            root, monkeypatch, "\n<<<<<<< incoming\n"
+        )
+
+        tm.fail(rejected)
+        tm.that(rejected.error, has="base/Makefile.j2")
+        tm.that(rejected.error, has=str(target))
+        tm.that(rejected.error, has=str(root))
+        tm.that(target.read_text(encoding="utf-8"), eq=original)
+
+        monkeypatch.undo()
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        applied = FlextInfraCodegenConform.execute_request(request)
+        tm.ok(applied)
+        tm.that(target.read_text(encoding="utf-8"), lacks="<<<<<<< ")
+        fixed_point = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+        )
+        tm.ok(fixed_point)
+        tm.that(fixed_point.value.written_files, eq=())
+
+    def test_setext_underline_is_accepted_as_ordinary_content(
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A Markdown Setext underline is content, so conform must not reject it."""
+        applied = self._conform_with_rendered_makefile(
+            infra_git_repo, monkeypatch, "\n# Title\n=======\n"
+        )
+
+        tm.ok(applied)
+
+    def test_diff3_ancestor_fence_is_rejected_before_target_changes(
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A diff3 merge leaves an ancestor fence that must stop the plan."""
+        target = infra_git_repo / c.Infra.MAKEFILE_FILENAME
+        original = "existing generated makefile\n"
+        target.write_text(original, encoding="utf-8")
+
+        rejected = self._conform_with_rendered_makefile(
+            infra_git_repo, monkeypatch, "\n||||||| base\nancestor\n"
+        )
+
+        tm.fail(rejected)
+        tm.that(rejected.error, has="||||||| base")
+        tm.that(target.read_text(encoding="utf-8"), eq=original)
 
     def test_apply_recovers_declared_managed_pyproject_conflict(
         self, infra_git_repo: Path
@@ -230,14 +320,10 @@ class TestCodegenConform:
 
         tm.that(merging_current.ancestor, eq=True)
 
-    # Exemplar: a genuine end-to-end scenario -- scaffold a project, then run
-    # its console entry point in a fresh interpreter -- legitimately costs more
-    # than the suite-wide 30s budget, because importing the generated package's
-    # dependency chain dominates. Declaring the real budget with an explicit
-    # marker and timeout keeps the scenario honest instead of hiding it behind
-    # a global timeout bump that would mask genuine hangs elsewhere.
+    # This end-to-end scenario scaffolds a project and runs its console entry
+    # point in a fresh interpreter. The slow marker opts into the single
+    # config-owned slow-item budget; tests must not restate that policy locally.
     @pytest.mark.slow
-    @pytest.mark.timeout(180)
     @pytest.mark.parametrize(
         ("kind", "name"),
         [
@@ -371,14 +457,12 @@ class TestCodegenConform:
     ) -> None:
         """The gen verb converges for a Python root beyond declarative env_dirs.
 
-        ``make gen`` runs conform and then the deps modernizer over the same
-        manifest. Two derivations used to select the pyright execution
-        environments: the modernizer discovered roots ON DISK, while conform
-        planned them from the declarative ``env_dirs``. A project owning a
-        Python directory outside that list therefore had the environment
-        appended by the modernizer and erased by conform, so apply rewrote the
-        manifest forever and the next check reported permanent drift. One owner
-        must decide, so the extra root survives a whole gen cycle.
+        Two derivations used to select the pyright execution environments: the
+        dependency command discovered roots ON DISK, while conform planned them
+        from declarative ``env_dirs``. A project owning a Python directory
+        outside that list therefore oscillated between two writers. Conform is
+        the sole generation owner, so it must discover and preserve the extra
+        root by itself and immediately reach a fixed point.
         """
         root = infra_git_repo
         dist = test_u.Tests.repository_ref(config.Infra.name).distribution
@@ -421,13 +505,6 @@ class TestCodegenConform:
             )
         )
         tm.ok(applied)
-        # gen runs the modernizer over the same manifest right after conform, so
-        # the fixed point belongs to the pair, never to conform alone.
-        tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=root, apply_changes=True
-            ).execute()
-        )
 
         fixed_point = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
@@ -1297,20 +1374,14 @@ class TestScriptDispatchMakefile:
         tm.that("_builtin_gen_apply" in phony_line, eq=True)
         # Both handlers drive the conform engine (CLI namespace is unchanged).
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
-        tm.that("codegen conform" in gen_check_body, eq=True)
+        tm.that(gen_check_body.count("codegen conform"), eq=1)
         tm.that("--mode check" in gen_check_body, eq=True)
-        tm.that(
-            'codegen init --workspace "$(PROJECT_ROOT)" --check' in gen_check_body,
-            eq=True,
-        )
+        tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
-        tm.that("codegen conform" in gen_all_body, eq=True)
+        tm.that(gen_all_body.count("codegen conform"), eq=1)
         tm.that("--mode apply" in gen_all_body, eq=True)
-        tm.that(
-            'codegen init --workspace "$(PROJECT_ROOT)" --apply' in gen_all_body,
-            eq=True,
-        )
+        tm.that(gen_all_body, lacks=["codegen init", "deps modernize"])
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
