@@ -31,9 +31,13 @@ class TestsFlextInfraBasemkInit:
         """Import the generator explicitly from its owning submodule."""
         tm.that(FlextInfraBaseMkGenerator, none=False)
 
-    def test_root_package_has_no_flat_service_aliases(self) -> None:
-        """Keep services owned by their explicit submodules."""
-        exports = dir(basemk_module)
-        tm.that(basemk_module.__all__, eq=())
-        tm.that(exports, lacks="FlextInfraBaseMkTemplateRenderer")
-        tm.that(exports, lacks="FlextInfraBaseMkGenerator")
+    def test_root_package_exposes_only_generated_lazy_exports(self) -> None:
+        """Keep the package surface equal to the generated lazy export set."""
+        tm.that(
+            basemk_module.__all__,
+            eq=(
+                "FlextInfraBaseMkGenerator",
+                "FlextInfraBaseMkTemplateRenderer",
+                "FlextInfraCustomMkPolicy",
+            ),
+        )
