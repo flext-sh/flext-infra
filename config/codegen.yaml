@@ -347,6 +347,7 @@ Infra:
           - ".coverage.*"
       docs:
         reports_dir: .reports/docs
+        governance_authority: flext-sh/flext
         stale_github_organizations:
           - organization
       verbs:
@@ -1626,7 +1627,7 @@ Infra:
           # only. A member never runs its own pre-commit/pre-push chain — the
           # root hook validates the whole fleet in one pass, and a per-member
           # chain would re-enter make recursively on every submodule commit.
-          profiles: [workspace-root, workspace-member, standalone]
+          profiles: [workspace-root, standalone]
           delegate: render
           overwrite: false
         - source: base/README.md.j2

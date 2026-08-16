@@ -13,7 +13,6 @@ from flext_infra.protocols import p
 from flext_infra.typings import t
 
 _MINIMUM_ARTIFACT_URL_PARTS = 5
-_PATH_DECODE_ROUNDS = 3
 _REPOSITORY_URL_PARTS = 2
 
 
@@ -175,7 +174,7 @@ class FlextInfraUtilitiesRepository:
     def _fully_decoded(value: str) -> str | None:
         """Return the fully-decoded value or None past the encoding round budget."""
         decoded = value
-        for _ in range(_PATH_DECODE_ROUNDS):
+        for _ in range(c.Infra.REPOSITORY_ARTIFACT_PATH_DECODE_ROUNDS):
             next_value = unquote(decoded)
             if next_value == decoded:
                 return decoded
@@ -195,12 +194,14 @@ class FlextInfraUtilitiesRepository:
             or parsed.query
             or parsed.port is not None
         ):
-            return r.fail(
+            return r[m.Infra.RepositoryArtifactReference].fail(
                 "repository artifact URL must use credential-free HTTPS without query"
             )
         parts = parsed.path.lstrip("/").split("/")
         if len(parts) < _MINIMUM_ARTIFACT_URL_PARTS:
-            return r.fail("repository artifact URL is incomplete")
+            return r[m.Infra.RepositoryArtifactReference].fail(
+                "repository artifact URL is incomplete"
+            )
         organization, repository, kind_raw, *tail = parts
         authority = next(
             (
@@ -213,27 +214,35 @@ class FlextInfraUtilitiesRepository:
             None,
         )
         if authority is None:
-            return r.fail(
+            return r[m.Infra.RepositoryArtifactReference].fail(
                 "repository artifact URL uses an unknown repository authority"
             )
         try:
             kind = m.Infra.RepositoryArtifactKind(kind_raw)
         except ValueError:
-            return r.fail("repository artifact URL kind must be blob or tree")
+            return r[m.Infra.RepositoryArtifactReference].fail(
+                "repository artifact URL kind must be blob or tree"
+            )
         ref_parts = authority.ref.split("/")
         encoded_ref = tail[: len(ref_parts)]
         if [unquote(part) for part in encoded_ref] != ref_parts:
-            return r.fail("repository artifact URL uses the wrong configured ref")
+            return r[m.Infra.RepositoryArtifactReference].fail(
+                "repository artifact URL uses the wrong configured ref"
+            )
         path_parts = FlextInfraUtilitiesRepository._decode_path_parts(
             tail[len(ref_parts) :]
         )
         if path_parts is None:
-            return r.fail("repository artifact URL path uses noncanonical encoding")
+            return r[m.Infra.RepositoryArtifactReference].fail(
+                "repository artifact URL path uses noncanonical encoding"
+            )
         if not path_parts or any(
             not part or part in {".", ".."} or "\\" in part or "/" in part
             for part in path_parts
         ):
-            return r.fail("repository artifact URL path is not repository-relative")
+            return r[m.Infra.RepositoryArtifactReference].fail(
+                "repository artifact URL path is not repository-relative"
+            )
         reference = m.Infra.RepositoryArtifactReference(
             authority=authority,
             kind=kind,
@@ -242,8 +251,10 @@ class FlextInfraUtilitiesRepository:
         )
         canonical = FlextInfraUtilitiesRepository.repository_artifact_url(reference)
         if canonical.split("#", maxsplit=1)[0] != value.split("#", maxsplit=1)[0]:
-            return r.fail("repository artifact URL is not canonical")
-        return r.ok(reference)
+            return r[m.Infra.RepositoryArtifactReference].fail(
+                "repository artifact URL is not canonical"
+            )
+        return r[m.Infra.RepositoryArtifactReference].ok(reference)
 
     @staticmethod
     def gitmodule_branch_is_governed(

@@ -39,8 +39,8 @@ class FlextInfraReferenceExtraction:
         _FILE_LOCATOR,
         _HOME_LOCATOR,
         _VAR_LOCATOR,
-        _ABSOLUTE_LOCATOR,
         _ESCAPE_LOCATOR,
+        _ABSOLUTE_LOCATOR,
     )
 
     @classmethod
@@ -48,23 +48,12 @@ class FlextInfraReferenceExtraction:
         cls, payload: m.Infra.GitCandidatePayload
     ) -> t.SequenceOf[tuple[int, str]]:
         """Return one-based line numbers paired with each reference candidate."""
+        if not cls.is_semantic_payload(payload):
+            return ()
         text = payload.content.decode(c.Cli.ENCODING_DEFAULT)
         if payload.mode == "120000":
             return ((1, text),)
-        name = Path(payload.path).name
-        semantic_agent_file = payload.path.endswith(".prompt.md") or name in {
-            "AGENTS.md",
-            "CLAUDE.md",
-            "SKILL.md",
-            "copilot-instructions.md",
-        }
-        semantic_source = (
-            payload.path.endswith((".py", ".j2", ".md"))
-            or "/tests/" in f"/{payload.path}"
-        )
         targets: list[tuple[int, str]] = []
-        if not semantic_agent_file and not semantic_source:
-            return tuple(targets)
         in_fence = False
         for number, line in enumerate(text.splitlines(), start=1):
             if line.lstrip().startswith("```"):
@@ -74,6 +63,18 @@ class FlextInfraReferenceExtraction:
                 continue
             targets.extend((number, target) for target in cls._line_targets(line))
         return tuple(dict.fromkeys(targets))
+
+    @staticmethod
+    def is_semantic_payload(payload: m.Infra.GitCandidatePayload) -> bool:
+        """Return whether a candidate can contain governed persisted references."""
+        if payload.mode == "120000":
+            return True
+        name = Path(payload.path).name
+        return (
+            payload.path.endswith((".py", ".j2", ".md"))
+            or "/tests/" in f"/{payload.path}"
+            or name in {"AGENTS.md", "CLAUDE.md", "SKILL.md", "copilot-instructions.md"}
+        )
 
     @classmethod
     def _line_targets(cls, line: str) -> t.StrSequence:
@@ -132,6 +133,8 @@ class FlextInfraReferenceExtraction:
         if not normalized or normalized.split(":", 1)[0] in {"http", "https"}:
             return False
         if normalized.startswith(("file://", "~/", "~\\", "$", "/", "\\")):
+            return True
+        if re.match(r"^[A-Za-z]:[\\/]", normalized):
             return True
         depth = 0
         for part in (

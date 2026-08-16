@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config, m
+from flext_infra.validate.persisted_references import (
+    FlextInfraPersistedReferencesValidator,
+)
 from flext_tests import tm
 from git import Repo
 import pytest
@@ -70,6 +73,15 @@ class TestsRepositoryArtifactFoundation:
                 repository=repo.repository,
                 ref=repo.ref,
             )
+
+    @pytest.mark.parametrize("field", ["organization", "repository", "ref"])
+    def test_config_authority_rejects_path_unsafe_fields(self, field: str) -> None:
+        repo = config.Infra.codegen.repository_artifact_authorities[0]
+        values = repo.model_dump()
+        values[field] = "../escape"
+
+        with pytest.raises(ValueError, match="path-safe"):
+            m.Infra.RepositoryArtifactAuthoritySpec.model_validate(values)
 
     def test_reference_rejects_escaping_path(self) -> None:
         repo = config.Infra.codegen.repository_artifact_authorities[0]
@@ -153,11 +165,30 @@ class TestsRepositoryArtifactFoundation:
 
         result = u.Infra.git_candidate_payloads(m.Infra.GitRepoRequest(repo_root=root))
 
-        payloads = {payload.path: payload.content for payload in result.value.payloads}
-        tm.that(payloads[tracked.name], eq=b"working")
-        tm.that(payloads["untracked.md"], eq=b"untracked")
-        tm.that(payloads["authority"], eq=b"docs/AGENTS.md")
+        payloads = {payload.path: payload for payload in result.value.payloads}
+        tm.that(payloads[tracked.name].content, eq=b"working")
+        tm.that(payloads["untracked.md"].content, eq=b"untracked")
+        tm.that(payloads["authority"].content, eq=b"docs/AGENTS.md")
+        tm.that(payloads["authority"].mode, eq="120000")
         tm.that(deleted.name in payloads, eq=False)
+
+    def test_candidate_payload_uses_observed_file_mode(self, tmp_path: Path) -> None:
+        root = tmp_path / "repo"
+        root.mkdir()
+        candidate = root / "authority"
+        candidate.write_text("tracked", encoding="utf-8")
+        git = Repo.init(root)
+        git.index.add([candidate.name])
+        candidate.unlink()
+        candidate.symlink_to("docs/AGENTS.md")
+
+        result = u.Infra.git_candidate_payloads(m.Infra.GitRepoRequest(repo_root=root))
+
+        payload = next(
+            item for item in result.value.payloads if item.path == candidate.name
+        )
+        tm.that(payload.mode, eq="120000")
+        tm.that(payload.content, eq=b"docs/AGENTS.md")
 
     def test_semantic_validator_ignores_runtime_path_prose(
         self, tmp_path: Path
@@ -207,6 +238,34 @@ class TestsRepositoryArtifactFoundation:
         result = u.Infra.repository_persisted_references_validate(root, ())
 
         tm.that([issue.code for issue in result.value.issues], eq=["PREF001"])
+
+    def test_semantic_filter_skips_nonsemantic_non_utf8_payload(self) -> None:
+        payload = m.Infra.GitCandidatePayload(
+            path="image.bin", mode="100644", content=b"\xff\xfe"
+        )
+
+        issues = FlextInfraPersistedReferencesValidator.validate((payload,), (), ())
+
+        tm.that(issues, eq=())
+
+    @pytest.mark.parametrize(
+        "target", ["C:/outside/AGENTS.md", "C:\\outside\\AGENTS.md"]
+    )
+    def test_windows_drive_paths_escape_repository(self, target: str) -> None:
+        result = u.Infra.repository_persisted_references_validate_content(
+            f"[law]({target})\n", "docs/index.md", ()
+        )
+
+        tm.that([issue.code for issue in result.value.issues], eq=["PREF001"])
+
+    def test_in_memory_relative_path_must_stay_inside_repository_root(
+        self, tmp_path: Path
+    ) -> None:
+        result = u.Infra.repository_persisted_references_validate_content(
+            "[law](AGENTS.md)\n", "../outside.md", (), repository_root=tmp_path
+        )
+
+        tm.that(result.failure, eq=True)
 
     def test_public_validator_uses_explicit_authorities(self, tmp_path: Path) -> None:
         root = tmp_path / "repo"

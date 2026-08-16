@@ -735,6 +735,26 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Configured Git ref for artifacts")
         ]
 
+        @u.model_validator(mode="after")
+        def _validate_authority(self) -> Self:
+            """Reject path separators and traversal in config-owned authority fields."""
+            if not FlextInfraConfigModels.RepositoryArtifactAuthority.path_segments_safe(
+                self.organization
+            ):
+                msg = "repository artifact organization is not path-safe"
+                raise ValueError(msg)
+            if not FlextInfraConfigModels.RepositoryArtifactAuthority.path_segments_safe(
+                self.repository
+            ):
+                msg = "repository artifact repository is not path-safe"
+                raise ValueError(msg)
+            if not FlextInfraConfigModels.RepositoryArtifactAuthority.path_segments_safe(
+                self.ref
+            ):
+                msg = "repository artifact ref is not path-safe"
+                raise ValueError(msg)
+            return self
+
     class MakeCleanSpec(_ConfigContract):
         """Disposable artifacts the generated clean verb removes.
 
@@ -766,6 +786,10 @@ class FlextInfraConfigModels:
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
         ]
+        governance_authority: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Configured organization/repository governance key"),
+        ]
         stale_github_organizations: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -773,6 +797,18 @@ class FlextInfraConfigModels:
                 description="Placeholder GitHub orgs that must be rewritten",
             ),
         ] = ("organization",)
+
+        @u.model_validator(mode="after")
+        def _validate_governance_authority(self) -> Self:
+            """Require one path-safe organization/repository authority key."""
+            parts = self.governance_authority.split("/")
+            if len(parts) != 2 or not all(
+                FlextInfraConfigModels.RepositoryArtifactAuthority._safe_segment(part)
+                for part in parts
+            ):
+                msg = "make docs governance_authority must be organization/repository"
+                raise ValueError(msg)
+            return self
 
     class TestmonCacheSpec(_ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy (mro-dipb)."""
@@ -1324,7 +1360,9 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_reference(self) -> Self:
             decoded = self.path
-            for _ in range(3):
+            for _ in range(
+                FlextInfraConstantsSharedInfra.REPOSITORY_ARTIFACT_PATH_DECODE_ROUNDS
+            ):
                 next_value = unquote(decoded)
                 if next_value == decoded:
                     break
@@ -2521,6 +2559,18 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_github_artifact_ownership(self) -> Self:
             """Require one full-managed conform owner for every GitHub template."""
+            governance_organization, governance_repository = (
+                self.make.docs.governance_authority.split("/", maxsplit=1)
+            )
+            if not any(
+                authority.organization == governance_organization
+                and authority.repository == governance_repository
+                for authority in self.repository_artifact_authorities
+            ):
+                msg = (
+                    "make docs governance_authority is absent from artifact authorities"
+                )
+                raise ValueError(msg)
             github_templates = tuple(
                 Path(entry.destination)
                 for entry in self.templates.entries

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 from flext_infra import config
 from tests import m, u
+import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -145,6 +146,24 @@ class TestAuditorBrokenLinks:
             eq=True,
         )
 
+    @pytest.mark.parametrize("target", ["/outside.md", "../../outside.md"])
+    def test_broken_link_issues_rejects_every_scope_escape(
+        self, tmp_path: Path, target: str
+    ) -> None:
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True)
+        (docs_dir / "test.md").write_text(f"[escape]({target})", encoding="utf-8")
+        scope = m.Infra.DocScope(
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
+        )
+
+        issues = u.Infra.docs_broken_link_issues(scope)
+
+        tm.that(
+            any(issue.issue_type == "cross_project_relative_link" for issue in issues),
+            eq=True,
+        )
+
     def test_broken_link_issues_skips_some_text(self, tmp_path: Path) -> None:
         """Test docs_broken_link_issues skips plain text brackets."""
         docs_dir = tmp_path / "docs"
@@ -185,6 +204,18 @@ class TestAuditorGithubLinks:
         issues = u.Infra.docs_broken_link_issues(scope)
         types = {issue.issue_type for issue in issues}
         tm.that("invalid_github_artifact_reference" in types, eq=True)
+
+    def test_stale_organization_policy_is_consumed(self) -> None:
+        placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
+
+        issues = u.Infra.docs_github_link_issues(
+            file="docs/test.md",
+            line_number=1,
+            raw="placeholder",
+            target=f"https://github.com/{placeholder}/repo/blob/main/README.md",
+        )
+
+        tm.that(issues[0].message, has="placeholder GitHub organization")
 
     def test_github_wrong_branch(self, tmp_path: Path) -> None:
         """Wrong working-line branch is reported for governed repos."""

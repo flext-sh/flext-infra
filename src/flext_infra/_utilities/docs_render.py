@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, config, m, t
+from flext_infra import c, m, t
 from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 
 
@@ -103,24 +103,16 @@ class FlextInfraUtilitiesDocsRender:
         return f"{relative}.md"
 
     @staticmethod
-    def _resolve_governance_link(
-        prefix: str, path: str, *, is_dir: bool = False
-    ) -> str:
-        """Return a resolvable governance link for README or project docs.
-
-        READMEs render on GitHub and can use relative paths; generated
-        ``docs/index.md`` pages are built by MkDocs with ``docs_dir`` isolation,
-        so governance pointers must be absolute GitHub URLs.
-        """
-        if prefix.startswith(("http://", "https://")):
-            url = FlextInfraUtilitiesDocsGithubLinks.docs_canonical_github_url(
-                "flext-sh", "flext", path, is_dir=is_dir
-            )
-            if url is None:
-                msg = f"unconfigured FLEXT governance artifact: {path}"
-                raise ValueError(msg)
-            return url
-        return f"{prefix}/{path}"
+    def _resolve_governance_link(path: str, *, is_dir: bool = False) -> str:
+        """Return the configured canonical URL for one governance artifact."""
+        governance = FlextInfraUtilitiesDocsGithubLinks.docs_governance_repository()
+        url = FlextInfraUtilitiesDocsGithubLinks.docs_canonical_github_url(
+            governance.organization, governance.repository, path, is_dir=is_dir
+        )
+        if url is None:
+            msg = f"unconfigured FLEXT governance artifact: {path}"
+            raise ValueError(msg)
+        return url
 
     @staticmethod
     def _exclude_plugin_lines(data: t.JsonMapping) -> t.SequenceOf[str]:
@@ -169,17 +161,6 @@ class FlextInfraUtilitiesDocsRender:
             ],
         )
 
-    _LINK_PREFIX_DOCS_INDEX: ClassVar[str] = c.Infra.GITHUB_REPO_URL
-    """Link prefix for ``<project>/docs/index.md`` governance pointers.
-
-    Uses the canonical GitHub URL so MkDocs can resolve the pointers during
-    per-project builds; files under ``docs_dir`` cannot point outside the
-    project docs tree with relative paths.
-    """
-
-    _LINK_PREFIX_README: ClassVar[str] = c.Infra.GITHUB_REPO_URL
-    """Canonical governance URL shared by workspace and standalone READMEs."""
-
     @staticmethod
     def _public_surface_lines(scope: m.Infra.DocScope) -> t.SequenceOf[str]:
         """Return the canonical public-surface block — mkdocstrings autodoc.
@@ -200,9 +181,7 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _collection_rules_lines(
-        scope: m.Infra.DocScope, *, link_prefix: str
-    ) -> t.SequenceOf[str]:
+    def _collection_rules_lines(scope: m.Infra.DocScope) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Collection Rules.
 
         SSOT: the actual content lives in ``flext/AGENTS.md`` §9 — duplicating
@@ -214,7 +193,7 @@ class FlextInfraUtilitiesDocsRender:
         """
         _ = scope
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "AGENTS.md"
+            "AGENTS.md"
         )
         return [
             "## Collection Rules",
@@ -224,14 +203,14 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
+    def _quality_gates_lines() -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Quality Gates surface.
 
         Why: mro-4p0t — flext-quality-gates skill path does not exist; route to
         make-check and AGENTS.md Make contract instead.
         """
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "AGENTS.md"
+            "AGENTS.md"
         )
         return [
             "## Quality Gates",
@@ -245,19 +224,19 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _governance_pointer_lines(*, link_prefix: str) -> t.SequenceOf[str]:
+    def _governance_pointer_lines() -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical governance surface."""
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "AGENTS.md"
+            "AGENTS.md"
         )
         skills_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, ".agents/skills/", is_dir=True
+            ".agents/skills/", is_dir=True
         )
         onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "docs/guides/onboarding.md"
+            "docs/guides/onboarding.md"
         )
         governance_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "docs/GOVERNANCE.md"
+            "docs/GOVERNANCE.md"
         )
         return [
             "## Governance Pointer",
@@ -274,7 +253,6 @@ class FlextInfraUtilitiesDocsRender:
         data = contract
         version = str(data.get("version", "")).strip() or "unknown"
         description = str(data.get("description", "")).strip() or "_not declared_"
-        link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_DOCS_INDEX
         return FlextInfraUtilitiesDocsRender._generated_page(
             f"{scope.name} Documentation",
             [
@@ -296,17 +274,11 @@ class FlextInfraUtilitiesDocsRender:
                 "",
                 *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
                 "",
-                *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                    scope, link_prefix=link_prefix
-                ),
+                *FlextInfraUtilitiesDocsRender._collection_rules_lines(scope),
                 "",
-                *FlextInfraUtilitiesDocsRender._quality_gates_lines(
-                    link_prefix=link_prefix
-                ),
+                *FlextInfraUtilitiesDocsRender._quality_gates_lines(),
                 "",
-                *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                    link_prefix=link_prefix
-                ),
+                *FlextInfraUtilitiesDocsRender._governance_pointer_lines(),
             ],
         )
 
@@ -324,7 +296,6 @@ class FlextInfraUtilitiesDocsRender:
         version = str(data.get("version", "")).strip() or "unknown"
         description = str(data.get("description", "")).strip() or "_not declared_"
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
-        link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
         return FlextInfraUtilitiesDocsRender._render_markdown([
             f"# {scope.name}",
             "",
@@ -347,9 +318,7 @@ class FlextInfraUtilitiesDocsRender:
             "",
             *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
             "",
-            *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                scope, link_prefix=link_prefix
-            ),
+            *FlextInfraUtilitiesDocsRender._collection_rules_lines(scope),
             "",
             "## Operation Flow",
             "",
@@ -363,13 +332,9 @@ class FlextInfraUtilitiesDocsRender:
             f"- Public extensions exposed by this project: {FlextInfraUtilitiesDocsRender._preview(facades)}.",
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",
-            *FlextInfraUtilitiesDocsRender._quality_gates_lines(
-                link_prefix=link_prefix
-            ),
+            *FlextInfraUtilitiesDocsRender._quality_gates_lines(),
             "",
-            *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                link_prefix=link_prefix
-            ),
+            *FlextInfraUtilitiesDocsRender._governance_pointer_lines(),
             "- Full project portal: [`docs/index.md`](docs/index.md).",
             "",
         ])

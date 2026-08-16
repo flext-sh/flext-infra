@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_tests import tm
@@ -210,6 +210,32 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     tm.ok(second)
     tm.that([report.generated for report in second.value], eq=[0, 0])
     tm.that((project / "README.md").read_text(encoding="utf-8"), eq=first_readme)
+
+
+def test_generated_governance_links_use_configured_authority(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+    organization, repository = (
+        config.Infra.codegen.make.docs.governance_authority.split("/", maxsplit=1)
+    )
+    governance = next(
+        authority
+        for authority in config.Infra.codegen.repository_artifact_authorities
+        if authority.organization == organization and authority.repository == repository
+    )
+
+    tm.ok(
+        FlextInfraDocGenerator().generate(
+            m.Infra.DocsGenerateRequest(
+                workspace_root=workspace, projects=["flext-a"], apply=True
+            )
+        )
+    )
+
+    readme = (workspace / "flext-a/README.md").read_text(encoding="utf-8")
+    tm.that(
+        readme,
+        has=f"https://github.com/{governance.organization}/{governance.repository}/blob/{governance.ref}/AGENTS.md",
+    )
 
 
 def test_generated_markdown_starts_with_level_one_heading(tmp_path: Path) -> None:

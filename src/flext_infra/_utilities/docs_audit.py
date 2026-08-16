@@ -136,22 +136,6 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                     clean_line
                 ):
                     target = FlextInfraUtilitiesDocsAudit.docs_normalize_link(raw)
-                    resolved = (md_file.parent / target).resolve()
-                    if target.startswith("../") and not resolved.is_relative_to(
-                        scope.path.resolve()
-                    ):
-                        issues.append(
-                            m.Infra.AuditIssue(
-                                file=rel,
-                                issue_type="cross_project_relative_link",
-                                severity="high",
-                                message=(
-                                    f"line {number}: cross-project links require an "
-                                    f"absolute repository URL -> {raw}"
-                                ),
-                            )
-                        )
-                        continue
                     if not target or target.startswith("#"):
                         continue
                     if FlextInfraUtilitiesDocsAudit.docs_is_external(target):
@@ -165,7 +149,21 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                         raw, target
                     ):
                         continue
-                    if not (md_file.parent / target).resolve().exists():
+                    resolved = (md_file.parent / target).resolve()
+                    if not resolved.is_relative_to(scope.path.resolve()):
+                        issues.append(
+                            m.Infra.AuditIssue(
+                                file=rel,
+                                issue_type="cross_project_relative_link",
+                                severity="high",
+                                message=(
+                                    f"line {number}: cross-project links require an "
+                                    f"absolute repository URL -> {raw}"
+                                ),
+                            )
+                        )
+                        continue
+                    if not resolved.exists():
                         issues.append(
                             m.Infra.AuditIssue(
                                 file=rel,

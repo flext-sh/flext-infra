@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import m, t
+from flext_infra import c, m, t
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra.validate.reference_extraction import FlextInfraReferenceExtraction
 
@@ -20,6 +20,8 @@ class FlextInfraPersistedReferencesValidator:
         """Return deterministic diagnostics for explicit candidate references."""
         issues: list[m.Infra.Issue] = []
         for payload in payloads:
+            if not FlextInfraReferenceExtraction.is_semantic_payload(payload):
+                continue
             for line_number, target in FlextInfraReferenceExtraction.targets(payload):
                 if FlextInfraReferenceExtraction.escapes_repository(
                     payload.path, target, template_entries
@@ -29,12 +31,12 @@ class FlextInfraPersistedReferencesValidator:
                             file=payload.path,
                             line=line_number,
                             column=1,
-                            code="PREF001",
+                            code=c.Infra.PERSISTED_REFERENCE_ESCAPE_CODE,
                             message="artifact reference escapes repository authority",
                         )
                     )
                     continue
-                if not target.startswith("https://github.com/"):
+                if not target.startswith(c.Infra.REPOSITORY_ARTIFACT_GITHUB_PREFIX):
                     continue
                 parsed = FlextInfraUtilitiesRepository.repository_artifact_parse(
                     target, authorities
@@ -45,7 +47,7 @@ class FlextInfraPersistedReferencesValidator:
                             file=payload.path,
                             line=line_number,
                             column=1,
-                            code="PREF002",
+                            code=c.Infra.PERSISTED_REFERENCE_AUTHORITY_CODE,
                             message=parsed.error
                             or "invalid repository artifact reference",
                         )

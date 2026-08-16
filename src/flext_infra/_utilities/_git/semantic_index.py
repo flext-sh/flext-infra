@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import stat
 from typing import TYPE_CHECKING
 
 from git import BaseIndexEntry, GitCommandError, Repo
@@ -107,21 +108,26 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
     ) -> m.Infra.GitCandidatePayload | None:
         root = Path(repo.working_tree_dir or repo.git_dir)
         candidate = root / path
-        if mode == "120000":
-            if not candidate.is_symlink():
-                return None
+        if candidate.is_symlink():
+            observed_mode = "120000"
             content = candidate.readlink().as_posix().encode(c.Cli.ENCODING_DEFAULT)
         elif candidate.is_file():
+            observed_mode = (
+                "100755" if candidate.stat().st_mode & stat.S_IXUSR else "100644"
+            )
             content = candidate.read_bytes()
         elif oid and FlextInfraUtilitiesGitSemanticIndexMixin._uses_index_payload(
             repo, path
         ):
+            observed_mode = mode
             content = repo.odb.stream(bytes.fromhex(oid)).read()
         else:
             return None
         if b"\0" in content:
             return None
-        return m.Infra.GitCandidatePayload(path=path, mode=mode, content=content)
+        return m.Infra.GitCandidatePayload(
+            path=path, mode=observed_mode, content=content
+        )
 
     @staticmethod
     def _uses_index_payload(repo: Repo, path: str) -> bool:

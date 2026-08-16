@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import config, m, t
+from flext_infra import c, config, m, t
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 
@@ -20,6 +20,20 @@ class FlextInfraUtilitiesDocsGithubLinks:
     def docs_github_repos() -> tuple[m.Infra.RepositoryArtifactAuthoritySpec, ...]:
         """Return the typed GitHub repo map from make.docs SSOT."""
         return config.Infra.codegen.repository_artifact_authorities
+
+    @staticmethod
+    def docs_governance_repository() -> m.Infra.RepositoryArtifactAuthoritySpec:
+        """Return the configured authority selected for governance artifacts."""
+        organization, repository = (
+            config.Infra.codegen.make.docs.governance_authority.split("/", maxsplit=1)
+        )
+        configured = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
+            organization, repository
+        )
+        if configured is None:
+            msg = "canonical governance repository is not configured"
+            raise ValueError(msg)
+        return configured
 
     @staticmethod
     def docs_stale_github_organizations() -> frozenset[str]:
@@ -124,8 +138,21 @@ class FlextInfraUtilitiesDocsGithubLinks:
         *, file: str, line_number: int, raw: str, target: str
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Emit audit issues for unconfigured or non-canonical GitHub doc URLs."""
-        if not target.startswith("https://github.com/"):
+        if not target.startswith(c.Infra.REPOSITORY_ARTIFACT_GITHUB_PREFIX):
             return ()
+        organization = target.removeprefix(
+            c.Infra.REPOSITORY_ARTIFACT_GITHUB_PREFIX
+        ).partition("/")[0]
+        if (
+            organization
+            in FlextInfraUtilitiesDocsGithubLinks.docs_stale_github_organizations()
+        ):
+            return FlextInfraUtilitiesDocsGithubLinks._invalid_reference_issue(
+                file=file,
+                line_number=line_number,
+                raw=raw,
+                error="placeholder GitHub organization is forbidden",
+            )
         parsed = FlextInfraUtilitiesRepository.repository_artifact_parse(
             target, FlextInfraUtilitiesDocsGithubLinks.docs_artifact_authorities()
         )

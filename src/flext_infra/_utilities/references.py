@@ -45,13 +45,18 @@ class FlextInfraUtilitiesReferences:
     ) -> p.Result[m.Infra.PersistedReferenceValidationReport]:
         """Validate one in-memory persisted artifact before it is written."""
         normalized_path = Path(path)
-        if repository_root is not None and normalized_path.is_absolute():
-            try:
-                normalized_path = normalized_path.relative_to(repository_root.resolve())
-            except ValueError:
+        if repository_root is not None:
+            resolved_root = repository_root.resolve()
+            resolved_path = (
+                normalized_path.resolve()
+                if normalized_path.is_absolute()
+                else (resolved_root / normalized_path).resolve()
+            )
+            if not resolved_path.is_relative_to(resolved_root):
                 return r[m.Infra.PersistedReferenceValidationReport].fail(
                     "content path must be inside repository_root"
                 )
+            normalized_path = resolved_path.relative_to(resolved_root)
         payload = m.Infra.GitCandidatePayload(
             path=normalized_path.as_posix(), mode="100644", content=content.encode()
         )

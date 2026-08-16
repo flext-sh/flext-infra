@@ -154,6 +154,12 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
+    REPOSITORY_ARTIFACT_GITHUB_PREFIX: Final[str] = "https://github.com/"
+    "Canonical prefix for configured GitHub repository artifact URLs."
+    REPOSITORY_ARTIFACT_PATH_DECODE_ROUNDS: Final[int] = 3
+    "Maximum percent-decoding rounds accepted at the artifact path boundary."
+    PERSISTED_REFERENCE_ESCAPE_CODE: Final[str] = "PREF001"
+    PERSISTED_REFERENCE_AUTHORITY_CODE: Final[str] = "PREF002"
     BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
