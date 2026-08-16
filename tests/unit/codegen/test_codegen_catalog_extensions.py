@@ -6,10 +6,10 @@ import tomllib
 from pathlib import Path
 
 import pytest
-
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
+
 from tests import u
 
 
@@ -219,7 +219,7 @@ class TestsCodegenCatalogExtensions:
         tm.that(rendered.startswith("\n"), eq=False)
         tm.that(rendered.startswith("[submodule"), eq=True)
         managed = frozenset({"demo-member"})
-        merge = FlextInfraCodegenConform._merge_gitmodules  # ruff: ignore[private-member-access]
+        merge = FlextInfraCodegenConform._merge_gitmodules
         once = merge(rendered, rendered, managed_paths=managed)
         twice = merge(once, rendered, managed_paths=managed)
         tm.that(once, eq=twice)
@@ -272,7 +272,7 @@ class TestsCodegenCatalogExtensions:
             enabled=False,
             canonical_prefix="mro",
         )
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
+        verify = FlextInfraCodegenConform._verify_beads_plan
         tm.ok(verify(plan))
         # Owning the ledger while disabled is only a violation when real
         # tracker state exists: config.yaml alone is a routing projection.
@@ -304,7 +304,7 @@ class TestsCodegenCatalogExtensions:
             ledger_root=root,
         )
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
+        verify = FlextInfraCodegenConform._verify_beads_plan
         tm.ok(verify(plan))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
@@ -312,6 +312,9 @@ class TestsCodegenCatalogExtensions:
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
         )
 
+    # Why (suite budget): plans TWO repositories through full conform (platform
+    # root + member) on real trees; the per-case wall only holds on an idle CPU.
+    @pytest.mark.slow
     def test_local_manifest_conforms_without_global_repository_rows(
         self, tmp_path: Path
     ) -> None:

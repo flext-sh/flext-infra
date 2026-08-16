@@ -546,6 +546,9 @@ class TestCodegenConform:
         )
         tm.that(payload["tool"]["pyright"]["include"], lacks="scripts")
 
+    # Why (suite budget): two conform apply cycles plus a check over a full
+    # managed tree on a real git repo; the per-case wall only holds idle.
+    @pytest.mark.slow
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
         self, infra_git_repo: Path
     ) -> None:
@@ -896,7 +899,7 @@ class TestCodegenConform:
 
     # Why (suite budget): parametrized over both conform modes, each running a
     # full plan/apply cycle on a real git repo; 10s only holds on an idle CPU.
-
+    @pytest.mark.slow
     @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
@@ -927,6 +930,9 @@ class TestCodegenConform:
         status = tm.ok(u.Cli.capture(["git", "status", "--porcelain"], cwd=root))
         tm.that(status, eq="")
 
+    # Why (suite budget): dependencies-only apply+check runs two full conform
+    # cycles on a real git repo; the per-case wall only holds on an idle CPU.
+    @pytest.mark.slow
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
     ) -> None:
