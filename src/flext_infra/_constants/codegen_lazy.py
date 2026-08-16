@@ -72,6 +72,17 @@ class FlextInfraConstantsCodegenLazy:
     # them, so their private package initializer is always side-effect free.
     PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
     "Private pytest-plugin package whose generated initializer stays empty."
+    # The generated bootstrap opens with `from flext_core.lazy import ...`, so a
+    # package that `flext_core.lazy` itself reaches at module scope cannot carry
+    # one: importing it would re-enter the module that is still initializing and
+    # fail with "cannot import name 'build_lazy_import_map' from partially
+    # initialized module 'flext_core.lazy'". `flext_core.lazy` pulls
+    # `._lazy_parts`, which pulls `._typings`, which reaches the other private
+    # facets, so the whole private surface of the bootstrap-owning distribution
+    # keeps side-effect-free initializers. Private packages of every OTHER
+    # distribution import the bootstrap normally and are unaffected.
+    LAZY_BOOTSTRAP_ROOT_PACKAGE: Final[str] = "flext_core"
+    "Distribution root that defines the lazy bootstrap the template imports."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE
