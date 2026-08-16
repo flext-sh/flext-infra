@@ -785,7 +785,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(test_source, has="only_for_tests")
         # Free functions are lazy exports only for fixture modules, so the
         # regenerated init keeps the generated shape without function names.
-        tm.that(init_source, has="_LAZY_MODULES")
+        tm.that(init_source, has="build_lazy_import_map(")
         tm.that(init_source, lacks="helper_used")
         tm.that(helpers_source, has="helper_used")
         tm.that(_parse_source_ast(init_source), none=False)
@@ -898,7 +898,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(clone_helpers.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_init.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_test.read_text(encoding="utf-8"), has="only_for_tests")
-        tm.that(clone_init.read_text(encoding="utf-8"), has="_LAZY_MODULES")
+        tm.that(clone_init.read_text(encoding="utf-8"), has="build_lazy_import_map(")
 
         report_result = FlextInfraRefactorCensus(
             workspace_root=clone,

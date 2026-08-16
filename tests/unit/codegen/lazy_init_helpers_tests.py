@@ -345,10 +345,10 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(self._generated_exports(package_root), eq=first)
         tm.that(first, lacks='"._constants"')
 
-    def test_tests_root_remains_outside_production_codegen(
+    def test_tests_root_is_generated_by_the_same_default_pass(
         self, tmp_path: Path
     ) -> None:
-        """Leave test package initializers untouched by production codegen."""
+        """Generate the tests root initializer alongside production packages."""
         workspace_root, _package_root = self._workspace(tmp_path)
         tests_root = workspace_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
@@ -378,9 +378,10 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): test code is validated by its own gates, not
-        # rewritten by the production-root generator.
-        tm.that(init_content, empty=True)
+        # Operator law 2026-08-16: lazy init generates EVERY Python package
+        # dir (src, tests, scripts, examples, ...) with no surface exclusion.
+        tm.that(init_content, contains="install_lazy_exports(")
+        tm.that(init_content, contains="TestsFlextDemoConstants")
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
         check_service = u.Tests.create_lazy_init_service(workspace_root)
@@ -636,10 +637,10 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports, has='".git": ("FlextDemoGitService",)')
         tm.that(exports, has='".work": ("FlextDemoWorkService",)')
 
-    def test_nested_tests_namespace_exports_local_symbols_only(
+    def test_nested_tests_namespace_is_generated_with_local_symbols(
         self, tmp_path: Path
     ) -> None:
-        """Leave nested test namespaces unchanged by production codegen."""
+        """Generate nested test namespaces exporting their local symbols."""
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.RESULT_PY).write_text(
             "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
@@ -667,8 +668,11 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): nested tests remain explicit handwritten code.
-        tm.that(init_content, empty=True)
+        # Operator law 2026-08-16: every Python package dir is generated;
+        # nested test namespaces export their LOCAL symbols only.
+        tm.that(init_content, contains="TestsFlextDemoUnitConstants")
+        tm.that(init_content, contains="TestsFlextDemoUnitModels")
+        tm.that(init_content, lacks="FlextDemoResult")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 
     def test_root_rejects_symbols_from_deep_descendant_packages(

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import difflib
 import os
 import sys
 import tomllib
@@ -20,7 +21,7 @@ from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import c, m, u
+from tests import c, m, p, u
 from tests import u as test_u
 
 
@@ -321,9 +322,11 @@ class TestCodegenConform:
         tm.that(merging_current.ancestor, eq=True)
 
     # This end-to-end scenario scaffolds a project and runs its console entry
-    # point in a fresh interpreter. The slow marker opts into the single
-    # config-owned slow-item budget; tests must not restate that policy locally.
+    # point in a fresh interpreter. The slow marker opts into the config-owned
+    # slow-case contract (tooling.yaml: 60s for an explicitly slow case); the
+    # explicit timeout marker is how pytest-timeout consumes that contract.
     @pytest.mark.slow
+    @pytest.mark.timeout(60)
     @pytest.mark.parametrize(
         ("kind", "name"),
         [
@@ -984,6 +987,19 @@ class TestCodegenConform:
             tuple(file.path.name for file in planned.value.files),
             eq=("pyproject.toml",),
         )
+        # The CHECK plan must agree byte-for-byte with what APPLY wrote; a
+        # mismatch here is the root cause behind 'codegen drift detected'.
+        planned_file = planned.value.files[0]
+        on_disk = (root / "pyproject.toml").read_text(encoding="utf-8")
+        if planned_file.rendered != on_disk:
+            expected_lines = planned_file.rendered.splitlines(keepends=True)
+            disk_lines = on_disk.splitlines(keepends=True)
+            delta = "".join(
+                difflib.unified_diff(
+                    disk_lines, expected_lines, "on-disk", "check-render"
+                )
+            )
+            raise AssertionError(f"check plan diverges from apply output:\n{delta}")
         exit_code = infra_main([
             "codegen",
             "conform",
@@ -1372,16 +1388,21 @@ class TestScriptDispatchMakefile:
         )
         tm.that("_builtin_gen_check" in phony_line, eq=True)
         tm.that("_builtin_gen_apply" in phony_line, eq=True)
-        # Both handlers drive the conform engine (CLI namespace is unchanged).
+        # Both handlers drive the conform engine plus the init generator
+        # (operator law 2026-08-16: lazy init is part of the gen verb; deps
+        # modernize stays a separate explicit verb).
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_check_body.count("codegen conform"), eq=1)
         tm.that("--mode check" in gen_check_body, eq=True)
-        tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
+        tm.that(gen_check_body.count("codegen init"), eq=1)
+        tm.that("--check" in gen_check_body, eq=True)
+        tm.that(gen_check_body, lacks="deps modernize")
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
         tm.that("--mode apply" in gen_all_body, eq=True)
-        tm.that(gen_all_body, lacks=["codegen init", "deps modernize"])
+        tm.that(gen_all_body.count("codegen init"), eq=1)
+        tm.that(gen_all_body, lacks="deps modernize")
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)

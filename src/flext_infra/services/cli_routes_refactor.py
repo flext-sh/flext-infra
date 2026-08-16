@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from flext_infra import m
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
-from flext_infra.codemod.rules.refactor.apply_renames import FlextInfraApplyRenames
+from flext_infra.codemod.apply_renames import FlextInfraApplyRenames
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )

@@ -109,10 +109,12 @@ class TestsMakeTestSelector:
         )
 
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
-        tm.that(
-            invocation_log.read_text(encoding="utf-8"),
-            has=[str(engine_root / "src"), "workspace work", "--operation status"],
-        )
+        invocations = invocation_log.read_text(encoding="utf-8")
+        # The engine python resolves flext_infra from its own installed
+        # environment: PROJECT_FLEXT_INFRA sanitizes the caller env with
+        # `env -u PYTHONPATH`, so the logged PYTHONPATH line is empty.
+        tm.that(invocations.splitlines()[0], eq="")
+        tm.that(invocations, has=["-m flext_infra", "workspace work", "--operation status"])
 
     def test_external_makefile_owns_the_runtime_engine(self, tmp_path: Path) -> None:
         """A selected Make owner, not its caller, owns runtime and lock routing."""
@@ -127,7 +129,9 @@ class TestsMakeTestSelector:
         invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
             engine_root / ".venv" / "bin" / "python",
-            f'#!/bin/sh\nprintf "%s\\n" "$*" > "{invocation_log}"\n',
+            # gen runs conform AND the init generator; append so every
+            # engine invocation stays observable, not only the last one.
+            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n',
         )
         test_u.Tests.write_executable(
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
@@ -158,6 +162,9 @@ class TestsMakeTestSelector:
                 f"--root {engine_root}",
                 "--scope self",
                 "--mode apply",
+                "-m flext_infra codegen init",
+                f"--workspace {engine_root}",
+                "--apply",
             ],
         )
 

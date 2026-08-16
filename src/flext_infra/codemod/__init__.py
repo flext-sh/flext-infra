@@ -10,6 +10,7 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from .apply_renames import FlextInfraApplyRenames
     from .batch_apply import FlextInfraCodemodBatchApply
     from .batch_gates import (
         FlextInfraModGateEngine,
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
     )
     from .discovery import discover_rule_ids, discover_rules
 __all__: tuple[str, ...] = (
+    "FlextInfraApplyRenames",
     "FlextInfraCodemodBatchApply",
     "FlextInfraModGateEngine",
     "FlextInfraModGateSnapshot",
@@ -32,6 +34,7 @@ install_lazy_exports(
     MappingProxyType(
         build_lazy_import_map(
             MappingProxyType({
+                ".apply_renames": ("FlextInfraApplyRenames",),
                 ".batch_apply": ("FlextInfraCodemodBatchApply",),
                 ".batch_gates": (
                     "FlextInfraModGateEngine",
