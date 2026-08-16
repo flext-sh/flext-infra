@@ -114,7 +114,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             return False
         if declared_contract is not None and name not in declared_contract:
             return False
-        module_path, attr_name = target
+        module_path, _attr_name = target
         runtime_module = f"{module_path.rsplit('.', maxsplit=1)[-1]}.py"
         if u.Infra.runtime_singleton_export(runtime_module) == name:
             return True
@@ -124,15 +124,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             # mro-6szaq.14 contract: any underscore-prefixed source segment
             # marks the owner as private; the symbol stays behind its facade.
             tail = module_path[len(root_pkg) + 1 :].split(".")
-            if any(
+            return not any(
                 part.startswith("_") and not part.startswith("__") for part in tail
-            ):
-                return False
-            # Empty attr is a child package module object; they are excluded
-            # from root __all__ because PEP 562 lazy facades export their symbols.
-            if not attr_name:
-                return False
-            return True
+            )
         return not (
             inherited_facets is not None
             and name not in inherited_facets
