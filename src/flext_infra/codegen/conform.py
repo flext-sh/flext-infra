@@ -346,7 +346,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     baseline_branch_result.error
                     or f"integration baseline resolution failed: {root}"
                 )
-            current_repository_role = current_repository.role
             current_make_profile = {
                 c.Infra.RepositoryRole.WORKSPACE_ROOT: (
                     c.Infra.MakeProfile.WORKSPACE_ROOT
@@ -355,7 +354,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     c.Infra.MakeProfile.WORKSPACE_MEMBER
                 ),
                 c.Infra.RepositoryRole.STANDALONE: c.Infra.MakeProfile.STANDALONE,
-            }[current_repository_role]
+            }[current_repository.role]
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,

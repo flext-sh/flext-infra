@@ -623,7 +623,10 @@ class FlextInfraUtilitiesPyprojectConform:
             for stale_package in tuple(package_cutoffs):
                 if stale_package not in exclude_newer_package:
                     u.Cli.toml_remove_key_if_present(package_cutoffs, stale_package)
-        else:
+        elif exclude_newer_package is not None:
+            # None means this surface does not manage the key (same contract
+            # as link_mode/exclude_newer); an EMPTY mapping means the SSOT
+            # cleared it, so the projection is removed.
             u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Project is a flext-infra routing key only; uv scoped form is
         # {package={name, version?}, dependencies=[...]} (uv settings docs).

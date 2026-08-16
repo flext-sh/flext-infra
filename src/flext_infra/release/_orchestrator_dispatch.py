@@ -29,8 +29,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         next_dev: bool
         next_bump: str
 
-        @property
-        def root(self) -> Path: ...
+        root: Path
 
         @property
         def logger(self) -> p.Logger: ...
