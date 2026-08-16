@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
@@ -90,13 +91,22 @@ def _git_repo(root: Path, branch: str) -> None:
     tm.ok(u.Cli.capture(["git", "checkout", "-q", "-b", branch], cwd=root, timeout=60))
 
 
-def _gh_stub(bin_dir: Path) -> None:
+def _gh_stub(bin_dir: Path, *, broken: bool = False) -> None:
     """Provide a deterministic gh answer so PR draft state is input, not network."""
     stub = bin_dir / "gh"
-    stub.write_text(
-        '#!/bin/sh\necho "${FLEXT_TEST_GH_DRAFT:-false}"\n', encoding="utf-8"
+    body = "#!/bin/sh\nexit 1\n" if broken else (
+        '#!/bin/sh\necho "${FLEXT_TEST_GH_DRAFT:-false}"\n'
     )
+    stub.write_text(body, encoding="utf-8")
     stub.chmod(0o755)
+
+
+def _bare_path(bin_dir: Path) -> None:
+    """Expose only bash/git/gh stubs so gh can be genuinely unresolvable."""
+    for tool in ("bash", "git"):
+        target = shutil.which(tool)
+        if target is not None:
+            (bin_dir / tool).symlink_to(target)
 
 
 def _merge_guard_script() -> str:
@@ -174,6 +184,34 @@ class TestsWorkInProgressGates:
                   FLEXT_TEST_GH_DRAFT="false"):
             result = _run(_pre_push_shell(_render_precommit()), repo)
         tm.fail(result)
+
+    def test_pre_push_skips_gates_when_pr_state_unresolvable(
+        self, tmp_path: Path
+    ) -> None:
+        """A gh failure must fail open: the push is never the blocked state."""
+        repo = tmp_path / "unresolvable-repo"
+        repo.mkdir()
+        _git_repo(repo, "feature/demo-lane")
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        _gh_stub(bin_dir, broken=True)
+        with _env(PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}"):
+            result = _run(_pre_push_shell(_render_precommit()), repo)
+        tm.ok(result)
+        tm.that(result.value, has="fail-open")
+
+    def test_pre_push_skips_gates_when_gh_absent(self, tmp_path: Path) -> None:
+        """Without gh the PR state cannot resolve; the gate must fail open."""
+        repo = tmp_path / "no-gh-repo"
+        repo.mkdir()
+        _git_repo(repo, "feature/demo-lane")
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        _bare_path(bin_dir)
+        with _env(PATH=str(bin_dir)):
+            result = _run(_pre_push_shell(_render_precommit()), repo)
+        tm.ok(result)
+        tm.that(result.value, has="fail-open")
 
     def test_rendered_merge_guard_round_trips_config(self) -> None:
         """The committed CI projection mirrors the typed branch/pattern sets."""
