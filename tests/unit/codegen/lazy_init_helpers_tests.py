@@ -64,7 +64,8 @@ class TestsFlextInfraLazyInitHelpers:
         exports_content = self._generated_exports(package_root)
 
         tm.that(init_content, has="build_lazy_import_map, install_lazy_exports")
-        tm.that(init_content, lacks="_LAZY_IMPORTS")
+        # _LAZY_IMPORTS is the canonical metadata binding flext_core reads.
+        tm.that(init_content, has="_LAZY_IMPORTS = MappingProxyType(")
         tm.that(exports_content, has='"FlextDemoModels"')
         tm.that(exports_content, has='"m"')
 
@@ -345,10 +346,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(self._generated_exports(package_root), eq=first)
         tm.that(first, lacks='"._constants"')
 
-    def test_tests_root_remains_outside_production_codegen(
-        self, tmp_path: Path
-    ) -> None:
-        """Leave test package initializers untouched by production codegen."""
+    def test_tests_root_facade_is_generated_lazily(self, tmp_path: Path) -> None:
+        """Generate the tests root facade with local publics and inherited aliases."""
         workspace_root, _package_root = self._workspace(tmp_path)
         tests_root = workspace_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
@@ -378,9 +377,10 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): test code is validated by its own gates, not
-        # rewritten by the production-root generator.
-        tm.that(init_content, empty=True)
+        # Lazy inits cover EVERY python surface (src, tests, examples,
+        # scripts): the tests root is a generated PEP 562 facade too.
+        tm.that(init_content, has="_LAZY_IMPORTS = MappingProxyType(")
+        tm.that(init_content, has='"TestsFlextDemoConstants"')
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
         check_service = u.Tests.create_lazy_init_service(workspace_root)
@@ -639,7 +639,7 @@ class TestsFlextInfraLazyInitHelpers:
     def test_nested_tests_namespace_exports_local_symbols_only(
         self, tmp_path: Path
     ) -> None:
-        """Leave nested test namespaces unchanged by production codegen."""
+        """Generate nested test namespaces with their local publics."""
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.RESULT_PY).write_text(
             "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
@@ -667,8 +667,11 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): nested tests remain explicit handwritten code.
-        tm.that(init_content, empty=True)
+        # Lazy inits cover every python surface: nested test dirs publish
+        # their LOCAL symbols (production publics never leak into tests).
+        tm.that(init_content, has='"TestsFlextDemoUnitConstants"')
+        tm.that(init_content, has='"TestsFlextDemoUnitModels"')
+        tm.that(init_content, lacks="FlextDemoResult")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 
     def test_root_rejects_symbols_from_deep_descendant_packages(

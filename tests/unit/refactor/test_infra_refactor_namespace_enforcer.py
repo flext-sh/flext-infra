@@ -1041,7 +1041,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             ")\n"
             "\n"
             "class DemoConstants:\n"
-            "    pass\n",
+            "    CORE = FlextInfraConstantsCore\n"
+            "    SHARED = FlextInfraConstantsSharedInfra\n",
             encoding="utf-8",
         )
 

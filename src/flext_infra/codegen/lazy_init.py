@@ -185,9 +185,11 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 target_package_dir=target_package_dir,
             )
         # mro-96j2.4 (agent: claude): Ruff check runs once over the changed
-        # artifact set instead of per rendered template, eliminating one cold
-        # Ruff subprocess per generated __init__.py.
-        errors += self.batch_lint_generated(self.modified_files)
+        # artifact set instead of per rendered template. Apply mode only:
+        # check mode never writes, so the on-disk files still hold the OLD
+        # content and linting them would report drift as false lint errors.
+        if not check_only:
+            errors += self.batch_lint_generated(self.modified_files)
         warnings = planner.collision_count
         u.Cli.info(
             f"Lazy-init summary: {ok} generated, {errors} errors, {warnings} warnings"

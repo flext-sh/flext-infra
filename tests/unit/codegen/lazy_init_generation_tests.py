@@ -65,7 +65,9 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, lacks="_LAZY_MODULES")
         tm.that(content, lacks="_LAZY_ALIAS_GROUPS")
-        tm.that(content, lacks="_LAZY_IMPORTS")
+        # _LAZY_IMPORTS is the canonical metadata binding flext_core reads
+        # (lazy.merge child inheritance + runtime_alias_names).
+        tm.that(content, contains="_LAZY_IMPORTS = MappingProxyType(")
         tm.that(content, contains="MappingProxyType(")
         tm.that(content, contains="build_lazy_import_map(")
         tm.that(content, contains='".api": ("Demo",)')
@@ -205,6 +207,7 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({
                 "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
             }),
+            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
@@ -222,6 +225,7 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({
                 "FlextTypesLazy": ("flext_core._typings.lazy", "FlextTypesLazy")
             }),
+            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
