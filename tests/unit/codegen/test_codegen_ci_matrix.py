@@ -581,7 +581,7 @@ class TestCodegenCiMatrix:
             'name: ci-matrix\n"on":\n  push:\n    branches: [0.12.0-dev]\n',
             encoding="utf-8",
         )
-        repository = test_u.Tests.repository_ref(
+        repository = u.Tests.repository_ref(
             name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
         )
         workspace = m.Infra.WorkspaceSpec(

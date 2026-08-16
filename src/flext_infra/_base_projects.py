@@ -20,12 +20,8 @@ class FlextInfraProjectSelectionMixin:
     """Private project-selection behavior for project-scoped services."""
 
     if TYPE_CHECKING:
+        root: Path
         selected_projects: t.StrSequence | None
-
-    @property
-    def root(self) -> Path:
-        """Workspace root supplied by the composed service base."""
-        raise NotImplementedError
 
     @property
     def project_names(self) -> t.StrSequence | None:

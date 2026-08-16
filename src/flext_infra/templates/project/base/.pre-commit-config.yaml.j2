@@ -28,7 +28,7 @@ repos:
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset WHAT MAKEFLAGS {{ make.apply_variable }}; unset $(git rev-parse --local-env-vars); {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
+              bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]

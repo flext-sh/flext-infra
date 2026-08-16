@@ -801,10 +801,11 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_governance_authority(self) -> Self:
             """Require one path-safe organization/repository authority key."""
-            parts = self.governance_authority.split("/")
-            if len(parts) != 2 or not all(
-                FlextInfraConfigModels.RepositoryArtifactAuthority._safe_segment(part)
-                for part in parts
+            if (
+                self.governance_authority.count("/") != 1
+                or not FlextInfraConfigModels.RepositoryArtifactAuthority.path_segments_safe(
+                    self.governance_authority
+                )
             ):
                 msg = "make docs governance_authority must be organization/repository"
                 raise ValueError(msg)
