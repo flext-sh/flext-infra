@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
@@ -37,24 +38,33 @@ if TYPE_CHECKING:
 {{ facade_import("typings", class_stem ~ "Types", "t") }}
 {{ facade_import("utilities", class_stem ~ "Utilities", "u") }}
 
-_LAZY_IMPORTS = build_lazy_import_map({
-    ".api": ("{{ class_stem }}", "{{ alias }}"),
-    ".base": ("{{ class_stem }}Service", "s"),
-    ".constants": ("{{ class_stem }}Constants", "c"),
-    ".models": ("{{ class_stem }}Models", "m"),
-    ".protocols": ("{{ class_stem }}Protocols", "p"),
-    "._config": ("config",),
-    "._settings": ("settings",),
-    ".typings": ("{{ class_stem }}Types", "t"),
-    ".utilities": ("{{ class_stem }}Utilities", "u"),
-{% if inherited_facets %}
-    "{{ upstream }}": ({% for facet in inherited_facets %}"{{ facet }}", {% endfor %}),
-{% endif %}
-})
-
 __all__: tuple[str, ...] = (
 {{ public_export_rows }}
 )
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)
+install_lazy_exports(
+    __name__,
+    globals(),
+    MappingProxyType(
+        build_lazy_import_map(
+            MappingProxyType({
+                ".api": ("{{ class_stem }}", "{{ alias }}"),
+                ".base": ("{{ class_stem }}Service", "s"),
+                ".constants": ("{{ class_stem }}Constants", "c"),
+                ".models": ("{{ class_stem }}Models", "m"),
+                ".protocols": ("{{ class_stem }}Protocols", "p"),
+                "._config": ("config",),
+                "._settings": ("settings",),
+                ".typings": ("{{ class_stem }}Types", "t"),
+                ".utilities": ("{{ class_stem }}Utilities", "u"),
+{% if inherited_facets %}
+                "{{ upstream }}": ({% for facet in inherited_facets %}"{{ facet }}", {% endfor %}),
+{% endif %}
+            }),
+            alias_groups=MappingProxyType({}),
+            sort_keys=False,
+        )
+    ),
+    public_exports=__all__,
+)

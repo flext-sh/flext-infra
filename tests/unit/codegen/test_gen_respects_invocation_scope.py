@@ -99,22 +99,18 @@ def test_recipe_bodies_are_actually_parsed() -> None:
     ), f"no PROJECT_ROOT command found in {_TEMPLATE}; parser is broken"
 
 
-def test_gen_dependency_stages_follow_codegen_scope() -> None:
-    """The gen recipe scopes dependency modernization through --workspace.
-
-    CODEGEN_PROJECT_ARGS was a hardcoded indirection that duplicated the scope
-    already encoded in --workspace. The modern deps modernize call relies on
-    --workspace alone, so the variable must be absent.
-    """
+def test_gen_has_one_codegen_owner() -> None:
+    """The gen recipe delegates every projection to codegen conform once."""
     text = _template_text()
     assert "CODEGEN_PROJECT_ARGS" not in text
 
     bodies = _recipe_bodies()
     for target in ("_builtin_gen_check", "_builtin_gen_all"):
-        dependency_lines = [line for line in bodies[target] if "deps modernize" in line]
-        assert len(dependency_lines) == 1
-        assert all("--workspace" in line for line in dependency_lines)
-        assert all("CODEGEN_PROJECT_ARGS" not in line for line in dependency_lines)
+        conform_lines = [line for line in bodies[target] if "codegen conform" in line]
+        assert len(conform_lines) == 1
+        assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
+        assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
+        assert all("deps modernize" not in line for line in bodies[target])
         assert all("deps extra-paths" not in line for line in bodies[target])
 
 

@@ -62,6 +62,11 @@ def _ssot_per_file_ignores() -> frozenset[str]:
 
 
 class TestsFlextInfraPyprojectConformPreservesLintScope:
+    def test_ssot_preserves_narrow_init_module_lint_policy(self) -> None:
+        rules = config.Infra.tooling.tools.ruff.lint.per_file_ignores["**/__init__.py"]
+
+        tm.that(rules, lacks="ALL")
+
     def test_ssot_preserves_pytest_assertion_semantics(self) -> None:
         """Keep generated and external pytest suites valid without migration."""
         rules = config.Infra.tooling.tools.ruff.lint.per_file_ignores["**/tests/**"]

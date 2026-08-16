@@ -31,10 +31,8 @@ class TestCoreModuleInit:
         with pytest.raises(AttributeError):
             _ = getattr(core_module, _ABSENT_SYMBOL)
 
-    def test_validate_package_does_not_reexport_leaf_implementations(self) -> None:
-        """Keep validator implementations available only from leaf owners."""
-        exports = dir(core_module)
-        tm.that(core_module.__all__, eq=())
+    def test_validate_package_exposes_generated_lazy_exports(self) -> None:
+        """Keep validator implementations reachable as generated lazy exports."""
         for implementation in (
             "FlextInfraBaseMkValidator",
             "FlextInfraInventoryService",
@@ -42,7 +40,7 @@ class TestCoreModuleInit:
             "FlextInfraStubSupplyChain",
             "FlextInfraTextPatternScanner",
         ):
-            tm.that(exports, lacks=implementation)
+            tm.that(core_module.__all__, has=implementation)
 
     def test_core_lazy_imports_work(self) -> None:
         """Test that lazy imports resolve to real classes."""

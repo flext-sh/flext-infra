@@ -85,6 +85,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         package_dir.resolve()
                         for package_dir in workspace_index.package_dirs
                         if package_dir.is_relative_to(resolved_workspace_root)
+                        and package_dir.name != c.Infra.ROOT_EXPORTS_DIR
                     ),
                     key=lambda path: len(path.parts),
                     reverse=True,
