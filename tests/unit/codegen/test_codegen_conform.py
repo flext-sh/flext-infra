@@ -991,15 +991,15 @@ class TestCodegenConform:
         # mismatch here is the root cause behind 'codegen drift detected'.
         planned_file = planned.value.files[0]
         on_disk = (root / "pyproject.toml").read_text(encoding="utf-8")
-        if planned_file.rendered != on_disk:
-            expected_lines = planned_file.rendered.splitlines(keepends=True)
-            disk_lines = on_disk.splitlines(keepends=True)
-            delta = "".join(
-                difflib.unified_diff(
-                    disk_lines, expected_lines, "on-disk", "check-render"
-                )
+        delta = "".join(
+            difflib.unified_diff(
+                on_disk.splitlines(keepends=True),
+                planned_file.rendered.splitlines(keepends=True),
+                "on-disk",
+                "check-render",
             )
-            raise AssertionError(f"check plan diverges from apply output:\n{delta}")
+        )
+        tm.that(planned_file.rendered, eq=on_disk, msg=delta)
         exit_code = infra_main([
             "codegen",
             "conform",
