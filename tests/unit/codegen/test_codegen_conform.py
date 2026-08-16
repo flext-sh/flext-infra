@@ -103,62 +103,6 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
-    def test_rendered_conflict_marker_is_rejected_before_target_changes(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        root = infra_git_repo
-        target = root / c.Infra.MAKEFILE_FILENAME
-        original = "existing generated makefile\n"
-        target.write_text(original, encoding="utf-8")
-        distribution = test_u.Tests.repository_ref(config.Infra.name).distribution
-        (root / "pyproject.toml").write_text(
-            f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
-            'requires-python = ">=3.13,<3.14"\n',
-            encoding="utf-8",
-        )
-        package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
-        package_init.parent.mkdir(parents=True, exist_ok=True)
-        package_init.write_text("", encoding="utf-8")
-        original_render = u.Cli.template_render
-
-        def _render(path: Path, context: p.Model) -> p.Result[str]:
-            rendered = original_render(path, context)
-            if rendered.failure or path.name != f"{c.Infra.MAKEFILE_FILENAME}.j2":
-                return rendered
-            return r[str].ok(f"{rendered.value}\n<<<<<<< incoming\n")
-
-        monkeypatch.setattr(u.Cli, "template_render", _render)
-        rejected = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            )
-        )
-
-        tm.fail(rejected)
-        tm.that(rejected.error, has="base/Makefile.j2")
-        tm.that(rejected.error, has=str(target))
-        tm.that(rejected.error, has=str(root))
-        tm.that(target.read_text(encoding="utf-8"), eq=original)
-
-        monkeypatch.undo()
-        request = m.Infra.CodegenConformRequest(
-            root=root,
-            what=c.Infra.CodegenConformSurface.MAKEFILE,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
-        applied = FlextInfraCodegenConform.execute_request(request)
-        tm.ok(applied)
-        tm.that(target.read_text(encoding="utf-8"), lacks="<<<<<<< ")
-        fixed_point = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
-        )
-        tm.ok(fixed_point)
-        tm.that(fixed_point.value.written_files, eq=())
-
     def _conform_with_rendered_makefile(
         self, root: Path, monkeypatch: pytest.MonkeyPatch, suffix: str
     ) -> p.Result[m.Infra.CodegenResult]:
@@ -189,6 +133,40 @@ class TestCodegenConform:
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
         )
+
+    def test_rendered_conflict_marker_is_rejected_before_target_changes(
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        root = infra_git_repo
+        target = root / c.Infra.MAKEFILE_FILENAME
+        original = "existing generated makefile\n"
+        target.write_text(original, encoding="utf-8")
+
+        rejected = self._conform_with_rendered_makefile(
+            root, monkeypatch, "\n<<<<<<< incoming\n"
+        )
+
+        tm.fail(rejected)
+        tm.that(rejected.error, has="base/Makefile.j2")
+        tm.that(rejected.error, has=str(target))
+        tm.that(rejected.error, has=str(root))
+        tm.that(target.read_text(encoding="utf-8"), eq=original)
+
+        monkeypatch.undo()
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        applied = FlextInfraCodegenConform.execute_request(request)
+        tm.ok(applied)
+        tm.that(target.read_text(encoding="utf-8"), lacks="<<<<<<< ")
+        fixed_point = FlextInfraCodegenConform.execute_request(
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+        )
+        tm.ok(fixed_point)
+        tm.that(fixed_point.value.written_files, eq=())
 
     def test_setext_underline_is_accepted_as_ordinary_content(
         self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
