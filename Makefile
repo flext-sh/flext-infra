@@ -98,7 +98,7 @@ ifneq ($(filter work,$(MAKECMDGOALS)),work)
 ifeq ($(filter command line override,$(origin WORKSPACE)),)
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
-override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
+override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
 endif
 endif
 endif
@@ -999,15 +999,15 @@ _builtin_release_rel: _builtin_require_environment
 # rendered tooling context; dependency modernization owns only dependency
 # settings that conform does not render.
 _builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --check
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(WORKSPACE)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(WORKSPACE)" --check
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE)" --check
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(WORKSPACE)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(WORKSPACE)" --apply
+	@$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(WORKSPACE)" --apply
 
 _builtin_gen_apply: _builtin_gen_all
 
