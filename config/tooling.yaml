@@ -533,7 +533,7 @@ Infra:
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
-        # OPERATOR LAW mro-38p39 (2026-08-13): budgets are a CONTRACT, not a
+        # OPERATOR LAW mro-38p39 (2026-08-13), reaffirmed by mro-09686
         # measurement. 10s per case, 60s for an explicitly slow case, 300s for
         # the complete suite. A case that does not fit is a TEST DEFECT and is
         # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
