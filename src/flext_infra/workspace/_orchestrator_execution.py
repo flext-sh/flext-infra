@@ -19,13 +19,12 @@ from flext_infra.workspace._orchestrator_process import (
 if TYPE_CHECKING:
     from flext_infra import p
 
-    class _OrchestratorExecutionOwner(t.Protocol):
-        @property
-        def root(self) -> Path: ...
-
 
 class FlextInfraWorkspaceOrchestratorExecutionMixin:
     """Project orchestration execution logic."""
+
+    if TYPE_CHECKING:
+        root: Path
 
     def _execute_project(
         self, project: str, verb: str, idx: int, *, make_args: t.StrSequence
@@ -190,12 +189,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         return r.ok(results)
 
     def _run_project(
-        self: _OrchestratorExecutionOwner,
-        project: str,
-        verb: str,
-        _index: int,
-        *,
-        make_args: t.StrSequence,
+        self, project: str, verb: str, _index: int, *, make_args: t.StrSequence
     ) -> p.Result[p.Cli.CommandOutput]:
         """Execute make verb for one project and capture output path/metrics."""
         log_path = u.Cli.resolve_report_path(
