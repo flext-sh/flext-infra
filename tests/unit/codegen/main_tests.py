@@ -112,6 +112,11 @@ class TestMainEntryPoint:
         tm.that(result.value.exit_code, eq=0)
         tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
 
+    # Spawning a fresh interpreter that imports the complete CLI takes ~10s
+    # on a loaded multi-lane host; the slow marker consumes the config-owned
+    # 60s slow-case budget through its explicit timeout marker.
+    @pytest.mark.slow
+    @pytest.mark.timeout(60)
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""
         # The child renders through the CLI console, which honours COLUMNS and

@@ -65,8 +65,12 @@ class TestsFlextInfraRootMakefileSingleOwner:
         tm.that(marker_lines, eq=())
         tm.that(check_body.count("codegen conform"), eq=1)
         tm.that(all_body.count("codegen conform"), eq=1)
-        tm.that(check_body, lacks=["codegen init", "deps modernize"])
-        tm.that(all_body, lacks=["codegen init", "deps modernize"])
+        # Operator law 2026-08-16: the gen verb owns conform AND the init
+        # generator; dependency upgrades stay a separate explicit verb.
+        tm.that(check_body.count("codegen init"), eq=1)
+        tm.that(all_body.count("codegen init"), eq=1)
+        tm.that(check_body, lacks="deps modernize")
+        tm.that(all_body, lacks="deps modernize")
 
 
 __all__: tuple[str, ...] = ()

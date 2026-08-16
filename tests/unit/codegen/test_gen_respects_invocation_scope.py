@@ -120,8 +120,19 @@ def test_gen_routes_through_project_root() -> None:
         generation_lines = [
             line for line in bodies[target] if "$(PROJECT_FLEXT_INFRA)" in line
         ]
-        assert len(generation_lines) == 1
-        assert all('--root "$(PROJECT_ROOT)"' in line for line in generation_lines)
+        # Operator law 2026-08-16: gen drives conform plus the init
+        # generator, both scoped to the invoking project root.
+        assert len(generation_lines) == 2
+        conform_lines = [
+            line for line in generation_lines if "codegen conform" in line
+        ]
+        init_lines = [line for line in generation_lines if "codegen init" in line]
+        assert len(conform_lines) == 1
+        assert len(init_lines) == 1
+        assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
+        assert all(
+            '--workspace "$(PROJECT_ROOT)"' in line for line in init_lines
+        )
 
 
 def test_project_selector_resolves_members_from_workspace_root() -> None:
