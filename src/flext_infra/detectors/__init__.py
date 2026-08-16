@@ -53,47 +53,36 @@ __all__: tuple[str, ...] = (
     "FlextInfraSilentFailureDetector",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".class_placement_detector": ("FlextInfraClassPlacementDetector",),
-                ".compatibility_alias_detector": (
-                    "FlextInfraCompatibilityAliasDetector",
-                ),
-                ".cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
-                ".deferred_self_reference_detector": (
-                    "FlextInfraDeferredSelfReferenceDetector",
-                ),
-                ".facade_scanner": ("FlextInfraScanner",),
-                ".future_annotations_detector": (
-                    "FlextInfraFutureAnnotationsDetector",
-                ),
-                ".import_alias_detector": ("FlextInfraImportAliasDetector",),
-                ".inline_import_detector": ("FlextInfraInlineImportDetector",),
-                ".internal_import_detector": ("FlextInfraInternalImportDetector",),
-                ".loose_object_detector": ("FlextInfraLooseObjectDetector",),
-                ".loose_test_function_detector": (
-                    "FlextInfraLooseTestFunctionDetector",
-                ),
-                ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
-                ".manual_typing_alias_detector": (
-                    "FlextInfraManualTypingAliasDetector",
-                ),
-                ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
-                ".mro_shape_detector": ("FlextInfraMROShapeDetector",),
-                ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
-                ".private_import_bypass_detector": (
-                    "FlextInfraPrivateImportBypassDetector",
-                ),
-                ".runtime_alias_detector": ("FlextInfraRuntimeAliasDetector",),
-                ".silent_failure_detector": ("FlextInfraSilentFailureDetector",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".class_placement_detector": ("FlextInfraClassPlacementDetector",),
+            ".compatibility_alias_detector": ("FlextInfraCompatibilityAliasDetector",),
+            ".cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
+            ".deferred_self_reference_detector": (
+                "FlextInfraDeferredSelfReferenceDetector",
+            ),
+            ".facade_scanner": ("FlextInfraScanner",),
+            ".future_annotations_detector": ("FlextInfraFutureAnnotationsDetector",),
+            ".import_alias_detector": ("FlextInfraImportAliasDetector",),
+            ".inline_import_detector": ("FlextInfraInlineImportDetector",),
+            ".internal_import_detector": ("FlextInfraInternalImportDetector",),
+            ".loose_object_detector": ("FlextInfraLooseObjectDetector",),
+            ".loose_test_function_detector": ("FlextInfraLooseTestFunctionDetector",),
+            ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
+            ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
+            ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
+            ".mro_shape_detector": ("FlextInfraMROShapeDetector",),
+            ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
+            ".private_import_bypass_detector": (
+                "FlextInfraPrivateImportBypassDetector",
+            ),
+            ".runtime_alias_detector": ("FlextInfraRuntimeAliasDetector",),
+            ".silent_failure_detector": ("FlextInfraSilentFailureDetector",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

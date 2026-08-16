@@ -51,35 +51,32 @@ __all__: tuple[str, ...] = (
     "FlextInfraTierWhitelistGate",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
-                ".bandit": ("FlextInfraBanditGate",),
-                ".base_gate": ("FlextInfraGate",),
-                ".canonical_alias": ("FlextInfraCanonicalAliasGate",),
-                ".codemod": ("FlextInfraCodemodGate",),
-                ".deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
-                ".layout": ("FlextInfraLayoutGate",),
-                ".loc_cap": ("FlextInfraLocCapGate",),
-                ".markdown": ("FlextInfraMarkdownGate",),
-                ".mypy": ("FlextInfraMypyGate",),
-                ".namespace": ("FlextInfraNamespaceGate",),
-                ".pyrefly": ("FlextInfraPyreflyGate",),
-                ".pyright": ("FlextInfraPyrightGate",),
-                ".ruff_format": ("FlextInfraRuffFormatGate",),
-                ".ruff_lint": ("FlextInfraRuffLintGate",),
-                ".runtime_census": ("FlextInfraRuntimeCensusGate",),
-                ".silent_failure": ("FlextInfraSilentFailureGate",),
-                ".smells": ("FlextInfraSmellsGate",),
-                ".tier_whitelist": ("FlextInfraTierWhitelistGate",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
+            ".bandit": ("FlextInfraBanditGate",),
+            ".base_gate": ("FlextInfraGate",),
+            ".canonical_alias": ("FlextInfraCanonicalAliasGate",),
+            ".codemod": ("FlextInfraCodemodGate",),
+            ".deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
+            ".layout": ("FlextInfraLayoutGate",),
+            ".loc_cap": ("FlextInfraLocCapGate",),
+            ".markdown": ("FlextInfraMarkdownGate",),
+            ".mypy": ("FlextInfraMypyGate",),
+            ".namespace": ("FlextInfraNamespaceGate",),
+            ".pyrefly": ("FlextInfraPyreflyGate",),
+            ".pyright": ("FlextInfraPyrightGate",),
+            ".ruff_format": ("FlextInfraRuffFormatGate",),
+            ".ruff_lint": ("FlextInfraRuffLintGate",),
+            ".runtime_census": ("FlextInfraRuntimeCensusGate",),
+            ".silent_failure": ("FlextInfraSilentFailureGate",),
+            ".smells": ("FlextInfraSmellsGate",),
+            ".tier_whitelist": ("FlextInfraTierWhitelistGate",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

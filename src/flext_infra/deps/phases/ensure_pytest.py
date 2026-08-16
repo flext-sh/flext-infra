@@ -23,7 +23,7 @@ class FlextInfraEnsurePytestConfigPhase:
             .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
             # mro-j47u (codex): no pytest policy literal survives outside config.
             .value(c.Infra.MINVERSION, pytest.min_version)
-            .deprecated("flext_slow_timeout_seconds")
+            .value(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS, str(pytest.slow_timeout_seconds))
             .list(
                 c.Infra.PYTHON_CLASSES,
                 pytest.python_classes,

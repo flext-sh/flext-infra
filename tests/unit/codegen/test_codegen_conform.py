@@ -428,7 +428,6 @@ class TestCodegenConform:
         tm.that(makefile, lacks="mise exec")
 
     @pytest.mark.slow
-    @pytest.mark.timeout(180)
     def test_existing_manifest_converges_to_identical_tree(
         self, infra_git_repo: Path
     ) -> None:
@@ -897,7 +896,7 @@ class TestCodegenConform:
 
     # Why (suite budget): parametrized over both conform modes, each running a
     # full plan/apply cycle on a real git repo; 10s only holds on an idle CPU.
-    @pytest.mark.timeout(180)
+
     @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
@@ -979,7 +978,7 @@ class TestCodegenConform:
 
     # Why (suite budget): full conform cycle plus subprocess make validation;
     # the default case timeout only holds on an idle machine.
-    @pytest.mark.timeout(180)
+
     def test_invalid_public_custom_make_fails_without_side_effects(
         self, infra_git_repo: Path
     ) -> None:

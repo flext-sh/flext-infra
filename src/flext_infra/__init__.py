@@ -76,32 +76,29 @@ __all__: tuple[str, ...] = (
     "x",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                "._config": ("config",),
-                "._settings": ("settings",),
-                ".api": ("FlextInfra", "infra"),
-                ".base": ("FlextInfraServiceBase", "s"),
-                ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-                ".basemk": ("basemk",),
-                ".cli": ("FlextInfraCli", "docs_main", "main"),
-                ".constants": ("FlextInfraConstants", "c"),
-                ".git": ("FlextInfraGitService",),
-                ".models": ("FlextInfraModels", "m"),
-                ".protocols": ("FlextInfraProtocols", "p"),
-                ".typings": ("FlextInfraTypes", "t"),
-                ".utilities": ("FlextInfraUtilities", "u"),
-                ".work": ("FlextInfraWorkService",),
-                ".worktree": ("FlextInfraWorktreeService",),
-                "flext_cli": ("d", "e", "h", "r", "x"),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            "._config": ("config",),
+            "._settings": ("settings",),
+            ".api": ("FlextInfra", "infra"),
+            ".base": ("FlextInfraServiceBase", "s"),
+            ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
+            ".basemk": ("basemk",),
+            ".cli": ("FlextInfraCli", "docs_main", "main"),
+            ".constants": ("FlextInfraConstants", "c"),
+            ".git": ("FlextInfraGitService",),
+            ".models": ("FlextInfraModels", "m"),
+            ".protocols": ("FlextInfraProtocols", "p"),
+            ".typings": ("FlextInfraTypes", "t"),
+            ".utilities": ("FlextInfraUtilities", "u"),
+            ".work": ("FlextInfraWorkService",),
+            ".worktree": ("FlextInfraWorktreeService",),
+            "flext_cli": ("d", "e", "h", "r", "x"),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

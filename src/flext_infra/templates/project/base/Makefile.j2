@@ -68,6 +68,16 @@ override PYTEST_PARALLEL_DISTRIBUTION := {{ pytest.parallel_distribution }}
 override PYTEST_PROFILE_SORT := {{ pytest.profile_sort }}
 override PYTEST_PROFILE_LIMIT := {{ pytest.profile_limit }}
 override PROCESS_TIMEOUT_COMMAND := {{ timeout_command }}
+# CI ternary wall-clock budget per verb/what/project: CI={{ make.ci.value }} owns the fast
+# gates ({{ make.ci.verb_timeout_seconds }}s each); CI={{ make.ci.local_value }} owns the slow whole-program analyses
+# ({{ make.ci.local_verb_timeout_seconds }}s each); an unset token runs unbounded.
+ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
+VERB_BOUNDED := {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.ci.verb_timeout_seconds }}s
+else ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.local_value }})
+VERB_BOUNDED := {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.ci.local_verb_timeout_seconds }}s
+else
+VERB_BOUNDED :=
+endif
 override export FLEXT_PYTEST_ARGS_RAW := $(value PYTEST_ARGS)
 override export FLEXT_PYTEST_FILE_RAW := $(value FILE)
 override export FLEXT_PYTEST_FILES_RAW := $(value FILES)
@@ -396,7 +406,7 @@ define _dispatch
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
 	if [ "$$custom_rc" -ne 2 ]; then \
-		$(SELF_MAKE) "$$custom" || exit $$?; \
+		$(VERB_BOUNDED) $(SELF_MAKE) "$$custom" || exit $$?; \
 {%- if script_dispatch %}
 	else \
 		what_norm=$$(printf '%s' "$$what" | tr '-' '_'); \
@@ -411,14 +421,14 @@ define _dispatch
 			done; \
 		done; \
 		case " $(BUILTIN_VERBS) " in \
-		*" $(1) "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+		*" $(1) "*) $(VERB_BOUNDED) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
 		*) if [ -n "$$script" ]; then \
-			WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
+			WHAT="$$script_what" $(VERB_BOUNDED) $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
 		else printf 'ERROR: declared handler script is missing for %s WHAT=%s\n' "$(1)" "$$what" >&2; exit 2; fi ;; \
 		esac; \
 {%- else %}
 	else \
-		$(SELF_MAKE) "$$builtin" || exit $$?; \
+		$(VERB_BOUNDED) $(SELF_MAKE) "$$builtin" || exit $$?; \
 {%- endif %}
 	fi; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
@@ -660,6 +670,9 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
 		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for gate in make.ci.check_gates %} {{ gate }}{% endfor %}\n'; \
+	elif [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.local_value }}" ]; then \
+		gates="{% for gate in make.ci.local_check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.local_value }} runs check gates:{% for gate in make.ci.local_check_gates %} {{ gate }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
@@ -701,7 +714,8 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI={{ make.ci.value }} runs make.ci.check_gates (RULING 2: rules not skip-list).
+# CI={{ make.ci.value }} runs make.ci.check_gates and CI={{ make.ci.local_value }} runs its strict
+# complement, make.ci.local_check_gates (RULING 2: rules not skip-list).
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -710,6 +724,9 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
 		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for gate in make.ci.check_gates %} {{ gate }}{% endfor %}\n'; \
+	elif [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.local_value }}" ]; then \
+		gates="{% for gate in make.ci.local_check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.local_value }} runs check gates:{% for gate in make.ci.local_check_gates %} {{ gate }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \

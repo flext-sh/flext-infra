@@ -39,29 +39,26 @@ __all__: tuple[str, ...] = (
     "FlextInfraInjectCommentsPhase",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
-                ".ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
-                ".ensure_formatting": ("FlextInfraEnsureFormattingToolingPhase",),
-                ".ensure_mypy": ("FlextInfraEnsureMypyConfigPhase",),
-                ".ensure_namespace": ("FlextInfraEnsureNamespaceToolingPhase",),
-                ".ensure_packaging": ("FlextInfraEnsurePackagingPhase",),
-                ".ensure_pydantic_mypy": ("FlextInfraEnsurePydanticMypyConfigPhase",),
-                ".ensure_pyrefly": ("FlextInfraEnsurePyreflyConfigPhase",),
-                ".ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
-                ".ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
-                ".ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
-                ".ensure_vulture": ("FlextInfraEnsureVultureConfigPhase",),
-                ".inject_comments": ("FlextInfraInjectCommentsPhase",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
+            ".ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
+            ".ensure_formatting": ("FlextInfraEnsureFormattingToolingPhase",),
+            ".ensure_mypy": ("FlextInfraEnsureMypyConfigPhase",),
+            ".ensure_namespace": ("FlextInfraEnsureNamespaceToolingPhase",),
+            ".ensure_packaging": ("FlextInfraEnsurePackagingPhase",),
+            ".ensure_pydantic_mypy": ("FlextInfraEnsurePydanticMypyConfigPhase",),
+            ".ensure_pyrefly": ("FlextInfraEnsurePyreflyConfigPhase",),
+            ".ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
+            ".ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
+            ".ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
+            ".ensure_vulture": ("FlextInfraEnsureVultureConfigPhase",),
+            ".inject_comments": ("FlextInfraInjectCommentsPhase",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

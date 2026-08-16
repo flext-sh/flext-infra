@@ -71,9 +71,12 @@ class FlextInfraConstantsMake:
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
+    # The check vocabulary: read-only gates only. `format` is NOT here -- it
+    # rewrites files, so it is owned by `make fmt APPLY=Y` / `make fix APPLY=Y`
+    # (PROJECT_CHECK_GATES_FIXABLE_VALUES) and a read-only verb must never
+    # invoke it.
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -81,23 +84,23 @@ class FlextInfraConstantsMake:
         "markdown",
         "smells",
     )
-    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
-        "lint",
+    # The gates CI=N owns: the type checkers only. They are the slow, whole-
+    # program analyses, so CI=Y runs the strict complement of this set -- ruff
+    # lint included -- and the two contexts can never overlap nor leave a gate
+    # unowned. An unset CI runs every allowed gate.
+    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = (
         "pyrefly",
         "mypy",
-        "pyright",
-        "security",
-        "markdown",
-        "smells",
+    )
+    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
+        PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
     # mro-38p39: the gates that can repair what they report. `make fix APPLY=Y`
     # routes through `check run --fix`, which without a selector would execute
     # every gate -- including pyright and mypy, which fix nothing and cost ~37s,
-    # timing the verb out. Kept equal to the registry's can_fix set by
-    # gate_registry_tests.test_fixable_gate_vocabulary_matches_the_registry, so a
-    # gate that flips can_fix joins `make fix` without a template edit.
+    # timing the verb out. Formatting is NOT here: `format` belongs to
+    # `make fmt` alone -- fix repairs findings, fmt rewrites style.
     PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = (
-        "format",
         "markdown",
         "smells",
     )

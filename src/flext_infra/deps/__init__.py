@@ -57,42 +57,37 @@ __all__: tuple[str, ...] = (
     "phases",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".detection": ("FlextInfraDependencyDetectionService",),
-                ".detection_analysis": ("FlextInfraDependencyDetectionAnalysis",),
-                ".detector": ("FlextInfraRuntimeDevDependencyDetector",),
-                ".detector_runtime": ("FlextInfraDependencyDetectorRuntime",),
-                ".extra_paths": ("FlextInfraExtraPathsManager",),
-                ".fix_pyrefly_config": ("FlextInfraConfigFixer",),
-                ".modernizer": ("FlextInfraPyprojectModernizer",),
-                ".phases": ("phases",),
-                ".phases.consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
-                ".phases.ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
-                ".phases.ensure_formatting": (
-                    "FlextInfraEnsureFormattingToolingPhase",
-                ),
-                ".phases.ensure_mypy": ("FlextInfraEnsureMypyConfigPhase",),
-                ".phases.ensure_namespace": ("FlextInfraEnsureNamespaceToolingPhase",),
-                ".phases.ensure_packaging": ("FlextInfraEnsurePackagingPhase",),
-                ".phases.ensure_pydantic_mypy": (
-                    "FlextInfraEnsurePydanticMypyConfigPhase",
-                ),
-                ".phases.ensure_pyrefly": ("FlextInfraEnsurePyreflyConfigPhase",),
-                ".phases.ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
-                ".phases.ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
-                ".phases.ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
-                ".phases.ensure_vulture": ("FlextInfraEnsureVultureConfigPhase",),
-                ".phases.inject_comments": ("FlextInfraInjectCommentsPhase",),
-                ".toml_phase": ("FlextInfraTomlPhaseService",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".detection": ("FlextInfraDependencyDetectionService",),
+            ".detection_analysis": ("FlextInfraDependencyDetectionAnalysis",),
+            ".detector": ("FlextInfraRuntimeDevDependencyDetector",),
+            ".detector_runtime": ("FlextInfraDependencyDetectorRuntime",),
+            ".extra_paths": ("FlextInfraExtraPathsManager",),
+            ".fix_pyrefly_config": ("FlextInfraConfigFixer",),
+            ".modernizer": ("FlextInfraPyprojectModernizer",),
+            ".phases": ("phases",),
+            ".phases.consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
+            ".phases.ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
+            ".phases.ensure_formatting": ("FlextInfraEnsureFormattingToolingPhase",),
+            ".phases.ensure_mypy": ("FlextInfraEnsureMypyConfigPhase",),
+            ".phases.ensure_namespace": ("FlextInfraEnsureNamespaceToolingPhase",),
+            ".phases.ensure_packaging": ("FlextInfraEnsurePackagingPhase",),
+            ".phases.ensure_pydantic_mypy": (
+                "FlextInfraEnsurePydanticMypyConfigPhase",
+            ),
+            ".phases.ensure_pyrefly": ("FlextInfraEnsurePyreflyConfigPhase",),
+            ".phases.ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
+            ".phases.ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
+            ".phases.ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
+            ".phases.ensure_vulture": ("FlextInfraEnsureVultureConfigPhase",),
+            ".phases.inject_comments": ("FlextInfraInjectCommentsPhase",),
+            ".toml_phase": ("FlextInfraTomlPhaseService",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

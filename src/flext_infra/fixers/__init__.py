@@ -25,22 +25,19 @@ __all__: tuple[str, ...] = (
     "FlextInfraTransformerFixerAdapter",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".base": ("FlextInfraFixerAdapter",),
-                ".gate_fixer": ("FlextInfraGateFixerAdapter",),
-                ".manual_fixer": ("FlextInfraManualFixerAdapter",),
-                ".orchestrator": ("FlextInfraEnforcementFixerOrchestrator",),
-                ".rope_fixer": ("FlextInfraRopeFixerAdapter",),
-                ".transformer_fixer": ("FlextInfraTransformerFixerAdapter",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".base": ("FlextInfraFixerAdapter",),
+            ".gate_fixer": ("FlextInfraGateFixerAdapter",),
+            ".manual_fixer": ("FlextInfraManualFixerAdapter",),
+            ".orchestrator": ("FlextInfraEnforcementFixerOrchestrator",),
+            ".rope_fixer": ("FlextInfraRopeFixerAdapter",),
+            ".transformer_fixer": ("FlextInfraTransformerFixerAdapter",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)
