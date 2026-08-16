@@ -266,9 +266,12 @@ Infra:
         # full pytest+coverage; absent=testmon incremental.
         local_check_gates: [pyrefly, mypy]
         # Wall-clock budget per verb/what/project for each CI form: CI=Y owns
-        # the fast gates (everything must land inside 60s); CI=N owns the slow
-        # whole-program analyses and full pytest (300s each).
-        verb_timeout_seconds: 60
+        # the fast gates; measured reality 2026-08-16 (mro-g3zl2): project-wide
+        # pyright alone runs 56-64s warm, so a green CI=Y check plus make
+        # startup and report tail exceeds 60s wall and is killed by its own
+        # budget — 120s fits the observed envelope with margin. CI=N owns the
+        # slow whole-program analyses and full pytest (300s each).
+        verb_timeout_seconds: 120
         local_verb_timeout_seconds: 300
       work_in_progress:
         # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub

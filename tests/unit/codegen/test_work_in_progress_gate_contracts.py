@@ -11,6 +11,12 @@ The law has two runtime surfaces, both owned by config/codegen.yaml
 These tests render the SSOT templates through the public owner and execute the
 rendered shell decisions against the typed config values (generator/consumer
 round-trip), never against hardcoded config copies.
+
+Two-type standard (operator ruling 2026-08-16, restored): workspace vs
+standalone, where the ONLY differentiator is .gitmodules existence. Hook
+contexts are self-scope: a workspace (has .gitmodules) never propagates hook
+gates to subprojects — member hooks and push CI own member gates; a
+standalone runs the full local gate suite.
 """
 
 from __future__ import annotations
@@ -72,10 +78,10 @@ def _render_precommit() -> str:
     )
 
 
-def _pre_push_shell(rendered: str) -> str:
-    """Return the inner shell of the first pre-push hook entry."""
+def _hook_shell(rendered: str, stage: str) -> str:
+    """Return the inner shell of the first hook entry for one stage."""
     for block in rendered.split("  - id:"):
-        if "stages: [pre-push]" not in block:
+        if f"stages: [{stage}]" not in block:
             continue
         for line in block.splitlines():
             stripped = line.strip()
@@ -85,14 +91,29 @@ def _pre_push_shell(rendered: str) -> str:
                 return stripped.removeprefix("bash -eu -o pipefail -c '").removesuffix(
                     "'"
                 )
-    err = "no pre-push shell entry in rendered hook config"
+    err = f"no {stage} shell entry in rendered hook config"
     raise AssertionError(err)
 
 
-def _git_repo(root: Path, branch: str) -> None:
+def _pre_commit_shell(rendered: str) -> str:
+    """Return the inner shell of the first pre-commit hook entry."""
+    return _hook_shell(rendered, "pre-commit")
+
+
+def _pre_push_shell(rendered: str) -> str:
+    """Return the inner shell of the first pre-push hook entry."""
+    return _hook_shell(rendered, "pre-push")
+
+
+def _git_repo(root: Path, branch: str, *, workspace: bool = False) -> None:
     """Create a throwaway repository checked out on one branch."""
     tm.ok(u.Cli.capture(["git", "init", "-q"], cwd=root, timeout=60))
     tm.ok(u.Cli.capture(["git", "checkout", "-q", "-b", branch], cwd=root, timeout=60))
+    if workspace:
+        (root / ".gitmodules").write_text(
+            '[submodule "member"]\n\tpath = member\n\turl = https://example.com/member.git\n',
+            encoding="utf-8",
+        )
 
 
 def _gh_stub(bin_dir: Path, *, broken: bool = False) -> None:
@@ -222,6 +243,29 @@ class TestsWorkInProgressGates:
             result = _run(_pre_push_shell(_render_precommit()), repo)
         tm.ok(result)
         tm.that(result.value, has="fail-open")
+
+    def test_workspace_type_hooks_stay_self_scoped(self, tmp_path: Path) -> None:
+        """A repo with .gitmodules never fans hook gates out to members."""
+        repo = tmp_path / "workspace-repo"
+        repo.mkdir()
+        _git_repo(repo, "feature/demo-lane", workspace=True)
+        rendered = _render_precommit()
+        result = _run(_pre_commit_shell(rendered), repo)
+        tm.ok(result)
+        tm.that(result.value, has="self-scope only")
+        push = _run(_pre_push_shell(rendered), repo)
+        tm.ok(push)
+        tm.that(push.value, has="self-scope only")
+
+    def test_standalone_type_hooks_run_local_gates(self, tmp_path: Path) -> None:
+        """Without .gitmodules the pre-commit verb runs; no Makefile means failure."""
+        repo = tmp_path / "standalone-repo"
+        repo.mkdir()
+        _git_repo(repo, "feature/demo-lane")
+        result = _run(_pre_commit_shell(_render_precommit()), repo)
+        # The verb genuinely executed (no Makefile -> make fails), proving the
+        # standalone repo did not take the workspace self-scope exit.
+        tm.fail(result)
 
     def test_rendered_merge_guard_round_trips_config(self) -> None:
         """The committed CI projection mirrors the typed branch/pattern sets."""
