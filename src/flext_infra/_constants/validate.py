@@ -154,8 +154,6 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
-    MARKDOWNLINT_CONFIG_FILENAME: Final[str] = ".markdownlint.json"
-    "Rule-set projection the markdown gate resolves by walking upward."
     BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"

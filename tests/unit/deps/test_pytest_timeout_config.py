@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import pytest
-
-from flext_infra import c, config
+from flext_infra import config
 from flext_tests import tm
+
+from tests import c
 
 
 class TestsFlextInfraPytestTimeoutConfig:

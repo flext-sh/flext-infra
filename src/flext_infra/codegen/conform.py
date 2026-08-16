@@ -1904,10 +1904,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
-        if destination == c.Infra.MARKDOWNLINT_CONFIG_FILENAME:
-            # mro-6szaq.13.1: the rule set lives in tooling.yaml and is rendered
-            # verbatim; restating any id here would fork the SSOT the gate reads.
-            return r[p.Model].ok(config.Infra.tooling.tools.rumdl)
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
@@ -2040,6 +2036,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
+                    uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                     uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                         repository, workspace, codegen
                     ),
@@ -2139,6 +2136,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                 uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                     repository, workspace, codegen
                 ),
@@ -2280,6 +2278,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                 uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                     repository, workspace, codegen
                 ),

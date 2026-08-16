@@ -70,13 +70,6 @@ class FlextInfraCodegenGenerationPathsMixin:
         )
 
     @staticmethod
-    def _is_side_effect_free_package(current_pkg: str) -> bool:
-        """Return whether a package initializer must stay side-effect free."""
-        return bool(
-            c.Infra.SIDE_EFFECT_FREE_PACKAGE_NAMES.intersection(current_pkg.split("."))
-        )
-
-    @staticmethod
     def _is_local_module(mod: str, root_name: str) -> bool:
         """Return whether ``mod`` is local to ``root_name``."""
         return (

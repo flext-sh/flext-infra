@@ -12,15 +12,14 @@ import tomllib
 from pathlib import Path
 
 import pytest
-
-from flext_infra import c, config, m, main as infra_main, p, r, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra import config, main
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
+from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import u as test_u
+
+from tests import c, m, p, r, u
 
 
 def _conform_target(
@@ -49,7 +48,7 @@ def _conform_target(
 
 def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
     """Load the smallest owner-written standalone manifest for conform tests."""
-    test_u.Tests.write_standalone_workspace_manifest(
+    u.Tests.write_standalone_workspace_manifest(
         root, "flext-demo", upstream="flext_cli"
     )
     package_root = root / "src" / "flext_demo"
@@ -100,6 +99,30 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
     )
 
 
+def _seed_infra_package_tree(root: Path) -> None:
+    """Seed the minimal flext-infra tree (pyproject, src package, tests package).
+
+    The conform templates materialize tests/fixtures/ci/docker/*, and the
+    existing-tree tooling render discovers python roots from directories that
+    exist on disk (env_dirs). Seeding tests/ makes the first render match the
+    post-apply fixed point.
+    """
+    dist = u.Tests.repository_ref(config.Infra.name).distribution
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            root / "pyproject.toml",
+            f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n',
+        )
+    )
+    package_init = root / "src" / "flext_infra" / "__init__.py"
+    package_init.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+    tests_init = root / "tests" / "__init__.py"
+    tests_init.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+
+
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
@@ -107,7 +130,7 @@ class TestCodegenConform:
         self, root: Path, monkeypatch: pytest.MonkeyPatch, suffix: str
     ) -> p.Result[m.Infra.CodegenResult]:
         """Apply conform with ``suffix`` appended to the rendered Makefile."""
-        distribution = test_u.Tests.repository_ref(config.Infra.name).distribution
+        distribution = u.Tests.repository_ref(config.Infra.name).distribution
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n',
@@ -199,7 +222,7 @@ class TestCodegenConform:
     ) -> None:
         """Repair a committed managed block through the normal apply plan."""
         root = infra_git_repo
-        distribution = test_u.Tests.repository_ref(config.Infra.name).distribution
+        distribution = u.Tests.repository_ref(config.Infra.name).distribution
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n'
@@ -238,7 +261,7 @@ class TestCodegenConform:
     def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
         root = tmp_path / "repository"
         root.mkdir()
-        test_u.Tests.initialize_git_repo(root)
+        u.Tests.initialize_git_repo(root)
         baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -270,7 +293,7 @@ class TestCodegenConform:
             )
         )
         tm.that(divergent_check.exit_code, eq=1)
-        repository = test_u.Tests.repository_ref("flext-infra").model_copy(
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -463,20 +486,7 @@ class TestCodegenConform:
         root by itself and immediately reach a fixed point.
         """
         root = infra_git_repo
-        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
-                'requires-python = ">=3.13,<3.14"\n',
-            )
-        )
-        package_init = root / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        tests_init = root / "tests" / "__init__.py"
-        tests_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        _seed_infra_package_tree(root)
         # The defect needs a Python root the declarative env_dirs never lists.
         extra_root = "tools"
         module = root / extra_root / "maintenance.py"
@@ -518,20 +528,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        dist = test_u.Tests.repository_ref(config.Infra.name).distribution
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
-                'requires-python = ">=3.13,<3.14"\n',
-            )
-        )
-        package_init = root / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        tests_init = root / "tests" / "__init__.py"
-        tests_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        _seed_infra_package_tree(root)
         (root / "scripts").mkdir()
 
         result = FlextInfraCodegenConform.execute_request(
@@ -553,31 +550,14 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = test_u.Tests.repository_ref(config.Infra.name)
+        repository = u.Tests.repository_ref(config.Infra.name)
         local_repository = repository.model_copy(update={"path": Path()})
-        dist = repository.distribution
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
             "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
         }
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
-                'requires-python = ">=3.13,<3.14"\n',
-            )
-        )
-        package_init = root / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        # The conform templates materialize tests/fixtures/ci/docker/*, and the
-        # existing-tree tooling render discovers python roots from directories
-        # that exist on disk (env_dirs). Seed tests/ so the first render already
-        # matches the post-apply fixed point.
-        tests_init = root / "tests" / "__init__.py"
-        tests_init.parent.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        _seed_infra_package_tree(root)
         for relative, content in create_only.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
@@ -638,8 +618,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
-        root_repository = test_u.Tests.repository_ref("flext")
-        member = test_u.Tests.repository_ref(
+        root_repository = u.Tests.repository_ref("flext")
+        member = u.Tests.repository_ref(
             "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -691,7 +671,7 @@ class TestCodegenConform:
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
         provider = config.Infra.codegen.providers[0]
-        repository = test_u.Tests.repository_ref("arbitrary-root").model_copy(
+        repository = u.Tests.repository_ref("arbitrary-root").model_copy(
             update={
                 "name": "arbitrary-root",
                 "distribution": "arbitrary-root",
@@ -764,7 +744,7 @@ class TestCodegenConform:
     def test_project_root_exports_only_declared_upstream_facets(
         self, tmp_path: Path
     ) -> None:
-        repository = test_u.Tests.repository_ref("consumer")
+        repository = u.Tests.repository_ref("consumer")
         project = m.Infra.ProjectSpec(
             package_name="consumer",
             class_stem="Consumer",
@@ -831,7 +811,7 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Build Make context from repository-owned data alone."""
-        repository = test_u.Tests.repository_ref("consumer")
+        repository = u.Tests.repository_ref("consumer")
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
@@ -878,8 +858,8 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """An attached member bootstraps from its declared local checkout."""
-        workspace_repository = test_u.Tests.repository_ref("workspace-root-fixture")
-        infra_repository = test_u.Tests.repository_ref(config.Infra.name)
+        workspace_repository = u.Tests.repository_ref("workspace-root-fixture")
+        infra_repository = u.Tests.repository_ref(config.Infra.name)
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=workspace_repository.name,
@@ -982,7 +962,7 @@ class TestCodegenConform:
             tuple(file.path.name for file in planned.value.files),
             eq=("pyproject.toml",),
         )
-        exit_code = infra_main([
+        exit_code = main([
             "codegen",
             "conform",
             "--root",
@@ -1117,7 +1097,7 @@ class TestCodegenConform:
         )
         # `check` requires a provisioned interpreter, which `make setup` would
         # build. Stub it so this test stays about hook ordering.
-        test_u.Tests.write_executable(
+        u.Tests.write_executable(
             root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])

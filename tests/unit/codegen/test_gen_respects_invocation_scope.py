@@ -114,4 +114,20 @@ def test_gen_has_one_codegen_owner() -> None:
         assert all("deps extra-paths" not in line for line in bodies[target])
 
 
+def test_gen_routes_through_project_root() -> None:
+    bodies = _recipe_bodies()
+    for target in ("_builtin_gen_check", "_builtin_gen_all"):
+        generation_lines = [
+            line for line in bodies[target] if "$(PROJECT_FLEXT_INFRA)" in line
+        ]
+        assert len(generation_lines) == 1
+        assert all('--root "$(PROJECT_ROOT)"' in line for line in generation_lines)
+
+
+def test_project_selector_resolves_members_from_workspace_root() -> None:
+    text = _template_text()
+    assert "override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)" in text
+    assert "override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)" not in text
+
+
 __all__: tuple[str, ...] = ()

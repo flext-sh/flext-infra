@@ -69,16 +69,17 @@ class FlextInfraConstantsCodegenLazy:
     # them, so their private package initializer is always side-effect free.
     PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
     "Private pytest-plugin package whose generated initializer stays empty."
-    # flext_core.lazy imports implementation modules from this package while it
-    # initializes, so importing flext_core.lazy here would create a circular import.
-    LAZY_BOOTSTRAP_PACKAGE_NAME: Final[str] = "_lazy_parts"
-    "Lazy-runtime bootstrap package whose generated initializer stays empty."
-    LAZY_TYPINGS_BOOTSTRAP_PACKAGE_NAME: Final[str] = "_typings"
-    "Typing package imported while the lazy runtime itself initializes."
+    # flext_core.lazy imports implementation modules from these packages while
+    # it initializes, so importing flext_core.lazy there would create a real
+    # circular import — the one legitimate static-initializer exception.
+    LAZY_BOOTSTRAP_STATIC_SEGMENTS: Final[frozenset[str]] = frozenset({
+        "_lazy_parts",
+        "_typings",
+    })
+    "Exact package segments imported while ``flext_core.lazy`` initializes."
     SIDE_EFFECT_FREE_PACKAGE_NAMES: Final[frozenset[str]] = frozenset({
         PRIVATE_FIXTURE_PACKAGE_NAME,
-        LAZY_BOOTSTRAP_PACKAGE_NAME,
-        LAZY_TYPINGS_BOOTSTRAP_PACKAGE_NAME,
+        *LAZY_BOOTSTRAP_STATIC_SEGMENTS,
     })
     "Package conventions whose generated initializers must remain empty."
 

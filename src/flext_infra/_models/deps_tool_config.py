@@ -292,36 +292,6 @@ class FlextInfraModelsDepsToolSettings(
                     raise ValueError(msg)
             return self
 
-    class RumdlConfig(m.ArbitraryTypesModel):
-        """Markdown rule set loaded from YAML.
-
-        The rule map is open by construction: rumdl rule ids are an external
-        vocabulary that grows with the tool, and each value is either a bool
-        toggle or a rule-specific option map. Enumerating today's ids as fields
-        would force a model edit for every future rule, so the ids stay data
-        under ``settings`` and only their shape is parsed. ``settings`` is a
-        single field so the codegen template can render the whole rule set as
-        one value instead of restating any id.
-        """
-
-        settings: Annotated[
-            t.JsonMapping,
-            m.Field(description="Markdown rule ids exactly as the linter reads them."),
-        ]
-
-        @u.model_validator(mode="after")
-        def _require_default_toggle(self) -> Self:
-            """Reject a rule set that never states its baseline.
-
-            Without ``default`` the linter silently enables every rule it ships,
-            which is precisely the stock-default failure this projection exists
-            to prevent.
-            """
-            if "default" not in self.settings:
-                msg = "markdown rule set must declare an explicit 'default' toggle"
-                raise ValueError(msg)
-            return self
-
     class TomlsortConfig(m.ArbitraryTypesModel):
         """tomlsort baseline settings loaded from YAML."""
 
@@ -435,6 +405,14 @@ class FlextInfraModelsDepsToolSettings(
             description="Enable Vulture's internal scanner trace when requested."
         )
 
+    class MarkdownConfig(m.ArbitraryTypesModel):
+        """Markdown lint rules and excluded non-documentation surfaces."""
+
+        rules: t.JsonMapping = m.Field(description="Rumdl-compatible rule mapping.")
+        exclude: t.StrTuple = m.Field(
+            description="Glob patterns excluded from Markdown quality checks."
+        )
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
@@ -446,6 +424,9 @@ class FlextInfraModelsDepsToolSettings(
         )
         hatch: FlextInfraModelsDepsToolSettings.HatchConfig = m.Field(
             description="Hatch metadata settings"
+        )
+        markdown: FlextInfraModelsDepsToolSettings.MarkdownConfig = m.Field(
+            description="Markdown lint settings"
         )
         ruff: FlextInfraModelsDepsToolSettings.RuffConfig = m.Field(
             description="Ruff settings"
@@ -464,9 +445,6 @@ class FlextInfraModelsDepsToolSettings(
         )
         pytest: FlextInfraModelsDepsToolSettings.PytestConfig = m.Field(
             description="Pytest settings"
-        )
-        rumdl: FlextInfraModelsDepsToolSettings.RumdlConfig = m.Field(
-            description="Markdown rule set projected into every repository."
         )
         tomlsort: FlextInfraModelsDepsToolSettings.TomlsortConfig = m.Field(
             description="Tomlsort settings"

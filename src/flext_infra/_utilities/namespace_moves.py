@@ -511,8 +511,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         def _post_write() -> None:
             """Post write."""
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
+            FlextInfraUtilitiesProtectedEdit.ruff_fix_files(
+                (source_file, target_file), project_root
+            )
 
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
@@ -705,8 +706,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         def _post_write() -> None:
             """Post write."""
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
+            FlextInfraUtilitiesProtectedEdit.ruff_fix_files(
+                (source_file, target_file), project_root
+            )
 
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {

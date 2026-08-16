@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import m
+from flext_infra import c, m
 from flext_infra.codegen._codegen_generation_standard import (
     FlextInfraCodegenGenerationStandardMixin,
 )
@@ -20,7 +20,7 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
         their package boundary. Bootstrap and pytest fixture packages remain
         explicit side-effect-free lifecycle boundaries.
         """
-        if cls._is_side_effect_free_package(plan.context.current_pkg):
+        if plan.context.initializer_shape is c.Infra.LazyInitShape.STATIC:
             return cls._render_static(plan)
         return cls._render_root(plan)
 

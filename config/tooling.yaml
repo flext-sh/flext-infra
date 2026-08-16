@@ -12,6 +12,56 @@ Infra:
       hatch:
         allow-direct-references: true
         packaged-data-dirs: [config, templates]
+      markdown:
+        rules:
+          default: true
+          MD001: false
+          MD013:
+            line_length: 500
+            heading_line_length: 200
+            code_block_line_length: 500
+            tables: false
+          MD022: false
+          MD023: false
+          MD024: { siblings_only: true }
+          MD025: false
+          MD031: false
+          MD033: { allowed_elements: [br, details, summary, kbd] }
+          MD036: false
+          MD040: false
+          MD041: false
+          MD042: false
+          MD046: false
+          MD050: { style: consistent }
+          MD051: false
+          MD057: false
+          MD060: false
+          MD076: false
+        exclude:
+          - .omo/**
+          - .beads/**
+          - .tmp/**
+          - .claude/**
+          - .vscode/**
+          - .codegraph/**
+          - .code-review-graph/**
+          - .serena/**
+          - .snapshots/**
+          - .benchmarks/**
+          - .hypothesis/**
+          - .mypy_cache/**
+          - .pytest_cache/**
+          - .ruff_cache/**
+          - .venv/**
+          - __pycache__/**
+          - node_modules/**
+          - .reports/**
+          - dist/**
+          - build/**
+          - htmlcov/**
+          - legado/**
+          - .github/**
+          - site/**
       ruff:
         # P0 law: lint covers every tracked Python surface. No excludes over
         # legado, examples, tests, or scripts code anywhere in this config.
@@ -194,6 +244,7 @@ Infra:
           extra_checks: true
           local_partial_types: true
           no_implicit_reexport: true
+          show_traceback: true
           # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
           strict_equality: true
           warn_redundant_casts: true
@@ -566,41 +617,6 @@ Infra:
         # overrun keep burning wall clock instead of aborting. Grace covers
         # interpreter start, collection and teardown only.
         process-timeout-seconds: 360
-      # mro-6szaq.13.1: SINGLE SSOT for the markdown rule set. The gate resolves
-      # .markdownlint.json by walking upward from the project, so a member
-      # checked out standalone in CI finds nothing and rumdl silently applies its
-      # stock defaults -- MD013 at 80 columns plus MD036/MD040/MD046/MD051/MD057,
-      # every one of which is disabled here. codegen renders this map into each
-      # repository's .markdownlint.json so one rule set governs the fleet; never
-      # restate these values in a template or a hand-written member copy.
-      rumdl:
-        settings:
-          default: true
-          MD001: false
-          MD013:
-            line_length: 500
-            heading_line_length: 200
-            code_block_line_length: 500
-            tables: false
-          MD022: false
-          MD023: false
-          MD024:
-            siblings_only: true
-          MD025: false
-          MD031: false
-          MD033:
-            allowed_elements: [br, details, summary, kbd]
-          MD036: false
-          MD040: false
-          MD041: false
-          MD042: false
-          MD046: false
-          MD050:
-            style: consistent
-          MD051: false
-          MD057: false
-          MD060: false
-          MD076: false
       tomlsort:
         all: true
         in_place: true
