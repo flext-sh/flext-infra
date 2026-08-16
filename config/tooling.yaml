@@ -114,8 +114,12 @@ Infra:
             force-single-line: false
             split-on-trailing-comma: false
           per-file-ignores:
-            "**/.vulture_whitelist.py": [ALL]
-            "**/*_pb2*.py": [ALL]
+            # No blanket mask is declared here. `**/.vulture_whitelist.py` and
+            # `**/*_pb2*.py` previously carried [ALL]; neither glob matches a
+            # tracked file in any governed project, and vendored copies live
+            # under `.venv`, which `exclude` already removes from the lint
+            # surface. A vendored generated file that ever becomes tracked gets
+            # its rules named here, per UNIVERSAL_CORE r19.
             # Command surfaces are dispatched by FILE NAME, not imported as
             # modules, so a hyphenated command (loc-cap.py) is the correct CLI
             # spelling rather than an invalid module name. Scoped to the

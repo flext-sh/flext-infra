@@ -124,7 +124,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             description="Ruff isort configuration"
         )
         per_file_ignores: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.Infra.PerFileIgnores,
             m.Field(
                 alias="per-file-ignores",
                 description="Per-file ignore mapping from glob pattern to ruff rule IDs.",

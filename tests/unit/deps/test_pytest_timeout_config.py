@@ -52,11 +52,7 @@ class TestsFlextInfraPytestTimeoutConfig:
 
     @pytest.mark.parametrize(
         "field",
-        [
-            "case-timeout-seconds",
-            "run-timeout-seconds",
-            "termination-grace-seconds",
-        ],
+        ["case-timeout-seconds", "run-timeout-seconds", "termination-grace-seconds"],
     )
     def test_operator_caps_are_hard_typed_boundaries(self, field: str) -> None:
         policy = config.Infra.tooling.tools.pytest
