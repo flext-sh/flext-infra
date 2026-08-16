@@ -5,12 +5,12 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerCollisionMixin:
@@ -47,14 +47,15 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 20
         if policy.enforce_contract:
             score += 10
-        if module_file.name in self.lazy_init.root_namespace_files:
-            score += 5
-        preferred_stem_by_alias = {
-            alias: file_name.removesuffix(".py")
-            for file_name, alias in self.lazy_init.public_file_aliases.items()
-        }
-        preferred_stem = preferred_stem_by_alias.get(name, "")
-        if preferred_stem and module_file.stem == preferred_stem:
+        declared_exports = self.rope_workspace.exports(
+            module_file,
+            export_options=m.Infra.ExportOptions(
+                allow_assignments=True,
+                allow_functions=True,
+                require_explicit_all=True,
+            ),
+        )
+        if name in declared_exports:
             score += 15
         if attr == name:
             score += 3
