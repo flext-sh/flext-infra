@@ -1078,6 +1078,17 @@ Infra:
       - path: .gitmodules
         owner: codegen
         policy: merge
+      # mro-6szaq.13.1: the markdown gate resolves its rule set by walking
+      # upward for these files. A member checked out standalone in CI has no
+      # parent holding the workspace copies, so rumdl fell back to stock
+      # defaults and reported hundreds of findings the workspace rejects.
+      # Projecting both files makes every checkout evaluate one rule set.
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
+      - path: .markdownlintignore
+        owner: codegen
+        policy: full
       - path: .mise.toml
         owner: codegen
         policy: full
