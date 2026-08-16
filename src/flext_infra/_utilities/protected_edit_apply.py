@@ -69,6 +69,26 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         after_lints = FlextInfraUtilitiesProtectedEditApply.lint_snapshots(
             tuple(updates), request.workspace, gates=request.gates
         )
+        # Repair auto-fixable findings the writes introduced, then re-judge —
+        # gated on a NEW-error delta so clean writes never trigger a fix pass
+        # that could touch pre-existing findings (same contract as
+        # protected_file_edit).
+        dirty = tuple(
+            path
+            for path in updates
+            if FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
+                before_lints[path], after_lints[path]
+            )
+        )
+        if dirty:
+            FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
+                dirty, request.workspace
+            )
+            after_lints.update(
+                FlextInfraUtilitiesProtectedEditApply.lint_snapshots(
+                    dirty, request.workspace, gates=request.gates
+                )
+            )
         for path in updates:
             new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
                 before_lints[path], after_lints[path]
@@ -229,6 +249,22 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 py_file, request.workspace, gates=request.gates
             ),
         )
+        if new_errors:
+            # Repair auto-fixable findings the edit itself introduced (import
+            # ordering, spacing) with the SAME snapshot-identical ruff
+            # resolution, then re-judge the delta. Gated on a NEW-error delta
+            # so an edit that is already clean never triggers a fix pass that
+            # could touch pre-existing findings. Anything ruff cannot
+            # auto-fix, and every other tool's new error, still reverts.
+            FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
+                (py_file,), request.workspace
+            )
+            new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
+                before,
+                FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
+                    py_file, request.workspace, gates=request.gates
+                ),
+            )
         test_fail: str | None = (
             None
             if new_errors
