@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_tests import tm
 
 
@@ -120,6 +120,16 @@ def test_managed_gitlinks_pin_resolved_integration_branch() -> None:
 
     tm.that(u.Infra.resolve_integration_branch(overlaid, provider), eq="hotfix/lane")
     tm.that(u.Infra.resolve_integration_branch(absent, provider), eq="0.12.0-dev")
+
+
+def test_pre_commit_template_excludes_workspace_member_profile() -> None:
+    entry = next(
+        item
+        for item in config.Infra.codegen.templates.entries
+        if item.destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME
+    )
+
+    tm.that(c.Infra.MakeProfile.WORKSPACE_MEMBER in entry.profiles, eq=False)
 
 
 __all__: tuple[str, ...] = ()
