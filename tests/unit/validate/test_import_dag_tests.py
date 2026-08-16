@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsTestImportDag:
+class TestImportDag:
     """Verify allowed and forbidden package-test import edges."""
 
     @staticmethod
@@ -75,6 +75,26 @@ class TestsTestImportDag:
             FlextInfraValidateTestImportDag().build_report(project)
         )
         tm.that(report.passed, eq=True)
+
+    def test_facet_module_names_are_recognized(self, tmp_path: Path) -> None:
+        project = self._project(
+            tmp_path, {"tests/typings.py": "from tests.constants import VALUE\n"}
+        )
+
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project)
+        )
+
+        tm.that(report.passed, eq=False)
+
+    def test_facet_tokens_are_recognized(self, tmp_path: Path) -> None:
+        project = self._project(tmp_path, {"tests/typings.py": "import tests.c\n"})
+
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project)
+        )
+
+        tm.that(report.passed, eq=False)
 
 
 __all__: list[str] = []
