@@ -214,22 +214,23 @@ Infra:
               - undocumented-public-class
               - undocumented-public-function
               - undocumented-public-method
-            # Generated PEP 562 lazy facade roots intentionally re-export and
-            # synthesize package members; only rules incompatible with that
-            # canonical facade contract are excluded here.
+            # Generated PEP 562 facade roots: the ONLY valid init exceptions
+            # are the facade's own declaration and real import cycles
+            # (operator law 2026-08-16). Each rule below IS that declaration:
+            # - import-private-name: the facade publishes its own private
+            #   submodules as the public surface.
+            # - runtime-import-in-type-checking-block: the TYPE_CHECKING
+            #   block is the facade's static type surface; runtime resolution
+            #   is installed lazily by install_lazy_exports (PEP 562), which
+            #   ruff cannot see.
+            # - non-empty-init-module: the generated init necessarily carries
+            #   the version re-exports and the lazy install call.
+            # Every other violation is a source gap fixed at the source,
+            # never masked here or in the init generator.
             "**/__init__.py":
-              - any-type
-              - builtin-import-shadowing
-              - implicit-namespace-package
               - import-private-name
-              - invalid-module-name
               - non-empty-init-module
               - runtime-import-in-type-checking-block
-              - undefined-export
-              - undefined-local-with-import-star
-              - undefined-local-with-import-star-usage
-              - undocumented-public-init
-              - unused-import
 
       mypy:
         plugins: [pydantic.mypy]
