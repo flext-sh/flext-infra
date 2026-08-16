@@ -534,6 +534,7 @@ Infra:
       - { name: .turbo }
       - { name: .venv, source_scan_ignore: true }
       - { name: .venv.* }
+      - { name: .worktrees, source_scan_ignore: true }
       - { name: "*.egg-info", vscode_exclude: false }
       - { name: build, source_scan_ignore: true }
       - { name: dist, source_scan_ignore: true }

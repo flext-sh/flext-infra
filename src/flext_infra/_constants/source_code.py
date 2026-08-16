@@ -20,6 +20,7 @@ class FlextInfraConstantsSourceCode:
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
         ".venv",
+        ".worktrees",
         "node_modules",
         "__pycache__",
         "dist",
