@@ -391,6 +391,14 @@ class FlextInfraModelsDepsToolSettings(
             description="Enable Vulture's internal scanner trace when requested."
         )
 
+    class MarkdownConfig(m.ArbitraryTypesModel):
+        """Markdown lint rules and excluded non-documentation surfaces."""
+
+        rules: t.JsonMapping = m.Field(description="Rumdl-compatible rule mapping.")
+        exclude: t.StrTuple = m.Field(
+            description="Glob patterns excluded from Markdown quality checks."
+        )
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
@@ -402,6 +410,9 @@ class FlextInfraModelsDepsToolSettings(
         )
         hatch: FlextInfraModelsDepsToolSettings.HatchConfig = m.Field(
             description="Hatch metadata settings"
+        )
+        markdown: FlextInfraModelsDepsToolSettings.MarkdownConfig = m.Field(
+            description="Markdown lint settings"
         )
         ruff: FlextInfraModelsDepsToolSettings.RuffConfig = m.Field(
             description="Ruff settings"

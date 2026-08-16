@@ -351,6 +351,13 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         package_entry = self.package(resolved_dir)
         init_path = resolved_dir / c.Infra.INIT_PY
         current_pkg = package_entry.package_name if package_entry is not None else ""
+        package_segments = frozenset(current_pkg.split("."))
+        initializer_shape = (
+            c.Infra.LazyInitShape.STATIC
+            if package_segments & c.Infra.LAZY_BOOTSTRAP_STATIC_SEGMENTS
+            or c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME in package_segments
+            else c.Infra.LazyInitShape.LAZY
+        )
         generated_init = init_path.is_file() and (
             u.Cli.files_read_text(init_path).unwrap().startswith(c.Infra.AUTOGEN_HEADER)
         )
@@ -359,6 +366,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             init_path=init_path,
             current_pkg=current_pkg,
             surface=current_pkg.split(".", maxsplit=1)[0] if current_pkg else "",
+            initializer_shape=initializer_shape,
             generated_init=generated_init,
             importable=bool(current_pkg),
         )
