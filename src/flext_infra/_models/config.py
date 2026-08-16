@@ -30,7 +30,9 @@ class _ConfigContract(m.ContractModel):
     )
 
 
-def _default_make_work_in_progress_spec() -> FlextInfraConfigModels.MakeWorkInProgressSpec:
+def _default_make_work_in_progress_spec() -> (
+    FlextInfraConfigModels.MakeWorkInProgressSpec
+):
     """Return the default work-in-progress predicate for make gates."""
     return FlextInfraConfigModels.MakeWorkInProgressSpec(
         draft_pr=True,
@@ -907,8 +909,7 @@ class FlextInfraConfigModels:
         """Predicate for work-in-progress branches and draft PR gate behavior."""
 
         draft_pr: Annotated[
-            bool,
-            m.Field(description="Treat GitHub draft PRs as work-in-progress"),
+            bool, m.Field(description="Treat GitHub draft PRs as work-in-progress")
         ]
         branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],

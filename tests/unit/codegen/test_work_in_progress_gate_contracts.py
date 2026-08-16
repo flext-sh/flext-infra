@@ -79,8 +79,12 @@ def _pre_push_shell(rendered: str) -> str:
             continue
         for line in block.splitlines():
             stripped = line.strip()
-            if stripped.startswith("bash -eu -o pipefail -c '") and stripped.endswith("'"):
-                return stripped.removeprefix("bash -eu -o pipefail -c '").removesuffix("'")
+            if stripped.startswith("bash -eu -o pipefail -c '") and stripped.endswith(
+                "'"
+            ):
+                return stripped.removeprefix("bash -eu -o pipefail -c '").removesuffix(
+                    "'"
+                )
     err = "no pre-push shell entry in rendered hook config"
     raise AssertionError(err)
 
@@ -94,8 +98,10 @@ def _git_repo(root: Path, branch: str) -> None:
 def _gh_stub(bin_dir: Path, *, broken: bool = False) -> None:
     """Provide a deterministic gh answer so PR draft state is input, not network."""
     stub = bin_dir / "gh"
-    body = "#!/bin/sh\nexit 1\n" if broken else (
-        '#!/bin/sh\necho "${FLEXT_TEST_GH_DRAFT:-false}"\n'
+    body = (
+        "#!/bin/sh\nexit 1\n"
+        if broken
+        else ('#!/bin/sh\necho "${FLEXT_TEST_GH_DRAFT:-false}"\n')
     )
     stub.write_text(body, encoding="utf-8")
     stub.chmod(0o755)
@@ -162,8 +168,10 @@ class TestsWorkInProgressGates:
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir()
         _gh_stub(bin_dir)
-        with _env(PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
-                  FLEXT_TEST_GH_DRAFT="true"):
+        with _env(
+            PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            FLEXT_TEST_GH_DRAFT="true",
+        ):
             result = _run(_pre_push_shell(_render_precommit()), repo)
         tm.ok(result)
         tm.that(result.value, has="skipping pre-push gate")
@@ -180,8 +188,10 @@ class TestsWorkInProgressGates:
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir()
         _gh_stub(bin_dir)
-        with _env(PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
-                  FLEXT_TEST_GH_DRAFT="false"):
+        with _env(
+            PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            FLEXT_TEST_GH_DRAFT="false",
+        ):
             result = _run(_pre_push_shell(_render_precommit()), repo)
         tm.fail(result)
 
