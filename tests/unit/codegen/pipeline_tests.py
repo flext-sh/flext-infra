@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import infra, t
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
@@ -92,6 +94,8 @@ def _make_project(
     return project
 
 
+@pytest.mark.slow
+@pytest.mark.timeout(180)
 def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     """Pipeline flow remains isolated, idempotent, and syntactically valid."""
     _ = _make_project(

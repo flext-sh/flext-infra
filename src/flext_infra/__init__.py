@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from types import MappingProxyType
+
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 from .__version__ import __author__ as __author__
@@ -34,34 +36,6 @@ if TYPE_CHECKING:
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from .work import FlextInfraWorkService
     from .worktree import FlextInfraWorktreeService
-
-_LAZY_MODULES: dict[str, tuple[str, ...]] = {
-    "._config": ("config",),
-    "._settings": ("settings",),
-    ".api": ("FlextInfra", "infra"),
-    ".base": ("FlextInfraServiceBase", "s"),
-    ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-    ".basemk": ("basemk",),
-    ".cli": ("FlextInfraCli", "docs_main", "main"),
-    ".constants": ("FlextInfraConstants", "c"),
-    ".git": ("FlextInfraGitService",),
-    ".models": ("FlextInfraModels", "m"),
-    ".protocols": ("FlextInfraProtocols", "p"),
-    ".typings": ("FlextInfraTypes", "t"),
-    ".utilities": ("FlextInfraUtilities", "u"),
-    ".work": ("FlextInfraWorkService",),
-    ".worktree": ("FlextInfraWorktreeService",),
-    "flext_cli": ("d", "e", "h", "r", "x"),
-}
-
-
-_LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
-
-
-_LAZY_IMPORTS = build_lazy_import_map(
-    _LAZY_MODULES, alias_groups=_LAZY_ALIAS_GROUPS, sort_keys=False
-)
-
 __all__: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
@@ -102,4 +76,32 @@ __all__: tuple[str, ...] = (
     "x",
 )
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)
+install_lazy_exports(
+    __name__,
+    globals(),
+    MappingProxyType(
+        build_lazy_import_map(
+            MappingProxyType({
+                "._config": ("config",),
+                "._settings": ("settings",),
+                ".api": ("FlextInfra", "infra"),
+                ".base": ("FlextInfraServiceBase", "s"),
+                ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
+                ".basemk": ("basemk",),
+                ".cli": ("FlextInfraCli", "docs_main", "main"),
+                ".constants": ("FlextInfraConstants", "c"),
+                ".git": ("FlextInfraGitService",),
+                ".models": ("FlextInfraModels", "m"),
+                ".protocols": ("FlextInfraProtocols", "p"),
+                ".typings": ("FlextInfraTypes", "t"),
+                ".utilities": ("FlextInfraUtilities", "u"),
+                ".work": ("FlextInfraWorkService",),
+                ".worktree": ("FlextInfraWorktreeService",),
+                "flext_cli": ("d", "e", "h", "r", "x"),
+            }),
+            alias_groups=MappingProxyType({}),
+            sort_keys=False,
+        )
+    ),
+    public_exports=__all__,
+)

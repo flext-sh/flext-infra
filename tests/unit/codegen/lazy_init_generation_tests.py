@@ -59,8 +59,11 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="_LAZY_MODULES")
-        tm.that(content, contains="_LAZY_ALIAS_GROUPS")
+        tm.that(content, lacks="_LAZY_MODULES")
+        tm.that(content, lacks="_LAZY_ALIAS_GROUPS")
+        tm.that(content, lacks="_LAZY_IMPORTS")
+        tm.that(content, contains="MappingProxyType(")
+        tm.that(content, contains="build_lazy_import_map(")
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="from .__version__ import __version__ as __version__")
         tm.that(
@@ -82,9 +85,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="    from .api import Demo")
-        runtime_prefix = content.split("_LAZY_MODULES:", maxsplit=1)[0].split(
-            "if TYPE_CHECKING:", maxsplit=1
-        )[0]
+        runtime_prefix = content.split("if TYPE_CHECKING:", maxsplit=1)[0]
         tm.that(runtime_prefix, lacks="from .api import Demo")
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="install_lazy_exports(")
@@ -210,11 +211,10 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(init_content, contains='".constants": ("TestsDemoConstants", "c"),')
         tm.that(init_content, contains='".utilities": ("TestsDemoUtilities", "u"),')
         import_block = init_content.split(
-            "from flext_core.lazy import build_lazy_import_map, "
-            "install_lazy_exports\n\n",
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n",
             maxsplit=1,
         )[1]
-        import_block = import_block.split("_LAZY_MODULES:", maxsplit=1)[0]
+        import_block = import_block.split("install_lazy_exports(", maxsplit=1)[0]
         module_offsets = tuple(
             import_block.index(module)
             for module in (
