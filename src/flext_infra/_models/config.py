@@ -1749,6 +1749,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
+        uv_exclude_newer_package: t.StrMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Package-specific uv exclude-newer timestamps.",
+        )
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
         ]

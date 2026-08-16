@@ -26,6 +26,18 @@ class TestsRootArtifactOwnership:
 
         tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
 
+    def test_markdown_config_templates_cover_every_repository_profile(self) -> None:
+        entries = {
+            item.destination: item
+            for item in config.Infra.codegen.templates.entries
+            if item.destination in {".markdownlint.json", ".markdownlintignore"}
+        }
+
+        tm.that(set(entries), eq={".markdownlint.json", ".markdownlintignore"})
+        for entry in entries.values():
+            tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
+        tm.that(config.Infra.tooling.tools.markdown.exclude, has=".serena/**")
+
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
         configured = config.Infra.codegen.managed_files
         paths = tuple(item.path.as_posix() for item in configured)
