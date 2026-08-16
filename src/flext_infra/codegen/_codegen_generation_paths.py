@@ -72,7 +72,10 @@ class FlextInfraCodegenGenerationPathsMixin:
     @staticmethod
     def _is_runtime_fixture_package(current_pkg: str) -> bool:
         """Return whether a package is owned by pytest fixture discovery."""
-        return "_fixtures" in current_pkg.split(".")
+        segments = frozenset(current_pkg.split("."))
+        return "_fixtures" in segments or bool(
+            segments & c.Infra.STATIC_RUNTIME_PACKAGES
+        )
 
     @staticmethod
     def _is_local_module(mod: str, root_name: str) -> bool:

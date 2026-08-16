@@ -90,6 +90,21 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
+    def test_lazy_helper_package_initializer_is_static(self) -> None:
+        plan = self._plan(
+            "flext_core._lazy_parts",
+            ("FlextLazy",),
+            MappingProxyType({
+                "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, lacks="from flext_core.lazy import")
+        tm.that(content, contains="__all__: tuple[str, ...] = ()")
+
     def test_root_initializer_rejects_private_entries_outside_all(self) -> None:
         """Render no package attribute that is absent from the public contract."""
         plan = self._plan(
