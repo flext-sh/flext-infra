@@ -105,6 +105,7 @@ if TYPE_CHECKING:
     from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
     from .refactor import FlextInfraUtilitiesRefactor
     from .refactor_discovery import FlextInfraUtilitiesRefactorDiscovery
+    from .references import FlextInfraUtilitiesReferences
     from .release import FlextInfraUtilitiesRelease
     from .repository import FlextInfraUtilitiesRepository
     from .resource_limits import FlextInfraUtilitiesResourceLimits
@@ -211,6 +212,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactorNamespaceMoves",
     "FlextInfraUtilitiesRefactorNamespaceMro",
     "FlextInfraUtilitiesRefactorPolicy",
+    "FlextInfraUtilitiesReferences",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
@@ -386,6 +388,7 @@ install_lazy_exports(
                 ".pyproject_conform": ("FlextInfraUtilitiesPyprojectConform",),
                 ".refactor": ("FlextInfraUtilitiesRefactor",),
                 ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
+                ".references": ("FlextInfraUtilitiesReferences",),
                 ".release": ("FlextInfraUtilitiesRelease",),
                 ".repository": ("FlextInfraUtilitiesRepository",),
                 ".resource_limits": ("FlextInfraUtilitiesResourceLimits",),

@@ -27,9 +27,11 @@ if TYPE_CHECKING:
     from .metadata_discipline import FlextInfraValidateMetadataDiscipline
     from .namespace_rules import FlextInfraNamespaceRules
     from .namespace_validator import FlextInfraNamespaceValidator
+    from .persisted_references import FlextInfraPersistedReferencesValidator
     from .pytest_diag import FlextInfraPytestDiagExtractor
     from .pytest_runner import FlextInfraPytestRunner
     from .pytest_selector import FlextInfraPytestSelectorValidator
+    from .reference_extraction import FlextInfraReferenceExtraction
     from .runtime_census import FlextInfraRuntimeCensusValidator
     from .scanner import FlextInfraTextPatternScanner
     from .silent_failure import FlextInfraSilentFailureValidator
@@ -50,9 +52,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualCommandValidator",
     "FlextInfraNamespaceRules",
     "FlextInfraNamespaceValidator",
+    "FlextInfraPersistedReferencesValidator",
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPytestRunner",
     "FlextInfraPytestSelectorValidator",
+    "FlextInfraReferenceExtraction",
     "FlextInfraRuntimeCensusValidator",
     "FlextInfraSilentFailureValidator",
     "FlextInfraSkillValidator",
@@ -95,9 +99,11 @@ install_lazy_exports(
                 ".metadata_discipline": ("FlextInfraValidateMetadataDiscipline",),
                 ".namespace_rules": ("FlextInfraNamespaceRules",),
                 ".namespace_validator": ("FlextInfraNamespaceValidator",),
+                ".persisted_references": ("FlextInfraPersistedReferencesValidator",),
                 ".pytest_diag": ("FlextInfraPytestDiagExtractor",),
                 ".pytest_runner": ("FlextInfraPytestRunner",),
                 ".pytest_selector": ("FlextInfraPytestSelectorValidator",),
+                ".reference_extraction": ("FlextInfraReferenceExtraction",),
                 ".runtime_census": ("FlextInfraRuntimeCensusValidator",),
                 ".scanner": ("FlextInfraTextPatternScanner",),
                 ".silent_failure": ("FlextInfraSilentFailureValidator",),
