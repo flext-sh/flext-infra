@@ -31,6 +31,10 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             self, pkg_dir: Path
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
+        def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
+
+        def _package_name_from_target(self, target: str) -> str: ...
+
         def _parents_from_constants_module(
             self, module_path: Path, current_pkg: str, visited: set[str] | None = None
         ) -> t.StrSequence: ...
@@ -58,39 +62,84 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             pkg_dir.name,
             surface,
         }
+        local_parent_packages = self._local_parent_packages(pkg_dir)
+        local_import_alias_targets = self._local_import_alias_targets(pkg_dir)
         if (
             not u.Infra.matches_project_namespace_package(current_pkg)
             and not is_test_runtime_alias_surface
+            and not local_parent_packages
+            and not local_import_alias_targets
         ):
             return
-        self._resolve_local_aliases(lazy_map, current_pkg=current_pkg, pkg_dir=pkg_dir)
-        inherited_key = (
-            surface if surface in self.lazy_init.inherited_exports else "src"
-        )
         inherited_packages = self._resolve_transitive_parent_packages((
             *self._parent_packages(pkg_dir),
-            self._source_package_name(pkg_dir, inherited_key),
+            *local_parent_packages,
+            self._source_package_name(pkg_dir, surface),
         ))
         runtime_alias_names: list[str] = []
         if is_test_runtime_alias_surface:
             runtime_alias_names = list(c.Infra.TEST_RUNTIME_ALIAS_TARGETS)
-        alias_names = tuple(
-            dict.fromkeys((
-                *self.lazy_init.inherited_exports.get(inherited_key, ()),
-                *runtime_alias_names,
-            ))
+        inherited_alias_names = tuple(
+            name
+            for package_name in inherited_packages
+            for name in self._export_names_for_package(package_name)
+            if (
+                name.isidentifier()
+                and name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            )
         )
-        local_alias_names = frozenset(
-            alias_name
-            for file_name, alias_name in self.lazy_init.public_file_aliases.items()
-            if (pkg_dir / file_name).is_file()
+        inherited_alias_names = tuple(
+            dict.fromkeys(
+                (
+                    *inherited_alias_names,
+                    *(
+                        name
+                        for package_name in inherited_packages
+                        for name in u.Infra.installed_package_exports(package_name)
+                        if (
+                            name.isidentifier()
+                            and name.islower()
+                            and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+                        )
+                    ),
+                )
+            )
+        )
+        declared_parent_alias_names = tuple(
+            name
+            for package_name in inherited_packages
+            for name in self._declared_parent_aliases(package_name)
+            if (
+                name.isidentifier()
+                and name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            )
+        )
+        local_declared_alias_names = tuple(
+            name
+            for name in self._declared_parent_aliases_for_directory(pkg_dir)
+            if (
+                name.isidentifier()
+                and name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            )
+        )
+        alias_names = tuple(
+            dict.fromkeys(
+                (
+                    *inherited_alias_names,
+                    *declared_parent_alias_names,
+                    *local_declared_alias_names,
+                    *runtime_alias_names,
+                )
+            )
         )
         for alias_name in alias_names:
             existing = lazy_map.get(alias_name)
             if (
                 existing is not None
                 and existing[0].startswith(current_pkg)
-                and alias_name in local_alias_names
             ):
                 continue
             package_name = self._resolve_inherited_alias_source(
@@ -103,39 +152,58 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 # mro-pulj (codex): the generated root TYPE_CHECKING contract
                 # makes the public package itself the single inherited owner.
                 lazy_map[alias_name] = (package_name, alias_name)
+        for alias_name, package_name in local_import_alias_targets:
+            if package_name and package_name != current_pkg:
+                lazy_map.setdefault(alias_name, (package_name, alias_name))
 
-    def _resolve_local_aliases(
-        self, lazy_map: t.MutableLazyAliasMap, *, current_pkg: str, pkg_dir: Path
-    ) -> None:
-        """Inject public_file_aliases from the lazy-init config into the lazy map."""
-        alias_to_files: dict[str, list[str]] = {}
-        for file_name, alias_name in self.lazy_init.public_file_aliases.items():
-            alias_to_files.setdefault(alias_name, []).append(file_name)
-        for alias_name, file_names in alias_to_files.items():
-            existing = lazy_map.get(alias_name)
-            if existing is not None and existing[0].startswith(current_pkg):
-                continue
-            for file_name in file_names:
-                base_name = Path(file_name).stem
-                module_file = pkg_dir / file_name
-                package_dir = pkg_dir / base_name
-                module_name = f"{current_pkg}.{base_name}"
-                if module_file.is_file() and alias_name in self._module_exports(
-                    module_file,
-                    module_name,
-                    export_options=m.Infra.ExportOptions(allow_assignments=True),
-                ):
-                    lazy_map[alias_name] = (module_name, alias_name)
-                    break
-                if package_dir.is_dir() and (package_dir / c.Infra.INIT_PY).is_file():
-                    package_exports = self._module_exports(
-                        package_dir / c.Infra.INIT_PY,
-                        module_name,
-                        export_options=m.Infra.ExportOptions(allow_assignments=True),
-                    )
-                    if alias_name in package_exports:
-                        lazy_map[alias_name] = (module_name, alias_name)
-                        break
+    def _declared_parent_aliases(self, package_name: str) -> t.StrSequence:
+        package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+            package_name
+        )
+        if package_dir is None:
+            return ()
+        constants_path = package_dir / c.Infra.CONSTANTS_PY
+        if self.rope_workspace.resource(constants_path) is None:
+            return ()
+        state = self.rope_workspace.semantic(constants_path)
+        return tuple(state.declared_imports)
+
+    def _declared_parent_aliases_for_directory(self, pkg_dir: Path) -> t.StrSequence:
+        constants_path = pkg_dir / c.Infra.CONSTANTS_PY
+        if self.rope_workspace.resource(constants_path) is None:
+            return ()
+        return tuple(self.rope_workspace.semantic(constants_path).declared_imports)
+
+    def _local_parent_packages(self, pkg_dir: Path) -> t.StrSequence:
+        constants_path = pkg_dir / c.Infra.CONSTANTS_PY
+        if self.rope_workspace.resource(constants_path) is None:
+            return ()
+        package_entry = self._package_entry(pkg_dir)
+        current_name = package_entry.package_name if package_entry is not None else ""
+        state = self.rope_workspace.semantic(constants_path)
+        return tuple(
+            package_name
+            for target in state.declared_imports.values()
+            if (package_name := self._package_name_from_target(target))
+            and package_name != current_name
+        )
+
+    def _local_import_alias_targets(self, pkg_dir: Path) -> t.StrPairSequence:
+        constants_path = pkg_dir / c.Infra.CONSTANTS_PY
+        if self.rope_workspace.resource(constants_path) is None:
+            return ()
+        state = self.rope_workspace.semantic(constants_path)
+        return tuple(
+            (alias, package_name)
+            for alias, target in state.declared_imports.items()
+            if (
+                package_name := (
+                    self._package_name_from_target(target) or target.split(".", maxsplit=1)[0]
+                )
+            )
+            if alias != "annotations"
+            and not target.startswith("__future__")
+        )
 
     def _resolve_transitive_parent_packages(
         self, package_names: t.StrSequence
