@@ -99,6 +99,30 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
     )
 
 
+def _seed_infra_package_tree(root: Path) -> None:
+    """Seed the minimal flext-infra tree (pyproject, src package, tests package).
+
+    The conform templates materialize tests/fixtures/ci/docker/*, and the
+    existing-tree tooling render discovers python roots from directories that
+    exist on disk (env_dirs). Seeding tests/ makes the first render match the
+    post-apply fixed point.
+    """
+    dist = u.Tests.repository_ref(config.Infra.name).distribution
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            root / "pyproject.toml",
+            f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n',
+        )
+    )
+    package_init = root / "src" / "flext_infra" / "__init__.py"
+    package_init.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+    tests_init = root / "tests" / "__init__.py"
+    tests_init.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+
+
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
@@ -378,20 +402,7 @@ class TestCodegenConform:
         must decide, so the extra root survives a whole gen cycle.
         """
         root = infra_git_repo
-        dist = u.Tests.repository_ref(config.Infra.name).distribution
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
-                'requires-python = ">=3.13,<3.14"\n',
-            )
-        )
-        package_init = root / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        tests_init = root / "tests" / "__init__.py"
-        tests_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        _seed_infra_package_tree(root)
         # The defect needs a Python root the declarative env_dirs never lists.
         extra_root = "tools"
         module = root / extra_root / "maintenance.py"
@@ -440,20 +451,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        dist = u.Tests.repository_ref(config.Infra.name).distribution
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
-                'requires-python = ">=3.13,<3.14"\n',
-            )
-        )
-        package_init = root / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        tests_init = root / "tests" / "__init__.py"
-        tests_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        _seed_infra_package_tree(root)
         (root / "scripts").mkdir()
 
         result = FlextInfraCodegenConform.execute_request(
@@ -477,29 +475,12 @@ class TestCodegenConform:
         root = infra_git_repo
         repository = u.Tests.repository_ref(config.Infra.name)
         local_repository = repository.model_copy(update={"path": Path()})
-        dist = repository.distribution
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
             "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
         }
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
-                'requires-python = ">=3.13,<3.14"\n',
-            )
-        )
-        package_init = root / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        # The conform templates materialize tests/fixtures/ci/docker/*, and the
-        # existing-tree tooling render discovers python roots from directories
-        # that exist on disk (env_dirs). Seed tests/ so the first render already
-        # matches the post-apply fixed point.
-        tests_init = root / "tests" / "__init__.py"
-        tests_init.parent.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        _seed_infra_package_tree(root)
         for relative, content in create_only.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
