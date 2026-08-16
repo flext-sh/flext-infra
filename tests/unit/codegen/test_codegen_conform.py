@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, main as infra_main
+from flext_infra import config, main as infra_main, r
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
