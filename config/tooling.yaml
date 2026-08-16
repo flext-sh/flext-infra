@@ -465,7 +465,7 @@ Infra:
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
-        # OPERATOR LAW mro-09686 (2026-08-15): budgets are a CONTRACT, not a
+        # OPERATOR LAW mro-38p39 (2026-08-13), reaffirmed by mro-09686
         # measurement. 10s per case, 60s for an explicitly slow case, 300s for
         # the complete suite. A case that does not fit is a TEST DEFECT and is
         # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
@@ -475,9 +475,12 @@ Infra:
         # overrun and a push could be attempted without a full green suite.
         case-timeout-seconds: 10
         # Complete-suite wall clock, and the budget the generated pre-push
-        # `make test` gate enforces. The operator declares 300s (mro-09686),
-        # superseding the earlier 240s ceiling; the abort-on-overrun contract is
-        # unchanged, so an unbounded hang still dies inside the wall.
+        # `make test` gate enforces. The consumer fleet outgrew 120s: ai-hub's
+        # 1751-case suite reached only 62% (1094 passed, 0 failed) inside the
+        # immutable wall at 12 workers, so every checkout was structurally red
+        # on `make test WHAT=full`. The operator raised the standard pre-push
+        # contract to 300s (mro-09686): it keeps the abort-on-overrun guarantee
+        # (an unbounded hang still dies) with headroom over the measured ~190s run.
         run-timeout-seconds: 300
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
