@@ -135,12 +135,26 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return None
         tree = ast.parse(module_file.read_text(encoding="utf-8"))
         for node in tree.body:
-            if not isinstance(node, ast.ImportFrom) or not node.module:
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            package_parts = module_path.split(".")[:-1]
+            if node.level:
+                retained_parts = package_parts[: len(package_parts) - node.level + 1]
+                imported_parts = node.module.split(".") if node.module else []
+                imported_module = ".".join((*retained_parts, *imported_parts))
+            elif node.module:
+                imported_module = node.module
+            else:
                 continue
             for alias in node.names:
                 exported_name = alias.asname or alias.name
                 if exported_name == attr:
-                    return (node.module, alias.name)
+                    owner_module = (
+                        f"{imported_module}.{alias.name}"
+                        if node.level and node.module is None
+                        else imported_module
+                    )
+                    return (owner_module, alias.name)
         return None
 
     @staticmethod

@@ -117,12 +117,16 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     def test_mypy_signal_diagnostic_preserves_both_output_streams(self) -> None:
         """Expose traceback output when Mypy also writes an error banner."""
+        limit = m.Infra.MypyResourceLimit(
+            memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT, timeout_seconds=60
+        )
         diagnostic = u.Infra.mypy_failure_diagnostic(
             m.Cli.CommandOutput(
                 stdout="Traceback: checker frame",
                 stderr="INTERNAL ERROR",
                 exit_code=-11,
-            )
+            ),
+            limit,
         )
 
         tm.that(diagnostic, has=["Traceback: checker frame", "INTERNAL ERROR"])

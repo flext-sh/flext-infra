@@ -620,6 +620,11 @@ class FlextInfraUtilitiesPyprojectConform:
             package_cutoffs = u.Cli.toml_ensure_table(uv, "exclude-newer-package")
             for package, timestamp in sorted(exclude_newer_package.items()):
                 u.Cli.toml_sync_value(package_cutoffs, package, timestamp)
+            for stale_package in tuple(package_cutoffs):
+                if stale_package not in exclude_newer_package:
+                    u.Cli.toml_remove_key_if_present(package_cutoffs, stale_package)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Project is a flext-infra routing key only; uv scoped form is
         # {package={name, version?}, dependencies=[...]} (uv settings docs).
         # Emit on every owning pyproject so standalone CI clones resolve;
