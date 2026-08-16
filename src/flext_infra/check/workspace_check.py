@@ -70,9 +70,7 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
-        return r[list[str]].ok(
-            FlextInfraWorkspaceChecker.apply_ci_gate_rules(resolved)
-        )
+        return r[list[str]].ok(FlextInfraWorkspaceChecker.apply_ci_gate_rules(resolved))
 
     @staticmethod
     def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:

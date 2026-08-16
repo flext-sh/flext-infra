@@ -241,9 +241,7 @@ class TestsFlextInfraWorkService:
             )
         )
         tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "push", "origin", "main"], cwd=repository
-            )
+            u.Cli.run_checked([c.Infra.GIT, "push", "origin", "main"], cwd=repository)
         )
         return origin
 
@@ -1420,9 +1418,7 @@ class TestsFlextInfraWorkService:
         lane = Path(self._metadata(tmp_path, bead_id)["worktree"])
         self._commit_in(repository, "remote advance")
         remote_oid = tm.ok(
-            u.Infra.git_repository_head(
-                m.Infra.GitRepoRequest(repo_root=repository)
-            )
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository))
         ).oid
         tm.ok(
             u.Cli.run_checked(

@@ -17,6 +17,7 @@ from flext_tests import tm
 # on an idle CPU, so the whole module declares the config-owned slow budget.
 pytestmark = pytest.mark.slow
 
+
 class TestsCodegenSetupSubmodules:
     @staticmethod
     def _git(root: Path, *arguments: str) -> str:

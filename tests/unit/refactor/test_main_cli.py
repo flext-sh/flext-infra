@@ -54,8 +54,7 @@ class TestsFlextInfraRefactorMainCli:
             "[tool.pyrefly]\n"
             "disable-project-excludes-heuristics = true\n"
             "project-excludes = []\n"
-            'search-path = [".", "src"]\n\n'
-            + u.Tests.ruff_per_file_ignores_toml(),
+            'search-path = [".", "src"]\n\n' + u.Tests.ruff_per_file_ignores_toml(),
         )
 
     @staticmethod

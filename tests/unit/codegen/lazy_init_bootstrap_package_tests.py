@@ -81,9 +81,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
 
         tm.that(result, eq=0)
         tm.that(init_path.is_file(), eq=True)
-        tm.that(
-            init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=generated_stub
-        )
+        tm.that(init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=generated_stub)
 
     def test_other_distributions_still_receive_the_lazy_bootstrap(
         self, tmp_path: Path

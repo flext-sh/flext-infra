@@ -88,10 +88,7 @@ class FlextInfraConstantsMake:
     # program analyses, so CI=Y runs the strict complement of this set -- ruff
     # lint included -- and the two contexts can never overlap nor leave a gate
     # unowned. An unset CI runs every allowed gate.
-    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = (
-        "pyrefly",
-        "mypy",
-    )
+    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = ("pyrefly", "mypy")
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
@@ -100,10 +97,7 @@ class FlextInfraConstantsMake:
     # every gate -- including pyright and mypy, which fix nothing and cost ~37s,
     # timing the verb out. Formatting is NOT here: `format` belongs to
     # `make fmt` alone -- fix repairs findings, fmt rewrites style.
-    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = (
-        "markdown",
-        "smells",
-    )
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = ("markdown", "smells")
     # mro-x0rau.3: the FILE/FILES/CHANGED_ONLY fast-path gate restriction was
     # deleted with base_verbs.mk.j2 (commit 2a4a8ea7a). File-scoped runs now go
     # through the same typed gate pipeline as a full run, so every allowed gate

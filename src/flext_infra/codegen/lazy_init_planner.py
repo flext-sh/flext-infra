@@ -202,9 +202,7 @@ class FlextInfraCodegenLazyInitPlanner(
         return plan
 
     @staticmethod
-    def _is_lazy_bootstrap_package(
-        context: m.Infra.LazyInitPackageContext,
-    ) -> bool:
+    def _is_lazy_bootstrap_package(context: m.Infra.LazyInitPackageContext) -> bool:
         """Return True when the package is reached by the lazy bootstrap itself."""
         segments = context.current_pkg.split(".")
         return (
