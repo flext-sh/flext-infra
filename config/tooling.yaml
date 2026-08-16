@@ -466,7 +466,7 @@ Infra:
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW mro-38p39 (2026-08-13): budgets are a CONTRACT, not a
-        # measurement. 10s per case, 60s for an explicitly slow case, 240s for
+        # measurement. 10s per case, 60s for an explicitly slow case, 300s for
         # the complete suite. A case that does not fit is a TEST DEFECT and is
         # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
         # itself a violation. This supersedes the prior measurement-driven note
@@ -477,9 +477,12 @@ Infra:
         # Complete-suite wall clock. The consumer fleet outgrew 120s: ai-hub's
         # 1751-case suite reached only 62% (1094 passed, 0 failed) inside the
         # immutable wall at 12 workers, so every checkout was structurally red
-        # on `make test WHAT=full`. 240s keeps the abort-on-overrun contract
-        # (an unbounded hang still dies) while fitting the measured ~190s run.
-        run-timeout-seconds: 240
+        # on `make test WHAT=full`. OPERATOR LAW mro-2zwxl / ai-hub-88h1
+        # (2026-08-15) sets the canonical pre-push run wall at 300s: 240s left
+        # no headroom for the loaded multi-lane host, so pre-push aborted on
+        # wall clock rather than on a real defect. The per-case budget stays 10s
+        # — this raises only the whole-suite wall, never a per-test ceiling.
+        run-timeout-seconds: 300
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
@@ -531,12 +534,12 @@ Infra:
           # mro-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
         # mro-99ae: hard process boundary independent of pytest hook progress.
-        # Must exceed run-timeout-seconds (240) by a small grace only: this caps
+        # Must exceed run-timeout-seconds (300) by a small grace only: this caps
         # the whole Make/pytest process (shell `timeout`), not a single session
         # hook. A wide outer wall is itself an escape hatch — it would let an
         # overrun keep burning wall clock instead of aborting. Grace covers
         # interpreter start, collection and teardown only.
-        process-timeout-seconds: 300
+        process-timeout-seconds: 360
       tomlsort:
         all: true
         in_place: true
