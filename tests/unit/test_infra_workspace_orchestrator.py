@@ -170,6 +170,7 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Sanitize inherited make state at the external command boundary."""
+        observed_commands: t.MutableSequenceOf[t.StrSequence] = []
         observed_remove_keys: t.MutableSequenceOf[t.StrSequence] = []
         observed_envs: t.MutableSequenceOf[t.StrMapping] = []
         bin_path = tmp_path / "bin"
@@ -194,19 +195,39 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             env: t.StrMapping | None = None,
             remove_env_keys: t.StrSequence = (),
         ) -> p.Result[int]:
-            _ = cmd, cwd, timeout, env
+            _ = cwd, timeout, env
             Path(output_file).parent.mkdir(parents=True, exist_ok=True)
             Path(output_file).write_text("", encoding="utf-8")
+            observed_commands.append(tuple(cmd))
             observed_remove_keys.append(tuple(remove_env_keys))
             observed_envs.append(dict(env or {}))
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
-        orchestrator = FlextInfraOrchestratorService(verb="test")
+        workspace_root = tmp_path / "workspace"
+        orchestrator = FlextInfraOrchestratorService(
+            verb="test", workspace_root=workspace_root
+        )
 
-        result = orchestrator.orchestrate(["flext-demo"], "test")
+        result = orchestrator.orchestrate(
+            ["flext-demo"], "test", make_args=("FILE=tests/unit/test_demo.py",)
+        )
 
         tm.ok(result, len=1)
+        tm.that(
+            observed_commands,
+            eq=[
+                (
+                    c.Infra.MAKE,
+                    "-C",
+                    "flext-demo",
+                    "test",
+                    f"MAKE_PROFILE={c.Infra.MakeProfile.WORKSPACE_MEMBER.value}",
+                    f"WORKSPACE_ROOT={workspace_root}",
+                    "FILE=tests/unit/test_demo.py",
+                )
+            ],
+        )
         tm.that("MAKEFILES" in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, eq=True)
         tm.that(observed_remove_keys, eq=[c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS])
         tm.that(observed_envs[0][c.Infra.ORCHESTRATOR_ENV_NO_COLOR], eq="1")
