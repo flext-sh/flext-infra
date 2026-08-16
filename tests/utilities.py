@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
@@ -315,6 +316,32 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Provide the typed test helper `infra_mapping`."""
             result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
             return result
+
+        @staticmethod
+        def toml_table_at(content: str, *path: str) -> t.JsonMapping:
+            current = TestsFlextInfraUtilities.Tests.toml_mapping(
+                tomllib.loads(content)
+            )
+            for segment in path:
+                current = TestsFlextInfraUtilities.Tests.toml_mapping(current[segment])
+            return current
+
+        @staticmethod
+        def toml_strings_at(content: str, *path: str) -> t.StrSequence:
+            if not path:
+                return ()
+            table = TestsFlextInfraUtilities.Tests.toml_table_at(content, *path[:-1])
+            return TestsFlextInfraUtilities.Tests.toml_strings(table[path[-1]])
+
+        @staticmethod
+        def toml_tables_at(content: str, *path: str) -> t.SequenceOf[t.JsonMapping]:
+            if not path:
+                return ()
+            table = TestsFlextInfraUtilities.Tests.toml_table_at(content, *path[:-1])
+            values = TestsFlextInfraUtilities.Tests.toml_list(table[path[-1]])
+            return tuple(
+                TestsFlextInfraUtilities.Tests.toml_mapping(value) for value in values
+            )
 
         @staticmethod
         def infra_mapping_result(
