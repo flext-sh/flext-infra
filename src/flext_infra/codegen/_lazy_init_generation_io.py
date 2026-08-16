@@ -73,14 +73,13 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         """Write one initializer after removing obsolete generated sidecars."""
         init_path = plan.context.init_path
         try:
-            # mro-j47u (codex): Jinja owns final Ruff shape; IO only compares/writes.
             generated = FlextInfraCodegenGeneration.render_init(plan)
             previous = self._read_previous_init(plan)
-            cleanup_exit = self._cleanup_generated_support_files(plan)
-            self._write_generated_file(init_path, generated, previous)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
+        cleanup_exit = self._cleanup_generated_support_files(plan)
+        self._write_generated_file(init_path, generated, previous)
         if cleanup_exit < 0:
             return (-1, dict(plan.lazy_map))
         return (0, dict(plan.lazy_map))
@@ -93,10 +92,10 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         try:
             generated = FlextInfraCodegenGeneration.render_init(plan)
             previous = self._read_previous_init(plan)
-            cleanup_exit = self._cleanup_generated_support_files(plan, check_only=True)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"checking generated init {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
+        cleanup_exit = self._cleanup_generated_support_files(plan, check_only=True)
         if cleanup_exit < 0:
             return (-1, dict(plan.lazy_map))
         if previous != generated:
