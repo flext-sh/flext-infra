@@ -72,6 +72,14 @@ class FlextInfraModelsDepsToolSettings(
                 description="Hard maximum runtime for one pytest item.",
             ),
         ]
+        slow_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="slow-timeout-seconds",
+                gt=0,
+                description="Hard maximum runtime for one explicitly slow item.",
+            ),
+        ]
         run_timeout_seconds: Annotated[
             int,
             m.Field(
@@ -228,6 +236,12 @@ class FlextInfraModelsDepsToolSettings(
                 > self.run_timeout_seconds
             ):
                 msg = "pytest run timeout must include item and termination budgets"
+                raise ValueError(msg)
+            if self.slow_timeout_seconds <= self.case_timeout_seconds:
+                msg = "pytest slow timeout must exceed the per-case timeout"
+                raise ValueError(msg)
+            if self.slow_timeout_seconds >= self.run_timeout_seconds:
+                msg = "pytest slow timeout must be less than run timeout"
                 raise ValueError(msg)
             if self.process_timeout_seconds <= self.run_timeout_seconds:
                 msg = (

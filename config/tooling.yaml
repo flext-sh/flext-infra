@@ -491,6 +491,14 @@ Infra:
         # rule let the suite run 30 minutes, so make test never aborted on
         # overrun and a push could be attempted without a full green suite.
         case-timeout-seconds: 10
+        # The 60s arm of OPERATOR LAW mro-38p39, made executable. The law
+        # already granted an explicitly slow case 60s, but no key projected it,
+        # so `flext_slow_timeout_seconds` stayed empty and every `@pytest.mark.slow`
+        # item was still judged at 10s. A nested `pytester.runpytest_subprocess()`
+        # pays a full interpreter + plugin boot before its first assertion and
+        # cannot fit 10s; it is not a slow TEST, it is a slow HARNESS. This is
+        # the declared exception, not a raised ceiling: unmarked cases keep 10s.
+        slow-timeout-seconds: 60
         # Complete-suite wall clock. The consumer fleet outgrew 120s: ai-hub's
         # 1751-case suite reached only 62% (1094 passed, 0 failed) inside the
         # immutable wall at 12 workers, so every checkout was structurally red

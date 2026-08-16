@@ -16,7 +16,7 @@ from tests import u as test_u
 # itself dominates the runtime. The class declares its true end-to-end budget
 # instead of raising the global unit-test timeout and masking real hangs.
 @pytest.mark.slow
-@pytest.mark.timeout(180)
+
 class TestCodegenLinkedWorktreeManifest:
     """Render generated artifacts from the active lane's declared manifest."""
 

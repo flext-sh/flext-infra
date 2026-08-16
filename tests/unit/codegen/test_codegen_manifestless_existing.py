@@ -14,10 +14,10 @@ from tests import u as test_u
 
 
 # Exemplar: conform materializes a full managed tree on disk, so the render
-# itself dominates the runtime. The class declares its true end-to-end budget
-# instead of raising the global unit-test timeout and masking real hangs.
+# itself dominates the runtime. The class carries the config-owned slow budget
+# (Infra.tooling.tools.pytest.slow-timeout-seconds) instead of a hardcoded
+# ceiling, so a real hang still aborts at the declared wall.
 @pytest.mark.slow
-@pytest.mark.timeout(180)
 class TestCodegenManifestlessExisting:
     def test_existing_root_uses_pep621_metadata_for_managed_artifacts(
         self, infra_git_repo: Path

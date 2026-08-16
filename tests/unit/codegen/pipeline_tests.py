@@ -95,7 +95,7 @@ def _make_project(
 
 
 @pytest.mark.slow
-@pytest.mark.timeout(180)
+
 def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     """Pipeline flow remains isolated, idempotent, and syntactically valid."""
     _ = _make_project(
