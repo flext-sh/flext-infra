@@ -2026,6 +2026,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
+                    uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                     uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                         repository, workspace, codegen
                     ),
@@ -2125,6 +2126,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                 uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                     repository, workspace, codegen
                 ),
@@ -2266,6 +2268,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_exclude_newer_package=codegen.toolchain.uv_exclude_newer_package,
                 uv_exclude_newer=FlextInfraCodegenConform._uv_exclude_newer(
                     repository, workspace, codegen
                 ),

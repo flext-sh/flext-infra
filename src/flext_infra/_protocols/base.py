@@ -318,6 +318,9 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def uv_exclude_newer_package(self) -> t.StrMapping: ...
+
+        @property
         def kubectl_version(self) -> str:
             """Exact kubectl version."""
             ...

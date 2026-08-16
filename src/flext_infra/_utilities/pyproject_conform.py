@@ -81,6 +81,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
             link_mode=toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
+            exclude_newer_package=toolchain.uv_exclude_newer_package,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -559,6 +560,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
         link_mode: str | None = None,
         exclude_newer: str | None = None,
+        exclude_newer_package: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
@@ -574,6 +576,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 not workspace_root
                 and link_mode is None
                 and exclude_newer is None
+                and not exclude_newer_package
                 and not exclude_dependencies
             ):
                 return r[bool].ok(True)
@@ -584,6 +587,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 not workspace_root
                 and link_mode is None
                 and exclude_newer is None
+                and not exclude_newer_package
                 and not exclude_dependencies
             ):
                 return r[bool].ok(True)
@@ -612,6 +616,10 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         if exclude_newer is not None:
             u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
+        if exclude_newer_package:
+            package_cutoffs = u.Cli.toml_ensure_table(uv, "exclude-newer-package")
+            for package, timestamp in sorted(exclude_newer_package.items()):
+                u.Cli.toml_sync_value(package_cutoffs, package, timestamp)
         # Project is a flext-infra routing key only; uv scoped form is
         # {package={name, version?}, dependencies=[...]} (uv settings docs).
         # Emit on every owning pyproject so standalone CI clones resolve;
