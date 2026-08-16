@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+
+from tests import c, m, u
 
 
 # Exemplar: conform materializes a full managed tree on disk, so the render
@@ -22,7 +22,7 @@ class TestCodegenLinkedWorktreeManifest:
 
     def test_conform_renders_the_lane_local_manifest(self, tmp_path: Path) -> None:
         """Use lane declarations while retaining the shared ledger database."""
-        repository = test_u.Tests.repository_ref(config.Infra.name).model_copy(
+        repository = u.Tests.repository_ref(config.Infra.name).model_copy(
             update={
                 "path": Path(),
                 "role": c.Infra.RepositoryRole.STANDALONE,
@@ -62,7 +62,7 @@ class TestCodegenLinkedWorktreeManifest:
                 ),
             )
         )
-        test_u.Tests.initialize_git_repo(primary, repository.url)
+        u.Tests.initialize_git_repo(primary, repository.url)
         lane = tmp_path / "lane"
         tm.ok(
             u.Infra.git_add_lane_worktree(
