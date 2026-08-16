@@ -21,14 +21,23 @@ from flext_cli import m, t
 
 
 def _reject_blanket_mask(rule: str) -> str:
-    """Reject ``ALL`` so a blanket Ruff mask cannot be constructed."""
-    if rule.strip().upper() == "ALL":
+    """Return the bare rule name, rejecting ``ALL`` and blank padding.
+
+    Normalizing here keeps the rendered TOML free of accidental padding: a
+    padded name would otherwise reach a generated pyproject verbatim and no
+    longer match the rule Ruff knows.
+    """
+    normalized = rule.strip()
+    if not normalized:
+        message = "a Ruff exemption must name a rule, not blank padding."
+        raise ValueError(message)
+    if normalized.upper() == "ALL":
         message = (
             "ALL is not a Ruff exemption: it masks every rule, present and "
             "future. Name each suppressed rule instead."
         )
         raise ValueError(message)
-    return rule
+    return normalized
 
 
 class FlextInfraTypesBase:

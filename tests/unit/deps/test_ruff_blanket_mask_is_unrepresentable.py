@@ -72,5 +72,20 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
 
         tm.that(parsed.per_file_ignores["src/flext_sample/_config.py"], eq=("N802",))
 
+    def test_surrounding_whitespace_is_normalized_away(self) -> None:
+        """A padded rule renders as its bare name, never with its padding."""
+        payload = {"per_file_ignores": {"src/flext_sample/_config.py": ["  N802  "]}}
+
+        parsed = m.Infra.ProjectRuffConfig.model_validate(payload)
+
+        tm.that(parsed.per_file_ignores["src/flext_sample/_config.py"], eq=("N802",))
+
+    def test_whitespace_only_rule_is_rejected(self) -> None:
+        """Blank padding names no rule, so it cannot be an exemption."""
+        payload = {"per_file_ignores": {"src/flext_sample/_config.py": ["   "]}}
+
+        with pytest.raises(ValidationError):
+            _ = m.Infra.ProjectRuffConfig.model_validate(payload)
+
 
 __all__: tuple[str, ...] = ()

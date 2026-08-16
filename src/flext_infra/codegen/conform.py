@@ -2504,11 +2504,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _rendered_conflict_marker(rendered: str) -> str | None:
+        """Return the first Git conflict delimiter, or ``None`` when clean.
+
+        Every unambiguous fence is reported: ``<<<<<<<`` opens a conflict,
+        ``|||||||`` is the diff3 common ancestor, and ``>>>>>>>`` closes it.
+        A lone ``=======`` is NOT reported, because it is also a Markdown
+        Setext underline; a real conflict always carries one of the fences
+        above, so nothing is missed by ignoring the ambiguous separator.
+        """
+        fences = ("<<<<<<<", "|||||||", ">>>>>>>")
         return next(
             (
                 line
                 for line in rendered.splitlines()
-                if line.startswith(("<<<<<<< ", ">>>>>>> ")) or line == "======="
+                if line.rstrip() in fences
+                or line.startswith(tuple(f"{fence} " for fence in fences))
             ),
             None,
         )

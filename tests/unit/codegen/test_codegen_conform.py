@@ -159,6 +159,63 @@ class TestCodegenConform:
         tm.ok(fixed_point)
         tm.that(fixed_point.value.written_files, eq=())
 
+    def _conform_with_rendered_makefile(
+        self, root: Path, monkeypatch: pytest.MonkeyPatch, suffix: str
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Apply conform with ``suffix`` appended to the rendered Makefile."""
+        distribution = test_u.Tests.repository_ref(config.Infra.name).distribution
+        (root / "pyproject.toml").write_text(
+            f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n',
+            encoding="utf-8",
+        )
+        package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        package_init.write_text("", encoding="utf-8")
+        original_render = u.Cli.template_render
+
+        def _render(path: Path, context: p.Model) -> p.Result[str]:
+            rendered = original_render(path, context)
+            if rendered.failure or path.name != f"{c.Infra.MAKEFILE_FILENAME}.j2":
+                return rendered
+            return r[str].ok(f"{rendered.value}{suffix}")
+
+        monkeypatch.setattr(u.Cli, "template_render", _render)
+        return FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+    def test_setext_underline_is_accepted_as_ordinary_content(
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A Markdown Setext underline is content, so conform must not reject it."""
+        applied = self._conform_with_rendered_makefile(
+            infra_git_repo, monkeypatch, "\n# Title\n=======\n"
+        )
+
+        tm.ok(applied)
+
+    def test_diff3_ancestor_fence_is_rejected_before_target_changes(
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A diff3 merge leaves an ancestor fence that must stop the plan."""
+        target = infra_git_repo / c.Infra.MAKEFILE_FILENAME
+        original = "existing generated makefile\n"
+        target.write_text(original, encoding="utf-8")
+
+        rejected = self._conform_with_rendered_makefile(
+            infra_git_repo, monkeypatch, "\n||||||| base\nancestor\n"
+        )
+
+        tm.fail(rejected)
+        tm.that(rejected.error, has="||||||| base")
+        tm.that(target.read_text(encoding="utf-8"), eq=original)
+
     def test_apply_recovers_declared_managed_pyproject_conflict(
         self, infra_git_repo: Path
     ) -> None:
