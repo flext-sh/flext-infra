@@ -317,6 +317,8 @@ class TestCodegenConform:
         tm.that(makefile, lacks="uv@")
         tm.that(makefile, lacks="mise exec")
 
+    @pytest.mark.slow
+    @pytest.mark.timeout(180)
     def test_existing_manifest_converges_to_identical_tree(
         self, infra_git_repo: Path
     ) -> None:
