@@ -51,7 +51,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         return (
             export_name in c.Infra.ALIAS_NAMES
             or export_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS
-            or "_fixtures" in module_path.split(".")
+            or c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME in module_path.split(".")
         )
 
     @staticmethod
@@ -70,9 +70,11 @@ class FlextInfraCodegenGenerationPathsMixin:
         )
 
     @staticmethod
-    def _is_runtime_fixture_package(current_pkg: str) -> bool:
-        """Return whether a package is owned by pytest fixture discovery."""
-        return "_fixtures" in current_pkg.split(".")
+    def _is_side_effect_free_package(current_pkg: str) -> bool:
+        """Return whether a package initializer must stay side-effect free."""
+        return bool(
+            c.Infra.SIDE_EFFECT_FREE_PACKAGE_NAMES.intersection(current_pkg.split("."))
+        )
 
     @staticmethod
     def _is_local_module(mod: str, root_name: str) -> bool:

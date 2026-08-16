@@ -17,10 +17,10 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
 
         Nested packages own the same PEP 562 facade contract as the public
         root, so MRO fragments remain lazy and consistently reachable through
-        their package boundary.  Pytest fixture packages remain the explicit
-        lifecycle boundary because pytest owns their registration.
+        their package boundary. Bootstrap and pytest fixture packages remain
+        explicit side-effect-free lifecycle boundaries.
         """
-        if cls._is_runtime_fixture_package(plan.context.current_pkg):
+        if cls._is_side_effect_free_package(plan.context.current_pkg):
             return cls._render_static(plan)
         return cls._render_root(plan)
 
