@@ -54,7 +54,10 @@ class TestsFlextInfraRefactorMainCli:
             "[tool.pyrefly]\n"
             "disable-project-excludes-heuristics = true\n"
             "project-excludes = []\n"
-            'search-path = [".", "src"]\n',
+            'search-path = [".", "src"]\n\n'
+            "[tool.ruff.lint.per-file-ignores]\n"
+            "# PEP 562 lazy facades resolve TYPE_CHECKING names via __getattr__.\n"
+            '"**/__init__.py" = ["TC004"]\n',
         )
 
     @staticmethod

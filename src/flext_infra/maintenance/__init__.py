@@ -14,18 +14,15 @@ if TYPE_CHECKING:
     from .python_version import FlextInfraPythonVersionEnforcer
 __all__: tuple[str, ...] = ("FlextInfraCleanService", "FlextInfraPythonVersionEnforcer")
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".clean": ("FlextInfraCleanService",),
-                ".python_version": ("FlextInfraPythonVersionEnforcer",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".clean": ("FlextInfraCleanService",),
+            ".python_version": ("FlextInfraPythonVersionEnforcer",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

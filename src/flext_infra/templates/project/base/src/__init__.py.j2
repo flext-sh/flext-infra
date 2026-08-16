@@ -43,28 +43,30 @@ __all__: tuple[str, ...] = (
 )
 
 
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".api": ("{{ class_stem }}", "{{ alias }}"),
+            ".base": ("{{ class_stem }}Service", "s"),
+            ".constants": ("{{ class_stem }}Constants", "c"),
+            ".models": ("{{ class_stem }}Models", "m"),
+            ".protocols": ("{{ class_stem }}Protocols", "p"),
+            "._config": ("config",),
+            "._settings": ("settings",),
+            ".typings": ("{{ class_stem }}Types", "t"),
+            ".utilities": ("{{ class_stem }}Utilities", "u"),
+{% if inherited_facets %}
+            "{{ upstream }}": ({% for facet in inherited_facets %}"{{ facet }}", {% endfor %}),
+{% endif %}
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
+)
+
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".api": ("{{ class_stem }}", "{{ alias }}"),
-                ".base": ("{{ class_stem }}Service", "s"),
-                ".constants": ("{{ class_stem }}Constants", "c"),
-                ".models": ("{{ class_stem }}Models", "m"),
-                ".protocols": ("{{ class_stem }}Protocols", "p"),
-                "._config": ("config",),
-                "._settings": ("settings",),
-                ".typings": ("{{ class_stem }}Types", "t"),
-                ".utilities": ("{{ class_stem }}Utilities", "u"),
-{% if inherited_facets %}
-                "{{ upstream }}": ({% for facet in inherited_facets %}"{{ facet }}", {% endfor %}),
-{% endif %}
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
+    _LAZY_IMPORTS,
     public_exports=__all__,
 )

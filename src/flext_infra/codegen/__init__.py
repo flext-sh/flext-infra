@@ -43,31 +43,28 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenVersionFile",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".census": ("FlextInfraCodegenCensus",),
-                ".codegen_generation": ("FlextInfraCodegenGeneration",),
-                ".conform": ("FlextInfraCodegenConform",),
-                ".consolidator": ("FlextInfraCodegenConsolidator",),
-                ".constants_quality_gate": ("FlextInfraCodegenQualityGate",),
-                ".fixer": ("FlextInfraCodegenFixer",),
-                ".layout": ("FlextInfraCodegenLayout",),
-                ".lazy_init": ("FlextInfraCodegenLazyInit",),
-                ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
-                ".managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
-                ".pipeline": ("FlextInfraCodegenPipeline",),
-                ".project_new": ("FlextInfraCodegenProjectNew",),
-                ".py_typed": ("FlextInfraCodegenPyTyped",),
-                ".scaffolder": ("FlextInfraCodegenScaffolder",),
-                ".version_file": ("FlextInfraCodegenVersionFile",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".census": ("FlextInfraCodegenCensus",),
+            ".codegen_generation": ("FlextInfraCodegenGeneration",),
+            ".conform": ("FlextInfraCodegenConform",),
+            ".consolidator": ("FlextInfraCodegenConsolidator",),
+            ".constants_quality_gate": ("FlextInfraCodegenQualityGate",),
+            ".fixer": ("FlextInfraCodegenFixer",),
+            ".layout": ("FlextInfraCodegenLayout",),
+            ".lazy_init": ("FlextInfraCodegenLazyInit",),
+            ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
+            ".managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
+            ".pipeline": ("FlextInfraCodegenPipeline",),
+            ".project_new": ("FlextInfraCodegenProjectNew",),
+            ".py_typed": ("FlextInfraCodegenPyTyped",),
+            ".scaffolder": ("FlextInfraCodegenScaffolder",),
+            ".version_file": ("FlextInfraCodegenVersionFile",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

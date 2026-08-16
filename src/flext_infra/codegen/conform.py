@@ -1904,6 +1904,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
+        if destination == c.Infra.MARKDOWNLINT_CONFIG_FILENAME:
+            # mro-6szaq.13.1: the rule set lives in tooling.yaml and is rendered
+            # verbatim; restating any id here would fork the SSOT the gate reads.
+            return r[p.Model].ok(config.Infra.tooling.tools.rumdl)
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:

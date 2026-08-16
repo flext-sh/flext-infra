@@ -626,33 +626,72 @@ class FlextInfraConfigModels:
                 description=(
                     "Local form of the CI ternary. A hook declares this value "
                     "explicitly so an inherited CI token from the caller can "
-                    "never revoke pytest or the lint/format/pyrefly gates."
+                    "never revoke pytest or the type-checker gates."
                 )
             ),
         ] = "N"
-        check_gates: Annotated[
+        local_check_gates: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
-                    "Gate ids run by make check when the CI token is exact "
-                    "(mypy, pyright, security, markdown, smells). Gates omitted "
-                    "(lint, format, pyrefly) are owned by CI workflows. Local "
-                    "make check without the token runs the full default set."
+                    "Gate ids run by make check under the local CI token: the "
+                    "slow whole-program type checkers. This is the ONLY "
+                    "declared set; the CI token runs its strict complement and "
+                    "an unset token runs every allowed gate."
                 )
             ),
-        ] = ("mypy", "pyright", "security", "markdown", "smells")
+        ] = FlextInfraConstantsMake.PROJECT_CHECK_GATES_LOCAL_VALUES
+        verb_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description=(
+                    "Per verb/what/project wall-clock budget under the CI "
+                    "token: CI=Y owns the fast gates, so every handler must "
+                    "finish inside this bound."
+                ),
+            ),
+        ] = 60
+        local_verb_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description=(
+                    "Per verb/what/project wall-clock budget under the local "
+                    "CI token: CI=N owns the slow whole-program analyses."
+                ),
+            ),
+        ] = 300
 
         @u.model_validator(mode="after")
-        def _validate_check_gates(self) -> Self:
-            """Every CI-owned gate must be in the allowed check vocabulary."""
+        def _validate_local_check_gates(self) -> Self:
+            """Every locally owned gate must be in the allowed check vocabulary."""
             allowed = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
-            unknown = sorted(set(self.check_gates) - allowed)
+            unknown = sorted(set(self.local_check_gates) - allowed)
             if unknown:
                 msg = (
-                    f"make.ci.check_gates contains unknown gates: {', '.join(unknown)}"
+                    "make.ci.local_check_gates contains unknown gates: "
+                    f"{', '.join(unknown)}"
                 )
                 raise ValueError(msg)
             return self
+
+        @m.computed_field()
+        @property
+        def check_gates(self) -> tuple[str, ...]:
+            """Gates run under the CI token, as the strict complement.
+
+            CI=Y is the inverse of CI=N by construction, never a second list: a
+            gate that moves into or out of ``local_check_gates`` moves out of or
+            into this set in the same edit, so the two can never overlap nor
+            leave a gate unowned.
+            """
+            local = frozenset(self.local_check_gates)
+            return tuple(
+                gate
+                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+                if gate not in local
+            )
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""

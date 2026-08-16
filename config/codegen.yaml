@@ -253,16 +253,22 @@ Infra:
         # surface spells a bare "N": pre_push declares CI explicitly instead of
         # relying on the token being unset, because a git hook inherits the
         # invoking environment and a stray CI=Y from the caller would otherwise
-        # revoke pytest and the lint/format/pyrefly gates on a push.
+        # revoke pytest and the type-checker gates on a push.
         local_value: N
-        # RULING 2 (rules not skip-list): CI=Y runs a positive gate set
-        # (check_gates). Gates omitted (lint, format, pyrefly) are owned by CI
-        # workflows and skipped under CI=Y. Local make check without CI=Y keeps
-        # the full default set. Blocking CI never runs make test (pytest);
-        # local/pre_push still own that verb.
+        # RULING 2 (rules not skip-list): local_check_gates is the ONLY declared
+        # gate set, and it holds the type checkers alone. CI=Y runs its strict
+        # complement (derived in MakeCiSpec.check_gates), so ruff lint runs in
+        # CI and the slow whole-program type analyses run at CI=N / pre-push.
+        # An unset CI runs every allowed gate. `format` is not a check gate at
+        # all: it mutates files, so it belongs to make fmt/fix APPLY=Y only.
         # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
         # full pytest+coverage; absent=testmon incremental.
-        check_gates: [mypy, pyright, security, markdown, smells]
+        local_check_gates: [pyrefly, mypy]
+        # Wall-clock budget per verb/what/project for each CI form: CI=Y owns
+        # the fast gates (everything must land inside 60s); CI=N owns the slow
+        # whole-program analyses and full pytest (300s each).
+        verb_timeout_seconds: 60
+        local_verb_timeout_seconds: 300
       workflow:
         # Why: pre-commit remains fast and mutation-only; pre-push owns the
         # generated-artifact and read-only validation gates.
@@ -1074,6 +1080,17 @@ Infra:
       - path: .mise.toml
         owner: codegen
         policy: full
+      # Why (mro-6szaq.13.1): the markdown gate resolves its rule set by walking
+      # upward for .markdownlint.json. A member checked out standalone in CI has
+      # no parent holding the workspace copy, so rumdl fell back to stock
+      # defaults (MD013 at 80 columns, MD036/MD040/MD046/MD051/MD057 enabled) --
+      # exactly the rules this config disables -- and reported hundreds of
+      # findings that the workspace itself rejects. Projecting the file into
+      # every repository makes the member checkout evaluate the same rule set as
+      # the workspace, which is the only way the gate can mean one thing.
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
       - path: .pre-commit-config.yaml
         owner: pre-commit
         policy: full
@@ -1281,9 +1298,16 @@ Infra:
             - "!AGENTS.md"
             - "!AGENTS.md"
             - "!codex.md"
+            - "!.shellcheckrc"
+        # mro-6szaq.13.1: the markdown gate reads .markdownlint.json by walking
+        # upward, so a member checked out alone in CI must be allowed to track
+        # its own projected copy -- restricting it to workspace-root is what let
+        # rumdl fall back to stock defaults on every member CI run.
+        - name: "Markdown lint configuration"
+          profiles: [workspace-root, workspace-member, standalone]
+          patterns:
             - "!.markdownlint.json"
             - "!.markdownlintignore"
-            - "!.shellcheckrc"
         - name: "Git configuration"
           profiles: [workspace-root]
           patterns:
@@ -1670,6 +1694,14 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # mro-6szaq.13.1: the markdown gate walks upward for this file, so a
+        # member checked out alone in CI must carry its own copy or rumdl
+        # silently falls back to stock defaults the workspace disables.
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
