@@ -1051,3 +1051,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         module_source = module_file.read_text(encoding="utf-8")
         tm.that(module_source, has="from flext_infra import (")
         tm.that(module_source, has="FlextInfraConstantsCore")
+        tm.that(module_source, has="FlextInfraConstantsSharedInfra")
+        tm.that(module_source, has="CORE = FlextInfraConstantsCore")
+        tm.that(module_source, has="SHARED = FlextInfraConstantsSharedInfra")
