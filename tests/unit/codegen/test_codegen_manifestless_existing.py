@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import u as test_u
+
+from tests import c, m, u
 
 
 # Exemplar: conform materializes a full managed tree on disk, so the render
@@ -23,7 +23,7 @@ class TestCodegenManifestlessExisting:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = test_u.Tests.repository_ref(config.Infra.name)
+        repository = u.Tests.repository_ref(config.Infra.name)
         local_repository = repository.model_copy(update={"path": Path()})
         preserved = {
             "LICENSE": "existing license\n",

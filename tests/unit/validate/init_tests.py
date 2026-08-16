@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 import flext_infra.validate as core_module
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+import pytest
+from flext_infra.validate import FlextInfraBaseMkValidator
 from flext_tests import tm
 
 # Why: the symbol must be absent for the test to mean anything, so it
