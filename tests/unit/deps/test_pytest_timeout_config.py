@@ -89,6 +89,13 @@ class TestsFlextInfraPytestTimeoutConfig:
         ):
             type(policy).model_validate(payload)
 
+    def test_canonical_full_suite_budget_is_five_minutes(self) -> None:
+        """The generated pre-push suite gets the approved bounded budget."""
+        policy = config.Infra.tooling.tools.pytest
+
+        tm.that(policy.run_timeout_seconds, eq=300)
+        tm.that(policy.process_timeout_seconds, eq=360)
+
     def test_process_budget_must_exceed_run_and_termination_windows(self) -> None:
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True)
