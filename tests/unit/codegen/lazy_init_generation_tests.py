@@ -197,6 +197,55 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(init_content, lacks="install_lazy_exports")
 
+    def test_lazy_bootstrap_package_initializer_is_side_effect_free(self) -> None:
+        """Keep the lazy runtime importable while its implementation initializes."""
+        plan = self._plan(
+            "flext_core._lazy_parts",
+            ("FlextLazy",),
+            MappingProxyType({
+                "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(init_content, lacks="from flext_core.lazy import")
+        tm.that(init_content, lacks="install_lazy_exports")
+
+    def test_lazy_typings_bootstrap_initializer_is_side_effect_free(self) -> None:
+        """Keep the lazy runtime's typing dependency free of import callbacks."""
+        plan = self._plan(
+            "flext_core._typings",
+            ("FlextTypesLazy",),
+            MappingProxyType({
+                "FlextTypesLazy": ("flext_core._typings.lazy", "FlextTypesLazy")
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(init_content, lacks="from flext_core.lazy import")
+        tm.that(init_content, lacks="install_lazy_exports")
+
+    def test_normal_package_initializer_keeps_full_lazy_map(self) -> None:
+        """Keep ordinary package boundaries backed by the lazy runtime."""
+        plan = self._plan(
+            "flext_core._models",
+            ("FlextModel",),
+            MappingProxyType({"FlextModel": ("flext_core._models.base", "FlextModel")}),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, contains="from flext_core.lazy import")
+        tm.that(init_content, contains='".base": ("FlextModel",)')
+        tm.that(init_content, contains="install_lazy_exports(")
+
     def test_tests_root_renders_only_its_facade_contract(self) -> None:
         """Render test facades without importing collected test classes."""
         plan = self._plan(

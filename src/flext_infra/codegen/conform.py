@@ -1904,15 +1904,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
+        if destination in {".markdownlint.json", ".markdownlintignore"}:
+            # The markdown templates read only tooling.tools.markdown, so the
+            # render input carries exactly that: demanding the full project
+            # context broke the standalone flext-infra checkout, which has no
+            # project metadata to give.
+            return r[p.Model].ok(
+                m.Infra.MarkdownlintRenderSpec(tooling=config.Infra.tooling)
+            )
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
-        if destination in {".markdownlint.json", ".markdownlintignore"}:
-            # These render only tooling.tools.markdown; the full project
-            # context would wrongly demand project metadata on manifestless
-            # existing trees.
-            return r[p.Model].ok(
-                m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
-            )
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
             server = codegen.toolchain.beads.server
             if server is None:

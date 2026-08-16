@@ -1163,6 +1163,33 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return service
 
         @staticmethod
+        def ruff_per_file_ignores_toml() -> str:
+            """Render the fleet Ruff policy as a pyproject fragment.
+
+            Reads the same typed SSOT production reads (P0): fixture
+            workspaces carry the real policy — select, ignore, preview and
+            the per-file-ignores map — never a hand-rolled fragment.
+            """
+            ruff_cfg = config.Infra.tooling.tools.ruff
+            select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
+            ignore = ", ".join(
+                f'"{rule}"'
+                for rule in sorted({
+                    *ruff_cfg.lint.ignore,
+                    *ruff_cfg.lint.ignored_rule_rationales,
+                })
+            )
+            rows = "\n".join(
+                f'"{pattern}" = [{", ".join(f'"{rule}"' for rule in rules)}]'
+                for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
+            )
+            return (
+                f"[tool.ruff]\npreview = {str(ruff_cfg.preview).lower()}\n\n"
+                f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
+                f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
+            )
+
+        @staticmethod
         def create_lazy_init_workspace(
             tmp_path: Path,
             *,
@@ -1179,10 +1206,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 (
                     f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
-                    "[tool.ruff.lint.per-file-ignores]\n"
-                    "# PEP 562 lazy facades import typing-only names that are "
-                    "published as strings in __all__.\n"
-                    '"**/__init__.py" = ["TC004"]\n'
+                    + TestsFlextInfraUtilities.Tests.ruff_per_file_ignores_toml()
                 ),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )

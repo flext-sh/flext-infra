@@ -26,23 +26,20 @@ __all__: tuple[str, ...] = (
     "discover_rules",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".batch_apply": ("FlextInfraCodemodBatchApply",),
-                ".batch_gates": (
-                    "FlextInfraModGateEngine",
-                    "FlextInfraModGateSnapshot",
-                    "FlextInfraModScanReport",
-                ),
-                ".discovery": ("discover_rule_ids", "discover_rules"),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".batch_apply": ("FlextInfraCodemodBatchApply",),
+            ".batch_gates": (
+                "FlextInfraModGateEngine",
+                "FlextInfraModGateSnapshot",
+                "FlextInfraModScanReport",
+            ),
+            ".discovery": ("discover_rule_ids", "discover_rules"),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

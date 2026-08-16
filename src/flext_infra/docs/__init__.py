@@ -29,24 +29,21 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocValidator",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".auditor": ("FlextInfraDocAuditor",),
-                ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
-                ".base": ("FlextInfraDocServiceBase",),
-                ".builder": ("FlextInfraDocBuilder",),
-                ".fixer": ("FlextInfraDocFixer",),
-                ".generator": ("FlextInfraDocGenerator",),
-                ".server": ("FlextInfraDocServer",),
-                ".validator": ("FlextInfraDocValidator",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".auditor": ("FlextInfraDocAuditor",),
+            ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
+            ".base": ("FlextInfraDocServiceBase",),
+            ".builder": ("FlextInfraDocBuilder",),
+            ".fixer": ("FlextInfraDocFixer",),
+            ".generator": ("FlextInfraDocGenerator",),
+            ".server": ("FlextInfraDocServer",),
+            ".validator": ("FlextInfraDocValidator",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

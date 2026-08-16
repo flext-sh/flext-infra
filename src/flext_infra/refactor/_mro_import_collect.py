@@ -174,7 +174,9 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
             if ok:
                 continue
             failed_paths.append(file_path)
-            errors.extend(f"{file_path}: {line.strip()}" for line in report[:10])
+            # Never truncate: the failure cause (NEW <tool> errors /
+            # pytest failure) is appended AFTER the diff lines.
+            errors.extend(f"{file_path}: {line.strip()}" for line in report)
         return (tuple(errors), tuple(failed_paths))
 
 

@@ -13,15 +13,12 @@ if TYPE_CHECKING:
     from .apply_renames import FlextInfraApplyRenames
 __all__: tuple[str, ...] = ("FlextInfraApplyRenames",)
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({".apply_renames": ("FlextInfraApplyRenames",)}),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({".apply_renames": ("FlextInfraApplyRenames",)}),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

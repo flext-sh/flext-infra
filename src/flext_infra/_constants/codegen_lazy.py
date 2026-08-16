@@ -69,11 +69,19 @@ class FlextInfraConstantsCodegenLazy:
     # them, so their private package initializer is always side-effect free.
     PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
     "Private pytest-plugin package whose generated initializer stays empty."
+    # flext_core.lazy imports implementation modules from these packages while
+    # it initializes, so importing flext_core.lazy there would create a real
+    # circular import — the one legitimate static-initializer exception.
     LAZY_BOOTSTRAP_STATIC_SEGMENTS: Final[frozenset[str]] = frozenset({
         "_lazy_parts",
         "_typings",
     })
     "Exact package segments imported while ``flext_core.lazy`` initializes."
+    SIDE_EFFECT_FREE_PACKAGE_NAMES: Final[frozenset[str]] = frozenset({
+        PRIVATE_FIXTURE_PACKAGE_NAME,
+        *LAZY_BOOTSTRAP_STATIC_SEGMENTS,
+    })
+    "Package conventions whose generated initializers must remain empty."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE
@@ -81,7 +89,9 @@ class FlextInfraConstantsCodegenLazy:
     "Regex: malformed ``from import`` statement (missing module name)."
 
     LINT_TOOLS: Final[t.StrSequencePairTuple] = (
-        ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
+        # Ruff runs with NO --select override: the project's pyproject.toml
+        # (select=ALL + narrow whitelist + preview) is the ONLY rule policy.
+        ("ruff", ("ruff", "check", "{file}", "--no-fix")),
         ("pyright", ("pyright", "{file}")),
         ("mypy", ("mypy", "{file}", "--no-error-summary")),
         ("pyrefly", ("pyrefly", "check", "{file}")),

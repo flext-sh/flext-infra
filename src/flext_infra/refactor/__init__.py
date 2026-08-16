@@ -63,50 +63,41 @@ __all__: tuple[str, ...] = (
     "FlextInfraWrapperRootNamespaceRefactor",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType(
-        build_lazy_import_map(
-            MappingProxyType({
-                ".accessor_migration": ("FlextInfraAccessorMigrationOrchestrator",),
-                ".census": ("FlextInfraRefactorCensus",),
-                ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
-                ".classvar_constant_autofix": (
-                    "FlextInfraRefactorClassvarConstantAutofix",
-                ),
-                ".declarative_enforcement": (
-                    "FlextInfraRefactorDeclarativeEnforcement",
-                ),
-                ".file_executor": (
-                    "FlextInfraClassNestingPostCheckGate",
-                    "FlextInfraRefactorFileExecutor",
-                ),
-                ".legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
-                ".loader": ("FlextInfraRefactorRuleLoader",),
-                ".migrate_to_class_mro": ("FlextInfraRefactorMigrateToClassMRO",),
-                ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
-                ".mro_import_rewriter": ("FlextInfraRefactorMROImportRewriter",),
-                ".mro_migration_validator": (
-                    "FlextInfraRefactorMROMigrationValidator",
-                ),
-                ".mro_resolver": ("FlextInfraRefactorMROResolver",),
-                ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
-                ".namespace_enforcer_phases": (
-                    "FlextInfraNamespaceEnforcerPhasesMixin",
-                ),
-                ".orchestrator": ("FlextInfraRefactorOrchestrator",),
-                ".project_classifier": ("FlextInfraProjectClassifier",),
-                ".safety": ("FlextInfraRefactorSafetyManager",),
-                ".scanner": ("FlextInfraRefactorLooseClassScanner",),
-                ".service": ("FlextInfraRefactorService",),
-                ".text_executor": ("FlextInfraRefactorTextExecutor",),
-                ".violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
-                ".wrapper_root_namespace": ("FlextInfraWrapperRootNamespaceRefactor",),
-            }),
-            alias_groups=MappingProxyType({}),
-            sort_keys=False,
-        )
-    ),
-    public_exports=__all__,
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".accessor_migration": ("FlextInfraAccessorMigrationOrchestrator",),
+            ".census": ("FlextInfraRefactorCensus",),
+            ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
+            ".classvar_constant_autofix": (
+                "FlextInfraRefactorClassvarConstantAutofix",
+            ),
+            ".declarative_enforcement": ("FlextInfraRefactorDeclarativeEnforcement",),
+            ".file_executor": (
+                "FlextInfraClassNestingPostCheckGate",
+                "FlextInfraRefactorFileExecutor",
+            ),
+            ".legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
+            ".loader": ("FlextInfraRefactorRuleLoader",),
+            ".migrate_to_class_mro": ("FlextInfraRefactorMigrateToClassMRO",),
+            ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
+            ".mro_import_rewriter": ("FlextInfraRefactorMROImportRewriter",),
+            ".mro_migration_validator": ("FlextInfraRefactorMROMigrationValidator",),
+            ".mro_resolver": ("FlextInfraRefactorMROResolver",),
+            ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
+            ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
+            ".orchestrator": ("FlextInfraRefactorOrchestrator",),
+            ".project_classifier": ("FlextInfraProjectClassifier",),
+            ".safety": ("FlextInfraRefactorSafetyManager",),
+            ".scanner": ("FlextInfraRefactorLooseClassScanner",),
+            ".service": ("FlextInfraRefactorService",),
+            ".text_executor": ("FlextInfraRefactorTextExecutor",),
+            ".violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
+            ".wrapper_root_namespace": ("FlextInfraWrapperRootNamespaceRefactor",),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)
