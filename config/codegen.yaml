@@ -1668,6 +1668,16 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
         # sgconfig.yml is NOT a generic template entry: it is rendered by the
         # ast-grep surface planner only for repositories with their own
         # hand-written rules (see conform._plan_ast_grep_surfaces); every other
