@@ -6,7 +6,7 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -55,7 +55,12 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve and validate requested gate names."""
+        """Resolve, validate and CI-scope requested gate names.
+
+        One ternary rule, derived from the single declared set
+        ``make.ci.local_check_gates``: CI=Y runs its strict complement,
+        CI=N (pre-push) runs exactly that set, an unset CI runs everything.
+        """
         resolved: t.MutableSequenceOf[str] = []
         for gate in gates:
             name = gate.strip()
@@ -65,7 +70,27 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
-        return r[list[str]].ok(list(resolved))
+        return r[list[str]].ok(FlextInfraWorkspaceChecker.apply_ci_gate_rules(resolved))
+
+    @staticmethod
+    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
+        """Scope *gates* to the CI ternary owner set (RULING 2)."""
+        ci = config.Infra.codegen.make.ci
+        raw = u.Cli.env_read(ci.variable).unwrap().strip()
+        owned: frozenset[str]
+        if raw == ci.value:
+            owned = frozenset(ci.check_gates)
+        elif raw == ci.local_value:
+            owned = frozenset(ci.local_check_gates)
+        else:
+            return [gate for gate in gates if gate]
+        scoped = [gate for gate in gates if gate and gate in owned]
+        FlextInfraWorkspaceChecker._gate_logger.info(
+            "ci_run_check_gates",
+            gates=scoped,
+            reason=f"{ci.variable}={raw} scopes check gates to its owner set",
+        )
+        return scoped
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -82,7 +107,13 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
-        gates = params.gates
+        gates = cls.apply_ci_gate_rules(params.gates)
+        if not gates:
+            return r[bool].fail(
+                "no check gates remain after CI token filtering "
+                f"({config.Infra.codegen.make.ci.variable}="
+                f"{config.Infra.codegen.make.ci.value})"
+            )
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,

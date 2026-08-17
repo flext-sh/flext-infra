@@ -8,21 +8,19 @@ project's own facade modules.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
-from flext_infra.detectors.compatibility_alias_detector import (
+from flext_infra import c, m, r, t, u
+from flext_infra.detectors import (
     FlextInfraCompatibilityAliasDetector,
+    FlextInfraCyclicImportDetector,
 )
-from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
+from flext_infra.gates import FlextInfraGate
+from flext_infra.transformers import FlextInfraRefactorProjectAliasMigrator
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCanonicalAliasGate(FlextInfraGate):
@@ -47,6 +45,21 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         """Return the package name for a project directory (``flext-cli`` → ``flext_cli``)."""
         return project_dir.name.replace("-", "_")
 
+    @staticmethod
+    def _alias_files(project_dir: Path) -> p.Result[t.SequenceOf[Path]]:
+        """Return Python files from configured namespace roots for alias checks."""
+        try:
+            files = {
+                file_path
+                for directory_name in u.Infra.namespace_scan_dirs(project_dir)
+                for file_path in u.Infra.iter_directory_python_files(
+                    project_dir / directory_name
+                )
+            }
+        except OSError as exc:
+            return r[t.SequenceOf[Path]].fail_op("canonical-alias file scan", exc)
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
+
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
@@ -56,9 +69,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._skip_result(project_dir, started)
-        files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_dir,))
-        )
+        files_result = self._alias_files(project_dir)
         if files_result.failure:
             issue = m.Infra.Issue(
                 file=c.Infra.PYPROJECT_FILENAME,
@@ -84,6 +95,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         try:
             issues: list[m.Infra.Issue] = []
             for file_path in files_result.value:
+                migration_context = u.Infra.alias_migration_context(file_path)
                 for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                     m.Infra.DetectorContext(
                         file_path=file_path,
@@ -92,11 +104,13 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                         project_name=project_dir.name,
                     )
                 ):
-                    if (
-                        violation.module_name
-                        != u.Infra.package_name(file_path).split(".", maxsplit=1)[0]
-                    ):
+                    if violation.module_name != migration_context.policy_owner:
                         continue
+                    import_target = (
+                        migration_context.import_root
+                        if migration_context.import_root == c.Infra.DIR_TESTS
+                        else f"{migration_context.import_root}.<facade>"
+                    )
                     issues.append(
                         m.Infra.Issue(
                             file=str(file_path),
@@ -106,7 +120,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                             message=(
                                 f"canonical alias '{violation.alias_name}' "
                                 f"imported from flext_core; use "
-                                f"from {violation.module_name}.<facade> import "
+                                f"from {import_target} import "
                                 f"{violation.alias_name}"
                             ),
                             severity="ERROR",
@@ -136,9 +150,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._skip_result(project_dir, started)
-        files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_dir,))
-        )
+        files_result = self._alias_files(project_dir)
         if files_result.failure:
             return self._build_gate_result(
                 result=m.Infra.GateResult(
@@ -152,60 +164,157 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                 raw_output=files_result.error or "canonical-alias fix failed",
             )
 
-        changed_files: list[Path] = []
-        for file_path in files_result.value:
-            transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
-            read = u.Cli.files_read_text(file_path)
-            if read.failure:
-                return self._fix_failure_result(
-                    project_dir=project_dir,
-                    file_path=file_path,
-                    message=read.error or "canonical-alias source read failed",
-                    started=started,
-                    ctx=ctx,
-                )
-            updated, changes = transformer.apply_to_source(read.value)
-            if not changes or updated == read.value:
-                continue
-            write = u.Cli.files_write_text(file_path, updated)
-            if write.failure:
-                return self._fix_failure_result(
-                    project_dir=project_dir,
-                    file_path=file_path,
-                    message=write.error or "canonical-alias source write failed",
-                    started=started,
-                    ctx=ctx,
-                )
-            changed_files.append(file_path)
-
-        if changed_files:
-            format_result = u.Cli.run_raw(
-                ["ruff", "format", *[str(path) for path in changed_files]],
-                timeout=c.Infra.TIMEOUT_SHORT,
+        rope_project = u.Infra.init_rope_project(project_dir)
+        try:
+            violation_files = self._violation_files(
+                project_dir=project_dir,
+                rope_project=rope_project,
+                file_paths=files_result.value,
             )
-            if format_result.failure:
+            plan_result = self._plan_edits(violation_files)
+            if plan_result.failure:
                 return self._fix_failure_result(
                     project_dir=project_dir,
                     file_path=project_dir,
-                    message=format_result.error or "ruff format failed",
+                    message=plan_result.error or "canonical-alias planning failed",
                     started=started,
                     ctx=ctx,
                 )
-            format_output = format_result.value
-            if format_output.exit_code != 0:
-                detail = (format_output.stderr or format_output.stdout).strip()
-                return self._fix_failure_result(
-                    project_dir=project_dir,
-                    file_path=project_dir,
-                    message=(
-                        f"ruff format failed ({format_output.exit_code}): "
-                        f"{detail or 'no output'}"
-                    ),
-                    started=started,
-                    ctx=ctx,
-                )
+            edits = plan_result.value
+            updates = {edit.file_path: edit.updated_source for edit in edits}
+            baseline_cycles = FlextInfraCyclicImportDetector.scan_project(
+                project_root=project_dir, rope_project=rope_project
+            )
+            prospective_cycles = FlextInfraCyclicImportDetector.scan_project(
+                project_root=project_dir,
+                rope_project=rope_project,
+                proposed_sources=updates,
+            )
+        finally:
+            rope_project.close()
+        baseline_signatures = {
+            frozenset(violation.cycle) for violation in baseline_cycles
+        }
+        new_cycles = tuple(
+            violation
+            for violation in prospective_cycles
+            if frozenset(violation.cycle) not in baseline_signatures
+        )
+        if new_cycles:
+            cycle = " -> ".join(new_cycles[0].cycle)
+            return self._fix_failure_result(
+                project_dir=project_dir,
+                file_path=project_dir,
+                message=f"prospective import cycle blocks canonical-alias fix: {cycle}",
+                started=started,
+                ctx=ctx,
+            )
+
+        changed_files = tuple(edit.file_path for edit in edits)
+        try:
+            write_ok, write_reports = u.Infra.protected_source_writes(
+                updates,
+                request=m.Infra.ProtectedSourceWritesRequest(
+                    workspace=project_dir,
+                    expected_sources={
+                        edit.file_path: edit.original_source for edit in edits
+                    },
+                    gates=("lint",),
+                    post_write=lambda: self._format_files(changed_files),
+                    skip_pytest=True,
+                ),
+            )
+        except (OSError, RuntimeError) as exc:
+            return self._fix_failure_result(
+                project_dir=project_dir,
+                file_path=project_dir,
+                message=f"canonical-alias transactional write failed: {exc!s}",
+                started=started,
+                ctx=ctx,
+            )
+        if not write_ok:
+            return self._fix_failure_result(
+                project_dir=project_dir,
+                file_path=project_dir,
+                message="canonical-alias transactional write failed: "
+                + " | ".join(write_reports),
+                started=started,
+                ctx=ctx,
+            )
 
         return self.check(project_dir, ctx)
+
+    @staticmethod
+    def _violation_files(
+        *,
+        project_dir: Path,
+        rope_project: t.Infra.RopeProject,
+        file_paths: t.SequenceOf[Path],
+    ) -> tuple[Path, ...]:
+        """Return only files containing project-owned ENFORCE-080 violations."""
+        selected: list[Path] = []
+        for file_path in file_paths:
+            context = u.Infra.alias_migration_context(file_path)
+            violations = FlextInfraCompatibilityAliasDetector.detect_file(
+                m.Infra.DetectorContext(
+                    file_path=file_path,
+                    project_root=project_dir,
+                    rope_project=rope_project,
+                    project_name=project_dir.name,
+                )
+            )
+            if any(
+                violation.module_name == context.policy_owner
+                and violation.alias_name == violation.target_name
+                for violation in violations
+            ):
+                selected.append(file_path)
+        return tuple(selected)
+
+    @staticmethod
+    def _plan_edits(
+        file_paths: t.SequenceOf[Path],
+    ) -> p.Result[tuple[m.Infra.AliasMigrationEdit, ...]]:
+        """Build immutable in-memory edits for detector-selected files."""
+        edits: list[m.Infra.AliasMigrationEdit] = []
+        for file_path in file_paths:
+            read = u.Cli.files_read_text(file_path)
+            if read.failure:
+                return r[tuple[m.Infra.AliasMigrationEdit, ...]].fail(
+                    read.error or f"canonical-alias source read failed: {file_path}"
+                )
+            transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
+            try:
+                updated, changes = transformer.apply_to_source(read.value)
+            except ValueError as exc:
+                return r[tuple[m.Infra.AliasMigrationEdit, ...]].fail(str(exc))
+            if changes and updated != read.value:
+                edits.append(
+                    m.Infra.AliasMigrationEdit(
+                        file_path=file_path,
+                        original_source=read.value,
+                        updated_source=updated,
+                        changes=tuple(changes),
+                    )
+                )
+        return r[tuple[m.Infra.AliasMigrationEdit, ...]].ok(tuple(edits))
+
+    @staticmethod
+    def _format_files(file_paths: t.SequenceOf[Path]) -> None:
+        """Format a validated edit batch or raise to trigger rollback."""
+        if not file_paths:
+            return
+        result = u.Cli.run_raw(
+            ["ruff", "format", *[str(path) for path in file_paths]],
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        if result.failure:
+            raise RuntimeError(result.error or "ruff format failed")
+        output = result.value
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).strip()
+            msg = f"ruff format failed ({output.exit_code}): {detail or 'no output'}"
+            raise RuntimeError(msg)
 
     def _fix_failure_result(
         self,

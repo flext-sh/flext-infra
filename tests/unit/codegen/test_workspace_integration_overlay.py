@@ -8,7 +8,9 @@ from flext_infra import c, m, u
 from flext_tests import tm
 
 
-def _provider(*, name: str = "flext-sh", branch: str = "0.12.0-dev") -> m.Infra.ProviderSpec:
+def _provider(
+    *, name: str = "flext-sh", branch: str = "0.12.0-dev"
+) -> m.Infra.ProviderSpec:
     return m.Infra.ProviderSpec(
         name=name,
         organization=name,
@@ -89,8 +91,7 @@ def test_managed_gitlinks_pin_resolved_integration_branch() -> None:
     provider = _provider(branch="0.12.0-dev")
     overlaid = _workspace(
         integration=m.Infra.WorkspaceIntegrationSpec(
-            provider="flext-sh",
-            branch="hotfix/lane",
+            provider="flext-sh", branch="hotfix/lane"
         )
     )
     absent = _workspace(integration=None)

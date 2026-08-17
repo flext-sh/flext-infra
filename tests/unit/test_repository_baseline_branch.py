@@ -36,9 +36,9 @@ class TestsFlextInfraRepositoryBaselineBranch:
         """The derived baseline is the integration branch the repository has."""
         # A repository that publishes ONLY `dev` must resolve to `dev`, proving
         # the derivation reads live Git instead of a provider constant.
-        seeded = u.Infra.git_capture(
-            infra_git_repo,
-            ("for-each-ref", "--format=%(refname)", "refs/remotes/origin"),
+        seeded = test_u.Cli.capture(
+            ["git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin"],
+            cwd=infra_git_repo,
         )
         tm.ok(seeded)
         for reference in seeded.value.split():

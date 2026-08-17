@@ -5,7 +5,6 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-
 from flext_cli import m, u
 from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (
@@ -71,6 +70,14 @@ class FlextInfraModelsDepsToolSettings(
                 alias="case-timeout-seconds",
                 gt=0,
                 description="Hard maximum runtime for one pytest item.",
+            ),
+        ]
+        slow_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="slow-timeout-seconds",
+                gt=0,
+                description="Hard maximum runtime for one explicitly slow item.",
             ),
         ]
         run_timeout_seconds: Annotated[
@@ -230,12 +237,23 @@ class FlextInfraModelsDepsToolSettings(
             ):
                 msg = "pytest run timeout must include item and termination budgets"
                 raise ValueError(msg)
+            if self.slow_timeout_seconds <= self.case_timeout_seconds:
+                msg = "pytest slow timeout must exceed the per-case timeout"
+                raise ValueError(msg)
+            if self.slow_timeout_seconds >= self.run_timeout_seconds:
+                msg = "pytest slow timeout must be less than run timeout"
+                raise ValueError(msg)
             if self.process_timeout_seconds <= self.run_timeout_seconds:
                 msg = (
                     "pytest process timeout must exceed the run timeout: the"
                     " process boundary caps the whole invocation, so a value at"
                     " or below the session budget kills healthy suites"
                 )
+                raise ValueError(msg)
+            if self.process_timeout_seconds <= (
+                self.run_timeout_seconds + self.termination_grace_seconds
+            ):
+                msg = "pytest process timeout must exceed run and termination budgets"
                 raise ValueError(msg)
             derived_options = ("--timeout", "--session-timeout")
             if any(
@@ -387,6 +405,14 @@ class FlextInfraModelsDepsToolSettings(
             description="Enable Vulture's internal scanner trace when requested."
         )
 
+    class MarkdownConfig(m.ArbitraryTypesModel):
+        """Markdown lint rules and excluded non-documentation surfaces."""
+
+        rules: t.JsonMapping = m.Field(description="Rumdl-compatible rule mapping.")
+        exclude: t.StrTuple = m.Field(
+            description="Glob patterns excluded from Markdown quality checks."
+        )
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
@@ -398,6 +424,9 @@ class FlextInfraModelsDepsToolSettings(
         )
         hatch: FlextInfraModelsDepsToolSettings.HatchConfig = m.Field(
             description="Hatch metadata settings"
+        )
+        markdown: FlextInfraModelsDepsToolSettings.MarkdownConfig = m.Field(
+            description="Markdown lint settings"
         )
         ruff: FlextInfraModelsDepsToolSettings.RuffConfig = m.Field(
             description="Ruff settings"

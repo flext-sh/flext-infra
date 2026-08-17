@@ -10,6 +10,7 @@ from flext_infra import c, config, m
 from flext_infra._utilities._docs_audit_detectors import (
     FlextInfraUtilitiesDocsAuditDetectorsMixin,
 )
+from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
@@ -152,13 +153,17 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                             )
                         )
                         continue
-                    if (
-                        not target
-                        or target.startswith("#")
-                        or FlextInfraUtilitiesDocsAudit.docs_is_external(target)
-                        or FlextInfraUtilitiesDocsAudit.docs_should_skip_target(
-                            raw, target
+                    if not target or target.startswith("#"):
+                        continue
+                    if FlextInfraUtilitiesDocsAudit.docs_is_external(target):
+                        issues.extend(
+                            FlextInfraUtilitiesDocsGithubLinks.docs_github_link_issues(
+                                file=rel, line_number=number, raw=raw, target=target
+                            )
                         )
+                        continue
+                    if FlextInfraUtilitiesDocsAudit.docs_should_skip_target(
+                        raw, target
                     ):
                         continue
                     if not (md_file.parent / target).resolve().exists():

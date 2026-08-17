@@ -1,4 +1,4 @@
-"""Typed, profiled pytest execution under one absolute process deadline."""
+"""Typed pytest execution with opt-in profiling under one absolute deadline."""
 
 from __future__ import annotations
 
@@ -9,20 +9,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
-from flext_core import r
+from defusedxml import ElementTree as DefusedET
 
+from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidator
+from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
 class FlextInfraPytestRunner(s[int]):
-    """Run one exact pytest request and persist its performance evidence."""
+    """Run one exact pytest request and persist its declared evidence."""
 
     started_at_monotonic: Annotated[
         float,
@@ -127,17 +129,107 @@ class FlextInfraPytestRunner(s[int]):
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 
+    _CACHE_WHATS: frozenset[str] = frozenset({
+        "cache-status",
+        "cache-clear",
+        "cache-checkpoint",
+    })
+
+    def _ci_disables_coverage(self) -> bool:
+        """Coverage is off when Make CI token is exact make.ci.value (CI=Y)."""
+        raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
+        return raw == config.Infra.codegen.make.ci.value
+
+    def _coverage_requested(self) -> bool:
+        """Whether this runner asks pytest to measure coverage at all.
+
+        ``WHAT=all`` is the incremental testmon verb: it selects only impacted
+        tests, so a coverage number computed from that subset would be a lie.
+        It passes ``--testmon --no-cov``.
+
+        ``WHAT=full`` is the complete-suite gate the pre-push workflow runs:
+        testmon OFF so every test executes, coverage ON so the number measures
+        the whole suite. ``build_command`` and the artifact gate both read THIS
+        predicate, so the gate can never demand an artifact the argv told pytest
+        not to produce (mro-uwoc7).
+        """
+        return self.what == "full" and not self._ci_disables_coverage()
+
+    def _profiling_requested(self) -> bool:
+        """Whether this request explicitly selected focused cProfile evidence."""
+        return self.what == "profile"
+
+    def _testmon_db_path(self) -> Path:
+        """Return the repository-local pytest-testmon SQLite path."""
+        path: Path = Path(self.root) / ".testmondata"
+        return path
+
+    def _is_cache_maintenance(self) -> bool:
+        """True when WHAT selects a testmon DB maintenance handler."""
+        return self.what in self._CACHE_WHATS
+
+    def _require_junit(self, junit_file: Path, pytest_log: Path) -> p.Result[bool]:
+        """Require a non-empty parseable JUnit document after a green run."""
+        if not junit_file.is_file() or junit_file.stat().st_size == 0:
+            return r[bool].fail(
+                self._artifact_failure_detail(
+                    f"junit report was not generated or is empty: {junit_file}",
+                    pytest_log,
+                )
+            )
+        try:
+            DefusedET.parse(junit_file)
+        except DefusedET.ParseError as exc:
+            return r[bool].fail(
+                self._artifact_failure_detail(
+                    f"junit report is not parseable: {junit_file}: {exc}", pytest_log
+                )
+            )
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _junit_totals(junit_file: Path) -> tuple[int, int, int]:
+        """Return ``(tests, failures, errors)`` summed from the JUnit document."""
+        try:
+            root = DefusedET.parse(junit_file).getroot()
+        except DefusedET.ParseError:
+            return (0, 0, 0)
+        if root is None:
+            return (0, 0, 0)
+        suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+        return (
+            sum(int(suite.get("tests", "0")) for suite in suites),
+            sum(int(suite.get("failures", "0")) for suite in suites),
+            sum(int(suite.get("errors", "0")) for suite in suites),
+        )
+
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
         pytest = config.Infra.tooling.tools.pytest
         focused = self.file is not None or self.match is not None
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
-        coverage_args = (
-            ("--no-cov",)
-            if focused
-            else ("--cov", f"--cov-report=xml:{report_dir / 'coverage.xml'}")
-        )
+        # Why (mro-uwoc7): keyed to the same predicate the artifact gate reads,
+        # so the argv and the gate can never disagree about coverage. WHAT=full
+        # turns testmon OFF (every test runs) and coverage ON, so the measured
+        # number covers the whole suite; every other WHAT is the incremental
+        # testmon verb whose subset coverage would be meaningless.
+        # Why (mro-q4osk): the xml lands in report_dir, the SAME path the
+        # artifact gate below reads. Letting --cov-report=xml default to the
+        # CWD wrote coverage.xml to the repository root, so the gate found
+        # nothing and failed a run whose coverage had in fact been measured.
+        # The XML is also the durable complete report. Rendering term-missing
+        # for the whole fleet duplicates that evidence and can consume the
+        # remaining suite budget after every item has already passed.
+        if self._coverage_requested():
+            coverage_args = (
+                "--cov",
+                f"--cov-report=xml:{report_dir / c.Infra.PYTEST_COVERAGE_XML}",
+            )
+        elif self._profiling_requested() or focused:
+            coverage_args = ("--no-cov",)
+        else:
+            coverage_args = ("--testmon", "--no-cov")
         parallel_args = (
             ("-n", "0")
             if focused
@@ -154,18 +246,32 @@ class FlextInfraPytestRunner(s[int]):
                 "--benchmark-disable",
             )
         )
+        # CI=Y deselects docker and remote suites entirely. Fixture-level
+        # skips in flext-tests remain as a second fail-closed boundary for
+        # unmarked tests that still call FlextTestsDocker.
+        ci_marker_args = (
+            ("-m", "not docker and not remote") if self._ci_disables_coverage() else ()
+        )
         optional_args = (
             *(("-k", self.match) if self.match is not None else ()),
             *(("-x",) if self.fail_fast else ()),
         )
+        pytest_command = (sys.executable, "-m", "pytest")
+        command_prefix = (
+            (
+                sys.executable,
+                "-m",
+                "cProfile",
+                "-o",
+                str(report_dir / "pytest.pstats"),
+                "-m",
+                "pytest",
+            )
+            if self._profiling_requested()
+            else pytest_command
+        )
         return (
-            sys.executable,
-            "-m",
-            "cProfile",
-            "-o",
-            str(report_dir / "pytest.pstats"),
-            "-m",
-            "pytest",
+            *command_prefix,
             target,
             *pytest.progress_args,
             *report_args,
@@ -174,9 +280,10 @@ class FlextInfraPytestRunner(s[int]):
             "-p",
             "no:metadata",
             f"--timeout={pytest.case_timeout_seconds}",
-            f"--junitxml={report_dir / 'junit.xml'}",
+            f"--junitxml={report_dir / c.Infra.PYTEST_JUNIT_XML}",
             *coverage_args,
             *parallel_args,
+            *ci_marker_args,
             *optional_args,
         )
 
@@ -203,16 +310,77 @@ class FlextInfraPytestRunner(s[int]):
         """Compose the existing JUnit/log diagnostic owner in-process."""
         extractor = FlextInfraPytestDiagExtractor(
             workspace_root=self.root,
-            junit=report_dir / "junit.xml",
+            junit=report_dir / c.Infra.PYTEST_JUNIT_XML,
             log_path=report_dir / "pytest.log",
         )
         return extractor.extract(extractor.junit, extractor.log_path)
 
+    def _execute_cache_maintenance(self) -> p.Result[int]:
+        """Run one typed testmon DB maintenance WHAT without invoking pytest."""
+        db = self._testmon_db_path()
+        if self.what == "cache-clear":
+            apply = (
+                u.Cli
+                .env_read(config.Infra.codegen.make.apply_variable)
+                .unwrap()
+                .strip()
+            )
+            if apply != config.Infra.codegen.make.apply_value:
+                return r[int].fail(
+                    "make test WHAT=cache-clear requires "
+                    f"{config.Infra.codegen.make.apply_variable}="
+                    f"{config.Infra.codegen.make.apply_value}"
+                )
+            for path in (db, Path(f"{db}-wal"), Path(f"{db}-shm")):
+                if path.exists() or path.is_symlink():
+                    path.unlink()
+            sys.stderr.write(f"testmon cache cleared under {self.root}\n")
+            return r[int].ok(0)
+        if self.what == "cache-status":
+            digest = FlextInfraTestmonDbInspector.digest_file(db)
+            exists = db.is_file() and not db.is_symlink()
+            size = db.stat().st_size if exists else 0
+            sys.stdout.write(
+                f"path={db}\nexists={exists}\nsize={size}\ndigest={digest or 'none'}\n"
+            )
+            return r[int].ok(0)
+        state = FlextInfraTestmonDbInspector(
+            workspace_root=self.root,
+            db_path=db,
+            pre_run_digest=FlextInfraTestmonDbInspector.digest_file(db),
+            run_succeeded=True,
+            mode="test",
+        ).execute()
+        if state.failure:
+            return r[int].fail(state.error or "testmon checkpoint failed")
+        value = state.value
+        sys.stdout.write(
+            f"seed_needed={value.seed_needed}\n"
+            f"restored_accepted={value.restored_accepted}\n"
+            f"changed={value.changed}\n"
+            f"saveable={value.saveable}\n"
+            f"reason={value.reason}\n"
+        )
+        return r[int].ok(0 if value.reason != "testmon db missing or empty" else 1)
+
     @override
     def execute(self) -> p.Result[int]:
-        """Execute pytest, profile it, and preserve reports under one deadline."""
+        """Execute pytest and preserve the evidence declared by WHAT."""
+        if self._is_cache_maintenance():
+            return self._execute_cache_maintenance()
+        # Why (mro-v4p5): CI workflows must not run pytest. Fail loud if invoked
+        # under CI=Y so regenerated jobs cannot reintroduce make test silently.
+        if self._ci_disables_coverage():
+            return r[int].fail(
+                "make test is forbidden under CI=Y (mro-v4p5); "
+                "CI workflows must not execute pytest — run make test locally "
+                "without CI=Y"
+            )
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
+        pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
+            self._testmon_db_path()
+        )
         command = self.build_command(report_dir)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
@@ -224,26 +392,34 @@ class FlextInfraPytestRunner(s[int]):
             termination_grace_seconds=pytest.termination_grace_seconds,
             timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
         )
+        # Strip host PYTEST_ADDOPTS/PYTHONPATH, then pin this checkout's src so a
+        # borrowed shared editable cannot make pytest execute another tree.
+        project_src = str(self.root / c.Infra.DEFAULT_SRC_DIR)
+        child_env = u.Cli.process_env(
+            remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+            overrides={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: project_src},
+        )
         run_result = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
             cwd=self.root,
-            remove_env_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+            env=child_env,
             live=True,
             deadline=deadline,
         )
         if run_result.failure:
             return r[int].fail(run_result.error or "pytest process execution failed")
         exit_code = run_result.value
-        profile_result = FlextInfraCProfileReport(
-            workspace_root=self.root,
-            profile=report_dir / "pytest.pstats",
-            output=report_dir / "pytest-profile.txt",
-            sort=pytest.profile_sort,
-            limit=pytest.profile_limit,
-        ).execute()
-        if profile_result.failure and exit_code == 0:
-            return r[int].fail(profile_result.error or "cProfile report failed")
+        if self._profiling_requested():
+            profile_result = FlextInfraCProfileReport(
+                workspace_root=self.root,
+                profile=report_dir / "pytest.pstats",
+                output=report_dir / "pytest-profile.txt",
+                sort=pytest.profile_sort,
+                limit=pytest.profile_limit,
+            ).execute()
+            if profile_result.failure and exit_code == 0:
+                return r[int].fail(profile_result.error or "cProfile report failed")
         diagnostics_result = self._extract_diagnostics(report_dir)
         if diagnostics_result.failure:
             return r[int].fail(
@@ -256,8 +432,8 @@ class FlextInfraPytestRunner(s[int]):
             c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9,
         }
         timeout_state = "TIMED_OUT" if timed_out else "COMPLETED"
-        junit_file = report_dir / "junit.xml"
-        coverage_file = report_dir / "coverage.xml"
+        junit_file = report_dir / c.Infra.PYTEST_JUNIT_XML
+        coverage_file = report_dir / c.Infra.PYTEST_COVERAGE_XML
         junit_value = str(junit_file) if junit_file.is_file() else "not-generated"
         coverage_value = (
             str(coverage_file) if coverage_file.is_file() else "not-generated"
@@ -276,31 +452,61 @@ class FlextInfraPytestRunner(s[int]):
         u.Cli.atomic_write_text_file(
             self.root / self.reports / "latest.txt", f"{report_dir.name}\n"
         ).unwrap()
+        # Why (ai-hub-h2aq): optional host tools (waza, markdownlint, live
+        # systemd/hooks) legitimately skip on CI. Promoting skipped_count to
+        # exit 1 made tip ``make test`` fail with 0 FAILED / N SKIPPED.
+        # Failures, errors, and warnings still flip the exit code.
         if exit_code == 0 and any((
             diagnostics.failed_count,
             diagnostics.error_count,
             diagnostics.warning_count,
-            diagnostics.skipped_count,
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
-        if (
-            exit_code == 0
+        # Why (mro-uwoc7): the incremental verb passes --no-cov, so it never
+        # emits coverage.xml. Demanding the artifact anyway failed pushes on a
+        # fully green suite (1184 passed, exit=0, coverage=not-generated).
+        # The gate now asks the SAME predicate that builds the argv, so the two
+        # can never disagree: coverage is verified only when it was actually
+        # requested. WHAT=full is the verb that requests it.
+        coverage_enabled = (
+            self._coverage_requested()
+            and not self._ci_disables_coverage()
             and self.file is None
             and self.match is None
+        )
+        junit_tests = -1
+        junit_failures = -1
+        junit_errors = -1
+        if junit_file.is_file():
+            junit_tests, junit_failures, junit_errors = self._junit_totals(junit_file)
+        # Why: a testmon run on an unchanged tree selects zero tests; pytest-cov
+        # then exits nonzero on 0.00% fail-under. Zero executed tests with zero
+        # failures/errors is vacuous green — the noise status is normalized.
+        vacuous = junit_tests == 0 and junit_failures == 0 and junit_errors == 0
+        if vacuous:
+            exit_code = 0
+        if exit_code == 0:
+            junit_ok = self._require_junit(junit_file, pytest_log)
+            if junit_ok.failure:
+                return r[int].fail(junit_ok.error or "junit validation failed")
+        # Coverage gates measure executed suites, so an empty (vacuous)
+        # selection is green by construction.
+        coverage_gate_active = coverage_enabled and not vacuous
+        if (
+            exit_code == 0
+            and coverage_gate_active
             and self._pytest_log_reports_coverage_failure(pytest_log)
         ):
             # pytest-cov under xdist can print fail-under and still return 0.
             return r[int].fail(
                 self._artifact_failure_detail(
-                    "coverage fail-under reported while pytest exit was 0",
-                    pytest_log,
+                    "coverage fail-under reported while pytest exit was 0", pytest_log
                 )
             )
         if (
             exit_code == 0
-            and self.file is None
-            and self.match is None
+            and coverage_gate_active
             and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
         ):
             return r[int].fail(
@@ -309,18 +515,29 @@ class FlextInfraPytestRunner(s[int]):
                     pytest_log,
                 )
             )
-        if (
-            exit_code == 0
-            and self.file is None
-            and self.match is None
-            and not junit_file.is_file()
-        ):
-            return r[int].fail(
-                self._artifact_failure_detail(
-                    f"junit report was not generated: {junit_file}",
-                    pytest_log,
-                )
+        if exit_code == 0:
+            timed_out_or_signal = timed_out
+            inspector = FlextInfraTestmonDbInspector(
+                workspace_root=self.root,
+                db_path=self._testmon_db_path(),
+                pre_run_digest=pre_run_digest,
+                run_succeeded=not timed_out_or_signal,
+                mode="test",
             )
+            state_result = inspector.execute()
+            if state_result.failure:
+                return r[int].fail(state_result.error or "testmon db inspection failed")
+            state = state_result.value
+            u.Cli.atomic_write_text_file(
+                report_dir / "testmon-cache-state.txt",
+                (
+                    f"seed_needed={state.seed_needed}\n"
+                    f"restored_accepted={state.restored_accepted}\n"
+                    f"changed={state.changed}\n"
+                    f"saveable={state.saveable}\n"
+                    f"reason={state.reason}\n"
+                ),
+            ).unwrap()
         sys.stderr.write(
             f"Reports: {report_dir} (latest: {self.root / self.reports / 'latest.txt'})\n"
         )
