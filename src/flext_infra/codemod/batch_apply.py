@@ -6,7 +6,7 @@ rule discovered through the package cascade (``flext_infra.codemod.discovery``)
 plus the project's own hand-written ``ast-grep-rules/``, then re-measure. Any
 count increase rolls the tree back to the checkpoint and fails loud; equal or
 lower counts keep the applied fixes.
-"""  # ruff:ignore[implicit-namespace-package]
+"""
 
 from __future__ import annotations
 
@@ -16,10 +16,7 @@ from typing import Final, override
 from flext_cli import cli
 from flext_infra import config, m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codemod.batch_gates import (
-    FlextInfraModGateEngine,
-    FlextInfraModGateSnapshot,
-)
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.discovery import discover_rules
 
 _CHECKPOINT_MESSAGE: Final[str] = "chore(git): checkpoint before ast-grep batch apply"
@@ -93,9 +90,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return r[t.Cli.ResultValue].fail(
                     pending.error or "ast-grep scan failed"
                 )
-            if pending.value:
+            if pending.value.nodes:
                 return r[t.Cli.ResultValue].fail(
-                    f"{pending.value} pending ast-grep fix(es) "
+                    f"{pending.value.nodes} pending actionable ast-grep fix(es) "
                     f"across {len(rules)} discovered rule file(s)"
                 )
             cli.display_text("mod: no pending ast-grep fixes")
@@ -123,6 +120,21 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return self._fail_with_rollback(
                 root, checkpoint_sha, applied.error or "ast-grep fix pass failed"
             )
+        remaining = FlextInfraModGateEngine.scan(root, rules, fix=False)
+        if remaining.failure:
+            return self._fail_with_rollback(
+                root,
+                checkpoint_sha,
+                remaining.error or "ast-grep verification scan failed",
+            )
+        if remaining.value.nodes:
+            return self._fail_with_rollback(
+                root,
+                checkpoint_sha,
+                f"{remaining.value.nodes} actionable finding(s) remained after apply",
+            )
+        verified_nodes = pending.value.nodes - remaining.value.nodes
+        changed_files = len(applied.value.files)
         final = FlextInfraModGateEngine.measure(root)
         if final.failure:
             return r[t.Cli.ResultValue].fail(final.error or "final measure failed")
@@ -134,7 +146,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             return self._fail_with_rollback(root, checkpoint_sha, regression)
         cli.display_text(
-            f"mod: applied {pending.value} ast-grep fix(es); "
+            f"mod: applied {verified_nodes} node(s) across {changed_files} file(s); "
             f"ruff {baseline.value.ruff_errors}→{final.value.ruff_errors}, "
             f"pyrefly {baseline.value.pyrefly_errors}→{final.value.pyrefly_errors}; "
             f"checkpoint {checkpoint_sha}"
@@ -152,4 +164,4 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return r[t.Cli.ResultValue].fail(f"{detail}; rolled back to {checkpoint_sha}")
 
 
-__all__: list[str] = ["FlextInfraCodemodBatchApply", "FlextInfraModGateSnapshot"]
+__all__: list[str] = ["FlextInfraCodemodBatchApply"]

@@ -5,20 +5,14 @@ on the whole active workspace; run it in a project and it works on that
 project alone.
 
 The ``gen`` recipe broke that by mixing two criteria in the same body:
-``codegen conform`` received ``PROJECT_ROOT`` while ``deps modernize`` and
-``deps extra-paths`` received ``WORKSPACE_ROOT``. A ``gen`` invoked inside one
+``codegen conform`` received ``PROJECT_ROOT`` while dependency stages received
+``WORKSPACE_ROOT``. A ``gen`` invoked inside one
 member therefore rewrote the ``pyproject.toml`` of every sibling -- measured as
 "INFO: Updated <sibling>/pyproject.toml" for ~30 repositories, leaving each one
 dirty without the caller ever touching it.
 
 The damage compounds: ``gen`` runs inside ``check``, and ``check`` runs in the
-pre-commit hook, so a single commit in any lane dirties every sibling. That is
-the "workspace changed during serialized Make check" abort every lane keeps
-hitting -- concurrent lanes were not colliding by carelessness, the verb itself
-was writing outside the scope it was invoked in.
-
-It also makes the fixed point unreachable: each run rewrites the siblings, so
-the next run finds a difference again.
+pre-commit hook, so a single commit in any lane dirties every sibling.
 
 At the workspace root ``PROJECT_ROOT`` already *is* the workspace, so a single
 root keeps the fan-out where it belongs and restricts it everywhere else. No
@@ -103,6 +97,37 @@ def test_recipe_bodies_are_actually_parsed() -> None:
     assert any(
         "$(PROJECT_ROOT)" in line for lines in bodies.values() for line in lines
     ), f"no PROJECT_ROOT command found in {_TEMPLATE}; parser is broken"
+
+
+def test_gen_has_one_codegen_owner() -> None:
+    """The gen recipe delegates every projection to codegen conform once."""
+    text = _template_text()
+    assert "CODEGEN_PROJECT_ARGS" not in text
+
+    bodies = _recipe_bodies()
+    for target in ("_builtin_gen_check", "_builtin_gen_all"):
+        conform_lines = [line for line in bodies[target] if "codegen conform" in line]
+        assert len(conform_lines) == 1
+        assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
+        assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
+        assert all("deps modernize" not in line for line in bodies[target])
+        assert all("deps extra-paths" not in line for line in bodies[target])
+
+
+def test_gen_routes_through_project_root() -> None:
+    bodies = _recipe_bodies()
+    for target in ("_builtin_gen_check", "_builtin_gen_all"):
+        generation_lines = [
+            line for line in bodies[target] if "$(PROJECT_FLEXT_INFRA)" in line
+        ]
+        assert len(generation_lines) == 1
+        assert all('--root "$(PROJECT_ROOT)"' in line for line in generation_lines)
+
+
+def test_project_selector_resolves_members_from_workspace_root() -> None:
+    text = _template_text()
+    assert "override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)" in text
+    assert "override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)" not in text
 
 
 __all__: tuple[str, ...] = ()

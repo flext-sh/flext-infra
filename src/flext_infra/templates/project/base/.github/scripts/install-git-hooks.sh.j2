@@ -44,6 +44,11 @@ fail() {
 command -v pre-commit >/dev/null 2>&1 || fail "pre-commit is not installed; install it before provisioning hooks"
 command -v bd >/dev/null 2>&1 || fail "bd is not installed; install Beads before provisioning hooks"
 
+# The config is a codegen projection, so installing without it would leave a
+# shim pointing at a file `make gen` never wrote.
+[ -f "${WORKSPACE_ROOT}/.pre-commit-config.yaml" ] \
+	|| fail ".pre-commit-config.yaml is missing; run 'make gen APPLY=Y' before provisioning hooks"
+
 # Why: install both staged workflow entry points before Beads chains its guard.
 _log "Installing pre-commit and pre-push hooks at ${WORKSPACE_ROOT}"
 pre-commit install -t pre-commit -t pre-push >/dev/null \

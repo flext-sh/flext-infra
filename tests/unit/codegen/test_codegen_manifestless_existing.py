@@ -4,19 +4,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, u
-from tests import u as test_u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+import pytest
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
+from tests import c, m, u
 
+
+# Exemplar: conform materializes a full managed tree on disk, so the render
+# itself dominates the runtime. The class carries the config-owned slow budget
+# (Infra.tooling.tools.pytest.slow-timeout-seconds) instead of a hardcoded
+# ceiling, so a real hang still aborts at the declared wall.
+@pytest.mark.slow
 class TestCodegenManifestlessExisting:
     def test_existing_root_uses_pep621_metadata_for_managed_artifacts(
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = test_u.Tests.repository_ref(config.Infra.name)
+        repository = u.Tests.repository_ref(config.Infra.name)
         local_repository = repository.model_copy(update={"path": Path()})
         preserved = {
             "LICENSE": "existing license\n",
@@ -40,7 +47,8 @@ class TestCodegenManifestlessExisting:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manifestless tree"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifestless tree"],
+                cwd=root,
             )
         )
 
@@ -54,12 +62,6 @@ class TestCodegenManifestlessExisting:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(FlextInfraCodegenConform.execute_request(request))
-        tm.ok(u.Cli.run_checked(["git", "add", "pyproject.toml"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Conform fixture metadata"], cwd=root
-            )
-        )
         artifact_request = request.model_copy(
             update={"what": c.Infra.CodegenConformSurface.ALL}
         )

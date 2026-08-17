@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
+
 from flext_infra import c, m, t, u
 from flext_infra.transformers._tier0_transformer import FlextInfraTier0TransformerMixin
 
@@ -88,8 +89,8 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
                 if module != pkg_name:
                     continue
                 names_str = match.group(2)
-                for name_part in names_str.split(","):
-                    name_part = name_part.strip()
+                for raw_name_part in names_str.split(","):
+                    name_part = raw_name_part.strip()
                     if not name_part:
                         continue
                     bound = (

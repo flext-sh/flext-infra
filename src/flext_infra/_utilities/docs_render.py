@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, t, config
+from flext_infra import c, config, m, t
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -239,7 +239,8 @@ class FlextInfraUtilitiesDocsRender:
                 f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, "
                 f"`val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` "
                 f"and `Required Python quality gates`; selector routing is owned "
-                f"universally by the agents_home `make-check` skill."
+                f"universally by `config.AiHub.paths.agents_home`/"
+                f"`skills/make-check/SKILL.md`."
             ),
         ]
 

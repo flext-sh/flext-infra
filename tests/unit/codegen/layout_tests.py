@@ -108,11 +108,12 @@ def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
     tm.ok(second)
 
     gitignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
-    # Why: count exact lines, never substrings — the SSOT itself carries
-    # entries like !.vscode/settings.json that contain the same text.
-    gitignore_lines = gitignore.splitlines()
-    tm.that(gitignore_lines.count("settings.json"), eq=1)
-    tm.that(gitignore_lines.count(f"{_archive_root()}/"), eq=1)
+    # Why: count exact ENTRIES, never substrings. The SSOT also carries
+    # negations such as !.vscode/settings.json, so a substring count reports
+    # two occurrences for a file that was appended exactly once.
+    entries = gitignore.splitlines()
+    tm.that(entries.count("settings.json"), eq=1)
+    tm.that(entries.count(f"{_archive_root()}/"), eq=1)
     tm.that(
         (project / _archive_root() / project.name / "settings.json").is_file(), eq=True
     )

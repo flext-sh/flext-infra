@@ -146,7 +146,14 @@ class FlextInfraUtilitiesResourceLimits:
             if classification.startswith("signal=")
             else "none"
         )
-        detail = (output.stderr or output.stdout).strip() or "resource limit reached"
+        detail = (
+            "\n".join(
+                stream.strip()
+                for stream in (output.stdout, output.stderr)
+                if stream.strip()
+            )
+            or "resource limit reached"
+        )
         return cls._bounded_mypy_diagnostic(
             validated_limit, detail=detail, exit_code=output.exit_code, signal=signal
         )
