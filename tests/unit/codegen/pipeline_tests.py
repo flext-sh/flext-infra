@@ -11,12 +11,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import infra, t
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+import pytest
+from flext_infra import infra
+from flext_infra.codegen import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenScaffolder,
+)
 from flext_tests import tm
+
+from tests import t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -92,6 +97,7 @@ def _make_project(
     return project
 
 
+@pytest.mark.slow
 def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     """Pipeline flow remains isolated, idempotent, and syntactically valid."""
     _ = _make_project(

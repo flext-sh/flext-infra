@@ -37,6 +37,7 @@ class TestsReviewTemplateContracts:
             "_builtin_build_artifacts:", 1
         )[0]
         tm.that(upgrade, lacks='selected="$(strip $(PROJECTS))"')
+        tm.that(upgrade, has="$(if $(strip $(DEPENDENCY)),,--rewrite-constraints)")
 
     def test_makefile_defines_attached_member_for_status(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")

@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-from flext_infra import c, config, m
+from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import p, t, u
+
+from tests import c, m, p, t, u
 
 
 class TestsRootArtifactOwnership:
@@ -25,6 +25,51 @@ class TestsRootArtifactOwnership:
         )
 
         tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
+
+    def test_markdown_config_templates_cover_every_repository_profile(self) -> None:
+        entries = {
+            item.destination: item
+            for item in config.Infra.codegen.templates.entries
+            if item.destination in {".markdownlint.json", ".markdownlintignore"}
+        }
+
+        tm.that(set(entries), eq={".markdownlint.json", ".markdownlintignore"})
+        for entry in entries.values():
+            tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
+        tm.that(config.Infra.tooling.tools.markdown.exclude, has=".serena/**")
+
+    # Why (suite budget): a full standalone conform apply writes the whole
+    # 53-file scaffold and re-plans the fixed point; the per-case wall only
+    # holds on an idle CPU.
+    @pytest.mark.slow
+    def test_standalone_conform_projects_markdown_policy(
+        self, infra_git_repo: Path
+    ) -> None:
+        root = infra_git_repo
+        u.Tests.write_standalone_workspace_manifest(
+            root, "flext-demo", upstream="flext_cli"
+        )
+        package_root = root / "src" / "flext_demo"
+        tm.ok(u.Cli.ensure_dir(package_root))
+        tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
+            )
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.ALL,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+
+        tm.ok(FlextInfraCodegenConform.execute_request(request, workspace))
+
+        tm.that((root / ".markdownlint.json").is_file(), eq=True)
+        ignore = (root / ".markdownlintignore").read_text(encoding="utf-8")
+        tm.that(ignore, has=".serena/**")
 
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
         configured = config.Infra.codegen.managed_files

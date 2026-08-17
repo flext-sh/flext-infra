@@ -7,20 +7,12 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 import flext_infra
-from flext_infra import (
-    FlextInfraWorkService,
-    FlextInfraWorktreeService,
-    c,
-    config,
-    m,
-    u,
-)
+import pytest
+from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, config
 from flext_tests import tm
 
-from tests import u as test_u
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path as PathType
@@ -56,7 +48,7 @@ class TestsFlextInfraWorkService:
         # Why (mro-tvc03): the ledger is resolved from the typed workspace
         # manifest, so a fixture that only drops .beads/config.yaml no longer
         # declares a tracker. Emit the manifest the runtime actually reads.
-        repository_ref = test_u.Tests.repository_ref("fixture").model_copy(
+        repository_ref = u.Tests.repository_ref("fixture").model_copy(
             update={"path": Path(), "package": False, "editable": False}
         )
         tm.ok(
@@ -72,7 +64,7 @@ class TestsFlextInfraWorkService:
                 ).model_dump(mode="json", exclude_none=True),
             )
         )
-        test_u.Tests.initialize_git_repo(repository)
+        u.Tests.initialize_git_repo(repository)
         return repository
 
     @staticmethod
@@ -88,9 +80,9 @@ class TestsFlextInfraWorkService:
             'description = "A standard PEP 621 description string"\n',
             encoding="utf-8",
         )
-        test_u.Tests.initialize_git_repo(source)
+        u.Tests.initialize_git_repo(source)
         tm.ok(
-            test_u.Cli.run_checked(
+            u.Cli.run_checked(
                 [
                     c.Infra.GIT,
                     "-c",
@@ -238,20 +230,18 @@ class TestsFlextInfraWorkService:
         """Replace the self-referencing fixture remote with a pushable origin."""
         origin = tmp_path / "origin.git"
         tm.ok(
-            test_u.Cli.run_checked(
+            u.Cli.run_checked(
                 [c.Infra.GIT, "init", "--bare", str(origin)], cwd=tmp_path
             )
         )
         tm.ok(
-            test_u.Cli.run_checked(
+            u.Cli.run_checked(
                 [c.Infra.GIT, "remote", "set-url", "origin", str(origin)],
                 cwd=repository,
             )
         )
         tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "push", "origin", "main"], cwd=repository
-            )
+            u.Cli.run_checked([c.Infra.GIT, "push", "origin", "main"], cwd=repository)
         )
         return origin
 
@@ -310,7 +300,7 @@ class TestsFlextInfraWorkService:
     @staticmethod
     def _commit_in(lane: PathType, message: str) -> None:
         tm.ok(
-            test_u.Cli.run_checked(
+            u.Cli.run_checked(
                 [c.Infra.GIT, "commit", "--allow-empty", "-m", message], cwd=lane
             )
         )
@@ -466,7 +456,7 @@ class TestsFlextInfraWorkService:
                 "slug": "primary-abuse",
                 "integration_base": "HEAD",
                 "head_oid": tm.ok(
-                    test_u.Infra.git_repository_head(
+                    u.Infra.git_repository_head(
                         m.Infra.GitRepoRequest(repo_root=repository)
                     )
                 ).oid,
@@ -698,7 +688,7 @@ class TestsFlextInfraWorkService:
         poison = tmp_path / "poison-tree"
         poison.mkdir()
         (poison / "README.md").write_text("poison\n", encoding="utf-8")
-        test_u.Tests.initialize_git_repo(poison)
+        u.Tests.initialize_git_repo(poison)
         record = self._record(tmp_path, bead_id)
         record["metadata"]["worktree"] = str(poison)
         self._set_record(tmp_path, bead_id, record)
@@ -876,7 +866,7 @@ class TestsFlextInfraWorkService:
         poison = tmp_path / "poison-finish"
         poison.mkdir()
         (poison / "README.md").write_text("poison\n", encoding="utf-8")
-        test_u.Tests.initialize_git_repo(poison)
+        u.Tests.initialize_git_repo(poison)
         record = self._record(tmp_path, bead_id)
         record["metadata"]["worktree"] = str(poison)
         record["metadata"]["pr_number"] = "1"
@@ -1028,7 +1018,7 @@ class TestsFlextInfraWorkService:
             / "base"
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
-        tm.that(template, has="override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)")
+        tm.that(template, has="override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)")
         tm.that(template, has="_builtin_work_status:")
         tm.that(template, has="_builtin_work_start:")
         tm.that(template, has="_builtin_work_land:")
@@ -1353,7 +1343,7 @@ class TestsFlextInfraWorkService:
         assert metadata["pr_number"] == "7"
         assert metadata["pr_url"] == "https://example.test/pr/7"
         pushed = tm.ok(
-            test_u.Infra.git_rev_parse(
+            u.Infra.git_rev_parse(
                 m.Infra.GitCommitishRequest(
                     repo_root=repository,
                     commitish="refs/remotes/origin/feature/land-happy",
@@ -1428,20 +1418,18 @@ class TestsFlextInfraWorkService:
         lane = Path(self._metadata(tmp_path, bead_id)["worktree"])
         self._commit_in(repository, "remote advance")
         remote_oid = tm.ok(
-            test_u.Infra.git_repository_head(
-                m.Infra.GitRepoRequest(repo_root=repository)
-            )
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository))
         ).oid
         tm.ok(
-            test_u.Cli.run_checked(
+            u.Cli.run_checked(
                 [c.Infra.GIT, "push", "origin", "HEAD:refs/heads/feature/land-reject"],
                 cwd=repository,
             )
         )
-        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "fetch", "origin"], cwd=lane))
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, "fetch", "origin"], cwd=lane))
         self._commit_in(lane, "lane diverge")
         local_oid = tm.ok(
-            test_u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
         ).oid
         result = FlextInfraWorkService(
             workspace_root=repository,
@@ -1966,6 +1954,9 @@ class TestsFlextInfraWorkService:
         assert "epic_topology" not in status
         assert "metadata.role" not in status
 
+    # Why (suite budget): builds an epic lane plus a nested child worktree with
+    # real git submodule scans; the per-case wall only holds on an idle CPU.
+    @pytest.mark.slow
     def test_finish_refuses_the_epic_until_its_child_is_finished(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:

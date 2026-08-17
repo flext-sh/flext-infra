@@ -99,6 +99,10 @@ class FlextInfraCodegenLazyInitPlanner(
                 else c.Infra.LazyInitAction.SKIP
             )
         )
+        if self._is_lazy_bootstrap_package(context):
+            return m.Infra.LazyInitPlan(
+                context=context, action=c.Infra.LazyInitAction.SKIP
+            )
         if not context.importable:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
         lazy_map = self._package_exports(context)
@@ -196,6 +200,16 @@ class FlextInfraCodegenLazyInitPlanner(
         self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return plan
+
+    @staticmethod
+    def _is_lazy_bootstrap_package(context: m.Infra.LazyInitPackageContext) -> bool:
+        """Return True when the package is reached by the lazy bootstrap itself."""
+        segments = context.current_pkg.split(".")
+        return (
+            segments[0] == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+            and len(segments) > 1
+            and any(segment.startswith("_") for segment in segments[1:])
+        )
 
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return the lazy-init package context for the requested package directory."""

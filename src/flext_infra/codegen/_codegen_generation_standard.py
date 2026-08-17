@@ -84,8 +84,12 @@ class FlextInfraCodegenGenerationStandardMixin(
         return "\n".join(lines)
 
     @classmethod
-    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
-        """Build one inline lazy context for a public package root."""
+    def _lazy_groups(
+        cls, plan: m.Infra.LazyInitPlan
+    ) -> tuple[
+        t.StrSequencePairSequence, t.StrPairSequencePairSequence, t.LazyAliasMap
+    ]:
+        """Build owned lazy metadata groups and their filtered public map."""
         current_pkg = plan.context.current_pkg
         public_names = frozenset(plan.exports)
         lazy_map = {
@@ -99,6 +103,13 @@ class FlextInfraCodegenGenerationStandardMixin(
             (current_pkg, frozenset(plan.child_packages_for_lazy), True),
         )
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
+        return lazy_module_groups, lazy_alias_groups, lazy_map
+
+    @classmethod
+    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
+        """Build one lazy context for a public package root."""
+        lazy_module_groups, lazy_alias_groups, lazy_map = cls._lazy_groups(plan)
+        current_pkg = plan.context.current_pkg
         public_type_checking_imports = cls._type_checking_filtered(plan)
         type_checking_lines = "\n".join(
             cls.generate_type_checking(
@@ -113,9 +124,9 @@ class FlextInfraCodegenGenerationStandardMixin(
             docstring=cls._format_root_package_docstring(current_pkg),
             runtime_import_lines=cls._runtime_import_lines(plan),
             type_checking_lines=type_checking_lines,
+            exports=cls._build_published_exports(plan.exports, lazy_map),
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
-            exports=cls._build_published_exports(plan.exports, lazy_map),
         )
 
     @classmethod

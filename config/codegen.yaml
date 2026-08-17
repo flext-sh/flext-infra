@@ -15,6 +15,8 @@ Infra:
       # Supply-chain cooldown: refuse packages newer than this relative window
       # (CWE-829 / uv dependency cooldowns). Projected to every [tool.uv].
       uv_exclude_newer: "7 days"
+      uv_exclude_newer_package:
+        mypy: "2026-08-15T03:04:00Z"
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
@@ -253,15 +255,21 @@ Infra:
         # surface spells a bare "N": pre_push declares CI explicitly instead of
         # relying on the token being unset, because a git hook inherits the
         # invoking environment and a stray CI=Y from the caller would otherwise
-        # revoke pytest and the lint/format/pyrefly gates on a push.
+        # revoke pytest and the type-checker gates on a push.
         local_value: N
-        # RULING 2 (rules not skip-list): CI=Y runs a positive gate set
-        # (check_gates). Gates omitted (lint, format, pyrefly) are owned by CI
-        # workflows and skipped under CI=Y. Local make check without CI=Y keeps
-        # the full default set. Blocking CI never runs make test (pytest);
-        # local/pre_push still own that verb.
+        # RULING 2 (rules not skip-list): local_check_gates is the ONLY declared
+        # set — the slow whole-program type checkers. CI=N (pre-push) runs
+        # exactly this set; CI=Y runs its strict complement derived in
+        # MakeCiSpec.check_gates (never a second list); an unset CI runs every
+        # allowed gate, always.
         # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
         # full pytest+coverage; absent=testmon incremental.
+        local_check_gates: [pyrefly, mypy]
+        # Wall-clock budget per verb/what/project for each CI form: CI=Y owns
+        # the fast gates (everything must land inside 60s); CI=N owns the slow
+        # whole-program analyses and full pytest (300s each).
+        verb_timeout_seconds: 60
+        local_verb_timeout_seconds: 300
         check_gates: [mypy, pyright, security, markdown, smells]
       work_in_progress:
         # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
@@ -418,7 +426,8 @@ Infra:
           # profile = one explicit focused cProfile run (FILE and/or MATCH required).
           # Normal all/full gates run pytest directly so profiling overhead cannot
           # consume the suite's fixed execution budget.
-          whats: [all, full, profile, cache-status, cache-clear, cache-checkpoint]
+          whats:
+            [all, full, profile, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all
@@ -539,6 +548,7 @@ Infra:
       - { name: .turbo }
       - { name: .venv, source_scan_ignore: true }
       - { name: .venv.* }
+      - { name: .worktrees, source_scan_ignore: true }
       - { name: "*.egg-info", vscode_exclude: false }
       - { name: build, source_scan_ignore: true }
       - { name: dist, source_scan_ignore: true }
@@ -1083,6 +1093,17 @@ Infra:
       - path: .gitmodules
         owner: codegen
         policy: merge
+      # mro-6szaq.13.1: the markdown gate resolves its rule set by walking
+      # upward for these files. A member checked out standalone in CI has no
+      # parent holding the workspace copies, so rumdl fell back to stock
+      # defaults and reported hundreds of findings the workspace rejects.
+      # Projecting both files makes every checkout evaluate one rule set.
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
+      - path: .markdownlintignore
+        owner: codegen
+        policy: full
       - path: .mise.toml
         owner: codegen
         policy: full
@@ -1143,7 +1164,7 @@ Infra:
           - flext-tests
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.
-          - mypy>=2.3.0
+          - mypy>=2.3.1
           - pyrefly>=1.1.1
           - pyright>=1.1.411
           # `gen` installs the git hooks it just wrote, so the tool that owns
@@ -1656,11 +1677,12 @@ Infra:
           overwrite: false
         - source: base/.pre-commit-config.yaml.j2
           destination: .pre-commit-config.yaml
-          # Operator law (mro-68rcj): git hooks belong to the workspace ROOT
-          # only. A member never runs its own pre-commit/pre-push chain — the
-          # root hook validates the whole fleet in one pass, and a per-member
-          # chain would re-enter make recursively on every submodule commit.
-          profiles: [workspace-root, standalone]
+          # Every checkout that receives a commit owns its own gate. A member is
+          # committed and pushed independently of the root, so a root-only chain
+          # leaves those commits ungated. Each rendered step clears the inherited
+          # git/make environment, so a member chain scopes to itself instead of
+          # re-entering the root recursively.
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/README.md.j2
@@ -1675,6 +1697,16 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
