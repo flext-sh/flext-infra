@@ -1,4 +1,4 @@
-"""Gate measurement and ast-grep batch execution for the mod safety circuit."""  # ruff:ignore[implicit-namespace-package]
+"""Gate measurement and ast-grep batch execution for the mod safety circuit."""
 
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ class FlextInfraModGateEngine:
             ):
                 continue
             parsed = u.Cli.yaml_parse(raw_document)
-            if parsed.failure or not isinstance(parsed.value, Mapping):
+            if parsed.failure:
                 return r[frozenset[str]].fail(
                     parsed.error or f"invalid ast-grep rule document in {rule}"
                 )

@@ -59,6 +59,8 @@ class TestsFlextInfraWorkService:
                     name=repository_ref.distribution,
                     repository=repository_ref,
                     ledger_id="mro",
+                    # Tracker owner declares both identifiers (mro-cdzxf).
+                    ledger_prefix="mro",
                 ).model_dump(mode="json", exclude_none=True),
             )
         )
@@ -811,7 +813,7 @@ class TestsFlextInfraWorkService:
         ).execute()
         tm.fail(result, has="metadata.ready.namespace")
 
-    def test_finish_refuses_already_removed(
+    def test_finish_accepts_already_removed(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repository = self._repository(tmp_path)
@@ -841,7 +843,7 @@ class TestsFlextInfraWorkService:
             bead=bead_id,
             apply_changes=True,
         ).execute()
-        tm.fail(result, has="already removed")
+        tm.that(tm.ok(result), has="receipt.worktree=removed")
 
     def test_status_reports_after_start(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
@@ -1050,7 +1052,7 @@ class TestsFlextInfraWorkService:
             / "base"
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
-        tm.that(template, has="override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)")
+        tm.that(template, has="override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)")
         tm.that(template, has="_builtin_work_status:")
         tm.that(template, has="_builtin_work_start:")
         tm.that(template, has="_builtin_work_land:")
@@ -1986,6 +1988,9 @@ class TestsFlextInfraWorkService:
         assert "epic_topology" not in status
         assert "metadata.role" not in status
 
+    # Why (suite budget): builds an epic lane plus a nested child worktree with
+    # real git submodule scans; the per-case wall only holds on an idle CPU.
+    @pytest.mark.slow
     def test_finish_refuses_the_epic_until_its_child_is_finished(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch
     ) -> None:

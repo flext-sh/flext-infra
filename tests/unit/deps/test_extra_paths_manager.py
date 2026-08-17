@@ -95,6 +95,22 @@ class TestsFlextInfraExtraPathsManager:
 
         tm.fail(_manager().sync_one(pyproject, is_root=True), has="TOML write")
 
+    def test_pyrefly_includes_skip_empty_declared_directory(
+        self, tmp_path: Path
+    ) -> None:
+        """An existing empty env_dir is not reintroduced after conform removes it."""
+        (tmp_path / "src" / "demo").mkdir(parents=True)
+        (tmp_path / "src" / "demo" / "__init__.py").write_text("", encoding="utf-8")
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_demo.py").write_text("", encoding="utf-8")
+        (tmp_path / "examples").mkdir()
+
+        includes = _manager(tmp_path).pyrefly_project_includes(
+            project_dir=tmp_path, is_root=False
+        )
+
+        tm.that(includes, eq=["src/**/*.py*", "tests/**/*.py*"])
+
     def test_base_constants(self) -> None:
         """Verify base constants."""
         manager = _manager()

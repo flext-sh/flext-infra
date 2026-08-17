@@ -78,7 +78,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:
         """Return True when the directory is the ``_fixtures`` convention package."""
-        return pkg_dir.name == "_fixtures"
+        return pkg_dir.name == c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME
 
     @classmethod
     def _is_private_test_fixture_package(cls, pkg_dir: Path, surface: str) -> bool:

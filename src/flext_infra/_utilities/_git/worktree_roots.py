@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from git import GitCommandError
 
+from flext_core import r
 from flext_infra._utilities._git.worktree_status import (
     FlextInfraUtilitiesGitWorktreeStatusMixin,
 )

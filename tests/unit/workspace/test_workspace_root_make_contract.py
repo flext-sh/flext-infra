@@ -3,19 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
-
-from flext_infra import c, config, m, u
+from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
-from tests import u as test_u
 
-if TYPE_CHECKING:
-    from flext_cli import p as cli_p
-    from flext_infra import p
+from tests import c, m, p, u
 
 
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
@@ -23,9 +18,9 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     workspace_root.mkdir()
     # The fixture declares the synthetic topology it needs; flext-infra owns
     # no catalog of real projects to borrow rows from.
-    root_repository = test_u.Tests.repository_ref("fixture-workspace")
+    root_repository = u.Tests.repository_ref("fixture-workspace")
     members = tuple(
-        test_u.Tests.repository_ref(
+        u.Tests.repository_ref(
             name, path=Path(name), role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
         )
         for name in ("fixture-member-one", "fixture-member-two")
@@ -64,7 +59,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     # Seed the declared provider URL as origin so workspace discovery resolves
     # this fixture as a provider-governed checkout; the helper owns the fake
     # baseline ref, and real ancestry is exercised elsewhere.
-    test_u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
+    u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
     # mro-z89e.2.2: seed a minimal .gitmodules so the conform detector sees the
     # declared members as governed submodules; the real setup/Gitlink lifecycle is
     # covered by tests/unit/codegen/test_workspace_root_setup_submodules.py.
@@ -152,14 +147,14 @@ class TestsWorkspaceRootMakeContract:
         declared = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that(declared, has="gen")
 
-        generated: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
+        generated: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
                 ["-C", str(workspace_root), "--dry-run", "gen", "WHAT=check"],
                 cwd=workspace_root,
             )
         )
-        retired: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
+        retired: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
                 ["-C", str(workspace_root), "--dry-run", "codegen"], cwd=workspace_root
             )
         )
@@ -172,89 +167,29 @@ class TestsWorkspaceRootMakeContract:
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
 
-    def test_generated_work_start_omits_kind_when_unset(self, tmp_path: Path) -> None:
-        workspace_root, _ = _write_workspace(tmp_path)
-
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
-                [
-                    "-C",
-                    str(workspace_root),
-                    "--dry-run",
-                    "_builtin_work_start",
-                    "BEAD=mro-fixture",
-                    "NAME=fixture-lane",
-                    "APPLY=Y",
-                ],
-                cwd=workspace_root,
-            )
-        )
-        output = process.stdout + process.stderr
-
-        tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="--operation start")
-        tm.that(output, lacks="--kind")
-
-    def test_generated_setup_runs_its_lifecycle_hooks(self, tmp_path: Path) -> None:
-        """``setup`` must fire pre-/post-setup like every other public verb.
-
-        The generated ``setup`` short-circuited straight to
-        ``_builtin_setup_environment``, bypassing ``_dispatch`` — so a project
-        declaring ``post-setup`` in ``custom.mk`` (the only sanctioned extension
-        surface) had that hook silently never execute.
-        """
-        workspace_root, _project_names = _write_workspace(tmp_path)
-        (workspace_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
-            ".PHONY: post-setup\npost-setup:\n\t@echo POST_SETUP_HOOK_RAN\n",
-            encoding="utf-8",
-        )
-
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "setup"], cwd=workspace_root
-            )
-        )
-        output = process.stdout + process.stderr
-
-        tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="post-setup", msg=output)
-
-    def test_generated_make_selects_manifest_projects_and_forwards_gates(
+    def test_generated_make_does_not_reintroduce_docs_verb(
         self, tmp_path: Path
     ) -> None:
-        workspace_root, project_names = _write_workspace(tmp_path)
+        workspace_root, _project_names = _write_workspace(tmp_path)
 
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
-                [
-                    "-C",
-                    str(workspace_root),
-                    "--dry-run",
-                    "_builtin_check_all",
-                    f"PROJECT={project_names[0]}",
-                    "CHECK_GATES=lint,pyrefly",
-                ],
-                cwd=workspace_root,
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "docs"], cwd=workspace_root
             )
         )
-        output = process.stdout + process.stderr
 
-        tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has=f"--projects {project_names[0]}")
-        # Gate normalization (CI filtering, whitespace stripping) now happens in
-        # the recipe shell before forwarding, so the dry-run projection shows
-        # the forwarded shell value rather than the raw make variable.
-        tm.that(output, has='--make-arg "CHECK_GATES=$gates"')
-        tm.that(output, lacks=f"--projects {project_names[1]}")
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            tuple(verb.name for verb in config.Infra.codegen.make.verbs), lacks="docs"
+        )
 
     def test_generated_make_routes_fmt_apply_to_selected_project(
         self, tmp_path: Path
     ) -> None:
-        """Apply formatting only in the selected workspace member."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
                 [
                     "-C",
                     str(workspace_root),
@@ -282,8 +217,8 @@ class TestsWorkspaceRootMakeContract:
         owner = project_names[0]
         selected = f"{owner}/tests/unit/test_selected.py"
 
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
                 [
                     "-C",
                     str(workspace_root),
@@ -316,8 +251,8 @@ class TestsWorkspaceRootMakeContract:
         workspace_root, project_names = _write_workspace(tmp_path)
         selected = "tests/unit/test_provider_contract.py"
 
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
                 [
                     "-C",
                     str(workspace_root),
@@ -347,8 +282,8 @@ class TestsWorkspaceRootMakeContract:
         """
         workspace_root, project_names = _write_workspace(tmp_path)
 
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
                 ["-C", str(workspace_root), "--dry-run", "_builtin_test_all"],
                 cwd=workspace_root,
             )
@@ -359,93 +294,6 @@ class TestsWorkspaceRootMakeContract:
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
         tm.that(output, lacks="--projects .")
-
-    def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
-        workspace_root, project_names = _write_workspace(tmp_path)
-        docs = config.Infra.codegen.make.docs
-        # Selectors live on the docs verb: make.verbs[].whats is the single
-        # handler SSOT, so MakeDocsSpec no longer restates them.
-        docs_verb = next(
-            verb for verb in config.Infra.codegen.make.verbs if verb.name == "docs"
-        )
-        invocation_log = workspace_root / "docs.log"
-        test_u.Tests.write_executable(
-            workspace_root / ".venv" / "bin" / "python",
-            (
-                "#!/bin/sh\n"
-                "verb=''\n"
-                "previous=''\n"
-                'for argument in "$@"; do\n'
-                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
-                '  previous="$argument"\n'
-                "done\n"
-                'if [ -n "$verb" ]; then exec make --no-print-directory "$verb"; fi\n'
-                f'printf "%s\\n" "$*" >> "{invocation_log}"\n'
-            ),
-        )
-        uv = workspace_root / "bin" / "uv"
-        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
-
-        for action in docs_verb.whats:
-            invocation_log.write_text("", encoding="utf-8")
-            process: cli_p.Cli.CommandOutput = tm.ok(
-                test_u.Tests.run_isolated_make(
-                    [
-                        "-C",
-                        str(workspace_root),
-                        "docs",
-                        f"WHAT={action}",
-                        f"PROJECTS={project_names[0]}",
-                        f"UV={uv}",
-                    ],
-                    cwd=workspace_root,
-                )
-            )
-            tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-            output = invocation_log.read_text(encoding="utf-8")
-            expected_actions = (
-                tuple(item for item in docs_verb.whats if item != "all")
-                if action == "all"
-                else (action,)
-            )
-            for expected_action in expected_actions:
-                tm.that(output, has=f"docs {expected_action}")
-            tm.that(output, has=f"--output-dir {workspace_root / docs.reports_dir}")
-            tm.that(output, has=f"--projects {project_names[0]}")
-            tm.that(output, lacks=f"--projects {project_names[1]}")
-            if action in docs.mutable_actions:
-                tm.that(output, has="--check")
-                tm.that(output, lacks="--apply")
-                invocation_log.write_text("", encoding="utf-8")
-                applied = tm.ok(
-                    test_u.Tests.run_isolated_make(
-                        [
-                            "-C",
-                            str(workspace_root),
-                            "docs",
-                            f"WHAT={action}",
-                            "APPLY=Y",
-                            f"PROJECTS={project_names[0]}",
-                            f"UV={uv}",
-                        ],
-                        cwd=workspace_root,
-                    )
-                )
-                tm.that(applied.exit_code, eq=0, msg=applied.stdout + applied.stderr)
-                applied_output = invocation_log.read_text(encoding="utf-8")
-                tm.that(applied_output, has="--apply")
-                tm.that(applied_output, lacks="--check")
-            elif action != "all":
-                tm.that(output, lacks="--apply")
-                tm.that(output, lacks="--check")
-
-        invalid = tm.ok(
-            test_u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "docs", "WHAT=not-a-docs-action"],
-                cwd=workspace_root,
-            )
-        )
-        tm.that(invalid.exit_code, ne=0)
 
     def test_workspace_root_setup_owns_environment_and_uses_venv_directory(
         self, tmp_path: Path
@@ -475,8 +323,8 @@ class TestsWorkspaceRootMakeContract:
         )
         fake_uv.chmod(0o755)
 
-        process: cli_p.Cli.CommandOutput = tm.ok(
-            test_u.Tests.run_isolated_make(
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
                 [
                     "-C",
                     str(workspace_root),

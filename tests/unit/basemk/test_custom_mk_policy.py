@@ -26,18 +26,18 @@ class TestsFlextInfraCustomMkPolicy:
     def test_reserved_builtin_what_handler_fails_loud(self) -> None:
         """A _custom handler naming a builtin (verb, WHAT) pair is rejected."""
         result = FlextInfraCustomMkPolicy.validate_content(
-            "_custom_docs_all:\n\t@true\n"
+            "_custom_check_all:\n\t@true\n"
         )
 
         tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="_custom_docs_all")
+        tm.that(result.error or "", has="_custom_check_all")
 
     def test_arbitrary_custom_verb_and_what_pass(self) -> None:
         """Any non-reserved custom verb/WHAT handler is permitted."""
         content = (
             "_custom_ship_fast:\n\t@true\n"
             "_custom_mod_circuit:\n\t@true\n"
-            "_custom_docs_mydoc:\n\t@true\n"
+            "_custom_check_mygate:\n\t@true\n"
         )
 
         tm.that(tm.ok(FlextInfraCustomMkPolicy.validate_content(content)), eq=True)
@@ -59,12 +59,17 @@ class TestsFlextInfraCustomMkPolicy:
         reserved = FlextInfraCustomMkPolicy.reserved_verbs()
 
         tm.that({"check", "gen", "work"} <= reserved, eq=True)
-        tm.that({"boot", "pr", "docs-serve"} <= reserved, eq=True)
+        # mro-x0rau.3 unreserved `pr` with the recipe it named; `clean` and
+        # `help` are the project-surface verbs base.mk still ships.
+        tm.that({"clean", "help"} <= reserved, eq=True)
+        tm.that(
+            reserved.isdisjoint({"pr", "boot", "daemon-start", "scan", "val"}), eq=True
+        )
 
     def test_reserved_targets_cover_builtin_what_pairs(self) -> None:
         """Reserved targets include every builtin _custom_<verb>_<what> pair."""
         targets = FlextInfraCustomMkPolicy.reserved_targets()
 
-        tm.that("_custom_docs_all" in targets, eq=True)
+        tm.that("_custom_check_all" in targets, eq=True)
         tm.that("_custom_run_default" in targets, eq=True)
         tm.that("_custom_ship_fast" in targets, eq=False)

@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
+
+from flext_infra import c, m
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -20,6 +20,7 @@ class FlextInfraUtilitiesBeadsLane:
     """Shell `bd` for lane metadata, labels, and evidence notes."""
 
     _UPDATE_BASE_ARGV_LENGTH = 2
+    _BEADS_ROOT_CACHE: ClassVar[dict[Path, Path]] = {}
 
     @classmethod
     def beads_resolve_root(cls, hint: Path | None = None) -> p.Result[Path]:
@@ -30,6 +31,9 @@ class FlextInfraUtilitiesBeadsLane:
         root reports — never raw argv helpers.
         """
         start = (hint or Path.cwd()).expanduser().resolve()
+        cached = cls._BEADS_ROOT_CACHE.get(start)
+        if cached is not None:
+            return r.ok(cached)
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
         governing = FlextInfraWorkspaceDetector.resolve_workspace_root(start)
@@ -42,6 +46,7 @@ class FlextInfraUtilitiesBeadsLane:
             return r.fail(
                 f"governing workspace declares no Beads ledger: {governing.value}"
             )
+        cls._BEADS_ROOT_CACHE[start] = governing.value
         return r.ok(governing.value)
 
     @classmethod

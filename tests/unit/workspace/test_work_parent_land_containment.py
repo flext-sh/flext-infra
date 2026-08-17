@@ -4,9 +4,13 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests.unit.workspace.work_public_adversarial_fixture import WorkAdversarialFixture
+
+from tests.unit import WorkAdversarialFixture
 
 
+# Why (suite budget): parent LAND saga over real epic/child worktrees with
+# subprocess git and gh calls; the per-case wall only holds idle.
+@pytest.mark.slow
 def test_parent_land_refuses_registered_child(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -17,6 +21,9 @@ def test_parent_land_refuses_registered_child(
     assert fixture.both_lanes_registered(state)
 
 
+# Why (suite budget): full child finish + parent land saga over real epic and
+# child worktrees with remote merges; the per-case wall only holds idle.
+@pytest.mark.slow
 def test_parent_land_after_child_finish_contains_child_history(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

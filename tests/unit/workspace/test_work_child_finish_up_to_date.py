@@ -7,7 +7,12 @@ from pathlib import Path
 import pytest
 from flext_infra import FlextInfraWorkService, FlextInfraWorktreeService, c
 from flext_tests import tm
-from tests.unit.workspace.work_public_finish_fixture import WorkPublicFinishFixture
+
+from tests.unit import WorkPublicFinishFixture
+
+# Why (suite budget): full child FINISH saga over real epic/child worktrees
+# with subprocess git and beads calls; the per-case wall only holds idle.
+pytestmark = pytest.mark.slow
 
 
 def test_child_finish_retires_without_redundant_epic_merge(

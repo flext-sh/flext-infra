@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
-
 
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
@@ -390,3 +389,58 @@ class TestsFlextInfraDepsModernizerPyright:
             ),
             has=f"flext-core/{rules.source_dir}",
         )
+
+    def test_expected_envs_cover_every_analyzer_python_root(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """The phase emits an environment for every root the analyzer owner selects.
+
+        ``analyzer_python_roots`` is the declared single owner of "which
+        directories are productive Python roots" (conform._existing_python_dirs).
+        When this phase derives its roots from a different list, conform renders an
+        executionEnvironment that apply can never write, so `gen check` reports
+        drift forever and `gen apply` cannot clear it.
+
+        A Python file under a directory outside ``env_dirs`` (docs/ here) is the
+        case that separates the two owners.
+        """
+        from flext_infra import u as infra_u
+
+        rules = tool_config_document.tools.pyright.path_rules
+        source = tmp_path / rules.source_dir
+        source.mkdir(parents=True)
+        (source / "mod.py").write_text("x = 1\n", encoding="utf-8")
+        # A productive root the env_dirs SSOT does not list.
+        outside = tmp_path / "docs" / "tools"
+        outside.mkdir(parents=True)
+        (outside / "validate_docs.py").write_text("y = 2\n", encoding="utf-8")
+
+        discovered = frozenset(infra_u.Infra.discover_python_dirs(tmp_path))
+        declared = tuple(d for d in rules.env_dirs if d in discovered)
+        owner_roots = set(infra_u.Infra.analyzer_python_roots(tmp_path, declared))
+
+        doc = u.Cli.toml_document()
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
+            doc, is_root=False, project_dir=tmp_path
+        )
+
+        tool = u.Cli.toml_unwrap_item(doc["tool"])
+        tm.that(tool, is_=MutableMapping)
+        if not isinstance(tool, MutableMapping):
+            return
+        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
+        tm.that(pyright, is_=MutableMapping)
+        if not isinstance(pyright, MutableMapping):
+            return
+        environments = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
+        tm.that(environments, is_=Sequence)
+        if not isinstance(environments, Sequence):
+            return
+        emitted: set[str] = set()
+        for entry in environments:
+            environment = u.Cli.toml_unwrap_item(entry)
+            tm.that(environment, is_=MutableMapping)
+            if not isinstance(environment, MutableMapping):
+                return
+            emitted.add(str(u.Cli.toml_unwrap_item(environment["root"])))
+        tm.that(sorted(emitted), eq=sorted(owner_roots))

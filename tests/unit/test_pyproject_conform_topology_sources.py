@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 from flext_infra import c, config, m, u
 from flext_tests import tm
+from tests import TestsFlextInfraUtilities as tu
 
 _ROLE = c.Infra.RepositoryRole
 # mro-o26p: provider identity, branch and base URL come from the config SSOT,
@@ -106,12 +106,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
         rendered = tm.ok(result)
-        document = tomllib.loads(rendered)
-        group = document["dependency-groups"]["workspace"]
-        runtime = document["project"]["dependencies"]
+        group = tu.Tests.toml_strings_at(rendered, "dependency-groups", "workspace")
+        runtime = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
 
-        tm.that(group, eq=["flext-core"])
-        tm.that(runtime, eq=["flext-core"])
+        tm.that(group, eq=("flext-core",))
+        tm.that(runtime, eq=("flext-core",))
 
     def test_external_consumer_keeps_remote_branch_source(self) -> None:
         workspace = _workspace()
@@ -127,14 +126,15 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-        document = tomllib.loads(tm.ok(result))
+        rendered = tm.ok(result)
+        dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
 
         # The expected specifier is derived from the same declared repository
         # contract the generator reads - never a hardcoded URL or branch.
         member = workspace.members[0]
         tm.that(
-            document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
+            dependencies,
+            eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
         )
 
     def test_publishable_member_keeps_catalog_git_provenance(self) -> None:
@@ -153,15 +153,16 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
-        document = tomllib.loads(tm.ok(result))
+        rendered = tm.ok(result)
+        dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(
-            document["project"]["dependencies"],
-            eq=[
+            dependencies,
+            eq=(
                 (
                     f"{provider.distribution} @ git+{provider.url}@"
                     f"{_PROVIDER_SPEC.branch}"
-                )
-            ],
+                ),
+            ),
         )
 
     def test_attached_root_rejects_explicit_member_source(self) -> None:
@@ -221,15 +222,16 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
-        document = tomllib.loads(tm.ok(result))
+        rendered = tm.ok(result)
+        dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(
-            document["project"]["dependencies"],
-            eq=[
+            dependencies,
+            eq=(
                 (
                     "flext-unmapped @ git+https://github.com/flext-sh/"
                     f"flext-unmapped.git@{_PROVIDER_SPEC.branch}"
-                )
-            ],
+                ),
+            ),
         )
 
     def test_root_workspace_overlay_resolves_publishable_member_with_uv(
@@ -306,16 +308,13 @@ workspace = true
         )
 
         tm.that(lock_result.exit_code, eq=0)
-        lock_payload = tomllib.loads(
-            (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
-        )
+        lock_content = (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
+        packages = tu.Tests.toml_tables_at(lock_content, "package")
         provider_packages = [
-            package
-            for package in lock_payload["package"]
-            if package["name"] == provider.distribution
+            package for package in packages if package["name"] == provider.distribution
         ]
         tm.that(len(provider_packages), eq=1)
-        provider_source = provider_packages[0]["source"]
+        provider_source = tu.Tests.toml_mapping(provider_packages[0]["source"])
         tm.that(provider_source.get("editable"), eq=provider.path.as_posix())
         tm.that("git" in provider_source, eq=False)
 
@@ -330,10 +329,11 @@ workspace = true
         )
 
         member = workspace.members[0]
-        document = tomllib.loads(tm.ok(result))
+        rendered = tm.ok(result)
+        dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(
-            document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
+            dependencies,
+            eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
         )
-        uv_config = document.get("tool", {}).get("uv", {})
-        tm.that("sources" in uv_config, eq=False)
+        document = tu.Tests.toml_table_at(rendered)
+        tm.that("tool" in document, eq=False)

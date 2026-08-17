@@ -6,11 +6,16 @@ import cProfile
 import sys
 from pathlib import Path
 
+import pytest
+
 from flext_infra import config, u
 from flext_tests import tm
 
 
 class TestsCProfileEntry:
+    # Why (suite budget): spawns a fresh interpreter to render the report;
+    # cold interpreter start under xdist contention exceeds the case wall.
+    @pytest.mark.slow
     def test_report_uses_typed_pytest_policy(self, tmp_path: Path) -> None:
         """Render a real profile with the same typed policy production consumes."""
         report_root = tmp_path / ".reports" / "cprofile"
