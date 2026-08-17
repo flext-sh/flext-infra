@@ -299,35 +299,31 @@ class TestsFlextInfraReleaseHelpers:
                 "0",
                 "--apply",
             )
-            first_result = u.Tests.run_release_main(workspace, *arguments)
             artifact_dir = u.Tests.release_artifact_dir(
                 workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
             )
-            original_names = tuple(path.name for path in sorted(artifact_dir.iterdir()))
+            first_result = u.Tests.run_release_main(workspace, *arguments)
+            original_artifacts = {
+                path.name: path.read_bytes() for path in artifact_dir.iterdir()
+            }
             collided_artifact = min(artifact_dir.iterdir())
-            collided_artifact.write_bytes(b"immutable collision\n")
+            collision_bytes = b"immutable collision\n"
+            collided_artifact.write_bytes(collision_bytes)
+            expected_artifacts = original_artifacts | {
+                collided_artifact.name: collision_bytes
+            }
 
             second_result = u.Tests.run_release_main(workspace, *arguments)
 
-            current_names = tuple(path.name for path in sorted(artifact_dir.iterdir()))
+            current_artifacts = {
+                path.name: path.read_bytes() for path in artifact_dir.iterdir()
+            }
             build_log = u.Tests.release_build_log(
                 workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
             ).read_text(encoding="utf-8")
-            temporary_sets = tuple(
-                path.name
-                for path in artifact_dir.parent.iterdir()
-                if path.name.startswith(f".{project_name}-")
-            )
-            report_dir = u.Tests.release_report_dir(
-                workspace, c.Tests.RELEASE_VERSION_TARGET
-            )
-            temporary_builds = tuple(report_dir.glob(f"{project_name}-*"))
             tm.that(first_result, eq=0)
             tm.that(second_result, eq=1)
-            tm.that(current_names, eq=original_names)
-            tm.that(collided_artifact.read_bytes(), eq=b"immutable collision\n")
-            tm.that(temporary_sets, eq=())
-            tm.that(temporary_builds, eq=())
+            tm.that(current_artifacts, eq=expected_artifacts)
             tm.that(build_log, has="immutable artifact collision")
 
         @staticmethod

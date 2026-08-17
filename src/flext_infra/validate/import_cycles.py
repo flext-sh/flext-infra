@@ -70,7 +70,7 @@ class FlextInfraValidateImportCycles(s[bool]):
             total_modules += len(graph)
             cycles.extend(
                 (label, tuple(sorted(scc)))
-                for scc in self._tarjan(graph)
+                for scc in u.Infra.strongly_connected_components(graph)
                 if len(scc) >= self._MIN_CYCLE_SIZE
             )
         violations: t.MutableSequenceOf[str] = [
@@ -160,45 +160,6 @@ class FlextInfraValidateImportCycles(s[bool]):
         resolves relative imports to absolute module names.
         """
         return u.Infra.imported_module_paths(module_imports)
-
-    def _tarjan(
-        self, graph: MutableMapping[str, set[str]]
-    ) -> t.SequenceOf[t.StrSequence]:
-        """Tarjan's SCC over ``graph``; returns each SCC as a list of module names."""
-        index_counter = [0]
-        stack: list[str] = []
-        lowlink: dict[str, int] = {}
-        index: dict[str, int] = {}
-        on_stack: dict[str, bool] = {}
-        result: list[list[str]] = []
-
-        def strongconnect(node: str) -> None:
-            """Strongconnect."""
-            index[node] = index_counter[0]
-            lowlink[node] = index_counter[0]
-            index_counter[0] += 1
-            stack.append(node)
-            on_stack[node] = True
-            for successor in graph.get(node, set()):
-                if successor not in index:
-                    strongconnect(successor)
-                    lowlink[node] = min(lowlink[node], lowlink[successor])
-                elif on_stack.get(successor):
-                    lowlink[node] = min(lowlink[node], index[successor])
-            if lowlink[node] == index[node]:
-                scc: list[str] = []
-                while True:
-                    top = stack.pop()
-                    on_stack[top] = False
-                    scc.append(top)
-                    if top == node:
-                        break
-                result.append(scc)
-
-        for node in list(graph):
-            if node not in index:
-                strongconnect(node)
-        return result
 
     @override
     def execute(self) -> p.Result[bool]:

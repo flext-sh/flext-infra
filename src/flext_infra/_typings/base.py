@@ -10,12 +10,34 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
+from pydantic import AfterValidator
+
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
 )
 
 from flext_cli import m, t
+
+
+def _reject_blanket_mask(rule: str) -> str:
+    """Return the bare rule name, rejecting ``ALL`` and blank padding.
+
+    Normalizing here keeps the rendered TOML free of accidental padding: a
+    padded name would otherwise reach a generated pyproject verbatim and no
+    longer match the rule Ruff knows.
+    """
+    normalized = rule.strip()
+    if not normalized:
+        message = "a Ruff exemption must name a rule, not blank padding."
+        raise ValueError(message)
+    if normalized.upper() == "ALL":
+        message = (
+            "ALL is not a Ruff exemption: it masks every rule, present and "
+            "future. Name each suppressed rule instead."
+        )
+        raise ValueError(message)
+    return normalized
 
 
 class FlextInfraTypesBase:
@@ -82,6 +104,24 @@ class FlextInfraTypesBase:
     "(success, descriptions, report_lines) — includes what was attempted."
     type LintSnapshot = t.MappingKV[str, t.StrSequence]
     "Lint errors per tool: {tool_name: [error_lines]}."
+
+    # ── Lint policy types ────────────────────────────────────────────
+
+    type RuffRule = Annotated[
+        str, t.StringConstraints(min_length=1), AfterValidator(_reject_blanket_mask)
+    ]
+    """One named Ruff rule exempted for a path.
+
+    ``ALL`` is excluded by construction. It suppresses every rule, present and
+    future, so it masks real defects and cannot be reviewed: the set it hides
+    is unbounded and grows with each Ruff release. UNIVERSAL_CORE r19 requires
+    an exemption to name its rule and carry its justification, which a mask
+    cannot do. Rendering one into a generated pyproject would push it onto
+    every consumer, so the boundary refuses it instead of a gate reporting it
+    after the fact.
+    """
+    type PerFileIgnores = t.MappingKV[str, t.SequenceOf[RuffRule]]
+    "Ruff per-file exemptions: {path_glob: [named_rule]}, never a blanket mask."
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."

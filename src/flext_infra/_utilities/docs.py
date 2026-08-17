@@ -36,7 +36,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             if ".bak" not in path.name
             and not any(
                 part in c.Infra.DOC_EXCLUDED_DIRS or part.startswith(".")
-                for part in path.parts
+                for part in path.relative_to(search_root).parts
             )
         )
 

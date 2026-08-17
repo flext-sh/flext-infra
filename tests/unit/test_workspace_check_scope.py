@@ -38,6 +38,6 @@ class TestsFlextInfraWorkspaceCheckScope:
             ),
         )
         tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)")
-        tm.that(template, has="override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)")
+        tm.that(template, has="override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)")
         tm.that(template, has="$(WORKSPACE_ORCHESTRATE) --verb check")
-        tm.that(template, has="$(WORKSPACE_CHECK_ARGS)")
+        tm.that(template, has='--make-arg "CHECK_GATES=$$gates"')

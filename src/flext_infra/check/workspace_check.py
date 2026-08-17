@@ -55,10 +55,11 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve and validate requested gate names.
+        """Resolve, validate and CI-scope requested gate names.
 
-        Under ``CI=Y`` (exact Make CI token), drop lint/ruff and pyrefly so CI
-        does not re-run gates already covered by ``make fmt`` / ``make fix``.
+        One ternary rule, derived from the single declared set
+        ``make.ci.local_check_gates``: CI=Y runs its strict complement,
+        CI=N (pre-push) runs exactly that set, an unset CI runs everything.
         """
         resolved: t.MutableSequenceOf[str] = []
         for gate in gates:
@@ -69,39 +70,27 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
-        skipped = FlextInfraWorkspaceChecker._ci_skipped_gates(resolved)
-        if skipped:
-            FlextInfraWorkspaceChecker._gate_logger.info(
-                "ci_skip_check_gates",
-                skipped=list(skipped),
-                reason="CI=Y omits lint and pyrefly from make check",
-            )
-            skip_set = frozenset(skipped)
-            resolved = [gate for gate in resolved if gate not in skip_set]
-        return r[list[str]].ok(list(resolved))
+        return r[list[str]].ok(FlextInfraWorkspaceChecker.apply_ci_gate_rules(resolved))
 
     @staticmethod
-    def _ci_token_active() -> bool:
-        """True when the Make CI environment token is exactly make.ci.value."""
+    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
+        """Scope *gates* to the CI ternary owner set (RULING 2)."""
         ci = config.Infra.codegen.make.ci
         raw = u.Cli.env_read(ci.variable).unwrap().strip()
-        return raw == ci.value
-
-    @staticmethod
-    def _ci_skipped_gates(gates: t.StrSequence) -> tuple[str, ...]:
-        """Return configured CI skip gates present in *gates* when CI=Y is active."""
-        if not FlextInfraWorkspaceChecker._ci_token_active():
-            return ()
-        skip = frozenset(config.Infra.codegen.make.ci.check_gates_skip)
-        return tuple(gate for gate in gates if gate in skip)
-
-    @staticmethod
-    def apply_ci_gate_skips(gates: t.StrSequence) -> list[str]:
-        """Omit make.ci.check_gates_skip when the Make CI token is exact CI=Y."""
-        skip = set(FlextInfraWorkspaceChecker._ci_skipped_gates(gates))
-        if not skip:
+        owned: frozenset[str]
+        if raw == ci.value:
+            owned = frozenset(ci.check_gates)
+        elif raw == ci.local_value:
+            owned = frozenset(ci.local_check_gates)
+        else:
             return [gate for gate in gates if gate]
-        return [gate for gate in gates if gate and gate not in skip]
+        scoped = [gate for gate in gates if gate and gate in owned]
+        FlextInfraWorkspaceChecker._gate_logger.info(
+            "ci_run_check_gates",
+            gates=scoped,
+            reason=f"{ci.variable}={raw} scopes check gates to its owner set",
+        )
+        return scoped
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -118,7 +107,7 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
-        gates = cls.apply_ci_gate_skips(params.gates)
+        gates = cls.apply_ci_gate_rules(params.gates)
         if not gates:
             return r[bool].fail(
                 "no check gates remain after CI token filtering "

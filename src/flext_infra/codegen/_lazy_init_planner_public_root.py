@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, t, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import m, p
 
 
@@ -19,16 +18,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         lazy_init: m.Infra.LazyInitConfig
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
-    def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]:
-        """Return the package-root ABI declared by its existing ``__all__``."""
-        init_path = pkg_dir / c.Infra.INIT_PY
-        if self.rope_workspace.resource(init_path) is None:
-            return frozenset()
-        source = u.Cli.files_read_text(init_path).unwrap()
-        return frozenset(
-            u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)
-        )
-
     def _filter_public_root_exports(
         self,
         *,
@@ -38,46 +27,83 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         eager_names: frozenset[str],
     ) -> tuple[set[str], t.MutableLazyAliasMap]:
         """Keep only direct facades in one generated root contract."""
-        explicit_exports = (
-            frozenset()
-            if context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
-            else self._root_public_contract_exports(context.pkg_dir)
-        )
-        if explicit_exports:
-            missing_owners = explicit_exports.difference(export_names)
-            if missing_owners:
-                missing = ", ".join(sorted(missing_owners))
-                msg = f"public root contract has no source owner: {missing}"
-                raise ValueError(msg)
+        # Why (mro-27a9e.1, multi-agent): generated __all__ is a projection,
+        # never an ABI input. Configured source owners and MRO parents are SSOT.
         module_export_names = {
             name
             for name, target in lazy_map.items()
             if (not target[1] and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS)
         }
+        inherited_facets = self._declared_inherited_facets(context)
+        governed_lazy_map = {
+            name: target
+            for name, target in lazy_map.items()
+            if self._is_declared_root_export(
+                name,
+                target,
+                root_pkg=context.current_pkg,
+                inherited_facets=inherited_facets,
+            )
+        }
+        lazy_map.clear()
+        lazy_map.update(governed_lazy_map)
         public_export_names = {
             name
             for name in export_names
             if name in eager_names
             or (
-                name in lazy_map
+                name in governed_lazy_map
                 and self._is_public_root_export(
                     name,
-                    lazy_map,
+                    governed_lazy_map,
                     root_pkg=context.current_pkg,
                     root_namespace_files=self.lazy_init.root_namespace_files,
                 )
             )
         } | module_export_names
-        if explicit_exports:
-            # NOTE (multi-agent): mro-pulj keeps regeneration ABI-stable while
-            # module-local helper exports remain available only from their owner.
-            public_export_names.intersection_update(explicit_exports)
         filtered_lazy_map = {
             name: target
             for name, target in lazy_map.items()
             if name in public_export_names
         }
         return public_export_names, filtered_lazy_map
+
+    @staticmethod
+    def _is_declared_root_export(
+        name: str,
+        target: t.StrPair,
+        *,
+        root_pkg: str,
+        inherited_facets: frozenset[str] | None,
+    ) -> bool:
+        module_path, attr_name = target
+        if (
+            not attr_name
+            or module_path == root_pkg
+            or module_path.startswith(f"{root_pkg}.")
+        ):
+            return True
+        return inherited_facets is None or name in inherited_facets
+
+    def _declared_inherited_facets(
+        self, context: m.Infra.LazyInitPackageContext
+    ) -> frozenset[str] | None:
+        package_entry = self.rope_workspace.package(context.pkg_dir)
+        if package_entry is None or package_entry.project_root is None:
+            return None
+        manifest_path = (
+            package_entry.project_root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        if not manifest_path.is_file():
+            return None
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            package_entry.project_root
+        )
+        if workspace.failure:
+            msg = workspace.error or f"invalid workspace manifest: {manifest_path}"
+            raise ValueError(msg)
+        project = workspace.value.project
+        return frozenset(project.inherited_facets if project is not None else ())
 
     def _is_public_root_export(
         self,

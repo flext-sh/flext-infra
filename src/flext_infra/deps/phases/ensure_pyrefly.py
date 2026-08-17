@@ -27,6 +27,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
         stale_error_keys: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
@@ -42,7 +43,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
         # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
-        if declared_python_dirs:
+        if declared_python_dirs_are_complete:
             declared_import_roots = (
                 (pyrefly_rules.path_rules.source_dir,)
                 if pyrefly_rules.path_rules.source_dir in declared_python_dirs
@@ -58,6 +59,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 *expected_search,
                 *pyrefly_rules.path_rules.project_shared_search_paths,
             }
+            if not declared_import_roots:
+                merged_search.discard(pyrefly_rules.path_rules.source_dir)
             merged_search.difference_update(declared_import_roots)
             expected_search = [*declared_import_roots, *sorted(merged_search)]
             # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
@@ -75,7 +78,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 for error_rule in self._tool_config.tools.pyrefly.disabled_errors
             ),
         )
-        return (
+        phase_builder = (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("pyrefly")
             .table(c.Infra.PYREFLY)
@@ -94,7 +97,15 @@ class FlextInfraEnsurePyreflyConfigPhase:
             # the default sort=True would silently re-alphabetize "." before
             # "src" here at TOML-emit time even after ordering it correctly.
             .list(c.Infra.SEARCH_PATH, expected_search, sort=False)
-            .list(c.Infra.PROJECT_INCLUDES, expected_includes)
+        )
+        if declared_python_dirs_are_complete and not expected_includes:
+            phase_builder = phase_builder.value(c.Infra.PROJECT_INCLUDES, [])
+        else:
+            phase_builder = phase_builder.list(
+                c.Infra.PROJECT_INCLUDES, expected_includes
+            )
+        return (
+            phase_builder
             .value(
                 "disable-project-excludes-heuristics",
                 pyrefly_rules.disable_project_excludes_heuristics,
@@ -121,6 +132,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
     ) -> t.StrSequence:
         """Apply canonical pyrefly table values, paths, and strict error toggles."""
         configured_error_keys = self._configured_error_keys()
@@ -140,6 +152,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 paths_manager=paths_manager,
                 stale_error_keys=stale_error_keys,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             ),
         )
 
@@ -151,6 +164,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
     ) -> t.StrSequence:
         """Apply canonical pyrefly settings to one normalized payload."""
         configured_error_keys = self._configured_error_keys()
@@ -170,6 +184,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 paths_manager=paths_manager,
                 stale_error_keys=stale_error_keys,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             ),
         )
 

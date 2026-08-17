@@ -77,6 +77,47 @@ class FlextInfraUtilitiesBase:
         return tuple(item.strip() for item in values if item.strip())
 
     @staticmethod
+    def strongly_connected_components(
+        graph: t.MappingKV[str, set[str]],
+    ) -> t.SequenceOf[t.StrSequence]:
+        """Return every strongly connected component in one directed graph."""
+        next_index = 0
+        stack: list[str] = []
+        indexes: dict[str, int] = {}
+        lowlinks: dict[str, int] = {}
+        on_stack: set[str] = set()
+        components: list[t.StrSequence] = []
+
+        def visit(node: str) -> None:
+            nonlocal next_index
+            indexes[node] = next_index
+            lowlinks[node] = next_index
+            next_index += 1
+            stack.append(node)
+            on_stack.add(node)
+            for successor in graph.get(node, set()):
+                if successor not in indexes:
+                    visit(successor)
+                    lowlinks[node] = min(lowlinks[node], lowlinks[successor])
+                elif successor in on_stack:
+                    lowlinks[node] = min(lowlinks[node], indexes[successor])
+            if lowlinks[node] != indexes[node]:
+                return
+            component: list[str] = []
+            while stack:
+                member = stack.pop()
+                on_stack.remove(member)
+                component.append(member)
+                if member == node:
+                    break
+            components.append(tuple(component))
+
+        for node in graph:
+            if node not in indexes:
+                visit(node)
+        return tuple(components)
+
+    @staticmethod
     def classify_process_exit(exit_code: int) -> str:
         """Classify a nonzero process status as timeout, signal, or failure."""
         if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:

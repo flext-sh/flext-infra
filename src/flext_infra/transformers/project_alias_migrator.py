@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
-from flext_infra import c
+from flext_infra import c, m
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.transformers.base import FlextInfraRopeTransformer
@@ -135,8 +135,8 @@ class _TypeCheckingContext:
 class _CollectExistingLocal(cst.CSTVisitor, _TypeCheckingContext):
     """Collect bound names already imported from the project's local facades."""
 
-    def __init__(self, current_project: str) -> None:
-        self.current_project = current_project
+    def __init__(self, import_root: str) -> None:
+        self.import_root = import_root
         self.existing_local: dict[str, set[str]] = {}
         self._tc_stack = []
 
@@ -154,7 +154,9 @@ class _CollectExistingLocal(cst.CSTVisitor, _TypeCheckingContext):
         if self._in_type_checking():
             return True
         module = _CstImportHelpers.dotted_name(node.module)
-        if module is None or not module.startswith(f"{self.current_project}."):
+        if module is None or not (
+            module == self.import_root or module.startswith(f"{self.import_root}.")
+        ):
             return True
         for alias in _CstImportHelpers.import_aliases(node):
             bound = alias.evaluated_alias or alias.evaluated_name
@@ -168,13 +170,13 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
     def __init__(
         self,
         *,
-        current_project: str,
+        import_root: str,
         local_aliases: frozenset[str],
         existing_local: dict[str, set[str]],
         alias_to_module: t.StrMapping,
         record_change: t.Infra.ChangeCallback,
     ) -> None:
-        self._current_project = current_project
+        self._import_root = import_root
         self._local_aliases = local_aliases
         self._existing_local = existing_local
         self._alias_to_module = alias_to_module
@@ -220,7 +222,11 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
                 kept.append(alias)
                 continue
 
-            local_module = f"{self._current_project}.{suffix}"
+            local_module = (
+                self._import_root
+                if self._import_root == c.Infra.DIR_TESTS
+                else f"{self._import_root}.{suffix}"
+            )
             display = bound
             if bound not in self._existing_local.get(local_module, set()):
                 self.imports_to_add.setdefault(local_module, {})[bound] = display
@@ -272,7 +278,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         )
         self._project_alias_owners = dict(owners)
         self._file_path = file_path
-        self._current_project = current_project or self._project_from_path(file_path)
+        self._explicit_project = current_project
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -285,25 +291,29 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             )
         ):
             return source, []
+        context = self._resolve_context(
+            file_path=self._file_path, current_project=self._explicit_project
+        )
         if (
-            not self._current_project
-            or self._current_project == c.Infra.PKG_CORE_UNDERSCORE
+            not context.policy_owner
+            or context.policy_owner == c.Infra.PKG_CORE_UNDERSCORE
         ):
             return source, []
-        local_aliases = self._project_alias_owners.get(self._current_project)
+        local_aliases = self._project_alias_owners.get(context.policy_owner)
         if not local_aliases:
             return source, []
 
         try:
             tree = cst.parse_module(source)
-        except cst.ParserSyntaxError:
-            return source, []
+        except cst.ParserSyntaxError as exc:
+            msg = f"canonical alias parse failed: {exc!s}"
+            raise ValueError(msg) from exc
 
-        collector = _CollectExistingLocal(self._current_project)
+        collector = _CollectExistingLocal(context.import_root)
         tree.visit(collector)
 
         transformer = _AliasMigrationTransformer(
-            current_project=self._current_project,
+            import_root=context.import_root,
             local_aliases=frozenset(local_aliases),
             existing_local=collector.existing_local,
             alias_to_module=self._ALIAS_TO_LOCAL_MODULE,
@@ -318,12 +328,18 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         )
         return final_tree.code, list(self.changes)
 
-    def _project_from_path(self, file_path: Path | str | None) -> str:
-        """Infer project package from a workspace file path."""
+    @staticmethod
+    def _resolve_context(
+        *, file_path: Path | None, current_project: str
+    ) -> m.Infra.AliasMigrationContext:
+        """Resolve explicit or path-backed alias migration context."""
+        if current_project:
+            return m.Infra.AliasMigrationContext(
+                policy_owner=current_project, import_root=current_project
+            )
         if file_path is None:
-            return ""
-        path = Path(file_path) if isinstance(file_path, str) else file_path
-        return FlextInfraUtilitiesDiscovery.package_name(path).split(".", maxsplit=1)[0]
+            return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
+        return FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
 
     @staticmethod
     def _is_private_facade_implementation(file_path: Path) -> bool:
