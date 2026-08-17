@@ -16,8 +16,6 @@ from flext_tests import tm
 if TYPE_CHECKING:
     import pytest
 
-    import pytest
-
 _CHECKPOINT_SUBJECT = "chore(git): checkpoint before ast-grep batch apply"
 _MAKE_SERIALIZATION_RULE = (
     Path(__file__).resolve().parents[3]
