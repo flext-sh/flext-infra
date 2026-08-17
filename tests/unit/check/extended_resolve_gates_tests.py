@@ -130,7 +130,7 @@ class TestWorkspaceCheckerCiGateRules:
         )
 
     def test_ci_local_token_keeps_explicit_narrow_selection_as_noop_success(
-        self,
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """CI=N scopes ``make fix``'s fixable gates to a no-op success.
 
@@ -141,6 +141,7 @@ class TestWorkspaceCheckerCiGateRules:
         would block the pre-push hook.
         """
         ci = config.Infra.codegen.make.ci
+        monkeypatch.setenv(ci.variable, ci.local_value)
         fixable: list[str] = list(config.Infra.codegen.make.check_gates_fixable)
         tm.that(set(fixable) & set(ci.local_check_gates), eq=set())
         tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(fixable), eq=[])
