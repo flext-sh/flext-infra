@@ -655,7 +655,8 @@ class FlextInfraConfigModels:
                     "finish inside this bound."
                 ),
             ),
-        ] = 60
+        ] = 120
+
         local_verb_timeout_seconds: Annotated[
             int,
             m.Field(

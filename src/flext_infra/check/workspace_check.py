@@ -107,8 +107,25 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
+        requested_gates = [gate for gate in params.gates if gate]
         gates = cls.apply_ci_gate_rules(params.gates)
         if not gates:
+            if requested_gates:
+                # A caller that named its gates (``make fix APPLY=Y`` asks for
+                # the fixable set) and whose selection the CI token does not
+                # own ran them in the token's complementary stage instead:
+                # pre-commit (CI=Y) owns markdown/smells fixing, pre-push
+                # (CI=N) owns the whole-program type checkers. The verb is a
+                # documented no-op here, never a failure.
+                FlextInfraWorkspaceChecker._gate_logger.info(
+                    "ci_gate_noop",
+                    gates=requested_gates,
+                    reason=(
+                        "requested gates are owned by the complementary CI "
+                        "stage; nothing to run under this token"
+                    ),
+                )
+                return r[bool].ok(True)
             return r[bool].fail(
                 "no check gates remain after CI token filtering "
                 f"({config.Infra.codegen.make.ci.variable}="

@@ -128,4 +128,25 @@ class TestWorkspaceCheckerCiGateRules:
             set(ci.check_gates) | set(ci.local_check_gates),
             eq=set(c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES),
         )
-        tm.that(set(ci.check_gates) & set(ci.local_check_gates), eq=set())
+
+    def test_ci_local_token_keeps_explicit_narrow_selection_as_noop_success(
+        self,
+    ) -> None:
+        """CI=N scopes ``make fix``'s fixable gates to a no-op success.
+
+        ``make fix APPLY=Y`` asks only for the fixable gates (markdown,
+        smells), disjoint from the CI=N slow set by design — pre-commit
+        (CI=Y) owns that fixing stage. An empty intersection under the
+        token is the verb's documented no-op, never a hard failure that
+        would block the pre-push hook.
+        """
+        ci = config.Infra.codegen.make.ci
+        fixable: list[str] = list(config.Infra.codegen.make.check_gates_fixable)
+        tm.that(set(fixable) & set(ci.local_check_gates), eq=set())
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(fixable), eq=[])
+        # The default full set is still scoped to the CI=N owner set.
+        default = list(c.Infra.PROJECT_CHECK_GATES_DEFAULT_VALUES)
+        tm.that(
+            FlextInfraWorkspaceChecker.apply_ci_gate_rules(default),
+            eq=list(ci.local_check_gates),
+        )

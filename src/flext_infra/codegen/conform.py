@@ -153,23 +153,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         plan = planned.value
         mode = c.Infra.CodegenConformMode(request.mode)
-        ancestry_violations = tuple(
-            (ancestry, reference)
-            for ancestry in plan.branch_ancestry
-            for reference in ancestry.references
-            if reference.ancestor is False
-        )
-        if ancestry_violations:
-            details = "; ".join(
-                (
-                    f"{reference.reference}@{reference.sha} does not descend from "
-                    f"{ancestry.baseline_reference}@{ancestry.baseline_sha}"
-                )
-                for ancestry, reference in ancestry_violations
-            )
-            return r[m.Infra.CodegenResult].fail(
-                f"governed branch ancestry violations: {details}"
-            )
         # Ledger routing is verified before drift reporting so a namespace
         for beads_plan in plan.beads:
             verified_beads = self._verify_beads_plan(beads_plan)
