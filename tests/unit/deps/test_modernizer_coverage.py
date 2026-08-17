@@ -5,7 +5,6 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-
 from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase

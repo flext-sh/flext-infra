@@ -99,6 +99,10 @@ class FlextInfraCodegenLazyInitPlanner(
                 else c.Infra.LazyInitAction.SKIP
             )
         )
+        if self._is_lazy_bootstrap_package(context):
+            return m.Infra.LazyInitPlan(
+                context=context, action=c.Infra.LazyInitAction.SKIP
+            )
         if not context.importable:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
         lazy_map = self._package_exports(context)
@@ -133,7 +137,8 @@ class FlextInfraCodegenLazyInitPlanner(
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
             and "." not in context.current_pkg
-            and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+            # Why (mro-27a9e.1, multi-agent): governed consumers such as ai_hub
+            # are first-class project roots; package prefixes are not architecture.
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
         is_test_facade_root = (
@@ -195,6 +200,16 @@ class FlextInfraCodegenLazyInitPlanner(
         self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return plan
+
+    @staticmethod
+    def _is_lazy_bootstrap_package(context: m.Infra.LazyInitPackageContext) -> bool:
+        """Return True when the package is reached by the lazy bootstrap itself."""
+        segments = context.current_pkg.split(".")
+        return (
+            segments[0] == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+            and len(segments) > 1
+            and any(segment.startswith("_") for segment in segments[1:])
+        )
 
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return the lazy-init package context for the requested package directory."""

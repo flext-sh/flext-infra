@@ -13,9 +13,9 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, u
-from tests import u as test_u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
+from tests import u as test_u
 
 
 class TestCodegenBeadsLedger:
@@ -32,6 +32,7 @@ class TestCodegenBeadsLedger:
         *,
         ledger_id: str | None,
         ledger_prefix: str | None = None,
+        declare_prefix: bool = True,
         overlay: bool = True,
         attached_marker: bool = False,
     ) -> Path:
@@ -77,7 +78,14 @@ class TestCodegenBeadsLedger:
             name=repository.distribution,
             repository=local_repository,
             ledger_id=ledger_id,
-            ledger_prefix=ledger_prefix,
+            # A tracker-owning manifest declares BOTH identifiers (mro-cdzxf).
+            # Tests that exercise the half-declared defect pass
+            # declare_prefix=False to build that shape deliberately.
+            ledger_prefix=(
+                ledger_prefix
+                if ledger_prefix is not None or not declare_prefix
+                else ledger_id
+            ),
             repository_policy_overlays=overlays,
         )
         tm.ok(
@@ -129,6 +137,139 @@ class TestCodegenBeadsLedger:
         repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.canonical_prefix, eq=repository.distribution)
 
+    def test_owner_transaction_renders_the_integrated_ledger_projection(
+        self, tmp_path: Path
+    ) -> None:
+        principal = self._standalone_workspace(
+            tmp_path / "principal-owner", ledger_id="fleet-ledger"
+        )
+        transaction = tmp_path / "owner-transaction"
+        self._git(principal, "worktree", "add", "--detach", str(transaction))
+
+        rendered = self._beads_config_render(transaction)
+
+        if rendered is None:
+            pytest.fail("owner transaction must render the ledger config")
+        tm.that(rendered, has="Owned ledger config")
+        tm.that(rendered, lacks="Routing-only client config")
+
+    def test_external_member_lane_plans_no_beads_surfaces(self, tmp_path: Path) -> None:
+        workspace = tmp_path / "workspace"
+        member_source = tmp_path / "member-source"
+        provider = config.Infra.codegen.providers[0]
+        root_repository = test_u.Tests.repository_ref("flext").model_copy(
+            update={"path": Path(), "package": False, "editable": False}
+        )
+        member = test_u.Tests.repository_ref(
+            "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        ).model_copy(update={"path": Path("flext-core")})
+        self._standalone_workspace(member_source, ledger_id=None, overlay=False)
+        (member_source / "pyproject.toml").write_text(
+            '[project]\nname = "flext-core"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n',
+            encoding="utf-8",
+        )
+        self._git(member_source, "add", "-A")
+        self._git(member_source, "commit", "-q", "-m", "Use member identity")
+        workspace.mkdir()
+        self._git(workspace, "init", "-q", "-b", provider.branch)
+        self._git(workspace, "config", "user.email", "infra@example.com")
+        self._git(workspace, "config", "user.name", "Infra Tests")
+        self._git(
+            workspace,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            "-b",
+            provider.branch,
+            str(member_source),
+            member.path.as_posix(),
+        )
+        member_root = workspace / member.path
+        # The declared https URL is the real external-member shape and the
+        # schema requires it, so .gitmodules and the remote both state it.
+        # mro-38p39: a unit test must never touch the network. url.insteadOf
+        # rewrites that declared URL to the member's own bare origin, so the
+        # topology under test is unchanged while every git operation stays
+        # local. Without it this single test paid 7.44s of real GitHub
+        # latency -- the largest cost in the suite.
+        member_origin = member_source.parent / f"{member_source.name}-origin.git"
+        self._git(member_root, "remote", "set-url", "origin", member.url)
+        self._git(member_root, "config", f"url.{member_origin}.insteadOf", member.url)
+        self._git(
+            workspace,
+            "config",
+            "--file",
+            ".gitmodules",
+            f"submodule.{member.path.as_posix()}.url",
+            member.url,
+        )
+        spec = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="flext",
+            repository=root_repository,
+            members=(member,),
+            ledger_id=root_repository.distribution,
+            ledger_prefix=root_repository.distribution,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                workspace / "config" / "workspace.yaml",
+                spec.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    exclude={"external_dependency_paths"},
+                ),
+            )
+        )
+        local_spec = spec.model_copy(
+            update={
+                "name": member.name,
+                "repository": member.model_copy(update={"path": Path()}),
+                "members": (),
+                "ledger_id": None,
+                "ledger_prefix": None,
+            }
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                member_root / "config" / "workspace.yaml",
+                local_spec.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    exclude={"external_dependency_paths"},
+                ),
+            )
+        )
+        self._git(member_root, "add", "-A")
+        self._git(member_root, "commit", "-q", "-m", "Declare member topology")
+        self._git(workspace, "add", "-A")
+        self._git(workspace, "commit", "-q", "-m", "Declare workspace topology")
+        lane = tmp_path / "external-member-lane"
+        self._git(member_root, "worktree", "add", "-q", "--detach", str(lane))
+
+        request = m.Infra.CodegenConformRequest(
+            root=lane,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(FlextInfraCodegenConform(workspace_root=lane).plan(request))
+        relative_paths = {
+            item.path.relative_to(lane).as_posix()
+            for item in plan.files
+            if item.path.is_relative_to(lane) and item.rendered
+        }
+
+        tm.that(c.Infra.BEADS_CONFIG_RELPATH in relative_paths, eq=False)
+        tm.that(c.Infra.BEADS_METADATA_RELPATH in relative_paths, eq=False)
+        tm.that(".github/workflows/ci-matrix.yml" in relative_paths, eq=False)
+        tm.that(any(path.endswith(".Dockerfile") for path in relative_paths), eq=False)
+        tm.that(plan.beads[0].repository_root, eq=lane.resolve())
+        tm.that(plan.beads[0].ledger_root, eq=workspace.resolve())
+        tm.that(plan.beads[0].enabled, eq=False)
+
     def test_principal_keeps_ledger_at_repository_root(self, tmp_path: Path) -> None:
         """Keep a principal checkout self-owned without worktree redirection."""
         principal = self._standalone_workspace(tmp_path / "principal", ledger_id=None)
@@ -140,7 +281,7 @@ class TestCodegenBeadsLedger:
         tm.that(plan.ledger_root, eq=principal.resolve())
         tm.that(plan.routes_to_principal_ledger, eq=False)
 
-    def test_manifest_ledger_id_owns_database_not_issue_prefix(
+    def test_manifest_ledger_id_defaults_database_and_issue_prefix(
         self, tmp_path: Path
     ) -> None:
         """Keep the declared ledger database distinct from the issue namespace.
@@ -156,9 +297,8 @@ class TestCodegenBeadsLedger:
 
         plan = self._beads_plan(principal)
 
-        repository = test_u.Tests.repository_ref(config.Infra.name)
         tm.that(plan.ledger_id, eq="workspace-ledger")
-        tm.that(plan.canonical_prefix, eq=repository.distribution)
+        tm.that(plan.canonical_prefix, eq="workspace-ledger")
 
     def test_declared_ledger_prefix_overrides_canonical_project_name(
         self, tmp_path: Path
@@ -173,13 +313,15 @@ class TestCodegenBeadsLedger:
         still wins, so the ai-hub-qwoc contract above is unchanged.
         """
         principal = self._standalone_workspace(
-            tmp_path / "principal", ledger_id="mro", ledger_prefix="mro"
+            tmp_path / "principal",
+            ledger_id="workspace-ledger",
+            ledger_prefix="workspace-prefix",
         )
 
         plan = self._beads_plan(principal)
 
-        tm.that(plan.ledger_id, eq="mro")
-        tm.that(plan.canonical_prefix, eq="mro")
+        tm.that(plan.ledger_id, eq="workspace-ledger")
+        tm.that(plan.canonical_prefix, eq="workspace-prefix")
 
     def test_workspace_ledger_identity_flows_to_member_targets(
         self, tmp_path: Path
@@ -229,8 +371,9 @@ class TestCodegenBeadsLedger:
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="flext",
             repository=root_target.repository,
-            ledger_id="mro",
-            ledger_prefix="mro",
+            ledger_id=root_target.repository.distribution,
+            # Declared, not inherited: a tracker owner states both identifiers.
+            ledger_prefix=f"{root_target.repository.distribution}-issues",
             members=(member_target.repository,),
         )
         root_identity = FlextInfraCodegenConform.ledger_identity_for_target(
@@ -240,8 +383,8 @@ class TestCodegenBeadsLedger:
             workspace, member_target
         )
 
-        tm.that(root_identity, eq=("mro", "mro"))
-        tm.that(member_identity, eq=("mro", "mro"))
+        tm.that(root_identity, eq=(workspace.ledger_prefix, workspace.ledger_id))
+        tm.that(member_identity, eq=(workspace.ledger_prefix, workspace.ledger_id))
 
     def _member_pair(
         self, tmp_path: Path, *, ledger_id: str | None, ledger_prefix: str | None
@@ -255,7 +398,7 @@ class TestCodegenBeadsLedger:
             root=tmp_path / "flext-dbt-ldif",
             make_profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
             beads_enabled=False,
-            routing_only=True,
+            routing_only=False,
             canonical_project_name="flext-dbt-ldif",
             baseline_branch="0.12.0-dev",
             ci_enabled=True,
@@ -292,53 +435,61 @@ class TestCodegenBeadsLedger:
 
         tm.that(identity, eq=None)
 
-    def test_conform_requires_explicit_workspace_ledger_identity(
-        self, tmp_path: Path
-    ) -> None:
+    def test_ledger_id_without_prefix_is_refused(self) -> None:
         """Fail closed when the governing workspace half-declares its ledger.
 
-        mro-cdzxf: ``ledger_identity_for_target`` used to silently fall back to
-        ``canonical_project_name`` for both the issue prefix and the database.
-        That is the exact mro-9wv8 failure mode -- bd binds to a ledger that
-        does not exist and every issue created from a clean clone lands in a
-        throwaway store. A half-declared ledger is a configuration defect and
-        must surface as one, never as a guess.
-        """
-        workspace, member_target = self._member_pair(
-            tmp_path, ledger_id="mro", ledger_prefix=None
-        )
+        mro-cdzxf: the issue prefix is a DECLARED fact, never an inferred one.
+        Guessing it from the database identity is the mro-9wv8 failure mode --
+        bd binds to a ledger that does not exist and every issue created from a
+        clean clone lands in a throwaway store. The two identifiers are
+        independent by design: a Dolt database must be SQL-safe (``cosmos_main``)
+        while an issue prefix is the hyphenated namespace (``cosmos-main``).
+        Substituting one for the other silently renames every issue namespace.
 
-        with pytest.raises(ValueError, match="ledger_prefix"):
-            FlextInfraCodegenConform.ledger_identity_for_target(
-                workspace, member_target
+        A half-declared ledger is a configuration defect and must surface as one,
+        at manifest-validation time, never as a guess at render time.
+        """
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+
+        with pytest.raises(c.ValidationError, match="ledger_prefix"):
+            m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=repository.distribution,
+                repository=repository,
+                ledger_id="cosmos_main",
             )
 
-    @pytest.mark.parametrize(
-        ("ledger_id", "ledger_prefix", "missing_key"),
-        [("mro", None, "ledger_prefix"), (None, "mro", "ledger_id")],
-    )
-    def test_plan_returns_failure_for_partial_workspace_ledger_identity(
-        self,
-        tmp_path: Path,
-        ledger_id: str | None,
-        ledger_prefix: str | None,
-        missing_key: str,
-    ) -> None:
-        workspace, _member_target = self._member_pair(
-            tmp_path, ledger_id=ledger_id, ledger_prefix=ledger_prefix
-        )
-        request = m.Infra.CodegenConformRequest(
-            root=tmp_path,
-            what=c.Infra.CodegenConformSurface.MAKEFILE,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
+    def test_workspace_spec_rejects_prefix_without_ledger_id(self) -> None:
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+
+        with pytest.raises(c.ValidationError, match="ledger_id"):
+            m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=repository.distribution,
+                repository=repository,
+                ledger_prefix=f"{repository.distribution}-prefix",
+            )
+
+    def test_workspace_spec_accepts_prefix_declared_equal_to_ledger(self) -> None:
+        """Declaring the prefix equal to the ledger states the namespace.
+
+        mro-tvc03: rejecting equality invalidated the real governing manifest,
+        which declares ``ledger_id: mro`` with ``ledger_prefix: mro`` precisely
+        to state the namespace instead of inheriting it. Runtime proved it:
+        ``make work`` failed with "workspace manifest model validation failed"
+        for every lane until equality was allowed again.
+        """
+        repository = test_u.Tests.repository_ref(config.Infra.name)
+
+        spec = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=repository.distribution,
+            repository=repository,
+            ledger_id=repository.distribution,
+            ledger_prefix=repository.distribution,
         )
 
-        planned = FlextInfraCodegenConform(
-            workspace_root=tmp_path, initial_workspace=workspace
-        ).plan(request)
-
-        tm.fail(planned, has=missing_key)
+        tm.that(spec.ledger_prefix, eq=spec.ledger_id)
 
     @classmethod
     def _plan(cls, root: Path) -> m.Infra.CodegenPlan:
@@ -398,10 +549,7 @@ class TestCodegenBeadsLedger:
         if rendered is None:
             pytest.fail("owner plan must render the ledger config")
         server = self._toolchain_server()
-        repository = test_u.Tests.repository_ref(config.Infra.name)
-        # ai-hub-qwoc: issue-prefix is the tracker namespace derived from the
-        # committed declaration, never the Dolt-safe ledger_id database name.
-        tm.that(rendered, has=f'issue-prefix: "{repository.distribution}"')
+        tm.that(rendered, has='issue-prefix: "fleet-ledger"')
         tm.that(rendered, has="database: fleet-ledger")
         tm.that(rendered, has="Owned ledger config")
         tm.that(rendered, has=f"mode: {server.mode}")
@@ -414,7 +562,7 @@ class TestCodegenBeadsLedger:
         # `| tojson`, entao o teste segue valido para qualquer valor declarado.
         tm.that(rendered, has=f"auto-commit: {json.dumps(server.auto_commit)}")
 
-    def test_attached_standalone_plan_renders_routing_config(
+    def test_attached_standalone_plan_renders_no_beads_config(
         self, tmp_path: Path
     ) -> None:
         """Render a routing-only config for a marker-attached standalone."""
@@ -427,17 +575,7 @@ class TestCodegenBeadsLedger:
 
         rendered = self._beads_config_render(root)
 
-        if rendered is None:
-            pytest.fail("attached standalone plan must render the routing config")
-        server = self._toolchain_server()
-        repository = test_u.Tests.repository_ref(config.Infra.name)
-        tm.that(rendered, has=f'issue-prefix: "{repository.distribution}"')
-        tm.that(rendered, has="database: attached-ledger")
-        tm.that(rendered, has="Routing-only client config")
-        tm.that(rendered, has=f"mode: {server.mode}")
-        tm.that(rendered, has=f"host: {server.host}")
-        tm.that(rendered, has=f"port: {server.port}")
-        tm.that(rendered, lacks="Owned ledger config")
+        tm.that(rendered, eq="")
 
     def test_plain_standalone_plan_renders_no_ledger_config(
         self, tmp_path: Path
@@ -471,7 +609,7 @@ class TestCodegenBeadsLedger:
         tm.that(marker["backend"], eq=server.backend)
         tm.that(marker["database"], eq=server.backend)
 
-    def test_attached_standalone_plan_renders_ledger_resolution_marker(
+    def test_attached_standalone_plan_renders_no_ledger_resolution_marker(
         self, tmp_path: Path
     ) -> None:
         """Bind a routing-only standalone to the same shared ledger database."""
@@ -484,9 +622,7 @@ class TestCodegenBeadsLedger:
 
         rendered = self._beads_metadata_render(root)
 
-        if rendered is None:
-            pytest.fail("attached standalone plan must render the marker")
-        tm.that(json.loads(rendered)["dolt_database"], eq="attached-ledger")
+        tm.that(rendered, eq="")
 
     def test_tool_spec_rejects_malformed_checksum(self) -> None:
         """Reject a checksum that is not a SHA-256 hex digest."""
@@ -517,6 +653,7 @@ class TestCodegenBeadsLedger:
         result = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )

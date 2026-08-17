@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 
 import pytest
+
 from flext_core import p as core_p
 from flext_infra import FlextInfraWorkService, c
 from flext_tests import tm
@@ -45,9 +46,7 @@ def _repository(tmp_path: Path, *, setup_exit: int) -> Path:
         encoding="utf-8",
     )
     (repository / ".gitignore").write_text(f"{_SETUP_MARKER}\n", encoding="utf-8")
-    beads = repository / ".beads"
-    beads.mkdir()
-    (beads / "config.yaml").write_text('issue-prefix: "mro"\n', encoding="utf-8")
+    u.Tests.declare_workspace_ledger(repository, "mro")
     u.Tests.initialize_git_repo(repository)
     return repository
 
@@ -86,8 +85,11 @@ def _install_bd_shim(tmp_path: Path, bead_id: str) -> Path:
         "if args[:1] == ['show'] and '--json' in args:\n"
         "    print(json.dumps(data))\n"
         "    raise SystemExit(0)\n"
+        "if args[:1] == ['list'] and '--json' in args:\n"
+        "    print(json.dumps([data]))\n"
+        "    raise SystemExit(0)\n"
         "if args[:1] == ['update']:\n"
-        "    i = 1\n"
+        "    i = 2\n"
         "    while i < len(args):\n"
         "        if args[i] == '--set-metadata':\n"
         "            key, value = args[i + 1].split('=', 1)\n"

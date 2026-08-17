@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -120,13 +120,11 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         for package_name in candidate_packages:
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"
-        # Project-scoped generation only indexes the selected project.
-        # When parent packages live outside that Rope workspace, fall back to
-        # the nearest declared parent facade instead of dropping the alias.
         for package_name in candidate_packages:
             if (
                 package_name
                 not in self.rope_workspace.workspace_index.package_dir_by_name
+                and alias_name in u.Infra.installed_package_exports(package_name)
             ):
                 return f"{package_name}"
         return ""
@@ -148,5 +146,9 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             sibling_project_root.joinpath(c.Infra.PYPROJECT_FILENAME).is_file()
             and sibling_package_root.joinpath(c.Infra.INIT_PY).is_file()
         ):
+            return parts[0]
+        # Why (mro-27a9e.1, multi-agent): project-scoped Rope indexes omit
+        # installed parents; u.Infra owns environment package discovery.
+        if u.Infra.package_importable(parts[0]):
             return parts[0]
         return ""

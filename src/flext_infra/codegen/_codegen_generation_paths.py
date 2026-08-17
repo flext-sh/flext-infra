@@ -51,7 +51,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         return (
             export_name in c.Infra.ALIAS_NAMES
             or export_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS
-            or "_fixtures" in module_path.split(".")
+            or c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME in module_path.split(".")
         )
 
     @staticmethod
@@ -68,11 +68,6 @@ class FlextInfraCodegenGenerationPathsMixin:
             current_pkg not in c.Infra.NON_PUBLIC_LAZY_ROOTS
             or current_pkg == c.Infra.DIR_TESTS
         )
-
-    @staticmethod
-    def _is_runtime_fixture_package(current_pkg: str) -> bool:
-        """Return whether a package is owned by pytest fixture discovery."""
-        return "_fixtures" in current_pkg.split(".")
 
     @staticmethod
     def _is_local_module(mod: str, root_name: str) -> bool:

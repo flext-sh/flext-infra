@@ -15,6 +15,8 @@ Infra:
       # Supply-chain cooldown: refuse packages newer than this relative window
       # (CWE-829 / uv dependency cooldowns). Projected to every [tool.uv].
       uv_exclude_newer: "7 days"
+      uv_exclude_newer_package:
+        mypy: "2026-08-15T03:04:00Z"
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
@@ -107,20 +109,20 @@ Infra:
         sha: c771a70e6277c0a99b617c7a806ffedaca235ff9
       mise:
         repository: jdx/mise-action
-        version: v4.2.3
-        sha: 9e7f7633ff6f6d6048a9418a68d48f288f50eb14
+        version: v4.2.4
+        sha: 7e36c90d9ab29c415a2384db3006f3ec8a8cc654
       kind:
         repository: helm/kind-action
         version: v1.14.0
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
       upload-artifact:
         repository: actions/upload-artifact
-        version: v4.6.2
-        sha: ea165f8d65b6e75b540449e92b4886f43607fa02
+        version: v7.0.1
+        sha: 043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       cache:
         repository: actions/cache
-        version: v4.3.0
-        sha: 0057852bfaa89a56745cba8c7296529d2fc39830
+        version: v6.1.0
+        sha: 55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       configure-pages:
         repository: actions/configure-pages
         version: v6.0.0
@@ -176,6 +178,10 @@ Infra:
       - project: flext-cli
         package:
           name: flext-core
+        dependencies: [flext-cli]
+      - project: flext-cli
+        package:
+          name: flext-tests
         dependencies: [flext-cli]
       - project: flext-tests
         package:
@@ -245,27 +251,65 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # Why: CI=Y check omits ruff (lint/format), pyrefly and markdown. Local
-        # make check without CI=Y keeps the full default set. Blocking CI never
-        # runs make test (pytest); local/pre_push still own that verb.
-        check_gates_skip: [lint, format, pyrefly, markdown]
+        # The local form of the same ternary. Mirrors apply_absent_value so no
+        # surface spells a bare "N": pre_push declares CI explicitly instead of
+        # relying on the token being unset, because a git hook inherits the
+        # invoking environment and a stray CI=Y from the caller would otherwise
+        # revoke pytest and the type-checker gates on a push.
+        local_value: N
+        # RULING 2 (rules not skip-list): local_check_gates is the ONLY declared
+        # set — the slow whole-program type checkers. CI=N (pre-push) runs
+        # exactly this set; CI=Y runs its strict complement derived in
+        # MakeCiSpec.check_gates (never a second list); an unset CI runs every
+        # allowed gate, always.
+        # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
+        # full pytest+coverage; absent=testmon incremental.
+        local_check_gates: [pyrefly, mypy]
+        # Wall-clock budget per verb/what/project for each CI form: CI=Y owns
+        # the fast gates (everything must land inside 60s); CI=N owns the slow
+        # whole-program analyses and full pytest (300s each).
+        verb_timeout_seconds: 60
+        local_verb_timeout_seconds: 300
       workflow:
         # Why: pre-commit remains fast and mutation-only; pre-push owns the
         # generated-artifact and read-only validation gates.
-        - { verb: setup, apply: false, contexts: [local, ci] }
-        - { verb: gen, apply: true, contexts: [local, ci, pre_push] }
-        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
-        # A hook runs the SAME gate set as a local `make check`: no context
-        # narrows it. markdown blocks a push like every other gate, because a
-        # docs defect is a defect. gates_skip stays available for a step that
-        # genuinely owns a narrower contract; check is not one of them.
-        - { verb: check, apply: false, contexts: [local, ci, pre_push] }
-        # Why (mro-v4p5): CI must not execute pytest. A hook NEVER inherits a
-        # WHAT selector: every verb runs its declared default (test -> all), so
-        # the hook can never diverge from what a plain `make test` does locally.
-        - { verb: test, what: cache-clear, apply: true, contexts: [local, pre_push] }
-        - { verb: test, apply: false, contexts: [local, pre_push] }
+        - {
+            verb: setup,
+            apply: false,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        - {
+            verb: gen,
+            apply: true,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        - {
+            verb: fmt,
+            apply: true,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        - {
+            verb: fix,
+            apply: true,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        # R9: markdown gate never skipped — a docs defect is a defect in every context.
+        - {
+            verb: check,
+            apply: false,
+            contexts: [local, ci, pre_commit, pre_push],
+          }
+        # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon and
+        # then runs WHAT=full, the complete-suite gate: testmon OFF so every test
+        # executes, coverage ON so the measured number covers the whole suite.
+        # WHAT=all (incremental testmon, --no-cov) stays the local default.
+        - {
+            verb: test,
+            what: cache-clear,
+            apply: true,
+            contexts: [local, pre_push],
+          }
+        - { verb: test, what: full, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all
@@ -301,7 +345,6 @@ Infra:
           - "*.prof"
           - ".coverage.*"
       docs:
-        mutable_actions: [generate, fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
@@ -335,18 +378,6 @@ Infra:
             repository: invest
             branch: main
             local_checkout: ~/invest
-      serialization:
-        # Locks and the snapshot fixed-point were exterminated: both assumed a
-        # single actor per checkout, which is false under GitOps/DevOps flows.
-        # The file locks queued every verb behind peers (1800s timeout) and the
-        # fingerprint aborted valid runs with "workspace changed during
-        # serialized Make" whenever a sibling lane wrote concurrently.
-        # `verbs` now names the surface routed through the dispatcher, which
-        # only resolves WHAT from the verb matrix and validates the APPLY token.
-        # `mutation_verbs` stays the declared mutating set (it must remain equal
-        # to the apply-guarded verbs) and no longer implies any lock.
-        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs, mod, release]
-        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs, mod, release]
       verbs:
         - name: help
           default_what: usage
@@ -379,9 +410,11 @@ Infra:
           # computed from an impacted subset is not the suite's coverage.
           # full = the complete-suite gate: testmon OFF, coverage ON. Pre-push
           # runs it so the measured number covers every test.
-          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-          # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
+          # profile = one explicit focused cProfile run (FILE and/or MATCH required).
+          # Normal all/full gates run pytest directly so profiling overhead cannot
+          # consume the suite's fixed execution budget.
+          whats:
+            [all, full, profile, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all
@@ -399,33 +432,16 @@ Infra:
           default_what: default
           whats: [default]
           apply_guarded: false
-          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-          # entering the serialized mutation set (daemon/mcp must not take the
-          # checkout lock). accepts_apply unlocks the APPLY token only.
           accepts_apply: true
           apply_what: default
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
           apply_guarded: false
-        - name: docs
-          # `validate` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          # `WHAT=all` remains the explicit full pipeline meta-selector.
-          default_what: validate
-          whats: [all, generate, fix, audit, build, validate]
-          # generate/fix materialize artifacts: the generated handler picks
-          # --apply or --check from APPLY, and the docs workflow calls
-          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
-          apply_guarded: true
-          apply_what: generate
         - name: clean
           default_what: status
           whats: [status, generated]
           # `clean generated` deletes generated output and calls _require_apply.
-          # `clean status` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
           apply_guarded: true
           apply_what: generated
         - name: release
@@ -458,13 +474,12 @@ Infra:
           apply_what: apply
       custom_handler_policy:
         filename: custom.mk
-        # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
-        # dispatch every unknown WHAT to a `_custom_<verb>_<what>` handler --
-        # that IS the canonical extension mechanism for new WHATs, distinct
-        # from pre-/post- lifecycle hooks. The validator must accept both
-        # shapes the runtime itself dispatches to, or every project that
-        # defines a custom WHAT handler fails `codegen conform` outright.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)_[a-z0-9][a-z0-9_-]*)$"
+        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
+        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
+        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
+        # The validator must accept both shapes the runtime itself dispatches to, or
+        # every project that defines a custom WHAT handler fails `codegen conform`.
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|clean|release|gen|work|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work|mod)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -520,6 +535,7 @@ Infra:
       - { name: .turbo }
       - { name: .venv, source_scan_ignore: true }
       - { name: .venv.* }
+      - { name: .worktrees, source_scan_ignore: true }
       - { name: "*.egg-info", vscode_exclude: false }
       - { name: build, source_scan_ignore: true }
       - { name: dist, source_scan_ignore: true }
@@ -1064,6 +1080,17 @@ Infra:
       - path: .gitmodules
         owner: codegen
         policy: merge
+      # mro-6szaq.13.1: the markdown gate resolves its rule set by walking
+      # upward for these files. A member checked out standalone in CI has no
+      # parent holding the workspace copies, so rumdl fell back to stock
+      # defaults and reported hundreds of findings the workspace rejects.
+      # Projecting both files makes every checkout evaluate one rule set.
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
+      - path: .markdownlintignore
+        owner: codegen
+        policy: full
       - path: .mise.toml
         owner: codegen
         policy: full
@@ -1097,6 +1124,7 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
+        conflict_sections: [tool.pytest.ini_options, tool.uv]
 
     scaffold:
       build:
@@ -1123,9 +1151,13 @@ Infra:
           - flext-tests
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.
-          - mypy>=2.3.0
+          - mypy>=2.3.1
           - pyrefly>=1.1.1
           - pyright>=1.1.411
+          # `gen` installs the git hooks it just wrote, so the tool that owns
+          # them has to exist in the environment running codegen — including CI,
+          # which provisions only the declared groups.
+          - pre-commit>=4.6.1
           - pytest>=9.0.3
           - pytest-testmon>=2.2.0
           - ruff>=0.15.12
@@ -1210,8 +1242,9 @@ Infra:
             - "scripts/maintenance/"
             - "!scripts/dispatch.py"
             - "!scripts/__init__.py"
-        - name: "TRACK: Beads team config;
-          keep Dolt data, runtime state, and JSONL exports local."
+        - name: >-
+            TRACK: Beads team config; keep Dolt data, runtime state, and JSONL
+            exports local.
           profiles: [workspace-root, workspace-member, standalone]
           patterns:
             - "!.beads/"
@@ -1301,6 +1334,17 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
+        # mro-zmoc6: `uv sync` inside a member lane writes a member-local
+        # uv.lock. Only the workspace root resolves and tracks a lockfile
+        # (whitelisted in "Python configuration" above); for a member the
+        # file is a local build artifact of that shared resolution. Left
+        # undeclared it surfaced as untracked in every freshly created lane
+        # and made `make work WHAT=land` refuse a fully committed increment
+        # with "requires a clean lane worktree".
+        - name: "BLOCK: member-local lockfile (the workspace root owns uv.lock)"
+          profiles: [workspace-member]
+          patterns:
+            - "uv.lock"
         # Only the workspace root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config
@@ -1537,8 +1581,9 @@ Infra:
             # untracked, so `bd doctor` reported a permanent
             # "Missing: *.gate.lock*" gitignore warning (mro-cdzxf).
             - "*.gate.lock*"
-        - name: "Beads ledger identity (all Beads-participating profiles;
-          see mro-9wv8, mro-cdzxf)"
+        - name: >-
+            Beads ledger identity (all Beads-participating profiles; see
+            mro-9wv8, mro-cdzxf)
           profiles: [workspace-root, workspace-member, standalone]
           patterns:
             - "!.beads/metadata.json"
@@ -1619,6 +1664,11 @@ Infra:
           overwrite: false
         - source: base/.pre-commit-config.yaml.j2
           destination: .pre-commit-config.yaml
+          # Every checkout that receives a commit owns its own gate. A member is
+          # committed and pushed independently of the root, so a root-only chain
+          # leaves those commits ungated. Each rendered step clears the inherited
+          # git/make environment, so a member chain scopes to itself instead of
+          # re-entering the root recursively.
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -1634,6 +1684,16 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
