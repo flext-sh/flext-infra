@@ -64,7 +64,7 @@ class TestWorkspaceCheckerResolveGates:
         tm.ok(result)
         tm.that(result.value, eq=["silent-failure"])
 
-    def test_resolve_gates_under_ci_y_runs_positive_gate_set(
+    def test_ci_y_scopes_to_fast_gate_set(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """RULING 2: CI=Y runs the fast set -- the type checkers stay local.
@@ -73,18 +73,12 @@ class TestWorkspaceCheckerResolveGates:
         lint pyright security markdown smells; `CI=N make check WHAT=all`
         ran pyrefly mypy. The test states that observed contract.
         """
-        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
-        result = FlextInfraWorkspaceChecker.resolve_gates([
-            "lint",
-            "pyrefly",
-            "mypy",
-            "pyright",
-            "security",
-        ])
-        tm.ok(result)
-        tm.that(result.value, eq=["lint", "pyright", "security"])
-        tm.that(result.value, lacks="mypy")
-        tm.that(result.value, lacks="pyrefly")
+        ci = config.Infra.codegen.make.ci
+        monkeypatch.setenv(ci.variable, ci.value)
+        gates = ["lint", "pyrefly", "mypy", "pyright", "security"]
+        expected = [gate for gate in gates if gate in ci.check_gates]
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=expected)
+        tm.that(expected, eq=["lint", "pyright", "security"])
 
 
 class TestWorkspaceCheckerCiGateRules:

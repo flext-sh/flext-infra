@@ -55,13 +55,8 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve, validate and CI-scope requested gate names.
-
-        One ternary rule, derived from the single declared set
-        ``make.ci.local_check_gates``: CI=Y runs its strict complement,
-        CI=N (pre-push) runs exactly that set, an unset CI runs everything.
-        """
-        resolved: t.MutableSequenceOf[str] = []
+        """Resolve, validate and deduplicate requested gate names."""
+        resolved: list[str] = []
         for gate in gates:
             name = gate.strip()
             if not name:
@@ -70,7 +65,7 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
-        return r[list[str]].ok(FlextInfraWorkspaceChecker.apply_ci_gate_rules(resolved))
+        return r[list[str]].ok(list(resolved))
 
     @staticmethod
     def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
