@@ -473,6 +473,7 @@ class TestCodegenConform:
         tm.ok(migrated)
         tm.that(_project_tree(existing_root), eq=expected_tree)
 
+    @pytest.mark.slow
     def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
         self, infra_git_repo: Path
     ) -> None:

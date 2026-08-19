@@ -49,11 +49,12 @@ Infra:
         server:
           mode: server
           backend: dolt
-          shared_server: true
+          shared_server: false
           host: 127.0.0.1
-          port: 3308
+          port: 3307
           user: root
           auto_commit: "on"
+
 
     # Why (ai-hub-qwoc): the ast-grep project contract. Rules travel inside the
     # installed packages (flext_infra/codemod/rules via the importlib.resources

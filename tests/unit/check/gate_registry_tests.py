@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+import flext_infra.constants  # ruff: ignore[unused-import] - force eager load for monkeypatch targets
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraCanonicalAliasGate
 from flext_infra.utilities import FlextInfraUtilities

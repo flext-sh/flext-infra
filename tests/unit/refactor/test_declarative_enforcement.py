@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+import flext_infra.constants  # ruff: ignore[unused-import] - force eager load for monkeypatch targets
 from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,

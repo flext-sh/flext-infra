@@ -559,7 +559,14 @@ Infra:
         # headroom over the measured ~190s run, which 240s did not leave on a
         # loaded multi-lane host. The per-case budget stays 10s — this raises
         # only the whole-suite wall, never a per-test ceiling.
-        run-timeout-seconds: 300
+        #
+        # BUMP 2026-08-20: the mro-38p39 slow-marker arm now exercises 24
+        # subprocess-heavy cases at 60s each (pytester.runpytest_subprocess).
+        # 24×60s + collection/imports + parallelism overhead now exceeds 300s
+        # on a loaded host (measured 320s+ wall at exit 124). 600s keeps the
+        # abort guard without false-killing the slow-HARNESS budget already
+        # declared at slow-timeout-seconds: 60.
+        run-timeout-seconds: 600
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
@@ -611,12 +618,12 @@ Infra:
           # mro-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
         # mro-99ae: hard process boundary independent of pytest hook progress.
-        # Must exceed run-timeout-seconds (300) by a small grace only: this caps
+        # Must exceed run-timeout-seconds (600) by a small grace only: this caps
         # the whole Make/pytest process (shell `timeout`), not a single session
         # hook. A wide outer wall is itself an escape hatch — it would let an
         # overrun keep burning wall clock instead of aborting. Grace covers
         # interpreter start, collection and teardown only.
-        process-timeout-seconds: 360
+        process-timeout-seconds: 660
       tomlsort:
         all: true
         in_place: true

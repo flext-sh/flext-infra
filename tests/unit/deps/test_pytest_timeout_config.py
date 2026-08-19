@@ -103,29 +103,30 @@ class TestsFlextInfraPytestTimeoutConfig:
         tm.that(policy.slow_timeout_seconds < policy.run_timeout_seconds, eq=True)
 
     @pytest.mark.parametrize(
-        ("slow_budget", "expected"),
+        "expected",
         [
-            (10, "pytest slow timeout must exceed the per-case timeout"),
-            (300, "pytest slow timeout must be less than run timeout"),
+            "pytest slow timeout must exceed the per-case timeout",
+            "pytest slow timeout must be less than run timeout",
         ],
     )
-    def test_slow_budget_is_a_hard_typed_boundary(
-        self, slow_budget: int, expected: str
-    ) -> None:
+    def test_slow_budget_is_a_hard_typed_boundary(self, expected: str) -> None:
         """A slow budget outside the case/run walls is unrepresentable."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True)
-        payload["slow-timeout-seconds"] = slow_budget
+        if "exceed the per-case" in expected:
+            payload["slow-timeout-seconds"] = policy.case_timeout_seconds
+        else:
+            payload["slow-timeout-seconds"] = policy.run_timeout_seconds
 
         with pytest.raises(c.ValidationError, match=expected):
             type(policy).model_validate(payload)
 
-    def test_canonical_full_suite_budget_is_five_minutes(self) -> None:
-        """The generated pre-push suite gets the approved bounded budget."""
+    def test_canonical_full_suite_budget_matches_timeout_policy(self) -> None:
+        """The generated pre-push suite carries the typed wall-clock budget."""
         policy = config.Infra.tooling.tools.pytest
 
-        tm.that(policy.run_timeout_seconds, eq=300)
-        tm.that(policy.process_timeout_seconds, eq=360)
+        tm.that(policy.run_timeout_seconds, eq=600)
+        tm.that(policy.process_timeout_seconds, eq=660)
 
     def test_process_budget_must_exceed_run_and_termination_windows(self) -> None:
         policy = config.Infra.tooling.tools.pytest
