@@ -51,7 +51,7 @@ Infra:
           backend: dolt
           shared_server: true
           host: 127.0.0.1
-          port: 3308
+          port: 3307
           user: root
           auto_commit: "on"
 
