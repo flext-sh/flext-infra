@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
 import pytest
 
-import flext_infra.constants  # ruff: ignore[unused-import] - force eager load for monkeypatch targets
 from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra.typings import t
+
+importlib.import_module("flext_infra.constants")
 
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:

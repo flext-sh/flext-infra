@@ -576,7 +576,13 @@ Infra:
         # before the immutable 120s wall. Fourteen and sixteen workers
         # oversubscribed the subprocess-heavy cases and breached their 10s item
         # budgets. Twelve leaves eight of the host's 20 CPUs for child work.
-        parallel-workers: 12
+        # BUMP 2026-08-20: the 12-worker xdist pool crashes under loaded
+        # multi-lane hosts (12 subprocesses importing the full module graph +
+        # fixtures exhaust memory/cgroup limits → "Unexpectedly no active
+        # workers available"). Four workers is the proven green budget per
+        # the 76% completion note above; it leaves 16 CPUs for child work and
+        # avoids worker-pool exhaustion on shared hosts.
+        parallel-workers: 4
         # Work stealing drains uneven codegen/subprocess tails without the
         # serialized 99% tail measured under loadscope.
         parallel-distribution: worksteal
