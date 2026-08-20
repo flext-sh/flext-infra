@@ -2719,6 +2719,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 worktree_sha = line.removeprefix("HEAD ")
             elif line.startswith("branch "):
                 worktree_branch = line.removeprefix("branch ")
+            elif line == "bare":
+                worktree_path = ""
+                worktree_sha = ""
+                worktree_branch = "detached"
             elif not line and worktree_path:
                 if not worktree_sha:
                     return r[m.Infra.BranchAncestryPlan].fail(

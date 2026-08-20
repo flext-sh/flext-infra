@@ -119,6 +119,21 @@ class FlextInfraConfigModels:
             Literal["off", "on", "batch"],
             m.Field(description="Dolt auto-commit policy for ledger writes"),
         ]
+        idle_timeout: Annotated[
+            str, m.Field(description="Dolt idle timeout for per-project connections")
+        ] = "0"
+        export_auto: Annotated[
+            Literal["off", "on", "batch"],
+            m.Field(description="Beads export auto-commit policy"),
+        ]
+        types_custom: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Comma-separated custom issue types for the ledger"),
+        ]
+        types_infra: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Comma-separated infra issue types for the ledger"),
+        ]
 
     class BeadsToolSpec(MiseToolSpec):
         """Beads tool pin plus the shared Dolt ledger connection."""
