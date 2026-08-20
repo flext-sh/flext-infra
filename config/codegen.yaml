@@ -41,11 +41,12 @@ Infra:
         version: "1.1.2-dc1"
         reported_version: "1.1.2-dc1"
         checksum: "06f142c0da9868d9fa956a9ca28baab93c5ac2813c2402d44f1e54992359204b"
-        # Machine-wide shared Dolt server facts: every FLEXT ledger on this
-        # host routes through this server; a repository-local server is never
-        # used. Rendered into .beads/config.yaml and .beads/metadata.json by
-        # codegen for ledger owners (workspace-root) and attached standalones
-        # (routing only).
+        # Gas Town Dolt server facts: every FLEXT ledger on this host routes
+        # through the Gas Town town server on :3307 (managed by `gt dolt start`).
+        # Per-project mode (shared_server: false) means bd honors the per-project
+        # port (3307) rather than the legacy machine-wide shared server (:3308).
+        # Rendered into .beads/config.yaml and .beads/metadata.json by codegen
+        # for ledger owners (workspace-root) and attached standalones (routing only).
         server:
           mode: server
           backend: dolt
@@ -54,6 +55,10 @@ Infra:
           port: 3307
           user: root
           auto_commit: "on"
+          idle_timeout: "0"
+          export_auto: "off"
+          types_custom: "agent,role,rig,convoy,slot,queue,event,message,molecule,gate,merge-request"
+          types_infra: "agent,role,message"
 
 
     # Why (ai-hub-qwoc): the ast-grep project contract. Rules travel inside the
