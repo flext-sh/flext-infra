@@ -2322,6 +2322,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
                 tokei_version=codegen.toolchain.tokei_version,
+                qlty_version=codegen.toolchain.qlty_version,
                 go_version=codegen.toolchain.go_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
@@ -2719,6 +2720,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 worktree_sha = line.removeprefix("HEAD ")
             elif line.startswith("branch "):
                 worktree_branch = line.removeprefix("branch ")
+            elif line == "bare":
+                worktree_path = ""
+                worktree_sha = ""
+                worktree_branch = "detached"
             elif not line and worktree_path:
                 if not worktree_sha:
                     return r[m.Infra.BranchAncestryPlan].fail(

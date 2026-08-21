@@ -205,10 +205,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         pkg_dir: Path = m.Field(description="Directory being processed.")
         init_path: Path = m.Field(description="Target __init__.py path.")
         current_pkg: str = m.Field(description="Importable package name.")
-        surface: str = m.Field(description="Root surface for alias inheritance.")
-        initializer_shape: c.Infra.LazyInitShape = m.Field(
-            description="Declared runtime shape for this package initializer."
-        )
+        surface: str = m.Field(description="Root surface for wrapper alias resolution.")
         generated_init: Annotated[
             bool,
             m.Field(

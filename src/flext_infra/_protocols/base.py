@@ -361,6 +361,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def qlty_version(self) -> str:
+            """Exact qlty code-smell scanner version."""
+            ...
+
+        @property
         def go_version(self) -> str:
             """Exact Go runtime version backing go: mise selectors."""
             ...
