@@ -17,8 +17,21 @@ COMMON_DIR = Path(
         )
     )
 )
-WORKSPACE_ROOT = next(
-    parent.parent for parent in COMMON_DIR.parents if parent.name == ".git"
+# When flext-infra is a submodule, the git common-dir resolves to the
+# superproject's <superproject>/.git/modules/<name> and --show-toplevel
+# returns the submodule checkout. Governance assets (docs/, AGENTS.md,
+# .agents/skills) live in the superproject, so resolve its root instead.
+_super_modules = [
+    p for p in COMMON_DIR.parents if p.name == "modules" and p.parent.name == ".git"
+]
+_resolve_root = _super_modules[0].parent.parent if _super_modules else ROOT
+WORKSPACE_ROOT = Path(
+    tm.ok(
+        u.Cli.capture(
+            ["git", "rev-parse", "--path-format=absolute", "--show-toplevel"],
+            cwd=_resolve_root,
+        )
+    )
 )
 
 

@@ -35,7 +35,7 @@ _MAKE_TEST_ENV_KEYS = (
     "RUFF_ARGS",
     "PYRIGHT_ARGS",
     "CHECK_ONLY",
-    "FIX",
+    "CI",
     "MAKEFLAGS",
     "MAKEOVERRIDES",
     "MFLAGS",

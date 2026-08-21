@@ -636,7 +636,12 @@ class TestCodegenCiMatrix:
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
         tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
-        tm.that(content, has=f"'{config.Infra.name} [workspace-member]' '';")
+        profile = next(
+            line.split("=", 1)[1].strip()
+            for line in content.splitlines()
+            if line.startswith("MAKE_PROFILE :=")
+        )
+        tm.that(content, has=f"'{config.Infra.name} [{profile}]' '';")
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""

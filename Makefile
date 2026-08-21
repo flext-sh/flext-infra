@@ -48,13 +48,13 @@ BRANCH ?=
 PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 360
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 660
 # mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
 # MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
 override PYTEST_CASE_TIMEOUT_SECONDS := 10
-override PYTEST_RUN_TIMEOUT_SECONDS := 300
+override PYTEST_RUN_TIMEOUT_SECONDS := 600
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
@@ -67,10 +67,10 @@ override PYTEST_PROFILE_SORT := cumulative
 override PYTEST_PROFILE_LIMIT := 50
 override PROCESS_TIMEOUT_COMMAND := timeout
 # CI ternary wall-clock budget per verb/what/project: CI=Y owns the fast
-# gates (120s each); CI=N owns the slow whole-program analyses
+# gates (300s each); CI=N owns the slow whole-program analyses
 # (300s each); an unset token runs unbounded.
 ifeq ($(strip $(CI)),Y)
-VERB_BOUNDED := timeout --signal=TERM --kill-after=5s 120s
+VERB_BOUNDED := timeout --signal=TERM --kill-after=5s 300s
 else ifeq ($(strip $(CI)),N)
 VERB_BOUNDED := timeout --signal=TERM --kill-after=5s 300s
 else

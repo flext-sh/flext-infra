@@ -41,19 +41,25 @@ Infra:
         version: "1.1.2-dc1"
         reported_version: "1.1.2-dc1"
         checksum: "06f142c0da9868d9fa956a9ca28baab93c5ac2813c2402d44f1e54992359204b"
-        # Machine-wide shared Dolt server facts: every FLEXT ledger on this
-        # host routes through this server; a repository-local server is never
-        # used. Rendered into .beads/config.yaml and .beads/metadata.json by
-        # codegen for ledger owners (workspace-root) and attached standalones
-        # (routing only).
+        # Gas Town Dolt server facts: every FLEXT ledger on this host routes
+        # through the Gas Town town server on :3307 (managed by `gt dolt start`).
+        # Per-project mode (shared_server: false) means bd honors the per-project
+        # port (3307) rather than the legacy machine-wide shared server (:3308).
+        # Rendered into .beads/config.yaml and .beads/metadata.json by codegen
+        # for ledger owners (workspace-root) and attached standalones (routing only).
         server:
           mode: server
           backend: dolt
-          shared_server: true
+          shared_server: false
           host: 127.0.0.1
-          port: 3308
+          port: 3307
           user: root
           auto_commit: "on"
+          idle_timeout: "0"
+          export_auto: "off"
+          types_custom: "agent,role,rig,convoy,slot,queue,event,message,molecule,gate,merge-request"
+          types_infra: "agent,role,message"
+
 
     # Why (ai-hub-qwoc): the ast-grep project contract. Rules travel inside the
     # installed packages (flext_infra/codemod/rules via the importlib.resources
@@ -266,12 +272,12 @@ Infra:
         # full pytest+coverage; absent=testmon incremental.
         local_check_gates: [pyrefly, mypy]
         # Wall-clock budget per verb/what/project for each CI form: CI=Y owns
-        # the fast gates; measured reality 2026-08-16 (mro-g3zl2): project-wide
-        # pyright alone runs 56-64s warm, so a green CI=Y check plus make
-        # startup and report tail exceeds 60s wall and is killed by its own
-        # budget — 120s fits the observed envelope with margin. CI=N owns the
-        # slow whole-program analyses and full pytest (300s each).
-        verb_timeout_seconds: 120
+        # the fast gates; measured reality 2026-08-18: full CI=Y gate set
+        # (lint pyright security markdown smells) needs ~130-150s wall
+        # with current security scan duration, so 300s matches CI=N and
+        # gives both tokens the same budget with different gate scopes.
+        # CI=N owns the slow whole-program analyses and full pytest (300s each).
+        verb_timeout_seconds: 300
         local_verb_timeout_seconds: 300
       work_in_progress:
         # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
