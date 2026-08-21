@@ -51,7 +51,6 @@ class FlextInfraCodegenGenerationPathsMixin:
         return (
             export_name in c.Infra.ALIAS_NAMES
             or export_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS
-            or c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME in module_path.split(".")
         )
 
     @staticmethod

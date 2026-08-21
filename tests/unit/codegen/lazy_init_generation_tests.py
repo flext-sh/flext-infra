@@ -21,9 +21,8 @@ class TestsFlextInfraCodegenGeneration:
         exports: t.StrSequence,
         lazy_map: t.LazyAliasMap,
         *,
-        eager_dunders: t.LazyAliasMap | None = None,
+        eager_dunders: t.MutableLazyAliasMap | None = None,
         child_packages: t.StrSequence = (),
-        initializer_shape: c.Infra.LazyInitShape = c.Infra.LazyInitShape.LAZY,
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
         package_dir = Path.cwd() / current_pkg.replace(".", "/")
@@ -33,7 +32,6 @@ class TestsFlextInfraCodegenGeneration:
                 init_path=package_dir / c.Infra.INIT_PY,
                 current_pkg=current_pkg,
                 surface=current_pkg.split(".", maxsplit=1)[0],
-                initializer_shape=initializer_shape,
                 importable=True,
             ),
             action=c.Infra.LazyInitAction.WRITE,
@@ -119,7 +117,6 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({
                 "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
             }),
-            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
@@ -189,15 +186,14 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({
                 "DemoFixture": ("demo_pkg._fixtures.settings", "DemoFixture")
             }),
-            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, lacks="from .settings import")
-        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="install_lazy_exports")
+        tm.that(init_content, contains="from .settings import DemoFixture")
+        tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
+        tm.that(init_content, contains="install_lazy_exports")
 
     def test_lazy_bootstrap_package_initializer_is_side_effect_free(self) -> None:
         """Keep the lazy runtime importable while its implementation initializes."""
@@ -207,7 +203,6 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({
                 "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
             }),
-            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
@@ -225,7 +220,6 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({
                 "FlextTypesLazy": ("flext_core._typings.lazy", "FlextTypesLazy")
             }),
-            initializer_shape=c.Infra.LazyInitShape.STATIC,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)

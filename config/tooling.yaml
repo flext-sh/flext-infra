@@ -534,7 +534,7 @@ Infra:
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW mro-38p39 (2026-08-13), reaffirmed by mro-09686
-        # measurement. 10s per case, 60s for an explicitly slow case, 300s for
+        # measurement. 10s per case, 60s for an explicitly slow case, 120s for
         # the complete suite. A case that does not fit is a TEST DEFECT and is
         # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
         # itself a violation. This supersedes the prior measurement-driven note
@@ -550,23 +550,12 @@ Infra:
         # cannot fit 10s; it is not a slow TEST, it is a slow HARNESS. This is
         # the declared exception, not a raised ceiling: unmarked cases keep 10s.
         slow-timeout-seconds: 60
-        # Complete-suite wall clock. The consumer fleet outgrew 120s: ai-hub's
-        # 1751-case suite reached only 62% (1094 passed, 0 failed) inside the
-        # immutable wall at 12 workers, so every checkout was structurally red
-        # on `make test WHAT=full`. OPERATOR LAW mro-2zwxl / ai-hub-88h1
-        # (2026-08-15) sets the canonical pre-push run wall at 300s: it keeps
-        # the abort-on-overrun guarantee (an unbounded hang still dies) with
-        # headroom over the measured ~190s run, which 240s did not leave on a
-        # loaded multi-lane host. The per-case budget stays 10s — this raises
-        # only the whole-suite wall, never a per-test ceiling.
-        #
-        # BUMP 2026-08-20: the mro-38p39 slow-marker arm now exercises 24
-        # subprocess-heavy cases at 60s each (pytester.runpytest_subprocess).
-        # 24×60s + collection/imports + parallelism overhead now exceeds 300s
-        # on a loaded host (measured 320s+ wall at exit 124). 600s keeps the
-        # abort guard without false-killing the slow-HARNESS budget already
-        # declared at slow-timeout-seconds: 60.
-        run-timeout-seconds: 600
+        # Complete-suite wall clock. The operator law (mro-38p39) sets the
+        # pre-push run wall at 120s: it keeps the abort-on-overrun guarantee
+        # (an unbounded hang still dies). The per-case budget stays 10s — this
+        # raises only the whole-suite wall, never a per-test ceiling. A suite
+        # that cannot fit is a TEST DEFECT and must be optimized, not exempted.
+        run-timeout-seconds: 120
         termination-grace-seconds: 2
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
@@ -618,12 +607,12 @@ Infra:
           # mro-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
         # mro-99ae: hard process boundary independent of pytest hook progress.
-        # Must exceed run-timeout-seconds (600) by a small grace only: this caps
+        # Must exceed run-timeout-seconds (120) by a small grace only: this caps
         # the whole Make/pytest process (shell `timeout`), not a single session
         # hook. A wide outer wall is itself an escape hatch — it would let an
         # overrun keep burning wall clock instead of aborting. Grace covers
         # interpreter start, collection and teardown only.
-        process-timeout-seconds: 660
+        process-timeout-seconds: 125
       tomlsort:
         all: true
         in_place: true
