@@ -473,13 +473,6 @@ Infra:
           whats: [check, all, apply]
           apply_guarded: true
           apply_what: apply
-        - name: work
-          default_what: status
-          whats: [start, status, land, finish]
-          # start/land/finish mutate lane state and call _require_apply;
-          # only status is read-only, so it stays the default WHAT.
-          apply_guarded: true
-          apply_what: land
         - name: mod
           default_what: check
           whats: [check, all, apply]

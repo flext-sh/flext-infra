@@ -1375,6 +1375,20 @@ class TestScriptDispatchMakefile:
             tm.that("|gen|" in policy.target_pattern, eq=True)
             tm.that("|codegen|" in policy.target_pattern, eq=False)
 
+    def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
+        """Gas Town owns lifecycle; generated Make exposes no work command."""
+        make_config = config.Infra.codegen.make
+        verb_names = {verb.name for verb in make_config.verbs}
+        tm.that("work" in verb_names, eq=False)
+        rendered = self._render_root_makefile(
+            tmp_path, extra_verbs=(), script_dispatch=None
+        )
+        public_line = next(
+            line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
+        )
+        tm.that(" work" in public_line, eq=False)
+        tm.that(rendered, lacks=["_builtin_work_", "make work", "work start"])
+
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
     # declares extra_verbs/script_dispatch in its OWN config/workspace.yaml. The
