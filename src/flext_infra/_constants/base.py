@@ -306,11 +306,6 @@ class FlextInfraConstantsBase(
         SKIP = "skip"
 
     @unique
-    class LazyInitShape(StrEnum):
-        LAZY = "lazy"
-        STATIC = "static"
-
-    @unique
     class TomlOperationKind(StrEnum):
         """SSOT TOML phase operation kinds."""
 

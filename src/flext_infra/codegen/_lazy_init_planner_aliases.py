@@ -52,16 +52,13 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         pkg_dir: Path,
         surface: str,
     ) -> None:
-        """Inject inherited and local aliases into the lazy map."""
-        is_test_runtime_alias_surface = c.Infra.DIR_TESTS in {
-            current_pkg,
-            pkg_dir.name,
-            surface,
-        }
-        if (
-            not u.Infra.matches_project_namespace_package(current_pkg)
-            and not is_test_runtime_alias_surface
-        ):
+        """Inject configured namespace aliases into root-package lazy maps only.
+
+        Nested packages export only their own discovered symbols; namespace
+        aliases (``c``, ``t``, ``p``, ``m``, ``u``, ``s``) originate from
+        project roots and wrapper surfaces only.
+        """
+        if not u.Infra.matches_project_namespace_package(current_pkg):
             return
         self._resolve_local_aliases(lazy_map, current_pkg=current_pkg, pkg_dir=pkg_dir)
         inherited_key = (
@@ -72,7 +69,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             self._source_package_name(pkg_dir, inherited_key),
         ))
         runtime_alias_names: list[str] = []
-        if is_test_runtime_alias_surface:
+        if current_pkg == c.Infra.DIR_TESTS:
             runtime_alias_names = list(c.Infra.TEST_RUNTIME_ALIAS_TARGETS)
         alias_names = tuple(
             dict.fromkeys((
@@ -97,11 +94,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 inherited_packages,
                 alias_name,
                 current_pkg=current_pkg,
-                use_test_runtime_aliases=is_test_runtime_alias_surface,
+                use_test_runtime_aliases=current_pkg == c.Infra.DIR_TESTS,
             )
             if package_name and package_name != current_pkg:
-                # mro-pulj (codex): the generated root TYPE_CHECKING contract
-                # makes the public package itself the single inherited owner.
                 lazy_map[alias_name] = (package_name, alias_name)
 
     def _resolve_local_aliases(
