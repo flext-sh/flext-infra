@@ -321,17 +321,10 @@ Infra:
             apply: false,
             contexts: [local, ci, pre_commit, pre_push],
           }
-        # Why (mro-v4p5): CI must not execute pytest. Pre-push resets testmon and
-        # then runs WHAT=full, the complete-suite gate: testmon OFF so every test
-        # executes, coverage ON so the measured number covers the whole suite.
-        # WHAT=all (incremental testmon, --no-cov) stays the local default.
-        - {
-            verb: test,
-            what: cache-clear,
-            apply: true,
-            contexts: [local, pre_push],
-          }
-        - { verb: test, what: full, apply: false, contexts: [local, pre_push] }
+        # Pre-push trusts the impact-selected testmon gate. The complete suite
+        # remains a GitHub CI owner and is not repeated locally before every
+        # push. Clearing testmon before pre-push would defeat that contract.
+        - { verb: test, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
         dependency_groups: all

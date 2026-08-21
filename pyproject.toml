@@ -438,7 +438,7 @@ markers = [
 minversion = "8.0"
 python_classes = ["Test*"]
 python_files = ["*_test.py", "*_tests.py", "test_*.py"]
-testpaths = [".", "docs", "examples", "scripts", "src", "tests"]
+testpaths = ["tests"]
 
 [tool.pytest_env]
 FLEXT_INFRA_LINT_SNAPSHOT_GATES = "lint"
