@@ -2322,6 +2322,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
                 tokei_version=codegen.toolchain.tokei_version,
+                qlty_version=codegen.toolchain.qlty_version,
                 go_version=codegen.toolchain.go_version,
                 author_name=project.author_name,
                 author_email=project.author_email,

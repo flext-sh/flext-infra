@@ -217,6 +217,9 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        qlty_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
+        ]
         go_version: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -2070,6 +2073,9 @@ class FlextInfraConfigModels:
         ]
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        ]
+        qlty_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
         ]
         go_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Go runtime version")
