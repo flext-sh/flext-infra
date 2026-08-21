@@ -26,7 +26,7 @@ make test  PROJECT={{ package_name }}
 ## Development Workflow
 
 1. Create a focused branch from `{{ flext_git_branch }}`.
-2. Track work with `bd` (Beads) — claim an issue, work in a `make work` lane.
+2. Track work with `bd` (Beads); Gas Town owns lane lifecycle.
 3. Keep changes scoped to one concern per commit.
 4. Run quality gates before opening a PR.
 5. Update docs when API, behavior, or architecture changes.
@@ -44,10 +44,10 @@ Use conventional commit messages:
 ### Lane Lifecycle
 
 ```bash
-make work WHAT=start PROJECT={{ package_name }} BEAD=<id> KIND=feature NAME=<slug> APPLY=Y
-make work WHAT=status PROJECT={{ package_name }} BEAD=<id>
-make work WHAT=land   PROJECT={{ package_name }} BEAD=<id> APPLY=Y
-make work WHAT=finish PROJECT={{ package_name }} BEAD=<id> APPLY=Y
+gt sling <id> <rig>
+gt hook status
+gt done
+gt convoy status
 ```
 
 ## Testing

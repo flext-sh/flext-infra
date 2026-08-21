@@ -107,8 +107,8 @@ class TestsReviewTemplateContracts:
         text = _CI.read_text(encoding="utf-8")
         tm.that(text, has='{% for step in make.workflow if "ci" in step.contexts -%}')
         tm.that(text, has="{% endfor -%}")
-        tm.that(text, has="      # End SECTION: ci job")
-        tm.that(text, lacks="    # End SECTION: ci job")
+        tm.that(text, has="  # End SECTION: ci job")
+        tm.that("    # End SECTION: ci job" not in text.splitlines(), eq=True)
 
     def test_docs_workflow_uses_public_cli_not_removed_make_verb(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")

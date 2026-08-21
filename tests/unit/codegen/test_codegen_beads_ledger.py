@@ -473,11 +473,8 @@ class TestCodegenBeadsLedger:
     def test_workspace_spec_accepts_prefix_declared_equal_to_ledger(self) -> None:
         """Declaring the prefix equal to the ledger states the namespace.
 
-        mro-tvc03: rejecting equality invalidated the real governing manifest,
-        which declares ``ledger_id: mro`` with ``ledger_prefix: mro`` precisely
-        to state the namespace instead of inheriting it. Runtime proved it:
-        ``make work`` failed with "workspace manifest model validation failed"
-        for every lane until equality was allowed again.
+        Rejecting equality invalidates a governing manifest that declares both
+        fields explicitly to state the database and issue namespace.
         """
         repository = test_u.Tests.repository_ref(config.Infra.name)
 

@@ -30,7 +30,6 @@ from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra._models.scan import FlextInfraModelsScan
 from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._models.validate import FlextInfraModelsCore
-from flext_infra._models.work_lane import FlextInfraModelsWorkLane
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 from flext_infra._models.worktree import FlextInfraModelsWorktree
 
@@ -60,7 +59,6 @@ class FlextInfraModels(m):
         FlextInfraModelsMixins,
         FlextInfraModelsTransformers,
         FlextInfraModelsWorkspace,
-        FlextInfraModelsWorkLane,
         # mro-wkii.17.26 (codex): all fix/codegen mutations share one typed
         # worktree transaction report rather than command-local backup shapes.
         FlextInfraModelsWorktree,

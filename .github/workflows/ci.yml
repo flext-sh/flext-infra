@@ -73,28 +73,22 @@ jobs:
             testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-
 
 
-
-      - name: setup (blocking)
+- name: setup (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make setup
-
-      - name: gen (blocking)
+- name: gen (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make gen WHAT=apply APPLY=Y
-
-      - name: fmt (blocking)
+- name: fmt (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make fmt WHAT=apply APPLY=Y
-
-      - name: fix (blocking)
+- name: fix (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make fix WHAT=apply APPLY=Y
-
-      - name: check (blocking)
+- name: check (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make check
-
-      - name: Dump reports on failure
+- name: Dump reports on failure
         if: ${{ failure() }}
         run: |
           set -eu
@@ -125,7 +119,7 @@ jobs:
             apps/*/.reports/**/coverage.json
           if-no-files-found: ignore
           retention-days: 7
-    # End SECTION: ci job
+  # End SECTION: ci job
 
   # === SECTION: merge-guard job (managed) ===
   merge-guard:
@@ -161,4 +155,3 @@ jobs:
           done
           echo "Merge guard passed for $HEAD_REF -> $BASE_REF"
   # End SECTION: merge-guard job
-

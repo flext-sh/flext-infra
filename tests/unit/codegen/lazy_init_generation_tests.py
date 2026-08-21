@@ -21,7 +21,7 @@ class TestsFlextInfraCodegenGeneration:
         exports: t.StrSequence,
         lazy_map: t.LazyAliasMap,
         *,
-        eager_dunders: t.MutableLazyAliasMap | None = None,
+        eager_dunders: t.MappingKV[str, t.StrPair] | None = None,
         child_packages: t.StrSequence = (),
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""

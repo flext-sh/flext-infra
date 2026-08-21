@@ -16,109 +16,12 @@ class FlextInfraConstantsWorkspace:
 
     @unique
     class WorktreeOperation(StrEnum):
-        """Private Git worktree primitives composed by the work saga."""
+        """Private Git worktree primitives used by workspace tooling."""
 
         LIST = "list"
         ADD = "add"
         UPDATE = "update"
         REMOVE = "remove"
-
-    @unique
-    class WorkOperation(StrEnum):
-        """Public make work saga operations."""
-
-        START = "start"
-        STATUS = "status"
-        LAND = "land"
-        FINISH = "finish"
-
-    @unique
-    class WorkKind(StrEnum):
-        """GitFlow lane kinds owned by configuration policy."""
-
-        EPIC = "epic"
-        FEATURE = "feature"
-        BUGFIX = "bugfix"
-        HOTFIX = "hotfix"
-        RELEASE = "release"
-
-    @unique
-    class WorkBranchNamespace(StrEnum):
-        EPIC = "epic"
-        FEATURE = "feature"
-        BUGFIX = "bugfix"
-        HOTFIX = "hotfix"
-        RELEASE = "release"
-
-    @unique
-    class WorkLaneRole(StrEnum):
-        """Topology role one registered lane holds inside an epic program."""
-
-        PLAIN = "plain"
-        EPIC = "epic"
-        CHILD = "child"
-
-    @unique
-    class WorkProvisioningState(StrEnum):
-        """Lifecycle state persisted for one work-lane reservation."""
-
-        PENDING = "pending"
-        READY = "ready"
-        FAILED = "failed"
-
-    @unique
-    class WorkRecoveryCategory(StrEnum):
-        """Recovery action supported for a failed work-lane reservation."""
-
-        RETRY_SETUP = "retry-setup"
-
-    @unique
-    class WorkProvisioningError(StrEnum):
-        """Provisioning stage that failed after lane reservation."""
-
-        SETUP = "setup"
-
-    @unique
-    class BeadIssueStatus(StrEnum):
-        """Beads issue states relevant to live lane ownership."""
-
-        OPEN = "open"
-        IN_PROGRESS = "in_progress"
-        BLOCKED = "blocked"
-        CLOSED = "closed"
-
-    WORK_ACTIVE_ISSUE_STATUSES: Final[frozenset[BeadIssueStatus]] = frozenset({
-        BeadIssueStatus.OPEN,
-        BeadIssueStatus.IN_PROGRESS,
-        BeadIssueStatus.BLOCKED,
-    })
-
-    WORK_FORBIDDEN_SLUGS: Final[frozenset[str]] = frozenset({
-        "teste",
-        "ajuste",
-        "correcao",
-        "temp",
-        "nova-branch",
-    })
-    WORK_BEADS_METADATA_KEYS: Final[t.StrSequence] = (
-        "branch",
-        "namespace",
-        "worktree",
-        "kind",
-        "slug",
-        "integration_base",
-        "head_oid",
-        "pr_number",
-        "pr_url",
-        "provisioning",
-        "recovery",
-        "error_category",
-        "role",
-        "epic_bead",
-        "epic_branch",
-        "epic_worktree",
-        "child_slug",
-    )
 
     @unique
     class WorkspaceMode(StrEnum):

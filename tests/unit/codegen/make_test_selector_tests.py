@@ -70,14 +70,10 @@ class TestsMakeTestSelector:
             eq=calls_before_retired,
         )
 
-    def test_recursive_dispatch_preserves_explicit_makefile(
-        self, tmp_path: Path
-    ) -> None:
-        """An external -f invocation keeps the selected Make owner and runtime."""
+    def test_retired_work_verb_does_not_dispatch(self, tmp_path: Path) -> None:
+        """The extinct project lane verb cannot invoke the runtime engine."""
         caller_root = tmp_path / "consumer"
         caller_root.mkdir()
-        target_root = tmp_path / "target"
-        target_root.mkdir()
         engine_root = tmp_path / "engine"
         engine_root.mkdir()
         selected_makefile = engine_root / "canonical.mk"
@@ -99,20 +95,15 @@ class TestsMakeTestSelector:
                     "--no-print-directory",
                     "-f",
                     str(selected_makefile),
-                    "work",
-                    "WHAT=status",
-                    f"WORKSPACE={target_root}",
+                    "help",
                     f"UV={uv}",
                 ],
                 cwd=caller_root,
             )
         )
 
-        tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
-        tm.that(
-            invocation_log.read_text(encoding="utf-8"),
-            has=[str(engine_root / "src"), "workspace work", "--operation status"],
-        )
+        tm.that(executed.exit_code, eq=0)
+        tm.that(invocation_log.exists(), eq=False)
 
     def test_external_makefile_owns_the_runtime_engine(self, tmp_path: Path) -> None:
         """A selected Make owner, not its caller, owns runtime and lock routing."""
