@@ -292,101 +292,101 @@ Infra:
             repository: invest
             branch: main
             local_checkout: ~/invest
-        verbs:
-        - name: help
-          default_what: usage
-          whats: [usage]
-          apply_guarded: false
-        - name: setup
-          default_what: environment
-          whats: [environment]
-          apply_guarded: false
-        - name: deps
-          default_what: check
-          whats: [check, lock, upgrade]
-          # `lock` and `upgrade` rewrite the lockfile and call _require_apply,
-          # so declaring the verb unguarded made them unreachable: the dispatch
-          # rejected APPLY=Y while the recipe demanded it.
-          apply_guarded: true
-          apply_what: upgrade
-        - name: build
-          default_what: artifacts
-          whats: [artifacts]
-          apply_guarded: false
-        - name: check
-          default_what: all
-          whats: [all]
-          apply_guarded: false
-        - name: test
-          default_what: all
-          # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Coverage is on unless CI=Y (no separate cov verb).
-          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-          # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, cache-status, cache-clear, cache-checkpoint]
-          apply_guarded: false
-          accepts_apply: true
-          apply_what: all
-        - name: fmt
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
-        - name: fix
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
-        - name: run
-          default_what: default
-          whats: [default]
-          apply_guarded: false
-          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-          # entering the serialized mutation set (daemon/mcp must not take the
-          # checkout lock). accepts_apply unlocks the APPLY token only.
-          accepts_apply: true
-          apply_what: default
-        - name: status
-          default_what: diagnostics
-          whats: [diagnostics]
-          apply_guarded: false
-        - name: docs
-          # `validate` is the read-only fixed-point after mutation (must differ
-          # from apply_what so the fixed-point re-checks without APPLY=Y).
-          # `WHAT=all` remains the explicit full pipeline meta-selector.
-          default_what: validate
-          whats: [all, generate, fix, audit, build, validate]
-          # generate/fix materialize artifacts: the generated handler picks
-          # --apply or --check from APPLY, and the docs workflow calls
-          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
-          apply_guarded: true
-          apply_what: generate
-        - name: clean
-          default_what: status
-          whats: [status, generated]
-          # `clean generated` deletes generated output and calls _require_apply.
-          # `clean status` is the read-only fixed-point after mutation (must differ
-          # from apply_what so the fixed-point re-checks without APPLY=Y).
-          apply_guarded: true
-          apply_what: generated
-        - name: release
-          default_what: status
-          whats: [status]
-          apply_guarded: false
-        - name: gen
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
-        - name: mod
-          default_what: check
-          whats: [check, all, apply]
-          # `mod` batch-applies the sgconfig ast-grep rules under the
-          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
-          # the read-only dry-run fixed-point after mutation.
-          apply_guarded: true
-          apply_what: apply
+      verbs:
+      - name: help
+        default_what: usage
+        whats: [usage]
+        apply_guarded: false
+      - name: setup
+        default_what: environment
+        whats: [environment]
+        apply_guarded: false
+      - name: deps
+        default_what: check
+        whats: [check, lock, upgrade]
+        # `lock` and `upgrade` rewrite the lockfile and call _require_apply,
+        # so declaring the verb unguarded made them unreachable: the dispatch
+        # rejected APPLY=Y while the recipe demanded it.
+        apply_guarded: true
+        apply_what: upgrade
+      - name: build
+        default_what: artifacts
+        whats: [artifacts]
+        apply_guarded: false
+      - name: check
+        default_what: all
+        whats: [all]
+        apply_guarded: false
+      - name: test
+        default_what: all
+        # all = incremental testmon run; cache-* maintain .testmondata locally.
+        # Coverage is on unless CI=Y (no separate cov verb).
+        # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
+        # test in mutation_verbs (fingerprint still ignores .testmondata*).
+        whats: [all, cache-status, cache-clear, cache-checkpoint]
+        apply_guarded: false
+        accepts_apply: true
+        apply_what: all
+      - name: fmt
+        default_what: check
+        whats: [check, all, apply]
+        apply_guarded: true
+        apply_what: apply
+      - name: fix
+        default_what: check
+        whats: [check, all, apply]
+        apply_guarded: true
+        apply_what: apply
+      - name: run
+        default_what: default
+        whats: [default]
+        apply_guarded: false
+        # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
+        # entering the serialized mutation set (daemon/mcp must not take the
+        # checkout lock). accepts_apply unlocks the APPLY token only.
+        accepts_apply: true
+        apply_what: default
+      - name: status
+        default_what: diagnostics
+        whats: [diagnostics]
+        apply_guarded: false
+      - name: docs
+        # `validate` is the read-only fixed-point after mutation (must differ
+        # from apply_what so the fixed-point re-checks without APPLY=Y).
+        # `WHAT=all` remains the explicit full pipeline meta-selector.
+        default_what: validate
+        whats: [all, generate, fix, audit, build, validate]
+        # generate/fix materialize artifacts: the generated handler picks
+        # --apply or --check from APPLY, and the docs workflow calls
+        # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
+        # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
+        apply_guarded: true
+        apply_what: generate
+      - name: clean
+        default_what: status
+        whats: [status, generated]
+        # `clean generated` deletes generated output and calls _require_apply.
+        # `clean status` is the read-only fixed-point after mutation (must differ
+        # from apply_what so the fixed-point re-checks without APPLY=Y).
+        apply_guarded: true
+        apply_what: generated
+      - name: release
+        default_what: status
+        whats: [status]
+        apply_guarded: false
+      - name: gen
+        default_what: check
+        whats: [check, all, apply]
+        apply_guarded: true
+        apply_what: apply
+      - name: mod
+        default_what: check
+        whats: [check, all, apply]
+        # `mod` batch-applies the sgconfig ast-grep rules under the
+        # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
+        # the read-only dry-run fixed-point after mutation.
+        apply_guarded: true
+        apply_what: apply
       custom_handler_policy:
         filename: custom.mk
         # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
