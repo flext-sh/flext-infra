@@ -68,7 +68,7 @@ class WorkspaceRoutes(RefactorRoutes):
                         "Detect workspace or standalone mode",
                         FlextInfraWorkspaceDetector,
                     ),
-                    (
+                     (
                         "orchestrate",
                         "Run make verb across projects",
                         FlextInfraOrchestratorService,

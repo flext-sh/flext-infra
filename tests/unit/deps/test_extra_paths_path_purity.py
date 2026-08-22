@@ -88,8 +88,9 @@ class TestsFlextInfraExtraPathsArePure:
     def test_search_paths_survive_a_project_only_worktree(self, tmp_path: Path) -> None:
         """The same project alone on disk yields the same entries.
 
-        An isolated project checkout may exist without its siblings. Entries
-        derived from sibling existence must remain stable in that topology.
+        A Gas Town lane materializes one project without its siblings. Entries
+        derived from sibling existence differ there, so `make gen` in the lane
+        would rewrite what the primary just generated.
         """
         with_siblings = _project(tmp_path / "workspace", "flext-ldap", "flext_ldap")
         _ = _project(tmp_path / "workspace", "flext-core", "flext_core")

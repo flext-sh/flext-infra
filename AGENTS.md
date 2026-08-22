@@ -48,12 +48,8 @@ src/flext_infra/
 make check PROJECT=flext-infra
 make test  PROJECT=flext-infra
 make build WHAT=artifacts
-gt sling <bead-id> flext
+gt sling <bead> flext
 gt hook status
 gt done
 ```
-
-Gas Town owns branches, worktrees, hooks, merge queue, and lane cleanup. The
-generated Makefile owns only project build, validation, generation, and release
-commands; it does not expose a second lifecycle engine.
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->

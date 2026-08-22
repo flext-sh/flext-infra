@@ -12,6 +12,9 @@
 #          gitleaks_version, tokei_version, qlty_version, beads.selector, beads.version)
 [tools]
 python = "{{ python_version }}"
+# uv is bootstrapped by CI/Dockerfiles; mise pins the exact version used
+# during project setup so local and clean-machine environments agree.
+uv = "{{ uv_version }}"
 # Native toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
 kubectl = "{{ kubectl_version }}"
 helm = "{{ helm_version }}"

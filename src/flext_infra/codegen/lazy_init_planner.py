@@ -120,7 +120,7 @@ class FlextInfraCodegenLazyInitPlanner(
                 u.Infra.ordered_namespace_exports(
                     package_dir=context.pkg_dir,
                     package_name=context.current_pkg,
-                    export_names=tuple(lazy_map) + tuple(eager_dunders),
+                    export_names=tuple(lazy_map.keys() | eager_dunders.keys()),
                 )
             )
         )
