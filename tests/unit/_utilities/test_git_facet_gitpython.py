@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, c, m, u
+from flext_infra._utilities._git.repo import git_refresh_binary
 from flext_tests import tm
 from tests import u as test_u
 
@@ -157,6 +158,12 @@ class TestsFlextInfraGitFacet:
         assert result.failure
         assert result.error is not None
         assert "git executable not found" in result.error
+
+    def test_git_refresh_binary_module_helper_uses_canonical_repo_helper(self) -> None:
+        """Legacy module helper remains available for semantic mixins."""
+        refreshed = git_refresh_binary()
+        tm.ok(refreshed)
+        tm.that(refreshed.value, eq=True)
 
     def test_remove_clean_worktree_preserves_primary_submodule_state(
         self, tmp_path: Path

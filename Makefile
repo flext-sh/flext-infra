@@ -470,63 +470,63 @@ $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 
 
 check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_check WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_check:
 	$(call _dispatch,check)
 
 
 test: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_test WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_test:
 	$(call _dispatch,test)
 
 
 gen: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_gen WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_gen:
 	$(call _dispatch,gen)
 
 
 fmt: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fmt" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_fmt WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_fmt:
 	$(call _dispatch,fmt)
 
 
 fix: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fix" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_fix WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_fix:
 	$(call _dispatch,fix)
 
 
 deps: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "deps" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_deps WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_deps:
 	$(call _dispatch,deps)
 
 
 clean: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "clean" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_clean WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_clean:
 	$(call _dispatch,clean)
 
 
 work: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "work" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_work WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_work:
 	$(call _dispatch,work)
 
 
 docs: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "docs" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
+	@$(SELF_MAKE) _serialized_docs WHAT="$(WHAT)" APPLY="$(APPLY)"
 
 _serialized_docs:
 	$(call _dispatch,docs)

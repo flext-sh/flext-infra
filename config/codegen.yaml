@@ -302,7 +302,7 @@ Infra:
         # custom handlers without taking the serialized mutation lock.
         # `docs` materializes contract artifacts under APPLY=Y (handler picks
         # --apply/--check), same class as gen/fmt/fix.
-        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs]
+        mutation_verbs: [gen, fmt, fix, deps, clean, work, docs, mod]
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .state/flext-infra/make-single-flight.lock
@@ -316,7 +316,7 @@ Infra:
         # Serialized surface: the read-only validators plus every mutation verb,
         # so no two lanes mutate one checkout concurrently. `run` stays out:
         # accepts_apply unlocks APPLY without the checkout lock (daemon/mcp).
-        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs]
+        verbs: [check, test, gen, fmt, fix, deps, clean, work, docs, mod]
       verbs:
         - name: help
           default_what: usage
@@ -371,6 +371,13 @@ Infra:
           # checkout lock). accepts_apply unlocks the APPLY token only.
           accepts_apply: true
           apply_what: default
+        - name: work
+          default_what: status
+          whats: [help, status, start, land, finish]
+          # `work` mutates only for start/land/finish; status is the read-only
+          # fixed-point after mutation, so serialize-make can re-check without APPLY=Y.
+          apply_guarded: true
+          apply_what: start
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
@@ -419,7 +426,7 @@ Infra:
         # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
         # The validator must accept both shapes the runtime itself dispatches to, or
         # every project that defines a custom WHAT handler fails `codegen conform`.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|work|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|work|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
