@@ -25,9 +25,9 @@ class TestsFlextInfraRefactorRopeSemantic:
     ) -> None:
         proj, _ = rope_workspace
         imports = u.Infra.get_semantic_module_imports(proj, models_resource)
-        # Path is imported
+        # Expect: Path appears among the imported names
         tm.that(imports, has="Path")
-        # Animal is defined, not imported
+        # Expect: Animal is defined locally, so it is absent from imports
         tm.that(imports, lacks="Animal")
 
     def test_returns_defined_classes(

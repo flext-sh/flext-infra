@@ -21,6 +21,10 @@ from tests import u as test_u
 # glob the generator happens to emit today.
 _WORKSPACE_ONLY_MARKERS = ("!/config/workspace.yaml",)
 _BEADS_CONFIG = "!.beads/config.yaml"
+# The bd gate lock is per-run runtime state written at the repository root
+# (not inside .beads/), so the .beads/* rules never reach it. Every profile
+# runs bd, so every profile must ignore it.
+_BEADS_GATE_LOCK = ".beads.gate.lock"
 
 
 class TestsCodegenGitignoreProfileAware:
@@ -42,6 +46,7 @@ class TestsCodegenGitignoreProfileAware:
             tm.that(marker not in rendered, eq=True, msg=f"phantom {marker} in member")
         tm.that(rendered, has=".beads/")
         tm.that(rendered, has=_BEADS_CONFIG)
+        tm.that(rendered, has=_BEADS_GATE_LOCK)
 
     def test_workspace_root_gitignore_keeps_member_allowlist(self) -> None:
         """The workspace-root .gitignore keeps the member-directory allowlist.
@@ -82,6 +87,7 @@ class TestsCodegenGitignoreProfileAware:
                 marker in rendered, eq=True, msg=f"missing derived {marker} at root"
             )
         tm.that(rendered, has=_BEADS_CONFIG)
+        tm.that(rendered, has=_BEADS_GATE_LOCK)
 
     def test_independent_overlay_generates_canonical_beads_environment(
         self, tmp_path: Path
@@ -93,6 +99,7 @@ class TestsCodegenGitignoreProfileAware:
             for file in plan.files
         }
         tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
+        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_GATE_LOCK)
         tm.that(
             by_path[".mise.toml"],
             has=(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import m
+from flext_infra import c, m
 from flext_infra.codegen._codegen_generation_standard import (
     FlextInfraCodegenGenerationStandardMixin,
 )
@@ -15,12 +15,12 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
     def render_init(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render a lazy facade for each importable package boundary.
 
-        Nested packages own the same PEP 562 facade contract as the public
-        root, so MRO fragments remain lazy and consistently reachable through
-        their package boundary.  Pytest fixture packages remain the explicit
-        lifecycle boundary because pytest owns their registration.
+        Real cycle exceptions (bootstrap packages imported during lazy-runtime
+        initialization) keep side-effect-free empty inits. All other packages
+        get PEP 562 lazy-loading facades.
         """
-        if cls._is_runtime_fixture_package(plan.context.current_pkg):
+        segments = frozenset(plan.context.current_pkg.split("."))
+        if segments & c.Infra.BOOTSTRAP_CYCLE_EXCEPTION_SEGMENTS:
             return cls._render_static(plan)
         return cls._render_root(plan)
 

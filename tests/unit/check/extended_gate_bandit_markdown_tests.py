@@ -232,5 +232,33 @@ class TestBanditAndMarkdownGates:
         tm.that(second.result.passed, eq=False)
         tm.that(second.issues[0].code, eq="MD057")
 
+    def test_markdown_fix_applies_the_auto_fixable_rules(self, tmp_path: Path) -> None:
+        """`make fix APPLY=Y` repairs the markdown findings that check blocks on.
+
+        mro-38p39: the markdown gate reports MD009/MD012 with the linter's own
+        `[*]` auto-fixable marker, but declared can_fix=False. So `make check`
+        blocked on ten findings while `make fmt APPLY=Y` and `make fix APPLY=Y`
+        both exited 0 without repairing any of them -- the canonical sequence
+        could never reach green, and the only way out was hand-editing a file
+        the gate owns.
+
+        The gate uses the tool's formatter so a successful repair exits zero even
+        when the input also contains non-fixable findings.
+        """
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-fix-project")
+        (project_dir / "README.md").write_text("# Title   \n", encoding="utf-8")
+        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        context = m.Infra.GateContext(
+            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+        )
+
+        gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
+        result = gate.fix(project_dir, context)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(runner.commands, ne=[])
+        tm.that(runner.commands[0], has="fmt")
+        tm.that(runner.commands[0], lacks="--fix")
+
 
 __all__: t.StrSequence = []

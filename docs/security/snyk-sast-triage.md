@@ -1,6 +1,6 @@
 # Triagem Snyk Code (SAST) — flext-sh/flext-infra
 
-Gerado do scan Snyk (dump 2026-08-06). Bead: `mro-32k4`
+Gerado do scan Snyk da org Datacosmos (dump 2026-08-06). Bead: `mro-32k4`
 
 ## Resumo
 
@@ -52,3 +52,4 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
 
 **Decisão**: 
 
+Dados brutos: `~/snyk-violations/sast/flext-sh__flext-infra.sast.json`

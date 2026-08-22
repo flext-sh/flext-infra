@@ -63,7 +63,7 @@ class FlextInfraRefactorOrchestrator(
             if file_path.suffix != c.Infra.EXT_PYTHON:
                 return self._skip_result(file_path)
             return self._refactor_python_file(file_path, dry_run=dry_run, gates=gates)
-        except Exception as exc:
+        except c.EXC_BROAD_IO_TYPE as exc:
             return self._error_result(file_path, str(exc))
 
     def _refactor_python_file(

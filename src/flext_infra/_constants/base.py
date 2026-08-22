@@ -117,6 +117,8 @@ class FlextInfraConstantsBase(
     "Pyrefly ignore-errors-in-generated-code key."
     MINVERSION: Final[str] = "minversion"
     "Pytest minversion settings key."
+    FLEXT_SLOW_TIMEOUT_SECONDS: Final[str] = "flext_slow_timeout_seconds"
+    "Enforcement-plugin ini key carrying the config-owned slow-item budget."
     PYTHON_CLASSES: Final[str] = "python_classes"
     "Pytest python_classes settings key."
     PYTHON_FILES: Final[str] = "python_files"

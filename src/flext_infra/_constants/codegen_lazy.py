@@ -26,10 +26,7 @@ class FlextInfraConstantsCodegenLazy:
     )
     "Regex matching every generated lazy-export sidecar filename "
     "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
-    "``_lazy_exports.py``); these reserved names are superseded by the inline "
-    "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
-    # mro-pulj (codex): these parallel root registries are superseded atomically
-    # by the inline map and must never participate in source discovery.
+    "``_lazy_exports.py``); legacy variants are excluded from discovery and cleanup."
     OBSOLETE_ROOT_SUPPORT_NAMES: Final[frozenset[str]] = frozenset({
         "_root_exports",
         "_root_exports_parts",
@@ -70,8 +67,25 @@ class FlextInfraConstantsCodegenLazy:
     "Root import surfaces generated as private lazy plumbing, not public ABI."
     # mro-pulj (codex): pytest must register fixture plugins before importing
     # them, so their private package initializer is always side-effect free.
-    PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
-    "Private pytest-plugin package whose generated initializer stays empty."
+    # Real cycle exceptions are the bootstrap packages imported while
+    # ``flext_core.lazy`` initializes; importing them with a lazy facade would
+    # re-enter the partially-initialized module and fail.
+    BOOTSTRAP_CYCLE_EXCEPTION_SEGMENTS: Final[frozenset[str]] = frozenset({
+        "_lazy_parts",
+        "_typings",
+    })
+    "Package segments whose initializer must remain empty to avoid bootstrap cycles."
+
+    # The generated bootstrap opens with `from flext_core.lazy import ...`, so a
+    # package that `flext_core.lazy` itself reaches at module scope cannot carry
+    # one: importing it would re-enter the module that is still initializing and
+    # fail with "cannot import name 'build_lazy_import_map' from partially
+    # initialized module 'flext_core.lazy'". `flext_core.lazy` pulls
+    # `._lazy_parts`, which pulls `._typings`, which reaches the other private
+    # facets, so the whole private surface of the bootstrap-owning distribution
+    # keeps side-effect-free initializers. Private packages of every OTHER
+    # distribution import the bootstrap normally and are unaffected.
+    LAZY_BOOTSTRAP_ROOT_PACKAGE: Final[str] = "flext_core"
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE
@@ -79,7 +93,9 @@ class FlextInfraConstantsCodegenLazy:
     "Regex: malformed ``from import`` statement (missing module name)."
 
     LINT_TOOLS: Final[t.StrSequencePairTuple] = (
-        ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
+        # Ruff runs with NO --select override: the project's pyproject.toml
+        # (select=ALL + narrow whitelist + preview) is the ONLY rule policy.
+        ("ruff", ("ruff", "check", "{file}", "--no-fix")),
         ("pyright", ("pyright", "{file}")),
         ("mypy", ("mypy", "{file}", "--no-error-summary")),
         ("pyrefly", ("pyrefly", "check", "{file}")),
