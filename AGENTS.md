@@ -48,15 +48,8 @@ src/flext_infra/
 make check PROJECT=flext-infra
 make test  PROJECT=flext-infra
 make build WHAT=artifacts
-make work WHAT=status PROJECT=flext-infra BEAD=<id>
-make work WHAT=start PROJECT=flext-infra BEAD=<id> KIND=feature NAME=<slug> APPLY=Y
-make work WHAT=start PROJECT=flext-infra BEAD=<epic-id> NAME=<epic-slug> APPLY=Y
-make work WHAT=start PROJECT=flext-infra BEAD=<child-id> EPIC=<epic-id> NAME=<child-slug> APPLY=Y
-make work WHAT=land PROJECT=flext-infra BEAD=<id> APPLY=Y
-make work WHAT=finish PROJECT=flext-infra BEAD=<id> APPLY=Y
+gt sling <bead> flext
+gt hook status
+gt done
 ```
-
-`KIND` is optional and accepts only `feature|bugfix|hotfix|release`; omission
-derives the namespace from the Bead issue type. Epic Beads own `epic/<slug>`.
-Child starts omit `BASE`; the registered epic branch is their lifecycle target.
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->
