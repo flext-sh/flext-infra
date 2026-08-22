@@ -20,7 +20,9 @@ taplo = "{{ taplo_version }}"
 ast-grep = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
 tokei = "{{ tokei_version }}"
-qlty = "{{ qlty_version }}"
+# qlty ships no mise registry alias; the github backend selector is the only
+# resolvable form (bare 'qlty' fails mise install: 'not found in registry').
+"github:qltysh/qlty" = "{{ qlty_version }}"
 # Go runtime for the Go projects in this workspace.
 go = "{{ go_version }}"
 "{{ beads.selector }}" = "{{ beads.version }}"
