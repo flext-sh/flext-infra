@@ -223,14 +223,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_root_result = FlextInfraWorkspaceDetector.resolve_workspace_root(
-                root
-            )
-            if workspace_root_result.failure:
+            topology_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
+            if topology_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
-                    workspace_root_result.error or "workspace root resolution failed"
+                    topology_result.error or "workspace topology resolution failed"
                 )
-            workspace_root = workspace_root_result.value
+            resolved_root, identity_root, governing_root = topology_result.value
+            workspace_root = (
+                resolved_root if identity_root == governing_root else governing_root
+            )
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
                 workspace_root
             )
@@ -240,7 +241,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace = workspace_result.value
         current_repository = workspace.repository
-        if root != workspace_root:
+        if self.initial_workspace is not None and root != workspace_root:
             try:
                 current_path = root.relative_to(workspace_root).as_posix()
             except ValueError as exc:
@@ -332,8 +333,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             u.Cli.progress(
                 repository_index, total_repositories, repository.name, "conform"
             )
-            repository_root = self._repository_root(
-                workspace_root, workspace, repository
+            repository_root = (
+                current_target.root
+                if repository.name == current_target.repository.name
+                else self._repository_root(workspace_root, workspace, repository)
             )
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
@@ -429,9 +432,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            issue_prefix, _ledger_database = self.ledger_identity_for_target(
-                workspace, target
-            )
+            ledger_identity = self.ledger_identity_for_target(workspace, target)
             ledger_root_result = self._beads_ledger_root(repository_root)
             if ledger_root_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -447,12 +448,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # issue IDs) -- it must never be workspace.ledger_id,
                     # which is the separate Dolt-safe database identifier and
                     # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
-                    # Why (mro-6fca / mro-z75t): WORKSPACE_MEMBER targets keep
-                    # canonical_project_name; root/standalone manifests still
-                    # honor their own ledger_prefix/id so a flext root
-                    # declaring ledger_prefix=mro does not rewrite every
-                    # submodule .beads/config.yaml onto the root tracker.
-                    canonical_prefix=issue_prefix,
+                    # Why (mro-dz4ib / mro-cdzxf): WORKSPACE_MEMBER targets
+                    # inherit the governing workspace's prefix, because a
+                    # member consumes that ledger and owns none of its own.
+                    # A workspace that declares no ledger yields no identity,
+                    # and this plan is then never `enabled`, so the prefix is
+                    # carried for reporting from the repository's own name.
+                    canonical_prefix=(
+                        ledger_identity[0]
+                        if ledger_identity is not None
+                        else target.canonical_project_name
+                    ),
                     ledger_root=ledger_root_result.value,
                     ledger_id=workspace.ledger_id,
                 )
@@ -833,12 +839,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for entry in codegen.templates.entries
             if target.make_profile in entry.profiles
             and entry.delegate == "render"
-            and Path(entry.destination).parts
+            and Path(entry.destination).suffix in {".py", ".pyi"}
         }
+        discovered_roots = frozenset(u.Infra.discover_python_dirs(root))
         declared = tuple(
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
-            if directory in rendered_roots or (root / directory).is_dir()
+            if directory in rendered_roots or directory in discovered_roots
         )
         roots: t.StrSequence = u.Infra.analyzer_python_roots(root, declared)
         return roots
@@ -875,11 +882,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # scaffold-only view does not know about, and the next check would
         # remove it again, forever. _existing_python_dirs is the complete set.
         declared_python_dirs = self._existing_python_dirs(root, codegen, target)
+        declared_python_dirs_are_complete = (
+            target.make_profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -930,12 +941,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"template destination escapes repository root: {destination}"
                 )
-            # Ledger routing config: workspace root (owned), transaction
-            # worktrees, and marker-attached standalones only (mro-z89e).
-            if destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and not (target.beads_enabled or target.routing_only):
+            if self._skips_beads_client_config(destination, workspace, target):
                 continue
             if destination in seen_destinations:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1000,6 +1006,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
+            if self._skips_beads_client_config(destination, workspace, target):
+                continue
             artifact_context = self._artifact_render_context(
                 dist=context.dist,
                 repository=repository,
@@ -1059,7 +1067,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         initial_tooling = modernizer.conform_source(
             pyproject_render.value,
             path=pyproject,
+            format_source=False,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1083,6 +1093,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1178,11 +1189,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # roots this plan renders with the roots already on disk, which is the
         # complete set for an existing tree.
         declared_python_dirs = self._existing_python_dirs(root, codegen, target)
+        declared_python_dirs_are_complete = (
+            target.make_profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1224,6 +1239,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1307,12 +1323,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
-            # Ledger routing config: workspace root (owned), transaction
-            # worktrees, and marker-attached standalones only (mro-z89e).
-            if managed.path.as_posix() in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and not (target.beads_enabled or target.routing_only):
+            if self._skips_beads_client_config(
+                managed.path.as_posix(), workspace, target
+            ):
                 continue
             entries = tuple(
                 entry
@@ -1735,13 +1748,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            issue_prefix, database = self.ledger_identity_for_target(workspace, target)
+            identity = self.ledger_identity_for_target(workspace, target)
+            if identity is None:
+                return r[p.Model].fail(
+                    f"workspace {workspace.name!r} declares no Beads ledger, so "
+                    f"{destination} has no identity to render"
+                )
+            issue_prefix, database = identity
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=issue_prefix,
                     database=database,
                     server=server,
-                    routing=target.routing_only,
+                    routing=target.routing_only and not target.beads_enabled,
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
@@ -1750,7 +1769,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            _issue_prefix, database = self.ledger_identity_for_target(workspace, target)
+            identity = self.ledger_identity_for_target(workspace, target)
+            if identity is None:
+                return r[p.Model].fail(
+                    f"workspace {workspace.name!r} declares no Beads ledger, so "
+                    f"{destination} has no identity to render"
+                )
+            database = identity[1]
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(database=database, server=server)
             )
@@ -1765,8 +1790,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
+            # Dependabot aborts the entire update job ("Neither .devcontainer.json
+            # nor .devcontainer/devcontainer.json ... found") when the
+            # devcontainers ecosystem is declared for a repository that ships no
+            # devcontainer, so the entry is projected only where one exists.
+            has_devcontainer = (target.root / ".devcontainer.json").is_file() or any(
+                candidate.is_file()
+                for candidate in (target.root / ".devcontainer").glob(
+                    "**/devcontainer.json"
+                )
+            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
+                    has_devcontainer=has_devcontainer,
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=provider.value.branch,
@@ -2576,37 +2612,39 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             editable_repositories=editable_repositories,
         )
 
+    def _skips_beads_client_config(
+        self,
+        destination: str,
+        workspace: m.Infra.WorkspaceSpec,
+        target: m.Infra.RepositoryConformTarget,
+    ) -> bool:
+        """Report whether one destination is a Beads artifact this target skips.
+
+        Two independent reasons (mro-z89e, mro-cdzxf): the target participates
+        in no ledger at all, or its governing workspace declares none.
+        """
+        if destination not in {
+            c.Infra.BEADS_CONFIG_RELPATH,
+            c.Infra.BEADS_METADATA_RELPATH,
+        }:
+            return False
+        if not (target.beads_enabled or target.routing_only):
+            return True
+        return self.ledger_identity_for_target(workspace, target) is None
+
     @staticmethod
     def ledger_identity_for_target(
-        workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
-    ) -> tuple[str, str]:
-        """Return ``(issue_prefix, database)`` for one conform target.
+        workspace: m.Infra.WorkspaceSpec, _target: m.Infra.RepositoryConformTarget
+    ) -> tuple[str, str] | None:
+        """Return ``(issue_prefix, database)``, or ``None`` when there is none.
 
-        ``WORKSPACE_MEMBER`` targets route to the parent workspace's shared
-        ledger when ``ledger_prefix`` / ``ledger_id`` are declared, because
-        docs/GOVERNANCE.md mandates "Use the workspace-root Beads database for
-        the root and every member project" (mro-dz4ib). When the workspace
-        declares no ``ledger_prefix`` / ``ledger_id``, members fall back to
-        their ``canonical_project_name`` (mro-z75t). Root and standalone
-        manifests honor their own overrides (mro-6fca). Marker-attached
-        standalones are classified as ``WORKSPACE_MEMBER`` for routing, but
-        they own their workspace.yaml at the governing root, so ledger_* still
-        apply.
+        The governing tracker owner declares one database identity. That
+        identity is also the issue prefix unless a distinct typed override is
+        present. Beadless manifests return no identity.
         """
-        # Members share the parent workspace's ledger when it is declared
-        # explicitly (mro-dz4ib / GOVERNANCE.md Execution Contract). A member
-        # without an explicit ledger_prefix/ledger_id on the parent falls back
-        # to its canonical project name (mro-z75t). Attached standalones own
-        # their workspace.yaml, so they use the generic path below.
-        if (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-            and not target.attached_standalone
-        ):
-            issue_prefix = workspace.ledger_prefix or target.canonical_project_name
-            database = workspace.ledger_id or target.canonical_project_name
-            return issue_prefix, database
-        issue_prefix = workspace.ledger_prefix or target.canonical_project_name
-        return issue_prefix, workspace.ledger_id or issue_prefix
+        if workspace.ledger_id is None:
+            return None
+        return workspace.ledger_prefix or workspace.ledger_id, workspace.ledger_id
 
     @staticmethod
     def _declared_hook_stages(make_spec: m.Infra.MakeSpec) -> tuple[str, ...]:
@@ -2694,26 +2732,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
         """Resolve the principal checkout owning the workspace ledger."""
-        probe = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=workspace_root
-        )
-        if probe.failure or probe.value.strip() != "true":
-            return r[Path].ok(workspace_root)
-        # A submodule's primary worktree is itself; the workspace ledger owner
-        # is the superproject. Resolve superproject working tree first.
-        superproject = u.Infra.git_superproject_working_tree(
-            m.Infra.GitRepoRequest(repo_root=workspace_root)
-        )
-        if superproject.success and superproject.value.text.strip():
-            return r[Path].ok(Path(superproject.value.text.strip()).resolve())
-        principal = u.Infra.git_primary_worktree_root(
-            m.Infra.GitRepoRequest(repo_root=workspace_root)
-        )
-        if principal.failure:
+        topology = FlextInfraWorkspaceDetector.resolve_topology_roots(workspace_root)
+        if topology.failure:
             return r[Path].fail(
-                principal.error or "unable to resolve the principal worktree"
+                topology.error or "unable to resolve the governing workspace root"
             )
-        return r[Path].ok(principal.value.primary_root)
+        return r[Path].ok(topology.value[2])
 
     @staticmethod
     def _beads_binary(ledger_root: Path) -> p.Result[Path]:

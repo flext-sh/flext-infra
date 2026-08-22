@@ -91,7 +91,7 @@ jobs:
           }
 
       # mro-o6h5 (agent: kimi) — include-hidden-files: .reports/ is a dot-dir and
-      # upload-artifact v4 skips hidden paths by default (artifact silently empty).
+      # upload-artifact skips hidden paths by default (artifact silently empty).
       - name: Upload docs reports on failure
         if: failure()
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}

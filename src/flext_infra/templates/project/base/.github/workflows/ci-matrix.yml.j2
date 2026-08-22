@@ -50,6 +50,8 @@ jobs:
     # full project bootstrap at image-build time), then smoke the verb surface
     # inside the built container.
     runs-on: ubuntu-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     strategy:
       fail-fast: false
       matrix:
@@ -84,6 +86,8 @@ jobs:
           {{ make.ci.variable }}: {{ make.ci.enabled_value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           submodules: {{ checkout_submodules }}
           # No step needs authenticated git after checkout; persisting the
@@ -118,6 +122,8 @@ jobs:
           {{ make.ci.variable }}: {{ make.ci.enabled_value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           submodules: {{ checkout_submodules }}
           # No step needs authenticated git after checkout; persisting the

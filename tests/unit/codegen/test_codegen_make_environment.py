@@ -10,7 +10,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import c as test_c, u as test_u
 
 
 class TestsCodegenMakeEnvironment:
@@ -242,7 +242,7 @@ class TestsCodegenMakeEnvironment:
             [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
         )
 
         process = tm.ok(result)
@@ -252,6 +252,15 @@ class TestsCodegenMakeEnvironment:
         tm.that(commands[1], has="sync --project")
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
+
+    def test_setup_probes_before_repairing_environment(self, tmp_path: Path) -> None:
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
+
+        tm.that(recipe.index("--check"), lt=recipe.rindex(" sync "))
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -296,7 +305,7 @@ class TestsCodegenMakeEnvironment:
                 [c.Infra.MAKE, "--no-print-directory", "gen", "WHAT=all", "APPLY=Y"],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
@@ -332,7 +341,7 @@ class TestsCodegenMakeEnvironment:
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
     def test_dependency_upgrade_selects_only_one_distribution(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Refresh one Git dependency without globally upgrading the lock."""
         project_root, _workspace_root = self._render_makefile(
@@ -345,6 +354,8 @@ class TestsCodegenMakeEnvironment:
         test_u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
+        monkeypatch.setenv("PROJECT", "flext-infra")
+        monkeypatch.setenv("PROJECTS", "flext-core flext-cli")
 
         # The public ``deps`` verb dispatches straight into its builtin, so the
         # fixture drives the public surface a caller actually uses.
@@ -360,7 +371,7 @@ class TestsCodegenMakeEnvironment:
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
@@ -400,7 +411,7 @@ class TestsCodegenMakeEnvironment:
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
@@ -410,10 +421,10 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that(uv_log.exists(), eq=False)
 
-    def test_serialized_gate_fails_closed_before_managed_environment_exists(
+    def test_public_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
     ) -> None:
-        """A serialized gate preserves the canonical setup-required diagnostic."""
+        """A public gate preserves the canonical setup-required diagnostic."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -422,7 +433,7 @@ class TestsCodegenMakeEnvironment:
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
