@@ -75,7 +75,7 @@ class TestsFlextInfraCodegenManagedConflicts:
             "line-length = 100\n"
         )
 
-        recovered = tm.ok(
+        recovered: str = tm.ok(
             FlextInfraCodegenManagedConflicts.recover_toml(
                 content, conflict_sections=("tool.uv",)
             )
@@ -116,7 +116,7 @@ class TestsFlextInfraCodegenManagedConflicts:
         """Leave documents without conflict markers byte-identical."""
         content = '[tool.uv]\nlink-mode = "copy"\n'
 
-        recovered = tm.ok(
+        recovered: str = tm.ok(
             FlextInfraCodegenManagedConflicts.recover_toml(
                 content, conflict_sections=("tool.uv",)
             )

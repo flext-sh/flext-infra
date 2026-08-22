@@ -1,4 +1,4 @@
-"""Pytest runner boundary contracts, including explicit profiling."""
+"""Profiled pytest runner boundary contracts."""
 
 from __future__ import annotations
 
@@ -26,8 +26,12 @@ def _dump_real_profile(path: Path) -> None:
     renders a real report from this artifact, so the fixture must produce a
     loadable profile.
 
-    The payload is marshalled directly so artifact contracts stay deterministic
-    without running a nested live profiler inside pytest.
+    The payload is marshalled directly instead of running a live profiler:
+    the canonical runner already executes the whole suite under
+    ``python -m cProfile``, and CPython allows only one active profiler, so
+    enabling a second one raises "Another profiling tool is already active"
+    and the fixture would fail for a reason that has nothing to do with the
+    behaviour under test.
     """
     callers: dict[tuple[str, int, str], tuple[int, int, float, float]] = {}
     stats = {("tests/sample_test.py", 1, "test_ok"): (1, 1, 0.001, 0.001, callers)}
@@ -37,8 +41,9 @@ def _dump_real_profile(path: Path) -> None:
 class TestsFlextInfraPytestRunner:
     @pytest.fixture(autouse=True)
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Local argv contracts assume CI is unset unless a test sets CI=Y."""
+        """Local argv contracts assume CI/COV unset unless a test sets them."""
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
 
     """Prove exact argv, hard deadline propagation, and durable artifacts."""
 
@@ -75,14 +80,11 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(report_dir)
 
         tm.that(command, has=[nodeid, "-k", "exact and not slow", "-n", "0"])
-        tm.that(command, has="--no-cov")
-        tm.that(command, lacks="--testmon")
+        tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
-    def test_default_argv_is_config_derived_and_not_profiled(
-        self, tmp_path: Path
-    ) -> None:
+    def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
         policy = config.Infra.tooling.tools.pytest
@@ -92,6 +94,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(
             command,
             has=[
+                "-m",
+                "cProfile",
                 "-m",
                 "pytest",
                 "--testmon",
@@ -105,33 +109,7 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
-        tm.that(command, lacks="cProfile")
-        tm.that(command, lacks="pytest.pstats")
         tm.that(command, lacks="--cov-report")
-
-    def test_profile_argv_is_focused_and_profiled(self, tmp_path: Path) -> None:
-        runner = self._runner(tmp_path, what="profile", match="focused")
-        report_dir = tmp_path / ".reports" / "tests" / "run"
-
-        command = runner.build_command(report_dir)
-
-        tm.that(
-            command,
-            has=[
-                "-m",
-                "cProfile",
-                "-o",
-                str(report_dir / "pytest.pstats"),
-                "-m",
-                "pytest",
-                "--no-cov",
-                "-n",
-                "0",
-                "-k",
-                "focused",
-            ],
-        )
-        tm.that(command, lacks="--testmon")
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -192,8 +170,7 @@ class TestsFlextInfraPytestRunner:
             deadline: p.Cli.ProcessDeadline | None = None,
         ) -> p.Result[int]:
             del cwd, timeout, input_data, remove_env_keys
-            tm.that(cmd, has=["-m", "pytest"])
-            tm.that(cmd, lacks="cProfile")
+            tm.that(cmd, has=["-m", "cProfile", "-m", "pytest"])
             tm.that(deadline is not None, eq=True)
             if deadline is not None:
                 captured["deadline"] = deadline
@@ -213,6 +190,7 @@ class TestsFlextInfraPytestRunner:
                 encoding="utf-8",
             )
             (report_dir / "coverage.xml").write_text("<coverage/>", encoding="utf-8")
+            _dump_real_profile(report_dir / "pytest.pstats")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -229,69 +207,12 @@ class TestsFlextInfraPytestRunner:
         latest = tmp_path / ".reports" / "tests" / "latest.txt"
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
-        report_dir = latest.parent / latest.read_text(encoding="utf-8").strip()
-        tm.that((report_dir / "pytest-profile.txt").exists(), eq=False)
-
-    def test_profile_run_requires_and_renders_profile_artifact(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        runner = self._runner(tmp_path, what="profile", match="focused")
-
-        def fake_run_to_file(
-            cmd: t.StrSequence,
-            output_file: t.Cli.TextPath,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            live: bool = False,
-            deadline: p.Cli.ProcessDeadline | None = None,
-        ) -> p.Result[int]:
-            del cwd, timeout, env, remove_env_keys, input_data, live, deadline
-            tm.that(cmd, has=["-m", "cProfile", "-m", "pytest"])
-            log_path = Path(output_file)
-            report_dir = log_path.parent
-            log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
-            (report_dir / "junit.xml").write_text(
-                (
-                    '<?xml version="1.0"?>'
-                    '<testsuites><testsuite tests="1" failures="0" errors="0" '
-                    'skipped="0" time="0.01"><testcase classname="Tests" '
-                    'name="test_ok" time="0.01"/></testsuite></testsuites>'
-                ),
-                encoding="utf-8",
-            )
-            _dump_real_profile(report_dir / "pytest.pstats")
-            return r[int].ok(0)
-
-        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
-
-        exit_code: int = tm.ok(runner.execute())
-        latest = (
-            (tmp_path / ".reports" / "tests" / "latest.txt")
-            .read_text(encoding="utf-8")
-            .strip()
-        )
-        report_dir = tmp_path / ".reports" / "tests" / latest
-
-        tm.that(exit_code, eq=0)
-        tm.that((report_dir / "pytest.pstats").is_file(), eq=True)
-        tm.that((report_dir / "pytest-profile.txt").is_file(), eq=True)
 
     def test_full_run_fails_when_coverage_artifact_is_missing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A zero pytest status cannot mask a missing coverage report.
-
-        The guarantee is conditional on coverage actually being measured: the
-        default verb passes --no-cov and emits no report, so the precondition is
-        declared here rather than assumed (mro-uwoc7).
-        """
-        monkeypatch.setattr(
-            FlextInfraPytestRunner, "_coverage_requested", staticmethod(lambda: True)
-        )
+        """A zero pytest status cannot mask a missing full-suite coverage report."""
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -319,6 +240,7 @@ class TestsFlextInfraPytestRunner:
                 ),
                 encoding="utf-8",
             )
+            _dump_real_profile(report_dir / "pytest.pstats")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -331,14 +253,8 @@ class TestsFlextInfraPytestRunner:
     def test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """pytest-cov under xdist must not hide fail-under behind a zero exit.
-
-        Only meaningful when coverage is measured; the default verb runs
-        --no-cov, so the precondition is declared explicitly (mro-uwoc7).
-        """
-        monkeypatch.setattr(
-            FlextInfraPytestRunner, "_coverage_requested", staticmethod(lambda: True)
-        )
+        """pytest-cov under xdist must not hide fail-under behind a zero exit."""
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
         runner = self._runner(tmp_path, what="all")
 
         def fake_run_to_file(
@@ -370,6 +286,7 @@ class TestsFlextInfraPytestRunner:
                 encoding="utf-8",
             )
             (report_dir / "coverage.xml").write_text("<coverage/>", encoding="utf-8")
+            _dump_real_profile(report_dir / "pytest.pstats")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -416,6 +333,7 @@ class TestsFlextInfraPytestRunner:
                 ),
                 encoding="utf-8",
             )
+            _dump_real_profile(report_dir / "pytest.pstats")
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
@@ -480,30 +398,37 @@ class TestsFlextInfraPytestRunner:
             ],
         )
 
-    def test_local_incremental_argv_keeps_testmon_without_coverage(
+    def test_local_full_argv_keeps_testmon_without_coverage(
         self, tmp_path: Path
     ) -> None:
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
+        tm.that(any(arg == "--cov" for arg in command), eq=False)
 
-    def test_full_argv_writes_coverage_where_the_gate_reads_it(
-        self, tmp_path: Path
+    def test_cov_y_disables_testmon_and_enables_coverage(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """WHAT=full must target the report dir, not the process CWD.
-
-        A bare ``--cov-report=xml`` writes coverage.xml beside the invocation,
-        so the artifact gate - which only inspects the run's report dir - found
-        nothing and failed a suite that had actually passed with 81% measured.
-        The argv and the gate must name the SAME path.
-        """
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
+        runner = self._runner(tmp_path, what="all")
         report_dir = tmp_path / ".reports" / "tests" / "run"
-        runner = self._runner(tmp_path, what="full")
         command = runner.build_command(report_dir)
-        tm.that(command, has=[f"--cov-report=xml:{report_dir / 'coverage.xml'}"])
-        tm.that(command, lacks="--cov-report=xml")
-        tm.that(command, lacks="--cov-report=term-missing")
+        tm.that(command, has=["--cov", "--no-cov-on-fail"])
+        tm.that(any(arg.startswith("--cov-report=xml:") for arg in command), eq=True)
+        tm.that(command, lacks="--testmon")
+        tm.that(command, lacks="--no-cov")
+
+    def test_cov_y_forbids_focused_selectors(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
+        test_file = tmp_path / "tests" / "sample_test.py"
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text("", encoding="utf-8")
+        runner = self._runner(tmp_path, file="tests/sample_test.py", what="all")
+        with pytest.raises(ValueError, match="COV=Y forbids FILE=/MATCH="):
+            runner.build_command(tmp_path / ".reports" / "tests" / "run")
 
     def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -524,7 +449,7 @@ class TestsFlextInfraPytestRunner:
         result = runner.execute()
         tm.fail(result, has="forbidden under CI=Y")
 
-    def test_ci_true_keeps_incremental_testmon_without_coverage(
+    def test_ci_true_keeps_default_testmon_without_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """GitHub default CI=true must not match the Make token CI=Y."""
@@ -532,7 +457,6 @@ class TestsFlextInfraPytestRunner:
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
-        tm.that(command, lacks="--cov-report")
         tm.that(command, lacks="not docker and not remote")
 
     def test_local_full_argv_keeps_docker_remote_markers_selected(
