@@ -31,7 +31,7 @@ class FlextInfraUtilitiesGitRepo:
     """Git repository opener with GitPython native OO API."""
 
     @classmethod
-    def _refresh_binary(cls) -> p.Result[bool]:
+    def refresh_binary(cls) -> p.Result[bool]:
         """Point GitPython at the absolute path of the canonical git binary."""
         # Git.refresh resolves relative names against cwd; always pass an absolute path.
         resolved = shutil.which(c.Infra.GIT)
@@ -48,7 +48,7 @@ class FlextInfraUtilitiesGitRepo:
         """Open one non-bare worktree repository at ``repo_root``."""
         resolved = repo_root.expanduser().resolve()
         try:
-            refreshed = cls._refresh_binary()
+            refreshed = cls.refresh_binary()
             if refreshed.failure:
                 return r[Repo].fail(refreshed.error or "git binary unavailable")
             repo = Repo(resolved)
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesGitRepo:
 
 def git_refresh_binary() -> p.Result[bool]:
     """Refresh GitPython's binary path using the canonical repository helper."""
-    return FlextInfraUtilitiesGitRepo._refresh_binary()
+    return FlextInfraUtilitiesGitRepo.refresh_binary()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitRepo", "git_refresh_binary"]
