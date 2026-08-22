@@ -147,7 +147,7 @@ def _write_orchestratable_workspace(
     member_root = workspace_root / "demo"
     _write_project(member_root, "demo")
     check_recipe = (
-        '\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CURDIR)/captured.txt\n'
+        '\t@echo "FAIL_FAST=$(FAIL_FAST)" > "$(CAPTURE_PATH)"\n'
         if capture_fail_fast
         else "\t@true\n"
     )

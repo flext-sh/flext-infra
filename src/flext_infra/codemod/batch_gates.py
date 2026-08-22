@@ -1,4 +1,4 @@
-"""Gate measurement and ast-grep batch execution for the mod safety circuit."""  # ruff:ignore[implicit-namespace-package]
+"""Gate measurement and ast-grep batch execution for the mod safety circuit."""
 
 from __future__ import annotations
 
@@ -25,8 +25,19 @@ class FlextInfraModGateSnapshot(m.ArbitraryTypesModel):
     ]
 
 
+class FlextInfraModScanReport(m.ArbitraryTypesModel):
+    """Verified actionable rewrite report."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+    nodes: Annotated[t.NonNegativeInt, m.Field(description="actionable node count")]
+    files: Annotated[
+        frozenset[Path], m.Field(description="files containing actionable nodes")
+    ]
+
+
 class FlextInfraModGateEngine:
-    """Measure ruff/pyrefly counts and execute the sgconfig rule batch."""
+    """Measure ruff/pyrefly counts and execute the ast-grep rule batch."""
 
     @staticmethod
     def circuit_broken(
@@ -63,6 +74,54 @@ class FlextInfraModGateEngine:
             if line and u.Cli.json_parse(line).success:
                 count += 1
         return count
+
+    @staticmethod
+    def _fixable_rule_ids(rule: Path) -> p.Result[frozenset[str]]:
+        documents = rule.read_text(encoding="utf-8").split("\n---")
+        fixable_ids: set[str] = set()
+        for raw_document in documents:
+            if not any(
+                line.strip() and not line.lstrip().startswith("#")
+                for line in raw_document.splitlines()
+            ):
+                continue
+            parsed = u.Cli.yaml_parse(raw_document)
+            if parsed.failure:
+                return r[frozenset[str]].fail(
+                    parsed.error or f"invalid ast-grep rule document in {rule}"
+                )
+            rule_id = parsed.value.get("id")
+            if not isinstance(rule_id, str) or not rule_id:
+                return r[frozenset[str]].fail(
+                    f"ast-grep rule document missing required id: {rule}"
+                )
+            if "fix" in parsed.value:
+                fixable_ids.add(rule_id)
+        return r[frozenset[str]].ok(frozenset(fixable_ids))
+
+    @staticmethod
+    def _actionable_findings(
+        stdout: str, fixable_ids: frozenset[str]
+    ) -> FlextInfraModScanReport:
+        nodes = 0
+        files: set[Path] = set()
+        for raw_line in stdout.splitlines():
+            parsed = u.Cli.json_parse(raw_line.strip())
+            if parsed.failure or not isinstance(parsed.value, Mapping):
+                continue
+            finding = parsed.value
+            if finding.get("ruleId") not in fixable_ids:
+                continue
+            text = finding.get("text")
+            replacement = finding.get("replacement")
+            file = finding.get("file")
+            if not isinstance(text, str) or not isinstance(replacement, str):
+                continue
+            if text == replacement or not isinstance(file, str):
+                continue
+            nodes += 1
+            files.add(Path(file))
+        return FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
 
     @classmethod
     def _count_tool_errors(cls, stdout: str) -> int:
@@ -119,16 +178,47 @@ class FlextInfraModGateEngine:
         )
 
     @classmethod
-    def scan(cls, root: Path, config: Path, *, fix: bool) -> p.Result[int]:
-        """Scan with every sgconfig rule; fix mode applies all rewrites."""
-        command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--config", str(config)]
-        command.extend(("--update-all" if fix else "--json=stream", "."))
-        run = cls._run_tool(root, tuple(command))
-        if run.failure:
-            return r[int].from_failure(run)
-        if fix:
-            return r[int].ok(0)
-        return r[int].ok(cls._count_json_lines(run.value.stdout or ""))
+    def scan(
+        cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool
+    ) -> p.Result[FlextInfraModScanReport]:
+        """Scan or apply actionable rewrite documents."""
+        nodes = 0
+        files: set[Path] = set()
+        for rule in rules:
+            fixable = cls._fixable_rule_ids(rule)
+            if fixable.failure:
+                return r[FlextInfraModScanReport].from_failure(fixable)
+            if not fixable.value:
+                continue
+            command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule)]
+            command.extend(("--json=stream", "."))
+            run = cls._run_tool(root, tuple(command))
+            if run.failure:
+                return r[FlextInfraModScanReport].from_failure(run)
+            report = cls._actionable_findings(run.value.stdout or "", fixable.value)
+            nodes += report.nodes
+            files.update(report.files)
+            if fix and report.nodes:
+                apply_run = cls._run_tool(
+                    root,
+                    (
+                        c.Infra.SG,
+                        c.Infra.SCAN,
+                        "--rule",
+                        str(rule),
+                        "--update-all",
+                        ".",
+                    ),
+                )
+                if apply_run.failure:
+                    return r[FlextInfraModScanReport].from_failure(apply_run)
+        return r[FlextInfraModScanReport].ok(
+            FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
+        )
 
 
-__all__: list[str] = ["FlextInfraModGateEngine", "FlextInfraModGateSnapshot"]
+__all__: list[str] = [
+    "FlextInfraModGateEngine",
+    "FlextInfraModGateSnapshot",
+    "FlextInfraModScanReport",
+]

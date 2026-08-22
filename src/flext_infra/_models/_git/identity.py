@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-
 from typing import Annotated, ClassVar
 
 from flext_cli import m
@@ -45,6 +44,41 @@ class FlextInfraModelsGitIdentity:
             m.Field(
                 default=None,
                 description="Superproject root if nested, None if standalone",
+            ),
+        ]
+        requested_path: Annotated[
+            Path | None,
+            m.Field(
+                default=None,
+                description="Filesystem path submitted to the identity probe, if any",
+            ),
+        ]
+        is_worktree: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether the checkout uses a linked (non-primary) Git dir",
+            ),
+        ]
+        is_submodule: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether the checkout is a nested Git submodule",
+            ),
+        ]
+        has_submodules: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether the repository declares any submodules",
+            ),
+        ]
+        is_inside_work_tree: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether the path is inside a Git work tree",
             ),
         ]
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_cli import u
 from flext_core import r
-from flext_infra import u
 from flext_infra.constants import c
 from flext_infra.models import m
 
@@ -123,7 +123,14 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     @classmethod
     def _github_pr_current_head(cls, repo_root: Path) -> p.Result[str]:
         """Resolve a non-detached current branch."""
-        result = u.Infra.git_current_branch(m.Infra.GitRepoRequest(repo_root=repo_root))
+        # Function-level import: this module is loaded while flext_infra.utilities
+        # is still being composed, so the package-level lazy `u` would bind to the
+        # partially initialized FlextCliUtilities instead of FlextInfraUtilities.
+        from flext_infra import u as infra_u
+
+        result = infra_u.Infra.git_current_branch(
+            m.Infra.GitRepoRequest(repo_root=repo_root)
+        )
         if result.failure:
             return r.fail(result.error or "failed to resolve current branch")
         return r.ok(result.value.text)

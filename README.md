@@ -55,8 +55,8 @@ slot registry verification).
   filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of
   the facade classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
-  `FlextInfraConstants`, `FlextInfraModels`,
-  `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols` (+5 more).
+  `FlextInfraConstants`, `FlextInfraGitService`, `FlextInfraModels`,
+  `FlextInfraProjectSelectionServiceBase` (+6 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates
@@ -65,7 +65,7 @@ Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`,
 `docs`) — see
 [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 `Build & Test` and `Required Python quality gates`; selector routing is owned
-universally by [`make-check`](~/.agents/skills/make-check/SKILL.md).
+universally by `config.AiHub.paths.agents_home`/`skills/make-check/SKILL.md`.
 
 ## Governance Pointer
 
