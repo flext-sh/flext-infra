@@ -34,20 +34,8 @@ class FlextInfraPytestSelectorValidator(s[bool]):
     ] = None
 
     @staticmethod
-    def syntax_violation(
-        *, file: str | None, match: str | None, what: str | None
-    ) -> str | None:
-        """Return one deterministic selector syntax violation, if present."""
-        for field_name, value in (("file", file), ("match", match), ("what", what)):
-            if value is not None and any(character in value for character in "\0\r\n"):
-                return f"{field_name} must not contain control separators"
-        allowed = {None, "all", "cache-status", "cache-clear", "cache-checkpoint"}
-        if what not in allowed:
-            return "what must be: all, cache-status, cache-clear, or cache-checkpoint"
-        if what in {"cache-status", "cache-clear", "cache-checkpoint"} and (
-            file is not None or match is not None
-        ):
-            return f"{what} rejects FILE and MATCH"
+    def _file_path_violation(file: str | None) -> str | None:
+        """Return the normalized-path violation independently of mode syntax."""
         if file is None:
             return None
         path_prefix = file.split("::", maxsplit=1)[0]
@@ -60,6 +48,38 @@ class FlextInfraPytestSelectorValidator(s[bool]):
         ):
             return "file must have a normalized repository-relative path prefix"
         return None
+
+    @staticmethod
+    def syntax_violation(
+        *, file: str | None, match: str | None, what: str | None
+    ) -> str | None:
+        """Return one deterministic selector syntax violation, if present."""
+        for field_name, value in (("file", file), ("match", match), ("what", what)):
+            if value is not None and any(character in value for character in "\0\r\n"):
+                return f"{field_name} must not contain control separators"
+        allowed = {
+            None,
+            "all",
+            "full",
+            "profile",
+            "cache-status",
+            "cache-clear",
+            "cache-checkpoint",
+        }
+        if what not in allowed:
+            return (
+                "what must be: all, full, profile, cache-status, cache-clear, "
+                "or cache-checkpoint"
+            )
+        if what == "profile" and file is None and match is None:
+            return "profile requires FILE or MATCH"
+        if what in {"cache-status", "cache-clear", "cache-checkpoint"} and (
+            file is not None or match is not None
+        ):
+            return f"{what} rejects FILE and MATCH"
+        if what == "full" and (file is not None or match is not None):
+            return "full rejects FILE and MATCH"
+        return FlextInfraPytestSelectorValidator._file_path_violation(file)
 
     @staticmethod
     def resolve_file(root: Path, file: str) -> p.Result[Path]:

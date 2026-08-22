@@ -13,8 +13,15 @@ $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
 
 # === SIMPLE VERB SURFACE ===
-.PHONY: help boot build check scan fmt docs docs-serve test val clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
-STANDARD_VERBS := boot build check scan fmt docs test val clean pr
+# base.mk declares ONLY the verbs it ships a recipe for. R12 moved every other
+# public verb into the generated project Makefile, and a verb declared here
+# without a recipe is not harmless: Make treats it as a satisfied target, so the
+# verb becomes a silent no-op and a gate like `check` exits 0 having validated
+# nothing. mro-x0rau.3 removed the `pr` and daemon-* recipes with their
+# templates, so `help` (base_venv) and `clean` (base_clean) are the only
+# recipes this file composes.
+.PHONY: help clean _preflight
+STANDARD_VERBS := clean
 $(STANDARD_VERBS): _preflight
 
 define ENFORCE_WORKSPACE_VENV
@@ -25,18 +32,18 @@ if [ "$(FLEXT_MODE)" = "workspace" ]; then \
 			exit 1; \
 		fi; \
 	elif [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
-		echo "ERROR: [preflight] Workspace venv not found. Run 'make boot' at workspace root."; \
+		echo "ERROR: [preflight] Workspace venv not found. Run 'make setup' at workspace root."; \
 		exit 1; \
-	elif [ "$(filter boot,$(MAKECMDGOALS))" != "boot" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
-		echo "ERROR: [preflight] No venv found (workspace or local). Run 'make boot' in $(PROJECT_NAME)."; \
+	elif [ "$(filter setup,$(MAKECMDGOALS))" != "setup" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
+		echo "ERROR: [preflight] No venv found (workspace or local). Run 'make setup' in $(PROJECT_NAME)."; \
 		exit 1; \
 	else \
 		echo "INFO: [preflight] Using project-local venv for $(PROJECT_NAME) (workspace venv not found)."; \
 	fi; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 	echo "INFO: [preflight] Running in standalone mode (workspace features unavailable)."; \
-elif [ "$(filter boot setup,$(MAKECMDGOALS))" = "" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
-	echo "ERROR: [preflight] No venv found at $(ACTIVE_VENV). Run 'make boot' in $(PROJECT_NAME)."; \
+elif [ "$(filter setup,$(MAKECMDGOALS))" = "" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
+	echo "ERROR: [preflight] No venv found at $(ACTIVE_VENV). Run 'make setup' in $(PROJECT_NAME)."; \
 	exit 1; \
 fi
 endef
@@ -44,8 +51,8 @@ endef
 # mro-wkii.17.27 (codex): validation verbs detect drift without mutating files.
 define VALIDATE_CANONICAL_BASE_MK
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-	if [ "$(filter boot,$(MAKECMDGOALS))" = "boot" ] && [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then \
-		echo "INFO: [preflight] Deferring canonical base.mk validation until boot creates the workspace environment."; \
+	if [ "$(filter setup,$(MAKECMDGOALS))" = "setup" ] && [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then \
+		echo "INFO: [preflight] Deferring canonical base.mk validation until setup creates the workspace environment."; \
 	elif ! $(BASE_INFRA_VALIDATE) basemk-validate --workspace "$(WORKSPACE_ROOT)/flext-infra"; then \
 		echo "ERROR: [preflight] Canonical base.mk is stale. Run 'make -C $(WORKSPACE_ROOT) build WHAT=sync PROJECT=$(PROJECT_NAME)'."; \
 		exit 1; \

@@ -13,6 +13,10 @@ from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundary
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
+from flext_infra.gates.codemod import FlextInfraCodemodGate
+from flext_infra.gates.deferred_self_reference import (
+    FlextInfraDeferredSelfReferenceGate,
+)
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -47,6 +51,7 @@ class FlextInfraGateRegistry:
             FlextInfraMypyGate,
             FlextInfraPyrightGate,
             FlextInfraSilentFailureGate,
+            FlextInfraDeferredSelfReferenceGate,
             FlextInfraBanditGate,
             FlextInfraMarkdownGate,
             FlextInfraLocCapGate,
@@ -57,6 +62,7 @@ class FlextInfraGateRegistry:
             FlextInfraLayoutGate,
             FlextInfraTierWhitelistGate,
             FlextInfraSmellsGate,
+            FlextInfraCodemodGate,
         )
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:

@@ -61,8 +61,8 @@ class FlextInfraProjectClassifierFamilyMixin:
                 continue
             class_names.add(name)
             bases_str = match.group(2)
-            for base_part in bases_str.split(","):
-                base_part = base_part.strip()
+            for raw_base_part in bases_str.split(","):
+                base_part = raw_base_part.strip()
                 if not base_part:
                     continue
                 base_name = base_part.split("[")[0].rsplit(".", maxsplit=1)[-1].strip()

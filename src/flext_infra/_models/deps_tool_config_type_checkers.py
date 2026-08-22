@@ -152,20 +152,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="reportPrivateUsage value for non-source/non-test-like envs.",
                 ),
             ]
-            root_venv_path: Annotated[
-                str,
-                m.Field(
-                    alias="root-venv-path",
-                    description="venvPath to use in workspace-root pyright settings.",
-                ),
-            ]
-            project_venv_path: Annotated[
-                str,
-                m.Field(
-                    alias="project-venv-path",
-                    description="venvPath to use in subproject pyright settings.",
-                ),
-            ]
             venv_name: Annotated[
                 str,
                 m.Field(

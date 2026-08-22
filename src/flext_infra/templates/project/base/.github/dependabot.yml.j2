@@ -9,7 +9,7 @@ updates:
       default-days: {{ dependency_cooldown_days }}
     open-pull-requests-limit: 5
     labels: [dependencies, github-actions]
-
+{% if has_devcontainer %}
   - package-ecosystem: devcontainers
     directory: /
     schedule:
@@ -19,6 +19,7 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies, devcontainers]
 
+{% endif %}
   - package-ecosystem: pip
     directory: /
     schedule:
@@ -37,4 +38,4 @@ updates:
       default-days: {{ dependency_cooldown_days }}
     open-pull-requests-limit: 5
     labels: [dependencies, python]
-{% endfor %}
+{% endfor -%}

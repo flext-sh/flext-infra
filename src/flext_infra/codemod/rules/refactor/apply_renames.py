@@ -1,4 +1,4 @@
-"""Generic symbol-rename engine driven by an ``old,new`` CSV list."""  # ruff:ignore[implicit-namespace-package]
+"""Generic symbol-rename engine driven by an ``old,new`` CSV list."""
 
 from __future__ import annotations
 

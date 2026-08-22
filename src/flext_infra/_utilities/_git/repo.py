@@ -1,14 +1,15 @@
 """GitPython repository helpers for the private git facet.
 
-Only ``git_refresh_binary``, ``git_open_repo``, and ``git_repo`` live here.
-Semantic operations use GitPython's object-oriented API (``Repo``, ``IndexFile``,
-``Remote``, ``BaseIndexEntry``) or the ``repo.git.<cmd>(args)`` proxy directly;
+Only ``FlextInfraUtilitiesGitRepo`` lives here. Semantic operations use
+GitPython's object-oriented API (``Repo``, ``IndexFile``, ``Remote``,
+``BaseIndexEntry``) or the ``repo.git.<cmd>(args)`` proxy directly;
 ``Git(path).execute(tuple)`` with manual cast/protocol is eliminated.
 """
 
 from __future__ import annotations
 
 import shutil
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,51 +28,55 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-def git_refresh_binary() -> p.Result[bool]:
-    """Point GitPython at the absolute path of the canonical git binary."""
-    # Git.refresh resolves relative names against cwd; always pass an absolute path.
-    resolved = shutil.which(c.Infra.GIT)
-    if resolved is None:
-        return r[bool].fail(f"git executable not found on PATH: {c.Infra.GIT}")
-    try:
-        Git.refresh(resolved)
-    except (FileNotFoundError, OSError) as exc:
-        return r[bool].fail(f"git binary refresh failed: {exc}")
-    return r[bool].ok(True)
+class FlextInfraUtilitiesGitRepo:
+    """Git repository opener with GitPython native OO API."""
+
+    @classmethod
+    def _refresh_binary(cls) -> p.Result[bool]:
+        """Point GitPython at the absolute path of the canonical git binary."""
+        # Git.refresh resolves relative names against cwd; always pass an absolute path.
+        resolved = shutil.which(c.Infra.GIT)
+        if resolved is None:
+            return r[bool].fail(f"git executable not found on PATH: {c.Infra.GIT}")
+        try:
+            Git.refresh(resolved)
+        except (FileNotFoundError, OSError) as exc:
+            return r[bool].fail(f"git binary refresh failed: {exc}")
+        return r[bool].ok(True)
+
+    @classmethod
+    def _open_repo(cls, repo_root: Path) -> p.Result[Repo]:
+        """Open one non-bare worktree repository at ``repo_root``."""
+        resolved = repo_root.expanduser().resolve()
+        try:
+            refreshed = cls._refresh_binary()
+            if refreshed.failure:
+                return r[Repo].fail(refreshed.error or "git binary unavailable")
+            repo = Repo(resolved)
+        except (
+            GitCommandNotFound,
+            ImportError,
+            InvalidGitRepositoryError,
+            NoSuchPathError,
+            OSError,
+            ValueError,
+        ) as exc:
+            return r[Repo].fail(f"cannot open git repository at {resolved}: {exc}")
+        if repo.bare or repo.working_tree_dir is None:
+            return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
+        return r[Repo].ok(repo)
+
+    @classmethod
+    def _repo(cls, repo_root: Path) -> Repo:
+        """Open a repo and unwrap, raising on failure.
+
+        This is the canonical helper for semantic methods that prefer
+        try/except → ``r[...].fail()`` over ``Result`` chaining.
+        """
+        opened = cls._open_repo(repo_root)
+        if opened.failure:
+            raise OSError(opened.error or "failed to open git repository")
+        return opened.value
 
 
-def git_open_repo(repo_root: Path) -> p.Result[Repo]:
-    """Open one non-bare worktree repository at ``repo_root``."""
-    resolved = repo_root.expanduser().resolve()
-    try:
-        refreshed = git_refresh_binary()
-        if refreshed.failure:
-            return r[Repo].fail(refreshed.error or "git binary unavailable")
-        repo = Repo(resolved)
-    except (
-        GitCommandNotFound,
-        ImportError,
-        InvalidGitRepositoryError,
-        NoSuchPathError,
-        OSError,
-        ValueError,
-    ) as exc:
-        return r[Repo].fail(f"cannot open git repository at {resolved}: {exc}")
-    if repo.bare or repo.working_tree_dir is None:
-        return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
-    return r[Repo].ok(repo)
-
-
-def git_repo(repo_root: Path) -> Repo:
-    """Open a repo and unwrap, raising on failure.
-
-    This is the canonical helper for semantic methods that prefer
-    try/except → ``r[...].fail()`` over ``Result`` chaining.
-    """
-    opened = git_open_repo(repo_root)
-    if opened.failure:
-        raise OSError(opened.error or "failed to open git repository")
-    return opened.value
-
-
-__all__: list[str] = ["git_open_repo", "git_refresh_binary", "git_repo"]
+__all__: list[str] = ["FlextInfraUtilitiesGitRepo"]

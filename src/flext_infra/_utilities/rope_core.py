@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra._config import config
+from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities._rope_core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )
@@ -15,7 +16,6 @@ from flext_infra._utilities._rope_core_resources import (
     FlextInfraUtilitiesRopeCoreResourcesMixin,
 )
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.typings import t
 

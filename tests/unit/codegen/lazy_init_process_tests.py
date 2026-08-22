@@ -32,7 +32,7 @@ class TestsFlextInfraLazyInitProcessing:
         content = self._read(package_root)
 
         tm.that(result, eq=0)
-        tm.that(content, contains="_LAZY_MODULES")
+        tm.that(content, contains="build_lazy_import_map(")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, contains="__all__: tuple[str, ...]")
         tm.that(content, lacks="__unit__")
