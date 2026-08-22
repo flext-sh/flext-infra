@@ -9,7 +9,6 @@ GitPython's object-oriented API (``Repo``, ``IndexFile``, ``Remote``,
 from __future__ import annotations
 
 import shutil
-from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
