@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
 
@@ -16,8 +15,12 @@ if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesGithubPrExecutionMixin(FlextInfraUtilitiesGitWorktreeMixin):
-    """Execute the minimal, native pull-request publication contract."""
+class FlextInfraUtilitiesGithubPrExecutionMixin:
+    """Execute the minimal, native pull-request publication contract.
+
+    Git access goes through typed ``u.Infra`` Request/Report methods only —
+    this mixin deliberately does not subclass the worktree mixin.
+    """
 
     @staticmethod
     def _validate_github_pr_create_request(
@@ -120,13 +123,17 @@ class FlextInfraUtilitiesGithubPrExecutionMixin(FlextInfraUtilitiesGitWorktreeMi
     @classmethod
     def _github_pr_current_head(cls, repo_root: Path) -> p.Result[str]:
         """Resolve a non-detached current branch."""
-        result = cls.git_capture(repo_root, ("branch", "--show-current"))
+        # Function-level import: this module is loaded while flext_infra.utilities
+        # is still being composed, so the package-level lazy `u` would bind to the
+        # partially initialized FlextCliUtilities instead of FlextInfraUtilities.
+        from flext_infra import u as infra_u
+
+        result = infra_u.Infra.git_current_branch(
+            m.Infra.GitRepoRequest(repo_root=repo_root)
+        )
         if result.failure:
             return r.fail(result.error or "failed to resolve current branch")
-        head = result.value.strip()
-        if not head:
-            return r.fail("head branch is required from a detached HEAD")
-        return r.ok(head)
+        return r.ok(result.value.text)
 
     @classmethod
     def _github_pr_execute_create(

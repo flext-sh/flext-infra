@@ -167,13 +167,17 @@ class FlextInfraConstantsCheck:
         r"\bFlextCli[A-Z]\w*"
     )
 
-    # --- 200-LOC SUPREME LAW (§3.1) gate SSOT ---
-    LOC_CAP_MAX: Final[int] = 200
+    # --- 1000-LOC SUPREME LAW (§3.1) gate SSOT ---
+    # Why (operator 2026-08-07): the 200-LOC ceiling made real modules
+    # unmanageable — enforcing it fragmented cohesive units into artificial
+    # splits. Raised fleet-wide to 1000. Consumers read this constant, never a
+    # literal, so the cap stays a single owned value.
+    LOC_CAP_MAX: Final[int] = 1000
     "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
     TOKEI_BINARY: Final[str] = "tokei"
     TOKEI_TOTAL_KEY: Final[str] = "Total"
     TOKEI_PYTHON_LANG: Final[str] = "Python"
-    "tokei language key the 200-LOC cap enforces — §3.1 is a Python-module law; "
+    "tokei language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
@@ -301,7 +305,7 @@ repos:
         always_run: false
         types: [python]
       - id: flext-loc-cap
-        name: 200-LOC SUPREME LAW (§3.1) — module cap via tokei
+        name: MODULE-LOC SUPREME LAW (§3.1) — module cap via tokei
         entry: uv run --all-packages python scripts/hooks/check_changed_projects.py loc-cap
         language: system
         pass_filenames: true

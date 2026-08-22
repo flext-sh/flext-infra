@@ -143,10 +143,10 @@ class FlextInfraCompatibilityAliasDetector:
     ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
         """Detect runtime canonical aliases imported from ``flext_core``."""
         current_module = u.Infra.package_name(file_path)
-        current_package = current_module.split(".", maxsplit=1)[0]
+        migration_context = u.Infra.alias_migration_context(file_path)
         local_aliases = (
             FlextInfraCompatibilityAliasDetector._project_alias_owners().get(
-                current_package
+                migration_context.policy_owner
             )
         )
         if not local_aliases:
@@ -195,7 +195,7 @@ class FlextInfraCompatibilityAliasDetector:
                             line=statement.line,
                             alias_name=bound_name,
                             target_name=bound_name,
-                            module_name=current_package,
+                            module_name=migration_context.policy_owner,
                         )
                     )
         return violations

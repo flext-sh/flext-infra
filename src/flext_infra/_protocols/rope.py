@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
     from types import TracebackType
 
@@ -164,6 +165,13 @@ class FlextInfraProtocolsRope(Protocol):
         Used by ``FlextInfraUtilitiesRopePep695Patch`` to install PEP 695
         type-parameter handlers without depending on rope's private class.
         """
+
+        # The two handler slots the PEP 695 patch replaces. Rope exposes them
+        # under private names because it has no public registration API; the
+        # protocol states that shape so the patch stays statically typed
+        # instead of reaching into an untyped probe.
+        _handle_function_def_node: Callable[..., None]
+        _ClassDef: Callable[..., None]
 
         # mro-j47u (codex): model Rope node capabilities structurally; the
         # FLEXT static path never imports or traverses Python's AST directly.

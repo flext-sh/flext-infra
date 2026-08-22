@@ -82,4 +82,4 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
             if (lines := _interpreter_at_parse_time(surface))
         }
 
-        tm.that(offenders, eq={})
+        tm.that(len(offenders), eq=0)

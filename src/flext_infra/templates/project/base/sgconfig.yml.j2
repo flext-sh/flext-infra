@@ -8,4 +8,4 @@ ruleDirs:
 {% for rule_dir in rule_dirs %}  - {{ rule_dir }}
 {% endfor %}{% if test_dirs %}testConfigs:
 {% for test_dir in test_dirs %}  - testDir: {{ test_dir }}
-{% endfor %}{% endif %}
+{% endfor %}{% endif -%}

@@ -1,4 +1,4 @@
-{%- set public_exports = [class_stem, class_stem ~ "Constants", class_stem ~ "Models", class_stem ~ "Protocols", class_stem ~ "Service", class_stem ~ "Types", class_stem ~ "Utilities", "c", "config", "m", "p", alias, "r", "s", "settings", "t", "u"] -%}
+{%- set public_exports = [class_stem, class_stem ~ "Constants", class_stem ~ "Models", class_stem ~ "Protocols", class_stem ~ "Service", class_stem ~ "Types", class_stem ~ "Utilities", "c", "config", "m", "p", alias, "s", "settings", "t", "u"] + inherited_facets -%}
 {%- set public_export_rows = '    "' ~ (public_exports | sort(case_sensitive=true) | join('",\n    "')) ~ '",' -%}
 {%- macro facade_import(module_name, export_name, export_alias) -%}
 {%- set compact = "    from " ~ package_name ~ "." ~ module_name ~ " import " ~ export_name ~ " as " ~ export_name ~ ", " ~ export_alias ~ " as " ~ export_alias -%}
@@ -17,13 +17,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     # NOTE (multi-agent, mro-j47u): all public objects stay lazy at runtime.
-    from {{ upstream }} import r as r
+{% for facet in inherited_facets %}
+    from {{ upstream }} import {{ facet }} as {{ facet }}
+{% endfor %}
 
     from {{ package_name }}._config import config as config
     from {{ package_name }}._settings import settings as settings
@@ -35,22 +38,35 @@ if TYPE_CHECKING:
 {{ facade_import("typings", class_stem ~ "Types", "t") }}
 {{ facade_import("utilities", class_stem ~ "Utilities", "u") }}
 
-_LAZY_IMPORTS = build_lazy_import_map({
-    ".api": ("{{ class_stem }}", "{{ alias }}"),
-    ".base": ("{{ class_stem }}Service", "s"),
-    ".constants": ("{{ class_stem }}Constants", "c"),
-    ".models": ("{{ class_stem }}Models", "m"),
-    ".protocols": ("{{ class_stem }}Protocols", "p"),
-    "._config": ("config",),
-    "._settings": ("settings",),
-    ".typings": ("{{ class_stem }}Types", "t"),
-    ".utilities": ("{{ class_stem }}Utilities", "u"),
-    "{{ upstream }}": ("r",),
-})
-
 __all__: tuple[str, ...] = (
 {{ public_export_rows }}
 )
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            ".api": ("{{ class_stem }}", "{{ alias }}"),
+            ".base": ("{{ class_stem }}Service", "s"),
+            ".constants": ("{{ class_stem }}Constants", "c"),
+            ".models": ("{{ class_stem }}Models", "m"),
+            ".protocols": ("{{ class_stem }}Protocols", "p"),
+            "._config": ("config",),
+            "._settings": ("settings",),
+            ".typings": ("{{ class_stem }}Types", "t"),
+            ".utilities": ("{{ class_stem }}Utilities", "u"),
+{% if inherited_facets %}
+            "{{ upstream }}": ({% for facet in inherited_facets %}"{{ facet }}", {% endfor %}),
+{% endif %}
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
+)
+
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    public_exports=__all__,
+)
