@@ -49,6 +49,7 @@ class TestsFlextInfraBasemkRenderer:
             tm.that(rendered, has=required)
         for forbidden in (
             "SETUP_UV ?= uv",
+            "python -m venv",
             "BOOTSTRAP_PIP",
             "pip install",
             "poetry",

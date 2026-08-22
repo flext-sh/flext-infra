@@ -29,6 +29,30 @@ def test_anchorize_and_build_toc_are_public_helpers() -> None:
     tm.that(u.Infra.build_toc("# Main\n\nNo sections here.\n"), has="No sections found")
 
 
+def test_fix_keeps_closing_fence_on_its_own_line(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
+    sample = workspace / "docs/fenced.md"
+    sample.write_text(
+        "# Fenced\n\n"
+        "## Sample\n\n"
+        "```python\n"
+        "import os\n"
+        "import sys\n\n"
+        "print(sys.version)\n"
+        "```\n\n"
+        "## After The Block\n",
+        encoding="utf-8",
+    )
+
+    result = FlextInfraDocFixer().fix(workspace, apply=True)
+
+    tm.ok(result)
+    fixed = sample.read_text(encoding="utf-8")
+    tm.that(fixed, lacks=")```")
+    tm.that(fixed, has="\n```\n")
+    tm.that(fixed, has="## After The Block")
+
+
 def test_fix_updates_docs_readme_when_apply_is_enabled(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
 

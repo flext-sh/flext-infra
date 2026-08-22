@@ -26,6 +26,10 @@ from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
+from flext_infra.gates.codemod import FlextInfraCodemodGate
+from flext_infra.gates.deferred_self_reference import (
+    FlextInfraDeferredSelfReferenceGate,
+)
 
 
 class FlextInfraGateRegistry:
@@ -47,6 +51,7 @@ class FlextInfraGateRegistry:
             FlextInfraMypyGate,
             FlextInfraPyrightGate,
             FlextInfraSilentFailureGate,
+            FlextInfraDeferredSelfReferenceGate,
             FlextInfraBanditGate,
             FlextInfraMarkdownGate,
             FlextInfraLocCapGate,
@@ -57,6 +62,7 @@ class FlextInfraGateRegistry:
             FlextInfraLayoutGate,
             FlextInfraTierWhitelistGate,
             FlextInfraSmellsGate,
+            FlextInfraCodemodGate,
         )
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:

@@ -12,6 +12,7 @@ from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_infra.maintenance.clean import FlextInfraCleanService
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_validate_commands import ValidationCommandRoutes
@@ -118,6 +119,13 @@ class ValidationRoutes(ValidationCommandRoutes):
                 model_cls=FlextInfraPythonVersionEnforcer,
                 handler=FlextInfraPythonVersionEnforcer.execute_command,
                 success_message="Maintenance completed",
+            ),
+            m.Cli.ResultCommandRoute(
+                name=c.Infra.VERB_CLEAN,
+                help_text="Report or remove disposable build artifacts",
+                model_cls=FlextInfraCleanService,
+                handler=FlextInfraCleanService.execute_command,
+                success_message="Clean completed",
             ),
         ),
         c.Infra.CLI_GROUP_VALIDATE: ValidationCommandRoutes.validate_command_routes,

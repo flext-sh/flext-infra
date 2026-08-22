@@ -205,32 +205,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ResultOperation[TValue](Protocol):
-        """One typed operation executed while serialization locks are held."""
-
-        def __call__(self) -> p.Result[TValue]:
-            """Run the operation and return its typed result."""
-            ...
-
-    @runtime_checkable
-    class LockTimeoutFailure[TValue](Protocol):
-        """Typed timeout mapping for the public serialization lock facade."""
-
-        def __call__(
-            self, lock_path: Path, timeout_seconds: int, /
-        ) -> p.Result[TValue]:
-            """Map one lock timeout to the caller's result domain."""
-            ...
-
-    @runtime_checkable
-    class LockAcquisitionFailure[TValue](Protocol):
-        """Typed acquisition-error mapping for the serialization lock facade."""
-
-        def __call__(self, detail: str, /) -> p.Result[TValue]:
-            """Map one lock acquisition failure to the caller's result domain."""
-            ...
-
-    @runtime_checkable
     class RepositoryTopology(Protocol):
         """Atomic repository-local runtime topology inspection."""
 

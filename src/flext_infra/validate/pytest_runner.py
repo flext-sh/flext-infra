@@ -136,13 +136,24 @@ class FlextInfraPytestRunner(s[int]):
     })
 
     def _ci_disables_coverage(self) -> bool:
-        """True when Make CI token is exact make.ci.value (CI=Y)."""
+        """Coverage is off when Make CI token is exact make.ci.value (CI=Y)."""
         raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
         return raw == config.Infra.codegen.make.ci.value
 
-    def _cov_enabled(self) -> bool:
-        """True when Make COV token requests a full coverage run (COV=Y)."""
-        return self._environment_flag(c.Infra.PYTEST_ENV_COV)
+    def _coverage_requested(self) -> bool:
+        """Whether this runner asks pytest to measure coverage at all.
+
+        ``WHAT=all`` is the incremental testmon verb: it selects only impacted
+        tests, so a coverage number computed from that subset would be a lie.
+        It passes ``--testmon --no-cov``.
+
+        ``WHAT=full`` is the complete-suite gate the pre-push workflow runs:
+        testmon OFF so every test executes, coverage ON so the number measures
+        the whole suite. ``build_command`` and the artifact gate both read THIS
+        predicate, so the gate can never demand an artifact the argv told pytest
+        not to produce (mro-uwoc7).
+        """
+        return self.what == "full" and not self._ci_disables_coverage()
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -172,29 +183,21 @@ class FlextInfraPytestRunner(s[int]):
             )
         return r[bool].ok(True)
 
-    def _coverage_argv(self, report_dir: Path, *, focused: bool) -> tuple[str, ...]:
-        """Build mutually exclusive testmon vs coverage argv.
-
-        pytest-testmon nests its Coverage object under an outer pytest-cov
-        stack when both are active. Flushing that stack calls get_data() on an
-        empty outer collector and emits CoverageWarning: No data was collected.
-        With filterwarnings=["error"] that kills xdist workers. The two modes
-        therefore never share an argv: default is incremental testmon without
-        coverage; COV=Y is a full suite coverage run without testmon.
-        """
-        if self._cov_enabled():
-            if focused:
-                msg = (
-                    "COV=Y forbids FILE=/MATCH= selectors; subset coverage is "
-                    "not a valid fail-under measurement"
-                )
-                raise ValueError(msg)
-            return (
-                "--cov",
-                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
-                "--no-cov-on-fail",
-            )
-        return ("--testmon", "--no-cov")
+    @staticmethod
+    def _junit_totals(junit_file: Path) -> tuple[int, int, int]:
+        """Return ``(tests, failures, errors)`` summed from the JUnit document."""
+        try:
+            root = DefusedET.parse(junit_file).getroot()
+        except DefusedET.ParseError:
+            return (0, 0, 0)
+        if root is None:
+            return (0, 0, 0)
+        suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+        return (
+            sum(int(suite.get("tests", "0")) for suite in suites),
+            sum(int(suite.get("failures", "0")) for suite in suites),
+            sum(int(suite.get("errors", "0")) for suite in suites),
+        )
 
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
@@ -202,7 +205,24 @@ class FlextInfraPytestRunner(s[int]):
         focused = self.file is not None or self.match is not None
         target = self.file or self.target
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
-        coverage_args = self._coverage_argv(report_dir, focused=focused)
+        # Why (mro-uwoc7): keyed to the same predicate the artifact gate reads,
+        # so the argv and the gate can never disagree about coverage. WHAT=full
+        # turns testmon OFF (every test runs) and coverage ON, so the measured
+        # number covers the whole suite; every other WHAT is the incremental
+        # testmon verb whose subset coverage would be meaningless.
+        # Why (mro-q4osk): the xml lands in report_dir, the SAME path the
+        # artifact gate below reads. Letting --cov-report=xml default to the
+        # CWD wrote coverage.xml to the repository root, so the gate found
+        # nothing and failed a run whose coverage had in fact been measured.
+        coverage_args = (
+            (
+                "--cov",
+                "--cov-report=term-missing",
+                f"--cov-report=xml:{report_dir / c.Infra.PYTEST_COVERAGE_XML}",
+            )
+            if self._coverage_requested()
+            else ("--testmon", "--no-cov")
+        )
         parallel_args = (
             ("-n", "0")
             if focused
@@ -245,7 +265,7 @@ class FlextInfraPytestRunner(s[int]):
             "-p",
             "no:metadata",
             f"--timeout={pytest.case_timeout_seconds}",
-            f"--junitxml={report_dir / 'junit.xml'}",
+            f"--junitxml={report_dir / c.Infra.PYTEST_JUNIT_XML}",
             *coverage_args,
             *parallel_args,
             *ci_marker_args,
@@ -275,7 +295,7 @@ class FlextInfraPytestRunner(s[int]):
         """Compose the existing JUnit/log diagnostic owner in-process."""
         extractor = FlextInfraPytestDiagExtractor(
             workspace_root=self.root,
-            junit=report_dir / "junit.xml",
+            junit=report_dir / c.Infra.PYTEST_JUNIT_XML,
             log_path=report_dir / "pytest.log",
         )
         return extractor.extract(extractor.junit, extractor.log_path)
@@ -396,8 +416,8 @@ class FlextInfraPytestRunner(s[int]):
             c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9,
         }
         timeout_state = "TIMED_OUT" if timed_out else "COMPLETED"
-        junit_file = report_dir / "junit.xml"
-        coverage_file = report_dir / "coverage.xml"
+        junit_file = report_dir / c.Infra.PYTEST_JUNIT_XML
+        coverage_file = report_dir / c.Infra.PYTEST_COVERAGE_XML
         junit_value = str(junit_file) if junit_file.is_file() else "not-generated"
         coverage_value = (
             str(coverage_file) if coverage_file.is_file() else "not-generated"
@@ -427,14 +447,39 @@ class FlextInfraPytestRunner(s[int]):
         )):
             exit_code = 1
         pytest_log = report_dir / "pytest.log"
-        coverage_enabled = self._cov_enabled()
+        # Why (mro-uwoc7): the incremental verb passes --no-cov, so it never
+        # emits coverage.xml. Demanding the artifact anyway failed pushes on a
+        # fully green suite (1184 passed, exit=0, coverage=not-generated).
+        # The gate now asks the SAME predicate that builds the argv, so the two
+        # can never disagree: coverage is verified only when it was actually
+        # requested. WHAT=full is the verb that requests it.
+        coverage_enabled = (
+            self._coverage_requested()
+            and not self._ci_disables_coverage()
+            and self.file is None
+            and self.match is None
+        )
+        junit_tests = -1
+        junit_failures = -1
+        junit_errors = -1
+        if junit_file.is_file():
+            junit_tests, junit_failures, junit_errors = self._junit_totals(junit_file)
+        # Why: a testmon run on an unchanged tree selects zero tests; pytest-cov
+        # then exits nonzero on 0.00% fail-under. Zero executed tests with zero
+        # failures/errors is vacuous green — the noise status is normalized.
+        vacuous = junit_tests == 0 and junit_failures == 0 and junit_errors == 0
+        if vacuous:
+            exit_code = 0
         if exit_code == 0:
             junit_ok = self._require_junit(junit_file, pytest_log)
             if junit_ok.failure:
                 return r[int].fail(junit_ok.error or "junit validation failed")
+        # Coverage gates measure executed suites, so an empty (vacuous)
+        # selection is green by construction.
+        coverage_gate_active = coverage_enabled and not vacuous
         if (
             exit_code == 0
-            and coverage_enabled
+            and coverage_gate_active
             and self._pytest_log_reports_coverage_failure(pytest_log)
         ):
             # pytest-cov under xdist can print fail-under and still return 0.
@@ -445,7 +490,7 @@ class FlextInfraPytestRunner(s[int]):
             )
         if (
             exit_code == 0
-            and coverage_enabled
+            and coverage_gate_active
             and (not coverage_file.is_file() or coverage_file.stat().st_size == 0)
         ):
             return r[int].fail(
@@ -454,7 +499,7 @@ class FlextInfraPytestRunner(s[int]):
                     pytest_log,
                 )
             )
-        if exit_code == 0 and not coverage_enabled:
+        if exit_code == 0:
             timed_out_or_signal = timed_out
             inspector = FlextInfraTestmonDbInspector(
                 workspace_root=self.root,

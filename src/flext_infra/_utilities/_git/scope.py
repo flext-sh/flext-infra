@@ -10,7 +10,6 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities._git.repo import git_repo
 from flext_infra._utilities._git.semantic import FlextInfraUtilitiesGitSemanticMixin
 from flext_infra.constants import c
 
@@ -21,9 +20,9 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
-    @staticmethod
+    @classmethod
     @cache
-    def _git_repo_root(scope_root: str) -> str | None:
+    def _git_repo_root(cls, scope_root: str) -> str | None:
         """Return the nearest enclosing Git worktree root for ``scope_root``."""
         current = Path(scope_root).resolve()
         while True:
@@ -34,13 +33,13 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
                 return None
             current = parent
 
-    @staticmethod
+    @classmethod
     @cache
-    def _git_tracked_repo_relative_paths(repo_root: str) -> t.StrSequence | None:
+    def _git_tracked_repo_relative_paths(cls, repo_root: str) -> t.StrSequence | None:
         """Return tracked and dirty paths relative to one Git repo root."""
         resolved_root = Path(repo_root).resolve()
         try:
-            repo = git_repo(resolved_root)
+            repo = cls._repo(resolved_root)
             tracked_output = repo.git.ls_files(with_exceptions=False)
             status_output = repo.git.status(
                 "--porcelain", "--untracked-files=all", with_exceptions=False
@@ -64,9 +63,9 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
                 scope_paths.add(normalized)
         return tuple(sorted(scope_paths))
 
-    @staticmethod
+    @classmethod
     @cache
-    def _git_tracked_scope_relative_paths(scope_root: str) -> t.StrSequence | None:
+    def _git_tracked_scope_relative_paths(cls, scope_root: str) -> t.StrSequence | None:
         """Return tracked file paths relative to ``scope_root`` or ``None`` outside Git.
 
         ``git ls-files <scope_prefix>`` emits paths relative to the **repo root**.
@@ -75,14 +74,10 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
         returned paths are scope-relative, never repo-relative.
         """
         resolved_root = Path(scope_root)
-        repo_root_text = FlextInfraUtilitiesGitScopeMixin._git_repo_root(scope_root)
+        repo_root_text = cls._git_repo_root(scope_root)
         if repo_root_text is None:
             return None
-        repo_relative_paths = (
-            FlextInfraUtilitiesGitScopeMixin._git_tracked_repo_relative_paths(
-                repo_root_text
-            )
-        )
+        repo_relative_paths = cls._git_tracked_repo_relative_paths(repo_root_text)
         if repo_relative_paths is None:
             return None
         repo_root = Path(repo_root_text).resolve()

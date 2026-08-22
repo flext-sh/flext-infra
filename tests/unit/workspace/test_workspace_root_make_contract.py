@@ -166,9 +166,34 @@ class TestsWorkspaceRootMakeContract:
         output = generated.stdout + generated.stderr
 
         tm.that(generated.exit_code, eq=0, msg=output)
-        tm.that(output, has='--verb "gen"')
+        tm.that(output, has="_builtin_gen_$what")
+        tm.that(output, lacks="_serialized_")
+        tm.that(output, lacks="serialize-make")
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
+
+    def test_generated_work_start_omits_kind_when_unset(self, tmp_path: Path) -> None:
+        workspace_root, _ = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_work_start",
+                    "BEAD=mro-fixture",
+                    "NAME=fixture-lane",
+                    "APPLY=Y",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--operation start")
+        tm.that(output, lacks="--kind")
 
     def test_generated_setup_runs_its_lifecycle_hooks(self, tmp_path: Path) -> None:
         """``setup`` must fire pre-/post-setup like every other public verb.
@@ -216,7 +241,10 @@ class TestsWorkspaceRootMakeContract:
 
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, has='--make-arg "CHECK_GATES=lint,pyrefly"')
+        # Gate normalization (CI filtering, whitespace stripping) now happens in
+        # the recipe shell before forwarding, so the dry-run projection shows
+        # the forwarded shell value rather than the raw make variable.
+        tm.that(output, has='--make-arg "CHECK_GATES=$gates"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
 
     def test_generated_make_routes_fmt_apply_to_selected_project(
@@ -243,7 +271,6 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has="--verb fmt")
         tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, has='--make-arg "WHAT=apply"')
         tm.that(output, has='--make-arg "APPLY=Y"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")
@@ -275,11 +302,18 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has="--file")
         tm.that(output, has="--match")
 
-    def test_generated_make_routes_root_file_only_to_workspace_root(
+    def test_generated_make_forwards_root_file_with_member_selection(
         self, tmp_path: Path
     ) -> None:
-        """Keep provider-owned root tests in the root project execution lane."""
-        workspace_root, _ = _write_workspace(tmp_path)
+        """Forward a root-owned test FILE selector with the member fan-out.
+
+        A workspace root owns no local gate implementation: Make never emits a
+        ``--projects .`` lane (selecting the root maps to WORKSPACE_MEMBERS).
+        Which project owns the file is decided by the orchestrator
+        (_select_file_owner) at runtime, not by this Make recipe, so this
+        boundary asserts forwarding rather than owner filtering.
+        """
+        workspace_root, project_names = _write_workspace(tmp_path)
         selected = "tests/unit/test_provider_contract.py"
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -297,17 +331,20 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        # The root project is in the forwarded selection and the typed FILE
-        # selector travels with it. Which project owns the file is decided by
-        # the orchestrator (_select_file_owner), not by this Make recipe, so
-        # this boundary asserts forwarding rather than owner filtering.
-        tm.that(output, has="--projects .")
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
+        tm.that(output, lacks="--projects .")
         tm.that(output, has="--file")
 
-    def test_generated_make_default_test_includes_root_and_every_member(
+    def test_generated_make_default_test_fans_out_to_every_member(
         self, tmp_path: Path
     ) -> None:
-        """Run provider root tests alongside every configured workspace member."""
+        """Default test selection is every declared member, never the root.
+
+        A workspace root owns no local gate implementation, so the default
+        fan-out is WORKSPACE_MEMBERS; selecting ``.`` would orchestrate the
+        root against itself forever and is mapped away by the template.
+        """
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
@@ -319,9 +356,9 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="--projects .")
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
+        tm.that(output, lacks="--projects .")
 
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
@@ -342,7 +379,7 @@ class TestsWorkspaceRootMakeContract:
                 '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
                 '  previous="$argument"\n'
                 "done\n"
-                'if [ -n "$verb" ]; then exec make --no-print-directory "_serialized_${verb}"; fi\n'
+                'if [ -n "$verb" ]; then exec make --no-print-directory "$verb"; fi\n'
                 f'printf "%s\\n" "$*" >> "{invocation_log}"\n'
             ),
         )

@@ -18,7 +18,9 @@ site-packages and validated this repository's tree against a stale installed
 copy. Gate results then describe code that is not under test.
 
 This pins the invariant at the template: no ``uv`` invocation may be built
-without the full environment sanitation prefix.
+without environment sanitation -- either the definition strips the hijacking
+variables itself, or the template overrides and exports them so Make replaces
+any inherited value before a recipe runs.
 """
 
 from __future__ import annotations
@@ -72,6 +74,22 @@ def _unstripped_variables(definition: str) -> list[str]:
     ]
 
 
+def _template_level_guarded_variables() -> frozenset[str]:
+    """Return hijacking variables the template overrides and exports globally.
+
+    ``override NAME := ...`` plus ``export`` makes Make replace any inherited
+    value before a recipe runs, which is hermeticity by construction: no uv
+    invocation built after that point can observe the caller's environment.
+    """
+    text = _template_text()
+    return frozenset(
+        variable
+        for variable in _HIJACKING_VARIABLES
+        if f"override {variable} :=" in text
+        and re.search(rf"^export .*\b{variable}\b", text, re.MULTILINE)
+    )
+
+
 def test_every_uv_invocation_strips_environment_hijacking_variables() -> None:
     """No generated ``uv`` call may inherit another project's environment.
 
@@ -79,11 +97,13 @@ def test_every_uv_invocation_strips_environment_hijacking_variables() -> None:
     friends win over ``--project``, so the command silently executes against a
     foreign runtime and reports gate results for code it never loaded.
     """
+    guarded = _template_level_guarded_variables()
     offenders = {
-        name: unstripped
+        name: [variable for variable in unstripped if variable not in guarded]
         for name, definition in _uv_invocation_definitions().items()
         if (unstripped := _unstripped_variables(definition))
     }
+    offenders = {name: missing for name, missing in offenders.items() if missing}
 
     assert not offenders, (
         "generated uv invocations inherit environment that overrides "
