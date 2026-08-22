@@ -39,9 +39,104 @@ class FlextInfraWorkSagaCommon(FlextInfraWorkReservation, FlextInfraWorkStartSup
         primary = u.Infra.git_primary_worktree_root(
             m.Infra.GitRepoRequest(repo_root=governed.value)
         )
+        if superproject.failure:
+            return r[Path].fail(
+                superproject.error or "failed to resolve workspace superproject"
+            )
+        workspace_root = (
+            Path(superproject.value.text).resolve()
+            if superproject.value.text.strip()
+            else self.workspace_root.resolve()
+        )
+        primary = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=workspace_root)
+        )
         if primary.failure:
             return r[Path].fail(primary.error or "failed to resolve primary worktree")
         return r[Path].ok(primary.value.primary_root)
+
+    @staticmethod
+    def _matrix_from_metadata(meta: dict[str, object]) -> p.Result[m.Infra.WorkLaneMatrix]:
+        """Parse the only accepted serialized workspace lane matrix."""
+        raw = meta.get(c.Infra.WORK_BEADS_MATRIX_KEY)
+        if not isinstance(raw, str) or not raw.strip():
+            return r.fail("bead lane metadata is missing serialized matrix")
+        try:
+            return r.ok(m.Infra.WorkLaneMatrix.model_validate_json(raw))
+        except c.ValidationError as exc:
+            return r.fail(f"invalid serialized workspace lane matrix: {exc}")
+
+    @staticmethod
+    def _matrix_project_root(lane: Path, project: str) -> p.Result[Path]:
+        """Resolve one matrix project strictly within the root worktree."""
+        candidate = (lane / project).resolve()
+        if not candidate.is_relative_to(lane.resolve()):
+            return r.fail(f"matrix project resolves outside root worktree: {project}")
+        if not candidate.is_dir():
+            return r.fail(f"matrix project checkout is missing: {project}")
+        return r.ok(candidate)
+
+    def _matrix_for_started_lane(
+        self, primary_root: Path, lane: Path, branch: str
+    ) -> p.Result[m.Infra.WorkLaneMatrix]:
+        """Attach every governed project at its lane branch and capture CAS heads."""
+        projects = u.Infra.resolve_projects(primary_root, ())
+        if projects.failure:
+            return r.fail(projects.error or "failed to resolve workspace projects")
+        entries: list[m.Infra.WorkLaneEntry] = []
+        project_paths = (primary_root, *(project.path.resolve() for project in projects.value))
+        for project_path in dict.fromkeys(project_paths):
+            try:
+                relative = project_path.relative_to(primary_root.resolve())
+            except ValueError:
+                return r.fail(f"workspace project is outside root: {project_path}")
+            project_name = relative.as_posix() or "."
+            lane_project = self._matrix_project_root(lane, project_name)
+            if lane_project.failure:
+                return r.fail(lane_project.error or "invalid matrix project")
+            if project_name != ".":
+                attached = u.Infra.git_attach_branch_at_head(
+                    m.Infra.GitBranchRequest(
+                        repo_root=lane_project.value, branch=branch
+                    )
+                )
+                if attached.failure:
+                    return r.fail(
+                        attached.error
+                        or f"failed to attach workspace project branch: {project_name}"
+                    )
+            head = self._git_head(lane_project.value)
+            if head.failure:
+                return r.fail(head.error or f"failed to resolve matrix head: {project_name}")
+            entries.append(
+                m.Infra.WorkLaneEntry(
+                    project=project_name,
+                    branch=branch,
+                    head_oid=head.value,
+                    state="started",
+                )
+            )
+        if not entries:
+            return r.fail("workspace lane matrix has no projects")
+        return r.ok(m.Infra.WorkLaneMatrix(entries=tuple(entries)))
+
+    def _bound_root_matrix(
+        self, primary_root: Path, meta: dict[str, object]
+    ) -> p.Result[tuple[Path, m.Infra.WorkLaneMatrix]]:
+        """Validate metadata against the one registered root worktree and matrix."""
+        worktree = str(meta.get("worktree") or "").strip()
+        if not worktree:
+            return r.fail("bead lane metadata is missing root worktree")
+        matrix = self._matrix_from_metadata(meta)
+        if matrix.failure:
+            return r.fail(matrix.error or "invalid root lane matrix")
+        root_entries = [entry for entry in matrix.value.entries if entry.project == "."]
+        if len(root_entries) != 1:
+            return r.fail("workspace lane matrix requires exactly one root entry")
+        lane = self._bound_registered_lane(primary_root, root_entries[0].branch, worktree)
+        if lane.failure:
+            return r.fail(lane.error or "root lane binding failed")
+        return r.ok((lane.value, matrix.value))
 
     def _resolve_integration_base(self, primary_root: Path) -> p.Result[str]:
         explicit = (self.base or "").strip()

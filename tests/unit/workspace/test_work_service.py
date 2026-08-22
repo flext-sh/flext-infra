@@ -327,6 +327,17 @@ class TestsFlextInfraWorkService:
         )
         tm.that(started, has="BRANCH=feature/example-lane")
         tm.that(started, has="WORKTREE=")
+        matrix = m.Infra.WorkLaneMatrix.model_validate_json(
+            self._metadata(tmp_path)[c.Infra.WORK_BEADS_MATRIX_KEY]
+        )
+        assert matrix.entries[0].model_dump().keys() == {
+            "project",
+            "branch",
+            "head_oid",
+            "pr_number",
+            "pr_url",
+            "state",
+        }
         status = tm.ok(
             FlextInfraWorkService(
                 workspace_root=repository,
@@ -1339,9 +1350,9 @@ class TestsFlextInfraWorkService:
         tm.that(landed, has="receipt.operation=land")
         tm.that(landed, has="receipt.pr=7")
         tm.that(landed, has="receipt.base=main")
-        tm.that(landed, has=f"receipt.head_oid={metadata['head_oid']}")
-        assert metadata["pr_number"] == "7"
-        assert metadata["pr_url"] == "https://example.test/pr/7"
+        tm.that(landed, has=f"receipt.head_oid={root_entry.head_oid}")
+        assert root_entry.pr_number == "7"
+        assert root_entry.pr_url == "https://example.test/pr/7"
         pushed = tm.ok(
             u.Infra.git_rev_parse(
                 m.Infra.GitCommitishRequest(
@@ -1350,7 +1361,7 @@ class TestsFlextInfraWorkService:
                 )
             )
         ).oid
-        assert pushed == metadata["head_oid"]
+        assert pushed == root_entry.head_oid
 
     def test_land_allows_ancestor_cas(
         self, tmp_path: PathType, monkeypatch: pytest.MonkeyPatch

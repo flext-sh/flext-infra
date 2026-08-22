@@ -181,9 +181,10 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
                 f"lane {branch} preserved at {lane} - resolve the cause and "
                 f"re-run the same work start to resume provisioning"
             )
-        head = self._git_head(lane)
-        if head.failure:
-            return r.fail(head.error or "failed to read lane HEAD")
+        matrix = self._matrix_for_started_lane(primary_root, lane, branch)
+        if matrix.failure:
+            return r.fail(matrix.error or "failed to build workspace lane matrix")
+        root_entry = next(entry for entry in matrix.value.entries if entry.project == ".")
         decisive = "lane-reused" if reused is not None else "lane-ready"
         notes = (
             f"work start: cmd=make work WHAT=start cwd={lane} "
@@ -253,7 +254,7 @@ class FlextInfraWorkSagaStart(FlextInfraWorkSagaCommon):
             metadata=lane_metadata,
             labels=labels,
             notes=notes,
-            root=self.workspace_root,
+            root=primary_root,
         )
         if updated.failure:
             return r.fail(

@@ -252,7 +252,7 @@ class FlextInfraWorkSagaPublish(FlextInfraWorkSagaCommon):
             metadata=updated_metadata,
             labels=labels,
             notes=notes,
-            root=self.workspace_root,
+            root=primary_root,
         )
         if updated.failure:
             return r.fail(updated.error or "failed to record land on bead")
