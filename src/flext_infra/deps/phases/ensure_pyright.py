@@ -85,33 +85,6 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in env_dirs
         ]
 
-    def _declared_envs(
-        self,
-        *,
-        declared_python_dirs: t.StrSequence,
-        project_dir: Path | None,
-        rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        """Build environments for roots declared before they exist on disk.
-
-        Declared roots and on-disk discovery must select the SAME environments,
-        diagnostic overrides included. Emitting only the broad roots here made
-        the declared render drop the override blocks that the on-disk render
-        keeps, so apply and check disagreed and conform never converged.
-        """
-        source_path = self._project_source_path()
-        return (
-            *self._diagnostic_override_envs(
-                project_dir=project_dir, root_prefix=None, source_path=source_path
-            ),
-            *self._envs_for_dirs(
-                env_dirs=self._declared_environment_dirs(declared_python_dirs),
-                source_path=source_path,
-                project_root=rules.project_root,
-                rules=rules,
-            ),
-        )
-
     def _diagnostic_override_envs(
         self, *, project_dir: Path | None, root_prefix: Path | None, source_path: str
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
@@ -227,26 +200,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
-        # mro-0ccx4: a directory that exists but holds no Python files (e.g.
-        # examples/ with only a README) is not a productive root.
-        # mro-be9ld: u.Infra.analyzer_python_roots is the single owner conform
-        # and the extra-paths sync already share. Filtering rules.env_dirs alone
-        # missed every Python root outside that list (flext-grpc/docs), so
-        # conform emitted its execution environment and this phase removed it on
-        # the next pass -- gen check reported drift gen apply could never fix.
-        declared = tuple(
+        env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
-            if project_dir is None
-            or (
-                (project_dir / env_dir).is_dir()
-                and any((project_dir / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
-            )
-        )
-        env_dirs = (
-            declared
-            if project_dir is None
-            else tuple(u.Infra.analyzer_python_roots(project_dir, declared))
+            if project_dir is None or (project_dir / env_dir).is_dir()
         )
         source_path = self._project_source_path()
         return (
@@ -262,13 +219,15 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
     def environment_payloads_for_dirs(
-        self, env_dirs: t.StrSequence, *, project_dir: Path | None = None
+        self, env_dirs: t.StrSequence
     ) -> t.SequenceOf[t.JsonDict]:
         """Render configured environments for Python roots declared before writes."""
-        environments = self._declared_envs(
-            declared_python_dirs=env_dirs,
-            project_dir=project_dir,
-            rules=self._tool_config.tools.pyright.path_rules,
+        rules = self._tool_config.tools.pyright.path_rules
+        environments = self._envs_for_dirs(
+            env_dirs=self._declared_environment_dirs(env_dirs),
+            source_path=self._project_source_path(),
+            project_root=rules.project_root,
+            rules=rules,
         )
         return tuple(self._environment_payload(item) for item in environments)
 
@@ -321,6 +280,12 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.ProjectTypeOverrideConfig.model_validate(raw)
         )
         return validated
+
+    def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
+        """Venv settings."""
+        rules = self._tool_config.tools.pyright.path_rules
+        venv_path = rules.root_venv_path if is_root else rules.project_venv_path
+        return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
     def _expected_excludes(
         self, project_root: Path | None, analysis_exclusions: t.StrSequence
@@ -375,42 +340,32 @@ class FlextInfraEnsurePyrightConfigPhase:
         return list(ignores)
 
     def _expected_includes(
-        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
+        self,
+        *,
+        is_root: bool,
+        workspace_root: Path | None,
+        project_dir: Path | None,
+        generated_roots: t.StrSequence = (),
     ) -> t.StrSequence:
         """Return the auto-discovered top-level Python roots that pyright should analyze."""
         rules = self._tool_config.tools.pyright.path_rules
-        # u.Infra.analyzer_python_roots is the single owner shared with conform
-        # and the extra-paths sync, so a root one surface writes is never erased
-        # by the next. It skips directories owning a pyproject.toml, so the
-        # workspace members the child loop below contributes with their own
-        # prefix are never duplicated as roots of this project.
+        # Why (fixed point): a root the active codegen plan materializes counts
+        # before it exists on disk, so plan and post-apply verification agree.
         if not is_root:
-            if project_dir is None:
-                return list(rules.env_dirs)
-            return list(
-                u.Infra.analyzer_python_roots(
-                    project_dir,
-                    tuple(
-                        env_dir
-                        for env_dir in rules.env_dirs
-                        if (project_dir / env_dir).is_dir()
-                        and any((project_dir / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
-                    ),
-                )
-            )
+            return [
+                env_dir
+                for env_dir in rules.env_dirs
+                if project_dir is None
+                or (project_dir / env_dir).is_dir()
+                or env_dir in generated_roots
+            ]
         if workspace_root is None:
             return ()
-        includes: t.MutableSequenceOf[str] = list(
-            u.Infra.analyzer_python_roots(
-                workspace_root,
-                tuple(
-                    env_dir
-                    for env_dir in rules.env_dirs
-                    if (workspace_root / env_dir).is_dir()
-                    and any((workspace_root / env_dir).rglob(c.Infra.EXT_PYTHON_GLOB))
-                ),
-            )
-        )
+        includes: t.MutableSequenceOf[str] = [
+            env_dir
+            for env_dir in rules.env_dirs
+            if (workspace_root / env_dir).is_dir() or env_dir in generated_roots
+        ]
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
             return includes
@@ -440,7 +395,6 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
-        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
@@ -449,12 +403,17 @@ class FlextInfraEnsurePyrightConfigPhase:
         expected_ignores = self._expected_ignores(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
-        expected_includes = (
-            declared_python_dirs
-            if declared_python_dirs_are_complete
-            else self._expected_includes(
-                is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
-            )
+        # mro-j47u (codex): pre-write manifests supply the same typed roots that
+        # filesystem discovery observes after the atomic scaffold is materialized.
+        expected_includes = declared_python_dirs or self._expected_includes(
+            is_root=is_root,
+            workspace_root=workspace_root,
+            project_dir=project_dir,
+            generated_roots=(
+                paths_manager.generated_python_roots
+                if paths_manager is not None
+                else ()
+            ),
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -466,20 +425,18 @@ class FlextInfraEnsurePyrightConfigPhase:
                 else None
             )
         )
-        if declared_python_dirs_are_complete:
-            expected_envs = (
-                self._declared_envs(
-                    declared_python_dirs=declared_python_dirs,
-                    project_dir=project_dir,
-                    rules=stub_rules,
-                )
-                if declared_python_dirs
-                else ()
+        expected_envs = (
+            self._envs_for_dirs(
+                env_dirs=self._declared_environment_dirs(declared_python_dirs),
+                source_path=self._project_source_path(),
+                project_root=stub_rules.project_root,
+                rules=stub_rules,
             )
-        else:
-            expected_envs = self._expected_envs(
+            if declared_python_dirs
+            else self._expected_envs(
                 is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
             )
+        )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
             c.Infra.PYRIGHT
         )
@@ -491,9 +448,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             phase_builder = phase_builder.list(c.Infra.IGNORE, expected_ignores)
         else:
             phase_builder = phase_builder.deprecated(c.Infra.IGNORE)
-        if declared_python_dirs_are_complete and not expected_includes:
-            phase_builder = phase_builder.value("include", [])
-        elif expected_includes:
+        if expected_includes:
             phase_builder = phase_builder.list("include", expected_includes)
         else:
             phase_builder = phase_builder.deprecated("include")
@@ -512,7 +467,8 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        phase_builder = phase_builder.deprecated("venv").deprecated(c.Infra.VENV_PATH)
+        for key, value in self._venv_settings(is_root=is_root).items():
+            phase_builder = phase_builder.value(key, value)
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [
@@ -548,7 +504,6 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
-        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply the managed pyright configuration for one TOML document."""
@@ -561,7 +516,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_kind=project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
-                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             ),
         )
@@ -576,7 +530,6 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
-        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply managed pyright settings directly to one normalized payload."""
@@ -589,7 +542,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_kind=project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
-                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             ),
         )

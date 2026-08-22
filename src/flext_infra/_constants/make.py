@@ -37,7 +37,6 @@ class FlextInfraConstantsMake:
     VERB_PUBLISH: Final[str] = "publish"
     VERB_RUN: Final[str] = "run"
     VERB_CHECKS: Final[str] = "checks"
-    VERB_CLEAN: Final[str] = "clean"
 
     # --- Canonical make contract constants (was: class Make) ---
 
@@ -71,11 +70,17 @@ class FlextInfraConstantsMake:
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
-    # The check vocabulary: read-only gates only. `format` is NOT here -- it
-    # rewrites files, so it is owned by `make fmt APPLY=Y` / `make fix APPLY=Y`
-    # (PROJECT_CHECK_GATES_FIXABLE_VALUES) and a read-only verb must never
-    # invoke it.
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "security",
+        "markdown",
+        "smells",
+    )
+    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         "lint",
         "pyrefly",
         "mypy",
@@ -84,36 +89,34 @@ class FlextInfraConstantsMake:
         "markdown",
         "smells",
     )
-    # The gates CI=N owns: the type checkers only. They are the slow, whole-
-    # program analyses, so CI=Y runs the strict complement of this set -- ruff
-    # lint included -- and the two contexts can never overlap nor leave a gate
-    # unowned. An unset CI runs every allowed gate.
-    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = ("pyrefly", "mypy")
-    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
-        PROJECT_CHECK_GATES_ALLOWED_VALUES
+    # Why (mro-v4p5): under CI=Y, make check skips ruff lint + pyrefly — fmt/fix
+    # still mutate via ruff; CI must not re-run those read-only gates.
+    PROJECT_CHECK_GATES_CI_SKIP_VALUES: Final[tuple[str, ...]] = ("lint", "pyrefly")
+    PROJECT_CHECK_GATES_CI_SKIP: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_CI_SKIP_VALUES
     )
-    # mro-38p39: the gates that can repair what they report. `make fix APPLY=Y`
-    # routes through `check run --fix`, which without a selector would execute
-    # every gate -- including pyright and mypy, which fix nothing and cost ~37s,
-    # timing the verb out. Formatting is NOT here: `format` belongs to
-    # `make fmt` alone -- fix repairs findings, fmt rewrites style.
-    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = ("markdown", "smells")
-    # mro-x0rau.3: the FILE/FILES/CHANGED_ONLY fast-path gate restriction was
-    # deleted with base_verbs.mk.j2 (commit 2a4a8ea7a). File-scoped runs now go
-    # through the same typed gate pipeline as a full run, so every allowed gate
-    # is file-scopable and no separate fast-path allowlist exists.
+    PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+    )
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
     PROJECT_CHECK_GATES_DEFAULT: Final[str] = ",".join(
         PROJECT_CHECK_GATES_DEFAULT_VALUES
     )
-
+    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = ",".join(
+        PROJECT_FAST_PATH_CHECK_GATE_VALUES
+    )
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
         "build",
         "check",
         "clean",
+        "docs",
         "fmt",
         "fix",
         "scan",
@@ -122,7 +125,6 @@ class FlextInfraConstantsMake:
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
-        "MAKEFILES",
         "MAKEFLAGS",
         "MAKELEVEL",
         "MAKEOVERRIDES",
@@ -135,11 +137,6 @@ class FlextInfraConstantsMake:
         "MISE_VERBOSE",
         "MFLAGS",
         "MYPYPATH",
-        # mro-izia.1 (agent kimi): workspace selection is an ARGUMENT of the
-        # invocation that owns it, never ambient state a nested make inherits.
-        # A selection exported here (directly, or smuggled through
-        # GNUMAKEFLAGS/MAKEFLAGS) reached generated project makes that never
-        # declare that name and failed them with `undeclared project <name>`.
         "PROJECT",
         "PROJECTS",
         "PYTHONPATH",
@@ -167,11 +164,6 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
     PYTEST_ENV_COV: Final[str] = "FLEXT_PYTEST_COV_RAW"
     PYTEST_ENV_CI: Final[str] = "CI"
-    # Why: the argv that writes each artifact and the gate that later verifies
-    # it must name the SAME file. A bare --cov-report=xml wrote coverage beside
-    # the invocation while the gate read the report dir, failing a green suite.
-    PYTEST_COVERAGE_XML: Final[str] = "coverage.xml"
-    PYTEST_JUNIT_XML: Final[str] = "junit.xml"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
@@ -263,6 +255,7 @@ class FlextInfraConstantsMake:
         ),
         ("scan", "Run all security checks"),
         ("fmt", "Run all formatting"),
+        ("docs", "Run docs (WHAT= to select)"),
         ("test", "Run bounded pytest (FILE=/MATCH= selectors)"),
         ("val", "Run validate gates (FIX=1 to auto-fix)"),
         ("clean", "Clean build/test/type artifacts"),
