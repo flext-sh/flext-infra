@@ -300,7 +300,7 @@ testpaths = [
 
 [tool.ruff]
 exclude = [
-{% for item in tooling.tools.ruff.exclude | sort %}
+{% for item in tooling_runtime.ruff_exclude %}
   {{ item | tojson }},
 {% endfor %}
 ]
@@ -396,3 +396,4 @@ whitelines = {{ tooling.tools.yamlfix.whitelines }}
 
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
+exclude-newer = "{{ uv_exclude_newer }}"

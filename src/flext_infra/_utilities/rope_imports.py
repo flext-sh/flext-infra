@@ -6,16 +6,15 @@ import ast
 from collections import defaultdict
 from pathlib import Path
 
-from flext_cli import r, u
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
+from flext_cli import u
+
+from flext_infra import c, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
 )
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.transformers import FlextInfraRefactorProjectAliasMigrator
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -54,13 +53,27 @@ class FlextInfraUtilitiesRopeImports:
 
     @classmethod
     def imported_module_paths(
-        cls, module_imports: t.Infra.RopeModuleImports
+        cls, module_imports: t.Infra.RopeModuleImports, *, current_package: str = ""
     ) -> t.StrSequence:
         """Return runtime import targets represented by a Rope module import set."""
         imported_paths: list[str] = []
         for import_statement in cls.import_statements(module_imports):
+            declared_name = (
+                getattr(import_statement.import_info, "module_name", "") or ""
+            )
+            level = getattr(import_statement.import_info, "level", 0) or 0
             module_name = cls.import_statement_module_name(import_statement)
             names_and_aliases = cls.import_statement_names_and_aliases(import_statement)
+            if current_package and level > 0:
+                resolved = FlextInfraUtilitiesRopeAnalysis.resolve_import_module(
+                    current_package=current_package,
+                    module_name=declared_name,
+                    level=level,
+                )
+                if not resolved:
+                    resolved = current_package
+                if resolved != declared_name:
+                    module_name = resolved
             if module_name is not None:
                 imported_paths.append(module_name)
                 imported_paths.extend(
@@ -470,12 +483,15 @@ class FlextInfraUtilitiesRopeImports:
         import_statements = FlextInfraUtilitiesRopeImports.import_statements(
             module_imports
         )
-        return tuple(
-            import_stmt.import_info
-            for import_stmt in import_statements
-            if FlextInfraUtilitiesRopeRuntime.is_from_import(import_stmt.import_info)
-            and import_stmt.import_info.level == 0
-        )
+        absolute_from_imports: list[t.Infra.RopeFromImport] = []
+        for import_stmt in import_statements:
+            import_info = import_stmt.import_info
+            if (
+                FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
+                and import_info.level == 0
+            ):
+                absolute_from_imports.append(import_info)
+        return tuple(absolute_from_imports)
 
     @classmethod
     def relocate_from_import_aliases(

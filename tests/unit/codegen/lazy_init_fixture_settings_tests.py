@@ -67,8 +67,8 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
         # loading the runtime singleton modules.
         tm.that(init_content, contains="from ._config import config")
         tm.that(init_content, contains="from ._settings import settings")
-        tm.that(init_content, contains="config as config")
-        tm.that(init_content, contains="settings as settings")
+        tm.that(init_content, lacks="config as config")
+        tm.that(init_content, lacks="settings as settings")
         tm.that(init_content, lacks="_fixtures.settings")
         tm.that(init_content, lacks="reset_settings as reset_settings")
         tm.that(init_content, lacks="FlextSampleConfig")

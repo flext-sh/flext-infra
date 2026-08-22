@@ -1,6 +1,16 @@
-<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
 # flext-infra
+
+<!-- TOC START -->
+- [Purpose](#purpose)
+- [Module Map](#module-map)
+- [Collection Rules](#collection-rules)
+- [Operation Flow](#operation-flow)
+- [Integration Points](#integration-points)
+- [Quality Gates](#quality-gates)
+- [Governance Pointer](#governance-pointer)
+<!-- TOC END -->
+
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 **Version**: `0.12.0rc0` | **Python**: 3.13+ | **Project class**: `infra`
 
@@ -24,7 +34,8 @@ management
 
 ## Collection Rules
 
-Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+Read
+[`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist
 (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline,
 slot registry verification).
@@ -44,25 +55,26 @@ slot registry verification).
   filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of
   the facade classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
-  `FlextInfraConstants`, `FlextInfraModels`,
-  `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols` (+5 more).
+  `FlextInfraConstants`, `FlextInfraGitService`, `FlextInfraModels`,
+  `FlextInfraProjectSelectionServiceBase` (+6 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates
 
 Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`,
-`docs`) — see `AGENTS.md` §5 (Make Contract) and the
-[`flext-quality-gates`](https://github.com/flext-sh/flext/blob/main/.agents/skills/flext-quality-gates/SKILL.md)
-skill for selectors and thresholds.
+`docs`) — see
+[`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
+`Build & Test` and `Required Python quality gates`; selector routing is owned
+universally by `config.AiHub.paths.agents_home`/`skills/make-check/SKILL.md`.
 
 ## Governance Pointer
 
 - Engineering law:
-  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 - Governance + ADRs:
-  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/main/docs/GOVERNANCE.md)
+  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/GOVERNANCE.md)
 - Skills index:
-  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/main/.agents/skills/)
+  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/0.12.0-dev/.agents/skills/)
 - Onboarding:
-  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/main/docs/guides/onboarding.md)
+  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/onboarding.md)
 - Full project portal: [`docs/index.md`](docs/index.md).

@@ -3,22 +3,26 @@
 from __future__ import annotations
 
 from functools import cache
+from importlib import util as importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_core import r
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c, m, r, t
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
-class FlextInfraUtilitiesDiscovery:
+class FlextInfraUtilitiesDiscovery(
+    FlextInfraUtilitiesNamespaceConfig,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeAnalysis,
+):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
     _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
@@ -95,36 +99,25 @@ class FlextInfraUtilitiesDiscovery:
         )
         return Path(project_root) if project_root else None
 
-    @staticmethod
+    @classmethod
     @cache
-    def _discover_package_from_path(file_path: str) -> str:
+    def _discover_package_from_path(cls, file_path: str) -> str:
         """Discover the package path cached by file path."""
         resolved = Path(file_path).resolve()
-        project_root_value = (
-            FlextInfraUtilitiesDiscovery._discover_project_root_from_path(file_path)
-        )
+        project_root_value = cls._discover_project_root_from_path(file_path)
         project_root = Path(project_root_value) if project_root_value else None
-        normalized_parts = FlextInfraUtilitiesDiscovery._normalized_python_parts(
-            resolved,
-            FlextInfraUtilitiesDiscovery._relative_path_parts(resolved, project_root),
+        normalized_parts = cls._normalized_python_parts(
+            resolved, cls._relative_path_parts(resolved, project_root)
         )
-        package_name = FlextInfraUtilitiesDiscovery._package_name_from_wrapper_parts(
-            normalized_parts
-        )
+        package_name = cls._package_name_from_wrapper_parts(normalized_parts)
         if package_name:
             return package_name
-        package_name = FlextInfraUtilitiesDiscovery._package_name_from_src_dir(resolved)
+        package_name = cls._package_name_from_src_dir(resolved)
         if package_name:
             return package_name
-        absolute_parts = FlextInfraUtilitiesDiscovery._normalized_python_parts(
-            resolved, resolved.parts
-        )
+        absolute_parts = cls._normalized_python_parts(resolved, resolved.parts)
         for index, part in enumerate(absolute_parts):
-            package_name = (
-                FlextInfraUtilitiesDiscovery._package_name_from_wrapper_parts(
-                    absolute_parts[index:]
-                )
-            )
+            package_name = cls._package_name_from_wrapper_parts(absolute_parts[index:])
             if package_name and part in c.Infra.ROOT_WRAPPER_SEGMENTS:
                 return package_name
         if resolved.name == c.Infra.INIT_PY:
@@ -140,16 +133,69 @@ class FlextInfraUtilitiesDiscovery:
         if project_root is None:
             return ""
 
-        return FlextInfraUtilitiesPyproject.project_package_name(project_root)
+        return cls.project_package_name(project_root)
 
-    @staticmethod
-    def package_name(file_path: Path) -> str:
+    @classmethod
+    def package_name(cls, file_path: Path) -> str:
         """Discover the module or package path for one Python file or package directory."""
-        return FlextInfraUtilitiesDiscovery._discover_package_from_path(str(file_path))
+        return cls._discover_package_from_path(str(file_path))
+
+    @classmethod
+    def alias_migration_context(cls, file_path: Path) -> m.Infra.AliasMigrationContext:
+        """Resolve project policy ownership and public import root for one file."""
+        project_root = cls.project_root(file_path)
+        if project_root is None:
+            return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
+        policy_owner = cls.project_package_name(project_root)
+        try:
+            relative_parts = (
+                file_path.resolve().relative_to(project_root.resolve()).parts
+            )
+        except ValueError:
+            relative_parts = ()
+        import_root = (
+            c.Infra.DIR_TESTS
+            if relative_parts and relative_parts[0] == c.Infra.DIR_TESTS
+            else policy_owner
+        )
+        return m.Infra.AliasMigrationContext(
+            policy_owner=policy_owner, import_root=import_root
+        )
 
     @staticmethod
+    def package_importable(package_name: str) -> bool:
+        """Return whether the active official environment resolves one package."""
+        # Why (mro-27a9e.1, multi-agent): standalone consumers inherit aliases
+        # from installed FLEXT artifacts; plain modules are never facade parents.
+        try:
+            spec = importlib_util.find_spec(package_name)
+        except c.EXC_OS_TYPE_VALUE:
+            return False
+        else:
+            return spec is not None and spec.submodule_search_locations is not None
+
+    @classmethod
+    @cache
+    def installed_package_exports(cls, package_name: str) -> frozenset[str]:
+        """Return the explicit ABI published by one installed package root."""
+        try:
+            spec = importlib_util.find_spec(package_name)
+        except c.EXC_OS_TYPE_VALUE:
+            return frozenset()
+        if spec is None or spec.submodule_search_locations is None or not spec.origin:
+            return frozenset()
+        init_path = Path(spec.origin)
+        if not init_path.is_file():
+            return frozenset()
+        try:
+            source = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        except OSError:
+            return frozenset()
+        return frozenset(cls.public_export_names_source(source))
+
+    @classmethod
     def discover_python_dirs(
-        project_dir: Path, *, skip_dirs: frozenset[str] | None = None
+        cls, project_dir: Path, *, skip_dirs: frozenset[str] | None = None
     ) -> t.StrSequence:
         """Return top-level directories that contain at least one Python file."""
         if not project_dir.is_dir():
@@ -157,9 +203,7 @@ class FlextInfraUtilitiesDiscovery:
         effective_skip = (
             skip_dirs if skip_dirs is not None else c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
         )
-        workspace_excluded = FlextInfraUtilitiesDiscovery._workspace_excluded_top_dirs(
-            project_dir
-        )
+        workspace_excluded = cls._workspace_excluded_top_dirs(project_dir)
         return [
             subdir.name
             for subdir in sorted(project_dir.iterdir())
@@ -170,26 +214,52 @@ class FlextInfraUtilitiesDiscovery:
             and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
         ]
 
+    @classmethod
+    def analyzer_python_roots(
+        cls, project_dir: Path, declared: t.StrSequence
+    ) -> t.StrSequence:
+        """Return the Python roots every analyzer surface must agree on.
+
+        Conform, the deps modernizer and the extra-paths sync each described
+        the same concept on their own: some filtered the declared ``env_dirs``
+        by existence, others discovered roots on disk. A project owning a
+        Python directory outside ``env_dirs`` therefore had that root written
+        by one surface and erased by the next, so apply never reached a fixed
+        point and check reported permanent drift. This is the single owner:
+        declared roots keep their configured order, because a pre-write
+        scaffold can only offer those, and discovery appends the remaining
+        roots that actually exist, which is the only set an analyzer accepts.
+
+        A directory owning a ``pyproject.toml`` is a project in its own right,
+        never a root of this one: workspace members are Python directories too,
+        and each is analyzed under its own manifest.
+        """
+        discovered = cls.discover_python_dirs(project_dir)
+        return (
+            *declared,
+            *(
+                root
+                for root in discovered
+                if root not in declared
+                and not (project_dir / root / c.Infra.PYPROJECT_FILENAME).is_file()
+            ),
+        )
+
     @staticmethod
     def _workspace_excluded_top_dirs(project_dir: Path) -> frozenset[str]:
         """Return first segments of manifest-excluded workspace-relative paths.
 
-        Paths declared under ``exclusions`` in the repository-local
-        ``config/workspace.yaml`` are vendored, non-source trees (e.g. document
-        submodules). They must never be discovered as Python source roots,
-        regardless of any Python files they happen to contain. A repository
-        without a manifest (or a derivation fallback) contributes nothing.
+        Immutable ``content_only`` repositories and explicit ``exclusions`` in
+        ``config/workspace.yaml`` must never be discovered as Python source,
+        regardless of any Python files they happen to contain.
         """
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-        spec = FlextInfraWorkspaceDetector.load_workspace_spec(project_dir)
-        if spec.failure:
-            return frozenset()
-        return frozenset(
-            exclusion.path.parts[0]
-            for exclusion in spec.value.exclusions
-            if exclusion.path.parts
-        )
+        excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
+        if excluded.failure:
+            msg = excluded.error or "workspace analysis scope is unavailable"
+            raise ValueError(msg)
+        return frozenset(path.parts[0] for path in excluded.value if path.parts)
 
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
@@ -254,8 +324,8 @@ class FlextInfraUtilitiesDiscovery:
             and (child / c.Infra.PYPROJECT_FILENAME).is_file()
         )
 
-    @staticmethod
-    def rope_workspace_root(workspace_root: Path) -> Path:
+    @classmethod
+    def rope_workspace_root(cls, workspace_root: Path) -> Path:
         """Return the canonical root for a shared Rope project."""
         resolved_root = workspace_root.resolve()
         has_project_marker = any(
@@ -265,20 +335,18 @@ class FlextInfraUtilitiesDiscovery:
                 resolved_root / c.Infra.MAKEFILE_FILENAME,
             )
         )
-        if (
-            not has_project_marker
-            and FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(resolved_root)
-        ):
+        if not has_project_marker and cls.namespace_scan_dirs(resolved_root):
             return resolved_root
-        if FlextInfraUtilitiesDiscovery._child_project_roots(resolved_root):
+        if cls._child_project_roots(resolved_root):
             return resolved_root
-        project_root = FlextInfraUtilitiesDiscovery.project_root(resolved_root)
+        project_root = cls.project_root(resolved_root)
         if project_root is not None:
             return project_root
         return resolved_root
 
-    @staticmethod
+    @classmethod
     def find_all_pyproject_files(
+        cls,
         workspace_root: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
@@ -295,9 +363,7 @@ class FlextInfraUtilitiesDiscovery:
             if project_paths is not None
             else [
                 workspace_root.resolve(),
-                *FlextInfraUtilitiesProjectDiscovery.discover_external_workspace_roots(
-                    workspace_root
-                ),
+                *cls.discover_external_workspace_roots(workspace_root),
             ]
         )
         all_files: list[Path] = []
@@ -348,14 +414,14 @@ class FlextInfraUtilitiesDiscovery:
         )
         if not constants_file.is_file():
             return ()
-        project_root = FlextInfraUtilitiesDiscovery.project_root(constants_file)
+        project_root = cls.project_root(constants_file)
         if project_root is None:
             return ()
         cache_key = (str(constants_file.resolve()), return_module)
         if (cached := cls._PARENT_CONSTANTS_MRO_CACHE.get(cache_key)) is not None:
             return cached
-        current_module = FlextInfraUtilitiesDiscovery.package_name(constants_file)
-        result = FlextInfraUtilitiesRopeAnalysis.parent_constants_targets(
+        current_module = cls.package_name(constants_file)
+        result = cls.parent_constants_targets(
             constants_file,
             project_root,
             return_module=return_module,
@@ -366,9 +432,9 @@ class FlextInfraUtilitiesDiscovery:
         cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
         return result
 
-    @staticmethod
+    @classmethod
     def resolve_transitive_parent_packages(
-        workspace_root: Path, package_names: t.StrSequence
+        cls, workspace_root: Path, package_names: t.StrSequence
     ) -> t.StrSequence:
         """Resolve parent packages transitively with ancestors ordered before children."""
         resolved: list[str] = []
@@ -379,13 +445,9 @@ class FlextInfraUtilitiesDiscovery:
             if not package_name or package_name in visited:
                 return
             visited.add(package_name)
-            init_path = FlextInfraUtilitiesDiscovery.package_init_path(
-                workspace_root, package_name
-            )
+            init_path = cls.package_init_path(workspace_root, package_name)
             if init_path is not None:
-                for (
-                    parent_package
-                ) in FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
+                for parent_package in cls.resolve_parent_constants_mro(
                     init_path.parent, return_module=True
                 ):
                     visit(parent_package)
@@ -393,18 +455,15 @@ class FlextInfraUtilitiesDiscovery:
 
         for package_name in package_names:
             visit(package_name)
-        prioritized = FlextInfraUtilitiesDiscovery.package_source_priority((
-            *resolved,
-            *package_names,
-        ))
+        prioritized = cls.package_source_priority((*resolved, *package_names))
         return tuple(prioritized)
 
-    @staticmethod
+    @classmethod
     def contextual_runtime_alias_sources(
-        *, project_root: Path, file_path: Path
+        cls, *, project_root: Path, file_path: Path
     ) -> t.MappingKV[str, frozenset[str]]:
         """Return allowed foreign-package runtime alias sources for one file."""
-        package_name = FlextInfraUtilitiesPyproject.project_package_name(project_root)
+        package_name = cls.project_package_name(project_root)
         if not package_name:
             return {}
         package_dir = (
@@ -412,15 +471,13 @@ class FlextInfraUtilitiesDiscovery:
         )
         if not (package_dir / c.Infra.INIT_PY).is_file():
             return {}
-        parent_packages = FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
+        parent_packages = cls.resolve_parent_constants_mro(
             package_dir, return_module=True
         )
         if not parent_packages:
             return {}
-        transitive_parent_packages = (
-            FlextInfraUtilitiesDiscovery.resolve_transitive_parent_packages(
-                project_root.parent, parent_packages
-            )
+        transitive_parent_packages = cls.resolve_transitive_parent_packages(
+            project_root.parent, parent_packages
         )
         allowed_sources = frozenset(
             package.split(".", maxsplit=1)[0]

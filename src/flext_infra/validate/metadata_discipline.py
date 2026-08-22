@@ -15,13 +15,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c
-from flext_infra.validate._rope_import_boundary import _RopeImportBoundaryBase
+from flext_infra.validate._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraValidateMetadataDiscipline(_RopeImportBoundaryBase):
+class FlextInfraValidateMetadataDiscipline(FlextInfraRopeImportBoundaryBase):
     """Detect rogue ``tomllib`` imports outside canonical metadata modules."""
 
     _BANNED: ClassVar[frozenset[str]] = c.Infra.METADATA_TOMLLIB_MODULES

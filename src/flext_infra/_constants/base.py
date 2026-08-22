@@ -117,6 +117,8 @@ class FlextInfraConstantsBase(
     "Pyrefly ignore-errors-in-generated-code key."
     MINVERSION: Final[str] = "minversion"
     "Pytest minversion settings key."
+    FLEXT_SLOW_TIMEOUT_SECONDS: Final[str] = "flext_slow_timeout_seconds"
+    "Enforcement-plugin ini key carrying the config-owned slow-item budget."
     PYTHON_CLASSES: Final[str] = "python_classes"
     "Pytest python_classes settings key."
     PYTHON_FILES: Final[str] = "python_files"
@@ -183,6 +185,7 @@ class FlextInfraConstantsBase(
     GREEN: Final[str] = "\x1b[32m"
     YELLOW: Final[str] = "\x1b[33m"
     BLUE: Final[str] = "\x1b[34m"
+    CYAN: Final[str] = "\x1b[36m"
     BOLD: Final[str] = "\x1b[1m"
 
     # Unicode/ASCII symbols
@@ -347,6 +350,8 @@ class FlextInfraConstantsBase(
     RK_PROJECTS: Final[str] = "projects"
     RK_WORKSPACE: Final[str] = "workspace"
     RK_ROOT: Final[str] = "root"
+    ROOT_PROJECT_SELECTOR: Final[str] = "."
+    "Project selector naming the workspace root itself."
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"

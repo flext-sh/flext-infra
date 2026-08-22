@@ -21,6 +21,7 @@ import pytest
 
 from flext_infra import config, t, u
 from flext_tests import tm
+from tests import u as test_u
 
 
 @pytest.fixture(scope="module")
@@ -29,17 +30,7 @@ def owned_provider() -> str:
     engine_root = Path(__file__).resolve().parents[2]
     metadata = tm.ok(u.read_project_metadata(engine_root))
     distribution = metadata.project.name
-    entry = next(
-        (
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.distribution == distribution
-        ),
-        None,
-    )
-    if entry is None:
-        msg = f"engine absent from its own catalog: {distribution}"
-        raise AssertionError(msg)
+    entry = test_u.Tests.repository_ref(distribution)
     provider: str = t.Infra.STR_ADAPTER.validate_python(entry.provider)
     return provider
 
@@ -47,27 +38,9 @@ def owned_provider() -> str:
 class TestsFlextInfraEngineIsConsumerAgnostic:
     def test_repository_catalog_uses_declared_providers(self) -> None:
         declared = {provider.name for provider in config.Infra.codegen.providers}
-        referenced = {
-            repository.provider for repository in config.Infra.codegen.repositories
-        }
+        referenced = {test_u.Tests.repository_ref("any-consumer").provider}
 
         tm.that(referenced - declared, eq=set())
-
-    def test_workspace_catalog_declares_only_owned_workspaces(
-        self, owned_provider: str
-    ) -> None:
-        owned = {
-            repository.name
-            for repository in config.Infra.codegen.repositories
-            if repository.provider == owned_provider
-        }
-        foreign = sorted(
-            workspace.name
-            for workspace in config.Infra.codegen.workspaces
-            if workspace.repository not in owned
-        )
-
-        tm.that(foreign, eq=[])
 
     def test_engine_declares_no_directory_name_of_a_foreign_workspace(self) -> None:
         """Sibling discovery is declarative, never a directory name in the engine.

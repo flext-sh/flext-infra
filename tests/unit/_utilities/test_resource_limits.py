@@ -32,9 +32,11 @@ class TestsFlextInfraUtilitiesResourceLimits:
         result = u.Cli.run_raw(command, timeout=u.Infra.mypy_runner_timeout(limit))
 
         tm.that(Path(command[0]).name, eq=c.Infra.TIMEOUT_COMMAND)
-        tm.that(command[3], eq="60s")
+        tm.that(command[3], eq=f"{limit.timeout_seconds}s")
         tm.that(Path(command[4]).name, eq=c.Infra.PRLIMIT_COMMAND)
-        tm.that(command[5], eq="--as=6442450944:6442450944")
+        tm.that(
+            command[5], eq=f"--as={limit.memory_limit_bytes}:{limit.memory_limit_bytes}"
+        )
         tm.ok(result)
         tm.that(result.value.exit_code, eq=0)
         tm.that(result.value.stdout, has="bounded-process")
@@ -71,7 +73,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     def test_mypy_resource_contract_rejects_memory_above_ceiling(self) -> None:
         """Reject a configured limit above the canonical hard ceiling."""
-        with pytest.raises(ValueError, match="less than or equal to 6144"):
+        with pytest.raises(
+            ValueError,
+            match=f"less than or equal to {c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT}",
+        ):
             m.Infra.MypyResourceLimit(
                 memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT + 1,
                 timeout_seconds=60,
@@ -79,7 +84,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     def test_mypy_resource_contract_rejects_timeout_above_ceiling(self) -> None:
         """Reject a wall-time configuration above the canonical ceiling."""
-        with pytest.raises(ValueError, match="less than or equal to 600"):
+        with pytest.raises(
+            ValueError,
+            match=f"less than or equal to {c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT}",
+        ):
             m.Infra.MypyResourceLimit(
                 memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT + 1,
@@ -91,10 +99,34 @@ class TestsFlextInfraUtilitiesResourceLimits:
             memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT, timeout_seconds=60
         )
         diagnostic = u.Infra.mypy_failure_diagnostic(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=124), limit
+            m.Cli.CommandOutput(
+                stdout="", stderr="", exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE
+            ),
+            limit,
         )
 
         tm.that(
             diagnostic,
-            has=["memory_limit=6144 MiB", "timeout=60s", "exit=124", "signal=none"],
+            has=[
+                f"memory_limit={limit.memory_limit_mb} MiB",
+                f"timeout={limit.timeout_seconds}s",
+                f"exit={c.Infra.PROCESS_TIMEOUT_EXIT_CODE}",
+                "signal=none",
+            ],
         )
+
+    def test_mypy_signal_diagnostic_preserves_both_output_streams(self) -> None:
+        """Expose traceback output when Mypy also writes an error banner."""
+        limit = m.Infra.MypyResourceLimit(
+            memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT, timeout_seconds=60
+        )
+        diagnostic = u.Infra.mypy_failure_diagnostic(
+            m.Cli.CommandOutput(
+                stdout="Traceback: checker frame",
+                stderr="INTERNAL ERROR",
+                exit_code=-11,
+            ),
+            limit,
+        )
+
+        tm.that(diagnostic, has=["Traceback: checker frame", "INTERNAL ERROR"])

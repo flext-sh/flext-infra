@@ -24,9 +24,6 @@ if TYPE_CHECKING:
     from tests import t
 
 
-pytestmark = pytest.mark.timeout(60)
-
-
 class TestHandleLazyInit:
     """Tests for direct init command dispatch."""
 
@@ -89,6 +86,10 @@ class TestMainCommandDispatch:
         tm.that(result, eq=0)
 
 
+# Exemplar: every test here spawns a fresh interpreter to prove the real
+# `python -m flext_infra` entry point. That import chain, not the assertion,
+# dominates the runtime, so the class opts into the config-owned slow budget.
+@pytest.mark.slow
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 
@@ -113,13 +114,14 @@ class TestMainEntryPoint:
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""
-        result = u.Cli.run_raw([
-            sys.executable,
-            "-m",
-            "flext_infra",
-            "codegen",
-            "unknown-command",
-        ])
+        # The child renders through the CLI console, which honours COLUMNS and
+        # would otherwise wrap the message at the developer's terminal width,
+        # splitting the asserted phrase. Pin the width so the assertion tests
+        # the message, not the terminal the suite happens to run in.
+        result = u.Cli.run_raw(
+            [sys.executable, "-m", "flext_infra", "codegen", "unknown-command"],
+            env={"COLUMNS": "200"},
+        )
 
         tm.ok(result)
         tm.that(result.value.exit_code, eq=2)

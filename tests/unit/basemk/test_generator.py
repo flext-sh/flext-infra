@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_infra import config, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 
@@ -30,6 +30,35 @@ class TestsFlextInfraBasemkGenerator:
 
         tm.ok(result)
         tm.that(result.value, has="PROJECT_NAME ?=")
+
+    # mro-x0rau.3 deleted the `pr` recipe (base_pr.mk.j2) with the rest of the
+    # unreachable verb surface, so the two tests that guarded its PR_* flag
+    # rendering are removed with the feature rather than kept asserting a
+    # template that no longer exists.
+
+    def test_generator_enforces_pytest_process_deadline(self) -> None:
+        """The rendered base.mk carries the config-owned invocation deadline.
+
+        mro-wkii.17.37 renamed the hard process boundary to
+        ``PYTEST_RUN_TIMEOUT_SECONDS`` and moved enforcement into the typed
+        Python runner, so the generated Make surface publishes the budget and
+        delegates execution instead of wrapping pytest in a shell timeout.
+        """
+        policy = config.Infra.tooling.tools.pytest
+
+        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
+
+        tm.ok(result)
+        tm.that(
+            result.value,
+            has=(f"PYTEST_PROCESS_TIMEOUT_SECONDS ?= {policy.process_timeout_seconds}"),
+        )
+        # R12 (commit 2f7b8900d): base.mk declares only the verbs it ships a
+        # recipe for, so the pytest invocation moved to the generated project
+        # Makefile. base.mk's remaining duty is to PUBLISH the bounded-process
+        # wrapper built from the config budget, which the project recipe consumes.
+        tm.that(result.value, has="PYTEST_BOUNDED = ")
+        tm.that(result.value, has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s")
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(

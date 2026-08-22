@@ -11,16 +11,11 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
-from flext_infra._utilities.pyproject import (
-    FlextInfraUtilitiesPyproject,
-    _validate_infra_payload,
-)
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tomlkit import TOMLDocument
 
     from flext_infra.typings import t
 
@@ -64,7 +59,9 @@ class FlextInfraUtilitiesDependencies:
             else:
                 payload_source = u.Cli.toml_mapping_from_text(raw_text)
                 if payload_source is not None:
-                    payload = _validate_infra_payload(payload_source)
+                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
+                        payload_source
+                    )
                     if payload is not None:
                         raw_packages = payload.get("package")
                         if isinstance(raw_packages, list):
@@ -178,7 +175,7 @@ class FlextInfraUtilitiesDependencies:
         return tuple(selected_by_name[name] for name in sorted(selected_by_name))
 
     @classmethod
-    def declared_dependency_names(cls, document: TOMLDocument) -> t.StrSequence:
+    def declared_dependency_names(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
         """Return normalized dependency names from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -308,7 +305,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def project_dev_groups(
-        cls, document: TOMLDocument
+        cls, document: t.Cli.TomlDocument
     ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
@@ -318,7 +315,7 @@ class FlextInfraUtilitiesDependencies:
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod
-    def canonical_dev_dependencies(cls, document: TOMLDocument) -> t.StrSequence:
+    def canonical_dev_dependencies(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -338,7 +335,7 @@ class FlextInfraUtilitiesDependencies:
         ])
 
     @classmethod
-    def flext_dependency_namespaces(cls, document: TOMLDocument) -> t.StrSequence:
+    def flext_dependency_namespaces(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
         """Extract declared FLEXT dependency namespaces from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -352,7 +349,7 @@ class FlextInfraUtilitiesDependencies:
         """Extract every declared ``flext-*`` dependency as a Python namespace."""
         # mro-j47u (codex): FLEXT dependencies are first-party contracts even
         # when their uv source declaration is owned by an enclosing workspace.
-        normalized = _validate_infra_payload(payload)
+        normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
         if normalized is None:
             return ()
         return tuple(

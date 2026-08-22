@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -67,7 +67,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> tuple[Path, ...]:
         """Return indexed sources, declared wrapper modules, and typing stubs."""
-        python_paths = set(FlextInfraUtilitiesRopeCore.python_file_paths(rope_project))
+        python_paths = {
+            path.resolve()
+            for path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project)
+            if not set(path.relative_to(resolved_root).parts)
+            & c.Infra.ITERATION_EXCLUDED_PARTS
+        }
         # mro-pulj (codex): Rope's source roots omit tests/examples/scripts;
         # index those declared wrapper surfaces so explicitly targeted codegen
         # can update their generated initializers without textual fallbacks.

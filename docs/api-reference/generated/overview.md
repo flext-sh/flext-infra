@@ -1,6 +1,10 @@
-<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
 # FLEXT Infra API Overview
+
+<!-- TOC START -->
+- [Next Pages](#next-pages)
+<!-- TOC END -->
+
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 - Package: `flext_infra`
 - Version: `0.12.0rc0`
@@ -13,15 +17,16 @@
 - Project class: `infra`
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
 - Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
-  `FlextInfraModels`, `FlextInfraProjectSelectionServiceBase`,
-  `FlextInfraProtocols`, `FlextInfraServiceBase`, `FlextInfraTypes` (+3 more)
+  `FlextInfraGitService`, `FlextInfraModels`,
+  `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols`,
+  `FlextInfraServiceBase` (+4 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
-  `FlextInfraModels`, `FlextInfraProjectSelectionServiceBase`,
-  `FlextInfraProtocols`, `FlextInfraServiceBase`, `FlextInfraTypes`,
-  `FlextInfraUtilities`, `FlextInfraWorkspaceEnvironment` (+6 more)
+  `FlextInfraGitService`, `FlextInfraModels`,
+  `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols`,
+  `FlextInfraServiceBase`, `FlextInfraTypes`, `FlextInfraUtilities` (+7 more)
 - Exported module shortcuts: `basemk`
-- Generated module pages: `12`
+- Generated module pages: `13`
 
 ## Next Pages
 

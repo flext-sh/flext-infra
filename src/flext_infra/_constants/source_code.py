@@ -20,6 +20,7 @@ class FlextInfraConstantsSourceCode:
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
         ".venv",
+        ".worktrees",
         "node_modules",
         "__pycache__",
         "dist",
@@ -37,8 +38,8 @@ class FlextInfraConstantsSourceCode:
         "vendor"
     }
     "Non-productive roots excluded while discovering Python analyzer surfaces."
-    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"site"}
-    "Directories to exclude when analyzing documentation."
+    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"legado", "site"}
+    "Live documentation excludes generated sites and historical evidence roots."
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         "context_test",
@@ -160,8 +161,8 @@ class FlextInfraConstantsSourceCode:
     "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
     DICT_GENERIC_RE: Final[t.RegexPattern] = re.compile(r"\b(?:dict|Dict)\[")
     "Regex: opening of any ``dict[...]`` / ``Dict[...]`` annotation."
-    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9\s-]")
-    "Regex: characters to strip when generating an anchor slug."
+    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9_\s-]")
+    "Regex: characters to strip when generating an anchor slug (``_`` is kept, as python-markdown does)."
     ANCHOR_WHITESPACE_RE: Final[t.RegexPattern] = re.compile(r"\s+")
     "Regex: any run of whitespace (collapsed to single hyphen in anchors)."
     ANCHOR_DASH_COLLAPSE_RE: Final[t.RegexPattern] = re.compile(r"-+")
@@ -632,8 +633,8 @@ class FlextInfraConstantsSourceCode:
     # --- Lint output parsing patterns ---
     LINE_COL_RE: Final[t.RegexPattern] = re.compile(r":\d+(?::\d+)?")
     "Regex: line:col or line:col:col reference in lint output."
-    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s+\|")
-    "Regex: code frame lines (e.g. '  5 | ...' from ruff output)."
+    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s*[|+-]")
+    "Regex: code/suggestion frame lines ('5 | code', '5 + added', '5 - removed')."
     CODE_FRAME_BODY_RE: Final[t.RegexPattern] = re.compile(r"^\s*\|")
     "Regex: code frame continuation lines."
     UNUSED_IMPORT_RE: Final[t.RegexPattern] = re.compile(

@@ -8,15 +8,15 @@ from typing import ClassVar, Final
 
 from flext_cli import r, u
 from flext_infra._config import config
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -162,16 +162,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         if not package_name:
             return None
-        project_name = (
-            project.name
-            if project is not None and project.name
-            else FlextInfraUtilitiesDocsScope.project_name_from_payload(
+        if project is not None and project.name:
+            project_name = project.name
+        elif (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file():
+            project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
                 resolved_root,
                 FlextInfraUtilitiesDocsScope.project_payload(resolved_root),
             )
-            if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
-            else resolved_root.name
-        )
+        else:
+            project_name = resolved_root.name
         class_name_source = (
             project_name
             if project_name != resolved_root.name

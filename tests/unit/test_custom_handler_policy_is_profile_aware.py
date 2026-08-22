@@ -3,8 +3,8 @@
 ``custom_handler_policy`` was a single flat rule applied to every profile, but
 the profiles have genuinely different contracts:
 
-* a workspace *member* extends the generated verbs, so its ``custom.mk`` may
-  only define private ``_custom_<verb>_<what>`` handlers and hooks;
+* a standalone repository may only define private
+  ``_custom_<verb>_<what>`` handlers and hooks;
 * a workspace *root* orchestrates the members, so its ``custom.mk`` legitimately
   owns public orchestration targets and the variables they read.
 
@@ -21,7 +21,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, config
+from collections.abc import Mapping
+
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 
@@ -29,30 +31,38 @@ from flext_tests import tm
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     def test_every_declared_profile_has_a_custom_handler_policy(self) -> None:
         """Each Make profile declares the contract for its own custom surface."""
+        codegen_profiles: tuple[m.Infra.ProfileSpec, ...] = (
+            config.Infra.codegen.profiles
+        )
         declared = frozenset(
-            c.Infra.MakeProfile(profile.name)
-            for profile in config.Infra.codegen.profiles
+            c.Infra.MakeProfile(profile.name) for profile in codegen_profiles
+        )
+        handler_policies: Mapping[str, m.Infra.CustomHandlerPolicy] = (
+            config.Infra.codegen.make.custom_handler_policies
         )
         covered = frozenset(
-            c.Infra.MakeProfile(profile)
-            for profile in config.Infra.codegen.make.custom_handler_policies
+            c.Infra.MakeProfile(profile) for profile in handler_policies
         )
 
         tm.that(declared - covered, eq=frozenset())
 
     def test_workspace_root_may_own_public_orchestration_targets(self) -> None:
         """The root profile permits the public targets it actually ships."""
-        policy = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.WORKSPACE_ROOT
-        ]
+        policy: m.Infra.CustomHandlerPolicy = (
+            config.Infra.codegen.make.custom_handler_policies[
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+            ]
+        )
 
         tm.that(policy.allow_public_targets, eq=True)
 
-    def test_workspace_member_stays_private_only(self) -> None:
-        """A member custom surface may still only define private handlers."""
-        policy = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.WORKSPACE_MEMBER
-        ]
+    def test_standalone_stays_private_only(self) -> None:
+        """A standalone custom surface may only define private handlers."""
+        policy: m.Infra.CustomHandlerPolicy = (
+            config.Infra.codegen.make.custom_handler_policies[
+                c.Infra.MakeProfile.STANDALONE
+            ]
+        )
 
         tm.that(policy.allow_public_targets, eq=False)
 
@@ -64,12 +74,16 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         variables were rejected no matter what the config permitted.
         """
         content = "WORKSPACE_BASE ?= 0.12.0-dev\ndone-check:\n\t@echo hi\n"
-        strict = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.WORKSPACE_MEMBER
-        ]
-        permissive = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.WORKSPACE_ROOT
-        ]
+        strict: m.Infra.CustomHandlerPolicy = (
+            config.Infra.codegen.make.custom_handler_policies[
+                c.Infra.MakeProfile.STANDALONE
+            ]
+        )
+        permissive: m.Infra.CustomHandlerPolicy = (
+            config.Infra.codegen.make.custom_handler_policies[
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+            ]
+        )
         validate = FlextInfraCodegenConform.validate_custom_make
 
         tm.that(validate(content, strict).failure, eq=True)
@@ -84,8 +98,10 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         to the strict base policy -- exactly the failure that made conform
         reject the workspace root's own custom surface.
         """
-        policies = config.Infra.codegen.make.custom_handler_policies
-        profile = c.Infra.MakeProfile.WORKSPACE_ROOT
+        policies: dict[str, m.Infra.CustomHandlerPolicy] = dict(
+            config.Infra.codegen.make.custom_handler_policies
+        )
+        profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE_ROOT
 
         tm.that(set(policies), eq={member.value for member in c.Infra.MakeProfile})
         tm.that(policies[profile] is policies[profile.value], eq=True)

@@ -6,9 +6,11 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
-from flext_infra.constants import c
-from flext_infra.typings import t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -25,12 +27,17 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         pyproject_content: str,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
+        # The caller resolves the repository policy overlay: a project
+        # carrying a security floor in override-dependencies pins an absolute
+        # cutoff, because the fleet rolling window would age past that floor
+        # and make resolution unsatisfiable.
+        uv_exclude_newer: str | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -54,7 +61,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
-            repositories=repositories,
+            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=True,
@@ -73,6 +80,8 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
             link_mode=toolchain.uv_link_mode,
+            exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
+            exclude_newer_package=toolchain.uv_exclude_newer_package,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -98,7 +107,7 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         pyproject_content: str,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[str]:
@@ -120,7 +129,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if attached_workspace_root:
             sources_result = cls._validate_root_uv_sources(
-                source, repositories=repositories, workspace=workspace
+                source, workspace=workspace, providers=providers
             )
             if sources_result.failure:
                 return r[str].fail(
@@ -129,7 +138,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
-            repositories=repositories,
+            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=False,
@@ -175,18 +184,13 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
-        available = (
-            *repositories,
-            workspace.repository,
-            *workspace.members,
-            *workspace.content_only,
-        )
+        available = (workspace.repository, *workspace.members)
         # Only the root expresses the active workspace overlay in its own
         # requirements. A publishable member keeps its configured Git source so
         # the same pyproject remains resolvable in a standalone checkout; uv
@@ -205,6 +209,7 @@ class FlextInfraUtilitiesPyprojectConform:
             project,
             c.Infra.DEPENDENCIES,
             repositories=available,
+            providers=providers,
             canonicalize_all=canonicalize_all,
             attached=attached,
         )
@@ -222,6 +227,7 @@ class FlextInfraUtilitiesPyprojectConform:
                     section,
                     group_name,
                     repositories=available,
+                    providers=providers,
                     canonicalize_all=canonicalize_all,
                     attached=attached,
                 )
@@ -236,6 +242,7 @@ class FlextInfraUtilitiesPyprojectConform:
         key: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         canonicalize_all: bool,
         attached: frozenset[str],
     ) -> p.Result[bool]:
@@ -251,7 +258,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item, repositories=repositories, attached=attached
+                item, repositories=repositories, providers=providers, attached=attached
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -278,6 +285,7 @@ class FlextInfraUtilitiesPyprojectConform:
         requirement: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         attached: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from its manifest repository reference."""
@@ -300,7 +308,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
         reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories
+            dependency_name, repositories=repositories, providers=providers
         )
         if reference_result.failure:
             return r[str].fail(
@@ -308,31 +316,49 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
+        provider = FlextInfraUtilitiesRepository.repository_provider(
+            reference, providers
+        )
+        if provider.failure:
+            return r[str].fail(
+                provider.error or "repository provider resolution failed"
+            )
         git_url = cls._git_requirement_url(reference.url)
         if git_url.failure:
             return r[str].fail(git_url.error or "repository URL validation failed")
-        canonical = f"{head} @ {git_url.value}@{reference.branch}"
+        canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
 
     @staticmethod
     def _repository_reference(
-        distribution: str, *, repositories: t.SequenceOf[p.Infra.RepositoryRef]
+        distribution: str,
+        *,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[p.Infra.RepositoryRef]:
-        """Return one unambiguous manifest reference for a distribution."""
+        """Return one unambiguous reference for a distribution.
+
+        A distribution the workspace does not declare is still resolvable: its
+        canonical source is the provider contract plus its own name. That is
+        derived from generic policy, never from a catalog of projects that
+        flext-infra is forbidden to own.
+        """
         matches = tuple(
             repository
             for repository in repositories
             if repository.distribution == distribution
         )
         if not matches:
-            return r.fail(
-                f"repository catalog lacks required distribution: {distribution}"
+            return r.ok(
+                FlextInfraUtilitiesRepository.derived_repository_ref(
+                    distribution, provider=providers[0]
+                )
             )
         reference = matches[0]
         if any(
-            item.url != reference.url or item.branch != reference.branch
+            item.url != reference.url or item.provider != reference.provider
             for item in matches[1:]
         ):
             return r.fail(
@@ -368,14 +394,18 @@ class FlextInfraUtilitiesPyprojectConform:
             optional_dev = u.Cli.toml_as_string_list(
                 u.Cli.toml_value(optional, str(c.Infra.DEV))
             )
+        # SSOT required floors win over existing same-name pins: dedupe_specs
+        # keeps the first occurrence, so toolchain floors must lead the merge.
+        # Otherwise stale member pins (e.g. rumdl>=0.2.46) block exclude-newer.
+        required_dev = tuple(
+            requirement
+            for requirement in required_dev_dependencies
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+        )
         dev = [
+            *required_dev,
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
-            *(
-                requirement
-                for requirement in required_dev_dependencies
-                if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
-            ),
         ]
         if dev:
             u.Cli.toml_sync_string_list(
@@ -462,47 +492,40 @@ class FlextInfraUtilitiesPyprojectConform:
         )
 
     @staticmethod
-    def _owns_uv_root_policy(
-        *, project_name: str, workspace: p.Infra.WorkspaceSpec
-    ) -> bool:
-        """Identify autonomous and multi-project roots that own uv root policy."""
-        return not workspace.members or (
-            project_name == workspace.repository.distribution
-        )
-
-    @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
-        """Delete legacy packaging owners superseded by canonical conformance."""
+        """Delete legacy packaging owners superseded by canonical conformance.
+
+        The ``[tool.flext]`` table is always preserved: it carries declared
+        project policy, including the ``workspace.attached`` marker consumed
+        by the topology detector (mro-z89e governance).
+        """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
-        flext = u.Cli.toml_table_child(tool, "flext")
-        if flext is not None:
-            u.Cli.toml_remove_key_if_present(flext, "workspace")
-            if not tuple(flext):
-                u.Cli.toml_remove_key_if_present(tool, "flext")
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
-        """Remove checkout- and interpreter-specific type checker paths."""
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): port the 0.20
-        # canonical path policy so all generated 0.12 projects are portable.
+        """Remove checkout-absolute type checker interpreter pins.
+
+        Search paths belong to FlextInfraExtraPathsManager. Shared analyzer
+        configuration omits checkout-specific interpreter and virtualenv paths;
+        the governed Make runtime selects the active environment.
+        """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return r[bool].ok(True)
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
-            u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
-        mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
-        if mypy is not None:
-            u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
+
         pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
         if pyright is None:
             return r[bool].ok(True)
-        u.Cli.toml_sync_string_list(pyright, c.Infra.EXTRA_PATHS, (".", "src"))
-        interpreter_keys = ("venv", "venvPath", "pythonPath", "pythonInterpreterPath")
+
+        # Shared config never owns interpreter or virtualenv locations; the
+        # governed Make runtime selects them for the current checkout.
+        interpreter_keys = ("pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
         raw_environments = u.Cli.json_as_sequence(
@@ -518,7 +541,7 @@ class FlextInfraUtilitiesPyprojectConform:
             normalized: t.JsonDict = dict(mapping)
             root = normalized.get("root")
             normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]
-            for key in interpreter_keys:
+            for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
                 normalized.pop(key, None)
             normalized_environments.append(normalized)
         if raw_environments:
@@ -536,6 +559,8 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         link_mode: str | None = None,
+        exclude_newer: str | None = None,
+        exclude_newer_package: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
@@ -545,17 +570,26 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        owns_uv_root_policy = cls._owns_uv_root_policy(
-            project_name=project_name, workspace=workspace
-        )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if not workspace_root and link_mode is None and not exclude_dependencies:
+            if (
+                not workspace_root
+                and link_mode is None
+                and exclude_newer is None
+                and not exclude_newer_package
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if not workspace_root and link_mode is None and not exclude_dependencies:
+            if (
+                not workspace_root
+                and link_mode is None
+                and exclude_newer is None
+                and not exclude_newer_package
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
@@ -580,13 +614,38 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
+        if exclude_newer is not None:
+            u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
+        # None means "not this caller's concern" (dependencies-only conform),
+        # exactly like link_mode/exclude_newer above; only a provided mapping
+        # owns the table, and a provided-but-empty mapping retires it.
+        if exclude_newer_package is not None:
+            if exclude_newer_package:
+                package_cutoffs = u.Cli.toml_ensure_table(uv, "exclude-newer-package")
+                for package, timestamp in sorted(exclude_newer_package.items()):
+                    u.Cli.toml_sync_value(package_cutoffs, package, timestamp)
+                for stale_package in tuple(package_cutoffs):
+                    if stale_package not in exclude_newer_package:
+                        u.Cli.toml_remove_key_if_present(package_cutoffs, stale_package)
+            else:
+                u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
+        # Project is a flext-infra routing key only; uv scoped form is
+        # {package={name, version?}, dependencies=[...]} (uv settings docs).
+        # Emit on every owning pyproject so standalone CI clones resolve;
+        # do not gate on owns_uv_root_policy (that stripped member excludes).
         exclude_payload = list(
             t.Cli.JSON_LIST_ADAPTER.validate_python([
-                item.model_dump(mode="json", exclude_none=True)
+                {
+                    key: value
+                    for key, value in item.model_dump(
+                        mode="json", exclude_none=True
+                    ).items()
+                    if key != "project"
+                }
                 for item in exclude_dependencies
             ])
         )
-        if owns_uv_root_policy and exclude_payload:
+        if exclude_payload:
             u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
@@ -631,19 +690,14 @@ class FlextInfraUtilitiesPyprojectConform:
     def _resolved_root_sources(
         cls,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
         """Resolve the workspace source overlay from typed metadata."""
-        candidates = (
-            *repositories,
-            workspace.repository,
-            *workspace.members,
-            *workspace.content_only,
-        )
+        candidates = (workspace.repository, *workspace.members)
         for distribution in dict.fromkeys(item.distribution for item in candidates):
             reference_result = cls._repository_reference(
-                distribution, repositories=candidates
+                distribution, repositories=candidates, providers=providers
             )
             if reference_result.failure:
                 return r.fail(reference_result.error or "repository resolution failed")
@@ -655,8 +709,8 @@ class FlextInfraUtilitiesPyprojectConform:
     def _validate_root_uv_sources(
         document: t.Cli.TomlDocument,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[bool]:
         """Validate the root overlay without rewriting out-of-order TOML tables."""
         payload = u.Cli.toml_as_mapping(document)
@@ -688,7 +742,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
         resolved_result = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
-            repositories=repositories, workspace=workspace
+            workspace=workspace, providers=providers
         )
         if resolved_result.failure:
             return r[bool].fail(resolved_result.error or "repository resolution failed")

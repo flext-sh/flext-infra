@@ -89,9 +89,9 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         @staticmethod
         @override
         def _prepare_projects(
-            projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+            projects: t.SequenceOf[m.Infra.ProjectInfo],
         ) -> p.Result[bool]:
-            _ = (projects, workspace_root)
+            _ = projects
             return r[bool].ok(True)
 
     @staticmethod
@@ -207,6 +207,7 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         result = orchestrator.orchestrate(["flext-demo"], "test")
 
         tm.ok(result, len=1)
+        tm.that("MAKEFILES" in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, eq=True)
         tm.that(observed_remove_keys, eq=[c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS])
         tm.that(observed_envs[0][c.Infra.ORCHESTRATOR_ENV_NO_COLOR], eq="1")
         tm.that(
@@ -227,6 +228,36 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         )
 
         tm.ok(orchestrator.execute(), eq=True)
+
+    def test_test_selectors_become_exact_make_argv_elements(self) -> None:
+        """Preserve whitespace and punctuation without reparsing selector strings."""
+        orchestrator = FlextInfraOrchestratorService(
+            verb="test",
+            file="tests/unit/sample test.py::TestsSample::test exact",
+            match="exact name and not slow",
+            what="all",
+        )
+
+        tm.that(
+            orchestrator.make_args,
+            eq=(
+                "FILE=tests/unit/sample test.py::TestsSample::test exact",
+                "MATCH=exact name and not slow",
+                "WHAT=all",
+            ),
+        )
+
+    def test_test_rejects_generic_make_argument_channel(self) -> None:
+        """Keep arbitrary pytest flags out of whitespace-delimited Make strings."""
+        with pytest.raises(c.ValidationError, match="generic make-arg is forbidden"):
+            FlextInfraOrchestratorService(
+                verb="test", make_arg=("PYTEST_ARGS=-o addopts=",)
+            )
+
+    def test_non_test_verb_rejects_pytest_selectors(self) -> None:
+        """Keep test-only selector fields out of unrelated orchestrated verbs."""
+        with pytest.raises(c.ValidationError, match="only valid for the test verb"):
+            FlextInfraOrchestratorService(verb="check", match="sample")
 
     def test_empty_project_list(
         self, orchestrator: FlextInfraOrchestratorService

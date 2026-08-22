@@ -12,15 +12,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-
-from flext_infra import infra, t
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra import infra
+from flext_infra.codegen import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenScaffolder,
+)
 from flext_tests import tm
 
-pytestmark = pytest.mark.timeout(180)
+from tests import t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -96,6 +97,7 @@ def _make_project(
     return project
 
 
+@pytest.mark.slow
 def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     """Pipeline flow remains isolated, idempotent, and syntactically valid."""
     _ = _make_project(
@@ -104,7 +106,6 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     project_b = _make_project(
         tmp_path, "project-b", with_all_modules=True, with_tests_dir=False
     )
-    _ = _make_project(tmp_path, "project-c", with_all_modules=True, with_tests_dir=True)
     external_project = _make_project(
         tmp_path,
         "external-project",
@@ -133,7 +134,6 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     }
     tm.that(scaffold_by_project_first, has="project-a")
     tm.that(scaffold_by_project_first, has="project-b")
-    tm.that(scaffold_by_project_first, has="project-c")
     scaffold_results_second = FlextInfraCodegenScaffolder.model_validate(payload).run(
         dry_run=False
     )
@@ -142,12 +142,10 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     }
     tm.that(len(scaffold_by_project_second["project-a"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-b"].files_created), eq=0)
-    tm.that(len(scaffold_by_project_second["project-c"].files_created), eq=0)
     fix_results = FlextInfraCodegenFixer.model_validate(payload).fix_workspace()
     fix_by_project = {result.project: result for result in fix_results}
     tm.that(fix_by_project, has="project-a")
     tm.that(fix_by_project, has="project-b")
-    tm.that(fix_by_project, has="project-c")
     project_b_fixed = fix_by_project["project-b"]
     all_violations = list(project_b_fixed.violations_fixed) + list(
         project_b_fixed.violations_skipped

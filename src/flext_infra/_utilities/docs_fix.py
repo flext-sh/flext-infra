@@ -6,11 +6,12 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 
 if TYPE_CHECKING:
     import re
@@ -22,9 +23,11 @@ class FlextInfraUtilitiesDocsFix:
 
     @staticmethod
     def docs_maybe_fix_link(md_file: Path, raw_link: str) -> str | None:
-        """Return a corrected link target when a simple ``.md`` fix is possible."""
+        """Return a corrected link target when a simple fix is possible."""
+        if raw_link.startswith(("http://", "https://")):
+            return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(raw_link)
         result: str | None = None
-        if not raw_link.startswith(("http://", "https://", "mailto:", "tel:", "#")):
+        if not raw_link.startswith(("mailto:", "tel:", "#")):
             base = raw_link.split("#", maxsplit=1)[0]
             if (
                 base
@@ -79,7 +82,14 @@ class FlextInfraUtilitiesDocsFix:
                 fixed_body = outcome.value.stdout
                 if fixed_body == body:
                     return match.group(0)
-                return f"{match.group('open')}{fixed_body}```"
+                # A closing fence only closes the block when it starts its own
+                # line; ruff may return a body without the trailing newline, so
+                # reassembling blindly welds the fence onto the last code line
+                # and the block swallows every heading that follows it.
+                closed_body = (
+                    fixed_body if fixed_body.endswith("\n") else f"{fixed_body}\n"
+                )
+                return f"{match.group('open')}{closed_body}```"
 
             sanitized = c.Infra.PYTHON_FENCE_FIX_RE.sub(_replace_fence, original)
             if sanitized == original:

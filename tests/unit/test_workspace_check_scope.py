@@ -13,20 +13,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, config
 from flext_tests import tm
 
 
 class TestsFlextInfraWorkspaceCheckScope:
     def test_workspace_root_check_fans_out_to_every_member(self) -> None:
         """The root selects declared members and forwards check gates."""
-        # Members come from the workspace manifest SSOT, never a literal list.
-        members = tuple(
-            repository.path.as_posix()
-            for repository in config.Infra.codegen.repositories
-            if repository.role == c.Infra.RepositoryRole.WORKSPACE_MEMBER
-        )
-        tm.that(bool(members), eq=True)
+        # The member list is rendered from the manifest at generation time, so
+        # the contract lives in the template, not in this checkout's topology.
 
         template = (
             Path(flext_infra.__file__).resolve().parent
@@ -44,5 +38,6 @@ class TestsFlextInfraWorkspaceCheckScope:
             ),
         )
         tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)")
+        tm.that(template, has="override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)")
         tm.that(template, has="$(WORKSPACE_ORCHESTRATE) --verb check")
-        tm.that(template, has="$(WORKSPACE_CHECK_ARGS)")
+        tm.that(template, has='--make-arg "CHECK_GATES=$$gates"')

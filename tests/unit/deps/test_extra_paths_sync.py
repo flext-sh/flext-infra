@@ -11,8 +11,6 @@ from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_tests import tf, tm
 from tests import u
 
-pytestmark = pytest.mark.timeout(60)
-
 
 @pytest.fixture
 def pyright_content() -> str:
@@ -94,14 +92,15 @@ class TestsFlextInfraDepsExtraPathsSync:
         """Verify sync extra paths missing root pyproject."""
         tm.fail(_manager(tmp_path).sync_extra_paths(), has="Missing")
 
-    def test_sync_extra_paths_sync_failure(self, tmp_path: Path) -> None:
-        """Verify sync extra paths sync failure."""
+    def test_sync_extra_paths_skips_selected_dirs_without_pyproject(
+        self, tmp_path: Path
+    ) -> None:
+        """Selected dirs without pyproject are skipped (worktree-safe), not failed."""
         project = tmp_path / "proj"
         project.mkdir()
-        tm.fail(
-            _manager(tmp_path).sync_extra_paths(project_dirs=[project]),
-            has="pyproject not found",
-        )
+        result = _manager(tmp_path).sync_extra_paths(project_dirs=[project])
+        tm.ok(result)
+        tm.that(result.value, eq=0)
 
     @pytest.mark.parametrize(
         ("mode", "argv", "expected_exit"),
@@ -179,3 +178,27 @@ class TestsFlextInfraDepsExtraPathsSync:
             return
         pyproject = _create_pyproject(tmp_path, pyright_content)
         tm.ok(_manager(tmp_path).sync_one(pyproject, is_root=True, dry_run=dry_run))
+
+    def test_sync_doc_is_idempotent_when_paths_already_match(
+        self, tmp_path: Path
+    ) -> None:
+        """Equal path content must not report changes across list/tuple forms."""
+        (tmp_path / "src").mkdir()
+        manager = _manager(tmp_path)
+        expected_extra = manager.pyright_extra_paths(project_dir=tmp_path, is_root=True)
+        expected_mypy = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        tm.that(isinstance(expected_extra, tuple), eq=True)
+        tm.that(isinstance(expected_mypy, tuple), eq=True)
+        doc = u.Cli.toml_document()
+        tool = u.Cli.toml_table()
+        pyright = u.Cli.toml_table()
+        mypy = u.Cli.toml_table()
+        pyright["extraPaths"] = list(expected_extra)
+        mypy["mypy_path"] = list(expected_mypy)
+        tool["pyright"] = pyright
+        tool["mypy"] = mypy
+        doc["tool"] = tool
+        changes = manager.sync_doc(doc, project_dir=tmp_path, is_root=True)
+        tm.that(changes, eq=[])
+        changes_again = manager.sync_doc(doc, project_dir=tmp_path, is_root=True)
+        tm.that(changes_again, eq=[])

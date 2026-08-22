@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
+from tests import u as test_u
 
 
 class TestsCodegenWorkspaceRootFanout:
@@ -39,11 +40,7 @@ class TestsCodegenWorkspaceRootFanout:
 
 def _render_root_makefile(tmp_path: Path) -> str:
     """Render base/Makefile.j2 from a typed workspace-root fixture."""
-    repository = next(
-        item
-        for item in config.Infra.codegen.repositories
-        if item.profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-    )
+    repository = test_u.Tests.repository_ref("workspace-root-fixture")
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name=repository.name,

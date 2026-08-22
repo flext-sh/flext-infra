@@ -1,4 +1,4 @@
-"""Manual-command blocker (AGENTS.md §5 Make Contract).
+"""Manual-command blocker (AGENTS.md `Build & Test`).
 
 Two responsibilities:
 

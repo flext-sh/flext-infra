@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t, u
+from flext_infra import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m
+    from flext_infra import m, t
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
@@ -21,7 +21,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     def _cleanup_generated_support_files(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> int:
-        """Remove generated files superseded by inline ``__init__.py`` maps."""
+        """Remove generated files outside the canonical package artifact set."""
         try:
             # mro-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
             self._remove_obsolete_generated_files(plan, check_only=check_only)
@@ -133,7 +133,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     def _remove_generated_export_sidecars(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> None:
-        """Remove generated ``_exports*`` files no longer used by codegen."""
+        """Remove legacy generated export files outside the canonical owner."""
         search_dirs = {
             plan.context.pkg_dir,
             plan.context.pkg_dir / c.Infra.ROOT_EXPORTS_DIR,
@@ -154,6 +154,25 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                     continue
                 path.unlink()
                 self._modified_files.add(str(path))
+        constants_dir = plan.context.pkg_dir / c.Infra.ROOT_EXPORTS_DIR
+        constants_init = constants_dir / c.Infra.INIT_PY
+        if not constants_init.is_file():
+            return
+        remaining_modules = tuple(
+            path for path in constants_dir.glob("*.py") if path.name != c.Infra.INIT_PY
+        )
+        if remaining_modules:
+            return
+        content = self._read_generated_file(constants_init)
+        if content is None or not content.startswith(c.Infra.AUTOGEN_HEADER):
+            return
+        if check_only:
+            self._modified_files.add(str(constants_init))
+            return
+        constants_init.unlink()
+        self._modified_files.add(str(constants_init))
+        if not tuple(constants_dir.iterdir()):
+            constants_dir.rmdir()
 
     @staticmethod
     def _read_generated_file(path: Path) -> str | None:
@@ -164,7 +183,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         if read.failure:
             message = f"reading {path}: {read.error}"
             raise OSError(message)
-        content: str = t.Infra.STR_ADAPTER.validate_python(read.value)
+        content: str = read.value
         return content
 
 

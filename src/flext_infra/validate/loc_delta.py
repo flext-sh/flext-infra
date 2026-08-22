@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -23,19 +23,19 @@ class FlextInfraLocDeltaValidator(s[bool]):
     @classmethod
     def evaluate(
         cls, *, subject: str, insertions: int, deletions: int
-    ) -> p.Result[None]:
+    ) -> p.Result[bool]:
         """Pure rule: net positive delta on a labelled commit is a violation."""
         lowered = subject.lower()
         if not any(label in lowered for label in c.Infra.REFACTOR_COMMIT_LABELS):
-            return r[None].ok(None)
+            return r[bool].ok(True)
         delta = insertions - deletions
         if delta > 0:
-            return r[None].fail(
+            return r[bool].fail(
                 f"net-LOC-delta violation (§3.5): '{subject}' adds +{delta} "
                 f"(insertions={insertions}, deletions={deletions}); refactor/cleanup "
                 "commits must be net non-positive"
             )
-        return r[None].ok(None)
+        return r[bool].ok(True)
 
     @staticmethod
     def _sum_numstat(numstat: str) -> tuple[int, int]:
@@ -54,23 +54,14 @@ class FlextInfraLocDeltaValidator(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Evaluate the workspace HEAD commit's labelled net-LOC delta."""
-        subject_result = u.Cli.run_raw(
-            ["git", "log", "-1", "--format=%s"], cwd=self.workspace_root, timeout=30
+        report = u.Infra.git_head_numstat(
+            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
         )
-        if subject_result.failure:
-            return r[bool].fail(subject_result.error or "git subject read failed")
-        numstat_result = u.Cli.run_raw(
-            ["git", "diff", "--numstat", "HEAD~1", "HEAD"],
-            cwd=self.workspace_root,
-            timeout=30,
-        )
-        if numstat_result.failure:
-            return r[bool].fail(numstat_result.error or "git numstat read failed")
-        insertions, deletions = self._sum_numstat(numstat_result.value.stdout)
+        if report.failure:
+            return r[bool].fail(report.error or "git numstat read failed")
+        insertions, deletions = self._sum_numstat(report.value.numstat)
         verdict = self.evaluate(
-            subject=subject_result.value.stdout.strip(),
-            insertions=insertions,
-            deletions=deletions,
+            subject=report.value.subject, insertions=insertions, deletions=deletions
         )
         if verdict.failure:
             return r[bool].fail(verdict.error or "net-LOC-delta violation")

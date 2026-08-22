@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 import os
-import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import ClassVar
@@ -13,7 +12,7 @@ import pytest
 
 from flext_cli import cli
 from flext_core import r
-from flext_infra import m, p, t, u
+from flext_infra import m, main as infra_main, p, t, u
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
@@ -381,9 +380,12 @@ class TestsEnforcementFixerOrchestrator:
         tm.that(len(result.previewed), eq=1)
         tm.that(result.failed, eq=())
 
-    @pytest.mark.timeout(60)
+    # Exemplar: this drives the real CLI entry point against a real Git
+    # repository, so its cost is the runtime's import chain plus several git
+    # invocations. The slow marker opts into the config-owned slow-item budget.
+    @pytest.mark.slow
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
-        self, tmp_path: Path
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A real CLI dry-run leaves its owned committed repository unchanged."""
         project_dir = tmp_path / "demo-project"
@@ -445,25 +447,24 @@ class TestsEnforcementFixerOrchestrator:
 
         pre_status = git_status()
         with tm.scope(env={"GIT_CONFIG_GLOBAL": os.devnull}):
-            result = cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "check",
-                    "fix-enforcement",
-                    "--workspace",
-                    str(project_dir),
-                    "--rules",
-                    "ENFORCE-079",
-                    "--dry-run",
-                    "--no-check-after",
-                ],
-                cwd=runner_root,
-            ).value
+            exit_code = infra_main([
+                "check",
+                "fix-enforcement",
+                "--workspace",
+                str(project_dir),
+                "--rules",
+                "ENFORCE-079",
+                "--dry-run",
+                "--no-check-after",
+            ])
+        output = capsys.readouterr()
         post_status = git_status()
-        tm.that(result.exit_code, eq=0, msg=result.stderr or result.stdout)
-        tm.that(result.stdout, has="fixed: 1")
-        tm.that(result.stdout, has="breakage=no")
-        tm.that(result.stdout, has="applied=no")
+        tm.that(exit_code, eq=0, msg=output.err or output.out)
+        # A dry run previews; it never fixes. `fixed` and `previewed` are
+        # distinct counters, and --dry-run feeds the latter.
+        tm.that(output.out, has="fixed: 0")
+        tm.that(output.out, has="previewed: 1")
+        tm.that(output.out, has="failed: 0")
+        # The read-only guarantee is the worktree itself: a dry run forces
+        # check_after=False, so no gate can rewrite a file behind the preview.
         tm.that(pre_status, eq=post_status)

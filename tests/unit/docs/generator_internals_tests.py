@@ -18,12 +18,43 @@ def test_anchorize_normalizes_headings() -> None:
     tm.that(u.Infra.anchorize(""), eq="")
 
 
+def test_anchorize_keeps_underscores_like_python_markdown() -> None:
+    tm.that(
+        u.Infra.anchorize(r"marts/metrics/met_wms\_\_kpi_dashboard"),
+        eq="martsmetricsmet_wms__kpi_dashboard",
+    )
+    tm.that(u.Infra.anchorize("Config _private_ keys"), eq="config-_private_-keys")
+
+
 def test_build_toc_lists_h2_and_h3_sections() -> None:
     toc = u.Infra.build_toc("# Main\n\n## Section 1\n\n### Subsection\n")
 
     tm.that(toc, has="<!-- TOC START -->")
     tm.that(toc, has="Section 1")
     tm.that(toc, has="Subsection")
+
+
+def test_build_toc_skips_headings_inside_fenced_code() -> None:
+    content = (
+        "# Main\n\n"
+        "## Real Section\n\n"
+        "```markdown\n"
+        "## Sample Heading\n\n"
+        "### Wave Assignment\n"
+        "```\n\n"
+        "~~~text\n"
+        "### Tilde Sample\n"
+        "~~~\n\n"
+        "### Real Subsection\n"
+    )
+
+    toc = u.Infra.build_toc(content)
+
+    tm.that(toc, has="Real Section")
+    tm.that(toc, has="Real Subsection")
+    tm.that(toc, lacks="Sample Heading")
+    tm.that(toc, lacks="Wave Assignment")
+    tm.that(toc, lacks="Tilde Sample")
 
 
 def test_update_toc_replaces_existing_block() -> None:
@@ -34,6 +65,36 @@ def test_update_toc_replaces_existing_block() -> None:
     tm.that(changed, eq=1)
     tm.that(updated, lacks="stale")
     tm.that(updated, has="Section")
+
+
+def test_generated_markdown_is_toc_normalized_before_write(tmp_path: Path) -> None:
+    generated = tmp_path / "generated.md"
+
+    result = u.Infra.docs_write_if_needed(
+        generated, "# Generated\n\n## Section\n", apply=True
+    )
+
+    tm.that(result.changed, eq=True)
+    tm.that(generated.read_text(), has="<!-- TOC START -->")
+    tm.that(generated.read_text(), has="[Section](#section)")
+
+
+def test_update_toc_preserves_single_blank_after_level_one_heading() -> None:
+    updated, changed = u.Infra.update_toc("# Main\n\n## Section\n")
+
+    tm.that(changed, eq=1)
+    tm.that(updated, has="# Main\n\n<!-- TOC START -->")
+    tm.that(updated, lacks="# Main\n\n\n<!-- TOC START -->")
+
+
+def test_generated_non_markdown_preserves_exact_content(tmp_path: Path) -> None:
+    generated = tmp_path / "mkdocs.yml"
+    content = "site_name: Generated\n"
+
+    result = u.Infra.docs_write_if_needed(generated, content, apply=True)
+
+    tm.that(result.changed, eq=True)
+    tm.that(generated.read_text(), eq=content)
 
 
 def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:

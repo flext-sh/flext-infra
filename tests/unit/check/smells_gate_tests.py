@@ -16,10 +16,10 @@ import pytest
 
 from flext_core import e as core_e
 from flext_infra import c, m, u
-from tests import t
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_tests import tm
+from tests import t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -211,6 +211,28 @@ class TestSmellsGate:
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.issues, eq=())
         tm.that(execution.result.errors, eq=[])
+
+    def test_resolve_binary_fallback_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When qlty is absent from PATH but present at ~/.qlty/bin/qlty, it is found."""
+        fallback_home = tmp_path / "home"
+        fallback_dir = fallback_home / ".qlty" / "bin"
+        fallback_dir.mkdir(parents=True)
+        fallback = fallback_dir / c.Infra.QLTY_BINARY
+        fallback.write_text(
+            "#!/usr/bin/env python3\nimport sys\nsys.stdout.write('{}')\n",
+            encoding="utf-8",
+        )
+        fallback.chmod(0o755)
+        monkeypatch.setenv("HOME", str(fallback_home))
+        monkeypatch.setenv("PATH", str(tmp_path / "empty-bin"))
+        (tmp_path / "empty-bin").mkdir()
+
+        gate = FlextInfraSmellsGate(tmp_path)
+        execution = gate.execute(_ctx(tmp_path))
+
+        tm.that(execution.result.passed, eq=True)
 
     def test_smell_tags_have_core_rule_text(self) -> None:
         """Every qlty smell tag mapped by the gate has a FLEXT problem/fix text."""

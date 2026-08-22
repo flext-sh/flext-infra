@@ -53,7 +53,18 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None: ...
+        # Declared as a plain attribute, not a property: the concrete owner
+        # (FlextInfraPyprojectModernizer) supplies it as a Pydantic field whose
+        # default comes from the tomlsort SSOT. A property here would make the
+        # field an incompatible override of a read-only descriptor.
+        tomlsort_sort_first: t.StrSequence
+
+        def _reorder_document_inplace(
+            self,
+            doc: t.Cli.TomlDocument,
+            *,
+            preferred_first: t.StrSequence | None = None,
+        ) -> None: ...
 
     def _classify_project(
         self, project_dir: Path, *, payload: t.JsonMapping | None = None
@@ -101,24 +112,52 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
-        """Return whether Git declares the project as an attached submodule.
+        """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
 
-        A non-Git scaffold is explicitly local. Environment directories and
-        generated Make projections never participate in topology detection.
+        Git topology distinguishes workspace roots from attached members for
+        analyzer scope, packaging, and search paths. Virtualenv locations are not
+        committed analyzer settings; the governed Make runtime selects the active
+        environment for each checkout.
         """
-        inside = u.Infra.git_capture(
-            project_dir, ("rev-parse", "--is-inside-work-tree")
+        rules = config.Infra.tooling.tools.pyright.path_rules
+        venv_name = rules.venv_name
+        superproject = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=project_dir)
         )
-        if inside.failure or inside.value.strip() != "true":
+        if superproject.success:
+            # Git topology is authoritative inside a work tree: a nested
+            # repository names its superproject, an independent checkout or
+            # linked worktree names nothing. A local .venv (including a
+            # borrowed symlink to the parent runtime) must not outrank this.
+            return r[bool].ok(bool(superproject.value.text.strip()))
+        local_venv = project_dir / venv_name
+        if local_venv.is_symlink():
+            target = local_venv.resolve()
+            if not target.is_relative_to(project_dir.resolve()):
+                return r[bool].ok(True)
+        if local_venv.is_dir():
             return r[bool].ok(False)
-        superproject = u.Infra.git_capture(
-            project_dir, ("rev-parse", "--show-superproject-working-tree")
-        )
-        if superproject.failure:
+        if (project_dir.parent / venv_name).is_dir():
+            return r[bool].ok(True)
+        makefile = project_dir / "Makefile"
+        if not makefile.exists():
+            return r[bool].ok(False)
+        if not makefile.is_file():
+            return r[bool].fail(f"project Makefile is not a regular file: {makefile}")
+        read = u.Cli.files_read_text(makefile)
+        if read.failure:
             return r[bool].fail(
-                superproject.error or "failed to resolve Git superproject"
+                read.error or f"project Makefile read failed: {makefile}"
             )
-        return r[bool].ok(bool(superproject.value.strip()))
+        for raw_line in read.value.splitlines():
+            stripped = raw_line.strip()
+            key, separator, value = stripped.partition(":=")
+            if separator != ":=" or key.strip() != "MAKE_PROFILE":
+                continue
+            return r[bool].ok(
+                value.strip() == c.Infra.MakeProfile.WORKSPACE_MEMBER.value
+            )
+        return r[bool].ok(False)
 
     def _process_document_state(
         self,
@@ -127,11 +166,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
-        project_kind: str | None = None,
+        format_source: bool = True,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
+        project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
@@ -139,20 +181,35 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         payload = state.payload
         child_result = self._project_is_flext_child(path.parent)
         if child_result.failure:
-            return [
-                f"failed to resolve Git topology: {child_result.error or path.parent}"
-            ]
-        is_child = child_result.value
-        is_root = path.parent.resolve() == self.root.resolve() and not is_child
-        resolved_project_kind = project_kind or "core"
+            return [child_result.error or "failed to resolve project Git topology"]
+        # Inside a work tree the target's own Git topology is authoritative,
+        # never the scope the modernizer was invoked with. Outside a work tree,
+        # relative position distinguishes a root from its nested members.
+        governed = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=path.parent)
+        )
+        is_root = (
+            not child_result.value
+            if governed.success
+            else path.parent.resolve() == self.root.resolve()
+        )
+        # mro-j47u (codex): scaffold (pre-write) contexts have no on-disk project
+        # root yet. Derive pyright/pyrefly configuration from declared roots only;
+        # disk discovery converges on the first post-write conformance pass.
+        project_root_exists = path.is_file()
+        effective_project_dir = path.parent if project_root_exists else None
+        effective_workspace_root = self.root if project_root_exists else None
+        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
+        effective_paths_manager = paths_manager if project_root_exists else None
+        resolved_project_kind: str = project_kind or "core"
         if project_kind is None and not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
                 resolved_project_kind = kind_result.value
-        # mro-j47u (codex): declared roots are topology facts only during atomic
-        # creation; normal modernization still derives productive roots on disk.
+        declared_roots_are_usable = (
+            declared_python_dirs_are_complete or not project_root_exists
+        )
         changes: t.MutableSequenceOf[str] = []
-        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
         if rewrite_constraints:
@@ -177,20 +234,23 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                workspace_root=self.root,
-                project_dir=path.parent,
+                workspace_root=effective_workspace_root,
+                project_dir=effective_project_dir,
                 project_kind=resolved_project_kind,
-                paths_manager=paths_manager,
+                paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
+                analysis_exclusions=analysis_exclusions,
             )
         )
         changes.extend(
             FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                project_dir=path.parent,
-                paths_manager=paths_manager,
+                project_dir=effective_project_dir,
+                paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
             )
         )
         changes.extend(
@@ -230,22 +290,24 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload, project_kind=resolved_project_kind
             )
         )
-        changes.extend(
-            paths_manager.sync_payload(
-                payload, project_dir=path.parent, is_root=is_root
+        if effective_paths_manager is not None:
+            changes.extend(
+                effective_paths_manager.sync_payload(
+                    payload, project_dir=path.parent, is_root=is_root
+                )
             )
-        )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
-        self._reorder_document_inplace(doc)
+        self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
         rendered = doc.as_string()
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        formatted_result = self._format_rendered_pyproject(path, rendered)
-        if formatted_result.failure:
-            return [formatted_result.error or "taplo format failed"]
-        rendered = formatted_result.value
+        if format_source:
+            formatted_result = self._format_rendered_pyproject(path, rendered)
+            if formatted_result.failure:
+                return [formatted_result.error or "taplo format failed"]
+            rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         state.rendered = normalized_rendered

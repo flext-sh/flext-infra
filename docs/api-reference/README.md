@@ -1,6 +1,12 @@
-<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
 # flext-infra API Reference
+
+<!-- TOC START -->
+- [Source of Truth](#source-of-truth)
+- [Generated Pages](#generated-pages)
+- [Surface Summary](#surface-summary)
+<!-- TOC END -->
+
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 This section is generated from public exports and real docstrings.
 
@@ -20,8 +26,8 @@ This section is generated from public exports and real docstrings.
 ## Surface Summary
 
 - Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
-  `FlextInfraModels`, `FlextInfraProjectSelectionServiceBase`,
-  `FlextInfraProtocols` (+5 more)
-- Generated module pages: `12`
+  `FlextInfraGitService`, `FlextInfraModels`,
+  `FlextInfraProjectSelectionServiceBase` (+6 more)
+- Generated module pages: `13`
 
 Back to [project docs](../index.md).
