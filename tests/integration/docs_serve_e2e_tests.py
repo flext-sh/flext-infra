@@ -14,15 +14,24 @@ import socket
 import time
 from typing import TYPE_CHECKING
 
+import pytest
+from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-_DEADLINE_SECONDS = 25.0
+_PYTEST_POLICY = config.Infra.tooling.tools.pytest
+# A real MkDocs dev server cold-starts a fresh interpreter and builds the
+# site; under full-suite xdist contention that legitimately exceeds the
+# per-case budget, so the scenario declares the config-owned slow budget
+# (pytest.mark.slow below) and polls within it.
+_DEADLINE_SECONDS = float(
+    _PYTEST_POLICY.slow_timeout_seconds - _PYTEST_POLICY.termination_grace_seconds
+)
 _POLL_INTERVAL_SECONDS = 0.05
-_PROCESS_STOP_TIMEOUT_SECONDS = 1.0
+_PROCESS_STOP_TIMEOUT_SECONDS = float(_PYTEST_POLICY.termination_grace_seconds)
 _HTTP_OK = 200
 
 
@@ -53,6 +62,7 @@ def _http_get_body(host: str, port: int) -> str | None:
 class TestsFlextInfraIntegrationDocsServeE2e:
     """Real serve: a governed scope with mkdocs.yml answers HTTP requests."""
 
+    @pytest.mark.slow
     def test_serve_scope_serves_site_over_http(self, tmp_path: Path) -> None:
         (tmp_path / "docs").mkdir()
         (tmp_path / "docs/index.md").write_text(

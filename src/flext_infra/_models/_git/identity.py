@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-
 from typing import Annotated, ClassVar
 
 from flext_cli import m
@@ -73,6 +72,13 @@ class FlextInfraModelsGitIdentity:
             m.Field(
                 default=False,
                 description="Whether the repository declares any submodules",
+            ),
+        ]
+        is_inside_work_tree: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether the path is inside a Git work tree",
             ),
         ]
 

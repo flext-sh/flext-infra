@@ -382,15 +382,10 @@ class TestsEnforcementFixerOrchestrator:
 
     # Exemplar: this drives the real CLI entry point against a real Git
     # repository, so its cost is the runtime's import chain plus several git
-    # invocations. That is a true end-to-end budget, declared explicitly rather
-    # than absorbed by raising the global timeout for every unit test.
+    # invocations. The slow marker opts into the config-owned slow-item budget.
     @pytest.mark.slow
-    @pytest.mark.timeout(120)
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A real CLI dry-run leaves its owned committed repository unchanged."""
         project_dir = tmp_path / "demo-project"
@@ -451,7 +446,6 @@ class TestsEnforcementFixerOrchestrator:
             return stdout
 
         pre_status = git_status()
-        monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV, raising=False)
         with tm.scope(env={"GIT_CONFIG_GLOBAL": os.devnull}):
             exit_code = infra_main([
                 "check",
@@ -466,7 +460,11 @@ class TestsEnforcementFixerOrchestrator:
         output = capsys.readouterr()
         post_status = git_status()
         tm.that(exit_code, eq=0, msg=output.err or output.out)
-        tm.that(output.out, has="fixed: 1")
-        tm.that(output.out, has="breakage=no")
-        tm.that(output.out, has="applied=no")
+        # A dry run previews; it never fixes. `fixed` and `previewed` are
+        # distinct counters, and --dry-run feeds the latter.
+        tm.that(output.out, has="fixed: 0")
+        tm.that(output.out, has="previewed: 1")
+        tm.that(output.out, has="failed: 0")
+        # The read-only guarantee is the worktree itself: a dry run forces
+        # check_after=False, so no gate can rewrite a file behind the preview.
         tm.that(pre_status, eq=post_status)

@@ -120,19 +120,26 @@ class FlextInfraExtraPathsManager(
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        # Only real productive roots belong in project-includes, so env_dirs is
-        # filtered by existence. The roots conform is ABOUT to create arrive
-        # through declared_python_dirs at the modernizer boundary; this method
-        # describes the tree as it is.
+        # Only real productive roots belong in project-includes, and
+        # u.Infra.analyzer_python_roots is the single owner shared with conform
+        # and the modernizer, so a root one surface writes is never erased by
+        # the next. Existing trees declare only roots that discovery proves
+        # productive; pre-write scaffold roots are supplied explicitly by the
+        # modernizer and do not pass through this disk-based synchronization.
+        discovered = frozenset(u.Infra.discover_python_dirs(project_dir))
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
-                tuple(
-                    directory
-                    for directory in rules.env_dirs
-                    if (project_dir / directory).is_dir()
+                u.Infra.analyzer_python_roots(
+                    project_dir,
+                    tuple(
+                        directory
+                        for directory in rules.env_dirs
+                        if directory in discovered
+                    ),
                 )
             )
         )
+        includes.update(self._pyright_include_globs(project_dir))
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
         for child in sorted(project_dir.iterdir()):
@@ -148,6 +155,26 @@ class FlextInfraExtraPathsManager(
     def pyrefly_include_globs(env_dirs: t.StrSequence) -> t.StrSequence:
         """Render Pyrefly include globs for already validated Python roots."""
         return tuple(f"{directory}/**/*.py*" for directory in env_dirs)
+
+    @staticmethod
+    def _pyright_include_globs(project_dir: Path) -> t.StrSequence:
+        """Return Pyrefly-compatible globs from declared Pyright includes."""
+        payload = u.Infra.pyproject_payload(project_dir / c.Infra.PYPROJECT_FILENAME)
+        tool = u.Cli.json_as_mapping(payload.get(c.Infra.TOOL))
+        pyright = u.Cli.json_as_mapping(tool.get(c.Infra.PYRIGHT))
+        includes: t.Infra.StrSet = set()
+        for raw_item in u.Cli.json_as_sequence(pyright.get(c.Infra.INCLUDE)):
+            if not isinstance(raw_item, str):
+                continue
+            normalized = raw_item.strip().rstrip("/")
+            if not normalized:
+                continue
+            includes.add(
+                normalized
+                if "*" in normalized or normalized.endswith((".py", ".pyi"))
+                else f"{normalized}/**/*.py*"
+            )
+        return tuple(sorted(includes))
 
 
 __all__: list[str] = ["FlextInfraExtraPathsManager"]

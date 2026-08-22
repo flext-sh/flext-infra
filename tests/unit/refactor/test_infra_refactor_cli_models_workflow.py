@@ -6,9 +6,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import c, main as infra_main
+from flext_infra import main as infra_main
 from flext_tests import tm
 from tests import u
 
@@ -20,9 +18,8 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     """Behavior contract for test_infra_refactor_cli_models_workflow."""
 
     def test_namespace_enforce_cli_fails_on_manual_protocol_violation(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
@@ -44,10 +41,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             result = infra_main(["refactor", *cli_args])
         tm.that(result, ne=0)
 
-    def test_wrapper_root_namespace_cli_dry_run_succeeds(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+    def test_wrapper_root_namespace_cli_dry_run_succeeds(self, tmp_path: Path) -> None:
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
@@ -76,9 +70,8 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         tm.that(source_file.read_text(encoding="utf-8"), has="c.Core.Tests")
 
     def test_wrapper_root_namespace_cli_check_fails_when_changes_are_needed(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
@@ -104,9 +97,8 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         tm.that(result, ne=0)
 
     def test_wrapper_root_namespace_cli_apply_rewrites_file(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
-        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
         workspace = u.Tests.mk_project(
             tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )

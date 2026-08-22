@@ -355,9 +355,14 @@ class TestsFlextInfraCodegenLazyInitService:
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         service = u.Tests.create_lazy_init_service(workspace_root)
         clean_file = package_root / "clean_generated.py"
-        clean_file.write_text("from __future__ import annotations\n", encoding="utf-8")
+        clean_file.write_text(
+            '"""Clean generated artifact."""\n\nfrom __future__ import annotations\n',
+            encoding="utf-8",
+        )
         dirty_file = package_root / "dirty_generated.py"
-        dirty_file.write_text("import os\n", encoding="utf-8")
+        dirty_file.write_text(
+            '"""Dirty generated artifact."""\n\nimport os\n', encoding="utf-8"
+        )
 
         clean_errors = service.batch_lint_generated((str(clean_file),))
         dirty_errors = service.batch_lint_generated((str(dirty_file),))

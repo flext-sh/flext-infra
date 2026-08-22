@@ -1,6 +1,7 @@
 # @flext-managed: continuous
 # @flext-regenerate: make deps WHAT=upgrade APPLY=Y
 # @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py
+# @flext-ssot-dependencies: flext-infra/config/codegen.yaml (project_defaults.dev, dependency_profiles)
 # @flext-maintenance: do not edit managed sections; edit the SSOT
 # [MANAGED] FLEXT pyproject standardization
 # Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
@@ -23,8 +24,8 @@ classifiers = [
 dependencies = [
   "defusedxml>=0.7.1",
   "filelock>=3.32.0",
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0rc2",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0rc2",
   "gitpython>=3.1.57",
   "libcst>=1.8.6",
   "mkdocs>=1.6.1",
@@ -160,6 +161,7 @@ namespace_packages = true
 no_implicit_reexport = true
 plugins = ["pydantic.mypy"]
 python_version = "3.13"
+show_traceback = true
 strict_equality = true
 warn_redundant_casts = true
 warn_return_any = true
@@ -352,8 +354,6 @@ reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
-venv = ".venv"
-venvPath = ".."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -413,13 +413,14 @@ addopts = [
   "--durations=10",
   "--markdown-docs",
   "--strict-markers",
-  "--timeout=30",
+  "--timeout=10",
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [
   "error",
   "module::flext_core._constants.enforcement.FlextMroViolation",
 ]
+flext_slow_timeout_seconds = "60"
 markers = [
   "core: core functionality tests",
   "docker: tests requiring Docker",
@@ -493,41 +494,21 @@ ignore = [
   "ambiguous-unicode-character-comment",
   "ambiguous-unicode-character-docstring",
   "ambiguous-unicode-character-string",
-  "assert-raises-exception",
-  "bad-dunder-method-name",
-  "bad-quotes-inline-string",
-  "blank-line-with-whitespace",
-  "blind-except",
   "boolean-positional-value-in-call",
   "camelcase-imported-as-lowercase",
-  "collection-literal-concatenation",
-  "commented-out-code",
   "complex-structure",
-  "docstring-extraneous-exception",
-  "docstring-extraneous-returns",
   "docstring-missing-exception",
   "docstring-missing-returns",
   "docstring-missing-yields",
-  "get-attr-with-constant",
-  "hardcoded-sql-expression",
   "import-outside-top-level",
   "incorrect-blank-line-before-class",
-  "invalid-first-argument-name-for-method",
   "line-too-long",
   "logging-f-string",
   "missing-copyright-notice",
-  "missing-return-type-private-function",
   "missing-trailing-comma",
-  "mixed-case-variable-in-global-scope",
   "multi-line-summary-second-line",
   "no-self-use",
   "non-imperative-mood",
-  "non-pep695-type-alias",
-  "raise-vanilla-args",
-  "raise-within-try",
-  "redefined-loop-name",
-  "set-attr-with-constant",
-  "snake-case-type-alias",
   "too-many-arguments",
   "too-many-branches",
   "too-many-locals",
@@ -536,13 +517,9 @@ ignore = [
   "too-many-public-methods",
   "too-many-return-statements",
   "too-many-statements",
-  "try-consider-else",
   "typing-only-first-party-import",
   "typing-only-standard-library-import",
   "typing-only-third-party-import",
-  "undocumented-param",
-  "unnecessary-lambda",
-  "unnecessary-placeholder",
   "unsorted-imports",
 ]
 select = ["ALL"]
@@ -590,8 +567,6 @@ known-first-party = ["flext_cli", "flext_core", "flext_infra", "flext_tests"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
-"**/.vulture_whitelist.py" = ["ALL"]
-"**/*_pb2*.py" = ["ALL"]
 "**/__init__.py" = [
   "any-type",
   "builtin-import-shadowing",
@@ -616,6 +591,7 @@ split-on-trailing-comma = false
 ]
 "scripts/cmd/**/*.py" = ["invalid-module-name", "shebang-not-executable"]
 "**/examples/**/*.py" = ["invalid-module-name", "shebang-not-executable"]
+"src/flext_infra/_utilities/_rope/**/*.py" = ["private-member-access"]
 
 # [MANAGED] tomlsort
 [tool.tomlsort]
@@ -632,6 +608,9 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
+
+[tool.uv.exclude-newer-package]
+mypy = "2026-08-15T03:04:00Z"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]
@@ -659,7 +638,7 @@ dev = [
   "django-stubs>=6.0.7",
   "factory-boy>=3.3.3",
   "faker>=40.36.0",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0rc2",
   "hypothesis>=6.161.8",
   "isort>=8.0.1",
   "matplotlib-stubs>=0.3.11",
@@ -681,7 +660,7 @@ dev = [
   "mkdocs-versioning>=0.4.0",
   "mkdocstrings>=1.0.6",
   "mkdocstrings-python>=2.0.5",
-  "mypy>=2.3.0",
+  "mypy>=2.3.1",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.1",
   "pylint>=4.0.6",
