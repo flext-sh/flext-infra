@@ -16,7 +16,10 @@ from typing import Final, override
 from flext_cli import cli
 from flext_infra import config, m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod.batch_gates import (
+    FlextInfraModGateEngine,
+    FlextInfraModGateSnapshot,
+)
 from flext_infra.codemod.discovery import discover_rules
 
 _CHECKPOINT_MESSAGE: Final[str] = "chore(git): checkpoint before ast-grep batch apply"
