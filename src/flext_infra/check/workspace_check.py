@@ -55,12 +55,8 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve and validate requested gate names.
-
-        Under ``CI=Y`` (exact Make CI token), drop lint/ruff and pyrefly so CI
-        does not re-run gates already covered by ``make fmt`` / ``make fix``.
-        """
-        resolved: t.MutableSequenceOf[str] = []
+        """Resolve, validate and deduplicate requested gate names."""
+        resolved: list[str] = []
         for gate in gates:
             name = gate.strip()
             if not name:
@@ -69,39 +65,27 @@ class FlextInfraWorkspaceChecker(
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if name not in resolved:
                 resolved.append(name)
-        owned = FlextInfraWorkspaceChecker._ci_owned_gates(resolved)
-        if owned:
-            FlextInfraWorkspaceChecker._gate_logger.info(
-                "ci_run_check_gates",
-                gates=list(owned),
-                reason="CI=Y runs positive gate set from make.ci.check_gates",
-            )
-            owned_set = frozenset(owned)
-            resolved = [gate for gate in resolved if gate in owned_set]
         return r[list[str]].ok(list(resolved))
 
     @staticmethod
-    def _ci_token_active() -> bool:
-        """True when the Make CI environment token is exactly make.ci.value."""
+    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
+        """Scope *gates* to the CI ternary owner set (RULING 2)."""
         ci = config.Infra.codegen.make.ci
         raw = u.Cli.env_read(ci.variable).unwrap().strip()
-        return raw == ci.value
-
-    @staticmethod
-    def _ci_owned_gates(gates: t.StrSequence) -> tuple[str, ...]:
-        """Return gates from *gates* that CI owns (in check_gates) when CI=Y."""
-        if not FlextInfraWorkspaceChecker._ci_token_active():
-            return ()
-        owned = frozenset(config.Infra.codegen.make.ci.check_gates)
-        return tuple(gate for gate in gates if gate in owned)
-
-    @staticmethod
-    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
-        """Apply make.ci.check_gates positive gate set when CI=Y (RULING 2)."""
-        if not FlextInfraWorkspaceChecker._ci_token_active():
+        owned: frozenset[str]
+        if raw == ci.value:
+            owned = frozenset(ci.check_gates)
+        elif raw == ci.local_value:
+            owned = frozenset(ci.local_check_gates)
+        else:
             return [gate for gate in gates if gate]
-        owned = set(FlextInfraWorkspaceChecker._ci_owned_gates(gates))
-        return [gate for gate in gates if gate and gate in owned]
+        scoped = [gate for gate in gates if gate and gate in owned]
+        FlextInfraWorkspaceChecker._gate_logger.info(
+            "ci_run_check_gates",
+            gates=scoped,
+            reason=f"{ci.variable}={raw} scopes check gates to its owner set",
+        )
+        return scoped
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -118,8 +102,25 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
+        requested_gates = [gate for gate in params.gates if gate]
         gates = cls.apply_ci_gate_rules(params.gates)
         if not gates:
+            if requested_gates:
+                # A caller that named its gates (``make fix APPLY=Y`` asks for
+                # the fixable set) and whose selection the CI token does not
+                # own ran them in the token's complementary stage instead:
+                # pre-commit (CI=Y) owns markdown/smells fixing, pre-push
+                # (CI=N) owns the whole-program type checkers. The verb is a
+                # documented no-op here, never a failure.
+                FlextInfraWorkspaceChecker._gate_logger.info(
+                    "ci_gate_noop",
+                    gates=requested_gates,
+                    reason=(
+                        "requested gates are owned by the complementary CI "
+                        "stage; nothing to run under this token"
+                    ),
+                )
+                return r[bool].ok(True)
             return r[bool].fail(
                 "no check gates remain after CI token filtering "
                 f"({config.Infra.codegen.make.ci.variable}="

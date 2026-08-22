@@ -18,7 +18,6 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
-
 from flext_infra import t
 
 
@@ -29,7 +28,7 @@ class FlextInfraModelsDepsToolConfigProjectRuff:
         """Project-owned Ruff additions for generated managed artifacts."""
 
         per_file_ignores: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.Infra.PerFileIgnores,
             m.Field(
                 description="Project-local per-file rules merged with global policy."
             ),

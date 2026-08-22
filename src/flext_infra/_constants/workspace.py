@@ -25,7 +25,7 @@ class FlextInfraConstantsWorkspace:
 
     @unique
     class WorkOperation(StrEnum):
-        """Public make work saga operations."""
+        """Retained lane metadata operation values."""
 
         START = "start"
         STATUS = "status"
@@ -36,6 +36,7 @@ class FlextInfraConstantsWorkspace:
     class WorkKind(StrEnum):
         """GitFlow lane kinds owned by configuration policy."""
 
+        EPIC = "epic"
         FEATURE = "feature"
         BUGFIX = "bugfix"
         HOTFIX = "hotfix"
@@ -118,6 +119,7 @@ class FlextInfraConstantsWorkspace:
         "epic_worktree",
         "child_slug",
     )
+    WORK_BEADS_MATRIX_KEY: Final[str] = "matrix"
 
     @unique
     class WorkspaceMode(StrEnum):

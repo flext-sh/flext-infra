@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
+
+import pytest
 
 from flext_infra import c, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+
+# Why (suite budget): every scenario provisions a real scaffolded project
+# template plus live git submodule topologies; the per-case wall only holds
+# on an idle CPU, so the whole module declares the config-owned slow budget.
+pytestmark = pytest.mark.slow
 
 
 class TestsCodegenSetupSubmodules:
@@ -26,21 +34,8 @@ class TestsCodegenSetupSubmodules:
         cls._git(root, "commit", "-q", "-m", marker)
 
     @classmethod
-    def _generated_project(cls, root: Path) -> None:
-        tm.ok(
-            FlextInfraCodegenProjectNew(
-                name="flext-demo",
-                kind=c.Infra.ProjectKind.EXTERNAL,
-                output_root=root,
-                provider="flext-sh",
-                license="MIT",
-                author_name="FLEXT Team",
-                author_email="team@flext.dev",
-                upstream="flext_cli",
-                year=2026,
-                apply_changes=True,
-            ).execute()
-        )
+    def _generated_project(cls, root: Path, template: Path) -> None:
+        shutil.copytree(template, root)
         cls._git(root, "init", "-q", "-b", "main")
         cls._git(root, "config", "user.email", "tests@flext.local")
         cls._git(root, "config", "user.name", "FLEXT Tests")
@@ -110,8 +105,29 @@ class TestsCodegenSetupSubmodules:
         cls._git(superproject, "add", "-f", ".gitmodules", path)
         cls._git(superproject, "commit", "-q", "-m", f"Add {path}")
 
+    @classmethod
+    def _branch_scenario(
+        cls,
+        tmp_path: Path,
+        template: Path,
+        *,
+        superproject_branch: str,
+        member_branch: str,
+    ) -> tuple[Path, dict[str, str]]:
+        """Provision a project whose member sits on the requested branch."""
+        source = tmp_path / "source"
+        cls._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        cls._generated_project(project, template)
+        cls._add_submodule(project, source, "vendor/source", "declared-dev")
+        if superproject_branch != "main":
+            cls._git(project, "switch", "-q", "-c", superproject_branch)
+        if member_branch != "declared-dev":
+            cls._git(project / "vendor/source", "switch", "-q", "-c", member_branch)
+        return project, cls._fake_uv(project)
+
     def test_virgin_recursive_submodules_initialize_before_environment(
-        self, tmp_path: Path
+        self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         nested = tmp_path / "nested"
         child = tmp_path / "child"
@@ -124,7 +140,7 @@ class TestsCodegenSetupSubmodules:
         self._add_submodule(source, child, "child", "child-dev")
 
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "source-dev")
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
         nested_marker = project / "vendor/source/child/nested/marker.txt"
@@ -148,12 +164,14 @@ class TestsCodegenSetupSubmodules:
             eq="nested-dev",
         )
 
-    def test_setup_is_repeatable_with_managed_submodule(self, tmp_path: Path) -> None:
+    def test_setup_is_repeatable_with_managed_submodule(
+        self, tmp_path: Path, generated_project_template: Path
+    ) -> None:
         """Idempotent setup succeeds twice when the submodule is already valid."""
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "declared-dev")
         environment = self._fake_uv(project)
 
@@ -177,20 +195,24 @@ class TestsCodegenSetupSubmodules:
         tm.that(content, has='if [ "$$need_fetch" -eq 1 ]')
         tm.that(content, has='merge-base --is-ancestor "$$remote_ref" HEAD')
 
-    def test_setup_is_repeatable_without_gitmodules(self, tmp_path: Path) -> None:
+    def test_setup_is_repeatable_without_gitmodules(
+        self, tmp_path: Path, generated_project_template: Path
+    ) -> None:
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         environment = self._fake_uv(project)
 
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
 
-    def test_content_only_submodule_is_never_initialized(self, tmp_path: Path) -> None:
+    def test_content_only_submodule_is_never_initialized(
+        self, tmp_path: Path, generated_project_template: Path
+    ) -> None:
         """A checkout without the config-owned marker remains untouched."""
         source = tmp_path / "source"
         self._commit_repository(source, "upstream", "foreign")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(
             project, source, "vendor/upstream", "upstream", managed=False
         )
@@ -201,13 +223,13 @@ class TestsCodegenSetupSubmodules:
         tm.that((project / "vendor/upstream/marker.txt").exists(), eq=False)
 
     def test_content_only_submodule_config_and_wip_are_never_mutated(
-        self, tmp_path: Path
+        self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         """Setup neither synchronizes nor validates an immutable checkout."""
         source = tmp_path / "source"
         self._commit_repository(source, "upstream", "foreign")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(
             project, source, "vendor/upstream", "upstream", managed=False
         )
@@ -234,32 +256,109 @@ class TestsCodegenSetupSubmodules:
             eq=configured_url,
         )
 
-    def test_conflicting_branch_fails_before_environment(self, tmp_path: Path) -> None:
-        source = tmp_path / "source"
-        self._commit_repository(source, "declared-dev", "source")
-        project = tmp_path / "project"
-        self._generated_project(project)
-        self._add_submodule(project, source, "vendor/source", "declared-dev")
-        self._git(project / "vendor/source", "switch", "-q", "-c", "local-work")
-        environment = self._fake_uv(project)
+    @pytest.mark.parametrize("member_branch", ["declared-dev", "feature/lane"])
+    def test_accepted_branch_provisions_the_environment(
+        self, tmp_path: Path, generated_project_template: Path, member_branch: str
+    ) -> None:
+        """Declared branch and superproject lane branch are both accepted."""
+        project, environment = self._branch_scenario(
+            tmp_path,
+            generated_project_template,
+            superproject_branch="feature/lane",
+            member_branch=member_branch,
+        )
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stderr, lacks="conflicting branch")
+        tm.that(
+            self._git(project / "vendor/source", "branch", "--show-current"),
+            eq=member_branch,
+        )
+        tm.that((project / "uv.log").is_file(), eq=True)
+
+    def test_conflicting_branch_fails_before_environment(
+        self, tmp_path: Path, generated_project_template: Path
+    ) -> None:
+        """A branch that is neither the declared one nor the lane is still refused."""
+        project, environment = self._branch_scenario(
+            tmp_path,
+            generated_project_template,
+            superproject_branch="feature/lane",
+            member_branch="local-work",
+        )
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
         tm.that(result.exit_code, eq=2)
         tm.that(result.stderr, has="conflicting branch")
+        tm.that(result.stderr, has="expected declared-dev or feature/lane")
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"),
             eq="local-work",
         )
         tm.that((project / "uv.log").exists(), eq=False)
 
+    def test_lane_branch_keeps_head_and_dirty_work(
+        self, tmp_path: Path, generated_project_template: Path
+    ) -> None:
+        """A member on the superproject lane branch provisions without any fetch."""
+        project, environment = self._branch_scenario(
+            tmp_path,
+            generated_project_template,
+            superproject_branch="feature/lane",
+            member_branch="feature/lane",
+        )
+        checkout = project / "vendor/source"
+        dirty = checkout / "marker.txt"
+        dirty.write_text("lane wip", encoding="utf-8")
+        head = self._git(checkout, "rev-parse", "HEAD")
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stderr, lacks="fetch origin")
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
+        tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
+        tm.that(dirty.read_text(encoding="utf-8"), eq="lane wip")
+        tm.that((project / "uv.log").is_file(), eq=True)
+
+    def test_lane_branch_without_recorded_gitlink_fails(
+        self, tmp_path: Path, generated_project_template: Path
+    ) -> None:
+        """The gitlink ancestry guarantee survives the lane branch acceptance."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project, generated_project_template)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        checkout = project / "vendor/source"
+        pinned_parent = self._git(checkout, "rev-parse", "HEAD")
+        (checkout / "advanced.txt").write_text("pinned", encoding="utf-8")
+        self._git(checkout, "add", "advanced.txt")
+        self._git(checkout, "commit", "-q", "-m", "Advance the pin")
+        self._git(project, "add", "-f", "vendor/source")
+        self._git(project, "commit", "-q", "-m", "Pin the advanced commit")
+        self._git(project, "switch", "-q", "-c", "feature/lane")
+        self._git(checkout, "switch", "-q", "-c", "feature/lane", pinned_parent)
+        environment = self._fake_uv(project)
+
+        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+
+        tm.that(result.exit_code, eq=2)
+        tm.that(result.stderr, has="diverges from recorded gitlink")
+        tm.that(result.stderr, lacks="fetch origin")
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
+        tm.that((project / "uv.log").exists(), eq=False)
+
     def test_local_changes_are_preserved_on_declared_branch(
-        self, tmp_path: Path
+        self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "declared-dev")
         marker = project / "vendor/source/marker.txt"
         marker.write_text("local change", encoding="utf-8")
@@ -272,12 +371,12 @@ class TestsCodegenSetupSubmodules:
         tm.that((project / "uv.log").is_file(), eq=True)
 
     def test_declared_branch_ahead_of_gitlink_is_preserved(
-        self, tmp_path: Path
+        self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "declared-dev")
         checkout = project / "vendor/source"
         advanced_marker = checkout / "advanced.txt"
@@ -293,12 +392,12 @@ class TestsCodegenSetupSubmodules:
         tm.that(advanced_marker.read_text(encoding="utf-8"), eq="fix forward")
 
     def test_unmanaged_third_party_submodule_is_never_mutated(
-        self, tmp_path: Path
+        self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         source = tmp_path / "third-party-source"
         self._commit_repository(source, "vendor-main", "vendor")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(
             project, source, "vendor/third-party", "vendor-main", managed=False
         )
@@ -315,12 +414,12 @@ class TestsCodegenSetupSubmodules:
         tm.that(marker.read_text(encoding="utf-8"), eq="third-party wip")
 
     def test_same_branch_declaration_uses_superproject_branch(
-        self, tmp_path: Path
+        self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         source = tmp_path / "source"
         self._commit_repository(source, "main", "source")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "main")
         self._git(
             project,
@@ -341,13 +440,13 @@ class TestsCodegenSetupSubmodules:
         )
 
     def test_setup_succeeds_when_gitlink_is_ahead_of_origin(
-        self, tmp_path: Path
+        self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         """Present pin matching HEAD must verify even when origin lags the pin."""
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
         project = tmp_path / "project"
-        self._generated_project(project)
+        self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "declared-dev")
         checkout = project / "vendor/source"
         ahead = checkout / "ahead.txt"
@@ -366,6 +465,26 @@ class TestsCodegenSetupSubmodules:
         tm.that(result.exit_code, eq=0)
         tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
+
+
+@pytest.fixture(scope="module")
+def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    root = tmp_path_factory.mktemp("setup-submodules") / "project"
+    tm.ok(
+        FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+    )
+    return root
 
 
 __all__: tuple[str, ...] = ()

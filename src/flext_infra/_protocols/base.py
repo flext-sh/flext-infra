@@ -328,6 +328,9 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def uv_exclude_newer_package(self) -> t.StrMapping: ...
+
+        @property
         def kubectl_version(self) -> str:
             """Exact kubectl version."""
             ...
@@ -365,6 +368,11 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def tokei_version(self) -> str:
             """Exact Tokei analyzer version."""
+            ...
+
+        @property
+        def qlty_version(self) -> str:
+            """Exact qlty code-smell scanner version."""
             ...
 
         @property

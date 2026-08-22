@@ -77,6 +77,26 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """Return the canonical lint tool names selected for a gate set."""
         return tuple(tool for tool, _ in cls._selected_lint_tools(gates))
 
+    @classmethod
+    def ruff_fix_files(cls, paths: t.SequenceOf[Path], workspace: Path) -> None:
+        """Run ``ruff check --fix`` on *paths* with snapshot-identical resolution.
+
+        Same venv-resolved binary and same working directory as the lint
+        snapshots, so the fix pass and the before/after diff always resolve
+        the SAME Ruff configuration for the same file.
+        """
+        for py_file in paths:
+            _ = u.Cli.run_checked(
+                [
+                    *cls._workspace_tool_command(workspace, "ruff"),
+                    c.Infra.CHECK,
+                    "--fix",
+                    str(py_file),
+                ],
+                cwd=cls._command_cwd(py_file, workspace),
+                env=cls._command_env(),
+            )
+
     @staticmethod
     def _relative_path(py_file: Path, workspace: Path) -> Path:
         """Relative path."""
@@ -152,32 +172,18 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_env = cls._command_env()
         gate_timeout = max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
+        # mro-38p39: every gate is an independent subprocess -- _run_lint_gate
+        # builds its own command and returns a value, touching no shared state.
+        # Running any one of them ahead of the pool made a snapshot cost that
+        # gate's full wall clock PLUS the slowest of the rest, instead of just
+        # the slowest. Measured: 8 snapshots x 4 gates at 0.297s each.
         results: list[m.Infra.LintGateResult] = []
-        ruff_template = next(
-            (tmpl for tool, tmpl in selected_tools if tool == "ruff"), None
-        )
-        if ruff_template is not None:
-            results.append(
-                cls._run_lint_gate(
-                    py_file=py_file,
-                    workspace=workspace,
-                    command_cwd=command_cwd,
-                    command_env=command_env,
-                    gate_timeout=gate_timeout,
-                    tool_name="ruff",
-                    template=ruff_template,
-                )
-            )
-
-        remaining_tools = tuple(
-            (tool, tmpl) for tool, tmpl in selected_tools if tool != "ruff"
-        )
-        if not remaining_tools:
-            return cls._lint_snapshot_from_results(tuple(results))
+        if not selected_tools:
+            return cls._lint_snapshot_from_results(())
 
         timeout_budget = max(1, gate_timeout + 10)
         pool = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(remaining_tools))
+            max_workers=max(1, min(cls._SNAPSHOT_MAX_WORKERS, len(selected_tools)))
         )
         futures_by_tool = {
             pool.submit(
@@ -190,7 +196,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 tool_name=tool,
                 template=tmpl,
             ): tool
-            for tool, tmpl in remaining_tools
+            for tool, tmpl in selected_tools
         }
         try:
             done, not_done = concurrent.futures.wait(

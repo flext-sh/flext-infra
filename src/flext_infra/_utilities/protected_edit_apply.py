@@ -220,6 +220,13 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         edit_completed = False
         try:
             request.edit_fn()
+            # Canonical normalization: the SAME tool that validates also fixes.
+            # Auto-fixable style fallout of a mechanical edit (blank lines,
+            # import order, stray pass) is repaired by ruff --fix, never by
+            # per-transform hand formatting.
+            FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
+                (py_file,), request.workspace
+            )
             edit_completed = True
         finally:
             if not edit_completed:
@@ -308,6 +315,26 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             path.resolve(): content
             for path, content in sorted(updates.items(), key=lambda item: str(item[0]))
         }
+        expected_sources = {
+            path.resolve(): content
+            for path, content in request.expected_sources.items()
+        }
+        for path, expected_source in expected_sources.items():
+            current_source = (
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                if path.is_file()
+                else None
+            )
+            if current_source != expected_source:
+                return (
+                    False,
+                    [
+                        (
+                            "CAS failed before protected source writes: "
+                            f"source changed for {path}"
+                        )
+                    ],
+                )
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditApply._preview_write_baselines(
                 normalized_updates, request.workspace, gates=request.gates
@@ -324,6 +351,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
             if request.post_write is not None:
                 request.post_write()
+            FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
+                tuple(normalized_updates), request.workspace
+            )
             write_completed = True
         finally:
             if not write_completed:

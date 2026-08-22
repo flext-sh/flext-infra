@@ -6,7 +6,7 @@ rule discovered through the package cascade (``flext_infra.codemod.discovery``)
 plus the project's own hand-written ``ast-grep-rules/``, then re-measure. Any
 count increase rolls the tree back to the checkpoint and fails loud; equal or
 lower counts keep the applied fixes.
-"""  # ruff:ignore[implicit-namespace-package]
+"""
 
 from __future__ import annotations
 
@@ -167,4 +167,4 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return r[t.Cli.ResultValue].fail(f"{detail}; rolled back to {checkpoint_sha}")
 
 
-__all__: list[str] = ["FlextInfraCodemodBatchApply", "FlextInfraModGateSnapshot"]
+__all__: list[str] = ["FlextInfraCodemodBatchApply"]

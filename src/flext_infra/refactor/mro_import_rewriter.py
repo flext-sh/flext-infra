@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
+
 from flext_infra import c, m, t, u
 from flext_infra.refactor._mro_import_collect import (
     FlextInfraRefactorMROImportRewriterFileOpsMixin,
@@ -144,9 +145,9 @@ class FlextInfraRefactorMROImportRewriter(
                     gates=request.gates,
                 )
                 if not ok:
-                    errors.extend(
-                        f"{file_path}: {line.strip()}" for line in report[:10]
-                    )
+                    # Never truncate: the failure cause (NEW <tool> errors /
+                    # pytest failure) is appended AFTER the diff lines.
+                    errors.extend(f"{file_path}: {line.strip()}" for line in report)
                     continue
             rewrites.append(
                 m.Infra.MRORewriteResult(file=str(file_path), replacements=len(changes))

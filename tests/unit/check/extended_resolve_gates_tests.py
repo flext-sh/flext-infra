@@ -64,22 +64,21 @@ class TestWorkspaceCheckerResolveGates:
         tm.ok(result)
         tm.that(result.value, eq=["silent-failure"])
 
-    def test_resolve_gates_under_ci_y_runs_positive_gate_set(
+    def test_ci_y_scopes_to_fast_gate_set(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """RULING 2: CI=Y make check runs positive gate set (check_gates)."""
-        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
-        result = FlextInfraWorkspaceChecker.resolve_gates([
-            "lint",
-            "pyrefly",
-            "mypy",
-            "pyright",
-            "security",
-        ])
-        tm.ok(result)
-        tm.that(result.value, eq=["mypy", "pyright", "security"])
-        tm.that(result.value, lacks="lint")
-        tm.that(result.value, lacks="pyrefly")
+        """RULING 2: CI=Y runs the fast set -- the type checkers stay local.
+
+        Runtime evidence (flext-ldap lane): `CI=Y make check WHAT=all` ran
+        lint pyright security markdown smells; `CI=N make check WHAT=all`
+        ran pyrefly mypy. The test states that observed contract.
+        """
+        ci = config.Infra.codegen.make.ci
+        monkeypatch.setenv(ci.variable, ci.value)
+        gates = ["lint", "pyrefly", "mypy", "pyright", "security"]
+        expected = [gate for gate in gates if gate in ci.check_gates]
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=expected)
+        tm.that(expected, eq=["lint", "pyright", "security"])
 
 
 class TestWorkspaceCheckerCiGateRules:
@@ -108,9 +107,41 @@ class TestWorkspaceCheckerCiGateRules:
         monkeypatch.setenv(ci.variable, ci.value)
         gates = ["lint", "format", "pyrefly", "mypy", "pyright", "security"]
         expected = [gate for gate in gates if gate in ci.check_gates]
-        tm.that(expected, eq=["mypy", "pyright", "security"])
+        tm.that(expected, eq=["lint", "pyright", "security"])
         tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(gates), eq=expected)
+        # CI=Y is the strict complement of the declared local set: fast gates
+        # only, derived from the allowed vocabulary minus local_check_gates.
         tm.that(
             set(ci.check_gates),
-            eq={"mypy", "pyright", "security", "markdown", "smells"},
+            eq={"lint", "pyright", "security", "markdown", "smells"},
+        )
+        # CI=N is exactly the declared slow set -- the whole-program type
+        # checkers -- and the two sets partition the check vocabulary.
+        tm.that(set(ci.local_check_gates), eq={"pyrefly", "mypy"})
+        tm.that(
+            set(ci.check_gates) | set(ci.local_check_gates),
+            eq=set(c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES),
+        )
+
+    def test_ci_local_token_keeps_explicit_narrow_selection_as_noop_success(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CI=N scopes ``make fix``'s fixable gates to a no-op success.
+
+        ``make fix APPLY=Y`` asks only for the fixable gates (markdown,
+        smells), disjoint from the CI=N slow set by design — pre-commit
+        (CI=Y) owns that fixing stage. An empty intersection under the
+        token is the verb's documented no-op, never a hard failure that
+        would block the pre-push hook.
+        """
+        ci = config.Infra.codegen.make.ci
+        monkeypatch.setenv(ci.variable, ci.local_value)
+        fixable: list[str] = list(config.Infra.codegen.make.check_gates_fixable)
+        tm.that(set(fixable) & set(ci.local_check_gates), eq=set())
+        tm.that(FlextInfraWorkspaceChecker.apply_ci_gate_rules(fixable), eq=[])
+        # The default full set is still scoped to the CI=N owner set.
+        default = list(c.Infra.PROJECT_CHECK_GATES_DEFAULT_VALUES)
+        tm.that(
+            FlextInfraWorkspaceChecker.apply_ci_gate_rules(default),
+            eq=list(ci.local_check_gates),
         )

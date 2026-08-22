@@ -17,13 +17,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 import yaml
 
 from flext_infra import config
 from flext_tests import tm
+from tests import TestsFlextInfraUtilities as tu
 
 
 def _workspace_root() -> Path:
@@ -33,11 +33,11 @@ def _workspace_root() -> Path:
 
 def _live_per_file_ignores() -> frozenset[str]:
     """Return the per-file-ignore globs the governed pyproject declares."""
-    payload = tomllib.loads(
-        (_workspace_root() / "pyproject.toml").read_text(encoding="utf-8")
+    content = (_workspace_root() / "pyproject.toml").read_text(encoding="utf-8")
+    ignores = tu.Tests.toml_table_at(
+        content, "tool", "ruff", "lint", "per-file-ignores"
     )
-    ruff = payload["tool"]["ruff"]["lint"]
-    return frozenset(ruff["per-file-ignores"])
+    return frozenset(ignores)
 
 
 def _ssot_per_file_ignores() -> frozenset[str]:
@@ -62,6 +62,11 @@ def _ssot_per_file_ignores() -> frozenset[str]:
 
 
 class TestsFlextInfraPyprojectConformPreservesLintScope:
+    def test_ssot_preserves_narrow_init_module_lint_policy(self) -> None:
+        rules = config.Infra.tooling.tools.ruff.lint.per_file_ignores["**/__init__.py"]
+
+        tm.that(rules, lacks="ALL")
+
     def test_ssot_preserves_pytest_assertion_semantics(self) -> None:
         """Keep generated and external pytest suites valid without migration."""
         rules = config.Infra.tooling.tools.ruff.lint.per_file_ignores["**/tests/**"]

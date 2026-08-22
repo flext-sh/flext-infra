@@ -54,10 +54,10 @@ jobs:
           fetch-depth: 0
 
       - name: Install mise toolchain
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654  # v4.2.4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518  # v4.2.5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
           enable-cache: true
           prune-cache: false
@@ -126,3 +126,39 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
     # End SECTION: ci job
+
+  # === SECTION: merge-guard job (managed) ===
+  merge-guard:
+    name: merge-guard
+    # Always run on PRs so a WIP/DRAFT source cannot slip past the skipped CI job.
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block WIP/DRAFT merges into protected integration branches
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -eu
+          case "$BASE_REF" in
+            dev|develop|0.12.0-dev)
+              ;;
+            *)
+              echo "Merge guard passed for $HEAD_REF -> $BASE_REF"
+              exit 0
+              ;;
+          esac
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "DRAFT PR cannot merge into ${BASE_REF}"
+            exit 1
+          fi
+          for pattern in '^wip/' 'WIP'; do
+            if [[ "$HEAD_REF" =~ $pattern ]]; then
+              echo "WIP branch ${HEAD_REF} cannot merge into ${BASE_REF}"
+              exit 1
+            fi
+          done
+          echo "Merge guard passed for $HEAD_REF -> $BASE_REF"
+  # End SECTION: merge-guard job
+

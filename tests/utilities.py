@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
@@ -317,6 +318,32 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
+        def toml_table_at(content: str, *path: str) -> t.JsonMapping:
+            current = TestsFlextInfraUtilities.Tests.toml_mapping(
+                tomllib.loads(content)
+            )
+            for segment in path:
+                current = TestsFlextInfraUtilities.Tests.toml_mapping(current[segment])
+            return current
+
+        @staticmethod
+        def toml_strings_at(content: str, *path: str) -> t.StrSequence:
+            if not path:
+                return ()
+            table = TestsFlextInfraUtilities.Tests.toml_table_at(content, *path[:-1])
+            return TestsFlextInfraUtilities.Tests.toml_strings(table[path[-1]])
+
+        @staticmethod
+        def toml_tables_at(content: str, *path: str) -> t.SequenceOf[t.JsonMapping]:
+            if not path:
+                return ()
+            table = TestsFlextInfraUtilities.Tests.toml_table_at(content, *path[:-1])
+            values = TestsFlextInfraUtilities.Tests.toml_list(table[path[-1]])
+            return tuple(
+                TestsFlextInfraUtilities.Tests.toml_mapping(value) for value in values
+            )
+
+        @staticmethod
         def infra_mapping_result(
             value: t.Infra.InfraMapping,
         ) -> p.Result[t.JsonMapping]:
@@ -366,7 +393,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def declare_workspace_ledger(repository: Path, ledger_id: str) -> None:
+        def declare_workspace_ledger(
+            repository: Path, ledger_id: str, ledger_prefix: str | None = None
+        ) -> None:
             """Declare the typed workspace manifest that owns the ledger.
 
             A bare ``.beads/config.yaml`` no longer makes a checkout a tracker:
@@ -385,6 +414,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         name=repository_ref.distribution,
                         repository=repository_ref,
                         ledger_id=ledger_id,
+                        # A tracker-owning manifest declares BOTH identifiers
+                        # (mro-cdzxf); callers that need a prefix distinct from
+                        # the SQL-safe database identity state it explicitly.
+                        ledger_prefix=(
+                            ledger_id if ledger_prefix is None else ledger_prefix
+                        ),
                     ).model_dump(mode="json", exclude_none=True),
                 )
             )
@@ -515,7 +550,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def write_standalone_workspace_manifest(
-            project_dir: Path, name: str, *, upstream: str = "flext_core"
+            project_dir: Path,
+            name: str,
+            *,
+            upstream: str = "flext_core",
+            inherited_facets: t.StrSequence = (),
         ) -> Path:
             """Write a local standalone workspace manifest for codegen conform."""
             config_dir = project_dir / "config"
@@ -556,6 +595,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  author_name: FLEXT Team\n"
                     "  author_email: team@flext.sh\n"
                     f"  upstream: {upstream}\n"
+                    f"  inherited_facets: {list(inherited_facets)!r}\n"
                     f"  homepage: https://github.com/flext-sh/{name}\n"
                     f"  documentation: https://github.com/flext-sh/{name}\n"
                     "  workspace_root_rel: .\n"
@@ -1123,6 +1163,33 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return service
 
         @staticmethod
+        def ruff_per_file_ignores_toml() -> str:
+            """Render the fleet Ruff policy as a pyproject fragment.
+
+            Reads the same typed SSOT production reads (P0): fixture
+            workspaces carry the real policy — select, ignore, preview and
+            the per-file-ignores map — never a hand-rolled fragment.
+            """
+            ruff_cfg = config.Infra.tooling.tools.ruff
+            select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
+            ignore = ", ".join(
+                f'"{rule}"'
+                for rule in sorted({
+                    *ruff_cfg.lint.ignore,
+                    *ruff_cfg.lint.ignored_rule_rationales,
+                })
+            )
+            rows = "\n".join(
+                f'"{pattern}" = [{", ".join(f'"{rule}"' for rule in rules)}]'
+                for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
+            )
+            return (
+                f"[tool.ruff]\npreview = {str(ruff_cfg.preview).lower()}\n\n"
+                f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
+                f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
+            )
+
+        @staticmethod
         def create_lazy_init_workspace(
             tmp_path: Path,
             *,
@@ -1139,10 +1206,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 (
                     f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
-                    "[tool.ruff.lint.per-file-ignores]\n"
-                    "# PEP 562 lazy facades import typing-only names that are "
-                    "published as strings in __all__.\n"
-                    '"**/__init__.py" = ["TC004"]\n'
+                    + TestsFlextInfraUtilities.Tests.ruff_per_file_ignores_toml()
                 ),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )

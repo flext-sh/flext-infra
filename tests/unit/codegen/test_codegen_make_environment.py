@@ -364,7 +364,7 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli",
                     "APPLY=Y",
@@ -404,7 +404,7 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli --all",
                     "APPLY=Y",
@@ -421,10 +421,10 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that(uv_log.exists(), eq=False)
 
-    def test_public_gate_fails_closed_before_managed_environment_exists(
+    def test_public_gate_auto_provisions_missing_environment(
         self, tmp_path: Path
     ) -> None:
-        """A public gate preserves the canonical setup-required diagnostic."""
+        """A public gate auto-provisions the environment when the interpreter is missing."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -437,10 +437,11 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        # The guard auto-provisions: it detects the missing interpreter and
+        # invokes setup rather than failing closed.
         tm.that(
             process.stdout + process.stderr,
-            has=["missing environment interpreter", "make setup creates it"],
+            has="environment interpreter missing; provisioning via setup",
         )
 
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
