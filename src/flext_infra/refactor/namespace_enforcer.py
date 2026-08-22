@@ -153,7 +153,8 @@ class FlextInfraNamespaceEnforcer(
             apply=params.apply, project_names=params.project_names, gates=params.gates
         )
         cli.display_text(cls.render_text(report))
-        if report.has_violations:
+        has_violations: bool = report.has_violations
+        if has_violations:
             return r[m.Infra.WorkspaceEnforcementReport].fail(
                 "Namespace violations found"
             )

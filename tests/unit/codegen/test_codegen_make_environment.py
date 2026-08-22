@@ -10,7 +10,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import c as test_c, u as test_u
 
 
 class TestsCodegenMakeEnvironment:
@@ -49,12 +49,7 @@ class TestsCodegenMakeEnvironment:
         )
         project_root = tmp_path / profile.value / "fixture-project"
         workspace_root = project_root.parent if attached else project_root
-        infra_repositories = tuple(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        )
-        tm.that(len(infra_repositories), eq=1)
+        infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
         local_members = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
@@ -112,20 +107,17 @@ class TestsCodegenMakeEnvironment:
                 "fixture workspace\n", encoding="utf-8"
             )
             test_u.Tests.initialize_git_repo(workspace_root)
-            tm.ok(
-                u.Cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "-c",
-                        "protocol.file.allow=always",
-                        "submodule",
-                        "add",
-                        "-q",
-                        str(member_source),
-                        project_root.name,
-                    ],
-                    cwd=workspace_root,
-                )
+            test_u.Tests.git_bootstrap(
+                workspace_root,
+                (
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    "-q",
+                    str(member_source),
+                    project_root.name,
+                ),
             )
         else:
             project_root.mkdir(parents=True)
@@ -146,10 +138,13 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = project_root
+        # An attached workspace-member delegates its runtime to the governing
+        # workspace root (RUNTIME_ROOT is WORKSPACE_ROOT); every other profile
+        # owns its runtime locally.
+        runtime_root = workspace_root if attached else project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -204,19 +199,13 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        ("profile", "local_infra"),
-        [
-            (c.Infra.MakeProfile.STANDALONE, False),
-            (c.Infra.MakeProfile.WORKSPACE_ROOT, True),
-        ],
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
     )
-    def test_setup_bootstraps_configured_engine_before_project_environment(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool
+    def test_setup_provisions_environment_before_project_runtime(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
-        """Setup conforms stale metadata before project-owned uv reads it."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, profile, local_infra=local_infra
-        )
+        """Setup creates the venv and syncs dependencies before any runtime use."""
+        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -253,37 +242,27 @@ class TestsCodegenMakeEnvironment:
             [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
         )
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has=["run --no-project", "codegen conform"])
-        if local_infra:
-            tm.that(commands[0], has=f"--with-editable {project_root / 'infra-engine'}")
-            tm.that(commands[0], lacks="git+")
-        else:
-            infra_repository = next(
-                item
-                for item in config.Infra.codegen.repositories
-                if item.distribution == config.Infra.name
-            )
-            infra_provider = tm.ok(
-                u.Infra.repository_provider(
-                    infra_repository, config.Infra.codegen.providers
-                )
-            )
-            tm.that(
-                commands[0],
-                has=(
-                    f"--with {infra_repository.distribution} @ "
-                    f"git+{infra_repository.url}@{infra_provider.branch}"
-                ),
-            )
-        tm.that("\n".join(commands[1:]), has=["venv --clear", "sync --project"])
+        tm.that(commands[0], has="venv ")
+        tm.that(commands[1], has="sync --project")
+        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
+            tm.that(commands[2], has="pip check")
 
-    def test_serialized_runner_preserves_provisioned_external_tools(
+    def test_setup_probes_before_repairing_environment(self, tmp_path: Path) -> None:
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
+
+        tm.that(recipe.index("--check"), lt=recipe.rindex(" sync "))
+
+    def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
     ) -> None:
         """Keep managed tools reachable while removing the hostile active venv."""
@@ -316,12 +295,17 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
+        # `gen` routes through PROJECT_FLEXT_INFRA, the managed interpreter the
+        # fixture stubs, so the recipe actually observes the sanitized PATH.
+        # The invoking environment exports WHAT (the outer `make test WHAT=...`),
+        # and a step must state its own selector instead of inheriting one it
+        # does not support, so `gen` is invoked with its own WHAT.
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test"],
+                [c.Infra.MAKE, "--no-print-directory", "gen", "WHAT=all", "APPLY=Y"],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
@@ -344,7 +328,7 @@ class TestsCodegenMakeEnvironment:
         tm.that("UV ?= uv" in makefile, eq=True)
         tm.that(
             (
-                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
+                'UV_RUN := env -u MYPYPATH PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
             in makefile,
@@ -356,10 +340,91 @@ class TestsCodegenMakeEnvironment:
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
-    def test_serialized_gate_fails_closed_before_managed_environment_exists(
+    def test_dependency_upgrade_selects_only_one_distribution(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Refresh one Git dependency without globally upgrading the lock."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        uv_log = tmp_path / "uv.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
+        )
+        monkeypatch.setenv("PROJECT", "flext-infra")
+        monkeypatch.setenv("PROJECTS", "flext-core flext-cli")
+
+        # The public ``deps`` verb dispatches straight into its builtin, so the
+        # fixture drives the public surface a caller actually uses.
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "_serialized_deps",
+                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "DEPENDENCY=flext-cli",
+                    "APPLY=Y",
+                ],
+                cwd=project_root,
+                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(
+            commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
+        )
+        tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
+
+    def test_dependency_upgrade_rejects_non_distribution_selector(
         self, tmp_path: Path
     ) -> None:
-        """A serialized gate preserves the canonical setup-required diagnostic."""
+        """Fail before uv when the dependency selector is not one package name."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        uv_log = tmp_path / "uv.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
+        )
+
+        # Same public-verb entry as the selection test above: the rejection must be
+        # exercised through the private dispatcher target.
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "_serialized_deps",
+                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "DEPENDENCY=flext-cli --all",
+                    "APPLY=Y",
+                ],
+                cwd=project_root,
+                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
+        )
+        tm.that(uv_log.exists(), eq=False)
+
+    def test_public_gate_auto_provisions_missing_environment(
+        self, tmp_path: Path
+    ) -> None:
+        """A public gate auto-provisions the environment when the interpreter is missing."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -368,14 +433,15 @@ class TestsCodegenMakeEnvironment:
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        # The guard auto-provisions: it detects the missing interpreter and
+        # invokes setup rather than failing closed.
         tm.that(
             process.stdout + process.stderr,
-            has=["missing environment interpreter", "make setup creates it"],
+            has="environment interpreter missing; provisioning via setup",
         )
 
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
@@ -386,11 +452,10 @@ class TestsCodegenMakeEnvironment:
 
         for required in (
             "UV ?= uv",
-            '$(UV) venv --clear "$(RUNTIME_VENV)"',
+            '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            "MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)",
-            'git -C "$$root" submodule update --init -- "$$child_path"',
+            'git -C "$$superproject" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)

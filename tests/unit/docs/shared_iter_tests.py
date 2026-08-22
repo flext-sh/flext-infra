@@ -41,6 +41,23 @@ class TestIterMarkdownFiles:
         files = u.Infra.iter_markdown_files(tmp_path)
         tm.that(not any(".hidden" in str(f) for f in files), eq=True)
 
+    def test_hidden_workspace_ancestor_does_not_exclude_docs(
+        self, tmp_path: Path
+    ) -> None:
+        """Exclude hidden descendants without rejecting a worktree ancestor."""
+        workspace = tmp_path / ".worktrees" / "project"
+        docs_dir = workspace / "docs"
+        docs_dir.mkdir(parents=True)
+        visible = docs_dir / "guide.md"
+        visible.write_text("# Guide\n")
+        hidden_dir = docs_dir / ".hidden"
+        hidden_dir.mkdir()
+        (hidden_dir / "private.md").write_text("# Private\n")
+
+        files = u.Infra.iter_markdown_files(workspace)
+
+        tm.that(files, eq=[visible])
+
     def test_nested_structure(self, tmp_path: Path) -> None:
         """Test iter_markdown_files with nested directory structure."""
         nested_dir = tmp_path / "docs/guides/advanced"

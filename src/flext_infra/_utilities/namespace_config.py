@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 
@@ -54,9 +54,7 @@ class FlextInfraUtilitiesNamespaceConfig:
             )
             if normalized:
                 return normalized
-        tracked = FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(
-            project_root
-        )
+        tracked = FlextInfraUtilitiesGit.git_tracked_top_level_dir_names(project_root)
         if tracked is not None:
             excluded = c.Infra.COMMON_EXCLUDED_DIRS | {
                 name for name in tracked if name.startswith(".")

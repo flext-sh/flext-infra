@@ -6,8 +6,8 @@ from flext_infra import config, m
 from flext_tests import tm
 
 
-class TestsCodegenWorktreeVerb:
-    """The `worktree` verb is part of the canonical public Make surface."""
+class TestsCodegenWorkVerb:
+    """`work` is the single canonical public lane verb."""
 
     def _verb(self, name: str) -> m.Infra.MakeVerbSpec:
         matches = tuple(
@@ -16,29 +16,37 @@ class TestsCodegenWorktreeVerb:
         tm.that(matches, len=1)
         return matches[0]
 
-    def test_worktree_is_a_canonical_public_verb(self) -> None:
-        """Every generated project receives the governed worktree route.
+    def test_work_is_a_canonical_public_verb(self) -> None:
+        """Every generated project receives the governed lane route.
 
         Declaring it in `extra_verbs` would make it repository-local, which
         would defeat the purpose: every project must expose the same lane
         surface.
         """
-        tm.that(self._verb("worktree").name, eq="worktree")
+        tm.that(self._verb("work").name, eq="work")
 
-    def test_worktree_defaults_to_a_read_only_selector(self) -> None:
-        """The default operation reports state without mutating the repository.
+    def test_no_public_worktree_verb_competes_with_work(self) -> None:
+        """One lane surface only.
 
-        `list` is the only selector that reports state without touching the
-        worktree registry, so it is the safe default.
+        `worktree` was the raw registry verb. Keeping it public alongside
+        `work` would let a caller create a lane that no bead owns, which is
+        exactly the unrecoverable state the saga exists to prevent.
         """
-        verb = self._verb("worktree")
-        tm.that(verb.default_what, eq="list")
+        names = tuple(verb.name for verb in config.Infra.codegen.make.verbs)
+        tm.that(names, lacks="worktree")
 
-    def test_mutating_operations_own_the_apply_guard(self) -> None:
-        """Read-only list remains usable without granting mutation authority.
+    def test_work_defaults_to_a_read_only_selector(self) -> None:
+        """The default selector reports lane state without mutating anything."""
+        tm.that(self._verb("work").default_what, eq="status")
 
-        Guarding at verb level would force `APPLY=Y` onto `list`. The mutating
-        selectors enforce the guard individually in their own recipes instead.
+    def test_work_owns_the_full_lane_lifecycle(self) -> None:
+        """Start, status, land, and finish are the declared saga steps."""
+        tm.that(set(self._verb("work").whats), eq={"start", "status", "land", "finish"})
+
+    def test_lane_mutation_requires_the_apply_guard(self) -> None:
+        """Lane mutation is authority-bearing, so the verb is apply-guarded.
+
+        `status` stays usable without `APPLY=Y` because its recipe never calls
+        `_require_apply`; the guard lives in the mutating recipes.
         """
-        verb = self._verb("worktree")
-        tm.that(verb.apply_guarded, eq=False)
+        tm.that(self._verb("work").apply_guarded, eq=True)

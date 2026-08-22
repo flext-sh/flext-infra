@@ -44,9 +44,10 @@ class FlextInfraAccessorMigrationOrchestrator(
     @override
     def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute."""
-        resolved = u.Infra.resolve_projects(
-            self.workspace_root, self.project_names or ()
+        selected_projects: t.StrSequence = (
+            self.project_names if self.project_names is not None else ()
         )
+        resolved = u.Infra.resolve_projects(self.workspace_root, selected_projects)
         if resolved.failure:
             return r[m.Infra.AccessorMigrationReport].fail(
                 resolved.error or "project resolution failed"

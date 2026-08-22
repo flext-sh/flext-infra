@@ -18,6 +18,14 @@
     "name": {
       "$ref": "#/$defs/name"
     },
+    "ledger_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "ledger_prefix": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
     "repository": {
       "$ref": "#/$defs/repository"
     },
@@ -31,12 +39,33 @@
         "$ref": "#/$defs/repository"
       }
     },
+    "content_only": {
+      "$comment": "Vendored or content-only gitlinks: present in the tree but never managed, mutated, or included in conform fan-out.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/relativePath"
+      }
+    },
     "exclusions": {
       "type": "array",
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/exclusion"
       }
+    },
+    "external_dependency_paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/relativePath"
+      }
+    },
+    "integration": {
+      "$ref": "#/$defs/workspaceIntegration"
+    },
+    "work": {
+      "$ref": "#/$defs/workspaceWork"
     },
     "repository_policy_overlays": {
       "type": "array",
@@ -45,6 +74,11 @@
         "$ref": "#/$defs/repositoryPolicyOverlay"
       }
     }
+  },
+  "dependentRequired": {
+    "ledger_prefix": [
+      "ledger_id"
+    ]
   },
   "$defs": {
     "name": {
@@ -161,6 +195,44 @@
         }
       }
     },
+    "workspaceIntegration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "branch"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/name"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "organization": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+$"
+        }
+      }
+    },
+    "workspaceWork": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "task_kind": {
+          "enum": ["feature", "bugfix"]
+        },
+        "chore_kind": {
+          "enum": ["feature", "bugfix"]
+        }
+      }
+    },
     "repositoryPolicyOverlay": {
       "type": "object",
       "additionalProperties": false,
@@ -178,6 +250,23 @@
         },
         "ci_enabled": {
           "type": "boolean"
+        },
+        "ci_matrix_auto_run": {
+          "type": "boolean",
+          "description": "When true, projected ci-matrix also auto-runs on push to main; default false is workflow_dispatch only"
+        },
+        "extra_ignored_patterns": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "uv_exclude_newer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Project-local [tool.uv].exclude-newer cooldown. The fleet default is a rolling window, which silently ages past a security floor declared in override-dependencies and makes resolution unsatisfiable; a project carrying such a floor pins the absolute cutoff here"
         }
       }
     },
@@ -186,7 +275,8 @@
       "additionalProperties": false,
       "required": [
         "name",
-        "default_what"
+        "default_what",
+        "whats"
       ],
       "properties": {
         "name": {
@@ -196,8 +286,24 @@
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]*$"
         },
+        "whats": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        },
         "apply_guarded": {
           "type": "boolean"
+        },
+        "accepts_apply": {
+          "type": "boolean"
+        },
+        "apply_what": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
         }
       }
     },
@@ -276,6 +382,15 @@
             "flext_core",
             "flext_cli"
           ]
+        },
+        "inherited_facets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "uniqueItems": true,
+          "default": []
         },
         "homepage": {
           "type": "string",
