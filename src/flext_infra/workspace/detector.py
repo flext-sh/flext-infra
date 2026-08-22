@@ -822,7 +822,8 @@ class FlextInfraWorkspaceDetector(
         )
         if origin.failure or not origin.value.text:
             return r[c.Infra.WorkspaceMode].fail(
-                origin.error or f"workspace member origin is missing: {member_path}"
+                origin_result.error
+                or f"workspace member origin is missing: {member_path}"
             )
         gitlink = u.Infra.git_gitlink_spec(
             m.Infra.GitRefRequest(repo_root=superproject_root, reference=member_path)
@@ -846,7 +847,8 @@ class FlextInfraWorkspaceDetector(
         )
         if member_head.failure or not member_head.value.oid:
             return r[c.Infra.WorkspaceMode].fail(
-                member_head.error or f"workspace member HEAD is missing: {member_path}"
+                member_head_result.error
+                or f"workspace member HEAD is missing: {member_path}"
             )
         declared_identity = u.Infra.git_remote_identity(declared.url)
         if (

@@ -494,6 +494,21 @@ all: _builtin_require_environment
 
 .PHONY: all
 
+# `all` = clean setup gen fmt fmt fix check test. CI=Y skips pytest inside
+# make test (flext_infra._pytest_entry guards mro-v4p5), so all always calls
+# test — the pytest gate is self-guarding.
+all: _builtin_require_environment
+	@$(SELF_MAKE) clean APPLY=Y
+	@$(SELF_MAKE) setup
+	@$(SELF_MAKE) gen APPLY=Y
+	@$(SELF_MAKE) fmt APPLY=Y
+	@$(SELF_MAKE) fmt APPLY=Y
+	@$(SELF_MAKE) fix APPLY=Y
+	@$(SELF_MAKE) check
+	@$(SELF_MAKE) test
+
+.PHONY: all
+
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.

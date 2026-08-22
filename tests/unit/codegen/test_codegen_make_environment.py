@@ -364,7 +364,7 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli",
                     "APPLY=Y",
@@ -404,7 +404,7 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
+                    "_serialized_deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
                     "DEPENDENCY=flext-cli --all",
                     "APPLY=Y",
