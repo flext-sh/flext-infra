@@ -26,7 +26,9 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(len(result.value.splitlines()), gt=_MIN_RENDERED_LINES)
 
     def test_bootstrap_setup_is_self_contained_and_branch_aware(self) -> None:
-        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer.render_bootstrap_include())
+        rendered: str = tm.ok(
+            FlextInfraBaseMkTemplateRenderer.render_bootstrap_include()
+        )
 
         for required in (
             "SETUP_ROOT := $(shell git rev-parse --show-toplevel)",
@@ -66,7 +68,7 @@ class TestsFlextInfraBasemkRenderer:
 
     def test_render_all_preflight_is_read_only_and_fail_closed(self) -> None:
         """Reject stale state without deleting environments or syncing source."""
-        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
+        rendered: str = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
         tm.that(rendered, has="define VALIDATE_CANONICAL_BASE_MK")
         tm.that(rendered, has="basemk-validate")
@@ -76,7 +78,7 @@ class TestsFlextInfraBasemkRenderer:
 
     def test_render_all_builds_with_canonical_uv_command(self) -> None:
         """Build distributions without unrelated codegen or Poetry commands."""
-        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
+        rendered: str = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
         tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
         tm.that(rendered, has="UV ?= uv")

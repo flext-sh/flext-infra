@@ -18,7 +18,8 @@ class FlextInfraEnforcementSelection:
     @staticmethod
     def canonical_catalog() -> m.EnforcementCatalog:
         """Return the canonical flext-core enforcement catalog."""
-        return u.build_canonical_catalog()
+        catalog: m.EnforcementCatalog = u.build_canonical_catalog()
+        return catalog
 
     @classmethod
     def selected_rules(
