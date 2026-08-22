@@ -230,7 +230,7 @@ class TestSmellsGate:
         (tmp_path / "empty-bin").mkdir()
 
         gate = FlextInfraSmellsGate(tmp_path)
-        execution = gate.execute(_ctx(tmp_path))
+        execution = gate.check(tmp_path, _ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=True)
 

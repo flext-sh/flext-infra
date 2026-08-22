@@ -1,4 +1,4 @@
-"""Beads lane registry adapter for the make work saga."""
+"""Beads lane registry adapter for persisted historical lane metadata."""
 
 from __future__ import annotations
 

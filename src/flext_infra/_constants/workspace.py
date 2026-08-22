@@ -25,7 +25,7 @@ class FlextInfraConstantsWorkspace:
 
     @unique
     class WorkOperation(StrEnum):
-        """Public make work saga operations."""
+        """Retained lane metadata operation values."""
 
         START = "start"
         STATUS = "status"
