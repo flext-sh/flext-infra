@@ -52,9 +52,7 @@ class TestsFlextInfraCodegenGeneration:
                 "Demo": ("demo_pkg.api", "Demo"),
                 "r": ("flext_core", "r"),
             }),
-            eager_dunders=MappingProxyType({
-                "__version__": ("demo_pkg.__version__", "__version__")
-            }),
+            eager_dunders={"__version__": ("demo_pkg.__version__", "__version__")},
             child_packages=("demo_pkg.services",),
         )
 

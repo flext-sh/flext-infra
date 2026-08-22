@@ -476,7 +476,7 @@ class TestCodegenBeadsLedger:
         mro-tvc03: rejecting equality invalidated the real governing manifest,
         which declares ``ledger_id: mro`` with ``ledger_prefix: mro`` precisely
         to state the namespace instead of inheriting it. Runtime proved it:
-        ``make work`` failed with "workspace manifest model validation failed"
+        Lane provisioning failed with "workspace manifest model validation failed"
         for every lane until equality was allowed again.
         """
         repository = test_u.Tests.repository_ref(config.Infra.name)
