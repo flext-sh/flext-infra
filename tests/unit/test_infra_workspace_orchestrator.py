@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import override
 
 import pytest
-from flext_tests import r, tm
 
-from flext_infra import c, u
+from flext_infra import c, r, u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+from flext_tests import tm
 from tests import m, p, t
 
 
@@ -89,9 +89,9 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         @staticmethod
         @override
         def _prepare_projects(
-            projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+            projects: t.SequenceOf[m.Infra.ProjectInfo],
         ) -> p.Result[bool]:
-            _ = (projects, workspace_root)
+            _ = projects
             return r[bool].ok(True)
 
     @staticmethod
@@ -121,6 +121,14 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         )
         tm.that(calls, eq=["p-a"])
 
+    def test_fail_fast_preserves_original_project_exit_code(self) -> None:
+        """Expose the first failing project status through the public result."""
+        orchestrator = self.RunnerOrchestrator(self.ProjectRunner({"p-a": 23}))
+
+        result = orchestrator.orchestrate(["p-a", "p-b"], "test", fail_fast=True)
+
+        tm.fail(result, has="exit=23")
+
     def test_continues_without_fail_fast(self) -> None:
         """Continue orchestration after failures when fail-fast is disabled."""
         calls: t.MutableSequenceOf[str] = []
@@ -143,6 +151,20 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
 
         tm.ok(orchestrator.orchestrate(["p-a"], "test", fail_fast=True), len=1)
         tm.that(observed_make_args, eq=[("FAIL_FAST=1",)])
+
+    @pytest.mark.parametrize(
+        ("exit_code", "classification"),
+        [(124, "timeout"), (137, "signal=9"), (134, "signal=6")],
+    )
+    def test_failure_classifies_process_exit(
+        self, exit_code: int, classification: str
+    ) -> None:
+        """Classify timeout and signal exits without changing their status."""
+        orchestrator = self.RunnerOrchestrator(self.ProjectRunner({"p-a": exit_code}))
+
+        result = orchestrator.orchestrate(["p-a"], "check", fail_fast=True)
+
+        tm.fail(result, has=[f"exit={exit_code}", classification])
 
     def test_run_project_sanitizes_parent_make_environment(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -185,6 +207,7 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         result = orchestrator.orchestrate(["flext-demo"], "test")
 
         tm.ok(result, len=1)
+        tm.that("MAKEFILES" in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, eq=True)
         tm.that(observed_remove_keys, eq=[c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS])
         tm.that(observed_envs[0][c.Infra.ORCHESTRATOR_ENV_NO_COLOR], eq="1")
         tm.that(
@@ -205,6 +228,36 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         )
 
         tm.ok(orchestrator.execute(), eq=True)
+
+    def test_test_selectors_become_exact_make_argv_elements(self) -> None:
+        """Preserve whitespace and punctuation without reparsing selector strings."""
+        orchestrator = FlextInfraOrchestratorService(
+            verb="test",
+            file="tests/unit/sample test.py::TestsSample::test exact",
+            match="exact name and not slow",
+            what="all",
+        )
+
+        tm.that(
+            orchestrator.make_args,
+            eq=(
+                "FILE=tests/unit/sample test.py::TestsSample::test exact",
+                "MATCH=exact name and not slow",
+                "WHAT=all",
+            ),
+        )
+
+    def test_test_rejects_generic_make_argument_channel(self) -> None:
+        """Keep arbitrary pytest flags out of whitespace-delimited Make strings."""
+        with pytest.raises(c.ValidationError, match="generic make-arg is forbidden"):
+            FlextInfraOrchestratorService(
+                verb="test", make_arg=("PYTEST_ARGS=-o addopts=",)
+            )
+
+    def test_non_test_verb_rejects_pytest_selectors(self) -> None:
+        """Keep test-only selector fields out of unrelated orchestrated verbs."""
+        with pytest.raises(c.ValidationError, match="only valid for the test verb"):
+            FlextInfraOrchestratorService(verb="check", match="sample")
 
     def test_empty_project_list(
         self, orchestrator: FlextInfraOrchestratorService

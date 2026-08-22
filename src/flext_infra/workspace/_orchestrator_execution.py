@@ -26,10 +26,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         path = inherited.get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
         blocked_path_entries = frozenset(
             entry
-            for entry in (
-                inherited.get(c.Infra.ORCHESTRATOR_ENV_MISE_SHIMS, ""),
-                inherited.get(c.Infra.ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS, ""),
-            )
+            for entry in (inherited.get(c.Infra.ORCHESTRATOR_ENV_MISE_SHIMS, ""),)
             if entry
         )
         path_entries = tuple(
@@ -61,6 +58,15 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             )
         cmd_output: p.Cli.CommandOutput = output_result.value
         return (cmd_output, cmd_output.exit_code == 0)
+
+    @staticmethod
+    def _exit_classification(exit_code: int) -> str:
+        """Name the process outcome behind a non-zero exit status."""
+        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
+            return " timeout"
+        if exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
+            return f" signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
+        return ""
 
     @staticmethod
     def _collect_failures(
@@ -145,7 +151,11 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         u.Cli.emit_raw(
             f"scope={c.Infra.RK_WORKSPACE} verb={verb} "
             f"projects={','.join(projects)}"
-            + (f" gates={self._gates_of(make_args)}" if self._gates_of(make_args) else "")
+            + (
+                f" gates={self._gates_of(make_args)}"
+                if self._gates_of(make_args)
+                else ""
+            )
             + "\n"
         )
         for idx, project in enumerate(projects, start=1):
@@ -188,7 +198,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             self._failure_summary(verb, failures)
             return r.fail(
                 f"orchestration completed with failures: {failed} "
-                f"(first failure {failed_project} exit code {exit_code})"
+                f"(first failure {failed_project} exit={exit_code}"
+                f"{self._exit_classification(exit_code)})"
             )
         return r.ok(results)
 
@@ -254,10 +265,11 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
     @staticmethod
     def _gates_of(make_args: t.StrSequence) -> str:
         """Return the gate selection carried by make arguments, if declared."""
-        prefix = f"{c.Infra.CHECK_GATES_VARIABLE}="
+        prefix: str = f"{c.Infra.CHECK_GATES_VARIABLE}="
         for make_arg in make_args:
             if make_arg.startswith(prefix):
-                return make_arg[len(prefix) :]
+                gates: str = make_arg[len(prefix) :]
+                return gates
         return ""
 
 

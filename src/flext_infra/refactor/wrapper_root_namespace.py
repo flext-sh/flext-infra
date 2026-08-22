@@ -9,7 +9,6 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._wrapper_rewrite import (
     FlextInfraWrapperRootNamespaceRewriteMixin,
-    _WrapperRewriteAccumulator,
 )
 
 if TYPE_CHECKING:
@@ -43,7 +42,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if scan.failure:
             return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
-        accumulator = _WrapperRewriteAccumulator()
+        accumulator = m.Infra.WrapperRewriteAccumulator()
         metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         for file_path in py_files:
             self._process_wrapper_file(
@@ -56,7 +55,8 @@ class FlextInfraWrapperRootNamespaceRefactor(
         write_failure = self._persist_updates(accumulator.updates)
         if write_failure is not None:
             return r[t.JsonPayload].fail(write_failure)
-        if not self.effective_dry_run and accumulator.wrapper_candidates:
+        effective_dry_run: bool = self.effective_dry_run
+        if not effective_dry_run and accumulator.wrapper_candidates:
             for wrapper in self._WRAPPER_PACKAGES:
                 u.Infra.rewrite_import_violations(
                     py_files=accumulator.wrapper_candidates, project_package=wrapper
@@ -72,9 +72,10 @@ class FlextInfraWrapperRootNamespaceRefactor(
         self,
     ) -> p.Result[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]]:
         """Resolve project paths and discover Python files + runtime alias map."""
-        resolved = u.Infra.resolve_projects(
-            self.workspace_root, self.project_names or ()
+        selected_projects: t.StrSequence = (
+            self.project_names if self.project_names is not None else ()
         )
+        resolved = u.Infra.resolve_projects(self.workspace_root, selected_projects)
         if resolved.failure:
             return r[
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
@@ -116,7 +117,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         return " ; ".join(report[:5]) or "protected write failed"
 
     def _build_report_payload(
-        self, files_scanned: int, accumulator: _WrapperRewriteAccumulator
+        self, files_scanned: int, accumulator: m.Infra.WrapperRewriteAccumulator
     ) -> t.MutableJsonMapping:
         """Build the canonical JSON payload from the accumulated wrapper run state."""
         mode_value = (

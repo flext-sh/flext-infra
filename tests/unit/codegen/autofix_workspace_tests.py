@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -85,9 +84,8 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project)])
     modified_str = " ".join(result.files_modified)
-    tm.that(modified_str, contains="constants.py")
-    tm.that(modified_str, contains="typings.py")
-    tm.that(result.files_modified, length_gte=2)
+    tm.that(modified_str, contains="__init__.py")
+    tm.that(result.files_modified, length_gte=1)
 
 
 __all__: t.StrSequence = []

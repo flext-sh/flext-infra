@@ -5,11 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, t
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDocsGenerate:
@@ -40,7 +42,9 @@ class FlextInfraUtilitiesDocsGenerate:
                 continue
             if apply:
                 path.unlink(missing_ok=True)
-            removed.append(m.Infra.GeneratedFile(path=path.as_posix(), written=apply))
+            removed.append(
+                m.Infra.GeneratedFile(path=path.as_posix(), changed=True, written=apply)
+            )
         return removed
 
     @staticmethod
@@ -126,11 +130,6 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope.path / "docs/api-reference/generated",
                 expected_generated,
                 apply=apply,
-            )
-        )
-        files.extend(
-            FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
-                scope.path / "docs/projects/generated", [], apply=apply
             )
         )
         return files
@@ -384,13 +383,16 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope, apply=apply
             )
         )
+        changed = u.count(files, lambda item: item.changed)
         generated = u.count(files, lambda item: item.written)
         files_payload: t.JsonList = [
-            {"path": item.path, "written": item.written} for item in files
+            {"path": item.path, "changed": item.changed, "written": item.written}
+            for item in files
         ]
         summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
             c.Infra.RK_SUMMARY: {
                 c.Infra.RK_SCOPE: scope.name,
+                "changed": changed,
                 "generated": generated,
                 "apply": apply,
             },
@@ -411,6 +413,7 @@ class FlextInfraUtilitiesDocsGenerate:
         return m.Infra.DocsPhaseReport(
             phase="generate",
             scope=scope.name,
+            changed_files=changed,
             generated=generated,
             applied=apply,
             source="code-docstring-ssot",
@@ -420,9 +423,13 @@ class FlextInfraUtilitiesDocsGenerate:
                 )
                 for item in files
             ],
-            result=(c.Infra.ResultStatus.OK if apply else c.Infra.ResultStatus.WARN),
-            reason="generated" if apply else "dry-run",
-            passed=apply,
+            result=(
+                c.Infra.ResultStatus.OK
+                if apply or changed == 0
+                else c.Infra.ResultStatus.FAIL
+            ),
+            reason=f"changes:{changed}",
+            passed=apply or changed == 0,
         )
 
     @staticmethod

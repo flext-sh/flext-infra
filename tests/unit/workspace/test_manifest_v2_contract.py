@@ -2,7 +2,7 @@
 
 Proves the atomic v1->v2 evolution:
   S1  schema version const == 2 (a version:1 document is rejected)
-  S2  RepositoryRef carries checkout/codegen/package/editable/read_only;
+  S2  RepositoryRef carries classification/checkout/codegen/package/editable/read_only;
       WorkspaceSpec.version rejects 1 (hard cutover, no v1 acceptance)
   S3  a fully-specified v2 workspace document validates
 
@@ -15,10 +15,10 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 import flext_infra
 from flext_infra import c, m
+from flext_tests import tm
 
 
 class TestsWorkspaceManifestV2Contract:
@@ -42,19 +42,16 @@ class TestsWorkspaceManifestV2Contract:
         read_only: bool,
         role: str = "workspace-member",
         state: str = "active",
-        profile: str | None = "workspace-member",
     ) -> dict[str, object]:
-        """Build one complete v2 repository payload."""
+        """Build one complete repository payload for the current manifest version."""
         return {
             "name": name,
             "distribution": name,
             "provider": "flext-sh",
             "url": f"https://github.com/flext-sh/{name}.git",
-            "branch": "0.12.0-dev",
             "path": path,
             "role": role,
             "state": state,
-            "profile": profile,
             "checkout": checkout,
             "codegen": codegen,
             "package": package,
@@ -74,7 +71,6 @@ class TestsWorkspaceManifestV2Contract:
             editable=False,
             read_only=False,
             role="workspace-root",
-            profile="workspace-root",
         )
         member = cls._v2_repository(
             "flext-core",
@@ -90,7 +86,6 @@ class TestsWorkspaceManifestV2Contract:
             "name": "flext",
             "repository": root,
             "members": [member],
-            "content_only": [],
             "exclusions": [],
         }
 
@@ -119,6 +114,11 @@ class TestsWorkspaceManifestV2Contract:
             frozenset(member.value for member in c.Infra.CodegenKind),
             eq=frozenset({"conform", "python", "none"}),
         )
+        tm.that(
+            frozenset(member.value for member in c.Infra.RepositoryClassification),
+            eq=frozenset({"managed", "external-fork", "external-vendor-reference"}),
+        )
+        tm.that(c.Infra.CodegenConformSurface.GITMODULES.value, eq="gitmodules")
 
     def test_repository_ref_accepts_v2_fields(self) -> None:
         """Validate all five v2 fields into their canonical typed contract."""

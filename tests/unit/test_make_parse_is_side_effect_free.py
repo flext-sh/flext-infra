@@ -19,12 +19,12 @@ import re
 from pathlib import Path
 
 import flext_infra
+from flext_infra import c
 from flext_tests import tm
 
-from flext_infra import c
-
-# `NAME := $(shell ...)` -- immediate assignment, expanded at parse time.
-_IMMEDIATE_SHELL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*:=.*\$\(shell\b")
+# ``$(shell ...)`` call marker. Assignment identity uses c.Infra.MAKE_ASSIGNMENT_RE;
+# immediacy is ``:=`` / ``::=`` (name token ends with ``:`` before ``=``).
+_SHELL_CALL = re.compile(r"\$\(shell\b")
 # Executing an interpreter costs hundreds of milliseconds to seconds. Merely
 # *locating* one (`command -v python3`) is a cheap PATH lookup and is allowed:
 # the toolchain has to resolve its own interpreter before it can dispatch.
@@ -35,7 +35,7 @@ _INTERPRETER_RUN = re.compile(
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _make_surfaces() -> tuple[Path, ...]:
@@ -49,6 +49,19 @@ def _make_surfaces() -> tuple[Path, ...]:
     )
 
 
+def _is_immediate_shell_assignment(line: str) -> bool:
+    """True when a column-0 Make assignment is immediate and calls $(shell)."""
+    if c.Infra.MAKE_ASSIGNMENT_RE.match(line) is None:
+        return False
+    before_eq, sep, _after = line.partition("=")
+    if sep != "=" or not before_eq.rstrip().endswith(":"):
+        return False
+    return (
+        _SHELL_CALL.search(line) is not None
+        and _INTERPRETER_RUN.search(line) is not None
+    )
+
+
 def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
     """Return immediate assignments that spawn an interpreter while parsing."""
     return tuple(
@@ -56,8 +69,7 @@ def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
         for number, line in enumerate(
             surface.read_text(encoding="utf-8").splitlines(), start=1
         )
-        if _IMMEDIATE_SHELL.match(line)
-        and _INTERPRETER_RUN.search(line) is not None
+        if _is_immediate_shell_assignment(line)
     )
 
 
@@ -70,4 +82,4 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
             if (lines := _interpreter_at_parse_time(surface))
         }
 
-        tm.that(offenders, eq={})
+        tm.that(len(offenders), eq=0)

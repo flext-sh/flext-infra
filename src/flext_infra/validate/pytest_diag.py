@@ -16,10 +16,7 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.base import s
-from flext_infra.validate._pytest_diag_xml import (
-    FlextInfraPytestDiagXmlMixin,
-    _DiagResult,
-)
+from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -53,7 +50,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     ] = None
 
     @staticmethod
-    def _extract_slow_from_log(lines: t.StrSequence, diag: _DiagResult) -> None:
+    def _extract_slow_from_log(lines: t.StrSequence, diag: m.Infra.DiagResult) -> None:
         """Extract slow test durations from log when XML unavailable."""
         capture_slow = False
         for line in lines:
@@ -66,26 +63,30 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
                 diag.slow_entries.append(line)
 
     @staticmethod
-    def _extract_warnings(lines: t.StrSequence, diag: _DiagResult) -> None:
+    def _extract_warnings(lines: t.StrSequence, diag: m.Infra.DiagResult) -> None:
         """Extract warning lines from pytest log."""
         capture_warn = False
         for line in lines:
             if c.Infra.PYTEST_WARNINGS_HEADER_RE.match(line):
                 capture_warn = True
-            if capture_warn:
+                continue
+            if capture_warn and c.Infra.PYTEST_DOCS_FOOTER_RE.match(line):
+                break
+            if capture_warn and c.Infra.PYTEST_WARNING_LINE_RE.search(line):
                 diag.warning_lines.append(line)
-                if c.Infra.PYTEST_DOCS_FOOTER_RE.match(line):
-                    break
         if not diag.warning_lines:
             diag.warning_lines = [
-                line for line in lines if c.Infra.PYTEST_KNOWN_WARNINGS_RE.search(line)
+                line for line in lines if c.Infra.PYTEST_WARNING_LINE_RE.search(line)
             ]
 
     @staticmethod
-    def _parse_log_into_diag(lines: t.StrSequence, diag: _DiagResult) -> None:
+    def _parse_log_into_diag(lines: t.StrSequence, diag: m.Infra.DiagResult) -> None:
         """Parse pytest log output for failures/skips when XML unavailable."""
         diag.failed_cases = [
             line for line in lines if c.Infra.PYTEST_FAILED_LINE_RE.search(line)
+        ]
+        diag.error_cases = [
+            line for line in lines if c.Infra.PYTEST_ERROR_LINE_RE.search(line)
         ]
         diag.skip_cases = [
             line for line in lines if c.Infra.PYTEST_SKIPPED_LINE_RE.search(line)
@@ -134,11 +135,11 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         return r[str].ok(log_read.value)
 
     @staticmethod
-    def _diagnostics_model(diag: _DiagResult) -> m.Infra.PytestDiagnostics:
+    def _diagnostics_model(diag: m.Infra.DiagResult) -> m.Infra.PytestDiagnostics:
         """Convert mutable extraction state to the canonical diagnostics model."""
         return m.Infra.PytestDiagnostics(
             failed_count=len(diag.failed_cases),
-            error_count=len(diag.error_traces),
+            error_count=len(diag.error_cases),
             warning_count=len(diag.warning_lines),
             skipped_count=len(diag.skip_cases),
             failed_cases=diag.failed_cases,
@@ -158,7 +159,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
                 log_text_result.error or f"Failed to read pytest log: {log_path}"
             )
         lines = log_text_result.value.splitlines()
-        diag = _DiagResult()
+        diag = m.Infra.DiagResult()
         xml_parsed = self._parse_xml(junit_path, diag)
         if not xml_parsed:
             self._parse_log_into_diag(lines, diag)

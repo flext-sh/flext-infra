@@ -50,23 +50,22 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
-    constraint_policy: Annotated[
-        c.Infra.DependencyConstraintPolicy,
-        m.Field(
-            alias="constraint-policy",
-            description="Policy used when rewriting dependency constraints",
-        ),
-        m.BeforeValidator(
-            lambda v: (
-                c.Infra.DependencyConstraintPolicy(v.strip().lower())
-                if isinstance(v, str)
-                else v
-            )
-        ),
-    ] = c.Infra.DependencyConstraintPolicy.FLOOR
+    tomlsort_sort_first: t.StrSequence = m.Field(
+        default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
+        exclude=True,
+        description="Config-owned top-level TOML section order",
+    )
 
     def conform_source(
-        self, source: str, *, path: Path, declared_python_dirs: t.StrSequence = ()
+        self,
+        source: str,
+        *,
+        path: Path,
+        format_source: bool = True,
+        declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
+        project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply."""
         payload_source = u.Cli.toml_mapping_from_text(source)
@@ -84,17 +83,21 @@ class FlextInfraPyprojectModernizer(
         state = m.Infra.PyprojectDocumentState(
             pyproject_path=path, original_rendered=source, payload=payload
         )
-        # mro-j47u (codex): atomic scaffolds provide validated future roots;
-        # existing repositories keep filesystem discovery through the empty default.
-        self._process_document_state(
+        changes = self._process_document_state(
             state,
             canonical_dev=canonical_dev,
             dry_run=True,
             skip_comments=False,
+            format_source=format_source,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            project_kind=project_kind,
+            analysis_exclusions=analysis_exclusions,
         )
         if not state.rendered:
-            return r[str].fail(f"pyproject tooling render failed: {path}")
+            return r[str].fail(
+                changes[0] if changes else f"pyproject tooling render failed: {path}"
+            )
         return r[str].ok(state.rendered)
 
     def resolve_tooling_context(
@@ -104,6 +107,9 @@ class FlextInfraPyprojectModernizer(
         package_name: t.NonEmptyStr,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
+        project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
         # mro-j47u (codex): resolve values only; template retains the full structure.
@@ -118,10 +124,20 @@ class FlextInfraPyprojectModernizer(
         flext.add("docs", docs)
         tool.add("flext", flext)
         seed.add(c.Infra.TOOL, tool)
-        # NOTE(mro-p68a.5, agent codex): resolve from the declared future roots
-        # so first generation and post-write conformance are the same fixed point.
+        declared_roots_are_usable = (
+            declared_python_dirs_are_complete or not path.is_file()
+        )
+        effective_declared_python_dirs = (
+            declared_python_dirs if declared_roots_are_usable else ()
+        )
         conformed = self.conform_source(
-            u.Cli.toml_dumps(seed), path=path, declared_python_dirs=declared_python_dirs
+            u.Cli.toml_dumps(seed),
+            path=path,
+            format_source=False,
+            declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            project_kind=project_kind,
+            analysis_exclusions=analysis_exclusions,
         )
         if conformed.failure:
             return r[m.Infra.ToolingRuntimeContext].fail(
@@ -191,49 +207,108 @@ class FlextInfraPyprojectModernizer(
             c.Infra.INCLUDE,
             c.Infra.EXTRA_PATHS,
             "executionEnvironments",
-            "venv",
-            "venvPath",
         })
         raw_environments = u.Cli.json_as_sequence(pyright.get("executionEnvironments"))
-        if declared_python_dirs:
+        if effective_declared_python_dirs:
+            # Resolve overrides against the project that OWNS this pyproject,
+            # never the workspace root: a member-scoped vendor boundary does not
+            # exist at the superproject and would be dropped there.
             raw_environments = FlextInfraEnsurePyrightConfigPhase(
                 config.Infra.tooling
-            ).environment_payloads_for_dirs(declared_python_dirs)
+            ).environment_payloads_for_dirs(
+                effective_declared_python_dirs, project_dir=path.parent
+            )
         declared_pyrefly_includes = (
-            FlextInfraExtraPathsManager.pyrefly_include_globs(declared_python_dirs)
-            if declared_python_dirs
+            FlextInfraExtraPathsManager.pyrefly_include_globs(
+                effective_declared_python_dirs
+            )
+            if effective_declared_python_dirs
             else ()
         )
-        project_kind = "core"
-        if path.parent.resolve() != self.root.resolve() or self._project_is_flext_child(
-            path.parent
+        # Seed for a project whose analyzer paths were never synced yet.
+        #
+        # The manager derives from directories that EXIST, so during scaffolding
+        # -- before src/ is written -- it returns []. Writing that empty list
+        # made the next plan re-derive ['src', '.'] once the tree existed, so
+        # apply never reached its fixed point and no new project could be
+        # generated. Prefer the DECLARED roots, which is exactly how the
+        # ensure-pyrefly phase keeps pre-write scope identical to the first
+        # post-write discovery without fabricating directories on disk.
+        seed_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
+        discovered_search = seed_manager.pyrefly_search_paths(
+            project_dir=path.parent, is_root=True
+        )
+        discovered_extra = seed_manager.pyright_extra_paths(
+            project_dir=path.parent, is_root=True
+        )
+        path_rules = config.Infra.tooling.tools.pyrefly.path_rules
+        declared_roots = (
+            (path_rules.source_dir, *path_rules.project_shared_search_paths)
+            if path_rules.source_dir in effective_declared_python_dirs
+            else ()
+        )
+        # Why: partial disk discovery returns ('.',) before src/ exists, which is
+        # truthy and blocked declared_roots ('src', '.'). Prefer declared roots
+        # for search/mypy whenever scaffolding supplied them; pyright extras keep
+        # discovery order (sorted {'.', 'src'}) so the first write matches sync.
+        derived_search_path = declared_roots or discovered_search
+        derived_extra_paths = discovered_extra or declared_roots
+        resolved_project_kind = project_kind or "core"
+        child_result = self._project_is_flext_child(path.parent)
+        if child_result.failure:
+            return r[m.Infra.ToolingRuntimeContext].fail(
+                child_result.error or f"failed to resolve Git topology: {path.parent}"
+            )
+        is_child = child_result.value
+        if project_kind is None and (
+            path.parent.resolve() != self.root.resolve() or is_child
         ):
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].fail(
                     classified.error or f"project classification failed: {path}"
                 )
-            project_kind = classified.value
+            resolved_project_kind = classified.value
         try:
             environments = self._tooling_pyright_environments(raw_environments)
             runtime = m.Infra.ToolingRuntimeContext.model_validate({
-                "project_kind": project_kind,
+                "project_kind": resolved_project_kind,
                 "coverage_fail_under": coverage.get("fail_under"),
                 "first_party": ruff_isort.get("known-first-party"),
-                "mypy_path": mypy.get("mypy_path"),
-                "pyrefly_interpreter_path": pyrefly.get("python-interpreter-path"),
-                "pyrefly_search_path": pyrefly.get(c.Infra.SEARCH_PATH),
-                "pyrefly_project_includes": (
-                    declared_pyrefly_includes or pyrefly.get(c.Infra.PROJECT_INCLUDES)
+                # Absent analyzer-path keys fall back to the DERIVED value, not
+                # to (). These keys are written by the analyzer-path sync, so a
+                # project that has not run it yet -- a freshly scaffolded one, or
+                # any isolated render fixture -- has them missing. A bare .get()
+                # yields None, which the typed StrTuple contract rejects, so
+                # conform could not render a new project at all. Defaulting to ()
+                # instead writes an empty list that the NEXT plan immediately
+                # re-derives as ['src', '.'], so apply never reaches its fixed
+                # point. Seeding the derivation makes the first write final.
+                # When scaffolding declares roots, conform_source may already
+                # have written a partial mypy_path ('.' only). Prefer derivation
+                # so the template matches post-write ExtraPaths sync.
+                "mypy_path": (
+                    derived_search_path
+                    if declared_roots
+                    else (mypy.get("mypy_path") or derived_search_path)
                 ),
-                "pyright_exclude": pyright.get(c.Infra.EXCLUDE),
+                "pyrefly_search_path": (
+                    derived_search_path
+                    if declared_roots
+                    else (pyrefly.get(c.Infra.SEARCH_PATH) or derived_search_path)
+                ),
+                "pyrefly_project_includes": (
+                    declared_pyrefly_includes
+                    or pyrefly.get(c.Infra.PROJECT_INCLUDES, ())
+                ),
+                "pyright_exclude": pyright.get(c.Infra.EXCLUDE, ()),
                 "pyright_ignore": pyright.get(c.Infra.IGNORE, ()),
                 "pyright_include": (
-                    declared_python_dirs or pyright.get(c.Infra.INCLUDE)
+                    effective_declared_python_dirs or pyright.get(c.Infra.INCLUDE, ())
                 ),
-                "pyright_extra_paths": pyright.get(c.Infra.EXTRA_PATHS),
-                "pyright_venv": pyright.get("venv"),
-                "pyright_venv_path": pyright.get("venvPath"),
+                "pyright_extra_paths": (
+                    pyright.get(c.Infra.EXTRA_PATHS) or derived_extra_paths
+                ),
                 "pyright_settings": [
                     {"name": key, "value": value}
                     for key, value in sorted(pyright.items())
@@ -241,6 +316,7 @@ class FlextInfraPyprojectModernizer(
                 ],
                 "pyright_execution_environments": environments,
                 "ruff_src": ruff.get("src"),
+                "ruff_exclude": ruff.get(c.Infra.EXCLUDE),
                 "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
             })
         except c.ValidationError as exc:

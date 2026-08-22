@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from rope.base import codeanalyze, simplify, worder
 
-from flext_infra import c, m, p, t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeStructure:
@@ -225,7 +228,8 @@ class FlextInfraUtilitiesRopeStructure:
                 and cls.annotation_contains(statement, rule.name)
             )
         if isinstance(rule, m.Infra.StaticBareExceptRule):
-            return statement.text.strip().partition(":")[0].strip() == "except"
+            statement_text: str = statement.text
+            return statement_text.strip().partition(":")[0].strip() == "except"
         return isinstance(rule, m.Infra.StaticAnnotatedStringRule) and (
             statement.category == c.Infra.StatementCategory.ANN_ASSIGN
             and cls.target_name(statement) == rule.name

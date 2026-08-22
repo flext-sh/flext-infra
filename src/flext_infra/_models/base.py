@@ -8,15 +8,52 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
+
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
+
+    class ProcessExit(m.ContractModel):
+        """Structured process outcome propagated through a Result failure."""
+
+        exit_code: Annotated[
+            int, m.Field(ge=0, le=255, description="Process-compatible exit code")
+        ]
+        raw_exit_code: Annotated[
+            int, m.Field(description="Raw subprocess return code before signal mapping")
+        ]
+        classification: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Failure, timeout, or terminating signal"),
+        ]
+
+    class WorkspaceFingerprintEntry(m.ContractModel):
+        """Content and index fingerprint for one repository-relative path."""
+
+        path: Annotated[t.NonEmptyStr, m.Field(description="Repository-relative path")]
+        digest: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="SHA-256 of path, index state, mode, and content"),
+        ]
+
+    class WorkspaceFingerprint(m.ContractModel):
+        """Immutable repository snapshot used to validate one gate run."""
+
+        digest: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Aggregate SHA-256 for HEAD, index, and worktree"),
+        ]
+        entries: Annotated[
+            tuple[FlextInfraModelsBase.WorkspaceFingerprintEntry, ...],
+            m.Field(description="Ordered per-path fingerprints"),
+        ]
 
     class SummaryStats(m.ContractModel):
         """Bundled stats for summary output."""
@@ -88,6 +125,13 @@ class FlextInfraModelsBase:
         workspace: Annotated[
             Path, m.Field(description="Workspace root used for lint and pytest checks")
         ]
+        expected_sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description="Expected current source bytes keyed by updated path",
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve .bak copies before editing")
         ] = False

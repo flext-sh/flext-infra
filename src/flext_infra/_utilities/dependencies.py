@@ -11,18 +11,13 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c
-from flext_infra._utilities.pyproject import (
-    FlextInfraUtilitiesPyproject,
-    _validate_infra_payload,
-)
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tomlkit import TOMLDocument
-
-    from flext_infra import t
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
@@ -47,25 +42,10 @@ class FlextInfraUtilitiesDependencies:
         return normalized or None
 
     @staticmethod
-    def constraint_specifier(
-        version: str,
-        *,
-        policy: c.Infra.DependencyConstraintPolicy,
-        current_specifier: str = "",
-    ) -> str:
-        """Return the locked-version floor while retaining explicit safety caps."""
+    def constraint_specifier(version: str) -> str:
+        """Return the resolved lock version as an open-ended dependency floor."""
         normalized_version = version.strip()
-        if not normalized_version:
-            return ""
-        if policy == c.Infra.DependencyConstraintPolicy.COMPATIBLE:
-            return f"~={normalized_version}"
-        # mro-45r9: uv owns the floor; declared caps/exclusions remain compatibility SSOT.
-        preserved = tuple(
-            specifier.strip()
-            for specifier in current_specifier.split(",")
-            if specifier.strip().startswith(("<", "!="))
-        )
-        return ",".join((f">={normalized_version}", *preserved))
+        return f">={normalized_version}" if normalized_version else ""
 
     @classmethod
     def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
@@ -79,7 +59,9 @@ class FlextInfraUtilitiesDependencies:
             else:
                 payload_source = u.Cli.toml_mapping_from_text(raw_text)
                 if payload_source is not None:
-                    payload = _validate_infra_payload(payload_source)
+                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
+                        payload_source
+                    )
                     if payload is not None:
                         raw_packages = payload.get("package")
                         if isinstance(raw_packages, list):
@@ -113,9 +95,8 @@ class FlextInfraUtilitiesDependencies:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
-        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> str | None:
-        """Rewrite one PEP 621 requirement string using the locked version policy."""
+        """Rewrite one PEP 621 requirement to the resolved uv.lock floor."""
         result: str | None = None
         raw_text = requirement.strip()
         if raw_text:
@@ -134,10 +115,9 @@ class FlextInfraUtilitiesDependencies:
                     ):
                         locked_version = locked_versions.get(dependency_name)
                         if locked_version is not None:
-                            current_specifier = requirement_part.strip()[
-                                head_match.end() :
-                            ].strip()
-                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy, current_specifier=current_specifier)}"
+                            rewritten = (
+                                f"{head}{cls.constraint_specifier(locked_version)}"
+                            )
                             marker_text = marker_part.strip()
                             if marker_separator and marker_text:
                                 rewritten = f"{rewritten}; {marker_text}"
@@ -152,9 +132,8 @@ class FlextInfraUtilitiesDependencies:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
-        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> t.Infra.InfraValue | None:
-        """Rewrite one Poetry dependency value using the locked version policy."""
+        """Rewrite one Poetry dependency to the resolved uv.lock floor."""
         result: t.Infra.InfraValue | None = None
         normalized_name = cls.dep_name(dependency_name)
         internal_set = set(internal_names)
@@ -165,19 +144,7 @@ class FlextInfraUtilitiesDependencies:
         ):
             locked_version = locked_versions.get(normalized_name)
             if locked_version is not None:
-                rewritten_specifier = cls.constraint_specifier(
-                    locked_version,
-                    policy=policy,
-                    current_specifier=(
-                        raw_value
-                        if isinstance(raw_value, str)
-                        else (
-                            str(raw_value.get(c.Infra.VERSION, ""))
-                            if isinstance(raw_value, Mapping)
-                            else ""
-                        )
-                    ),
-                )
+                rewritten_specifier = cls.constraint_specifier(locked_version)
                 if isinstance(raw_value, str):
                     result = (
                         rewritten_specifier
@@ -208,7 +175,7 @@ class FlextInfraUtilitiesDependencies:
         return tuple(selected_by_name[name] for name in sorted(selected_by_name))
 
     @classmethod
-    def declared_dependency_names(cls, document: TOMLDocument) -> t.StrSequence:
+    def declared_dependency_names(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
         """Return normalized dependency names from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -338,7 +305,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def project_dev_groups(
-        cls, document: TOMLDocument
+        cls, document: t.Cli.TomlDocument
     ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
@@ -348,7 +315,7 @@ class FlextInfraUtilitiesDependencies:
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod
-    def canonical_dev_dependencies(cls, document: TOMLDocument) -> t.StrSequence:
+    def canonical_dev_dependencies(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -368,7 +335,7 @@ class FlextInfraUtilitiesDependencies:
         ])
 
     @classmethod
-    def flext_dependency_namespaces(cls, document: TOMLDocument) -> t.StrSequence:
+    def flext_dependency_namespaces(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
         """Extract declared FLEXT dependency namespaces from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -382,7 +349,7 @@ class FlextInfraUtilitiesDependencies:
         """Extract every declared ``flext-*`` dependency as a Python namespace."""
         # mro-j47u (codex): FLEXT dependencies are first-party contracts even
         # when their uv source declaration is owned by an enclosing workspace.
-        normalized = _validate_infra_payload(payload)
+        normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
         if normalized is None:
             return ()
         return tuple(

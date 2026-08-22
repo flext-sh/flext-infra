@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -39,7 +38,7 @@ class TestsFlextInfraTransformersResultDiModernizer:
         source = 'def compute() -> int:\n    raise ValueError("bad")\n'
         code, changes = _transform(source)
         tm.that(code, has='raise ValueError("bad")')
-        assert not changes
+        tm.that(not changes, eq=True)
 
     def test_di_root_import_rewritten(self) -> None:
         source = "from dependency_injector import containers\n"
@@ -59,7 +58,7 @@ class TestsFlextInfraTransformersResultDiModernizer:
         source = "from some_other_lib import containers\n"
         code, changes = _transform(source)
         tm.that(code, has="from some_other_lib import containers")
-        assert not changes
+        tm.that(not changes, eq=True)
 
     def test_unchanged_source_returns_empty_changes(self) -> None:
         source = (
@@ -69,4 +68,4 @@ class TestsFlextInfraTransformersResultDiModernizer:
         )
         code, changes = _transform(source)
         tm.that(code, eq=source)
-        assert not changes
+        tm.that(not changes, eq=True)

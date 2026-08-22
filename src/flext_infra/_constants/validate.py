@@ -118,12 +118,21 @@ class FlextInfraConstantsSharedInfra:
     METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
         "flext-core/src/flext_core/_utilities/project_metadata.py",
         "flext-infra/src/flext_infra/_utilities/iteration.py",
-        "flext-infra/src/flext_infra/workspace/project_makefile.py",
-        "flext-infra/src/flext_infra/workspace/workspace_makefile.py",
         "flext-infra/src/flext_infra/__version__.py",
     )
     METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (
         "flext-infra/src/flext_infra/",
+    )
+
+    # --- Integration baseline discovery ---
+    # Ordered preference used to derive one repository's integration baseline
+    # from live Git. A provider default is a fallback ordering, never the
+    # answer: repositories under the same provider legitimately integrate on
+    # different branches, so the published remote-tracking branch decides.
+    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = (
+        "0.12.0-dev",
+        "develop",
+        "dev",
     )
 
     # --- File names (was: class Files) ---
@@ -131,10 +140,37 @@ class FlextInfraConstantsSharedInfra:
     MAKEFILE_FILENAME: Final[str] = "Makefile"
     BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
+    # Why: conform .gitmodules merge classifies sections via these patterns;
+    # they belong beside GITMODULES on c.Infra, not as leaf re.compile copies.
+    GITMODULE_SECTION_RE: Final[t.RegexPattern] = re.compile(
+        r'(?m)^\[submodule "[^"]+"\]\s*$'
+    )
+    "``.gitmodules`` submodule section header at line start."
+    GITMODULE_PATH_RE: Final[t.RegexPattern] = re.compile(
+        r"(?m)^[ \t]*path[ \t]*=[ \t]*(.+?)[ \t]*$"
+    )
+    "``.gitmodules`` path assignment value inside a submodule section."
+    FOLLOW_SUPERPROJECT_BRANCH: Final[str] = "."
     GITIGNORE: Final[str] = ".gitignore"
+    PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
+    "Hook-config projection whose presence decides whether a checkout runs hooks."
+    BEADS_DIRNAME: Final[str] = ".beads"
+    BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
+    BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
+    "Ledger-resolution marker bd reads to bind a checkout to its Dolt database."
+    BEADS_LEDGER_RELPATHS: Final[frozenset[str]] = frozenset({
+        BEADS_CONFIG_RELPATH,
+        BEADS_METADATA_RELPATH,
+    })
+    "Generated ledger surfaces emitted only for a ledger owner or router."
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
+    GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
+    "Heading of the trailing .gitignore section that re-allows managed files."
+    GITIGNORE_LAYOUT_SECTION_NAME: Final[str] = "Project layout exceptions"
+    "Heading of the trailing .gitignore section holding layout-SSOT additions."
     MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
+    MANAGED_FILE_POLICY_FULL: Final[str] = "full"
     "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"
     API_PY: Final[str] = "api.py"

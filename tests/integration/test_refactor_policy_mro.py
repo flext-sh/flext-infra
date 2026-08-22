@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
+from flext_tests import tm
 from tests import c
 
 
@@ -100,4 +99,4 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
             )
         except ValueError:
             raised = True
-        assert raised
+        tm.that(raised, eq=True)

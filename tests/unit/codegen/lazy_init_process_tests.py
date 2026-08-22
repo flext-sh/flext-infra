@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-
 from tests import c, u
 
 
@@ -33,7 +32,7 @@ class TestsFlextInfraLazyInitProcessing:
         content = self._read(package_root)
 
         tm.that(result, eq=0)
-        tm.that(content, contains="_LAZY_MODULES")
+        tm.that(content, contains="build_lazy_import_map(")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, contains="__all__: tuple[str, ...]")
         tm.that(content, lacks="__unit__")
@@ -55,10 +54,10 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(init_path.read_bytes(), eq=original)
         tm.that(str(init_path) in service.modified_files, eq=True)
 
-    def test_every_nested_level_is_empty_formatted_and_idempotent(
+    def test_every_nested_level_is_lazy_formatted_and_idempotent(
         self, tmp_path: Path
     ) -> None:
-        """Generate empty initializers at levels two, three, and four."""
+        """Generate lazy facades at every importable package level."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         level_two = package_root / "services"
         level_three = level_two / "_parts"
@@ -108,14 +107,14 @@ class TestsFlextInfraLazyInitProcessing:
         after = tuple(path.read_bytes() for path in generated_paths)
 
         tm.that(apply_result, eq=0)
-        tm.that(level_two_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(level_three_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(level_four_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(level_four_content, lacks="from .worker import")
-        tm.that(level_four_content, lacks="FlextTestsWorker")
-        tm.that(level_four_content, lacks='"worker"')
-        tm.that(level_two_content, lacks="FlextTestsWorker")
-        tm.that(level_three_content, lacks="FlextTestsWorker")
+        for content in (level_two_content, level_three_content, level_four_content):
+            tm.that(content, contains="install_lazy_exports(")
+            tm.that(content, contains="__all__: tuple[str, ...]")
+        tm.that(level_four_content, contains="from .worker import FlextTestsWorker")
+        tm.that(level_four_content, contains="FlextTestsWorker")
+        tm.that(level_four_content, contains='"worker"')
+        tm.that(level_two_content, contains="FlextTestsWorker")
+        tm.that(level_three_content, contains="FlextTestsWorker")
         tm.that(format_result.exit_code, eq=0)
         tm.that(lint_result.exit_code, eq=0)
         tm.that(check_result, eq=0)

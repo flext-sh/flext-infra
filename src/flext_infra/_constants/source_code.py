@@ -20,6 +20,7 @@ class FlextInfraConstantsSourceCode:
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
         ".venv",
+        ".worktrees",
         "node_modules",
         "__pycache__",
         "dist",
@@ -37,8 +38,8 @@ class FlextInfraConstantsSourceCode:
         "vendor"
     }
     "Non-productive roots excluded while discovering Python analyzer surfaces."
-    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"site"}
-    "Directories to exclude when analyzing documentation."
+    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"legado", "site"}
+    "Live documentation excludes generated sites and historical evidence roots."
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         "context_test",
@@ -160,8 +161,8 @@ class FlextInfraConstantsSourceCode:
     "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
     DICT_GENERIC_RE: Final[t.RegexPattern] = re.compile(r"\b(?:dict|Dict)\[")
     "Regex: opening of any ``dict[...]`` / ``Dict[...]`` annotation."
-    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9\s-]")
-    "Regex: characters to strip when generating an anchor slug."
+    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9_\s-]")
+    "Regex: characters to strip when generating an anchor slug (``_`` is kept, as python-markdown does)."
     ANCHOR_WHITESPACE_RE: Final[t.RegexPattern] = re.compile(r"\s+")
     "Regex: any run of whitespace (collapsed to single hyphen in anchors)."
     ANCHOR_DASH_COLLAPSE_RE: Final[t.RegexPattern] = re.compile(r"-+")
@@ -498,18 +499,22 @@ class FlextInfraConstantsSourceCode:
         r"^-- Docs: https://docs.pytest.org/"
     )
     "Regex: pytest warnings-section docs footer."
-    PYTEST_KNOWN_WARNINGS_RE: Final[t.RegexPattern] = re.compile(
-        r"CoverageWarning|PytestCollectionWarning|DeprecationWarning|UserWarning|RuntimeWarning"
-    )
-    "Regex: known pytest warning class names."
     PYTEST_FAILED_LINE_RE: Final[t.RegexPattern] = re.compile(
         r"(^FAILED |::.* FAILED( |$))"
     )
     "Regex: pytest FAILED status line."
+    PYTEST_ERROR_LINE_RE: Final[t.RegexPattern] = re.compile(
+        r"(^ERROR |::.* ERROR( |$))"
+    )
+    "Regex: pytest ERROR status line."
     PYTEST_SKIPPED_LINE_RE: Final[t.RegexPattern] = re.compile(
         r"(^SKIPPED |::.* SKIPPED( |$))"
     )
     "Regex: pytest SKIPPED status line."
+    PYTEST_WARNING_LINE_RE: Final[t.RegexPattern] = re.compile(
+        r"\b[A-Za-z_][A-Za-z0-9_]*Warning\b"
+    )
+    "Regex: concrete Python warning class in pytest output."
     PYTEST_FAILURES_OR_ERRORS_RE: Final[t.RegexPattern] = re.compile(
         r"^=+ (FAILURES|ERRORS) =+"
     )
@@ -628,8 +633,8 @@ class FlextInfraConstantsSourceCode:
     # --- Lint output parsing patterns ---
     LINE_COL_RE: Final[t.RegexPattern] = re.compile(r":\d+(?::\d+)?")
     "Regex: line:col or line:col:col reference in lint output."
-    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s+\|")
-    "Regex: code frame lines (e.g. '  5 | ...' from ruff output)."
+    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s*[|+-]")
+    "Regex: code/suggestion frame lines ('5 | code', '5 + added', '5 - removed')."
     CODE_FRAME_BODY_RE: Final[t.RegexPattern] = re.compile(r"^\s*\|")
     "Regex: code frame continuation lines."
     UNUSED_IMPORT_RE: Final[t.RegexPattern] = re.compile(

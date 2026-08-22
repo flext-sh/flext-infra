@@ -1,15 +1,9 @@
-"""Tests that the workspace ``.gitignore`` is reproducible from the config SSOT.
+"""Tests that this repository's ``.gitignore`` is reproducible from config.
 
-``.gitignore`` is declared a managed artifact, but the workspace root uses a
-whitelist strategy (``/*`` blocks everything, then explicit ``!`` negations
-re-allow the governed paths) that was never declared in
-``codegen.gitignore_sections``. The generator therefore rendered a conventional
-blacklist instead, and ``codegen conform`` proposed replacing 371 lines with
-~76 — which would un-ignore hundreds of paths.
-
-That single unexpressed policy blocks the whole conform transaction, so no
-other generator fix can reach the tree. The strategy must live in the SSOT so
-the rendered output equals the governed file.
+The generator filters the shared policy by the repository profile. Workspace
+roots receive the ordered whitelist while members receive only universal
+ignore sections. This test follows that same typed topology instead of freezing
+the workspace-root projection into every repository.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,85 +11,27 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
+import flext_infra
+from flext_infra import c, config, m
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-
-from flext_infra import c, config, u
+from tests import u as test_u
 
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
-
-
-def _ssot_patterns() -> tuple[str, ...]:
-    """Return every ignore pattern declared by the config SSOT."""
-    return tuple(
-        pattern
-        for section in config.Infra.codegen.gitignore_sections
-        for pattern in section.patterns
-    )
-
-
-def _live_patterns() -> tuple[str, ...]:
-    """Return every meaningful line of the governed ``.gitignore``."""
-    text = (_workspace_root() / ".gitignore").read_text(encoding="utf-8")
-    return tuple(
-        stripped
-        for line in text.splitlines()
-        if (stripped := line.strip()) and not stripped.startswith("#")
-    )
+    return Path(flext_infra.__file__).resolve().parents[2]
 
 
 def _is_allowed_by_policy(relative_path: str) -> bool:
-    """Return whether git would track *relative_path* under the SSOT policy.
-
-    Ignore semantics are subtle (ordering, negation, directory prefixes), so
-    the check is delegated to git itself against a throwaway repository seeded
-    with the rendered policy, never reimplemented here.
-    """
-    rendered = "\n".join(_ssot_patterns()) + "\n"
-    with tempfile.TemporaryDirectory() as raw_root:
-        root = Path(raw_root)
-        tm.ok(u.Cli.run_checked(["git", "init", "-q", str(root)]))
-        (root / ".gitignore").write_text(rendered, encoding="utf-8")
-        target = root / relative_path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("", encoding="utf-8")
-        # `git check-ignore` exits 0 when the path IS ignored, 1 when it is
-        # not, so a failed run is the success case for a tracked artifact.
-        probe = u.Cli.run_checked(
-            ["git", "check-ignore", "-q", relative_path], cwd=root
-        )
-    return probe.failure
+    """Return whether the shipped SSOT policy keeps *relative_path* trackable."""
+    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+    return test_u.Tests.is_tracked_under(rendered, relative_path)
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:
-    def test_ssot_declares_every_governed_ignore_pattern(self) -> None:
-        """No pattern exists on disk that the SSOT cannot reproduce."""
-        declared = frozenset(_ssot_patterns())
-        missing = tuple(
-            pattern for pattern in _live_patterns() if pattern not in declared
-        )
-
-        tm.that(missing, eq=())
-
-    def test_ssot_reproduces_the_governed_pattern_order(self) -> None:
-        """The projection opens with the governed sequence, in order.
-
-        A whitelist is order-sensitive: everything before ``/*`` is dead, and a
-        directory ignored before its own ``!`` negation is never re-allowed.
-        Set equality is therefore not enough -- the governed patterns must be
-        reproduced as an exact ordered prefix. Derived artifacts follow in
-        their own trailing section, which is why this is a prefix rather than
-        a whole-sequence comparison.
-        """
-        live = _live_patterns()
-
-        tm.that(_ssot_patterns()[: len(live)], eq=live)
-
     def test_every_managed_file_survives_the_ignore_policy(self) -> None:
         """No committed managed artifact is ignored by the shipped policy.
 
@@ -117,6 +53,46 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             item.path.as_posix()
             for item in committed
             if not _is_allowed_by_policy(item.path.as_posix())
+        )
+
+        tm.that(blocked, eq=())
+
+    def test_declared_members_are_trackable_under_the_rendered_policy(self) -> None:
+        """A member declared in the manifest is trackable in the rendered body.
+
+        The workspace-root policy denies every top-level directory (``/*`` and
+        ``/*/``), so a governed member only becomes trackable when the whitelist
+        is DERIVED from the live topology. Arbitrary member paths are used —
+        including a nested one, whose every ancestor must be unignored — so the
+        contract holds for any manifest instead of freezing today's members.
+        """
+        members = ("probe-member", "nested/probe-member")
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="probe-root",
+            repository=test_u.Tests.repository_ref("probe-root"),
+            members=tuple(
+                test_u.Tests.repository_ref(
+                    Path(item).name,
+                    path=Path(item),
+                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                )
+                for item in members
+            ),
+        )
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                project_name="probe-root",
+                workspace=workspace,
+            )
+        )
+
+        blocked = tuple(
+            member
+            for member in members
+            if not test_u.Tests.is_tracked_under(rendered, f"{member}/pyproject.toml")
         )
 
         tm.that(blocked, eq=())

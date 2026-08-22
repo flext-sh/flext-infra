@@ -27,7 +27,20 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
-        """Resolve workspace root from explicit value or current working directory."""
+        """Resolve the root a verb operates on from its invocation point.
+
+        Scope follows where the verb is invoked: run it at the workspace and it
+        works on the whole active workspace; run it inside a project and it
+        works on that project alone. The checkout is therefore the root, and a
+        member is never escalated to its enclosing superproject.
+
+        Escalating inverted that rule. A verb invoked inside one member
+        resolved every relative path against the superproject shared by all
+        sibling worktrees, so `FILE=` selectors rejected files that exist and
+        `.reports/tests/latest.txt` -- the canonical evidence artifact -- was
+        written to the shared root, where each project's run overwrote the
+        previous one's result.
+        """
         target = workspace_root or Path.cwd()
         if target.is_file():
             target = target.parent
@@ -62,6 +75,68 @@ class FlextInfraUtilitiesBase:
     def normalize_make_args(values: t.StrSequence) -> t.StrSequence:
         """Return trimmed make arguments without blank entries."""
         return tuple(item.strip() for item in values if item.strip())
+
+    @staticmethod
+    def strongly_connected_components(
+        graph: t.MappingKV[str, set[str]],
+    ) -> t.SequenceOf[t.StrSequence]:
+        """Return every strongly connected component in one directed graph."""
+        next_index = 0
+        stack: list[str] = []
+        indexes: dict[str, int] = {}
+        lowlinks: dict[str, int] = {}
+        on_stack: set[str] = set()
+        components: list[t.StrSequence] = []
+
+        def visit(node: str) -> None:
+            nonlocal next_index
+            indexes[node] = next_index
+            lowlinks[node] = next_index
+            next_index += 1
+            stack.append(node)
+            on_stack.add(node)
+            for successor in graph.get(node, set()):
+                if successor not in indexes:
+                    visit(successor)
+                    lowlinks[node] = min(lowlinks[node], lowlinks[successor])
+                elif successor in on_stack:
+                    lowlinks[node] = min(lowlinks[node], indexes[successor])
+            if lowlinks[node] != indexes[node]:
+                return
+            component: list[str] = []
+            while stack:
+                member = stack.pop()
+                on_stack.remove(member)
+                component.append(member)
+                if member == node:
+                    break
+            components.append(tuple(component))
+
+        for node in graph:
+            if node not in indexes:
+                visit(node)
+        return tuple(components)
+
+    @staticmethod
+    def classify_process_exit(exit_code: int) -> str:
+        """Classify a nonzero process status as timeout, signal, or failure."""
+        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
+            return "timeout"
+        if exit_code < 0:
+            return f"signal={-exit_code}"
+        if exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
+            return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
+        return "failure"
+
+    @staticmethod
+    def normalize_process_exit_code(raw_exit_code: int) -> int:
+        """Map a subprocess signal return code into the portable shell domain."""
+        if raw_exit_code < 0:
+            normalized_exit_code: int = (
+                c.Infra.PROCESS_SIGNAL_EXIT_OFFSET - raw_exit_code
+            )
+            return normalized_exit_code
+        return raw_exit_code
 
     @staticmethod
     def resolve_what(verb: str, phase: str) -> p.Result[t.StrSequence]:

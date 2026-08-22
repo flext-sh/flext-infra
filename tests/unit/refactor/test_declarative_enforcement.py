@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
+import flext_infra.constants  # ruff: ignore[unused-import] - force eager load for monkeypatch targets
 from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -15,6 +15,7 @@ from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -185,6 +186,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         """ENFORCE-080 detects a canonical alias imported from flext_core."""
         source = tmp_path / "src" / "demo_pkg" / "consumer.py"
         source.parent.mkdir(parents=True)
+        # Why (mro-ygc2k): package discovery requires src/<pkg>/__init__.py;
+        # without it the policy owner resolves empty and detection is vacuous.
+        (source.parent / "__init__.py").write_text("", encoding="utf-8")
         source.write_text(
             "from __future__ import annotations\nfrom flext_core import c\n",
             encoding="utf-8",

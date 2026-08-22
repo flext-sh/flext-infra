@@ -5,13 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
 from flext_infra.detectors.manual_protocol_detector import (
     FlextInfraManualProtocolDetector,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_tests import tm
 from tests import m
 
 if TYPE_CHECKING:
@@ -1042,7 +1041,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             ")\n"
             "\n"
             "class DemoConstants:\n"
-            "    pass\n",
+            "    CORE = FlextInfraConstantsCore\n"
+            "    SHARED = FlextInfraConstantsSharedInfra\n",
             encoding="utf-8",
         )
 
@@ -1051,3 +1051,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         module_source = module_file.read_text(encoding="utf-8")
         tm.that(module_source, has="from flext_infra import (")
         tm.that(module_source, has="FlextInfraConstantsCore")
+        tm.that(module_source, has="FlextInfraConstantsSharedInfra")
+        tm.that(module_source, has="CORE = FlextInfraConstantsCore")
+        tm.that(module_source, has="SHARED = FlextInfraConstantsSharedInfra")

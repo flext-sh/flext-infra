@@ -8,7 +8,6 @@ from io import StringIO
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
@@ -19,10 +18,13 @@ from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.transformers import _header
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:
@@ -507,21 +509,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         for start, end in sorted(ranges, reverse=True):
             del filtered_lines[start:end]
 
-        def _post_write() -> None:
-            """Post write."""
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
-
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
                 target_file: updated_target.rstrip() + "\n",
                 source_file: "\n".join(filtered_lines).rstrip() + "\n",
             },
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=project_root,
-                keep_backup=True,
-                gates=gates,
-                post_write=_post_write,
+                workspace=project_root, keep_backup=True, gates=gates
             ),
         )
         if not ok:
@@ -701,21 +695,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             else kept_lines
         )
 
-        def _post_write() -> None:
-            """Post write."""
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
-            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
-
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
                 target_file: updated_target + "\n",
                 source_file: "\n".join(updated_source_lines).rstrip() + "\n",
             },
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=project_root,
-                keep_backup=True,
-                gates=gates,
-                post_write=_post_write,
+                workspace=project_root, keep_backup=True, gates=gates
             ),
         )
         if not ok:

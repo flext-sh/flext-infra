@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, t
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -101,11 +102,7 @@ class FlextInfraUtilitiesDocsValidate:
         if scope.name == c.Infra.RK_ROOT:
             required = [
                 "README.md",
-                "docs/README.md",
                 "docs/index.md",
-                "docs/architecture/README.md",
-                "docs/guides/README.md",
-                "docs/projects/README.md",
                 "docs/api-reference/README.md",
                 "docs/api-reference/generated/overview.md",
                 "docs/projects/generated/catalog.md",

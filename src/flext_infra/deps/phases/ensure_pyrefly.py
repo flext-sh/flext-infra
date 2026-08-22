@@ -27,14 +27,10 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
         stale_error_keys: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
-        venv_rules = self._tool_config.tools.pyright.path_rules
-        venv_path = (
-            venv_rules.root_venv_path if is_root else venv_rules.project_venv_path
-        )
-        interpreter_path = f"{venv_path}/{venv_rules.venv_name}/bin/python"
         if project_dir is not None and paths_manager is not None:
             expected_search = paths_manager.pyrefly_search_paths(
                 project_dir=project_dir, is_root=is_root
@@ -47,17 +43,26 @@ class FlextInfraEnsurePyreflyConfigPhase:
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
         # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
-        if declared_python_dirs:
+        if declared_python_dirs_are_complete:
             declared_import_roots = (
                 (pyrefly_rules.path_rules.source_dir,)
                 if pyrefly_rules.path_rules.source_dir in declared_python_dirs
                 else ()
             )
-            expected_search = sorted({
+            # Why (ai-hub-qwoc, fleet-wide fix): sorted({...}) places "."
+            # before "src" (ASCII '.' < 's'), so pyrefly resolves every
+            # module twice (ai_hub.X via src AND src.ai_hub.X via "."),
+            # producing phantom bad-argument-type errors. The declared
+            # source import root must stay first; everything else (typically
+            # ".", for tests.* resolution) sorts after it.
+            merged_search = {
                 *expected_search,
                 *pyrefly_rules.path_rules.project_shared_search_paths,
-                *declared_import_roots,
-            })
+            }
+            if not declared_import_roots:
+                merged_search.discard(pyrefly_rules.path_rules.source_dir)
+            merged_search.difference_update(declared_import_roots)
+            expected_search = [*declared_import_roots, *sorted(merged_search)]
             # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
             # project-includes; only import roots belong in search-path.
             expected_includes = tuple(
@@ -73,12 +78,12 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 for error_rule in self._tool_config.tools.pyrefly.disabled_errors
             ),
         )
-        return (
+        phase_builder = (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("pyrefly")
             .table(c.Infra.PYREFLY)
             .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)
-            .value("python-interpreter-path", interpreter_path)
+            .deprecated("python-interpreter-path")
             .deprecated("disable-search-path-heuristics")
             .deprecated("fallback-python-interpreter-name")
             # Interpreter discovery resolves PEP 660 editable sibling packages.
@@ -88,8 +93,19 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 c.Infra.IGNORE_ERRORS_IN_GENERATED,
                 pyrefly_rules.ignore_errors_in_generated_code,
             )
-            .list(c.Infra.SEARCH_PATH, expected_search)
-            .list(c.Infra.PROJECT_INCLUDES, expected_includes)
+            # sort=False: search-path order is semantic (see comment above);
+            # the default sort=True would silently re-alphabetize "." before
+            # "src" here at TOML-emit time even after ordering it correctly.
+            .list(c.Infra.SEARCH_PATH, expected_search, sort=False)
+        )
+        if declared_python_dirs_are_complete and not expected_includes:
+            phase_builder = phase_builder.value(c.Infra.PROJECT_INCLUDES, [])
+        else:
+            phase_builder = phase_builder.list(
+                c.Infra.PROJECT_INCLUDES, expected_includes
+            )
+        return (
+            phase_builder
             .value(
                 "disable-project-excludes-heuristics",
                 pyrefly_rules.disable_project_excludes_heuristics,
@@ -116,6 +132,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
     ) -> t.StrSequence:
         """Apply canonical pyrefly table values, paths, and strict error toggles."""
         configured_error_keys = self._configured_error_keys()
@@ -135,6 +152,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 paths_manager=paths_manager,
                 stale_error_keys=stale_error_keys,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             ),
         )
 
@@ -146,6 +164,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
     ) -> t.StrSequence:
         """Apply canonical pyrefly settings to one normalized payload."""
         configured_error_keys = self._configured_error_keys()
@@ -165,6 +184,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 paths_manager=paths_manager,
                 stale_error_keys=stale_error_keys,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             ),
         )
 

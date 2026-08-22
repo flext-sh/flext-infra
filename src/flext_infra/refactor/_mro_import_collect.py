@@ -142,7 +142,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         gates: t.StrSequence | None,
     ) -> t.Infra.EditResult:
         """Protected source write."""
-        return u.Infra.protected_source_write(
+        result: t.Infra.EditResult = u.Infra.protected_source_write(
             file_path,
             request=m.Infra.ProtectedSourceWriteRequest(
                 workspace=workspace_root,
@@ -151,6 +151,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
                 gates=gates,
             ),
         )
+        return result
 
     @classmethod
     def _write_pending_sources(
@@ -173,7 +174,9 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
             if ok:
                 continue
             failed_paths.append(file_path)
-            errors.extend(f"{file_path}: {line.strip()}" for line in report[:10])
+            # Never truncate: the failure cause (NEW <tool> errors /
+            # pytest failure) is appended AFTER the diff lines.
+            errors.extend(f"{file_path}: {line.strip()}" for line in report)
         return (tuple(errors), tuple(failed_paths))
 
 

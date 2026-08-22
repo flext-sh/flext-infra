@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_tests import tm
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -39,7 +38,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
     )
 
     tm.ok(result)
-    assert any(report.result == "FAIL" for report in result.value)
+    tm.that(any(report.result == "FAIL" for report in result.value), eq=True)
 
 
 def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
@@ -58,7 +57,7 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
     )
 
     tm.ok(result)
-    assert all(report.result == "OK" for report in result.value)
+    tm.that(all(report.result == "OK" for report in result.value), eq=True)
 
 
 def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
@@ -76,4 +75,4 @@ def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
     )
 
     tm.ok(result)
-    assert (workspace / "flext-a/TODOS.md").exists()
+    tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)

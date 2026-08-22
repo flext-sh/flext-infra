@@ -18,6 +18,11 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN
     gate_name: ClassVar[str] = "Markdown"
+    # mro-38p39: the linter flags MD009/MD012 and friends with its own `[*]`
+    # auto-fixable marker, so `make check` blocked on findings that no canonical
+    # verb could repair -- `make fmt APPLY=Y` covers Python only and `make fix
+    # APPLY=Y` skipped this gate, both exiting 0. The tool supports `--fix`, so
+    # the gate offers it and the canonical sequence can reach green.
     can_fix: ClassVar[bool] = True
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
@@ -31,14 +36,20 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ]
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
-        """Resolve markdownlint settings file args."""
-        root_config = self._workspace_root / ".markdownlint.json"
-        local_config = project_dir / ".markdownlint.json"
-        if root_config.exists():
-            return ["--config", str(root_config)]
-        if local_config.exists():
-            return ["--config", str(local_config)]
-        return []
+        """Resolve markdownlint settings file args.
+
+        Member ``make check`` passes the member as ``--workspace``. Walk from
+        ``project_dir`` upward and prefer the topmost ``.markdownlint.json``
+        so umbrella workspace SSOT wins over stale partial member copies.
+        """
+        configs: t.MutableSequenceOf[Path] = []
+        for candidate_dir in (project_dir, *project_dir.parents):
+            config_path = candidate_dir / ".markdownlint.json"
+            if config_path.is_file():
+                configs.append(config_path.resolve())
+        if not configs:
+            return []
+        return ["--config", str(configs[-1])]
 
     @override
     def _get_check_dirs(
@@ -57,18 +68,50 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         _ = ctx
-        return [
-            c.Infra.MARKDOWNLINT,
+        return self._python_console_script_command(
+            c.Infra.RUMDL,
+            "check",
+            "--no-cache",
+            "--color",
+            "never",
+            "--output-format",
+            "text",
+            "--deny-config-warnings",
             *self._resolve_config_args(project_dir),
             *check_dirs,
-        ]
+        )
+
+    @override
+    def _build_fix_command(
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+    ) -> t.StrSequence:
+        """Build the fix command from the tool's FORMATTER, not its linter.
+
+        ``rumdl check --fix`` is a linter: it exits non-zero whenever a finding
+        has no autofix, so a run that repaired every fixable file still failed
+        the verb and `make fix APPLY=Y` could never reach green. ``rumdl fmt``
+        applies the same fixes with formatter-style exit codes, which is the
+        contract the mutating verb promises. It accepts neither
+        ``--output-format`` nor ``--deny-config-warnings`` (both are check-only
+        reporting flags), so the fix surface carries only what it defines.
+        """
+        _ = ctx
+        return self._python_console_script_command(
+            c.Infra.RUMDL,
+            "fmt",
+            "--no-cache",
+            "--color",
+            "never",
+            *self._resolve_config_args(project_dir),
+            *targets,
+        )
 
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
-        _ = project_dir, ctx
+        _ = ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
@@ -83,25 +126,19 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     message=match.group("msg"),
                 )
             )
+        if result.exit_code != 0 and not issues:
+            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
+            issues.append(
+                m.Infra.Issue(
+                    file=str(project_dir),
+                    line=1,
+                    column=1,
+                    code="TOOL_ERROR",
+                    message=f"rumdl exited with code {result.exit_code}: {detail}",
+                    severity="ERROR",
+                )
+            )
         return result.exit_code == 0, issues
-
-    @override
-    def _build_fix_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
-    ) -> t.StrSequence:
-        """Build fix command."""
-        _ = ctx
-        return [
-            c.Infra.MARKDOWNLINT,
-            "--fix",
-            *self._resolve_config_args(project_dir),
-            *targets,
-        ]
-
-    @override
-    def _fix_raw_output(self, result: p.Cli.CommandOutput) -> str:
-        """Fix raw output."""
-        return "\n".join(part for part in (result.stdout, result.stderr) if part)
 
 
 __all__: list[str] = ["FlextInfraMarkdownGate"]

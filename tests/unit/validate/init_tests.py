@@ -8,11 +8,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import flext_infra.validate as core_module
 import pytest
+from flext_infra.validate import FlextInfraBaseMkValidator
 from flext_tests import tm
 
-import flext_infra.validate as core_module
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+# Why: the symbol must be absent for the test to mean anything, so it
+# cannot be spelled as a static attribute access without making the file
+# ill-typed. The name is data here, and getattr is the access it tests.
+_ABSENT_SYMBOL = "nonexistent_xyz_attribute"
 
 if TYPE_CHECKING:
     from tests import t
@@ -24,12 +28,10 @@ class TestCoreModuleInit:
     def test_core_getattr_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = getattr(core_module, "nonexistent_xyz_attribute")
+            _ = getattr(core_module, _ABSENT_SYMBOL)
 
-    def test_validate_package_does_not_reexport_leaf_implementations(self) -> None:
-        """Keep validator implementations available only from leaf owners."""
-        exports = dir(core_module)
-        tm.that(core_module.__all__, eq=())
+    def test_validate_package_exposes_generated_lazy_exports(self) -> None:
+        """Keep validator implementations reachable as generated lazy exports."""
         for implementation in (
             "FlextInfraBaseMkValidator",
             "FlextInfraInventoryService",
@@ -37,7 +39,7 @@ class TestCoreModuleInit:
             "FlextInfraStubSupplyChain",
             "FlextInfraTextPatternScanner",
         ):
-            tm.that(exports, lacks=implementation)
+            tm.that(core_module.__all__, has=implementation)
 
     def test_core_lazy_imports_work(self) -> None:
         """Test that lazy imports resolve to real classes."""

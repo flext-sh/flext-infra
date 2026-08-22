@@ -6,7 +6,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import FlextCliModels as m, u
+from flext_cli import FlextCliModels as m
+from flext_core import u
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -240,6 +241,30 @@ class FlextInfraModelsCheck:
         def total_errors(self) -> int:
             """Total error-severity diagnostic count across all gates."""
             return sum(v.error_count for v in self.gates.values())
+
+    class LoopOutcome(m.ArbitraryTypesModel):
+        """Bundled results from the project-checking loop."""
+
+        # Why: owned by m.Infra; ArbitraryTypesModel keeps protocol field writability.
+
+        results: Annotated[
+            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            m.Field(description="Individual project execution results."),
+        ]
+        failed: Annotated[
+            int,
+            m.Field(description="Number of projects that failed one or more gates."),
+        ]
+        skipped: Annotated[
+            int,
+            m.Field(
+                description="Number of projects that were skipped during execution."
+            ),
+        ]
+        total_elapsed: Annotated[
+            float,
+            m.Field(description="Total time elapsed in seconds for the entire loop."),
+        ]
 
     # -- SARIF 2.1.0 report models -----------------------------------------
 

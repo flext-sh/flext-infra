@@ -13,9 +13,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+from flext_tests import tm
 from tests import m
 
 if TYPE_CHECKING:
@@ -85,7 +85,7 @@ class TestFreshImportValidatorCore:
         report: m.Infra.ValidationReport = tm.ok(
             validator.build_report(packages=("demo_external",))
         )
-        assert report.passed, report.violations
+        tm.that(report.passed, eq=True, msg=str(report.violations))
 
 
 class TestFreshImportValidatorFlextPackages:
@@ -95,7 +95,7 @@ class TestFreshImportValidatorFlextPackages:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_core",))
         )
-        assert report.passed, report.summary
+        tm.that(report.passed, eq=True, msg=report.summary)
 
     def test_flext_infra_imports_cleanly(
         self, v: FlextInfraValidateFreshImport
@@ -103,7 +103,7 @@ class TestFreshImportValidatorFlextPackages:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_infra",))
         )
-        assert report.passed, report.summary
+        tm.that(report.passed, eq=True, msg=report.summary)
 
 
 __all__: t.StrSequence = []

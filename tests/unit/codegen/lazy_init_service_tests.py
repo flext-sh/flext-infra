@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-
 from tests import c, u
 
 
@@ -174,9 +173,10 @@ class TestsFlextInfraCodegenLazyInitService:
         generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.that(result.success, eq=True)
-        tm.that(generated, lacks="from .demo import ExamplesDemo")
-        tm.that(generated, lacks="ExamplesDemo")
-        tm.that(generated, contains="__all__: tuple[str, ...] = ()")
+        tm.that(generated, contains="from .demo import ExamplesDemo")
+        tm.that(generated, contains="ExamplesDemo")
+        tm.that(generated, contains='"ExamplesDemo"')
+        tm.that(generated, contains="install_lazy_exports")
         tm.that(production_init.read_bytes(), eq=production_before)
         tm.that(service.modified_files, eq=(str(examples_init),))
 
@@ -226,9 +226,8 @@ class TestsFlextInfraCodegenLazyInitService:
         child_generated = unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        tm.that(child_generated, contains="__all__: tuple[str, ...] = ()")
-        tm.that(child_generated, lacks="TestsCollectedNoise")
-        tm.that(child_generated, lacks="install_lazy_exports")
+        tm.that(child_generated, contains="TestsCollectedNoise")
+        tm.that(child_generated, contains="install_lazy_exports")
 
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""
@@ -356,9 +355,14 @@ class TestsFlextInfraCodegenLazyInitService:
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         service = u.Tests.create_lazy_init_service(workspace_root)
         clean_file = package_root / "clean_generated.py"
-        clean_file.write_text("from __future__ import annotations\n", encoding="utf-8")
+        clean_file.write_text(
+            '"""Clean generated artifact."""\n\nfrom __future__ import annotations\n',
+            encoding="utf-8",
+        )
         dirty_file = package_root / "dirty_generated.py"
-        dirty_file.write_text("import os\n", encoding="utf-8")
+        dirty_file.write_text(
+            '"""Dirty generated artifact."""\n\nimport os\n', encoding="utf-8"
+        )
 
         clean_errors = service.batch_lint_generated((str(clean_file),))
         dirty_errors = service.batch_lint_generated((str(dirty_file),))

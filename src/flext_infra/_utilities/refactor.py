@@ -11,8 +11,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_cli import r, u
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactor:
@@ -34,10 +37,11 @@ class FlextInfraUtilitiesRefactor:
             entries: t.SequenceOf[t.StrMapping] = (
                 t.Infra.STR_MAPPING_SEQ_ADAPTER.validate_python(value)
             )
-            return entries
         except c.ValidationError:
             msg = "class nesting entries must be a list"
             raise ValueError(msg) from None
+        else:
+            return entries
 
     @staticmethod
     def string_list(value: t.Infra.InfraValue | None) -> t.StrSequence:

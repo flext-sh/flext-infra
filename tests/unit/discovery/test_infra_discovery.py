@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
+from flext_tests import tm
 from tests import c, m, u
 
 if TYPE_CHECKING:
@@ -33,7 +33,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         proj1 = tmp_path / "project1"
         proj1.mkdir()
         (proj1 / "pyproject.toml").write_text(
-            "[project]\nname='project1'\ndependencies=['flext-core>=0.1.0']\n",
+            "[project]\nname='project1'\nversion='0.1.0'\n"
+            "dependencies=['flext-core>=0.1.0']\n\n"
+            "[tool.flext.workspace]\nattached = true\n",
             encoding="utf-8",
         )
         (proj1 / "src").mkdir()
@@ -59,7 +61,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     def test_discover_projects_happy_path(
         self, service: u.Infra, workspace_with_projects: Path
     ) -> None:
-        result = service.discover_projects(workspace_with_projects)
+        result = service.discover_projects(
+            workspace_with_projects, include_attached=True
+        )
         tm.ok(result)
         projects = result.value
         tm.that(len(projects), eq=2)
@@ -70,8 +74,12 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(projects[1].has_src, eq=False)
         tm.that(projects[1].has_tests, eq=False)
         tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.ATTACHED)
-        assert (
-            projects[1].workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        tm.that(
+            (
+                projects[1].workspace_role
+                == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+            ),
+            eq=True,
         )
 
     def test_discover_projects_empty_workspace(
@@ -102,7 +110,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.ok(result)
         files = result.value
         tm.that(len(files), eq=3)
-        assert all(f.name == "pyproject.toml" for f in files)
+        tm.that(all(f.name == "pyproject.toml" for f in files), eq=True)
 
     def test_find_all_pyproject_files_with_skip_dirs(
         self, service: u.Infra, tmp_path: Path
@@ -162,7 +170,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         project1 = tmp_path / "project1"
         project1.mkdir()
         (project1 / "pyproject.toml").write_text(
-            "[project]\nname='project1'\ndependencies=['flext-core>=0.1.0']\n",
+            "[project]\nname='project1'\nversion='0.1.0'\n"
+            "dependencies=['flext-core>=0.1.0']\n\n"
+            "[tool.flext.workspace]\nattached = true\n",
             encoding="utf-8",
         )
         project2 = tmp_path / "project2"
@@ -171,7 +181,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
             "[project]\nname='project2'\n", encoding="utf-8"
         )
 
-        result = service.discover_projects(tmp_path)
+        result = service.discover_projects(tmp_path, include_attached=True)
 
         tm.ok(result)
         tm.that([project.name for project in result.value], eq=["project1", "project2"])
@@ -224,25 +234,22 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         (config_dir / "workspace.yaml").write_text(
-            "version: 2\n"
+            "version: 3\n"
             "name: demo\n"
             "repository:\n"
             "  name: demo\n"
             "  distribution: demo\n"
-            "  provider: datacosmos-br\n"
-            "  url: https://github.com/datacosmos-br/demo.git\n"
-            "  branch: main\n"
+            "  provider: acme-hosting\n"
+            "  url: https://github.com/acme-hosting/demo.git\n"
             "  path: .\n"
             "  role: standalone\n"
             "  state: active\n"
-            "  profile: standalone\n"
             "  checkout: independent\n"
             "  codegen: conform\n"
             "  package: true\n"
             "  editable: false\n"
             "  read_only: false\n"
             "members: []\n"
-            "content_only: []\n"
             "exclusions:\n"
             "  - path: data\n"
             "    reason: vendored document submodules\n",

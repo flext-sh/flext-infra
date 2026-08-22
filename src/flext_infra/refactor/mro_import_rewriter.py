@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
 
-from flext_infra import m, t, u
+from flext_infra import c, m, t, u
 from flext_infra.refactor._mro_import_collect import (
     FlextInfraRefactorMROImportRewriterFileOpsMixin,
 )
@@ -19,19 +18,6 @@ class FlextInfraRefactorMROImportRewriter(
     FlextInfraRefactorMROImportRewriterFileOpsMixin
 ):
     """Rewrite imports/references after MRO symbol absorption into facade classes."""
-
-    class RewriteFilesInput(m.BaseModel):
-        """Typed input envelope for workspace rewrite execution."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True
-        )
-
-        workspace_root: Path
-        file_moves: t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]]
-        pending_sources: t.MappingKV[Path, str]
-        apply: bool
-        gates: t.StrSequence | None = None
 
     @classmethod
     def migrate_workspace(
@@ -58,7 +44,7 @@ class FlextInfraRefactorMROImportRewriter(
                 updated_source, migration, symbol_map = u.Infra.migrate_file(
                     scan_result=scan_result
                 )
-            except Exception as exc:
+            except c.EXC_BROAD_IO_TYPE as exc:
                 errors.append(f"{scan_result.file}: {exc}")
                 continue
             if not migration.moved_symbols:
@@ -121,7 +107,7 @@ class FlextInfraRefactorMROImportRewriter(
             project_names=project_names,
         )
         return cls._rewrite_files(
-            request=cls.RewriteFilesInput(
+            request=m.Infra.RewriteFilesInput(
                 workspace_root=workspace_root,
                 file_moves=file_moves,
                 pending_sources=pending_sources,
@@ -132,7 +118,7 @@ class FlextInfraRefactorMROImportRewriter(
 
     @classmethod
     def _rewrite_files(
-        cls, *, request: RewriteFilesInput
+        cls, *, request: m.Infra.RewriteFilesInput
     ) -> tuple[t.SequenceOf[m.Infra.MRORewriteResult], t.StrSequence]:
         """Rewrite files."""
         rewrites: list[m.Infra.MRORewriteResult] = []
@@ -159,9 +145,9 @@ class FlextInfraRefactorMROImportRewriter(
                     gates=request.gates,
                 )
                 if not ok:
-                    errors.extend(
-                        f"{file_path}: {line.strip()}" for line in report[:10]
-                    )
+                    # Never truncate: the failure cause (NEW <tool> errors /
+                    # pytest failure) is appended AFTER the diff lines.
+                    errors.extend(f"{file_path}: {line.strip()}" for line in report)
                     continue
             rewrites.append(
                 m.Infra.MRORewriteResult(file=str(file_path), replacements=len(changes))

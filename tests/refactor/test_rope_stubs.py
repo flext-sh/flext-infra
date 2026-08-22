@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import u
 
 if TYPE_CHECKING:
@@ -18,9 +17,9 @@ class TestsFlextInfraRefactorRopeStubs:
     def test_rope_project_wrapper(self, tmp_path: Path) -> None:
         """Confirm the Rope project wrapper creates a live project."""
         project = u.Infra.init_rope_project(tmp_path)
-        tm.that(project, none=False)
+        project = tm.not_none(project)
         try:
-            assert project.root.real_path
+            tm.that(project.root.real_path, empty=False)
         finally:
             project.close()
 
@@ -32,13 +31,13 @@ class TestsFlextInfraRefactorRopeStubs:
         target = package_dir / "mod.py"
         target.write_text("class Demo:\n    pass\n\nvalue = Demo()\n", encoding="utf-8")
         project = u.Infra.init_rope_project(tmp_path)
-        tm.that(project, none=False)
+        project = tm.not_none(project)
         try:
             resource = u.Infra.get_resource_from_path(project, target)
-            assert resource is not None
+            resource = tm.not_none(resource)
             offset = u.Infra.find_definition_offset(project, resource, "Demo")
-            assert offset is not None
+            offset = tm.not_none(offset)
             hits = u.Infra.find_occurrences(project, resource, offset)
-            assert hits
+            tm.that(hits, empty=False)
         finally:
             project.close()

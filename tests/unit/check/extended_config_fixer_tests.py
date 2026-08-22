@@ -9,11 +9,10 @@ from __future__ import annotations
 import tomllib
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+from flext_tests import tm
 from tests import t, u
 
 if TYPE_CHECKING:
@@ -83,7 +82,11 @@ class TestConfigFixerProcessFile:
     ) -> None:
         """Keep every existing tracked Python root in project includes."""
         (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "package.py").write_text("VALUE = 1\n", encoding="utf-8")
         (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_package.py").write_text(
+            "def test_package() -> None:\n    pass\n", encoding="utf-8"
+        )
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
             (

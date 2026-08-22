@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-
 from tests import t, u
 
 type RopeWorkspace = t.Pair[t.Infra.RopeProject, Path]
@@ -26,9 +25,9 @@ class TestsFlextInfraRefactorRopeSemantic:
     ) -> None:
         proj, _ = rope_workspace
         imports = u.Infra.get_semantic_module_imports(proj, models_resource)
-        # Path is imported
+        # Expect: Path appears among the imported names
         tm.that(imports, has="Path")
-        # Animal is defined, not imported
+        # Expect: Animal is defined locally, so it is absent from imports
         tm.that(imports, lacks="Animal")
 
     def test_returns_defined_classes(
@@ -67,7 +66,7 @@ class TestsFlextInfraRefactorRopeSemantic:
     ) -> None:
         proj, _ = rope_workspace
         bases = u.Infra.get_class_bases(proj, models_resource, "DoesNotExist")
-        assert not bases
+        tm.that(not bases, eq=True)
 
     def test_returns_public_methods(
         self, rope_workspace: RopeWorkspace, models_resource: t.Infra.RopeResource
@@ -102,5 +101,5 @@ class TestsFlextInfraRefactorRopeSemantic:
         proj, _ = rope_workspace
         offset = u.Infra.find_definition_offset(proj, models_resource, "Dog")
         source = models_resource.read()
-        assert offset is not None
+        offset = tm.not_none(offset)
         tm.that(source[offset : offset + 3], eq="Dog")

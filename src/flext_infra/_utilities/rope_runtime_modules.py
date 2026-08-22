@@ -55,10 +55,14 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def get_string_module(
-        cls, rope_project: t.Infra.RopeProject, source: str
+        cls,
+        rope_project: t.Infra.RopeProject,
+        source: str,
+        *,
+        resource: t.Infra.RopeResource | None = None,
     ) -> t.Infra.RopePyModule:
         loader = cls._runtime_callable("rope.base.libutils", "get_string_module")
-        pymodule = loader(rope_project, source)
+        pymodule = loader(rope_project, source, resource=resource, force_errors=True)
         if not isinstance(pymodule, p.Infra.RopePyModule):
             msg = "rope get_string_module returned non-PyModule"
             raise TypeError(msg)

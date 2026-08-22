@@ -3,7 +3,7 @@ valid:
   # value read from the config SSOT -> canonical, must NOT match
   - |
     def build() -> str:
-        return config.Infra.codegen.toolchain.python_version
+        return config.Infra.codegen.toolchain.python_selector
   # value read from the constants SSOT -> canonical, must NOT match
   - |
     def build() -> str:
@@ -27,18 +27,14 @@ valid:
     def test_parse(version: str) -> None:
         tm.fail(u.Infra.parse_semver(version))
 invalid:
-  # branch bound to a contract field instead of read from the repository ref
+  # branch bound to a local field instead of read from ProviderSpec
   - |
     def build() -> object:
-        return m.Infra.RepositoryRef(branch="0.12.0-dev")
+        return {"branch": "0.12.0-dev"}
   # clone URL bound to a contract field instead of read from the provider catalog
   - |
     def build() -> object:
         return m.Infra.RepositoryRef(url="https://github.com/flext-sh/flext-core.git")
-  # same duplication expressed as a manifest mapping entry
-  - |
-    def manifest() -> dict[str, str]:
-        return {"branch": "0.12.0-dev"}
   # same duplication expressed as a module-level assignment
   - |
     CANONICAL_URL = "https://github.com/flext-sh/flext-member.git"

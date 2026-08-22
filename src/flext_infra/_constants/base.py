@@ -65,6 +65,8 @@ class FlextInfraConstantsBase(
     "Project/package name key."
     PACKAGE_IMPORT_NAME: Final[str] = "flext_infra"
     "Canonical import package name for flext-infra itself."
+    WORKSPACE_FINGERPRINT_READ_CHUNK_BYTES: Final[int] = 1024 * 1024
+    "Bounded read size used while hashing workspace files."
     VERSION: Final[str] = "version"
     "Version key within project or tool sections."
     PYREFLY: Final[str] = "pyrefly"
@@ -101,6 +103,8 @@ class FlextInfraConstantsBase(
     "Pyrefly/pyright python-version settings key (hyphenated)."
     PYTHON_VERSION_FILENAME: Final[str] = ".python-version"
     "Interpreter-selection file consumed by pyenv/asdf/mise."
+    TAPLO_CONFIG_FILENAME: Final[str] = ".taplo.toml"
+    "Taplo workspace formatting configuration filename."
     PYTHON_VERSION_UNDERSCORE: Final[str] = "python_version"
     "Mypy python_version settings key (underscored)."
     EXTEND: Final[str] = "extend"
@@ -113,6 +117,8 @@ class FlextInfraConstantsBase(
     "Pyrefly ignore-errors-in-generated-code key."
     MINVERSION: Final[str] = "minversion"
     "Pytest minversion settings key."
+    FLEXT_SLOW_TIMEOUT_SECONDS: Final[str] = "flext_slow_timeout_seconds"
+    "Enforcement-plugin ini key carrying the config-owned slow-item budget."
     PYTHON_CLASSES: Final[str] = "python_classes"
     "Pytest python_classes settings key."
     PYTHON_FILES: Final[str] = "python_files"
@@ -179,6 +185,7 @@ class FlextInfraConstantsBase(
     GREEN: Final[str] = "\x1b[32m"
     YELLOW: Final[str] = "\x1b[33m"
     BLUE: Final[str] = "\x1b[34m"
+    CYAN: Final[str] = "\x1b[36m"
     BOLD: Final[str] = "\x1b[1m"
 
     # Unicode/ASCII symbols
@@ -240,12 +247,12 @@ class FlextInfraConstantsBase(
         "UV_NO_VERIFY_HASHES",
     )
     "Ambient uv variables removed before a policy-bound release build."
-    SG: Final[str] = "sg"
-    "ast-grep (sg) binary."
+    SG: Final[str] = "ast-grep"
+    "Canonical ast-grep binary."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
-    MARKDOWNLINT: Final[str] = "markdownlint"
-    "Markdown linter binary."
+    RUMDL: Final[str] = "rumdl"
+    "uv-managed Markdown linter console script."
     OUTPUT_JSON: Final[str] = "json"
     "Common CLI output format flag value."
     PR: Final[str] = "pr"
@@ -262,7 +269,6 @@ class FlextInfraConstantsBase(
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
     SILENT_FAILURE: Final[str] = "silent-failure"
-    TYPE_ALIAS: Final[str] = "type"
     DEFAULT_CSV: Final[str] = (
         "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
     )
@@ -298,15 +304,6 @@ class FlextInfraConstantsBase(
         WRITE = "write"
         REMOVE = "remove"
         SKIP = "skip"
-
-    # NOTE (multi-agent, mro-wkii.17.9): topology is modeled by WorkspaceSpec;
-    # the deleted path-sync command no longer owns an alternate mode enum.
-    @unique
-    class DependencyConstraintPolicy(StrEnum):
-        """SSOT dependency constraint rewrite policies."""
-
-        FLOOR = "floor"
-        COMPATIBLE = "compatible"
 
     @unique
     class TomlOperationKind(StrEnum):
@@ -353,6 +350,8 @@ class FlextInfraConstantsBase(
     RK_PROJECTS: Final[str] = "projects"
     RK_WORKSPACE: Final[str] = "workspace"
     RK_ROOT: Final[str] = "root"
+    ROOT_PROJECT_SELECTOR: Final[str] = "."
+    "Project selector naming the workspace root itself."
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"

@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_cli import r, u
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRelease:
@@ -138,6 +143,102 @@ class FlextInfraUtilitiesRelease:
         if marker in existing:
             return existing.replace(marker, marker + section, 1)
         return "# Changelog\n\n" + section + existing
+
+    @classmethod
+    def release_publish_waves(
+        cls, targets: t.SequenceOf[t.Pair[str, Path]]
+    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
+        """Group selected release projects into dependency-respecting waves.
+
+        Publishing to an index is immutable: a dependent uploaded before its
+        dependency leaves a state no rollback repairs. The order is derived
+        from each project's own ``pyproject.toml`` -- the manifests are the
+        SSOT, and a hand-written order would be a second source that diverges
+        in silence. Every project in a wave depends only on earlier waves, so a
+        wave may upload in parallel while the sequence between waves is strict.
+        """
+        selected = {name for name, _ in targets}
+        edges: dict[str, t.StrSequence] = {}
+        for name, path in targets:
+            declared = cls._release_runtime_dependencies(path)
+            if declared.failure:
+                return r[t.SequenceOf[t.StrSequence]].fail(
+                    declared.error or f"release dependency read failed: {name}"
+                )
+            # A dependency outside the selection is not an edge: it is already
+            # on the index or out of scope, and treating it as an edge would
+            # deadlock the graph on a package this release never publishes.
+            edges[name] = tuple(
+                sorted(
+                    dependency
+                    for dependency in declared.value
+                    if dependency in selected and dependency != name
+                )
+            )
+        return cls._release_kahn_waves(edges)
+
+    @staticmethod
+    def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:
+        """Return the runtime dependency names declared by one project.
+
+        Only ``[project].dependencies`` counts. Dev groups are not part of the
+        published distribution, so an index never resolves them -- and because
+        the platform packages test against each other, counting them would
+        report the whole workspace as one cycle.
+        """
+        pyproject = path / c.Infra.PYPROJECT_FILENAME
+        if not pyproject.is_file():
+            return r[t.StrSequence].fail(
+                f"release project has no {c.Infra.PYPROJECT_FILENAME}: {path}"
+            )
+        document = u.Cli.toml_read_document(pyproject)
+        if document.failure:
+            return r[t.StrSequence].fail(
+                document.error or f"read release pyproject failed: {pyproject}"
+            )
+        payload = u.Cli.toml_as_mapping(document.value)
+        project = payload.get(c.Infra.PROJECT) if payload else None
+        if not isinstance(project, Mapping):
+            return r[t.StrSequence].ok(())
+        requirements = project.get(c.Infra.DEPENDENCIES)
+        if not isinstance(requirements, Sequence) or isinstance(requirements, str):
+            return r[t.StrSequence].ok(())
+        return r[t.StrSequence].ok(
+            tuple(
+                sorted({
+                    name
+                    for requirement in requirements
+                    if isinstance(requirement, str)
+                    and (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
+                    is not None
+                })
+            )
+        )
+
+    @staticmethod
+    def _release_kahn_waves(
+        edges: t.MappingKV[str, t.StrSequence],
+    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
+        """Layer the dependency graph, failing loudly and naming any cycle."""
+        pending = {name: set(dependencies) for name, dependencies in edges.items()}
+        waves: t.MutableSequenceOf[t.StrSequence] = []
+        while pending:
+            ready = tuple(
+                sorted(name for name, blockers in pending.items() if not blockers)
+            )
+            if not ready:
+                # No project is unblocked while projects remain: the remainder
+                # is exactly the cyclic core, so it is named outright.
+                return r[t.SequenceOf[t.StrSequence]].fail(
+                    "release dependency cycle blocks publish order: "
+                    + ", ".join(sorted(pending))
+                )
+            waves.append(ready)
+            for name in ready:
+                del pending[name]
+            for blockers in pending.values():
+                blockers.difference_update(ready)
+        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRelease"]

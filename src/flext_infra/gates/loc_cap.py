@@ -1,4 +1,4 @@
-"""FLEXT 200-LOC SUPREME LAW (§3.1) module-cap quality gate.
+"""FLEXT module-cap SUPREME LAW (§3.1) quality gate.
 
 Enforces the per-module logical-LOC ceiling using tokei's code-line count.
 Per-class / per-method / per-function caps require AST and are out of scope
@@ -20,10 +20,10 @@ if TYPE_CHECKING:
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
-    """Flag any module whose tokei `code` LOC exceeds the 200-line SUPREME LAW."""
+    """Flag any module whose tokei `code` LOC exceeds ``c.Infra.LOC_CAP_MAX``."""
 
     gate_id: ClassVar[str] = "loc-cap"
-    gate_name: ClassVar[str] = "200-LOC SUPREME LAW"
+    gate_name: ClassVar[str] = "MODULE-LOC SUPREME LAW"
     can_fix: ClassVar[bool] = False
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][1]
@@ -42,6 +42,20 @@ class FlextInfraLocCapGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
+        if result.exit_code != 0:
+            return (
+                False,
+                (
+                    m.Infra.Issue(
+                        file="<tokei>",
+                        line=0,
+                        column=0,
+                        code="LOC_CAP_EXEC",
+                        message=result.stderr or "tokei execution failed",
+                        severity="ERROR",
+                    ),
+                ),
+            )
         issues = self._files_over_cap(result.stdout or "{}", c.Infra.LOC_CAP_MAX)
         return len(issues) == 0, issues
 

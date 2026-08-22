@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 import flext_infra as infra_pkg
 from flext_infra import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -41,7 +40,7 @@ class TestsFlextInfraInfraVersionExtra:
     def test_public_package_author_matches_project_authors(self) -> None:
         metadata = self._metadata()
 
-        assert metadata.project.authors
+        tm.that(metadata.project.authors, empty=False)
         author = metadata.project.authors[0]
         tm.that(infra_pkg.__author__, eq=author.name)
         tm.that(infra_pkg.__author_email__, eq=author.email)

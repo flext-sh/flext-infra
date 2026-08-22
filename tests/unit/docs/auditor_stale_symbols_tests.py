@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -96,6 +95,56 @@ def test_manual_docs_report_live_symbol_mentions(tmp_path: Path) -> None:
     tm.that(len(issues), eq=1)
     tm.that(issues[0].file, eq="docs/guides/manual.md")
     tm.that(issues[0].message, eq="contains `LiveSymbol`")
+
+
+def test_public_contract_resolves_local_tuple_public_exports(tmp_path: Path) -> None:
+    """Generated ABI ``__all__ = tuple(_PUBLIC_EXPORTS)`` must yield a contract."""
+    package_root = tmp_path / "src" / "demo_pkg"
+    _write(
+        tmp_path / "pyproject.toml",
+        (
+            "[project]\n"
+            'name = "demo-pkg"\n'
+            'version = "0.1.0"\n'
+            'description = "Demo local public exports project"\n'
+        ),
+    )
+    _write(
+        package_root / "__init__.py",
+        (
+            '"""Demo package."""\n\n'
+            "from typing import TYPE_CHECKING\n\n"
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
+            "if TYPE_CHECKING:\n"
+            "    from demo_pkg.facade import LiveSymbol as LiveSymbol\n\n"
+            "_LAZY_MODULES: dict[str, tuple[str, ...]] = {\n"
+            '    ".facade": ("LiveSymbol",),\n'
+            "}\n\n"
+            "_LAZY_IMPORTS = build_lazy_import_map(_LAZY_MODULES, sort_keys=False)\n\n"
+            '_PUBLIC_EXPORTS: tuple[str, ...] = ("LiveSymbol",)\n'
+            "__all__: tuple[str, ...] = tuple(_PUBLIC_EXPORTS)\n\n"
+            "install_lazy_exports(\n"
+            "    __name__,\n"
+            "    globals(),\n"
+            "    _LAZY_IMPORTS,\n"
+            "    public_exports=__all__,\n"
+            ")\n"
+        ),
+    )
+    _write(
+        package_root / "facade.py",
+        (
+            '"""Demo public facade."""\n\n'
+            "class LiveSymbol:\n"
+            '    """Concrete public symbol docs."""\n'
+        ),
+    )
+
+    contract = u.Infra.public_contract(tmp_path, "demo_pkg")
+    exports = contract["exports"]
+    tm.that(exports, is_=list)
+    tm.that(exports, has="LiveSymbol")
+    tm.that(bool(exports), eq=True)
 
 
 def test_public_contract_resolves_imported_lazy_public_exports(tmp_path: Path) -> None:

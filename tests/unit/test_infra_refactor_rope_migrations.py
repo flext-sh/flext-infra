@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -139,7 +138,7 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
         )
 
         tm.that(updated, has="NewName")
-        assert changes
+        tm.that(changes, empty=False)
         tm.that(file_path.read_text(encoding="utf-8"), eq=original_source)
 
     def test_class_name_not_renamed(self, tmp_path: Path) -> None:

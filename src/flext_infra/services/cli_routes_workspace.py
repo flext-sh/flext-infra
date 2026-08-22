@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m
+from flext_infra import FlextInfraWorkService, c, m
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
@@ -12,9 +12,8 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
 
 
 class WorkspaceRoutes(RefactorRoutes):
@@ -45,6 +44,17 @@ class WorkspaceRoutes(RefactorRoutes):
                 ),
                 success_message="workspace editable provenance verified",
             ),
+            m.Cli.ResultCommandRoute(
+                name="flext-binding",
+                help_text="Bind this project onto a flext worktree for the session",
+                model_cls=m.Infra.FlextBindingRequest,
+                handler=lambda params: FlextInfraFlextBindingService.apply(
+                    consumer_root=params.workspace_root,
+                    flext_root=params.flext_root,
+                    python=params.python,
+                ).map(CliRouteBase.as_route_value),
+                success_message="flext worktree binding applied",
+            ),
             *(
                 m.Cli.ResultCommandRoute(
                     name=route_name,
@@ -58,16 +68,15 @@ class WorkspaceRoutes(RefactorRoutes):
                         "Detect workspace or standalone mode",
                         FlextInfraWorkspaceDetector,
                     ),
-                    ("sync", "Sync base.mk to project root", FlextInfraSyncService),
                     (
                         "orchestrate",
                         "Run make verb across projects",
                         FlextInfraOrchestratorService,
                     ),
                     (
-                        "migrate",
-                        "Migrate workspace projects to flext_infra tooling",
-                        FlextInfraProjectMigrator,
+                        "work",
+                        "Unified bead/GitFlow/worktree/PR lane saga",
+                        FlextInfraWorkService,
                     ),
                 )
             ),

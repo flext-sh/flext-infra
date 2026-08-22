@@ -23,14 +23,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_tests import tm
-
 from flext_infra import c
+from flext_tests import tm
 
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _make_surfaces() -> tuple[Path, ...]:
@@ -69,4 +68,4 @@ class TestsFlextInfraMakeSurfaceNeverSilencesFailures:
             if (lines := _silencing_lines(surface))
         }
 
-        tm.that(offenders, eq={})
+        tm.that(len(offenders), eq=0)

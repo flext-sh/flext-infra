@@ -67,12 +67,8 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
         apply: Annotated[bool, m.Field(description="Apply writes to disk")] = False
 
-    class DocsPhaseItemModel(m.BaseModel):
+    class DocsPhaseItemModel(m.Value):
         """Unified item payload for docs phase reports."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", frozen=True, strict=True
-        )
 
         phase: Annotated[
             str,
@@ -189,6 +185,9 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         """Record of a generated file operation."""
 
         path: Annotated[str, m.Field(description="File path")]
+        changed: Annotated[
+            bool, m.Field(description="Whether generated content differs on disk")
+        ]
         written: Annotated[bool, m.Field(description="Whether file was written")] = (
             False
         )

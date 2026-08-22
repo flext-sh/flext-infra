@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import TestsFlextInfraUtilities as u, c
 
 if TYPE_CHECKING:
@@ -98,10 +97,10 @@ class TestsFlextInfraReleasePublish:
             )
 
         @staticmethod
-        def test_publish_push_without_origin_fails_after_local_tagging(
+        def test_publish_push_tags_and_pushes_to_the_seeded_origin(
             tmp_path: Path,
         ) -> None:
-            """Report push failure while retaining observable local publication."""
+            """Publish the changelog and tag, then push them to the origin."""
             workspace = u.Tests.create_release_workspace(
                 tmp_path, initialize_root_git=True
             )
@@ -122,7 +121,7 @@ class TestsFlextInfraReleasePublish:
                 "--apply",
             )
 
-            tm.that(result, eq=1)
+            tm.that(result, eq=0)
             tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
             tm.that(
                 u.Cli.capture(

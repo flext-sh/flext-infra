@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra import c, m, t
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesResourceLimits:
@@ -94,7 +95,10 @@ class FlextInfraUtilitiesResourceLimits:
         validated_limit = (
             limit or FlextInfraUtilitiesResourceLimits.mypy_resource_limit()
         )
-        return validated_limit.timeout_seconds + c.Infra.MYPY_TIMEOUT_GRACE_SECONDS
+        timeout_seconds: int = (
+            validated_limit.timeout_seconds + c.Infra.MYPY_TIMEOUT_GRACE_SECONDS
+        )
+        return timeout_seconds
 
     @staticmethod
     def _bounded_mypy_diagnostic(
@@ -129,22 +133,27 @@ class FlextInfraUtilitiesResourceLimits:
         """Return a controlled diagnostic only for timeout or memory exhaustion."""
         validated_limit = limit or cls.mypy_resource_limit()
         combined = f"{output.stdout}\n{output.stderr}".lower()
-        resource_failure = (
-            output.exit_code == c.Infra.MYPY_TIMEOUT_EXIT_CODE
-            or output.exit_code < 0
-            or output.exit_code >= c.Infra.MYPY_SIGNAL_EXIT_OFFSET
-            or any(marker in combined for marker in cls._MEMORY_FAILURE_MARKERS)
+        classification = FlextInfraUtilitiesProcess.process_exit_classification(
+            output.exit_code
+        )
+        resource_failure = classification != "failure" or any(
+            marker in combined for marker in cls._MEMORY_FAILURE_MARKERS
         )
         if not resource_failure:
             return None
         signal = (
-            -output.exit_code
-            if output.exit_code < 0
-            else output.exit_code - c.Infra.MYPY_SIGNAL_EXIT_OFFSET
-            if output.exit_code >= c.Infra.MYPY_SIGNAL_EXIT_OFFSET
+            classification.removeprefix("signal=")
+            if classification.startswith("signal=")
             else "none"
         )
-        detail = (output.stderr or output.stdout).strip() or "resource limit reached"
+        detail = (
+            "\n".join(
+                stream.strip()
+                for stream in (output.stdout, output.stderr)
+                if stream.strip()
+            )
+            or "resource limit reached"
+        )
         return cls._bounded_mypy_diagnostic(
             validated_limit, detail=detail, exit_code=output.exit_code, signal=signal
         )

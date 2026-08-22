@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+import pytest
 
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
+from flext_infra.transformers import FlextInfraRefactorProjectAliasMigrator
+from tests import tm
 
 
 class TestsFlextInfraRefactorProjectAliasMigrator:
@@ -222,3 +221,30 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         updated, changes = transformer.apply_to_source(source)
         tm.that(updated, eq=source)
         tm.that(changes, eq=[])
+
+    def test_migrates_test_consumer_to_root_tests_facade(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "demo-project"
+        source_path = project_root / "src" / "demo_pkg" / "__init__.py"
+        test_path = project_root / "tests" / "unit" / "test_consumer.py"
+        source_path.parent.mkdir(parents=True)
+        test_path.parent.mkdir(parents=True)
+        source_path.write_text("", encoding="utf-8")
+        (project_root / "tests" / "__init__.py").write_text("", encoding="utf-8")
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        source = "from flext_core import c\n\nVALUE = c.VALUE\n"
+        transformer = FlextInfraRefactorProjectAliasMigrator(
+            file_path=test_path, project_alias_owners={"demo_pkg": ("c",)}
+        )
+        updated, changes = transformer.apply_to_source(source)
+        tm.that(updated, has="from tests import c")
+        tm.that(updated, lacks="from demo_pkg.constants import c")
+        tm.that(len(changes), eq=1)
+
+    def test_invalid_source_fails_loudly(self) -> None:
+        transformer = FlextInfraRefactorProjectAliasMigrator(
+            current_project="flext_infra"
+        )
+        with pytest.raises(ValueError, match="canonical alias parse failed"):
+            transformer.apply_to_source("from flext_core import c\nif:\n")

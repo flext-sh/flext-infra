@@ -11,12 +11,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesLogParser:
@@ -64,7 +64,10 @@ class FlextInfraUtilitiesLogParser:
         """
         if not log_path.is_file():
             return None
-        content = log_path.read_text(encoding="utf-8", errors="replace")
+        try:
+            content = log_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return None
         matches = tuple(c.Infra.LOG_MAKE_CHILD_EXIT_PATTERN.finditer(content))
         if not matches:
             return None

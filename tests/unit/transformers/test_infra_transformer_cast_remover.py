@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -52,10 +51,10 @@ class TestsFlextInfraTransformersCastRemover:
         source = "x: int = 42\n"
         code, changes = _transform(source)
         tm.that(code, eq=source)
-        assert not changes
+        tm.that(not changes, eq=True)
 
     def test_invalid_syntax_unchanged(self) -> None:
         source = "def foo(\n"
         code, changes = _transform(source)
         tm.that(code, eq=source)
-        assert not changes
+        tm.that(not changes, eq=True)

@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_cli import m, u
+from flext_cli import m
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsWorkspace:
-    """Models for workspace discovery, sync, and migration.
+    """Models for workspace discovery and orchestration.
 
     Canonical base policy:
-    - ``ArbitraryTypesModel`` for mutable discovery and migration payloads.
+    - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
@@ -27,6 +26,21 @@ class FlextInfraModelsWorkspace:
 
         workspace_root: Annotated[
             Path, m.Field(alias="workspace", description="Workspace root path")
+        ]
+
+    class FlextBindingRequest(m.ContractModel):
+        """Session request binding one consumer onto a flext worktree."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        workspace_root: Annotated[
+            Path, m.Field(alias="workspace", description="Consumer project root")
+        ]
+        flext_root: Annotated[
+            Path, m.Field(description="Flext worktree supplying the packages")
+        ]
+        python: Annotated[
+            Path, m.Field(description="Interpreter of the environment to rebind")
         ]
 
     class DirectUrlDirectoryInfo(m.ContractModel):
@@ -71,6 +85,82 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Operational role relative to the uv workspace root"),
         ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
+    class WorkLaneParentContext(m.ContractModel):
+        """Resolved anchor a lane is nested under and based on."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        parent_lane: Annotated[
+            Path, m.Field(description="Workspace root or parent epic lane path")
+        ]
+        parent_bead: Annotated[
+            str, m.Field(description="Parent epic bead id; empty at the workspace root")
+        ] = ""
+        parent_branch: Annotated[
+            str, m.Field(description="Parent epic branch; empty at the workspace root")
+        ] = ""
+        base_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch the lane is created from")
+        ]
+
+    class WorkLaneIdentity(m.ContractModel):
+        """Canonical recursive identity of one workspace lane.
+
+        A lane always lives at ``<parent_lane>/.worktrees/<lane_dir>`` and is
+        always a worktree of the workspace-root repository. ``parent_lane`` is
+        the workspace root for a top-level epic and the immediate parent epic
+        lane for every other lane.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        bead: Annotated[t.NonEmptyStr, m.Field(description="Bead owning the lane")]
+        slug: Annotated[t.NonEmptyStr, m.Field(description="Kebab-case lane slug")]
+        kind: Annotated[
+            c.Infra.WorkKind, m.Field(description="GitFlow kind of this lane")
+        ]
+        branch: Annotated[t.NonEmptyStr, m.Field(description="Lane branch name")]
+        lane_dir: Annotated[
+            t.NonEmptyStr, m.Field(description="Directory name under .worktrees")
+        ]
+        lane_path: Annotated[Path, m.Field(description="Canonical lane worktree path")]
+        parent_lane: Annotated[
+            Path, m.Field(description="Workspace root or parent epic lane path")
+        ]
+        parent_bead: Annotated[
+            str, m.Field(description="Parent epic bead id; empty for top-level epics")
+        ] = ""
+        parent_branch: Annotated[
+            str, m.Field(description="Parent epic branch; empty for top-level epics")
+        ] = ""
+        base_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch this lane is based on")
+        ]
+
+        @property
+        def is_epic(self) -> bool:
+            """Whether this lane may own child lanes.
+
+            WorkKind is a StrEnum and the contract model stores enum values, so
+            the field arrives as its string form; normalizing before comparing
+            keeps this true for both storage shapes.
+            """
+            return c.Infra.WorkKind(self.kind) is c.Infra.WorkKind.EPIC
+
+    class WorkLaneReuse(m.ContractModel):
+        """Whether Git already owns the canonical lane, and where it sits.
+
+        Modelled instead of an optional payload because a success result never
+        carries ``None``: "no lane to reuse" is a state, not an absent value.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        reused: Annotated[
+            bool, m.Field(description="Git already owns the canonical lane")
+        ]
+        lane_path: Annotated[Path, m.Field(description="Canonical lane worktree path")]
+
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.
 
@@ -95,39 +185,6 @@ class FlextInfraModelsWorkspace:
         dependency_names: Annotated[
             t.StrSequence, m.Field(description="Declared dependency names")
         ] = m.Field(default_factory=tuple)
-
-    class SyncResult(m.ArbitraryTypesModel):
-        """Result payload for sync operations."""
-
-        files_changed: Annotated[
-            t.NonNegativeInt, m.Field(description="Total changed files")
-        ] = 0
-        source: Annotated[Path, m.Field(description="Sync source path")]
-        target: Annotated[Path, m.Field(description="Sync target path")]
-        timestamp: Annotated[
-            datetime,
-            m.Field(description="Execution timestamp in the configured timezone"),
-        ] = m.Field(default_factory=u.now)
-
-        @u.field_serializer("source", "target", when_used="json")
-        def serialize_paths(self, value: Path) -> str:
-            """Serialize sync paths for JSON result boundaries."""
-            return str(value)
-
-        @u.field_serializer("timestamp", when_used="json")
-        def serialize_timestamp(self, value: datetime) -> str:
-            """Serialize execution timestamp for JSON result boundaries."""
-            return value.isoformat()
-
-    class MigrationResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
-        """Migration operation outcome with applied changes and errors."""
-
-        changes: Annotated[t.StrSequence, m.Field(description="Applied changes")] = (
-            m.Field(default_factory=tuple)
-        )
-        errors: Annotated[t.StrSequence, m.Field(description="Migration errors")] = (
-            m.Field(default_factory=tuple)
-        )
 
 
 __all__: list[str] = ["FlextInfraModelsWorkspace"]

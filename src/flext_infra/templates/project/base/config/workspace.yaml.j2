@@ -1,7 +1,7 @@
 # Generated initially by `flext-infra codegen new`; this manifest is the
 # handwritten topology SSOT consumed by `flext-infra codegen conform`.
 # NOTE (multi-agent, mro-wkii.17 / agent: codex): conform never overwrites this
-# input. Add members or exclusions here, then run `make codegen`.
+# input. Add members or exclusions here, then run `make gen`.
 version: {{ workspace_manifest_version }}
 name: {{ dist }}
 repository:
@@ -9,11 +9,9 @@ repository:
   distribution: {{ dist }}
   provider: {{ repository_provider }}
   url: {{ repository_git_url }}
-  branch: {{ repository_branch }}
   path: .
-  role: {{ make_profile }}
+  role: {{ workspace_repository.role | tojson }}
   state: active
-  profile: {{ make_profile }}
   checkout: {{ workspace_repository.checkout | tojson }}
   codegen: {{ workspace_repository.codegen | tojson }}
   package: {{ workspace_repository.package | tojson }}
@@ -24,6 +22,7 @@ repository:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
       default_what: {{ verb.default_what | tojson }}
+      whats: {{ verb.whats | tojson }}
       apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}
@@ -49,23 +48,33 @@ project:
   author_name: {{ author_name | tojson }}
   author_email: {{ author_email | tojson }}
   upstream: {{ upstream | tojson }}
+  inherited_facets: {{ inherited_facets | list | tojson }}
   homepage: {{ homepage | tojson }}
   documentation: {{ documentation | tojson }}
   workspace_root_rel: {{ workspace_root_rel | tojson }}
   year: {{ year }}
 # NOTE (multi-agent, mro-wkii.17 / agent: codex): the typed manifest context is
 # the sole topology owner; every declared member/exclusion round-trips here.
+{%- if workspace_integration %}
+integration:
+  provider: {{ workspace_integration.provider | tojson }}
+  branch: {{ workspace_integration.branch | tojson }}
+{%- if workspace_integration.organization %}
+  organization: {{ workspace_integration.organization | tojson }}
+{%- endif %}
+{%- if workspace_integration.base_url %}
+  base_url: {{ workspace_integration.base_url | tojson }}
+{%- endif %}
+{%- endif %}
 members:
 {% for repository in workspace_repositories %}
   - name: {{ repository.name | tojson }}
     distribution: {{ repository.distribution | tojson }}
     provider: {{ repository.provider | tojson }}
     url: {{ repository.url | tojson }}
-    branch: {{ repository.branch | tojson }}
     path: {{ repository.path | tojson }}
     role: {{ repository.role | tojson }}
     state: {{ repository.state | tojson }}
-    profile: {{ repository.profile | tojson }}
     checkout: {{ repository.checkout | tojson }}
     codegen: {{ repository.codegen | tojson }}
     package: {{ repository.package | tojson }}
@@ -76,6 +85,7 @@ members:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
         default_what: {{ verb.default_what | tojson }}
+        whats: {{ verb.whats | tojson }}
         apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}
@@ -90,22 +100,12 @@ members:
 {% else %}
   []
 {%- endfor %}
-content_only:
-{% for repository in workspace_content_only %}
-  - name: {{ repository.name | tojson }}
-    distribution: {{ repository.distribution | tojson }}
-    provider: {{ repository.provider | tojson }}
-    url: {{ repository.url | tojson }}
-    branch: {{ repository.branch | tojson }}
-    path: {{ repository.path | tojson }}
-    role: {{ repository.role | tojson }}
-    state: {{ repository.state | tojson }}
-    profile: {{ repository.profile | tojson }}
-    checkout: {{ repository.checkout | tojson }}
-    codegen: {{ repository.codegen | tojson }}
-    package: {{ repository.package | tojson }}
-    editable: {{ repository.editable | tojson }}
-    read_only: {{ repository.read_only | tojson }}
+repository_policy_overlays:
+{% for overlay in workspace_policy_overlays %}
+  - project: {{ overlay.project | tojson }}
+    beads_enabled: {{ overlay.beads_enabled | tojson }}
+    ci_enabled: {{ overlay.ci_enabled | tojson }}
+    ci_matrix_auto_run: {{ overlay.ci_matrix_auto_run | tojson }}
 {% else %}
   []
 {%- endfor %}

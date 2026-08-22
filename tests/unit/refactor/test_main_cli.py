@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_tests import tm
 from tests import t, u
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class TestsFlextInfraRefactorMainCli:
             "[tool.pyrefly]\n"
             "disable-project-excludes-heuristics = true\n"
             "project-excludes = []\n"
-            'search-path = [".", "src"]\n',
+            'search-path = [".", "src"]\n\n' + u.Tests.ruff_per_file_ignores_toml(),
         )
 
     @staticmethod
@@ -552,8 +552,10 @@ class TestsFlextInfraRefactorMainCli:
         violations = [
             violation for project in report.projects for violation in project.violations
         ]
-        assert violations
-        assert all(violation.kind == expected_kind for violation in violations)
+        tm.that(violations, empty=False)
+        tm.that(
+            all(violation.kind == expected_kind for violation in violations), eq=True
+        )
 
     def test_refactor_census_mro_completeness_skips_irrelevant_modules(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -781,7 +783,10 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(init_source, lacks="only_for_tests")
         tm.that(helpers_source, lacks="only_for_tests")
         tm.that(test_source, has="only_for_tests")
-        tm.that(init_source, has="helper_used")
+        # Free functions are lazy exports only for fixture modules, so the
+        # regenerated init keeps the generated shape without function names.
+        tm.that(init_source, has="_LAZY_IMPORTS")
+        tm.that(init_source, lacks="helper_used")
         tm.that(helpers_source, has="helper_used")
         tm.that(_parse_source_ast(init_source), none=False)
         tm.that(_parse_source_ast(helpers_source), none=False)
@@ -893,7 +898,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(clone_helpers.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_init.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_test.read_text(encoding="utf-8"), has="only_for_tests")
-        tm.that(clone_init.read_text(encoding="utf-8"), has="helper_used")
+        tm.that(clone_init.read_text(encoding="utf-8"), has="_LAZY_IMPORTS")
 
         report_result = FlextInfraRefactorCensus(
             workspace_root=clone,

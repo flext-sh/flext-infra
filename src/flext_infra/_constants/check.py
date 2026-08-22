@@ -40,7 +40,7 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/silent-failure",
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
-        "markdown": ("MarkdownLint", "https://github.com/DavidAnson/markdownlint"),
+        "markdown": ("rumdl", "https://rumdl.dev/"),
         "loc-cap": ("Tokei", "https://github.com/XAMPPRocky/tokei"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
@@ -56,6 +56,7 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/tier-whitelist",
         ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
+        "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
@@ -67,10 +68,12 @@ class FlextInfraConstantsCheck:
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )
     MARKDOWN_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<file>.*?):(?P<line>\d+)(?::(?P<col>\d+))?\s+error\s+(?P<code>MD\d+)(?:/[^\s]+)?\s+(?P<msg>.*)$"
+        r"^(?P<file>.*?):(?P<line>\d+):(?P<col>\d+):\s+\[(?P<code>MD\d+)\]\s+(?P<msg>.*)$"
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
+    GATE_ERROR_OUTPUT_LIMIT: Final[int] = 20
+    "Maximum parsed gate diagnostics emitted inline before the canonical report."
 
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     PYRIGHT_PROJECT_ARG: Final[str] = "--project"
@@ -164,13 +167,17 @@ class FlextInfraConstantsCheck:
         r"\bFlextCli[A-Z]\w*"
     )
 
-    # --- 200-LOC SUPREME LAW (§3.1) gate SSOT ---
-    LOC_CAP_MAX: Final[int] = 200
+    # --- 1000-LOC SUPREME LAW (§3.1) gate SSOT ---
+    # Why (operator 2026-08-07): the 200-LOC ceiling made real modules
+    # unmanageable — enforcing it fragmented cohesive units into artificial
+    # splits. Raised fleet-wide to 1000. Consumers read this constant, never a
+    # literal, so the cap stays a single owned value.
+    LOC_CAP_MAX: Final[int] = 1000
     "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
     TOKEI_BINARY: Final[str] = "tokei"
     TOKEI_TOTAL_KEY: Final[str] = "Total"
     TOKEI_PYTHON_LANG: Final[str] = "Python"
-    "tokei language key the 200-LOC cap enforces — §3.1 is a Python-module law; "
+    "tokei language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
@@ -202,7 +209,7 @@ class FlextInfraConstantsCheck:
     })
     "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
 
-    # --- Manual-command blocker (§5 Make Contract) SSOT ---
+    # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
         "ruff",
         "pytest",
@@ -216,7 +223,7 @@ class FlextInfraConstantsCheck:
         "push",
         "tag",
     })
-    MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep", "sg"})
+    MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep"})
     MANUAL_CMD_RUNNERS: Final[frozenset[str]] = frozenset({"python", "python3"})
     MANUAL_CMD_UV_RUN_VALUE_OPTIONS: Final[frozenset[str]] = frozenset({
         "--default-index",
@@ -279,7 +286,7 @@ class FlextInfraConstantsCheck:
 #
 # Every hook routes through the canonical `uv run --all-packages python -m flext_infra`
 # workspace monopoly; no standalone scripts and no bare tool invocations
-# (AGENTS.md §5 Make Contract).
+# (AGENTS.md `Build & Test`).
 # Enable locally with `pre-commit install` from the workspace root.
 repos:
   - repo: local
@@ -298,7 +305,7 @@ repos:
         always_run: false
         types: [python]
       - id: flext-loc-cap
-        name: 200-LOC SUPREME LAW (§3.1) — module cap via tokei
+        name: MODULE-LOC SUPREME LAW (§3.1) — module cap via tokei
         entry: uv run --all-packages python scripts/hooks/check_changed_projects.py loc-cap
         language: system
         pass_filenames: true
