@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c
-from flext_infra.validate._rope_import_boundary import _RopeImportBoundaryBase
+from flext_infra.validate._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
+class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     """Enforce the §2.7 abstraction boundary at runtime-import level.
 
     Banned-lib set + per-library ownership are both derived from

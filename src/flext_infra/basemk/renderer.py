@@ -12,6 +12,7 @@ from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
 from flext_infra import c, config, m, p, r, s, t, u
+from flext_infra.basemk.custom_policy import FlextInfraCustomMkPolicy
 
 
 def _templates_dir() -> Path:
@@ -91,7 +92,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def _render_template(
         template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig | m.BaseModel | t.Infra.InfraValue | type,
     ) -> str:
         """Render template."""
         rendered: str = template.render(**kwargs)
@@ -112,7 +113,14 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     settings=active_config,
                     apply_value=config.Infra.codegen.make.apply_value,
                     apply_variable=config.Infra.codegen.make.apply_variable,
-                    # NOTE: docs configuration was removed from MakeSpec;
+                    # custom.mk blacklist SSOT: the parse-time guard in
+                    # base_preflight.mk.j2 reserves every public verb name and
+                    # builtin _custom_<verb>_<what> pair; all other custom
+                    # handlers/hooks are permitted.
+                    custom_mk_reserved=" ".join(
+                        sorted(FlextInfraCustomMkPolicy.reserved_targets())
+                    ),
+                    pytest=config.Infra.tooling.tools.pytest,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -123,6 +131,9 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+                    pytest_process_timeout_seconds=(
+                        config.Infra.tooling.tools.pytest.process_timeout_seconds
+                    ),
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"
@@ -133,7 +144,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig | m.BaseModel | t.Infra.InfraValue | type,
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

@@ -162,16 +162,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         if not package_name:
             return None
-        project_name = (
-            project.name
-            if project is not None and project.name
-            else FlextInfraUtilitiesDocsScope.project_name_from_payload(
+        if project is not None and project.name:
+            project_name = project.name
+        elif (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file():
+            project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
                 resolved_root,
                 FlextInfraUtilitiesDocsScope.project_payload(resolved_root),
             )
-            if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
-            else resolved_root.name
-        )
+        else:
+            project_name = resolved_root.name
         class_name_source = (
             project_name
             if project_name != resolved_root.name

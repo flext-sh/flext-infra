@@ -90,7 +90,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     @property
     def project_dirs(self) -> t.SequenceOf[Path] | None:
         """Resolved project directories for targeted validation."""
-        names = self.project_names
+        names: t.StrSequence | None = self.project_names
         if self.all_projects or names is None:
             return None
         return [self.workspace_root / name for name in names]

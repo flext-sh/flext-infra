@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
-from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
+from flext_infra import c, m
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -18,7 +17,7 @@ class FlextInfraGateContractContentMixin:
     @staticmethod
     def _check_interactive(
         script: str, content: str, extension: str
-    ) -> t.SequenceOf[FlextInfraGateContractModels.Violation]:
+    ) -> t.SequenceOf[m.Infra.GateContractViolation]:
         if c.Infra.SKILL_INTERACTIVE_GATE_RE.search(content):
             return ()
 
@@ -27,7 +26,7 @@ class FlextInfraGateContractContentMixin:
             if extension == ".py"
             else c.Infra.SKILL_INTERACTIVE_SH_RE
         )
-        violations: list[FlextInfraGateContractModels.Violation] = []
+        violations: list[m.Infra.GateContractViolation] = []
         for i, line in enumerate(content.splitlines(), 1):
             stripped = line.strip()
             if stripped.startswith("#"):
@@ -36,7 +35,7 @@ class FlextInfraGateContractContentMixin:
                 continue
             if pattern.search(line):
                 violations.append(
-                    FlextInfraGateContractModels.Violation(
+                    m.Infra.GateContractViolation(
                         check="interactive",
                         message=(
                             f"line {i}: interactive prompt without --interactive gate"
@@ -50,8 +49,8 @@ class FlextInfraGateContractContentMixin:
     @staticmethod
     def _check_artifact_naming(
         script: str, content: str
-    ) -> t.SequenceOf[FlextInfraGateContractModels.Violation]:
-        violations: list[FlextInfraGateContractModels.Violation] = []
+    ) -> t.SequenceOf[m.Infra.GateContractViolation]:
+        violations: list[m.Infra.GateContractViolation] = []
         for i, line in enumerate(content.splitlines(), 1):
             for match in c.Infra.SKILL_REPORTS_PATH_RE.finditer(line):
                 filename = Path(match.group(1)).name
@@ -62,7 +61,7 @@ class FlextInfraGateContractContentMixin:
                 if c.Infra.SKILL_REPORT_ARTIFACT_NAME_RE.fullmatch(filename):
                     continue
                 violations.append(
-                    FlextInfraGateContractModels.Violation(
+                    m.Infra.GateContractViolation(
                         check="artifact_naming",
                         message=(
                             f"line {i}: artifact '{filename}' does not match "

@@ -48,10 +48,9 @@ class FlextInfraCodegenLayout(
                     applied.error or f"layout apply failed: {project_dir.name}"
                 )
             residual = self.plan_project(project_dir)
+            actionable: tuple[m.Infra.LayoutFinding, ...] = residual.actionable
             unresolved = tuple(
-                finding.path
-                for finding in residual.actionable
-                if finding.status == "planned"
+                finding.path for finding in actionable if finding.status == "planned"
             )
             if unresolved:
                 paths = ", ".join(unresolved)
@@ -62,9 +61,10 @@ class FlextInfraCodegenLayout(
             reports.append(applied.value)
         output = self._render_output(reports)
         if self.effective_dry_run and spec.severity == "error":
-            blocking = [
-                finding.message for report in reports for finding in report.actionable
-            ]
+            blocking: list[str] = []
+            for report in reports:
+                report_actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
+                blocking.extend(finding.message for finding in report_actionable)
             if blocking:
                 return r[str].fail(f"layout violations: {'; '.join(blocking)}")
         return r[str].ok(output)

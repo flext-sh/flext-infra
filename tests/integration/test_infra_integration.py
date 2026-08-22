@@ -16,12 +16,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import r, u
+from flext_infra import m, r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
+from tests import TestsFlextInfraUtilities as tu
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -91,7 +93,68 @@ class TestsFlextInfraIntegrationInfraIntegration:
         generated = generator.execute()
         tm.ok(generated)
         tm.that(generated.value, is_=str)
-        tm.that(generated.value, has="check")
+        tm.that(generated.value, has="STANDARD_VERBS := clean")
+
+    @pytest.mark.integration
+    def test_markdown_fix_formats_instead_of_linting(self, tmp_path: Path) -> None:
+        """The mutating verb must format Markdown, never lint it.
+
+        ``rumdl check --fix`` is a linter: it exits non-zero whenever a finding
+        has no autofix, so a run that repaired every fixable file still failed
+        the verb. ``rumdl fmt`` carries formatter-style exit codes, which is
+        the contract the mutating verb promises.
+
+        R12 moved every public verb out of ``base.mk`` into the gate pipeline,
+        so the owner of this contract is the markdown gate. The document below
+        carries an unfixable finding (MD041: no top-level heading) next to a
+        fixable one (MD009: trailing whitespace): the linter fails on it, the
+        formatter repairs what it can and still succeeds.
+        """
+        project_dir = tu.Tests.mk_project(tmp_path, "markdown-fmt-contract")
+        document = project_dir / "README.md"
+        document.write_text("not a heading   \n", encoding="utf-8")
+        context = m.Infra.GateContext(
+            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+        )
+
+        execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
+
+        tm.that(execution.result.passed, eq=True)
+        tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
+
+    @pytest.mark.integration
+    def test_basemk_renders_shell_continuations_without_blank_lines(self) -> None:
+        r"""Every rendered recipe line must keep its shell continuation intact.
+
+        A Jinja loop that emits a bare newline breaks the ``\\`` continuation of
+        the surrounding shell construct, so the generated recipe dies with
+        'syntax error: unexpected end of file' before running anything.
+        """
+        generated = FlextInfraBaseMkGenerator().execute()
+
+        tm.ok(generated)
+        continued = [
+            index
+            for index, line in enumerate(generated.value.splitlines())
+            if line.rstrip().endswith("\\")
+        ]
+        lines = generated.value.splitlines()
+        tm.that([index for index in continued if not lines[index + 1].strip()], eq=[])
+
+    @pytest.mark.integration
+    def test_basemk_invokes_infra_entrypoints_without_eval(self) -> None:
+        """Infra entrypoints run directly, never rebuilt as an eval string.
+
+        The entrypoint macros carry an executable guard, so they contain ``;``
+        and ``||``. Captured into a shell variable, only the fragment before
+        the first ``;`` survives and the guard leaks into the recipe:
+        ``FLEXT_INFRA_PYTHON: command not found`` followed by
+        ``eval: --: invalid option``.
+        """
+        generated = FlextInfraBaseMkGenerator().execute()
+
+        tm.ok(generated)
+        tm.that("eval $$cmd" in generated.value, eq=False)
 
     @pytest.mark.integration
     def test_output_singleton_has_expected_methods(self) -> None:

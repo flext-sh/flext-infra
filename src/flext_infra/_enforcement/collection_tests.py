@@ -6,13 +6,12 @@ import importlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, m
 from flext_infra._enforcement.collection_base import FlextInfraEnforcementCollectionBase
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p
-    from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 
 class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
@@ -21,7 +20,7 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
     def collect_tests_validator(
         self, project_dir: Path, rule: me.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
+        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Run the flext-tests validator method declared by ``rule``."""
         source = rule.source

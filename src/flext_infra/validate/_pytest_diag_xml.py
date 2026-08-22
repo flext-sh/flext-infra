@@ -1,6 +1,6 @@
 """JUnit-XML diagnostics parsing for the pytest-diag extractor (§3.1 split).
 
-Holds the ``_DiagResult`` container plus the JUnit-XML parsing cluster, composed
+JUnit-XML parsing cluster for pytest diagnostics, composed
 into ``FlextInfraPytestDiagExtractor`` via MRO.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -9,37 +9,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, p
+from flext_infra import c, m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import t
-
-
-class _DiagResult:
-    """Internal container for extracted diagnostics."""
-
-    __slots__: ClassVar[tuple[str, ...]] = (
-        "error_cases",
-        "error_traces",
-        "failed_cases",
-        "skip_cases",
-        "slow_entries",
-        "warning_lines",
-    )
-
-    def __init__(self) -> None:
-        self.failed_cases: t.MutableSequenceOf[str] = []
-        self.error_cases: t.MutableSequenceOf[str] = []
-        self.error_traces: t.MutableSequenceOf[str] = []
-        self.skip_cases: t.MutableSequenceOf[str] = []
-        self.warning_lines: t.MutableSequenceOf[str] = []
-        self.slow_entries: t.MutableSequenceOf[str] = []
 
 
 class FlextInfraPytestDiagXmlMixin:
@@ -68,7 +47,7 @@ class FlextInfraPytestDiagXmlMixin:
 
     @staticmethod
     def _process_testcase(
-        case: p.Infra.XmlElementLike, diag: _DiagResult
+        case: p.Infra.XmlElementLike, diag: m.Infra.DiagResult
     ) -> t.Pair[float, str]:
         """Process a single testcase element; returns (seconds, label)."""
         classname = case.attrib.get("classname", "")
@@ -98,7 +77,7 @@ class FlextInfraPytestDiagXmlMixin:
         return secs, label
 
     @staticmethod
-    def _parse_xml(junit_path: Path, diag: _DiagResult) -> bool:
+    def _parse_xml(junit_path: Path, diag: m.Infra.DiagResult) -> bool:
         """Parse JUnit XML and populate diagnostics. Returns True on success."""
         if not junit_path.exists():
             return False
@@ -128,4 +107,4 @@ class FlextInfraPytestDiagXmlMixin:
         return True
 
 
-__all__: list[str] = ["FlextInfraPytestDiagXmlMixin", "_DiagResult"]
+__all__: list[str] = ["FlextInfraPytestDiagXmlMixin"]

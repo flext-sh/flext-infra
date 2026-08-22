@@ -60,6 +60,15 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         return (cmd_output, cmd_output.exit_code == 0)
 
     @staticmethod
+    def _exit_classification(exit_code: int) -> str:
+        """Name the process outcome behind a non-zero exit status."""
+        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
+            return " timeout"
+        if exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
+            return f" signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
+        return ""
+
+    @staticmethod
     def _collect_failures(
         projects: t.StrSequence, results: t.SequenceOf[p.Cli.CommandOutput]
     ) -> t.SequenceOf[t.Triple[str, int, Path]]:
@@ -189,7 +198,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             self._failure_summary(verb, failures)
             return r.fail(
                 f"orchestration completed with failures: {failed} "
-                f"(first failure {failed_project} exit code {exit_code})"
+                f"(first failure {failed_project} exit={exit_code}"
+                f"{self._exit_classification(exit_code)})"
             )
         return r.ok(results)
 

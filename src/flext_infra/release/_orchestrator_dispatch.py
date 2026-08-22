@@ -173,12 +173,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
         if pipeline_result.failure:
             return r[bool].fail(pipeline_result.error or "pipeline execution failed")
-        failed = next(
-            (stage for stage in pipeline_result.value.failed_stages if stage.error),
-            None,
-        )
-        if failed is not None:
-            return r[bool].fail(failed.error)
+        # cli.pipeline already maps failed_stages to r.fail; value is always success.
         if release_config.next_dev and not release_config.dry_run:
             return self._bump_next_dev(
                 release_config.workspace_root,

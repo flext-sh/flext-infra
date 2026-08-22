@@ -1,16 +1,22 @@
 """Synchronize pyright, mypy, and pyrefly paths from workspace dependencies.
 
 Handlers are called by the canonical CLI via FlextInfraCliDeps.register_deps.
+
+Every emitted entry is relative to the project that owns the file it is written
+into. A dependency that lives in another checkout resolves through its installed
+distribution in the environment the project runs against, never through a
+filesystem hop out of the project root: a generated surface that encodes
+``../<sibling>/src`` describes one host layout, so it is wrong in any checkout
+whose siblings sit elsewhere and it makes one generator emit different content
+per clone (mro-c6di).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.deps._extra_paths_sources import FlextInfraExtraPathsSourceMixin
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
 if TYPE_CHECKING:
@@ -18,9 +24,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraExtraPathsManager(
-    FlextInfraExtraPathsSourceMixin,
-    FlextInfraExtraPathsSyncMixin,
-    FlextInfraProjectSelectionServiceBase[bool],
+    FlextInfraExtraPathsSyncMixin, FlextInfraProjectSelectionServiceBase[bool]
 ):
     """Manager for synchronizing type-checker search paths from dependencies."""
 
@@ -33,6 +37,11 @@ class FlextInfraExtraPathsManager(
             u.Infra.workspace_member_names(self.workspace_root)
         )
 
+    @property
+    def workspace_project_names(self) -> t.StrSequence:
+        """Managed workspace member names backing dependency resolution."""
+        return tuple(sorted(self._workspace_project_names))
+
     @override
     def execute(self) -> p.Result[bool]:
         """Synchronize extra paths for the configured project slice."""
@@ -42,31 +51,6 @@ class FlextInfraExtraPathsManager(
         if result.failure:
             return r[bool].fail(result.error or "extra-path synchronization failed")
         return r[bool].ok(True)
-
-    def _dep_paths(self, payload: t.JsonMapping, *, project_dir: Path) -> t.StrSequence:
-        """Resolve only productive dependency import roots to relative paths."""
-        project_table = payload.get(c.Infra.PROJECT)
-        current_project_name = (
-            project_table.get(c.NAME) if isinstance(project_table, Mapping) else None
-        )
-        resolved: t.Infra.StrSet = set()
-        for name in self._resolve_transitive_deps(
-            u.Infra.local_dependency_names_from_payload(
-                payload, workspace_project_names=tuple(self._workspace_project_names)
-            )
-        ):
-            if isinstance(current_project_name, str) and name == current_project_name:
-                continue
-            dep_dir = self.root / name
-            # mro-j47u (codex): dependency lookup is an import-root contract;
-            # legacy/examples/scripts are never promoted by directory discovery.
-            for source_root in self._uv_source_search_roots(dep_dir):
-                resolved.add(
-                    self._project_relative_path(
-                        project_dir=project_dir, target_dir=source_root
-                    )
-                )
-        return tuple(sorted(resolved))
 
     @override
     def pyright_extra_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
@@ -81,12 +65,25 @@ class FlextInfraExtraPathsManager(
             for relative_path in configured_typings
             if (project_dir / relative_path).is_dir()
         ]
-        return sorted({rules.project_root, source_root, *typings_paths})
+        # Why: naive sorted({".", "src"}) puts "." first and diverges from the
+        # declared scaffold roots and pyrefly search-path ordering, so conform
+        # apply never reached a fixed point on pyproject.toml. Keep the source
+        # import root first; sort everything else for stable comparisons.
+        paths: t.Infra.StrSet = {rules.project_root, source_root, *typings_paths}
+        paths.discard(source_root)
+        return (source_root, *sorted(paths))
 
+    @override
     def pyrefly_search_paths(
         self, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
-        """Compute pyrefly search paths for a project."""
+        """Compute pyrefly search paths for a project.
+
+        Only roots inside ``project_dir`` are emitted. Path dependencies and uv
+        workspace members are importable through their installed distributions,
+        so they need no search-path entry and must never be described by a path
+        that leaves the project (mro-c6di).
+        """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = rules.source_dir
         configured_typings = (
@@ -102,55 +99,47 @@ class FlextInfraExtraPathsManager(
             for relative_path in rules.project_shared_search_paths
             if (project_dir / relative_path).is_dir()
         ]
+        # Why (ai-hub-qwoc, fleet-wide fix): pyrefly resolves the FIRST
+        # matching search-path entry. "src" must precede "." or every module
+        # resolves twice (ai_hub.X via src AND src.ai_hub.X via "."),
+        # producing distinct classes for the same symbol and phantom
+        # bad-argument-type errors. A naive sorted({...}) puts "." before
+        # "src" (ASCII '.' < 's'), silently breaking every consumer with a
+        # "." shared search path (e.g. tests.* resolution). Sort everything
+        # else, then place the declared source root first so it always wins.
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
-        if rules.include_path_dependencies_in_search_path:
-            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-            if pyproject.exists():
-                payload = u.Infra.pyproject_payload(pyproject)
-                paths.update(self._dep_paths(payload, project_dir=project_dir))
-                paths.update(self._uv_source_paths(payload, project_dir=project_dir))
-            paths.update(self._workspace_member_source_paths(project_dir=project_dir))
-        if (project_dir / source_root).is_dir():
-            paths.add(source_root)
-        return sorted(paths)
-
-    def _workspace_member_source_paths(self, *, project_dir: Path) -> t.StrSequence:
-        """Return `<member>/<source_dir>` search paths for uv workspace members.
-
-        ``[tool.uv.workspace] members`` lists path entries (e.g.
-        ``../flext/flext-cli``) for consumers that depend on flext via workspace
-        membership rather than ``[tool.uv.sources] path=``. Those members are the
-        real import roots but were previously absent from the pyrefly search path,
-        leaving stale/wrong entries. Emit each existing ``<member>/<source_dir>``.
-        """
-        source_dir = config.Infra.tooling.tools.pyrefly.path_rules.source_dir
-        resolved: t.MutableSequenceOf[str] = []
-        for member in u.Infra.workspace_member_names(project_dir):
-            member_source = project_dir / member / source_dir
-            if not member_source.is_dir():
-                continue
-            relative = self._project_relative_path(
-                project_dir=project_dir, target_dir=member_source
-            )
-            resolved.append(relative)
-        return tuple(resolved)
+        has_source_root = (project_dir / source_root).is_dir()
+        paths.discard(source_root)
+        ordered = sorted(paths)
+        if has_source_root:
+            return (source_root, *ordered)
+        return tuple(ordered)
 
     def pyrefly_project_includes(
         self, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        # mro-j47u (codex): never reread an on-disk Pyright table while its
-        # in-memory payload is being conformed; include only real production roots.
+        # Only real productive roots belong in project-includes, and
+        # u.Infra.analyzer_python_roots is the single owner shared with conform
+        # and the modernizer, so a root one surface writes is never erased by
+        # the next. Existing trees declare only roots that discovery proves
+        # productive; pre-write scaffold roots are supplied explicitly by the
+        # modernizer and do not pass through this disk-based synchronization.
+        discovered = frozenset(u.Infra.discover_python_dirs(project_dir))
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
-                tuple(
-                    directory
-                    for directory in rules.env_dirs
-                    if (project_dir / directory).is_dir()
+                u.Infra.analyzer_python_roots(
+                    project_dir,
+                    tuple(
+                        directory
+                        for directory in rules.env_dirs
+                        if directory in discovered
+                    ),
                 )
             )
         )
+        includes.update(self._pyright_include_globs(project_dir))
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
         for child in sorted(project_dir.iterdir()):
@@ -166,6 +155,26 @@ class FlextInfraExtraPathsManager(
     def pyrefly_include_globs(env_dirs: t.StrSequence) -> t.StrSequence:
         """Render Pyrefly include globs for already validated Python roots."""
         return tuple(f"{directory}/**/*.py*" for directory in env_dirs)
+
+    @staticmethod
+    def _pyright_include_globs(project_dir: Path) -> t.StrSequence:
+        """Return Pyrefly-compatible globs from declared Pyright includes."""
+        payload = u.Infra.pyproject_payload(project_dir / c.Infra.PYPROJECT_FILENAME)
+        tool = u.Cli.json_as_mapping(payload.get(c.Infra.TOOL))
+        pyright = u.Cli.json_as_mapping(tool.get(c.Infra.PYRIGHT))
+        includes: t.Infra.StrSet = set()
+        for raw_item in u.Cli.json_as_sequence(pyright.get(c.Infra.INCLUDE)):
+            if not isinstance(raw_item, str):
+                continue
+            normalized = raw_item.strip().rstrip("/")
+            if not normalized:
+                continue
+            includes.add(
+                normalized
+                if "*" in normalized or normalized.endswith((".py", ".pyi"))
+                else f"{normalized}/**/*.py*"
+            )
+        return tuple(sorted(includes))
 
 
 __all__: list[str] = ["FlextInfraExtraPathsManager"]
