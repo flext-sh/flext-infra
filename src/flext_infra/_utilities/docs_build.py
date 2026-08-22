@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import sys
-
 from collections.abc import MutableMapping
 from importlib import import_module
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from flext_cli import u
@@ -14,7 +14,6 @@ from flext_infra.constants import c
 from flext_infra.models import m
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from types import ModuleType
 
     from flext_infra.protocols import p
@@ -63,13 +62,25 @@ class FlextInfraUtilitiesDocsBuild:
         return config_raw
 
     @staticmethod
+    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> tuple[Path, ...]:
+        """Return primary mkdocs.yml then optional product mkdocs.yaml."""
+        configs: list[Path] = []
+        primary = scope.path / "mkdocs.yml"
+        secondary = scope.path / "mkdocs.yaml"
+        if primary.is_file():
+            configs.append(primary)
+        if secondary.is_file() and secondary.resolve() != primary.resolve():
+            configs.append(secondary)
+        return tuple(configs)
+
+    @staticmethod
     def docs_run_mkdocs(
         scope: m.Infra.DocScope, *, runner: p.Cli.CommandRunner
     ) -> m.Infra.DocsPhaseReport:
-        """Run MkDocs directly through the MkDocs Python API for one scope."""
-        settings = scope.path / "mkdocs.yml"
-        if not settings.exists():
-            result = m.Infra.DocsPhaseReport(
+        """Run MkDocs for primary yml and optional product yaml configs."""
+        configs = FlextInfraUtilitiesDocsBuild.docs_mkdocs_config_files(scope)
+        if not configs:
+            return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
                 result=c.Infra.ResultStatus.FAIL,
@@ -77,84 +88,113 @@ class FlextInfraUtilitiesDocsBuild:
                 site_dir="",
                 passed=False,
             )
-        else:
-            site_dir = (
-                scope.path / c.Infra.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.DIR_SITE
-            ).resolve()
-            if not isinstance(runner, type):
-                completed = runner.run_raw(
-                    [
-                        # Anchor MkDocs to this interpreter: a bare "mkdocs"
-                        # resolves through PATH, where an unrelated system
-                        # executable of the same name can shadow it.
-                        sys.executable,
-                        "-m",
-                        "mkdocs",
-                        c.Infra.DIR_BUILD,
-                        "--strict",
-                        "-f",
-                        str(settings),
-                        "-d",
-                        str(site_dir),
-                    ],
-                    cwd=scope.path,
+        primary_report: m.Infra.DocsPhaseReport | None = None
+        for settings in configs:
+            suffix = "" if settings.suffix == ".yml" else "-product"
+            report = FlextInfraUtilitiesDocsBuild._docs_run_one_mkdocs(
+                scope, settings=settings, runner=runner, site_suffix=suffix
+            )
+            if primary_report is None:
+                primary_report = report
+            if not report.passed:
+                return report
+        if primary_report is None:
+            return m.Infra.DocsPhaseReport(
+                phase="build",
+                scope=scope.name,
+                result=c.Infra.ResultStatus.FAIL,
+                reason="mkdocs build produced no report",
+                site_dir="",
+                passed=False,
+            )
+        if len(configs) > 1:
+            return primary_report.model_copy(
+                update={
+                    "reason": f"{primary_report.reason}; product mkdocs.yaml also built"
+                }
+            )
+        return primary_report
+
+    @staticmethod
+    def _docs_run_one_mkdocs(
+        scope: m.Infra.DocScope,
+        *,
+        settings: Path,
+        runner: p.Cli.CommandRunner,
+        site_suffix: str,
+    ) -> m.Infra.DocsPhaseReport:
+        """Build one MkDocs config file into a site directory."""
+        site_dir = (
+            scope.path
+            / c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+            / f"{c.Infra.DIR_SITE}{site_suffix}"
+        ).resolve()
+        if not isinstance(runner, type):
+            completed = runner.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    "mkdocs",
+                    c.Infra.DIR_BUILD,
+                    "--strict",
+                    "-f",
+                    str(settings),
+                    "-d",
+                    str(site_dir),
+                ],
+                cwd=scope.path,
+            )
+            if completed.failure:
+                return m.Infra.DocsPhaseReport(
+                    phase="build",
+                    scope=scope.name,
+                    result=c.Infra.ResultStatus.FAIL,
+                    reason=completed.error or f"mkdocs build failed ({settings.name})",
+                    site_dir=site_dir.as_posix(),
+                    passed=False,
                 )
-                if completed.failure:
-                    result = m.Infra.DocsPhaseReport(
-                        phase="build",
-                        scope=scope.name,
-                        result=c.Infra.ResultStatus.FAIL,
-                        reason=completed.error or "mkdocs build failed",
-                        site_dir=site_dir.as_posix(),
-                        passed=False,
-                    )
-                else:
-                    output = completed.value
-                    if output.exit_code == 0:
-                        result = m.Infra.DocsPhaseReport(
-                            phase="build",
-                            scope=scope.name,
-                            result=c.Infra.ResultStatus.OK,
-                            reason="build succeeded",
-                            site_dir=site_dir.as_posix(),
-                            passed=True,
-                        )
-                    else:
-                        reason_lines = (
-                            (output.stderr or output.stdout).strip().splitlines()
-                        )
-                        result = m.Infra.DocsPhaseReport(
-                            phase="build",
-                            scope=scope.name,
-                            result=c.Infra.ResultStatus.FAIL,
-                            reason=reason_lines[-1]
-                            if reason_lines
-                            else f"mkdocs exited {output.exit_code}",
-                            site_dir=site_dir.as_posix(),
-                            passed=False,
-                        )
-            else:
-                try:
-                    FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
-                except c.EXC_OS_VALUE as exc:
-                    result = m.Infra.DocsPhaseReport(
-                        phase="build",
-                        scope=scope.name,
-                        result=c.Infra.ResultStatus.FAIL,
-                        reason=str(exc) or "mkdocs build failed",
-                        site_dir=site_dir.as_posix(),
-                        passed=False,
-                    )
-                else:
-                    result = m.Infra.DocsPhaseReport(
-                        phase="build",
-                        scope=scope.name,
-                        result=c.Infra.ResultStatus.OK,
-                        reason="build succeeded",
-                        site_dir=site_dir.as_posix(),
-                        passed=True,
-                    )
-        return result
+            output = completed.value
+            if output.exit_code == 0:
+                return m.Infra.DocsPhaseReport(
+                    phase="build",
+                    scope=scope.name,
+                    result=c.Infra.ResultStatus.OK,
+                    reason=f"build succeeded ({settings.name})",
+                    site_dir=site_dir.as_posix(),
+                    passed=True,
+                )
+            reason_lines = (output.stderr or output.stdout).strip().splitlines()
+            return m.Infra.DocsPhaseReport(
+                phase="build",
+                scope=scope.name,
+                result=c.Infra.ResultStatus.FAIL,
+                reason=(
+                    reason_lines[-1]
+                    if reason_lines
+                    else f"mkdocs exited {output.exit_code} ({settings.name})"
+                ),
+                site_dir=site_dir.as_posix(),
+                passed=False,
+            )
+        try:
+            FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
+        except c.EXC_OS_VALUE as exc:
+            return m.Infra.DocsPhaseReport(
+                phase="build",
+                scope=scope.name,
+                result=c.Infra.ResultStatus.FAIL,
+                reason=str(exc) or f"mkdocs build failed ({settings.name})",
+                site_dir=site_dir.as_posix(),
+                passed=False,
+            )
+        return m.Infra.DocsPhaseReport(
+            phase="build",
+            scope=scope.name,
+            result=c.Infra.ResultStatus.OK,
+            reason=f"build succeeded ({settings.name})",
+            site_dir=site_dir.as_posix(),
+            passed=True,
+        )
 
     @staticmethod
     def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:

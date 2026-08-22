@@ -59,7 +59,9 @@ class FlextInfraUtilitiesDependencies:
             else:
                 payload_source = u.Cli.toml_mapping_from_text(raw_text)
                 if payload_source is not None:
-                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(payload_source)
+                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
+                        payload_source
+                    )
                     if payload is not None:
                         raw_packages = payload.get("package")
                         if isinstance(raw_packages, list):

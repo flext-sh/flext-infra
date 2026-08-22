@@ -257,7 +257,9 @@ class FlextInfraModelsCheck:
         ]
         skipped: Annotated[
             int,
-            m.Field(description="Number of projects that were skipped during execution."),
+            m.Field(
+                description="Number of projects that were skipped during execution."
+            ),
         ]
         total_elapsed: Annotated[
             float,

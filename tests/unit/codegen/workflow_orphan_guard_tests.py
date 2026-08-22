@@ -46,6 +46,21 @@ class TestsWorkflowOrphanGuard:
         """
         tm.that("codeql.yml" in _declared_workflows(), eq=False)
 
+    def test_ci_matrix_is_not_projected_to_workspace_members(self) -> None:
+        """ci-matrix is root/standalone only; members are covered by the root."""
+        entries = tuple(
+            entry
+            for entry in config.Infra.codegen.templates.entries
+            if entry.destination == ".github/workflows/ci-matrix.yml"
+        )
+        tm.that(len(entries), eq=1)
+        profiles = {
+            p.value if hasattr(p, "value") else str(p) for p in entries[0].profiles
+        }
+        tm.that("workspace-root" in profiles, eq=True)
+        tm.that("standalone" in profiles, eq=True)
+        tm.that("workspace-member" in profiles, eq=False)
+
 
 _ALLOWED_WORKFLOWS: tuple[str, ...] = (
     "ci-matrix.yml",

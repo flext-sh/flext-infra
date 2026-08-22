@@ -89,12 +89,13 @@ class FlextInfraCodegenLayoutFilesMixin:
         source_rel = source.relative_to(project_dir).as_posix()
         target_rel = target.relative_to(project_dir).as_posix()
         if self._git_tracked(project_dir, source_rel):
-            moved = u.Infra.git_run(project_dir, ("mv", source_rel, target_rel))
+            moved = u.Infra.git_mv_path(
+                m.Infra.GitPathPairRequest(
+                    repo_root=project_dir, source=source_rel, target=target_rel
+                )
+            )
             if moved.failure:
                 return r[bool].fail(moved.error or "git mv execution failed")
-            if moved.value.exit_code != 0:
-                detail = (moved.value.stderr or moved.value.stdout).strip()
-                return r[bool].fail(detail or "git mv failed")
             return r[bool].ok(True)
         source.rename(target)
         return r[bool].ok(True)
@@ -110,15 +111,13 @@ class FlextInfraCodegenLayoutFilesMixin:
         target.parent.mkdir(parents=True, exist_ok=True)
         source_rel = source.relative_to(project_dir).as_posix()
         if self._git_tracked(project_dir, source_rel):
-            untracked = u.Infra.git_run(
-                project_dir,
-                ("rm", "-r", "--cached", "--quiet", "--force", "--", source_rel),
+            untracked = u.Infra.git_rm_cached(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=project_dir, relative_path=source_rel
+                )
             )
             if untracked.failure:
                 return r[bool].fail(untracked.error or "git rm execution failed")
-            if untracked.value.exit_code != 0:
-                detail = (untracked.value.stderr or untracked.value.stdout).strip()
-                return r[bool].fail(detail or "git rm --cached failed")
         source.rename(target)
         return r[bool].ok(True)
 
@@ -128,12 +127,13 @@ class FlextInfraCodegenLayoutFilesMixin:
         """Remove a byte-identical duplicate whose content is already archived."""
         source_rel = source.relative_to(project_dir).as_posix()
         if self._git_tracked(project_dir, source_rel):
-            removed = u.Infra.git_run(project_dir, ("rm", "-q", "--", source_rel))
+            removed = u.Infra.git_rm_path(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=project_dir, relative_path=source_rel
+                )
+            )
             if removed.failure:
                 return r[bool].fail(removed.error or "git rm execution failed")
-            if removed.value.exit_code != 0:
-                detail = (removed.value.stderr or removed.value.stdout).strip()
-                return r[bool].fail(detail or "git rm failed")
             return r[bool].ok(True)
         source.unlink()
         return r[bool].ok(True)
@@ -141,8 +141,10 @@ class FlextInfraCodegenLayoutFilesMixin:
     @staticmethod
     def _git_tracked(project_dir: Path, rel: str) -> bool:
         """Whether a path is git-tracked; False for plain directories."""
-        listed = u.Infra.git_capture(project_dir, ("ls-files", "-z", "--", rel))
-        return listed.success and bool(listed.value.strip())
+        listed = u.Infra.git_is_tracked(
+            m.Infra.GitRelativePathRequest(repo_root=project_dir, relative_path=rel)
+        )
+        return listed.success and listed.value.value
 
     @staticmethod
     def _prune_empty_dirs(root: Path) -> None:

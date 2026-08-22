@@ -27,7 +27,9 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             t.MappingKV[Path, str],
             m.Field(description="In-memory pending sources keyed by file path"),
         ]
-        apply: Annotated[bool, m.Field(description="Whether to write rewritten sources")]
+        apply: Annotated[
+            bool, m.Field(description="Whether to write rewritten sources")
+        ]
         gates: Annotated[
             t.StrSequence | None,
             m.Field(description="Optional protected-write gate selectors"),

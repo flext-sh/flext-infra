@@ -177,18 +177,16 @@ class TestsFlextInfraDepsModernizerMainExtra:
             encoding="utf-8",
         )
         u.Tests.initialize_git_repo(modernizer_workspace)
-        tm.ok(
-            u.Infra.git_capture(
-                modernizer_workspace,
-                (
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    str(source_repository),
-                    "flext-core",
-                ),
-            )
+        u.Tests.git_bootstrap(
+            modernizer_workspace,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                str(source_repository),
+                "flext-core",
+            ),
         )
         member_lock = modernizer_workspace / "flext-core" / c.Infra.UV_LOCK_FILENAME
 

@@ -29,9 +29,7 @@ class FlextInfraCodegenLayoutApplyMixin(
         gitignore_status: t.Infra.LayoutStatus = "noop"
         actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
         gitignore_patterns = tuple(
-            finding.target
-            for finding in actionable
-            if finding.rule == "gitignore"
+            finding.target for finding in actionable if finding.rule == "gitignore"
         )
         if gitignore_patterns:
             applied = self._apply_gitignore(project_dir, gitignore_patterns)

@@ -48,6 +48,7 @@ project:
   author_name: {{ author_name | tojson }}
   author_email: {{ author_email | tojson }}
   upstream: {{ upstream | tojson }}
+  inherited_facets: {{ inherited_facets | list | tojson }}
   homepage: {{ homepage | tojson }}
   documentation: {{ documentation | tojson }}
   workspace_root_rel: {{ workspace_root_rel | tojson }}
@@ -104,6 +105,7 @@ repository_policy_overlays:
   - project: {{ overlay.project | tojson }}
     beads_enabled: {{ overlay.beads_enabled | tojson }}
     ci_enabled: {{ overlay.ci_enabled | tojson }}
+    ci_matrix_auto_run: {{ overlay.ci_matrix_auto_run | tojson }}
 {% else %}
   []
 {%- endfor %}

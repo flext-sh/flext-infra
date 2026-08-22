@@ -53,9 +53,8 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
             )
             return (1, [])
         required_skills = required_result.value or [
-            "rules-docs",
-            "scripts-maintenance",
-            "readme-standardization",
+            "flext-law",
+            "flext-context-routing",
         ]
         skills_root = workspace_root / ".agents/skills"
         missing: list[str] = []

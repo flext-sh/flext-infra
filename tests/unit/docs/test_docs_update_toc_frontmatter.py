@@ -7,17 +7,7 @@ from tests import u
 
 
 def test_docs_update_toc_inserts_after_h1_beyond_frontmatter() -> None:
-    content = (
-        "---\n"
-        "title: ADR-001\n"
-        "---\n"
-        "\n"
-        "# ADR-001 — Example\n"
-        "\n"
-        "## Context\n"
-        "\n"
-        "Body.\n"
-    )
+    content = "---\ntitle: ADR-001\n---\n\n# ADR-001 — Example\n\n## Context\n\nBody.\n"
     updated, changed = u.Infra.update_toc(content)
     tm.that(changed, eq=1)
     tm.that(updated.startswith("---\n"), eq=True)
