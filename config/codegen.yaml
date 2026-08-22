@@ -376,6 +376,8 @@ Infra:
           whats: [help, status, start, land, finish]
           # `work` mutates only for start/land/finish; status is the read-only
           # fixed-point after mutation, so serialize-make can re-check without APPLY=Y.
+          # apply_what stays singular by model contract: it is only the implicit
+          # WHAT selected when callers set APPLY=Y without naming one explicitly.
           apply_guarded: true
           apply_what: start
         - name: status
