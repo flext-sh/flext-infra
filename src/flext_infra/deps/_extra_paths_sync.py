@@ -23,6 +23,13 @@ class FlextInfraExtraPathsSyncMixin:
         root: Path
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
+        pyrefly_search_paths: Callable[..., t.StrSequence]
+
+    def resolve_transitive_dependency_names(
+        self, direct_names: t.StrSequence
+    ) -> t.StrSequence:
+        """Return the transitive workspace path-dependency closure of direct_names."""
+        return self._resolve_transitive_deps(direct_names)
 
     def _resolve_transitive_deps(
         self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
@@ -54,10 +61,9 @@ class FlextInfraExtraPathsSyncMixin:
         self, doc: t.Cli.TomlDocument, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
         """Apply computed extra paths to an in-memory TOMLDocument."""
-        # mro-j47u: compare immutable sequences so equal paths stay idempotent.
-        expected = tuple(
-            self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
-        )
+        # Path producers and toml_as_string_list both yield immutable
+        # sequences, so equal content compares equal (no list/tuple churn).
+        expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
         tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()
@@ -74,12 +80,17 @@ class FlextInfraExtraPathsSyncMixin:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
+            # Same import graph as Pyrefly: mypy needs the path dependencies
+            # that pyright_extra_paths omits (see sync_payload).
+            expected_mypy = self.pyrefly_search_paths(
+                project_dir=project_dir, is_root=is_root
+            )
             mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
             current_mypy = u.Cli.toml_as_string_list(
                 mypy_path_item if mypy_path_item is not None else []
             )
-            if current_mypy != expected:
-                mypy_table["mypy_path"] = expected
+            if current_mypy != expected_mypy:
+                mypy_table["mypy_path"] = expected_mypy
                 tool_table[c.Infra.MYPY] = mypy_table
                 changes.append("synchronized mypy mypy_path")
         if changes:
@@ -106,10 +117,13 @@ class FlextInfraExtraPathsSyncMixin:
             expected,
         ):
             changes.append("synchronized pyright extraPaths")
+        # Mypy resolves the same import graph as Pyrefly, so it needs the same
+        # roots. pyright_extra_paths omits path dependencies, which left sibling
+        # packages unresolvable and degraded every symbol they export to Any.
         if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
-            expected,
+            self.pyrefly_search_paths(project_dir=project_dir, is_root=is_root),
         ):
             changes.append("synchronized mypy mypy_path")
         return changes
@@ -139,8 +153,15 @@ class FlextInfraExtraPathsSyncMixin:
     ) -> p.Result[int]:
         """Synchronize extraPaths and mypy_path across projects."""
         if project_dirs:
+            updated_selected = 0
             for project_dir in project_dirs:
                 pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+                # A governed worktree transaction materializes only the scoped
+                # submodule's source tree, so a selected member legitimately has
+                # no pyproject there. Failing closed made every scoped apply
+                # report breakage and silently skip writing the derived paths.
+                if not pyproject.exists():
+                    continue
                 sync_result = self.sync_one(
                     pyproject, dry_run=dry_run, is_root=project_dir == self.root
                 )
@@ -149,17 +170,34 @@ class FlextInfraExtraPathsSyncMixin:
                         sync_result.error or f"sync failed for {pyproject}"
                     )
                 if sync_result.value and (not dry_run):
+                    updated_selected += 1
                     u.Cli.info(f"Updated {pyproject}")
-            return r[int].ok(0)
-        pyproject = self.root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject.exists():
-            return r[int].fail(f"Missing {pyproject}")
-        sync_result = self.sync_one(pyproject, dry_run=dry_run, is_root=True)
-        if sync_result.failure:
-            return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
-        if sync_result.value and (not dry_run):
-            u.Cli.info("Updated extraPaths and mypy_path from path dependencies.")
-        return r[int].ok(0)
+            return r[int].ok(updated_selected)
+        # WHAT=all is the canonical default: an unselected run owns the root AND
+        # every managed member. Syncing only the root left each member's
+        # mypy_path/extraPaths frozen at whatever was last written by hand, so
+        # sibling path dependencies never reached the member analyzers and every
+        # symbol imported from them degraded to Any.
+        targets: t.MutableSequenceOf[Path] = [self.root]
+        targets.extend(
+            self.root / member for member in u.Infra.workspace_member_names(self.root)
+        )
+        updated = 0
+        for target in targets:
+            pyproject = target / c.Infra.PYPROJECT_FILENAME
+            if not pyproject.exists():
+                if target == self.root:
+                    return r[int].fail(f"Missing {pyproject}")
+                continue
+            sync_result = self.sync_one(
+                pyproject, dry_run=dry_run, is_root=target == self.root
+            )
+            if sync_result.failure:
+                return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
+            if sync_result.value and (not dry_run):
+                updated += 1
+                u.Cli.info(f"Updated {pyproject}")
+        return r[int].ok(updated)
 
 
 __all__: list[str] = ["FlextInfraExtraPathsSyncMixin"]

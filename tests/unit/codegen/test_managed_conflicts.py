@@ -2,12 +2,60 @@
 
 from __future__ import annotations
 
+from flext_infra import config
 from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
 from flext_tests import tm
 
 
 class TestsFlextInfraCodegenManagedConflicts:
     """Prove conflict recovery remains bounded by the document SSOT."""
+
+    def test_every_generated_pyproject_section_declares_recovery(self) -> None:
+        """A section the owner renders must be recoverable, or a merge dead-ends.
+
+        `per-file-ignores` is rendered from `tooling.yaml` exactly like the
+        pytest and uv sections. Without the declaration, absorbing an
+        integration base that still carries the previous lint projection left
+        the superproject merge unresolvable through the canonical surface.
+        """
+        managed = config.Infra.codegen.managed_files
+        pyproject = next(
+            spec for spec in managed if spec.path.as_posix() == "pyproject.toml"
+        )
+
+        tm.that(
+            set(pyproject.conflict_sections),
+            eq={
+                "tool.pytest.ini_options",
+                "tool.uv",
+                "tool.ruff.lint.per-file-ignores",
+            },
+        )
+
+    def test_recovers_the_lint_policy_section(self) -> None:
+        """Keep the owner's current lint projection over an absorbed base."""
+        content = (
+            "[tool.ruff.lint.per-file-ignores]\n"
+            "<<<<<<< HEAD\n"
+            '"**/__init__.py" = ["unused-import"]\n'
+            "=======\n"
+            '"**/.vulture_whitelist.py" = ["ALL"]\n'
+            ">>>>>>> origin/0.12.0-dev\n"
+        )
+
+        recovered = tm.ok(
+            FlextInfraCodegenManagedConflicts.recover_toml(
+                content, conflict_sections=("tool.ruff.lint.per-file-ignores",)
+            )
+        )
+
+        tm.that(
+            recovered,
+            eq=(
+                "[tool.ruff.lint.per-file-ignores]\n"
+                '"**/__init__.py" = ["unused-import"]\n'
+            ),
+        )
 
     def test_recovers_only_configured_toml_section(self) -> None:
         """Keep the current projection for a configured owner section."""

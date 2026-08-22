@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
+import pytest
+
+from flext_core import r
 from flext_tests import tm
 from tests import c, m, u
 
@@ -99,3 +103,38 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
             eq=True,
         )
+
+    def test_every_lint_gate_runs_concurrently(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No lint gate is serialized ahead of the others.
+
+        mro-38p39: a lint snapshot runs one subprocess per gate. Running any of
+        them before the pool makes the snapshot cost that gate's full wall clock
+        plus the slowest of the rest, instead of just the slowest. Measured on
+        the two slowest tests in the suite: 8 snapshots x 4 gates, 0.297s per
+        gate, with ruff serialized ahead of a 3-worker pool.
+
+        The gates are independent -- each builds its own command and returns a
+        value, touching no shared state -- so the snapshot wall clock must be the
+        slowest single gate, never their sum. This asserts the observable
+        subprocess timeline, not the internal structure.
+        """
+        py_file = tmp_path / "sample.py"
+        py_file.write_text("VALUE = 1\n", encoding=c.Cli.ENCODING_DEFAULT)
+        gates = ("ruff", "pyrefly")
+        started: list[float] = []
+        finished: list[float] = []
+
+        def _slow_run(*_args: object, **_kwargs: object) -> object:
+            started.append(time.monotonic())
+            time.sleep(0.4)
+            finished.append(time.monotonic())
+            return r.ok(u.Tests.create_command_output())
+
+        monkeypatch.setattr(u.Cli, "run_raw", _slow_run)
+        _ = u.Infra.lint_snapshot(py_file, tmp_path, gates=gates)
+
+        tm.that(len(started), eq=len(gates))
+        # Concurrent: the last gate starts before the first one finishes.
+        tm.that(max(started) < min(finished), eq=True)

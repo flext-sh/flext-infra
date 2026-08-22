@@ -20,6 +20,11 @@ class TestsFlextInfraInfraPatternsExtra:
             c.Infra.HEADING_H2_H3_RE,
             c.Infra.ANCHOR_LINK_RE,
             c.Infra.INLINE_CODE_RE,
+            c.Infra.MAKE_ASSIGNMENT_RE,
+            c.Infra.MAKE_DIRECTIVE_RE,
+            c.Infra.MAKE_CONDITIONAL_RE,
+            c.Infra.GITMODULE_SECTION_RE,
+            c.Infra.GITMODULE_PATH_RE,
         ]
         for pattern in patterns:
             tm.that(pattern, is_=pattern_type)

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import tomlkit
-
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
@@ -24,7 +22,7 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase sets expected state."""
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -52,12 +50,13 @@ class TestsFlextInfraDepsModernizerMypy:
         )
         for key, value in tool_config_document.tools.mypy.boolean_settings.items():
             tm.that(mypy_mapping[key], eq=value)
+        tm.that(mypy_mapping["show_traceback"], eq=True)
 
     def test_mypy_phase_keeps_misc_globally_disabled(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase keeps misc globally disabled."""
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -89,7 +88,7 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase removes legacy test overrides."""
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -121,7 +120,7 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase replaces managed lists and overrides."""
-        doc = tomlkit.parse(
+        doc = u.Tests.toml_doc(
             """
 [tool.mypy]
 plugins = ["custom.plugin"]
@@ -158,7 +157,7 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
     def test_mypy_phase_removes_deprecated_strict_concatenate(self) -> None:
         """Verify mypy phase removes deprecated strict concatenate."""
         tool_config_document = u.Tests.tool_config_document()
-        doc = tomlkit.parse(
+        doc = u.Tests.toml_doc(
             """
 [tool.mypy]
 strict_concatenate = true
@@ -182,7 +181,7 @@ warn_return_any = false
     ) -> None:
         """Verify mypy phase is idempotent."""
         phase = FlextInfraEnsureMypyConfigPhase(tool_config_document)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
@@ -193,7 +192,7 @@ warn_return_any = false
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify pydantic mypy phase sets expected state."""
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
@@ -218,7 +217,7 @@ warn_return_any = false
     ) -> None:
         """Verify pydantic mypy phase is idempotent."""
         phase = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document)
-        doc = tomlkit.document()
+        doc = u.Cli.toml_document()
 
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)

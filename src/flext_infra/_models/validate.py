@@ -114,20 +114,27 @@ class FlextInfraModelsCore:
         """
 
         failed_cases: Annotated[
-            t.StrSequence, m.Field(description="Collected failed test-case labels")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected failed test-case labels"),
+        ] = m.Field(default_factory=list)
+        error_cases: Annotated[
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected error test-case labels"),
+        ] = m.Field(default_factory=list)
         error_traces: Annotated[
-            t.StrSequence, m.Field(description="Collected error trace chunks")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected error trace chunks"),
+        ] = m.Field(default_factory=list)
         skip_cases: Annotated[
-            t.StrSequence, m.Field(description="Collected skipped test-case labels")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected skipped test-case labels"),
+        ] = m.Field(default_factory=list)
         warning_lines: Annotated[
-            t.StrSequence, m.Field(description="Collected warning lines")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str], m.Field(description="Collected warning lines")
+        ] = m.Field(default_factory=list)
         slow_entries: Annotated[
-            t.StrSequence, m.Field(description="Collected slow-test entries")
-        ] = m.Field(default_factory=tuple)
+            t.MutableSequenceOf[str], m.Field(description="Collected slow-test entries")
+        ] = m.Field(default_factory=list)
 
     class InventoryReport(m.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""
@@ -138,6 +145,42 @@ class FlextInfraModelsCore:
         reports_written: Annotated[
             t.MutableSequenceOf[str], m.Field(description="Written report file paths")
         ] = m.Field(default_factory=list)
+
+    class GateContractViolation(m.Value):
+        """One gate-script contract violation."""
+
+        # Why: leaf validate contract owned by m.Infra (collision-safe vs census Violation).
+        script: Annotated[str, m.Field(description="Script path")]
+        check: Annotated[str, m.Field(description="Failed check")]
+        message: Annotated[str, m.Field(description="Violation message")]
+        severity: Annotated[str, m.Field(description="Severity")] = (
+            c.Infra.GateSeverity.ERROR.value
+        )
+
+    class GateContractScriptInfo(m.Value):
+        """Validation result for one gate script."""
+
+        path: Annotated[str, m.Field(description="Script path")]
+        extension: Annotated[str, m.Field(description="File extension")]
+        role: Annotated[str, m.Field(description="Script role")]
+        violations: Annotated[
+            tuple[FlextInfraModelsCore.GateContractViolation, ...],
+            m.Field(description="Violations"),
+        ] = ()
+
+    class GateContractSummary(m.Value):
+        """Aggregate gate-contract counts."""
+
+        errors: Annotated[int, m.Field(description="Error count")] = 0
+        gate_scripts: Annotated[int, m.Field(description="Gate script count")] = 0
+        ok: Annotated[int, m.Field(description="Passing gate script count")] = 0
+        warnings: Annotated[int, m.Field(description="Warning count")] = 0
+
+    class GateContractRunResult(m.Value):
+        """CLI outcome for one gate-contract validation run."""
+
+        exit_code: Annotated[int, m.Field(description="Process exit code")]
+        violation_count: Annotated[int, m.Field(description="Error count")]
 
     class NamespaceValidateCommand(mm.ReadMixin, m.ContractModel):
         """CLI payload for ``flext-infra validate namespace``.

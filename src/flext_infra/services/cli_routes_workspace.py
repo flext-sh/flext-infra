@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import FlextInfraWorktreeService, c, m
+from flext_infra import FlextInfraWorkService, c, m
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
@@ -12,7 +12,7 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
+from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 
@@ -44,6 +44,17 @@ class WorkspaceRoutes(RefactorRoutes):
                 ),
                 success_message="workspace editable provenance verified",
             ),
+            m.Cli.ResultCommandRoute(
+                name="flext-binding",
+                help_text="Bind this project onto a flext worktree for the session",
+                model_cls=m.Infra.FlextBindingRequest,
+                handler=lambda params: FlextInfraFlextBindingService.apply(
+                    consumer_root=params.workspace_root,
+                    flext_root=params.flext_root,
+                    python=params.python,
+                ).map(CliRouteBase.as_route_value),
+                success_message="flext worktree binding applied",
+            ),
             *(
                 m.Cli.ResultCommandRoute(
                     name=route_name,
@@ -63,14 +74,9 @@ class WorkspaceRoutes(RefactorRoutes):
                         FlextInfraOrchestratorService,
                     ),
                     (
-                        "serialize-make",
-                        "Run one state-sensitive Make verb under its checkout lock",
-                        FlextInfraMakeSerializationService,
-                    ),
-                    (
-                        "worktree",
-                        "Manage repository-local development worktrees",
-                        FlextInfraWorktreeService,
+                        "work",
+                        "Unified bead/GitFlow/worktree/PR lane saga",
+                        FlextInfraWorkService,
                     ),
                 )
             ),

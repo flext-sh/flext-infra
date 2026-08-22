@@ -58,6 +58,7 @@ class FlextInfraConstantsCodegenProject:
         """Generated Makefile profile for one repository."""
 
         WORKSPACE_ROOT = "workspace-root"
+        WORKSPACE_MEMBER = "workspace-member"
         STANDALONE = "standalone"
 
     @unique

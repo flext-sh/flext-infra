@@ -4,29 +4,32 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+import pytest
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
+from tests import c, m, u
 
+
+# Exemplar: conform materializes a full managed tree on disk, so the render
+# itself dominates the runtime. The class carries the config-owned slow budget
+# (Infra.tooling.tools.pytest.slow-timeout-seconds) instead of a hardcoded
+# ceiling, so a real hang still aborts at the declared wall.
+@pytest.mark.slow
 class TestCodegenManifestlessExisting:
     def test_existing_root_uses_pep621_metadata_for_managed_artifacts(
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == "flext-infra"
-        )
+        repository = u.Tests.repository_ref(config.Infra.name)
+        local_repository = repository.model_copy(update={"path": Path()})
         preserved = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
         }
-        pyproject_source: str = tm.ok(
-            u.Cli.files_read_text(Path.cwd() / "pyproject.toml")
-        )
+        pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
         tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)
@@ -44,14 +47,13 @@ class TestCodegenManifestlessExisting:
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manifestless tree"], cwd=root
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifestless tree"],
+                cwd=root,
             )
         )
 
-        derived: m.Infra.WorkspaceSpec = tm.ok(
-            FlextInfraWorkspaceDetector.load_workspace_spec(root)
-        )
-        tm.that(derived.repository, eq=repository)
+        derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        tm.that(derived.repository, eq=local_repository)
         tm.that(derived.project, eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
@@ -60,16 +62,10 @@ class TestCodegenManifestlessExisting:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(FlextInfraCodegenConform.execute_request(request))
-        tm.ok(u.Cli.run_checked(["git", "add", "pyproject.toml"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Conform fixture metadata"], cwd=root
-            )
-        )
         artifact_request = request.model_copy(
             update={"what": c.Infra.CodegenConformSurface.ALL}
         )
-        initial_plan: m.Infra.CodegenPlan = tm.ok(
+        initial_plan = tm.ok(
             FlextInfraCodegenConform(workspace_root=root).plan(artifact_request)
         )
         plans = {
@@ -104,16 +100,14 @@ class TestCodegenManifestlessExisting:
                 update={"mode": c.Infra.CodegenConformMode.CHECK}
             )
         )
-        verified: m.Infra.CodegenPlan = tm.ok(fixed_point)
+        verified = tm.ok(fixed_point)
         tm.that(tuple(file.path for file in verified.files if file.changed), eq=())
 
     def test_existing_root_rejects_non_regular_create_only_destination(
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        pyproject_source: str = tm.ok(
-            u.Cli.files_read_text(Path.cwd() / "pyproject.toml")
-        )
+        pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
         tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)

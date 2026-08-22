@@ -433,7 +433,7 @@ class FlextInfraModelsNamespaceEnforcer:
         @m.computed_field()
         @property
         def has_violations(self) -> bool:
-            """Check if this project has any violations."""
+            """Whether this project has any violations."""
             missing_facades = any(not f.exists for f in self.facade_statuses)
             violation_fields = (
                 self.loose_objects,

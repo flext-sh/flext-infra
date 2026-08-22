@@ -16,12 +16,14 @@ class FlextInfraEnsurePytestConfigPhase:
     def _phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pytest phase definition."""
         pytest = self._tool_config.tools.pytest
+        addopts = (*pytest.standard_addopts, f"--timeout={pytest.case_timeout_seconds}")
         return (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("pytest")
             .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
             # mro-j47u (codex): no pytest policy literal survives outside config.
             .value(c.Infra.MINVERSION, pytest.min_version)
+            .value(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS, str(pytest.slow_timeout_seconds))
             .list(
                 c.Infra.PYTHON_CLASSES,
                 pytest.python_classes,
@@ -38,7 +40,7 @@ class FlextInfraEnsurePytestConfigPhase:
             )
             .list(
                 c.Infra.ADDOPTS,
-                pytest.standard_addopts,
+                addopts,
                 # mro-pulj (codex): replace stale coverage, collection, and bypass flags.
                 strategy=c.Infra.TomlMergeMode.REPLACE,
             )

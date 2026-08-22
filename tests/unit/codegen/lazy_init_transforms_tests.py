@@ -76,8 +76,8 @@ class TestsFlextInfraLazyInitTransforms:
         )
 
         tm.that(result, eq=0)
-        tm.that(init_content, has="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="FlextDemoModel")
+        tm.that(init_content, has='"FlextDemoModel"')
+        tm.that(init_content, has='".model": ("FlextDemoModel",)')
         for _filename, class_name in test_modules:
             tm.that(init_content, lacks=class_name)
         tm.that(init_content, lacks="_test_tmp")

@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_infra.validate.gate_contract_content import (
     FlextInfraGateContractContentMixin,
 )
-from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -47,9 +46,9 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
     @staticmethod
     def _check_shebang(
         script: str, header: t.StrSequence, extension: str
-    ) -> FlextInfraGateContractModels.Violation | None:
+    ) -> m.Infra.GateContractViolation | None:
         if not header:
-            return FlextInfraGateContractModels.Violation(
+            return m.Infra.GateContractViolation(
                 check="shebang", message="empty file - no shebang found", script=script
             )
 
@@ -64,7 +63,7 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
         return (
             None
             if not message
-            else FlextInfraGateContractModels.Violation(
+            else m.Infra.GateContractViolation(
                 check="shebang", message=message, script=script
             )
         )
@@ -72,10 +71,10 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
     @staticmethod
     def _check_owner_marker(
         script: str, header: t.StrSequence
-    ) -> FlextInfraGateContractModels.Violation | None:
+    ) -> m.Infra.GateContractViolation | None:
         if any(c.Infra.SKILL_OWNER_MARKER_RE.match(line) for line in header):
             return None
-        return FlextInfraGateContractModels.Violation(
+        return m.Infra.GateContractViolation(
             check="owner_marker",
             message=(
                 "missing Owner-Skill marker in first "
@@ -87,11 +86,11 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
     @staticmethod
     def _check_exit_codes(
         script: str, content: str, extension: str
-    ) -> t.SequenceOf[FlextInfraGateContractModels.Violation]:
+    ) -> t.SequenceOf[m.Infra.GateContractViolation]:
         if extension != ".sh":
             return ()
 
-        violations: list[FlextInfraGateContractModels.Violation] = []
+        violations: list[m.Infra.GateContractViolation] = []
         for i, line in enumerate(content.splitlines(), 1):
             match = c.Infra.SKILL_BASH_EXIT_RE.match(line)
             if match is None:
@@ -99,7 +98,7 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
             code = int(match.group(1))
             if code not in c.Infra.SCRIPT_EXIT_CODE_VALUES:
                 violations.append(
-                    FlextInfraGateContractModels.Violation(
+                    m.Infra.GateContractViolation(
                         check="exit_code",
                         message=f"line {i}: exit {code} - only 0/1/2/3 allowed",
                         script=script,
@@ -109,13 +108,13 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
 
     def _check_min_code_lines(
         self, script: str, content: str, extension: str, role: str
-    ) -> FlextInfraGateContractModels.Violation | None:
+    ) -> m.Infra.GateContractViolation | None:
         if role == "other":
             return None
         code_lines = self._count_code_lines(content, extension)
         if code_lines >= c.Infra.SCRIPT_MIN_CODE_LINES:
             return None
-        return FlextInfraGateContractModels.Violation(
+        return m.Infra.GateContractViolation(
             check="min_code_lines",
             message=(
                 f"{role} has only {code_lines} code lines "
@@ -127,29 +126,29 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
 
     def _validate_script(
         self, root: Path, script_path: Path, *, check_all: bool
-    ) -> FlextInfraGateContractModels.ScriptInfo:
+    ) -> m.Infra.GateContractScriptInfo:
         script = script_path.as_posix()
         extension = script_path.suffix
         role = self._classify_role(script_path)
         if role == "other" and not check_all:
-            return FlextInfraGateContractModels.ScriptInfo(
+            return m.Infra.GateContractScriptInfo(
                 extension=extension, path=script, role=role
             )
 
         read = u.Cli.files_read_text(root / script_path)
         if read.failure:
-            unreadable = FlextInfraGateContractModels.Violation(
+            unreadable = m.Infra.GateContractViolation(
                 check="readable",
                 message=read.error or "could not read file",
                 script=script,
             )
-            return FlextInfraGateContractModels.ScriptInfo(
+            return m.Infra.GateContractScriptInfo(
                 extension=extension, path=script, role=role, violations=(unreadable,)
             )
         content = read.value
 
         header = self._read_header(content)
-        violations: list[FlextInfraGateContractModels.Violation] = [
+        violations: list[m.Infra.GateContractViolation] = [
             *self._check_exit_codes(script, content, extension),
             *self._check_interactive(script, content, extension),
             *self._check_artifact_naming(script, content),
@@ -163,7 +162,7 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
             )
             if violation is not None
         )
-        return FlextInfraGateContractModels.ScriptInfo(
+        return m.Infra.GateContractScriptInfo(
             extension=extension, path=script, role=role, violations=tuple(violations)
         )
 

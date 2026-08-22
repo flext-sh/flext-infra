@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
-from flext_infra import p, t
+from flext_cli import m
+from flext_infra import t
 
 
 class FlextInfraModelsWorktree:
@@ -74,79 +74,5 @@ class FlextInfraModelsWorktree:
             t.NonEmptyStr, m.Field(description="Current isolated checkpoint SHA")
         ]
 
-    class WorktreeTransactionRequest(m.ContractModel):
-        """Validated request for one isolated command transaction."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        workspace_root: Annotated[
-            Path, m.Field(description="Canonical source workspace root")
-        ]
-        command: Annotated[
-            t.StrSequence, m.Field(description="Command arguments after the CLI group")
-        ]
-        apply_patch: Annotated[
-            bool, m.Field(description="Apply a validated operation patch to source")
-        ] = False
-        timeout_seconds: Annotated[
-            t.PositiveInt, m.Field(description="Command and lint timeout in seconds")
-        ]
-        scoped_paths: Annotated[
-            t.SequenceOf[Path],
-            m.Field(
-                description=(
-                    "Workspace-relative paths the command can touch. When "
-                    "non-empty, only the root repository and submodules under "
-                    "these paths are isolated/checkpointed; an empty sequence "
-                    "isolates the whole workspace (safe default)."
-                )
-            ),
-        ] = ()
-
-    class WorktreeTransactionReport(m.ArbitraryTypesModel):
-        """Complete evidence for one isolated worktree transaction."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        transaction_id: Annotated[
-            t.NonEmptyStr, m.Field(description="Unique transaction identifier")
-        ]
-        command: Annotated[
-            t.StrSequence, m.Field(description="Command executed inside the worktree")
-        ]
-        worktree_root: Annotated[
-            Path, m.Field(description="Temporary root removed after evidence capture")
-        ]
-        command_output: Annotated[
-            p.Cli.CommandOutput, m.Field(description="Isolated command process output")
-        ]
-        import_probe: Annotated[
-            p.Cli.CommandOutput,
-            m.Field(description="Fresh public-package import probe output"),
-        ]
-        lint_before: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorktree.LintSnapshot],
-            m.Field(description="Lint diagnostics at the dirty checkpoint"),
-        ] = ()
-        lint_after: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorktree.LintSnapshot],
-            m.Field(description="Lint diagnostics after isolated execution"),
-        ] = ()
-        repositories: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorktree.RepositoryDelta],
-            m.Field(description="Per-repository operation patches"),
-        ] = ()
-        breakage_detected: Annotated[
-            bool, m.Field(description="Whether execution introduced breakage")
-        ] = False
-        applied: Annotated[
-            bool, m.Field(description="Whether every checked patch was applied")
-        ] = False
-        summary: Annotated[
-            t.NonEmptyStr, m.Field(description="Human-readable transaction outcome")
-        ]
-
-
-FlextInfraModelsWorktree.WorktreeTransactionReport.model_rebuild()
 
 __all__: list[str] = ["FlextInfraModelsWorktree"]

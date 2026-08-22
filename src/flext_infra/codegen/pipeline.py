@@ -40,13 +40,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
         )
         if pipeline_result.failure:
             return r[str].fail(pipeline_result.error or "pipeline execution failed")
-
-        result = pipeline_result.value
-        if not result.success:
-            failed = result.failed_stages
-            error_msg = failed[0].error if failed else "pipeline failed"
-            return r[str].fail(error_msg or "pipeline failed")
-
+        # cli.pipeline already maps failed_stages to r.fail; value is always success.
         return self._collect_pipeline_output()
 
     # ------------------------------------------------------------------

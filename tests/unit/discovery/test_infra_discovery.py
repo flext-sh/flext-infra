@@ -33,7 +33,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         proj1 = tmp_path / "project1"
         proj1.mkdir()
         (proj1 / "pyproject.toml").write_text(
-            "[project]\nname='project1'\ndependencies=['flext-core>=0.1.0']\n",
+            "[project]\nname='project1'\nversion='0.1.0'\n"
+            "dependencies=['flext-core>=0.1.0']\n\n"
+            "[tool.flext.workspace]\nattached = true\n",
             encoding="utf-8",
         )
         (proj1 / "src").mkdir()
@@ -59,7 +61,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     def test_discover_projects_happy_path(
         self, service: u.Infra, workspace_with_projects: Path
     ) -> None:
-        result = service.discover_projects(workspace_with_projects)
+        result = service.discover_projects(
+            workspace_with_projects, include_attached=True
+        )
         tm.ok(result)
         projects = result.value
         tm.that(len(projects), eq=2)
@@ -166,7 +170,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         project1 = tmp_path / "project1"
         project1.mkdir()
         (project1 / "pyproject.toml").write_text(
-            "[project]\nname='project1'\ndependencies=['flext-core>=0.1.0']\n",
+            "[project]\nname='project1'\nversion='0.1.0'\n"
+            "dependencies=['flext-core>=0.1.0']\n\n"
+            "[tool.flext.workspace]\nattached = true\n",
             encoding="utf-8",
         )
         project2 = tmp_path / "project2"
@@ -175,7 +181,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
             "[project]\nname='project2'\n", encoding="utf-8"
         )
 
-        result = service.discover_projects(tmp_path)
+        result = service.discover_projects(tmp_path, include_attached=True)
 
         tm.ok(result)
         tm.that([project.name for project in result.value], eq=["project1", "project2"])
@@ -228,18 +234,16 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         (config_dir / "workspace.yaml").write_text(
-            "version: 2\n"
+            "version: 3\n"
             "name: demo\n"
             "repository:\n"
             "  name: demo\n"
             "  distribution: demo\n"
             "  provider: acme-hosting\n"
             "  url: https://github.com/acme-hosting/demo.git\n"
-            "  branch: main\n"
             "  path: .\n"
             "  role: standalone\n"
             "  state: active\n"
-            "  profile: standalone\n"
             "  checkout: independent\n"
             "  codegen: conform\n"
             "  package: true\n"

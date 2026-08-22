@@ -64,7 +64,10 @@ class FlextInfraUtilitiesLogParser:
         """
         if not log_path.is_file():
             return None
-        content = log_path.read_text(encoding="utf-8", errors="replace")
+        try:
+            content = log_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return None
         matches = tuple(c.Infra.LOG_MAKE_CHILD_EXIT_PATTERN.finditer(content))
         if not matches:
             return None

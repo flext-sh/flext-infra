@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+import flext_infra.constants  # ruff: ignore[unused-import] - force eager load for monkeypatch targets
 from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -188,6 +189,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         """ENFORCE-080 detects a canonical alias imported from flext_core."""
         source = tmp_path / "src" / "demo_pkg" / "consumer.py"
         source.parent.mkdir(parents=True)
+        # Why (mro-ygc2k): package discovery requires src/<pkg>/__init__.py;
+        # without it the policy owner resolves empty and detection is vacuous.
+        (source.parent / "__init__.py").write_text("", encoding="utf-8")
         source.write_text(
             "from __future__ import annotations\nfrom flext_core import c\n",
             encoding="utf-8",

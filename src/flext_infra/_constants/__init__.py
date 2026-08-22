@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Constants package."""
+"""Generated declaration constants for flext_infra."""
 
 from __future__ import annotations
 
