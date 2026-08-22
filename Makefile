@@ -49,13 +49,13 @@ BRANCH ?=
 PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 1920
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 125
 # mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
 # MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
-override PYTEST_CASE_TIMEOUT_SECONDS := 30
-override PYTEST_RUN_TIMEOUT_SECONDS := 1800
+override PYTEST_CASE_TIMEOUT_SECONDS := 10
+override PYTEST_RUN_TIMEOUT_SECONDS := 120
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
@@ -116,12 +116,24 @@ ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
 WORKSPACE_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
 endif
 # End SECTION: WORKSPACE_ROOT isolation
+# A workspace lane is always registered at the workspace root. Other verbs may
+# select a member through PROJECT while workspace orchestration keeps the root
+# so one Git worktree owns the complete project matrix.
+ifneq ($(filter work,$(MAKECMDGOALS)),work)
+ifeq ($(filter command line override,$(origin WORKSPACE)),)
+ifneq ($(strip $(PROJECT)),)
+ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
+override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
+endif
+endif
+endif
+endif
 
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
-#        config:make.check_gates_default, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen work basemk
-BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen work
+#        config:make.check_gates_default
+PUBLIC_VERBS := help setup deps build check test fmt fix run status clean release gen mod basemk
+BUILTIN_VERBS := help setup deps build check test fmt fix run status clean release gen mod
 SCRIPT_VERBS := basemk
 
 _ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
@@ -138,7 +150,7 @@ _ALLOWED_WHATS_docs := all generate fix audit build validate $(shell sed -n 's/^
 _ALLOWED_WHATS_clean := status generated $(shell sed -n 's/^_custom_clean_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_release := status $(shell sed -n 's/^_custom_release_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_gen := check all apply $(shell sed -n 's/^_custom_gen_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_work := start status land finish help $(shell sed -n 's/^_custom_work_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_basemk := generate $(shell sed -n 's/^_custom_basemk_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
@@ -194,7 +206,7 @@ _DEFAULT_docs := validate
 _DEFAULT_clean := status
 _DEFAULT_release := status
 _DEFAULT_gen := check
-_DEFAULT_work := status
+_DEFAULT_mod := check
 
 _APPLY_WHAT_deps := upgrade
 _APPLY_WHAT_test := all
@@ -204,7 +216,7 @@ _APPLY_WHAT_run := default
 _APPLY_WHAT_docs := generate
 _APPLY_WHAT_clean := generated
 _APPLY_WHAT_gen := apply
-_APPLY_WHAT_work := land
+_APPLY_WHAT_mod := apply
 _DEFAULT_basemk := generate
 
 
@@ -355,6 +367,26 @@ endif
 endif
 
 
+# mro-ga9q (custom.mk blacklist): member projects may define ANY custom
+# verb/WHAT through _custom_<verb>_<what> handlers and (pre|post)-<verb>[-<what>]
+# hooks EXCEPT the reserved verbs/WHATs below, which stay a flext-infra
+# monopoly. Parse-time guard: every make invocation fails loud when custom.mk
+# redefines a reserved target; every other target is permitted.
+# R12 moved the public verbs out of base.mk into this projection, but the guard
+# stayed behind — and a generated project never includes base.mk, so the
+# monopoly was unenforced in every real checkout. The guard belongs with the
+# verbs it protects.
+CUSTOM_MK_RESERVED_TARGETS := _custom_build_artifacts _custom_check_all _custom_clean_generated _custom_clean_status _custom_deps_check _custom_deps_lock _custom_deps_upgrade _custom_fix_all _custom_fix_apply _custom_fix_check _custom_fmt_all _custom_fmt_apply _custom_fmt_check _custom_gen_all _custom_gen_apply _custom_gen_check _custom_help_usage _custom_mod_all _custom_mod_apply _custom_mod_check _custom_release_rel _custom_release_status _custom_run_default _custom_setup_environment _custom_status_diagnostics _custom_test_all _custom_test_cache-checkpoint _custom_test_cache-clear _custom_test_cache-status _custom_test_full _custom_test_profile build check clean deps fix fmt gen help mod release run setup status test
+ifneq ($(wildcard custom.mk),)
+# Target definitions at column 0, excluding assignments (=) and dot-directives.
+# $(shell) converts the newline-separated results to space-separated lists.
+_CUSTOM_MK_DEFINED := $(shell awk '/^[A-Za-z_][A-Za-z0-9_-]*([ \t]+[A-Za-z_][A-Za-z0-9_-]*)*[ \t]*:/ && index($$0, "=") == 0 { line = $$0; sub(/:.*/, "", line); count = split(line, names, /[ \t]+/); for (i = 1; i <= count; i++) print names[i] }' custom.mk | sort -u)
+_CUSTOM_MK_OFFENDERS := $(shell printf '%s\n' $(_CUSTOM_MK_DEFINED) | grep -xF $(foreach target,$(CUSTOM_MK_RESERVED_TARGETS),-e $(target)))
+ifneq ($(_CUSTOM_MK_OFFENDERS),)
+$(error custom.mk redefines reserved flext-infra target(s): $(_CUSTOM_MK_OFFENDERS) - reserved verbs/WHATs are a flext-infra monopoly; use _custom_<verb>_<what> with a non-reserved WHAT or (pre|post)-<verb>[-<what>] hooks)
+endif
+endif
+
 -include custom.mk
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
@@ -420,7 +452,18 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_work_start _builtin_work_status _builtin_work_land _builtin_work_finish _builtin_work_help
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_full _builtin_test_profile _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_release_rel _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+
+# Every public verb dispatches straight into its private builtin. The verbs
+# that used to round-trip through the Python serializer keep the environment
+# prerequisite that round-trip carried.
+#
+# `setup` builds the environment it would otherwise require. `help` documents
+# how to build it, so demanding an interpreter to print that documentation
+# makes an unprovisioned checkout undiscoverable. Both still dispatch — they
+# only drop the prerequisite.
+$(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
+	$(call _dispatch,$@)
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -571,9 +614,7 @@ _builtin_help_usage:
 
 
 
-
-	@printf '  %-10s WHAT=%s\n' 'work' "$$(printf '%s' '$(_ALLOWED_WHATS_work)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-	@printf '  %-10s %s\n' '' 'status is read-only; other WHATs require APPLY=Y';
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'mod' "$$(printf '%s' '$(_ALLOWED_WHATS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';

@@ -404,22 +404,22 @@ Infra:
           whats: [check, all, apply]
           apply_guarded: true
           apply_what: apply
-        - name: work
-          default_what: status
-          whats: [start, status, land, finish, help]
-          # start/land/finish mutate lane state and call _require_apply;
-          # only status is read-only, so it stays the default WHAT.
+        - name: mod
+          default_what: check
+          whats: [check, all, apply]
+          # `mod` batch-applies the sgconfig ast-grep rules under the
+          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
+          # the read-only dry-run fixed-point after mutation.
           apply_guarded: true
-          apply_what: land
+          apply_what: apply
       custom_handler_policy:
         filename: custom.mk
-        # Why (ai-hub-qwoc): base_verbs.mk.j2's _run_custom_what/_run_verb_body
-        # dispatch every unknown WHAT to a `_custom_<verb>_<what>` handler --
-        # that IS the canonical extension mechanism for new WHATs, distinct
-        # from pre-/post- lifecycle hooks. The validator must accept both
-        # shapes the runtime itself dispatches to, or every project that
-        # defines a custom WHAT handler fails `codegen conform` outright.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|work)_[a-z0-9][a-z0-9_-]*)$"
+        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
+        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
+        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
+        # The validator must accept both shapes the runtime itself dispatches to, or
+        # every project that defines a custom WHAT handler fails `codegen conform`.
+        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -1255,6 +1255,17 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
+        # mro-zmoc6: `uv sync` inside a member lane writes a member-local
+        # uv.lock. Only the workspace root resolves and tracks a lockfile
+        # (whitelisted in "Python configuration" above); for a member the
+        # file is a local build artifact of that shared resolution. Left
+        # undeclared it surfaced as untracked in every freshly created lane
+        # and made the retired Make lane lifecycle refuse a committed increment
+        # with "requires a clean lane worktree".
+        - name: "BLOCK: member-local lockfile (the workspace root owns uv.lock)"
+          profiles: [workspace-member]
+          patterns:
+            - "uv.lock"
         # Only the workspace root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config

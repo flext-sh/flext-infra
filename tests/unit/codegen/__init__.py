@@ -99,7 +99,6 @@ if TYPE_CHECKING:
     from .test_review_mro_vw2w_template_contracts import TestsReviewTemplateContracts
     from .test_vscode_owner_merge import TestsVscodeOwnerMerge
     from .test_workspace_root_setup_submodules import TestsWorkspaceRootSetupSubmodules
-    from .worktree_verb_tests import TestsCodegenWorkVerb
 __all__: tuple[str, ...] = (
     "TestAllDirectoriesScanned",
     "TestCheckOnlyMode",
@@ -113,7 +112,6 @@ __all__: tuple[str, ...] = (
     "TestGitHookConformance",
     "TestsCodegenArtifactSsot",
     "TestsCodegenMakeEnvironment",
-    "TestsCodegenWorkVerb",
     "TestsFlextInfraCodegenConformProgress",
     "TestsFlextInfraCodegenGeneration",
     "TestsFlextInfraCodegenLazyInitService",
@@ -285,7 +283,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".toolchain_go_backend_tests": ("toolchain_go_backend_tests",),
             ".toolchain_requirement_tests": ("toolchain_requirement_tests",),
             ".workflow_orphan_guard_tests": ("workflow_orphan_guard_tests",),
-            ".worktree_verb_tests": ("TestsCodegenWorkVerb",),
             "flext_tests": (
                 "c",
                 "d",
