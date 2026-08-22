@@ -165,6 +165,7 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_ENV_COV: Final[str] = "FLEXT_PYTEST_COV_RAW"
     PYTEST_ENV_CI: Final[str] = "CI"
     # Why: the argv that writes each artifact and the gate that later verifies
     # it must name the SAME file. A bare --cov-report=xml wrote coverage beside
@@ -196,6 +197,7 @@ class FlextInfraConstantsMake:
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
         ("MATCH", ""),
+        ("COV", ""),
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),
@@ -224,6 +226,7 @@ class FlextInfraConstantsMake:
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
         ("MATCH", ""),
+        ("COV", ""),
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),
