@@ -40,7 +40,7 @@ class TestsReviewTemplateContracts:
         tm.that(upgrade, has="$(if $(strip $(DEPENDENCY)),,--rewrite-constraints)")
 
     def test_makefile_explicit_root_selection_is_preserved(self) -> None:
-        """PROJECT=. selects the root instead of silently expanding to members."""
+        """PROJECT=. expands to members for workspace-root; selects root for other profiles."""
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(
             text,
@@ -49,7 +49,14 @@ class TestsReviewTemplateContracts:
                 "$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))"
             ),
         )
-        tm.that(text, lacks="$(if $(filter .,$(REQUESTED_PROJECTS))")
+        tm.that(
+            text,
+            has=(
+                "SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),"
+                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_MEMBERS),$(REQUESTED_PROJECTS)),"
+                "$(DEFAULT_PROJECTS))"
+            ),
+        )
 
     def test_makefile_has_no_legacy_work_lifecycle(self) -> None:
         """Gas Town is the sole lane lifecycle owner."""
