@@ -63,6 +63,8 @@ class FlextInfraConstantsBase(
     "Poetry group key for dependency groups."
     NAME: Final[str] = "name"
     "Project/package name key."
+    VERSION: Final[str] = "version"
+    "Project release version key within [project]."
     PACKAGE_IMPORT_NAME: Final[str] = "flext_infra"
     "Canonical import package name for flext-infra itself."
     WORKSPACE_FINGERPRINT_READ_CHUNK_BYTES: Final[int] = 1024 * 1024

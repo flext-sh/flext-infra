@@ -855,9 +855,16 @@ class FlextInfraConfigModels:
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
                 raise ValueError(msg)
-            if "setup" in declared:
-                msg = "make setup cannot require the managed validation environment"
-                raise ValueError(msg)
+            # Why (hq-36xk): the guard that lived here read
+            # `if "setup" in serialized` and protected `make setup` from being
+            # placed in the serialized mutation set, so it could never require
+            # the managed validation environment it is supposed to CREATE.
+            # 3e5fbc747 exterminated the serialize-make lifecycle and deleted
+            # `self.serialization`, but rebound this condition to `declared`
+            # instead of removing it with the concept it guarded. `setup` is a
+            # mandatory canonical verb, so the inverted check rejected every
+            # valid configuration and `flext_infra.config` could not be built at
+            # all. The serialized set no longer exists; the guard has no object.
             workflow_verbs = tuple(step.verb for step in self.workflow)
             if len(set(workflow_verbs)) != len(workflow_verbs):
                 msg = "make workflow verbs must be unique"
