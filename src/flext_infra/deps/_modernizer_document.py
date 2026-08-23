@@ -104,35 +104,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = [
-            "mise",
-            "exec",
-            f"taplo@{config.Infra.codegen.toolchain.taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
-        config_path = self.root / ".taplo.toml"
-        if config_path.is_file():
-            cmd.extend(["--config", str(config_path)])
-        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
-        format_cwd = next(
-            (candidate for candidate in self.root.parents if candidate.is_dir()),
-            self.root,
+        # Why (flext-6itas.4): restored delegation to the shared cached facade
+        # dropped by merge 0d4d07b33; the inline duplicate reimplemented the
+        # same mise/taplo invocation without the cache or relative-path fix.
+        return u.Infra.format_toml_source(
+            rendered,
+            path=path,
+            toolchain_root=self.root,
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
-        format_result = u.Cli.run_raw(
-            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
-        )
-        if format_result.failure:
-            return r[str].fail(format_result.error or "taplo format failed")
-        output = format_result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
-        return r[str].ok(output.stdout)
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
         """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
@@ -194,6 +174,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        format_source: bool = True,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
@@ -230,6 +211,13 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 resolved_project_kind = kind_result.value
         # mro-j47u (codex): declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
+        # Why (flext-6itas.4): restored after merge 0d4d07b33 dropped this gate
+        # while ensure_pyrefly.py kept requiring it (declared_python_dirs_are_complete
+        # still guards its replace-model; pyright moved to an additive-union model
+        # in dd4c4b53f and no longer needs this flag).
+        declared_roots_are_usable = (
+            declared_python_dirs_are_complete or not project_root_exists
+        )
         changes: t.MutableSequenceOf[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
@@ -271,7 +259,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_dir=effective_project_dir,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
-                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
             )
         )
         changes.extend(
@@ -324,10 +312,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        formatted_result = self._format_rendered_pyproject(path, rendered)
-        if formatted_result.failure:
-            return [formatted_result.error or "taplo format failed"]
-        rendered = formatted_result.value
+        if format_source:
+            formatted_result = self._format_rendered_pyproject(path, rendered)
+            if formatted_result.failure:
+                return [formatted_result.error or "taplo format failed"]
+            rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         state.rendered = normalized_rendered

@@ -832,11 +832,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
         )
+        # Why (flext-6itas.4): a scaffold's declared roots are the complete
+        # future topology only for a member/standalone target; a workspace
+        # root aggregates member trees it has not declared here.
+        declared_python_dirs_are_complete = (
+            profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1022,7 +1029,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         initial_tooling = modernizer.conform_source(
             pyproject_render.value,
             path=pyproject,
+            format_source=False,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1045,6 +1054,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(

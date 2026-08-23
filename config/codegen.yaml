@@ -1210,6 +1210,14 @@ Infra:
           - mypy>=2.3.0
           - pyrefly>=1.1.1
           - pyright>=1.1.411
+          # `gen` installs the git hooks it just wrote, so the tool that owns
+          # them has to exist in the environment running codegen — including CI,
+          # which provisions only the declared groups.
+          # Why (flext-6itas.4): restored after merge 0d4d07b33 resolved a
+          # conflict by keeping parent2's pre-02475b0f7 content, silently
+          # dropping this entry (proven: parent1 8675f171c has the line,
+          # parent2 648ca5707 never did).
+          - pre-commit>=4.6.1
           - pytest>=9.0.3
           - pytest-testmon>=2.2.0
           - ruff>=0.15.12

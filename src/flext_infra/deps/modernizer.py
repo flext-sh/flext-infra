@@ -61,6 +61,7 @@ class FlextInfraPyprojectModernizer(
         source: str,
         *,
         path: Path,
+        format_source: bool = True,
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
@@ -97,6 +98,7 @@ class FlextInfraPyprojectModernizer(
             canonical_dev=canonical_dev,
             dry_run=True,
             skip_comments=False,
+            format_source=format_source,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             generated_python_roots=generated_python_roots,
@@ -138,6 +140,7 @@ class FlextInfraPyprojectModernizer(
         conformed = self.conform_source(
             u.Cli.toml_dumps(seed),
             path=path,
+            format_source=False,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             project_kind=project_kind,
