@@ -59,7 +59,12 @@ class TestsDocsRenderExcludeDocs:
             rendered,
             has=(
                 "  - git-revision-date-localized:\n"
-                "      enable_creation_date: true\n"
+                "      # Why: enable_creation_date resolves via 'git log --diff-filter=Ar', which returns\n"
+                "      # EMPTY for pages whose only add-commit is a merge commit. The plugin then falls back\n"
+                "      # to time.time() (build clock), making first_revision > last_revision always true,\n"
+                "      # which logs a warning that mkdocs --strict turns into a build failure. Revision date\n"
+                "      # from the last commit touching the page is the intended and robust behavior.\n"
+                "      enable_creation_date: false\n"
                 "      type: date\n"
                 "      exclude:\n"
                 "        - api-reference/generated/**\n"

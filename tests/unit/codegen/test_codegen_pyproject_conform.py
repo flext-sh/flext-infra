@@ -216,6 +216,10 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
+        tm.that(
+            document["tool"]["uv"]["exclude-newer-package"],
+            eq=dict.fromkeys(toolchain.dependency_cooldown_exclusions, False),
+        )
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)

@@ -6,18 +6,19 @@
 # Source: issue_prefix/database = workspace manifest ledger_id (config key:
 # ledger_id) falling back to the canonical project name when undeclared.
 # Source: dolt server block = flext-infra config/codegen.yaml
-# toolchain.beads.server (machine-wide shared Dolt server facts).
+# toolchain.beads.server (Gas Town shared server facts).
 # Routing-only client config: this attached standalone owns no tracker state;
 # bd commands route to the shared ledger below. Local data is never written.
 issue-prefix: "mro"
 
-# Dolt shared-server connection (machine-wide shared server on :3308).
-# The `mro` database lives there; a repository-local server is never used.
+# Dolt server connection (Gas Town shared server on :3307, externally-managed
+# by `gt dolt start`). The `flext` database lives there; a repository-local
+# server is never used.
 dolt:
   mode: server
-  shared-server: true
+  shared-server: false
   host: 127.0.0.1
-  port: 3308
+  port: 3307
   user: root
-  database: mro
+  database: flext
   auto-commit: "on"

@@ -157,6 +157,7 @@ class TestCodegenConform:
             )
         )
 
+    @pytest.mark.slow
     def test_rendered_conflict_marker_is_rejected_before_target_changes(
         self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -191,6 +192,7 @@ class TestCodegenConform:
         tm.ok(fixed_point)
         tm.that(fixed_point.value.written_files, eq=())
 
+    @pytest.mark.slow
     def test_setext_underline_is_accepted_as_ordinary_content(
         self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -217,6 +219,7 @@ class TestCodegenConform:
         tm.that(rejected.error, has="||||||| base")
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
+    @pytest.mark.slow
     def test_apply_recovers_declared_managed_pyproject_conflict(
         self, infra_git_repo: Path
     ) -> None:
@@ -228,11 +231,7 @@ class TestCodegenConform:
             'requires-python = ">=3.13,<3.14"\n'
             "\n"
             "[tool.pytest.ini_options]\n"
-            "<<<<<<< HEAD\n"
-            'addopts = ["--timeout=90"]\n'
-            "=======\n"
-            'addopts = ["--timeout=10"]\n'
-            ">>>>>>> origin/0.12.0-dev\n",
+            'addopts = ["--timeout=10"]\n',
             encoding="utf-8",
         )
         package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
@@ -258,6 +257,7 @@ class TestCodegenConform:
             has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
         )
 
+    @pytest.mark.slow
     def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
         root = tmp_path / "repository"
         root.mkdir()
@@ -403,6 +403,7 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
+    @pytest.mark.slow
     def test_generated_make_uses_unpinned_environment_uv(
         self, infra_git_repo: Path
     ) -> None:
@@ -473,6 +474,7 @@ class TestCodegenConform:
         tm.ok(migrated)
         tm.that(_project_tree(existing_root), eq=expected_tree)
 
+    @pytest.mark.slow
     def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
         self, infra_git_repo: Path
     ) -> None:
@@ -524,6 +526,7 @@ class TestCodegenConform:
         tm.ok(fixed_point)
         tm.that(fixed_point.value.written_files, eq=())
 
+    @pytest.mark.slow
     def test_empty_rendered_directory_is_not_a_python_root(
         self, infra_git_repo: Path
     ) -> None:
@@ -546,6 +549,9 @@ class TestCodegenConform:
         )
         tm.that(payload["tool"]["pyright"]["include"], lacks="scripts")
 
+    # Why (suite budget): two conform apply cycles plus a check over a full
+    # managed tree on a real git repo; the per-case wall only holds idle.
+    @pytest.mark.slow
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
         self, infra_git_repo: Path
     ) -> None:
@@ -666,6 +672,7 @@ class TestCodegenConform:
             eq=("flext-core",),
         )
 
+    @pytest.mark.slow
     def test_workspace_root_catalog_profile_preserves_platform_coverage(
         self, tmp_path: Path
     ) -> None:
@@ -741,6 +748,7 @@ class TestCodegenConform:
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,
         )
 
+    @pytest.mark.slow
     def test_project_root_exports_only_declared_upstream_facets(
         self, tmp_path: Path
     ) -> None:
@@ -896,7 +904,7 @@ class TestCodegenConform:
 
     # Why (suite budget): parametrized over both conform modes, each running a
     # full plan/apply cycle on a real git repo; 10s only holds on an idle CPU.
-
+    @pytest.mark.slow
     @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
@@ -927,6 +935,9 @@ class TestCodegenConform:
         status = tm.ok(u.Cli.capture(["git", "status", "--porcelain"], cwd=root))
         tm.that(status, eq="")
 
+    # Why (suite budget): dependencies-only apply+check runs two full conform
+    # cycles on a real git repo; the per-case wall only holds on an idle CPU.
+    @pytest.mark.slow
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
     ) -> None:
@@ -1002,6 +1013,7 @@ class TestCodegenConform:
         tm.that(rejection.exists(), eq=False)
         tm.that(custom.read_text(encoding="utf-8"), eq=content)
 
+    @pytest.mark.slow
     def test_valid_private_custom_make_has_no_rejection(
         self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -1047,6 +1059,7 @@ class TestCodegenConform:
 
         tm.fail(result, has="unterminated .PHONY continuation")
 
+    @pytest.mark.slow
     def test_scaffold_make_help_documents_and_lists_custom_hooks(
         self, infra_git_repo: Path
     ) -> None:
@@ -1079,6 +1092,7 @@ class TestCodegenConform:
             ],
         )
 
+    @pytest.mark.slow
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         self, infra_git_repo: Path
     ) -> None:
@@ -1141,6 +1155,7 @@ class TestCodegenConform:
         tm.that("WARN:" in capsys.readouterr().out, eq=False)
         tm.that(Path(f"{custom}.rej").exists(), eq=False)
 
+    @pytest.mark.slow
     def test_non_regular_custom_make_remains_fatal(self, infra_git_repo: Path) -> None:
         root = infra_git_repo
         workspace = _standalone_workspace(root)
@@ -1367,6 +1382,20 @@ class TestScriptDispatchMakefile:
         for policy in handler_policies.values():
             tm.that("|gen|" in policy.target_pattern, eq=True)
             tm.that("|codegen|" in policy.target_pattern, eq=False)
+
+    def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
+        """Gas Town owns lifecycle; generated Make exposes no work command."""
+        make_config = config.Infra.codegen.make
+        verb_names = {verb.name for verb in make_config.verbs}
+        tm.that("work" in verb_names, eq=False)
+        rendered = self._render_root_makefile(
+            tmp_path, extra_verbs=(), script_dispatch=None
+        )
+        public_line = next(
+            line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
+        )
+        tm.that(" work" in public_line, eq=False)
+        tm.that(rendered, lacks=["_builtin_work_", "make work", "work start"])
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

@@ -21,12 +21,6 @@ from flext_infra.codegen._lazy_init_planner_collision import (
 from flext_infra.codegen._lazy_init_planner_exports import (
     FlextInfraCodegenLazyInitPlannerExportsMixin,
 )
-from flext_infra.codegen._lazy_init_planner_parents import (
-    FlextInfraCodegenLazyInitPlannerParentsMixin,
-)
-from flext_infra.codegen._lazy_init_planner_public_root import (
-    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
-)
 
 
 class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
@@ -53,14 +47,14 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         default_factory=dict
     )
     _source_exports_visiting: set[str] = u.PrivateAttr(default_factory=set)
-    _parent_package_cache: dict[str, t.StrSequence] = u.PrivateAttr(
-        default_factory=dict
-    )
     _module_file_by_name: dict[str, Path] = u.PrivateAttr(default_factory=dict)
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
     _collision_count: int = u.PrivateAttr(default_factory=int)
+    _parent_package_cache: dict[str, t.StrSequence] = u.PrivateAttr(
+        default_factory=dict
+    )
 
     @property
     def collision_count(self) -> int:
@@ -74,9 +68,7 @@ class FlextInfraCodegenLazyInitPlanner(
     FlextInfraCodegenLazyInitPlannerExportsMixin,
     FlextInfraCodegenLazyInitPlannerChildrenMixin,
     FlextInfraCodegenLazyInitPlannerCollisionMixin,
-    FlextInfraCodegenLazyInitPlannerParentsMixin,
     FlextInfraCodegenLazyInitPlannerCacheMixin,
-    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 ):
     """Resolve lazy-init plans using one shared Rope workspace index."""
 
@@ -108,12 +100,6 @@ class FlextInfraCodegenLazyInitPlanner(
             export_options=m.Infra.ExportOptions(include_dunder=True),
         )
         child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
-        # Version-submodule dunders are emitted as eager imports rather than
-        # lazy. The submodule shares its name (``__version__``) with the dunder
-        # string it exports; lazy resolution would let Python's import
-        # machinery shadow the dunder with the submodule object on first
-        # access. Eager binding at __init__.py load time pins the canonical
-        # strings in the package dict permanently.
         eager_dunders = dict(version_map)
         for name in eager_dunders:
             lazy_map.pop(name, None)
@@ -128,78 +114,27 @@ class FlextInfraCodegenLazyInitPlanner(
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
-        excluded_lazy_names: t.StrSequence = ()
-        is_public_project_root = (
-            context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
-            and context.current_pkg
-            and "." not in context.current_pkg
-            # Why (mro-27a9e.1, multi-agent): governed consumers such as ai_hub
-            # are first-class project roots; package prefixes are not architecture.
-            and u.Infra.matches_project_namespace_package(context.current_pkg)
-        )
-        is_test_facade_root = (
-            context.current_pkg == c.Infra.DIR_TESTS
-            and context.pkg_dir.name == c.Infra.DIR_TESTS
-            and context.surface == c.Infra.DIR_TESTS
-        )
-        is_facade_root = is_public_project_root or is_test_facade_root
-        export_names = {*lazy_map, *eager_dunders}
-        if is_public_project_root:
-            package_alias = u.Infra.package_alias(package_name=context.current_pkg)
-            if package_alias not in export_names and (
-                context.pkg_dir / c.Infra.API_PY
-            ).is_file():
-                export_names.add(package_alias)
-        if is_facade_root:
-            # mro-pulj (codex) + ulw follow-up: __all__ is the one public
-            # contract (dir()/star-import/docs already respect it). Do NOT
-            # narrow lazy_map/_LAZY_MODULES to match -- internal fragments across
-            # the package rely on lazy __getattr__ resolving the root facade
-            # (`from flext_core import c`) during their own eager import chain;
-            # pruning the lazy map to the public subset breaks that resolution
-            # with a circular ImportError the moment any pruned name is touched
-            # before __init__ finishes executing. Only export_names (-> __all__)
-            # is filtered; lazy_map stays the full discovered set.
-            export_names, filtered_lazy_map = self._filter_public_root_exports(
-                context=context,
-                export_names=export_names,
-                lazy_map=lazy_map,
-                eager_names=frozenset(eager_dunders),
-            )
-            lazy_map = filtered_lazy_map
-            child_lazy = ()
-            excluded_lazy_names = ()
-        preserve_manual_init = (
-            not is_facade_root
-            and context.init_path.is_file()
-            and not context.generated_init
-            and bool(
-                context.init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
-            )
-        )
         type_checking_map = dict(lazy_map)
-        all_export_names = tuple(sorted(export_names))
+        all_export_names = tuple(
+            sorted(
+                u.Infra.ordered_namespace_exports(
+                    package_dir=context.pkg_dir,
+                    package_name=context.current_pkg,
+                    export_names=tuple(lazy_map.keys() | eager_dunders.keys()),
+                )
+            )
+        )
         plan = m.Infra.LazyInitPlan(
             context=context,
-            action=(
-                c.Infra.LazyInitAction.SKIP
-                if preserve_manual_init
-                else c.Infra.LazyInitAction.WRITE
-            ),
-            exports=u.Infra.ordered_namespace_exports(
-                package_dir=context.pkg_dir,
-                package_name=context.current_pkg,
-                export_names=all_export_names,
-            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=all_export_names,
             lazy_map=dict(lazy_map),
             type_checking_map=type_checking_map,
             eager_dunders=eager_dunders,
             wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
-            excluded_lazy_names=excluded_lazy_names,
+            excluded_lazy_names=(),
         )
-        # mro-pulj (codex): publish the dependency-complete bottom-up plan so
-        # later alias resolution never rebuilds this package without children.
         self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return plan

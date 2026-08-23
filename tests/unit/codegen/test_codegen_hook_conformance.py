@@ -147,7 +147,7 @@ class TestGitHookConformance:
             tm.that((hooks_dir / stage).read_text(encoding="utf-8"), eq=foreign)
 
     def test_member_hook_config_is_retired_by_conform(self, tmp_path: Path) -> None:
-        """A workspace member carries no hook config, and conform removes one."""
+        """A workspace member keeps its own hook config; conform does not retire it."""
         root = tmp_path / "flext-member"
         root.mkdir()
         hook_config = root / ".pre-commit-config.yaml"
@@ -162,7 +162,7 @@ class TestGitHookConformance:
         )
 
         retired = {plan.path for plan in tm.ok(planned) if plan.absent}
-        tm.that(hook_config in retired, eq=True)
+        tm.that(hook_config in retired, eq=False)
 
 
 __all__: list[str] = ["TestGitHookConformance"]

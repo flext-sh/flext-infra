@@ -25,7 +25,7 @@ class FlextInfraConstantsWorkspace:
 
     @unique
     class WorkOperation(StrEnum):
-        """Public make work saga operations."""
+        """Retained lane metadata operation values."""
 
         START = "start"
         STATUS = "status"
@@ -119,6 +119,7 @@ class FlextInfraConstantsWorkspace:
         "epic_worktree",
         "child_slug",
     )
+    WORK_BEADS_MATRIX_KEY: Final[str] = "matrix"
 
     @unique
     class WorkspaceMode(StrEnum):

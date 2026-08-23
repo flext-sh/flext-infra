@@ -51,7 +51,6 @@ if TYPE_CHECKING:
     from .settings import FlextInfraSettingsModels
     from .transformers import FlextInfraModelsTransformers
     from .validate import FlextInfraModelsCore
-    from .work_lane import FlextInfraModelsWorkLane
     from .workspace import FlextInfraModelsWorkspace
     from .worktree import FlextInfraModelsWorktree
 __all__: tuple[str, ...] = (
@@ -90,7 +89,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
     "FlextInfraModelsTransformers",
-    "FlextInfraModelsWorkLane",
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
@@ -141,7 +139,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".settings": ("FlextInfraSettingsModels",),
             ".transformers": ("FlextInfraModelsTransformers",),
             ".validate": ("FlextInfraModelsCore",),
-            ".work_lane": ("FlextInfraModelsWorkLane",),
             ".workspace": ("FlextInfraModelsWorkspace",),
             ".worktree": ("FlextInfraModelsWorktree",),
         }),

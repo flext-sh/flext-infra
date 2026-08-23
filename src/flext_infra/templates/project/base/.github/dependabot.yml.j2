@@ -5,6 +5,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: {{ dependency_cooldown_days }}
     open-pull-requests-limit: 5
     labels: [dependencies, github-actions]
 {% if has_devcontainer %}
@@ -12,6 +14,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: {{ dependency_cooldown_days }}
     open-pull-requests-limit: 5
     labels: [dependencies, devcontainers]
 
@@ -20,6 +24,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: {{ dependency_cooldown_days }}
     open-pull-requests-limit: 5
     labels: [dependencies, python]
 {% for repository in workspace_repositories if repository.package and repository.path != "." %}
@@ -28,6 +34,8 @@ updates:
     directory: /{{ repository.path }}
     schedule:
       interval: weekly
+    cooldown:
+      default-days: {{ dependency_cooldown_days }}
     open-pull-requests-limit: 5
     labels: [dependencies, python]
 {% endfor -%}

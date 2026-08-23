@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
 import pytest
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
 
     from flext_infra.typings import t
 
+importlib.import_module("flext_infra.constants")
+
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:
     """Root-cause coverage for declarative detection strategies."""
@@ -28,7 +31,10 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     @staticmethod
     def _rule(rule_id: str) -> m.EnforcementRuleSpec:
         catalog = u.build_canonical_catalog()
-        return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
+        rule: m.EnforcementRuleSpec = next(
+            rule for rule in catalog.enabled_rules() if rule.id == rule_id
+        )
+        return rule
 
     @staticmethod
     def _ctx(

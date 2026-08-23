@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_tests import tm
+
 from tests import t, u
 
 
@@ -183,6 +183,7 @@ def test_execute_apply_mode_scans_wrapper_surfaces(
     tm.that(constants_family_source, lacks="c.DEMO_VALUE")
 
 
+@pytest.mark.slow
 def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
     workspace_root = _build_consolidator_workspace(tmp_path)
     service = FlextInfraCodegenConsolidator(

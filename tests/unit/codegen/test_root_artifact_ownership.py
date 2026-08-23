@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-from flext_infra import c, config, m
+from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import p, t, u
+
+from tests import c, m, p, t, u
 
 
 class TestsRootArtifactOwnership:
@@ -38,6 +38,10 @@ class TestsRootArtifactOwnership:
             tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
         tm.that(config.Infra.tooling.tools.markdown.exclude, has=".serena/**")
 
+    # Why (suite budget): a full standalone conform apply writes the whole
+    # 53-file scaffold and re-plans the fixed point; the per-case wall only
+    # holds on an idle CPU.
+    @pytest.mark.slow
     def test_standalone_conform_projects_markdown_policy(
         self, infra_git_repo: Path
     ) -> None:

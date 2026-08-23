@@ -313,8 +313,18 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def dependency_cooldown_days(self) -> int:
+            """Supply-chain cooldown shared by dependency update tools."""
+            ...
+
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from cooldown for urgent security floors."""
+            ...
+
+        @property
         def uv_exclude_newer(self) -> str:
-            """Cooldown window (uv exclude-newer) for dependency resolution."""
+            """Uv exclude-newer cooldown window for dependency resolution."""
             ...
 
         @property
@@ -358,6 +368,11 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def tokei_version(self) -> str:
             """Exact Tokei analyzer version."""
+            ...
+
+        @property
+        def qlty_version(self) -> str:
+            """Exact qlty code-smell scanner version."""
             ...
 
         @property

@@ -6,6 +6,7 @@ ALLOWED_GATES and resolve through the registry.
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
+
+importlib.import_module("flext_infra.constants")
 
 
 class TestGateRegistry:
@@ -335,9 +338,7 @@ def test_fixable_gate_vocabulary_matches_the_registry() -> None:
         for gate_id in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES
         if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
     }
-    tm.that(
-        check_fixable <= set(c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES), eq=True
-    )
+    tm.that(check_fixable <= set(c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES), eq=True)
     # `format` belongs to `make fmt` alone: absent from the read-only check
     # vocabulary AND from the fix vocabulary.
     tm.that("format" not in c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES, eq=True)

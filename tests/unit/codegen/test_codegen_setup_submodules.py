@@ -12,6 +12,11 @@ from flext_infra import c, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
+# Why (suite budget): every scenario provisions a real scaffolded project
+# template plus live git submodule topologies; the per-case wall only holds
+# on an idle CPU, so the whole module declares the config-owned slow budget.
+pytestmark = pytest.mark.slow
+
 
 class TestsCodegenSetupSubmodules:
     @staticmethod
