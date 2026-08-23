@@ -812,6 +812,7 @@ Infra:
             - crg-watch.toml
             - env.example
             - bootstrap.ps1
+            - init-setup.sh
           ignore_globs:
             - skills
             - rules
