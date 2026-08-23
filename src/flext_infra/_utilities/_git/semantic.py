@@ -6,6 +6,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
+# Why (hq-36xk): `git_is_inside_work_tree` constructs `Repo(...)` and catches
+# InvalidGitRepositoryError / NoSuchPathError / GitCommandNotFound, but only
+# GitCommandError was imported, so the probe raised NameError at runtime instead
+# of reporting "not a work tree". The probe is the fallback path taken when
+# `git_identity` fails, so the defect only surfaced from a checkout whose
+# identity resolution was already unusual. Same import set as the sibling
+# semantic_identity mixin, which owns the identical Repo contract.
 from git import (
     GitCommandError,
     GitCommandNotFound,
