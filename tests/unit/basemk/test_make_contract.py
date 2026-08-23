@@ -174,6 +174,25 @@ def _run_make(
 class TestsFlextInfraBasemkMakeContract:
     """Behavior contract for test_make_contract."""
 
+    def test_setup_is_a_declared_public_verb(self) -> None:
+        """`setup` is part of the canonical verb surface and the config loads.
+
+        3e5fbc747 extirpated make serialization and rewrote the surviving guard
+        `if "setup" in serialized` to read `declared`. The two sets are not the
+        same: `serialized` held the verbs that required a serialization lock,
+        and `setup` was excluded because it is what builds the environment those
+        locks protect; `declared` holds every public verb, and `setup` has been
+        one since the surface existed. The rewrite therefore rejected the
+        shipped config/codegen.yaml, so `config.Infra` raised on import and
+        every consumer's `make gen` died before doing any work.
+
+        Reading the config here is the assertion: a guard that rejects the
+        product's own SSOT cannot survive it.
+        """
+        verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
+        assert "setup" in verbs
+        assert len(verbs) == len(config.Infra.codegen.make.verbs)
+
     def test_make_verb_runs_pre_and_post_hooks_from_custom_mk(
         self, tmp_path: Path
     ) -> None:

@@ -6,7 +6,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
-from git import GitCommandError
+from git import (
+    GitCommandError,
+    GitCommandNotFound,
+    InvalidGitRepositoryError,
+    NoSuchPathError,
+    Repo,
+)
 
 from flext_core import r
 from flext_infra._utilities._git.semantic_submodule import (

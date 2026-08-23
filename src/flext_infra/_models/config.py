@@ -855,9 +855,6 @@ class FlextInfraConfigModels:
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
                 raise ValueError(msg)
-            if "setup" in declared:
-                msg = "make setup cannot require the managed validation environment"
-                raise ValueError(msg)
             workflow_verbs = tuple(step.verb for step in self.workflow)
             if len(set(workflow_verbs)) != len(workflow_verbs):
                 msg = "make workflow verbs must be unique"
