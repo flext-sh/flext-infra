@@ -12,10 +12,16 @@ name: CI
 "on":
   push:
     branches:
+- dev
+- develop
 - 0.12.0-dev
+- main
 pull_request:
     branches:
+- dev
+- develop
 - 0.12.0-dev
+- main
 types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
@@ -89,8 +95,8 @@ jobs:
         run: CI=Y make check
 
       # Why (aihub-v01jg): CI=Y runs ONE HALF of the gate set
-      # (mypy pyright security markdown smells); the complement
-      # (lint pyrefly) is owned by
+      # (lint pyright security markdown smells); the complement
+      # (pyrefly mypy) is owned by
       # CI=N and, without this step, ran on developer
       # machines only. That split let real defects reach main twice: five
       # missing-attribute errors and an inconsistent-inheritance error, each

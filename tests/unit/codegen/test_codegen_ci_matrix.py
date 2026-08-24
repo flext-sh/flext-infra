@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, t
-from tests import c, u
+import pytest
+from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+
+pytestmark = pytest.mark.slow
 
 
 class TestCodegenCiMatrix:
@@ -193,7 +195,7 @@ class TestCodegenCiMatrix:
             checkout_submodules=codegen.checkout_submodules,
             private_submodules=private,
         )
-        rendered_text = str(tm.ok(cli_u.Cli.template_render(tpl, spec)))
+        rendered_text = tm.ok(cli_u.Cli.template_render(tpl, spec))
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 

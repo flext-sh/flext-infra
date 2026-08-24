@@ -1,4 +1,4 @@
-"""CI workflow triggers cover every declared integration branch."""
+"""Verify ci.yml branch-trigger generation matches the declared baseline."""
 
 from __future__ import annotations
 

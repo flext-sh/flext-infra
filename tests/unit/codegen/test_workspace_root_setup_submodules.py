@@ -5,10 +5,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from tests import c, m, u
+import pytest
+from flext_infra import c, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
+
+pytestmark = pytest.mark.slow
 
 
 def _render_workspace_root_makefile(tmp_path: Path) -> str:

@@ -16,6 +16,8 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import c, m, u
 from flext_tests import tm
 
+pytestmark = pytest.mark.slow
+
 
 class TestsCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""

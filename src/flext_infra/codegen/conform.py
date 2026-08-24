@@ -427,9 +427,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
+            # Why (flext-dz4ib.2): a beadless plain member has no ledger
+            # identity to inherit; fall back to its own name so BeadsPlan
+            # still gets a non-empty canonical_prefix (enabled stays False).
             issue_prefix, _ledger_database = self.ledger_identity_for_target(
                 workspace, target
-            )
+            ) or (target.canonical_project_name, target.canonical_project_name)
             ledger_root_result = self._beads_ledger_root(repository_root)
             if ledger_root_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -445,11 +448,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # issue IDs) -- it must never be workspace.ledger_id,
                     # which is the separate Dolt-safe database identifier and
                     # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
-                    # Why (mro-6fca / mro-z75t): WORKSPACE_MEMBER targets keep
-                    # canonical_project_name; root/standalone manifests still
-                    # honor their own ledger_prefix/id so a flext root
-                    # declaring ledger_prefix=mro does not rewrite every
-                    # submodule .beads/config.yaml onto the root tracker.
+                    # Why (flext-dz4ib.2): plain WORKSPACE_MEMBER targets
+                    # inherit the governing workspace's declared
+                    # ledger_prefix/ledger_id verbatim (GOVERNANCE.md: root
+                    # database serves every member); root/standalone manifests
+                    # keep their own ledger_prefix/id fallback to their own
+                    # canonical_project_name when no ledger is declared.
                     canonical_prefix=issue_prefix,
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
@@ -1599,20 +1603,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # repository's own integration branch is the only branch this layer
             # can name from resolved data; a fleet-wide list hardcoded here would
             # make every repository trigger on branches it does not have.
-            repository_branch = provider.value.branch
+            branch = u.Infra.resolve_integration_branch(workspace, provider.value)
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     make_profile=target.make_profile,
-                    repository_branch=repository_branch,
+                    repository_branch=branch,
                     ci_trigger_branches=tuple(
-                        dict.fromkeys((
-                            "dev",
-                            "develop",
-                            "0.12.0-dev",
-                            repository_branch,
-                            "main",
-                        ))
+                        dict.fromkeys(("dev", "develop", "0.12.0-dev", branch, "main"))
                     ),
                     python_version=codegen.toolchain.python_version,
                     dependency_cooldown_days=(
@@ -2338,14 +2336,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         worktree_path = ""
         worktree_sha = ""
         worktree_branch = "detached"
+        worktree_bare = False
         for line in (*worktrees_result.value.stdout.splitlines(), ""):
             if line.startswith("worktree "):
                 worktree_path = line.removeprefix("worktree ")
+                worktree_bare = False
+            elif line == "bare":
+                # The main worktree of a bare repository (e.g. a Gas Town rig
+                # .repo.git) lists itself with a `bare` attribute and no HEAD;
+                # it owns refs but is never a governed branch checkout.
+                worktree_bare = True
             elif line.startswith("HEAD "):
                 worktree_sha = line.removeprefix("HEAD ")
             elif line.startswith("branch "):
                 worktree_branch = line.removeprefix("branch ")
             elif not line and worktree_path:
+                if worktree_bare:
+                    worktree_path = ""
+                    worktree_sha = ""
+                    worktree_branch = "detached"
+                    continue
                 if not worktree_sha:
                     return r[m.Infra.BranchAncestryPlan].fail(
                         f"worktree has no HEAD: {worktree_path}"
@@ -2516,26 +2526,28 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def ledger_identity_for_target(
         workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str] | None:
         """Return ``(issue_prefix, database)`` for one conform target.
 
-        ``WORKSPACE_MEMBER`` targets keep ``canonical_project_name`` because
-        they are planned under the parent workspace.yaml (mro-z75t). Root and
-        standalone manifests still honor their own ``ledger_prefix`` /
-        ``ledger_id`` overrides (mro-6fca). Marker-attached standalones are
-        classified as ``WORKSPACE_MEMBER`` for routing, but they own their
-        workspace.yaml at the governing root, so ledger_* still apply.
+        GOVERNANCE.md Execution Contract: the workspace-root Beads database is
+        used for the root and every member project (flext-dz4ib). Plain
+        ``WORKSPACE_MEMBER`` targets share the parent workspace.yaml, so they
+        always inherit its declared ``ledger_prefix``/``ledger_id`` verbatim;
+        they never fall back to their own ``canonical_project_name``. Root and
+        standalone manifests (including marker-attached standalones, which own
+        their own workspace.yaml at the governing root) keep the general
+        fallback to ``canonical_project_name`` when no ledger is declared.
+        Returns ``None`` when the governing workspace declares no ledger at
+        all and the target is a plain member with nothing of its own to fall
+        back to.
         """
-        # Members are planned under the parent workspace.yaml, so a root
-        # ledger_prefix must not rewrite their issue-prefix/database. A
-        # standalone's workspace.yaml is its own manifest, so ledger_* there
-        # still apply (mro-6fca). Attached standalones share the MEMBER
-        # profile only for routing; they are not parent-manifest members.
         if (
             target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
             and not target.attached_standalone
         ):
-            return target.canonical_project_name, target.canonical_project_name
+            if workspace.ledger_id is None:
+                return None
+            return workspace.ledger_prefix, workspace.ledger_id
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
 
@@ -2564,8 +2576,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if key == "bd" or (key.startswith("github:") and "beads" in key):
                 if isinstance(value, str):
                     return value
-                if isinstance(value, dict) and isinstance(value.get("version"), str):
-                    return value["version"]
+                if isinstance(value, dict):
+                    version = value.get("version")
+                    if isinstance(version, str):
+                        return version
         return None
 
     @staticmethod
@@ -2739,7 +2753,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             case _:
                 actual_version = ""
         accepted_version = local_pin if local_pin is not None else plan.expected_version
-        if actual_version != accepted_version:
+        # Why (dedup-t0m): a pin of `latest` (or any non-semver selector the
+        # repository's own .mise.toml carries for a fork) is resolved by mise
+        # at install time, not emitted by `bd version`. Comparing the literal
+        # string "latest" against the binary's reported version is a false
+        # mismatch: accept any version the binary reports when the pin is not
+        # a concrete version atom. Skip the checksum gate too — `latest`
+        # means the fleet deliberately yields content-attestation to the fork.
+        if (
+            accepted_version
+            and "." in accepted_version
+            and actual_version != accepted_version
+        ):
             return r[bool].fail(
                 "mise-managed Beads CLI version mismatch: "
                 f"{actual_version or '<unparseable>'} != "

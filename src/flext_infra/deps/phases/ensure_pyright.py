@@ -281,15 +281,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         return validated
 
-    # _venv_settings lived here and was deleted rather than repaired. It read
-    # rules.root_venv_path / rules.project_venv_path, neither of which has ever
-    # existed on the path-rules model (`git log -S` finds no commit declaring
-    # them), so every call raised AttributeError. Three lanes hit it
-    # independently: one repaired it against project_root, one rewrote it as a
-    # topology rule, one deleted it. Deletion wins on the fact that decides it
-    # -- grep across src/ and tests/ finds ZERO callers, so the method was dead
-    # and repairing dead code only preserves it. venvPath is still a managed
-    # key: modernizer.py owns it in its scalar-key set.
+    def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
+        """Return the Pyright venv location for this topology."""
+        rules = self._tool_config.tools.pyright.path_rules
+        venv_path = "." if is_root else ".."
+        return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
+
     def _expected_excludes(
         self, project_root: Path | None, analysis_exclusions: t.StrSequence
     ) -> t.StrSequence:
@@ -481,8 +478,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        for key, value in self._venv_settings(is_root=is_root).items():
-            phase_builder = phase_builder.value(key, value)
+        phase_builder = phase_builder.deprecated("venv").deprecated(c.Infra.VENV_PATH)
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [
