@@ -1,3 +1,5 @@
+"""CI workflow triggers cover every declared integration branch."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,8 +26,10 @@ def _render_ci(*, repository_branch: str) -> str:
             dict.fromkeys((*_BASELINE_BRANCHES[:-1], repository_branch, "main"))
         ),
         python_version=codegen.toolchain.python_version,
+        dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
         github_actions=codegen.github_actions,
         make=codegen.make,
+        workspace_repositories=(),
         checkout_submodules=codegen.checkout_submodules,
     )
     return tm.ok(cli_u.Cli.template_render(_CI_TEMPLATE, spec))

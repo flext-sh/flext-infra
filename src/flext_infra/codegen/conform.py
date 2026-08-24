@@ -1599,13 +1599,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # repository's own integration branch is the only branch this layer
             # can name from resolved data; a fleet-wide list hardcoded here would
             # make every repository trigger on branches it does not have.
-            ci_trigger_branches = (provider.value.branch,)
+            repository_branch = provider.value.branch
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
-                    ci_trigger_branches=ci_trigger_branches,
                     dist=dist,
                     make_profile=target.make_profile,
-                    repository_branch=provider.value.branch,
+                    repository_branch=repository_branch,
+                    ci_trigger_branches=tuple(
+                        dict.fromkeys((
+                            "dev",
+                            "develop",
+                            "0.12.0-dev",
+                            repository_branch,
+                            "main",
+                        ))
+                    ),
                     python_version=codegen.toolchain.python_version,
                     dependency_cooldown_days=(
                         codegen.toolchain.dependency_cooldown_days
@@ -1613,7 +1621,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
-                    # Dependabot rejects the entire config when an ecosystem
+                    # Why: dependabot.yml.j2 branches on this and the model
+                    # declares it, but the .github/ spec never supplied it, so
+                    # every render died with "'has_devcontainer' is undefined".
+                    # Dependabot rejects its ENTIRE config when an ecosystem
                     # names a directory that is absent, so this is read from the
                     # checkout rather than declared: a stale flag would silently
                     # disable Dependabot for the repository.
@@ -2541,9 +2552,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         document = tomllib.loads(raw)
         tools = document.get("tools", {})
         for key, value in tools.items():
-            if key == "bd" or (
-                key.startswith("github:") and "beads" in key
-            ):
+            if key == "bd" or (key.startswith("github:") and "beads" in key):
                 if isinstance(value, str):
                     return value
                 if isinstance(value, dict) and isinstance(value.get("version"), str):
@@ -2720,9 +2729,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pass
             case _:
                 actual_version = ""
-        accepted_version = (
-            local_pin if local_pin is not None else plan.expected_version
-        )
+        accepted_version = local_pin if local_pin is not None else plan.expected_version
         if actual_version != accepted_version:
             return r[bool].fail(
                 "mise-managed Beads CLI version mismatch: "

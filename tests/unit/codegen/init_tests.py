@@ -52,20 +52,6 @@ def _baseline_leaf_modules() -> tuple[str, ...]:
     return tuple(loaded)
 
 
-def _loaded_leaf_modules() -> tuple[str, ...]:
-    """Implementation leaf modules currently imported (eager-import probe).
-
-    The test module itself imports ``lazy_init`` (the generator), so the probe
-    reports only the leaf implementations the package publish path could load.
-    """
-    return tuple(
-        name
-        for name in sys.modules
-        if name.startswith("flext_infra.codegen.")
-        and name != "flext_infra.codegen.lazy_init"
-    )
-
-
 # Why: the symbol must be absent for the test to mean anything, so it
 # cannot be spelled as a static attribute access without making the file
 # ill-typed. The name is data here, and getattr is the access it tests.

@@ -66,11 +66,17 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 (child_entry.package_name, ""),
             )
             for name, (module_name, attr) in child_exports.items():
+                source_module_name = module_name.rsplit(".", maxsplit=1)[-1]
+                test_only_source_module = (
+                    c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(
+                        f"{source_module_name}.py"
+                    )
+                    is not None
+                )
                 if (
                     attr
-                    and name not in c.Infra.ALIAS_NAMES
-                    and name != "main"
-                    and self._publish(name, allow_main=False)
+                    and not test_only_source_module
+                    and self._publish(name, allow_main=True)
                 ):
                     self._add(lazy_map, name, (module_name, attr))
         return tuple(sorted(direct))
