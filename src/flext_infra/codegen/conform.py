@@ -1599,13 +1599,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # repository's own integration branch is the only branch this layer
             # can name from resolved data; a fleet-wide list hardcoded here would
             # make every repository trigger on branches it does not have.
-            ci_trigger_branches = (provider.value.branch,)
+            branch = u.Infra.resolve_integration_branch(workspace, provider.value)
+            ci_trigger_branches = (branch,)
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     ci_trigger_branches=ci_trigger_branches,
                     dist=dist,
                     make_profile=target.make_profile,
-                    repository_branch=provider.value.branch,
+                    repository_branch=branch,
                     python_version=codegen.toolchain.python_version,
                     dependency_cooldown_days=(
                         codegen.toolchain.dependency_cooldown_days
@@ -2541,13 +2542,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         document = tomllib.loads(raw)
         tools = document.get("tools", {})
         for key, value in tools.items():
-            if key == "bd" or (
-                key.startswith("github:") and "beads" in key
-            ):
+            if key == "bd" or (key.startswith("github:") and "beads" in key):
                 if isinstance(value, str):
                     return value
-                if isinstance(value, dict) and isinstance(value.get("version"), str):
-                    return value["version"]
+                if isinstance(value, dict):
+                    version = value.get("version")
+                    if isinstance(version, str):
+                        return version
         return None
 
     @staticmethod
@@ -2720,10 +2721,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pass
             case _:
                 actual_version = ""
-        accepted_version = (
-            local_pin if local_pin is not None else plan.expected_version
-        )
-        if actual_version != accepted_version:
+        accepted_version = local_pin if local_pin is not None else plan.expected_version
+        # Why (dedup-t0m): a pin of `latest` (or any non-semver selector the
+        # repository's own .mise.toml carries for a fork) is resolved by mise
+        # at install time, not emitted by `bd version`. Comparing the literal
+        # string "latest" against the binary's reported version is a false
+        # mismatch: accept any version the binary reports when the pin is not
+        # a concrete version atom. Skip the checksum gate too — `latest`
+        # means the fleet deliberately yields content-attestation to the fork.
+        if (
+            accepted_version
+            and "." in accepted_version
+            and actual_version != accepted_version
+        ):
             return r[bool].fail(
                 "mise-managed Beads CLI version mismatch: "
                 f"{actual_version or '<unparseable>'} != "

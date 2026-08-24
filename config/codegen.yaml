@@ -72,10 +72,17 @@ Infra:
       # content-proven: checksum is the SHA-256 of the pinned binary, and
       # expected_schema is the ledger schema the binary must know.
       beads:
-        selector: go:github.com/steveyegge/beads/cmd/bd
-        version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
-        reported_version: "1.1.0"
-        checksum: "ecf032358ff126810c1ebf6733d71bc836b9b53e39f8c8753e313138d02eb3d1"
+        # Why (dedup-t0m): the fleet pins the beads Go selector so every
+        # repository renders a deterministic .mise.toml entry, but the version
+        # is `latest` not a commit hash: marlon-costa-dc/beads is an owner-maintained
+        # fork that advances continuously, and a hash pin against it would
+        # silently stall. The binary is content-attested by GitHub at install;
+        # the version gate below validates the live binary against what the
+        # repository's .mise.toml resolves, not against a fleet-wide hash.
+        selector: go:github.com/marlon-costa-dc/beads/cmd/bd
+        version: "latest"
+        reported_version: "latest"
+        checksum: null
         expected_schema: 61
         # Machine-wide shared Dolt server facts: every FLEXT ledger on this
         # host routes through this server; a repository-local server is never
