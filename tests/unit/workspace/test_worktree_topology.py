@@ -100,7 +100,7 @@ class TestsWorktreeTopology(WorktreeFixture):
             ).execute()
         )
 
-        child_path = str(child)
+        child_path = child
         container = epic / c.Infra.WORKTREES_DIRNAME
         tm.that(child, eq=str(container / "child-one"))
         tm.that(Path(child_path).is_relative_to(container), where=bool)

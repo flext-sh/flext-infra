@@ -96,8 +96,12 @@ WORKSPACE ?= $(PROJECT_ROOT)
 # The member-selection block used to appear TWICE: once here against
 # PROJECT_ROOT and again below against WORKSPACE_ROOT. Both guarded on the same
 # `origin WORKSPACE` condition, so the second `override` always won and the
-# first was dead -- while still contributing its `endif`s, which is how this
-# file ended up with one more `endif` than it had conditionals.
+# first was dead -- while still contributing its `endif`s, which is how the
+# generated Makefile ended up with one more `endif` than it had conditionals
+# ("extraneous 'endif'"). The surviving block is the correct one:
+# WORKSPACE_ROOT is derived from the superproject below, whereas PROJECT_ROOT
+# is this checkout, so only the former resolves a member of the governing
+# workspace.
 # === SECTION: WORKSPACE_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
 # Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
@@ -132,7 +136,7 @@ _ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/
 _ALLOWED_WHATS_setup := environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_deps := check lock upgrade $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_build := artifacts $(shell sed -n 's/^_custom_build_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_check := all lint format pyrefly mypy pyright security markdown smells $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_fmt := check all apply $(shell sed -n 's/^_custom_fmt_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_fix := check all apply $(shell sed -n 's/^_custom_fix_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
@@ -145,7 +149,7 @@ _ALLOWED_WHATS_gen := check all apply $(shell sed -n 's/^_custom_gen_\([a-z0-9_-
 _ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_basemk := generate $(shell sed -n 's/^_custom_basemk_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 
-CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
+CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
@@ -781,7 +785,9 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI=Y omits make.ci.local_check_gates (ruff + pyrefly).
+# Under CI=Y the run is narrowed to make.ci.check_gates --
+# the strict complement of make.ci.local_check_gates, derived at the config
+# owner so the two contexts can never overlap nor leave a gate unowned.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -790,15 +796,18 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $(CI))" = "Y" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			if [ "$$gate" = "lint" ]; then skip=1; fi; \
-			if [ "$$gate" = "pyrefly" ]; then skip=1; fi; \
-			if [ "$$skip" -eq 0 ]; then \
+			owned=0; \
+			if [ "$$gate" = "lint" ]; then owned=1; fi; \
+			if [ "$$gate" = "pyright" ]; then owned=1; fi; \
+			if [ "$$gate" = "security" ]; then owned=1; fi; \
+			if [ "$$gate" = "markdown" ]; then owned=1; fi; \
+			if [ "$$gate" = "smells" ]; then owned=1; fi; \
+			if [ "$$owned" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y omits check gates: lint pyrefly\n'; \
+		printf 'INFO: CI=Y runs check gates: lint pyright security markdown smells\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -814,9 +823,6 @@ _builtin_check_all: _builtin_require_environment
 
 _builtin_check_lint: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "lint" --projects .
-
-_builtin_check_format: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "format" --projects .
 
 _builtin_check_pyrefly: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "pyrefly" --projects .

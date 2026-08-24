@@ -176,10 +176,6 @@ module = ["*.cli"]
 disable_error_code = ["unreachable"]
 module = ["dcdoc._utilities._charts._matplotlib_renderer._renders_spec"]
 
-[[tool.mypy.overrides]]
-disable_error_code = ["unreachable"]
-module = ["tests.conftest"]
-
 # [MANAGED] pydantic-mypy
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -358,8 +354,6 @@ reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
-venv = ".venv"
-venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
