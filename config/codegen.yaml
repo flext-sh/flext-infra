@@ -84,22 +84,26 @@ Infra:
         reported_version: "latest"
         checksum: null
         expected_schema: 61
-        # Machine-wide shared Dolt server facts: every FLEXT ledger on this
-        # host routes through this server; a repository-local server is never
-        # used. Rendered into .beads/config.yaml and .beads/metadata.json by
-        # codegen for ledger owners (workspace-root) and attached standalones
-        # (routing only).
+        # Gas Town Dolt server facts: every FLEXT ledger on this host routes
+        # through the Gas Town town server on :3307 (managed by `gt dolt start`).
+        # Why (aihub-g8e1j): shared_server: true routes bd's PID/port/lock
+        # bookkeeping through bd's OWN independently-lifecycled server at
+        # ~/.beads/shared-server/ (see beads internal/doltserver resolveServerDir),
+        # ignoring the host/port below entirely — a distinct bd feature flag, not
+        # "shared" in the sense this comment used to imply. shared_server: false
+        # makes bd honor the per-project host/port and consume only the external
+        # Gas Town town server; a repository-local or bd-owned server is never
+        # used. This exact value was fixed once in 6d5fc8df and silently reverted
+        # by a later merge-conflict resolution before the port-only fix in
+        # 62238830 (aihub-v01jg) — restoring it here, do not re-flip it back.
+        # Rendered into .beads/config.yaml and .beads/metadata.json by codegen
+        # for ledger owners (workspace-root) and attached standalones (routing
+        # only).
         server:
           mode: server
           backend: dolt
-          shared_server: true
+          shared_server: false
           host: 127.0.0.1
-          # Why (aihub-v01jg): 3307 is where the Gas Town town server actually
-          # listens, and what `bd config get dolt.port` reports as canonical.
-          # This key had drifted to 3308, so every generated .beads/config.yaml
-          # pointed at a closed port and `bd` failed with "Dolt server
-          # unreachable at 127.0.0.1:3308" — which took `make gen` down with it,
-          # because the gen verb inspects the beads ledger.
           port: 3307
           user: root
           auto_commit: "on"
