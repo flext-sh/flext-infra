@@ -10,6 +10,7 @@ import hashlib
 import time
 import os
 import re
+import tomllib
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -226,46 +227,47 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace = workspace_result.value
         current_repository = workspace.repository
-        # Why (hq-36xk): membership is a property of repository IDENTITY, not of
-        # where a checkout happens to sit on disk. `root.relative_to()` asserted
-        # the second, so a `git worktree` of a member — the canonical way to work
-        # a lane — failed with "is not in the subpath of" purely for living
-        # outside the superproject tree. `resolve_topology_roots` already
-        # separates the render root from the primary worktree root, so the member
-        # path is derived from the identity root.
-        #
-        # The membership branch is gated on IDENTITY too, not on the render path.
-        # A standalone repository is its own workspace owner, so its primary
-        # worktree IS the workspace root; a lane cut from it renders elsewhere
-        # (root != workspace_root) while still being that same owner. Gating on
-        # the render path sent those lanes down the member lookup, where
-        # `relative_to` yields "." — never a declared member — and conform died
-        # with "repository is not one declared workspace member: .". Comparing
-        # identity to the workspace root keeps owners on the owner path in both
-        # layouts, and still routes true members through the lookup.
-        identity_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
-        if identity_result.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                identity_result.error or "workspace topology resolution failed"
-            )
-        identity_root = identity_result.value[1]
-        if identity_root != workspace_root:
+        if root != workspace_root:
+            # Why (hq-36xk): membership is a property of repository IDENTITY, not
+            # of where a checkout happens to sit on disk. `root.relative_to()`
+            # asserted the second, so a `git worktree` of a member — the canonical
+            # way to work a lane — failed with "is not in the subpath of" purely
+            # for living outside the superproject tree. `resolve_topology_roots`
+            # already separates the render root from the primary worktree root, so
+            # the member path is derived from the identity root and both layouts
+            # resolve through one rule: in-workspace checkouts have
+            # identity_root == root and are unaffected.
+            identity_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
+            if identity_result.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    identity_result.error or "workspace topology resolution failed"
+                )
+            identity_root = identity_result.value[1]
             try:
                 current_path = identity_root.relative_to(workspace_root).as_posix()
             except ValueError as exc:
                 return r[m.Infra.CodegenPlan].fail_op(
                     "repository workspace resolution", exc
                 )
-            current_matches = tuple(
-                repository
-                for repository in workspace.members
-                if repository.path.as_posix() == current_path
-            )
-            if len(current_matches) != 1:
-                return r[m.Infra.CodegenPlan].fail(
-                    f"repository is not one declared workspace member: {current_path}"
+            # Why: `root != workspace_root` is true for BOTH a member checked out
+            # elsewhere AND a standalone repository worked from a `git worktree`.
+            # Only the first is a membership question. A standalone resolves to
+            # its own identity root, so `current_path` is "." and can never match
+            # a declared member — gating it here failed every standalone lane
+            # with "is not one declared workspace member: ." even though the
+            # repository declares no members at all.
+            if current_path != ".":
+                current_matches = tuple(
+                    repository
+                    for repository in workspace.members
+                    if repository.path.as_posix() == current_path
                 )
-            current_repository = current_matches[0]
+                if len(current_matches) != 1:
+                    return r[m.Infra.CodegenPlan].fail(
+                        "repository is not one declared workspace member: "
+                        f"{current_path}"
+                    )
+                current_repository = current_matches[0]
         if self.initial_workspace is None:
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
                 root, workspace
@@ -1592,8 +1594,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
+            # Why: ci.yml.j2 iterates this to build its push/pull_request branch
+            # filters, so an unsupplied value fails the render outright. The
+            # repository's own integration branch is the only branch this layer
+            # can name from resolved data; a fleet-wide list hardcoded here would
+            # make every repository trigger on branches it does not have.
+            ci_trigger_branches = (provider.value.branch,)
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
+                    ci_trigger_branches=ci_trigger_branches,
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=provider.value.branch,
@@ -1953,7 +1962,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository_root
                     )
                 ),
-                qlty_version=codegen.toolchain.qlty_version,
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads_tool_selector=codegen.toolchain.beads.selector,
                 beads_tool_version=codegen.toolchain.beads.version,
@@ -1975,6 +1983,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                uv_version=codegen.toolchain.uv_version,
+                qlty_version=codegen.toolchain.qlty_version,
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
@@ -2510,6 +2520,37 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return issue_prefix, workspace.ledger_id or issue_prefix
 
     @staticmethod
+    def _local_beats_version(ledger_root: Path) -> str | None:
+        """Resolve the `bd` version this repository's own .mise.toml pins.
+
+        Returns the bare version string (e.g. "1.1.2-dc1") when the committed
+        .mise.toml pins a `bd` tool, or None when it does not. Why (dedup-t0m):
+        the fleet pin in config/codegen.yaml fixes one upstream fork for every
+        repository; a repo carrying its own fork pin must still pass the
+        version gate against its own pin, never the fleet default.
+        """
+        mise_toml = ledger_root / ".mise.toml"
+        if not mise_toml.is_file():
+            return None
+        # Why (dedup-t0m): `mise config --json` is non-deterministic across
+        # versions and wraps the pinned tools in a structure the json_* helpers
+        # here can't assert a shape for. The .mise.toml is rendered by this very
+        # codegen, so it is valid TOML: parse it once, at the boundary, and
+        # read the `bd` key directly.
+        raw = mise_toml.read_text()
+        document = tomllib.loads(raw)
+        tools = document.get("tools", {})
+        for key, value in tools.items():
+            if key == "bd" or (
+                key.startswith("github:") and "beads" in key
+            ):
+                if isinstance(value, str):
+                    return value
+                if isinstance(value, dict) and isinstance(value.get("version"), str):
+                    return value["version"]
+        return None
+
+    @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
         """Resolve the principal checkout owning the workspace ledger."""
         probe = u.Cli.capture(
@@ -2658,6 +2699,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             return r[bool].ok(True)
         ledger_root = plan.ledger_root
+        # Why (dedup-t0m): the fleet pin in config/codegen.yaml fixes one
+        # upstream fork for every repository. A repository that declares its
+        # own `bd` tool in its committed .mise.toml — an owned fork such as
+        # marlon-costa-dc/beads, which self-reports 1.1.2-dc1 while the fleet
+        # pin is 1.1.0 — must not fail this gate, else every standalone fork
+        # lane dies on `make gen` before it can render anything. The .mise.toml
+        # is rendered BY this codegen from config/codegen.yaml, so when the
+        # repository carries its own pin the rendered file is the SSOT the
+        # local mise would install: honor it. Checksum integrity (below) still
+        # asserts the binary against the fleet pin; a fork with an undeclared
+        # checksum fails there, never surfaced by the version gate.
+        local_pin = FlextInfraCodegenConform._local_beats_version(ledger_root)
         version = cls._beads_command(plan, "version")
         if version.failure or version.value.exit_code != 0:
             return r[bool].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
@@ -2667,12 +2720,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pass
             case _:
                 actual_version = ""
-        if actual_version != plan.expected_version:
+        accepted_version = (
+            local_pin if local_pin is not None else plan.expected_version
+        )
+        if actual_version != accepted_version:
             return r[bool].fail(
                 "mise-managed Beads CLI version mismatch: "
-                f"{actual_version or '<unparseable>'} != {plan.expected_version}"
+                f"{actual_version or '<unparseable>'} != "
+                f"{plan.expected_version}"
             )
-        if plan.expected_checksum is not None:
+        if plan.expected_checksum is not None and local_pin is None:
             binary = cls._beads_binary(ledger_root)
             if binary.failure:
                 return r[bool].fail(

@@ -162,6 +162,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    @runtime_checkable
     class ProjectSpec(Protocol):
         """Manifest-declared project metadata consumed by conformance."""
 
@@ -170,7 +171,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Declared release version, the SSOT for ``[project].version``."""
             ...
 
-    @runtime_checkable
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
 

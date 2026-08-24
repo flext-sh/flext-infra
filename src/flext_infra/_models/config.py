@@ -30,17 +30,6 @@ class _ConfigContract(m.ContractModel):
     )
 
 
-def _default_make_work_in_progress_spec() -> (
-    FlextInfraConfigModels.MakeWorkInProgressSpec
-):
-    """Return the default work-in-progress predicate for make gates."""
-    return FlextInfraConfigModels.MakeWorkInProgressSpec(
-        draft_pr=True,
-        branch_patterns=(r"^wip/", r"WIP"),
-        merge_lock_target_branches=("dev", "develop", "0.12.0-dev"),
-    )
-
-
 class FlextInfraConfigModels:
     """Field-only models for config loading and codegen plans."""
 
@@ -210,6 +199,12 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv resolver version")
+        ]
+        qlty_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact qlty code-quality version")
+        ]
         taplo_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
@@ -221,9 +216,6 @@ class FlextInfraConfigModels:
         ]
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
-        ]
-        qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
         ]
         go_version: Annotated[
             t.NonEmptyStr,
@@ -413,17 +405,25 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Ordered, deduplicated blocking CI branches",
+            ),
+        ] = ()
         has_devcontainer: Annotated[
             bool,
             m.Field(
                 default=False,
                 description=(
-                    "Whether this repository ships a devcontainer. Dependabot "
-                    "rejects its whole configuration when an ecosystem points "
-                    "at a directory that does not exist, so the devcontainers "
-                    "block is emitted only where one actually exists; "
-                    "otherwise the repository gets a config Dependabot refuses "
-                    "to run at all."
+                    "Whether the rendered repository ships a .devcontainer "
+                    "directory. Dependabot only accepts a devcontainers "
+                    "ecosystem entry when one exists; declaring it for a "
+                    "repository without that directory makes GitHub reject the "
+                    "whole manifest, which silently disables EVERY ecosystem in "
+                    "it, security updates included. Derived from the repository "
+                    "on disk (hq-36xk)"
                 ),
             ),
         ] = False
@@ -664,9 +664,9 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Local form of the CI ternary. A hook declares this value "
-                    "explicitly so an inherited CI token from the caller can "
-                    "never revoke pytest or the type-checker gates."
+                    "Local arm of the same ternary. Only the exact `value` "
+                    "disables coverage and narrows CHECK_GATES, so pre-push "
+                    "sets this to keep every gate and the full pytest run"
                 )
             ),
         ] = "N"
@@ -921,10 +921,23 @@ class FlextInfraConfigModels:
             return self
 
     class MakeWorkInProgressSpec(_ConfigContract):
-        """Predicate for work-in-progress branches and draft PR gate behavior."""
+        """Predicate for work-in-progress branches and draft PR gate behavior.
+
+        Why (hq-36xk): c82e6dd2b introduced this spec and its `work_in_progress`
+        SSOT block for operator law mro-g3zl2 — pre-push gates skip WIP branches
+        and draft PRs, and merges of those states into protected integration
+        branches are blocked in CI. A later merge resolution dropped the model
+        and the config block while `ci.yml.j2` and `.pre-commit-config.yaml.j2`
+        kept consuming `make.work_in_progress`, so every render failed with
+        "'dict object' has no attribute 'work_in_progress'" and no repository
+        could regenerate its CI. Restored verbatim from c82e6dd2b: the gate is a
+        merge protection, so it is reinstated rather than deleted with its
+        consumers.
+        """
 
         draft_pr: Annotated[
-            bool, m.Field(description="Treat GitHub draft PRs as work-in-progress")
+            bool,
+            m.Field(description="Treat GitHub draft PRs as work-in-progress"),
         ]
         branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -944,6 +957,10 @@ class FlextInfraConfigModels:
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
+        work_in_progress: Annotated[
+            FlextInfraConfigModels.MakeWorkInProgressSpec,
+            m.Field(description="WIP branch and draft PR gate predicate"),
+        ]
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Single selector variable name")
         ]
@@ -1002,13 +1019,6 @@ class FlextInfraConfigModels:
             m.Field(
                 default_factory=lambda: MappingProxyType({}),
                 description="Per-profile overrides of the custom handler policy",
-            ),
-        ]
-        work_in_progress: Annotated[
-            FlextInfraConfigModels.MakeWorkInProgressSpec,
-            m.Field(
-                default_factory=_default_make_work_in_progress_spec,
-                description="Work-in-progress predicate for gates and merge locks",
             ),
         ]
 
@@ -2108,6 +2118,12 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv resolver version")
+        ]
+        qlty_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact qlty code-quality version")
+        ]
         taplo_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
@@ -2119,9 +2135,6 @@ class FlextInfraConfigModels:
         ]
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
-        ]
-        qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
         ]
         go_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Go runtime version")
