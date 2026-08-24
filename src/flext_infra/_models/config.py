@@ -1065,8 +1065,29 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def handler_whats(self) -> Mapping[str, tuple[str, ...]]:
-            """Canonical public verb-to-handler matrix consumed by every renderer."""
-            return {verb.name: verb.whats for verb in self.verbs}
+            """Canonical public verb-to-handler matrix consumed by every renderer.
+
+            The check verb's what-selectors are augmented with the full gate
+            vocabulary (check_gates_allowed) so a consumer can address an
+            individual gate with `make check WHAT=<gate>`. The gates are
+            rendered into `_ALLOWED_WHATS_check` by Makefile.j2, and per-gate
+            `_builtin_check_<gate>` handlers back them.
+            """
+            whats: dict[str, tuple[str, ...]] = {
+                verb.name: verb.whats for verb in self.verbs
+            }
+            # Why (flext-7b5x9): a project declaring its own gates via
+            # project_check_gates (and every built-in gate) must be reachable
+            # through the dispatch validator. Without this augmentation the
+            # check verb's `whats` stays `[all]`, so `make check WHAT=lint`
+            # is rejected as "unsupported" even though CHECK_GATES_ALLOWED
+            # would accept the gate value itself -- the dispatch gate is
+            # strictly narrower than the runtime gate set it claims.
+            if "check" in whats:
+                whats["check"] = tuple(
+                    dict.fromkeys((*whats["check"], *self.check_gates_allowed))
+                )
+            return whats
 
         @m.computed_field()
         @property
