@@ -2086,15 +2086,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 else:
                     pending_line += " " + trimmed
                 continue
+            # Why (hq-36xk): the continuation join used to overwrite `raw_line`
+            # and `line_number`, the loop's own iteration variables. Rebinding
+            # them mid-body makes the next iteration's values depend on whether
+            # this branch ran, which ruff flags as redefined-loop-name. Emitting
+            # local names keeps the iteration variables immutable.
+            emitted_line = raw_line
+            emitted_number = line_number
             if pending_line is not None:
                 joined = pending_line + " " + raw_line.strip()
                 if joined.rstrip().endswith("\\"):
                     pending_line = joined.rstrip()[:-1].rstrip()
                     continue
-                raw_line = joined
-                line_number = pending_number
+                emitted_line = joined
+                emitted_number = pending_number
                 pending_line = None
-            logical_lines.append((line_number, raw_line))
+            logical_lines.append((emitted_number, emitted_line))
         if pending_line is not None:
             if pending_line.startswith(".PHONY:"):
                 return r[bool].fail(

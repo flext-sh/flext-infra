@@ -1,3 +1,5 @@
+"""CI workflow triggers cover every declared integration branch."""
+
 from __future__ import annotations
 
 from pathlib import Path
