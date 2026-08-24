@@ -2323,14 +2323,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         worktree_path = ""
         worktree_sha = ""
         worktree_branch = "detached"
+        worktree_bare = False
         for line in (*worktrees_result.value.stdout.splitlines(), ""):
             if line.startswith("worktree "):
                 worktree_path = line.removeprefix("worktree ")
+                worktree_bare = False
+            elif line == "bare":
+                # The main worktree of a bare repository (e.g. a Gas Town rig
+                # .repo.git) lists itself with a `bare` attribute and no HEAD;
+                # it owns refs but is never a governed branch checkout.
+                worktree_bare = True
             elif line.startswith("HEAD "):
                 worktree_sha = line.removeprefix("HEAD ")
             elif line.startswith("branch "):
                 worktree_branch = line.removeprefix("branch ")
             elif not line and worktree_path:
+                if worktree_bare:
+                    worktree_path = ""
+                    worktree_sha = ""
+                    worktree_branch = "detached"
+                    continue
                 if not worktree_sha:
                     return r[m.Infra.BranchAncestryPlan].fail(
                         f"worktree has no HEAD: {worktree_path}"
