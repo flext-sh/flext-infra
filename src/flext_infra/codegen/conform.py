@@ -10,6 +10,7 @@ import hashlib
 import time
 import os
 import re
+import tomllib
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -2519,6 +2520,37 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return issue_prefix, workspace.ledger_id or issue_prefix
 
     @staticmethod
+    def _local_beats_version(ledger_root: Path) -> str | None:
+        """Resolve the `bd` version this repository's own .mise.toml pins.
+
+        Returns the bare version string (e.g. "1.1.2-dc1") when the committed
+        .mise.toml pins a `bd` tool, or None when it does not. Why (dedup-t0m):
+        the fleet pin in config/codegen.yaml fixes one upstream fork for every
+        repository; a repo carrying its own fork pin must still pass the
+        version gate against its own pin, never the fleet default.
+        """
+        mise_toml = ledger_root / ".mise.toml"
+        if not mise_toml.is_file():
+            return None
+        # Why (dedup-t0m): `mise config --json` is non-deterministic across
+        # versions and wraps the pinned tools in a structure the json_* helpers
+        # here can't assert a shape for. The .mise.toml is rendered by this very
+        # codegen, so it is valid TOML: parse it once, at the boundary, and
+        # read the `bd` key directly.
+        raw = mise_toml.read_text()
+        document = tomllib.loads(raw)
+        tools = document.get("tools", {})
+        for key, value in tools.items():
+            if key == "bd" or (
+                key.startswith("github:") and "beads" in key
+            ):
+                if isinstance(value, str):
+                    return value
+                if isinstance(value, dict) and isinstance(value.get("version"), str):
+                    return value["version"]
+        return None
+
+    @staticmethod
     def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
         """Resolve the principal checkout owning the workspace ledger."""
         probe = u.Cli.capture(
@@ -2667,6 +2699,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             return r[bool].ok(True)
         ledger_root = plan.ledger_root
+        # Why (dedup-t0m): the fleet pin in config/codegen.yaml fixes one
+        # upstream fork for every repository. A repository that declares its
+        # own `bd` tool in its committed .mise.toml — an owned fork such as
+        # marlon-costa-dc/beads, which self-reports 1.1.2-dc1 while the fleet
+        # pin is 1.1.0 — must not fail this gate, else every standalone fork
+        # lane dies on `make gen` before it can render anything. The .mise.toml
+        # is rendered BY this codegen from config/codegen.yaml, so when the
+        # repository carries its own pin the rendered file is the SSOT the
+        # local mise would install: honor it. Checksum integrity (below) still
+        # asserts the binary against the fleet pin; a fork with an undeclared
+        # checksum fails there, never surfaced by the version gate.
+        local_pin = FlextInfraCodegenConform._local_beats_version(ledger_root)
         version = cls._beads_command(plan, "version")
         if version.failure or version.value.exit_code != 0:
             return r[bool].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
@@ -2676,12 +2720,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pass
             case _:
                 actual_version = ""
-        if actual_version != plan.expected_version:
+        accepted_version = (
+            local_pin if local_pin is not None else plan.expected_version
+        )
+        if actual_version != accepted_version:
             return r[bool].fail(
                 "mise-managed Beads CLI version mismatch: "
-                f"{actual_version or '<unparseable>'} != {plan.expected_version}"
+                f"{actual_version or '<unparseable>'} != "
+                f"{plan.expected_version}"
             )
-        if plan.expected_checksum is not None:
+        if plan.expected_checksum is not None and local_pin is None:
             binary = cls._beads_binary(ledger_root)
             if binary.failure:
                 return r[bool].fail(
