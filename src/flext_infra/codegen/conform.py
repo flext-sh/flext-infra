@@ -959,6 +959,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
+                repository_root=root,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1333,6 +1334,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
+                repository_root=root,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1505,6 +1507,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
+        repository_root: Path,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
@@ -1595,6 +1598,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
+                    # Why: dependabot.yml.j2 branches on this and the model
+                    # declares it, but the .github/ spec never supplied it, so
+                    # every render died with "'has_devcontainer' is undefined".
+                    # Read from the checkout rather than declared: Dependabot
+                    # rejects its ENTIRE config when an ecosystem names an
+                    # absent directory, so a stale flag would silently disable
+                    # it for the repository.
+                    has_devcontainer=(repository_root / ".devcontainer").is_dir(),
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
