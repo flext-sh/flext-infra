@@ -225,9 +225,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace = workspace_result.value
         current_repository = workspace.repository
-        if root != workspace_root:
+        # Why: `root` is where the caller invoked us, which for a linked
+        # worktree lives outside the workspace tree entirely
+        # (~/.worktrees/<repo>/<branch>, not ~/flext/<member>). Measuring the
+        # member path from that literal path raises "is not in the subpath of"
+        # and takes conform down, even though the worktree IS the member --
+        # git just checked it out elsewhere. `resolve_topology_roots` already
+        # maps any worktree back to its primary checkout, so identity is the
+        # only correct input for a member-relative path. A repository has to
+        # build the same whether it is checked out inside the workspace or in
+        # a standalone worktree.
+        identity_root = root
+        topology_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
+        if topology_result.success:
+            identity_root = topology_result.value[1]
+        if identity_root != workspace_root:
             try:
-                current_path = root.relative_to(workspace_root).as_posix()
+                current_path = identity_root.relative_to(workspace_root).as_posix()
             except ValueError as exc:
                 return r[m.Infra.CodegenPlan].fail_op(
                     "repository workspace resolution", exc
@@ -1575,6 +1589,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
+                    has_devcontainer=(target.root / ".devcontainer").is_dir(),
                     private_submodules=codegen.ci_private_submodules.get(dist),
                     ci_matrix_auto_run=target.ci_matrix_auto_run,
                 )
@@ -1912,6 +1927,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
                 tokei_version=codegen.toolchain.tokei_version,
+                uv_version=codegen.toolchain.uv_version,
+                qlty_version=codegen.toolchain.qlty_version,
                 go_version=codegen.toolchain.go_version,
                 author_name=project.author_name,
                 author_email=project.author_email,

@@ -246,33 +246,11 @@ class FlextInfraApplyRenames:
 __all__: list[str] = ["FlextInfraApplyRenames"]
 
 
-def _main() -> None:
-    """CLI entry: parse --csv, --check/--apply, and root paths from argv."""
-    import argparse
-
-    from flext_infra import m
-
-    parser = argparse.ArgumentParser(
-        description="Apply symbol renames from a CSV substitution list."
-    )
-    parser.add_argument("--csv", required=True, help="Path to the old,new CSV file")
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", action="store_true", help="Detect-only (no writes)")
-    mode.add_argument("--apply", action="store_true", help="Rewrite in place")
-    parser.add_argument("roots", nargs="+", help="Root directories to scan")
-    args = parser.parse_args()
-
-    params = m.Infra.ApplyRenamesInput(
-        csv=args.csv,
-        roots=tuple(args.roots),
-        apply=args.apply,
-    )
-    result = FlextInfraApplyRenames.execute_command(params)
-    if result.failure:
-        import sys
-
-        sys.exit(result.error or 1)
-
-
-if __name__ == "__main__":
-    _main()
+# There is no __main__ entry here on purpose. This command is reachable as
+# `flext-infra refactor apply-renames`, registered in
+# services/cli_routes_refactor.py through cli.register_result_command with the
+# same ApplyRenamesInput model and the same execute_command handler. The
+# argparse block that used to live here was a SECOND entry point onto that one
+# handler: it re-declared the flags by hand, so --check/--apply and the model's
+# own validation could drift apart, and it bypassed the typed CLI the rest of
+# this package is reached through. One command, one route.

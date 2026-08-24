@@ -26,6 +26,13 @@ Infra:
       ast_grep_version: "0.45.0"
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
+      # uv and qlty are consumed by the generated .mise.toml. They were read by
+      # the template with no SSOT entry behind them, so every render failed
+      # with "'uv_version' is undefined" -- the toolchain block is the one
+      # owner of a tool pin, and a template variable with no declaration is a
+      # contract with nothing on the other side.
+      uv_version: "0.12.3"
+      qlty_version: "0.642.0"
       mise_version: "2026.7.16"
       # Go runtime required by mise go: backend selectors (beads).
       go_version: "1.26.5"
@@ -238,10 +245,25 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # Why: CI=Y check omits ruff (lint/format) and pyrefly. Local make check
-        # without CI=Y keeps the full default set. Blocking CI never runs make
-        # test (pytest); local/pre_push still own that verb.
-        check_gates_skip: [lint, format, pyrefly]
+        # A hook declares the local form explicitly: a git hook inherits the
+        # caller's environment, so a stray CI=Y would otherwise revoke pytest
+        # and the type-checker gates on a push.
+        local_value: N
+        # Rules, not a skip-list: local_check_gates is the ONLY declared set.
+        # CI=Y runs its strict complement, derived in MakeCiSpec.check_gates,
+        # so the two contexts can never overlap nor leave a gate unowned; an
+        # unset CI runs every allowed gate. `format` is not a check gate at
+        # all -- it mutates files, so it belongs to make fmt / make fix
+        # APPLY=Y only.
+        local_check_gates: [pyrefly, mypy]
+      # A hook that runs the full gate matrix on every push turns an
+      # in-progress branch into a stop-and-wait loop, and contributors respond
+      # by bypassing the hook entirely. Declaring the escape keeps it auditable
+      # instead of improvised with --no-verify.
+      work_in_progress:
+        draft_pr: true
+        branch_patterns: ['^wip/', 'WIP']
+        merge_lock_target_branches: [main, develop, 0.12.0-dev]
       workflow:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans

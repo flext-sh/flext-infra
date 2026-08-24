@@ -156,8 +156,8 @@ _ALLOWED_WHATS_basemk := generate $(shell sed -n 's/^_custom_basemk_\([a-z0-9_-]
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test gen fmt fix deps clean work docs
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix _serialized_deps _serialized_clean _serialized_work _serialized_docs
+
+
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -464,72 +464,6 @@ endef
 # only drop the prerequisite.
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
-
-$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
-	$(call _dispatch,$@)
-
-
-check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_check:
-	$(call _dispatch,check)
-
-
-test: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_test:
-	$(call _dispatch,test)
-
-
-gen: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_gen:
-	$(call _dispatch,gen)
-
-
-fmt: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fmt" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_fmt:
-	$(call _dispatch,fmt)
-
-
-fix: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "fix" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_fix:
-	$(call _dispatch,fix)
-
-
-deps: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "deps" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_deps:
-	$(call _dispatch,deps)
-
-
-clean: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "clean" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_clean:
-	$(call _dispatch,clean)
-
-
-work: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "work" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_work:
-	$(call _dispatch,work)
-
-
-docs: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "docs" --selector-value "$(WHAT)" --apply-token "$(APPLY)"
-
-_serialized_docs:
-	$(call _dispatch,docs)
 
 
 
@@ -940,8 +874,8 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-# Read-only fixed-point after `make fix APPLY=Y` (serialize-make strips APPLY and
-# re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
+# Read-only fixed-point after `make fix APPLY=Y`, which re-runs the verb at
+# default_what=check. Dual of `ruff check --fix` — never mutate here.
 _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check $(RUFF_PATHS)
 

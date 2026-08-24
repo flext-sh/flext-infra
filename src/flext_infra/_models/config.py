@@ -195,6 +195,12 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv resolver/runner version")
+        ]
+        qlty_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
+        ]
         go_version: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -383,6 +389,21 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        has_devcontainer: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this repository ships a devcontainer. Dependabot "
+                    "rejects the WHOLE configuration when an ecosystem points "
+                    "at a directory that does not exist, so the devcontainers "
+                    "block is emitted only where one is present; otherwise the "
+                    "repository gets a config Dependabot refuses to run at all. "
+                    "Detected from disk rather than declared: the directory is "
+                    "the fact, and a second declaration could disagree with it."
+                ),
+            ),
+        ] = False
         checkout_submodules: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -571,6 +592,28 @@ class FlextInfraConfigModels:
                 description="Execution contexts consuming this single workflow row",
             ),
         ]
+        what: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Explicit WHAT selector for this step. None lets the verb "
+                    "resolve its own default_what, so a row names a selector "
+                    "only when it deliberately departs from that default."
+                ),
+            ),
+        ] = None
+        gates_skip: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Gate ids this step omits when it runs from a hook context "
+                    "(pre_commit/pre_push). Local and CI invocations of the "
+                    "same verb keep the full default set."
+                ),
+            ),
+        ] = ()
 
         @u.model_validator(mode="after")
         def _validate_contexts(self) -> Self:
@@ -581,6 +624,14 @@ class FlextInfraConfigModels:
             if "local" not in self.contexts:
                 msg = f"make workflow step {self.verb} must run locally"
                 raise ValueError(msg)
+            allowed = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+            unknown = sorted(set(self.gates_skip) - allowed)
+            if unknown:
+                msg = (
+                    f"make workflow step {self.verb} gates_skip contains "
+                    f"unknown gates: {', '.join(unknown)}"
+                )
+                raise ValueError(msg)
             return self
 
     class MakeCiSpec(_ConfigContract):
@@ -588,29 +639,57 @@ class FlextInfraConfigModels:
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
         value: Annotated[t.NonEmptyStr, m.Field(description="CI environment value")]
-        check_gates_skip: Annotated[
+        local_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Local form of the CI ternary. A hook declares this value "
+                    "explicitly so an inherited CI token from the caller can "
+                    "never revoke pytest or the type-checker gates."
+                )
+            ),
+        ] = "N"
+        local_check_gates: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
-                    "Gate ids omitted from make check when the CI token is exact "
-                    "(ruff lint/format and pyrefly). Local make check without the "
-                    "token still runs the full default set."
+                    "Gate ids run by make check under the local CI token: the "
+                    "slow whole-program type checkers. This is the ONLY "
+                    "declared set; the CI token runs its strict complement and "
+                    "an unset token runs every allowed gate."
                 )
             ),
-        ] = ("lint", "format", "pyrefly")
+        ] = FlextInfraConstantsMake.PROJECT_CHECK_GATES_LOCAL_VALUES
 
         @u.model_validator(mode="after")
-        def _validate_check_gates_skip(self) -> Self:
-            """Every skipped gate must be in the allowed check vocabulary."""
+        def _validate_local_check_gates(self) -> Self:
+            """Every locally owned gate must be in the allowed check vocabulary."""
             allowed = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
-            unknown = sorted(set(self.check_gates_skip) - allowed)
+            unknown = sorted(set(self.local_check_gates) - allowed)
             if unknown:
                 msg = (
-                    "make.ci.check_gates_skip contains unknown gates: "
+                    "make.ci.local_check_gates contains unknown gates: "
                     f"{', '.join(unknown)}"
                 )
                 raise ValueError(msg)
             return self
+
+        @m.computed_field()
+        @property
+        def check_gates(self) -> tuple[str, ...]:
+            """Gates run under the CI token, as the strict complement.
+
+            CI=Y is the inverse of CI=N by construction, never a second list: a
+            gate that moves into or out of ``local_check_gates`` moves out of or
+            into this set in the same edit, so the two can never overlap nor
+            leave a gate unowned.
+            """
+            local = frozenset(self.local_check_gates)
+            return tuple(
+                gate
+                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+                if gate not in local
+            )
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
@@ -788,6 +867,35 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+    class MakeWorkInProgressSpec(_ConfigContract):
+        """Predicate for work-in-progress branches and draft-PR gate behavior.
+
+        A hook that runs the full gate matrix on every push turns an
+        in-progress branch into a stop-and-wait loop, so contributors start
+        bypassing the hook entirely -- which costs more than it saves. The
+        predicate is DATA so the escape is declared and auditable rather than
+        improvised per-repository with `--no-verify`.
+        """
+
+        draft_pr: Annotated[
+            bool,
+            m.Field(description="Treat GitHub draft PRs as work-in-progress"),
+        ]
+        branch_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Regex patterns that mark a branch as work-in-progress",
+            ),
+        ]
+        merge_lock_target_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Target branches that are blocked for WIP merges",
+            ),
+        ]
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -847,16 +955,64 @@ class FlextInfraConfigModels:
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
+        work_in_progress: Annotated[
+            FlextInfraConfigModels.MakeWorkInProgressSpec,
+            m.Field(description="Work-in-progress predicate for gates and merge locks"),
+        ]
+        project_check_gates: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Check gates this project implements itself, unioned into "
+                    "the built-in vocabulary. Without this seam the vocabulary "
+                    "is a closed Final tuple, so a project that ships a working "
+                    "`_custom_check_<gate>` handler still cannot reach it "
+                    "through `make check`: the gate is rejected as unknown. A "
+                    "gate that can never run is not a gate, which is how "
+                    "references, agents, census and waza ended up outside the "
+                    "gate matrix in consuming repositories. Each id must have a "
+                    "`_custom_check_<id>` handler in the project's custom.mk."
+                ),
+            ),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_project_check_gates(self) -> Self:
+            """Project gates must be unique and must not shadow a built-in."""
+            if len(set(self.project_check_gates)) != len(self.project_check_gates):
+                msg = "make project_check_gates must be unique"
+                raise ValueError(msg)
+            builtin = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+            shadowed = sorted(set(self.project_check_gates) & builtin)
+            if shadowed:
+                msg = (
+                    "make project_check_gates shadow built-in gates: "
+                    f"{', '.join(shadowed)}"
+                )
+                raise ValueError(msg)
+            return self
 
         @u.model_validator(mode="after")
         def _validate_verbs(self) -> Self:
-            """Validate declared public verbs against workflow and contract."""
+            """Validate declared public verbs against workflow and contract.
+
+            Why there is no `"setup" in declared` rejection here (flext-lq86m):
+            the message it carried -- "make setup cannot require the managed
+            validation environment" -- is a statement about a verb's
+            ENVIRONMENT DEPENDENCY, not about the name `setup`. Testing the
+            name was the wrong predicate, and it contradicted
+            `config/codegen.yaml`, which declares `setup` as a public verb; the
+            config singleton builds eagerly at import, so every entrypoint died
+            on that contradiction. The real invariant is enforced structurally
+            in the template, which excludes `setup` from
+            `_builtin_require_environment` (`$(filter-out setup,$(PUBLIC_VERBS))`
+            and `{% raw %}{% for verb in make.verbs if verb.name != "setup" %}{% endraw %}`),
+            so `setup` never depends on the environment it exists to create.
+            """
             declared = {verb.name for verb in self.verbs}
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
-                raise ValueError(msg)
-            if "setup" in declared:
-                msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
             workflow_verbs = tuple(step.verb for step in self.workflow)
             if len(set(workflow_verbs)) != len(workflow_verbs):
@@ -907,14 +1063,31 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def check_gates_allowed(self) -> tuple[str, ...]:
-            """Canonical generated Make check-gate vocabulary."""
-            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+            """Canonical generated Make check-gate vocabulary.
+
+            The built-in gates this package implements, plus the gates the
+            project declares for itself. The built-in tuple is the BASE, never
+            the whole vocabulary: a consuming repository owns gates this
+            package knows nothing about, and rejecting them as unknown is what
+            kept working handlers unreachable from `make check`.
+            """
+            return (
+                *FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES,
+                *self.project_check_gates,
+            )
 
         @m.computed_field()
         @property
         def check_gates_default(self) -> tuple[str, ...]:
-            """Canonical generated Make default check gates."""
-            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
+            """Canonical generated Make default check gates.
+
+            A declared project gate runs by default, exactly like a built-in:
+            a gate that must be asked for by name is a gate nobody runs.
+            """
+            return (
+                *FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES,
+                *self.project_check_gates,
+            )
 
         @m.computed_field()
         @property
@@ -1804,6 +1977,12 @@ class FlextInfraConfigModels:
         ]
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv resolver/runner version")
+        ]
+        qlty_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
         ]
         go_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Go runtime version")

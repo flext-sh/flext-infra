@@ -282,10 +282,19 @@ class FlextInfraEnsurePyrightConfigPhase:
         return validated
 
     def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
-        """Venv settings."""
+        """Venv settings.
+
+        Why there is no root/member split: `root_venv_path` and
+        `project_venv_path` were never fields on PathRulesConfig, so every call
+        raised AttributeError and took `codegen conform` down at the pyproject
+        stage. The venv sits at the repository root in BOTH topologies -- a
+        workspace root and a standalone member each own a `.venv` beside their
+        own pyproject -- which is exactly what the config-owned `project_root`
+        already states. One declared value, no branch.
+        """
+        del is_root
         rules = self._tool_config.tools.pyright.path_rules
-        venv_path = rules.root_venv_path if is_root else rules.project_venv_path
-        return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
+        return {c.Infra.VENV_PATH: rules.project_root, "venv": rules.venv_name}
 
     def _expected_excludes(
         self, project_root: Path | None, analysis_exclusions: t.StrSequence

@@ -354,7 +354,7 @@ class TestsCodegenMakeEnvironment:
                     "APPLY=Y",
                 ],
                 cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{bin_dir / 'uv'}"},
+                env={"UV": str(uv), "PATH": str(uv.parent)},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )
