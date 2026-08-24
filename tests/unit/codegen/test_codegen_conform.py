@@ -342,6 +342,105 @@ class TestCodegenConform:
 
         tm.that(merging_current.ancestor, eq=True)
 
+    def test_branch_ancestry_skips_bare_main_worktree_entry(
+        self, tmp_path: Path
+    ) -> None:
+        """A bare main worktree (Gas Town rig .repo.git) must not fail the plan.
+
+        `git worktree list --porcelain` lists the bare repository itself as a
+        worktree entry carrying only the `bare` attribute — no HEAD line. The
+        ancestry parser used to reject that block with "worktree has no HEAD";
+        it must skip it and keep planning.
+        """
+        bare = tmp_path / "repo.git"
+        tm.ok(u.Cli.run_checked(["git", "init", "-b", "dev", "--bare", str(bare)]))
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(bare),
+                "config",
+                "user.email",
+                "tests@flext.local",
+            ])
+        )
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(bare),
+                "config",
+                "user.name",
+                "Flext Tests",
+            ])
+        )
+        empty_tree = tm.ok(u.Cli.capture(["git", "-C", str(bare), "mktree"]))
+        seed = tm.ok(
+            u.Cli.capture([
+                "git",
+                "-C",
+                str(bare),
+                "commit-tree",
+                empty_tree,
+                "-m",
+                "seed",
+            ])
+        )
+        checkout = tmp_path / "checkout"
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "-C", str(bare), "worktree", "add", str(checkout), seed],
+                cwd=tmp_path,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(checkout),
+                "update-ref",
+                "refs/remotes/origin/0.12.0-dev",
+                seed,
+            ])
+        )
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=repository.name,
+            repository=repository,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                checkout / "config" / "workspace.yaml",
+                workspace.model_dump(mode="json", exclude_none=True),
+            )
+        )
+        (checkout / "pyproject.toml").write_text(
+            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
+            encoding="utf-8",
+        )
+        package = checkout / "src" / repository.distribution.replace("-", "_")
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        request = m.Infra.CodegenConformRequest(
+            root=checkout,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(workspace_root=checkout, request=request)
+
+        plan = tm.ok(service.plan(request))
+
+        tm.that(
+            any(
+                entry.reference == "refs/remotes/origin/0.12.0-dev"
+                for entry in plan.branch_ancestry[0].references
+            ),
+            eq=True,
+        )
+
     # This end-to-end scenario scaffolds a project and runs its console entry
     # point in a fresh interpreter. The slow marker opts into the single
     # config-owned slow-item budget; tests must not restate that policy locally.
