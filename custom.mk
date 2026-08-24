@@ -1,14 +1,6 @@
-<<<<<<< HEAD
 # Private project hooks for flext-infra.
 # The typed Make verb/WHAT matrix owns every handler. This file may contain
 # only pre/post hooks for declared handlers; it cannot create or shadow one.
-=======
-# Private project handlers for flext-infra.
-# This versioned extension accepts only `_custom_<verb>_<what>` handlers and
-# `(pre|post)-<verb>[-<what>]` hooks. Public targets, aliases, toolchain setup,
-# generated-target redefinitions, and help entries are invalid; the standardized
-# FLEXT verbs in base.mk own those. Add project-specific actions as
-# `_custom_<verb>_<what>` (e.g. run WHAT=<what>) or wrap a verb with a hook.
 
 .PHONY: _custom_basemk_generate _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
 _custom_basemk_generate:
@@ -62,4 +54,3 @@ _custom_check_layout:
 	projects="."; \
 	if [ -n "$(strip $(PROJECT))" ]; then projects="$(strip $(PROJECT))"; fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(WORKSPACE_ROOT)" --gates layout --projects "$$projects"
->>>>>>> 6ce3f55e
