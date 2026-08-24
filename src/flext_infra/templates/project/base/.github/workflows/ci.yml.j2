@@ -12,16 +12,14 @@ name: CI
 "on":
   push:
     branches:
-      - dev
-      - develop
-      - 0.12.0-dev
-      - main
+{% for branch in ci_trigger_branches -%}
+      - {{ branch }}
+{% endfor -%}
   pull_request:
     branches:
-      - dev
-      - develop
-      - 0.12.0-dev
-      - main
+{% for branch in ci_trigger_branches -%}
+      - {{ branch }}
+{% endfor -%}
     types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
