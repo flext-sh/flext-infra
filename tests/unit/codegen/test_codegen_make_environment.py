@@ -49,7 +49,7 @@ class TestsCodegenMakeEnvironment:
         )
         project_root = tmp_path / profile.value / "fixture-project"
         workspace_root = project_root.parent if attached else project_root
-        infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
+        infra_repositories = (u.Tests.repository_ref(config.Infra.name),)
         local_members = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
@@ -101,12 +101,12 @@ class TestsCodegenMakeEnvironment:
             (member_source / "README.md").write_text(
                 "fixture member\n", encoding="utf-8"
             )
-            test_u.Tests.initialize_git_repo(member_source)
+            u.Tests.initialize_git_repo(member_source)
             workspace_root.mkdir(parents=True)
             (workspace_root / "README.md").write_text(
                 "fixture workspace\n", encoding="utf-8"
             )
-            test_u.Tests.initialize_git_repo(workspace_root)
+            u.Tests.initialize_git_repo(workspace_root)
             tm.ok(
                 u.Cli.run_checked(
                     [
@@ -253,6 +253,57 @@ class TestsCodegenMakeEnvironment:
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
 
+    @pytest.mark.parametrize("ci_enabled", [False, True])
+    def test_setup_installs_git_hooks_only_outside_configured_ci(
+        self, tmp_path: Path, *, ci_enabled: bool
+    ) -> None:
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        bin_root = tmp_path / "bin"
+        bin_root.mkdir()
+        uv = bin_root / "uv"
+        u.Tests.write_executable(
+            uv,
+            "#!/bin/sh\n"
+            'if [ "$1" = "venv" ]; then\n'
+            '  mkdir -p "$3/bin"\n'
+            "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
+            '  chmod +x "$3/bin/python"\n'
+            "fi\n"
+            "exit 0\n",
+        )
+        hook_log = tmp_path / "hook-install.log"
+        u.Tests.write_executable(
+            project_root / ".github" / "scripts" / "install-git-hooks.sh",
+            f"#!/bin/sh\nprintf '%s\\n' installed > '{hook_log}'\n",
+        )
+        ci = config.Infra.codegen.make.ci
+        env = {"PATH": f"{bin_root}:{os.environ['PATH']}"}
+        if ci_enabled:
+            env[ci.variable] = ci.value
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "setup"],
+                cwd=project_root,
+                env=env,
+                remove_env_keys=(*c.Tests.MAKE_ISOLATION_ENV_KEYS, ci.variable),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(hook_log.exists(), eq=not ci_enabled)
+
+    def test_setup_probes_before_repairing_environment(self, tmp_path: Path) -> None:
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
+
+        tm.that(recipe.index("--check"), lt=recipe.rindex(" sync "))
+
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
     ) -> None:
@@ -268,12 +319,12 @@ class TestsCodegenMakeEnvironment:
         fixture_tool = "managed-tool"
         for bin_root in (hostile_bin, provisioned_bin):
             for tool in (fixture_tool, "uv"):
-                test_u.Tests.write_executable(
+                u.Tests.write_executable(
                     bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
                 )
         runtime_python = project_root / ".venv" / "bin" / "python"
         tool_log = tmp_path / "tools.log"
-        test_u.Tests.write_executable(
+        u.Tests.write_executable(
             runtime_python,
             (
                 "#!/bin/sh\n"
@@ -336,10 +387,10 @@ class TestsCodegenMakeEnvironment:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         runtime_python = project_root / ".venv" / "bin" / "python"
-        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
         uv_log = tmp_path / "uv.log"
         uv = tmp_path / "bin" / "uv"
-        test_u.Tests.write_executable(
+        u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
 
@@ -374,10 +425,10 @@ class TestsCodegenMakeEnvironment:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         runtime_python = project_root / ".venv" / "bin" / "python"
-        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
         uv_log = tmp_path / "uv.log"
         uv = tmp_path / "bin" / "uv"
-        test_u.Tests.write_executable(
+        u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
 

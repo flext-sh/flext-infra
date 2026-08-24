@@ -449,6 +449,13 @@ setup:
 			git -C "$(PROJECT_ROOT)" config --local beads.role maintainer; \
 		fi; \
 	fi
+	@# Provision git hooks when the project ships an installer. This was the
+	@# workspace-root custom.mk `hooks` + `post-boot` pair: a public target and a
+	@# lifecycle hook that only ever ran one script setup already owns. CI skips
+	@# it (no local commit hooks are needed there).
+	@if [ "$$(printenv {{ make.ci.variable }} 2>/dev/null)" != "{{ make.ci.value }}" ] && [ -x "$(PROJECT_ROOT)/.github/scripts/install-git-hooks.sh" ]; then \
+		"$(PROJECT_ROOT)/.github/scripts/install-git-hooks.sh"; \
+	fi
 	@for hook in "post-setup"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
