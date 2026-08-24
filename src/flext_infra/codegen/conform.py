@@ -248,16 +248,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenPlan].fail_op(
                     "repository workspace resolution", exc
                 )
-            current_matches = tuple(
-                repository
-                for repository in workspace.members
-                if repository.path.as_posix() == current_path
-            )
-            if len(current_matches) != 1:
-                return r[m.Infra.CodegenPlan].fail(
-                    f"repository is not one declared workspace member: {current_path}"
+            # Why: `root != workspace_root` is true for BOTH a member checked out
+            # elsewhere AND a standalone repository worked from a `git worktree`.
+            # Only the first is a membership question. A standalone resolves to
+            # its own identity root, so `current_path` is "." and can never match
+            # a declared member — gating it here failed every standalone lane
+            # with "is not one declared workspace member: ." even though the
+            # repository declares no members at all.
+            if current_path != ".":
+                current_matches = tuple(
+                    repository
+                    for repository in workspace.members
+                    if repository.path.as_posix() == current_path
                 )
-            current_repository = current_matches[0]
+                if len(current_matches) != 1:
+                    return r[m.Infra.CodegenPlan].fail(
+                        "repository is not one declared workspace member: "
+                        f"{current_path}"
+                    )
+                current_repository = current_matches[0]
         if self.initial_workspace is None:
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
                 root, workspace
