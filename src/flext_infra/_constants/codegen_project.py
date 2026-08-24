@@ -108,8 +108,6 @@ class FlextInfraConstantsCodegenProject:
         INTERNAL = "internal"
         EXTERNAL = "external"
 
-    WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
-    WORKSPACE_SCHEMA_FILENAME: Final[str] = "workspace.schema.json"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"

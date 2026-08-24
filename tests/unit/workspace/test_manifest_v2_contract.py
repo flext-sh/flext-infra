@@ -11,24 +11,14 @@ The schema, model, and closed vocabularies form one atomic public contract.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import pytest
 
-import flext_infra
 from flext_infra import c, m
 from flext_tests import tm
 
 
 class TestsWorkspaceManifestV2Contract:
     """Prove the hard v1-to-v2 workspace-manifest cutover."""
-
-    @staticmethod
-    def _schema_path() -> Path:
-        """Return the packaged workspace schema path."""
-        root = Path(flext_infra.__file__).resolve().parent
-        return root / "schemas" / "workspace.schema.json"
 
     @staticmethod
     def _v2_repository(
@@ -88,21 +78,6 @@ class TestsWorkspaceManifestV2Contract:
             "members": [member],
             "exclusions": [],
         }
-
-    def test_schema_pins_version_const_2(self) -> None:
-        """Pin the JSON schema version to the canonical v2 constant."""
-        schema = json.loads(self._schema_path().read_text(encoding="utf-8"))
-        tm.that(
-            schema["properties"]["version"]["const"],
-            eq=c.Infra.WORKSPACE_MANIFEST_VERSION,
-        )
-
-    def test_schema_requires_v2_repository_fields(self) -> None:
-        """Require every v2 topology and mutability field in repository entries."""
-        schema = json.loads(self._schema_path().read_text(encoding="utf-8"))
-        required = schema["$defs"]["repository"]["required"]
-        for field in ("checkout", "codegen", "package", "editable", "read_only"):
-            tm.that(required, has=field)
 
     def test_checkout_and_codegen_enums_exist(self) -> None:
         """Expose closed typed vocabularies for checkout and codegen."""

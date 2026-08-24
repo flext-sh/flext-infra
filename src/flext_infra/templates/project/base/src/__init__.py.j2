@@ -1,3 +1,4 @@
+{%- set inherited_facets = inherited_facets | default([]) -%}
 {%- set public_exports = [class_stem, class_stem ~ "Constants", class_stem ~ "Models", class_stem ~ "Protocols", class_stem ~ "Service", class_stem ~ "Types", class_stem ~ "Utilities", "c", "config", "m", "p", alias, "s", "settings", "t", "u"] + inherited_facets -%}
 {%- set public_export_rows = '    "' ~ (public_exports | sort(case_sensitive=true) | join('",\n    "')) ~ '",' -%}
 {%- macro facade_import(module_name, export_name, export_alias) -%}

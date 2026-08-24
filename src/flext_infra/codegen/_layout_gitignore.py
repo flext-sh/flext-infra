@@ -99,14 +99,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         workspace_root = FlextInfraWorkspaceDetector.resolve_workspace_root(project_dir)
         if workspace_root.failure:
             return None
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            workspace_root.value
-        )
-        if workspace.failure:
-            return None
-        target = FlextInfraWorkspaceDetector.conform_target(
-            project_dir, workspace.value
-        )
+        target = FlextInfraWorkspaceDetector.conform_target(project_dir)
         if target.failure:
             return None
         return target.value.make_profile

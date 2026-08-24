@@ -408,8 +408,7 @@ class FlextInfraConfigModels:
         ci_trigger_branches: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
-                default=(),
-                description="Ordered, deduplicated blocking CI branches",
+                default=(), description="Ordered, deduplicated blocking CI branches"
             ),
         ] = ()
         has_devcontainer: Annotated[
@@ -936,8 +935,7 @@ class FlextInfraConfigModels:
         """
 
         draft_pr: Annotated[
-            bool,
-            m.Field(description="Treat GitHub draft PRs as work-in-progress"),
+            bool, m.Field(description="Treat GitHub draft PRs as work-in-progress")
         ]
         branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -1810,10 +1808,7 @@ class FlextInfraConfigModels:
             """Every anchor must name a target, or the tool rewrites nothing."""
             for anchor in (*self.version_variables, *self.version_toml):
                 if ":" not in anchor:
-                    msg = (
-                        "release version anchor must be '<file>:<target>': "
-                        f"{anchor}"
-                    )
+                    msg = f"release version anchor must be '<file>:<target>': {anchor}"
                     raise ValueError(msg)
             return self
 

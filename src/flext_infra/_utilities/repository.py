@@ -122,22 +122,12 @@ class FlextInfraUtilitiesRepository:
 
     @staticmethod
     def repository_conform_target(
-        repository_root: Path, workspace: m.Infra.WorkspaceSpec | None = None
+        repository_root: Path,
     ) -> p.Result[m.Infra.RepositoryConformTarget]:
         """Return typed effective policy inferred from live repository topology."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-        resolved_workspace = workspace
-        if resolved_workspace is None:
-            loaded = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
-            if loaded.failure:
-                return r[m.Infra.RepositoryConformTarget].fail(
-                    loaded.error or "workspace manifest load failed"
-                )
-            resolved_workspace = loaded.value
-        return FlextInfraWorkspaceDetector.conform_target(
-            repository_root, resolved_workspace
-        )
+        return FlextInfraWorkspaceDetector.conform_target(repository_root)
 
 
 __all__: tuple[str, ...] = ("FlextInfraUtilitiesRepository",)

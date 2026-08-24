@@ -385,7 +385,7 @@ class TestCodegenConform:
             has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}",
         )
         tm.that(first_result.plan.request.root, eq=root.resolve())
-        tm.that((root / "config" / "workspace.yaml").is_file(), eq=True)
+        tm.that((root / "config" / "workspace.yaml").is_file(), eq=False)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
         tm.that((root / ".env.example").is_file(), eq=True)
         package_name = name.replace("-", "_")

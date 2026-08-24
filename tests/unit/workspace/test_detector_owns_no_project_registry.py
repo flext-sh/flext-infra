@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, u
+from flext_infra import config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
@@ -54,38 +54,18 @@ class TestsDetectorOwnsNoProjectRegistry:
         tm.that(spec.repository.path, eq=Path())
         tm.that(spec.members, empty=True)
 
-    def test_declared_manifest_remains_the_topology_ssot(self, tmp_path: Path) -> None:
-        """When the project ships a manifest, that manifest wins."""
-        root = _standalone(tmp_path / "manifested", name="manifested")
+    def test_git_submodules_remain_the_topology_ssot(self, tmp_path: Path) -> None:
+        """When the project declares submodules in .gitmodules, Git topology wins."""
+        root = _standalone(tmp_path / "workspace-repo", name="workspace-repo")
         provider = config.Infra.codegen.providers[0]
-        (root / "config").mkdir()
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
-                    "name": "manifested",
-                    "repository": {
-                        "name": "manifested",
-                        "distribution": "manifested",
-                        "provider": provider.name,
-                        "url": f"https://github.com/{provider.name}/manifested.git",
-                        "path": ".",
-                        "role": "workspace-root",
-                        "state": "active",
-                        "checkout": "root",
-                        "codegen": "conform",
-                        "package": True,
-                        "editable": False,
-                        "read_only": False,
-                    },
-                    "members": [],
-                    "exclusions": [],
-                },
-            )
+        (root / ".gitmodules").write_text(
+            f'[submodule "member-pkg"]\n\tpath = member-pkg\n\turl = https://github.com/{provider.name}/member-pkg.git\n\tbranch = {provider.branch}\n',
+            encoding="utf-8",
         )
+        _standalone(root / "member-pkg", name="member-pkg")
 
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(spec.name, eq="manifested")
-        tm.that(spec.repository.distribution, eq="manifested")
+        tm.that(spec.name, eq="workspace-repo")
+        tm.that(len(spec.members), eq=1)
+        tm.that(spec.members[0].name, eq="member-pkg")

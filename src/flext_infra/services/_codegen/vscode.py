@@ -247,21 +247,12 @@ class FlextInfraCodegenVscodeMixin:
         if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
             return base_entries
         derived = list(base_entries)
-        manifest = (
-            workspace_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        )
-        if manifest.is_file():
-            loaded = u.Cli.yaml_safe_load(manifest)
-            if loaded.success:
-                members = loaded.value.get("members")
-                if isinstance(members, list):
-                    for member in members:
-                        if not isinstance(member, Mapping):
-                            continue
-                        path = member.get("path")
-                        if not isinstance(path, str) or path in {"", "."}:
-                            continue
-                        derived.append(f"./{path}/.venv")
+        declared = u.Infra.git_declared_submodule_paths(workspace_root)
+        if declared.success:
+            for path in declared.value:
+                posix_path = path.as_posix()
+                if posix_path and posix_path != ".":
+                    derived.append(f"./{posix_path}/.venv")
         return tuple(dict.fromkeys(derived))
 
 

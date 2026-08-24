@@ -16,10 +16,10 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
-# Member allowlist patterns are DERIVED from the workspace manifest, so the
+# Member allowlist patterns are DERIVED from the workspace topology, so the
 # expectation is built from the fixture's own members instead of freezing the
 # glob the generator happens to emit today.
-_WORKSPACE_ONLY_MARKERS = ("!/config/workspace.yaml",)
+_WORKSPACE_ONLY_MARKERS = ("!scripts/",)
 _BEADS_CONFIG = "!.beads/config.yaml"
 # The bd gate lock is per-run runtime state written at the repository root
 # (not inside .beads/), so the .beads/* rules never reach it. Every profile

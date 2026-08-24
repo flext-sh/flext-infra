@@ -269,9 +269,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 current_repository = current_matches[0]
         if self.initial_workspace is None:
-            current_target_result = FlextInfraWorkspaceDetector.conform_target(
-                root, workspace
-            )
+            current_target_result = FlextInfraWorkspaceDetector.conform_target(root)
             if current_target_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     current_target_result.error
@@ -357,7 +355,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 target = current_target
             else:
                 target_result = FlextInfraWorkspaceDetector.conform_target(
-                    repository_root, workspace
+                    repository_root
                 )
                 if target_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
@@ -371,6 +369,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # catalog. Project creation is the only template-rendering lifecycle.
             if (
                 self.initial_workspace is not None
+                and workspace.project is not None
                 and repository.name == workspace.repository.name
             ):
                 repository_plan = self._plan_scaffold_repository(
@@ -926,34 +925,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             destination = entry.destination.format(
                 package_name=context.package_name, ns=context.ns
             )
-            if entry.delegate == "manifest":
-                # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner):
-                # template rendering retains the canonical context instance.
-                rendered_manifest = u.Cli.template_render(
-                    templates_root / entry.source, context
-                )
-                if rendered_manifest.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        rendered_manifest.error
-                        or f"manifest render failed: {entry.source}"
-                    )
-                manifest_validation = self._validate_initial_manifest(
-                    rendered_manifest.value, workspace
-                )
-                if manifest_validation.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        manifest_validation.error
-                        or "initial workspace manifest validation failed"
-                    )
-                manifest_plan = self._file_plan(
-                    root, destination, rendered_manifest.value
-                )
-                if manifest_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        manifest_plan.error or "workspace manifest planning failed"
-                    )
-                planned.append(manifest_plan.value)
-                continue
             if entry.delegate != "render":
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
@@ -1462,14 +1433,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         for repository in workspace.members:
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
-                return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].fail(
-                    provider.error or f"member provider is invalid: {repository.name}"
-                )
+                # If provider cannot be resolved, use the fleet default provider
+                resolved_provider = codegen.providers[0]
+            else:
+                resolved_provider = provider.value
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
                     repository=repository,
                     branch=u.Infra.resolve_integration_branch(
-                        workspace, provider.value
+                        workspace, resolved_provider
                     ),
                 )
             )
@@ -2016,28 +1988,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         )
 
-    @classmethod
-    def _validate_initial_manifest(
-        cls, rendered: str, expected: m.Infra.WorkspaceSpec
-    ) -> p.Result[bool]:
-        """Validate rendered manifest syntax, schema, model, and exact payload."""
-        parsed = u.Cli.yaml_parse(rendered)
-        if parsed.failure:
-            return r[bool].fail(parsed.error or "workspace manifest YAML is invalid")
-        schema = cls._package_root() / "schemas" / c.Infra.WORKSPACE_SCHEMA_FILENAME
-        schema_result = u.Cli.schema_validate(parsed.value, schema)
-        if schema_result.failure:
-            return r[bool].fail(
-                schema_result.error or "workspace manifest schema is invalid"
-            )
-        try:
-            validated = m.Infra.WorkspaceSpec.model_validate(parsed.value)
-        except c.ValidationError as exc:
-            return r[bool].fail_op("workspace manifest model validation", exc)
-        if validated != expected:
-            return r[bool].fail("rendered workspace manifest differs from input model")
-        return r[bool].ok(True)
-
     def _plan_existing_custom(
         self,
         root: Path,
@@ -2241,7 +2191,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"refs/remotes/origin/{target.baseline_branch}"
                 ),
             )
-            fetch_result = u.Cli.run_raw(fetch_command, cwd=root)
+            fetch_result = u.Cli.run_raw(
+                fetch_command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT
+            )
             if fetch_result.failure or fetch_result.value.exit_code != 0:
                 # Soft: ancestry still validates against the local tracking ref
                 # when present; hard-fail only if that ref is missing below.
@@ -2511,10 +2463,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # standalone's workspace.yaml is its own manifest, so ledger_* there
         # still apply (mro-6fca). Attached standalones share the MEMBER
         # profile only for routing; they are not parent-manifest members.
-        if (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-            and not target.attached_standalone
-        ):
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER:
             return target.canonical_project_name, target.canonical_project_name
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
@@ -2541,13 +2490,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         document = tomllib.loads(raw)
         tools = document.get("tools", {})
         for key, value in tools.items():
-            if key == "bd" or (
-                key.startswith("github:") and "beads" in key
-            ):
+            if key == "bd" or (key.startswith("github:") and "beads" in key):
                 if isinstance(value, str):
                     return value
-                if isinstance(value, dict) and isinstance(value.get("version"), str):
-                    return value["version"]
+                if isinstance(value, dict):
+                    raw_version = value.get("version")
+                    if isinstance(raw_version, str):
+                        return raw_version
         return None
 
     @staticmethod
@@ -2720,9 +2669,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pass
             case _:
                 actual_version = ""
-        accepted_version = (
-            local_pin if local_pin is not None else plan.expected_version
-        )
+        accepted_version = local_pin if local_pin is not None else plan.expected_version
         if actual_version != accepted_version:
             return r[bool].fail(
                 "mise-managed Beads CLI version mismatch: "

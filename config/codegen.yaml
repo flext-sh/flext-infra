@@ -1114,9 +1114,6 @@ Infra:
       - path: base.mk
         owner: make
         policy: delegated
-      - path: config/workspace.yaml
-        owner: workspace
-        policy: manual
       - path: custom.mk
         owner: custom
         policy: create-only
@@ -1265,10 +1262,6 @@ Infra:
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
-        - name: "Workspace topology manifest"
-          profiles: [workspace-root]
-          patterns:
-            - "!/config/workspace.yaml"
         - name: "Dispatcher-based command surface (Make SSOT)"
           profiles: [workspace-root]
           patterns:
@@ -1829,11 +1822,6 @@ Infra:
           destination: pyproject.toml
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
-          overwrite: false
-        - source: base/config/workspace.yaml.j2
-          destination: config/workspace.yaml
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: manifest
           overwrite: false
         - source: base/src/__init__.py.j2
           destination: "src/{package_name}/__init__.py"

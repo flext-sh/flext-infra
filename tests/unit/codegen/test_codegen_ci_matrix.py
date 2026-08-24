@@ -318,12 +318,7 @@ class TestCodegenCiMatrix:
     ) -> None:
         """Blocking CI covers integration; matrix defaults to dispatch-only."""
         root = self._render_project(tmp_path / "external")
-        manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
-        repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
-        provider_name = str(repository["provider"])
-        provider = next(
-            p for p in config.Infra.codegen.providers if p.name == provider_name
-        )
+        provider = config.Infra.codegen.providers[0]
         branch = provider.branch
         blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"

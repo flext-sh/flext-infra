@@ -8,42 +8,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import c, config
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import m, p
+    from flext_infra import m
 
 
 class FlextInfraWorkspaceGovernanceMixin:
-    """Derive member attachment and persistent-state ownership from typed SSOTs."""
-
-    @staticmethod
-    def _declares_attached_standalone(repository_root: Path) -> p.Result[bool]:
-        """Read the ``[tool.flext.workspace] attached`` opt-in marker."""
-        metadata = u.read_project_metadata(repository_root)
-        if metadata.failure:
-            # An absent or unreadable pyproject carries no opt-in signal; the
-            # manifest and Git topology remain the authoritative classifiers.
-            return r[bool].ok(False)
-        return r[bool].ok(metadata.value.flext.workspace.attached)
-
-    @staticmethod
-    def _declares_workspace_toolchain(workspace_root: Path) -> bool:
-        """Require a live infra checkout shipping ``base.mk``.
-
-        The checkout is located on disk, not looked up in a project catalog:
-        flext-infra owns generic policy, never the map of where each project
-        lives. A workspace root either has the toolchain checked out beside it
-        (or at its own root) or it does not.
-        """
-        candidates = (
-            workspace_root / c.Infra.BASE_MK,
-            workspace_root / config.Infra.name / c.Infra.BASE_MK,
-        )
-        return any(candidate.is_file() for candidate in candidates)
+    """Derive persistent-state ownership from typed SSOTs."""
 
     @staticmethod
     def persistent_state_artifacts(

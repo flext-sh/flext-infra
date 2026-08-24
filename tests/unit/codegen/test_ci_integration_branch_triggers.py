@@ -1,3 +1,5 @@
+"""CI integration branch trigger rendering tests."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,6 +29,8 @@ def _render_ci(*, repository_branch: str) -> str:
         github_actions=codegen.github_actions,
         make=codegen.make,
         checkout_submodules=codegen.checkout_submodules,
+        dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
+        workspace_repositories=(),
     )
     return tm.ok(cli_u.Cli.template_render(_CI_TEMPLATE, spec))
 

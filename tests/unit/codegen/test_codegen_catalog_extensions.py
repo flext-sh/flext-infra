@@ -484,13 +484,6 @@ class TestsCodegenCatalogExtensions:
             )
         )
         tm.ok(u.Cli.run_checked(["rm", "-rf", bare_repo.as_posix()]))
-        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        manifest_path.parent.mkdir(parents=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                manifest_path, workspace.model_dump(mode="json", exclude_none=True)
-            )
-        )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=tmp_path,

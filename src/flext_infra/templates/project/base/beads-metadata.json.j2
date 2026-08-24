@@ -1,6 +1,6 @@
 {
-  "database": {{ server.backend | tojson }},
-  "backend": {{ server.backend | tojson }},
+  "database": {{ server.backend | default('dolt') | tojson }},
+  "backend": {{ server.backend | default('dolt') | tojson }},
   "dolt_mode": {{ server.mode | tojson }},
   "dolt_database": {{ database | tojson }},
   "dolt_server_host": {{ server.host | tojson }},

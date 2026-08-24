@@ -40,10 +40,11 @@ def infra_public_root() -> Iterator[ModuleType]:
         for name, module in sys.modules.items()
         if name == "pathlib" or name.startswith("pathlib.")
     }
-    wrapper_snapshots = {
-        name: sys.modules.pop(name, None)
-        for name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES
-    }
+    wrapper_snapshots: dict[str, ModuleType] = {}
+    for name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
+        popped = sys.modules.pop(name, None)
+        if popped is not None:
+            wrapper_snapshots[name] = popped
     try:
         for export_name in c.Tests.INFRA_PUBLIC_ROOT_EXPORTS:
             _ = infra_pkg.__dict__.pop(export_name, None)
@@ -51,14 +52,11 @@ def infra_public_root() -> Iterator[ModuleType]:
     finally:
         for name, module in stdlib_snapshots.items():
             sys.modules[name] = module
-        # Why (review #355): a wrapper the reload imported but that was absent
-        # before the fixture must be dropped, not kept — leaving it would leak
-        # the reloaded module identity into later tests.
-        for name, module in wrapper_snapshots.items():
-            if module is None:
-                sys.modules.pop(name, None)
+        for name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
+            if name in wrapper_snapshots:
+                sys.modules[name] = wrapper_snapshots[name]
             else:
-                sys.modules[name] = module
+                sys.modules.pop(name, None)
 
 
 def _is_collectable_test_module(collection_path: Path) -> bool:

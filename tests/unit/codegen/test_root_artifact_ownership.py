@@ -178,10 +178,7 @@ class TestsRootArtifactOwnership:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(FlextInfraCodegenConform.execute_request(request, workspace))
-        manual = {
-            "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
-            "custom.mk": b"# manual project extension\n",
-        }
+        manual = {"custom.mk": b"# manual project extension\n"}
         (root / "custom.mk").write_bytes(manual["custom.mk"])
         configured_policy = next(
             item.policy

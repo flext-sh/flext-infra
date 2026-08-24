@@ -536,6 +536,12 @@ class FlextInfraUtilitiesPyprojectConform:
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
+        # Remove obsolete workspace.attached marker from legacy pyprojects
+        flext = u.Cli.toml_table_child(tool, "flext")
+        if flext is not None:
+            workspace_tbl = u.Cli.toml_table_child(flext, "workspace")
+            if workspace_tbl is not None:
+                u.Cli.toml_remove_key_if_present(workspace_tbl, "attached")
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
