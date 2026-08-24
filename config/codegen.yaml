@@ -1539,6 +1539,14 @@ Infra:
             - ".beads/.*"
             - "!.beads/config.yaml"
             - ".beads/proxieddb/"
+            # The bd gate lock is per-run runtime state written at the
+            # REPOSITORY ROOT, not inside .beads/, so the .beads/* rules above
+            # never reach it. Every profile runs bd, so every profile must
+            # ignore it. Without this the lock reappears after every bd
+            # invocation and dirties the checkout -- in a submodule that also
+            # dirties the superproject gitlink, which is enough to fail
+            # `make release WHAT=status` and block the release verb outright.
+            - ".beads.gate.lock"
             - ".dolt/"
             - "*.db"
             - ".beads-credential-key"

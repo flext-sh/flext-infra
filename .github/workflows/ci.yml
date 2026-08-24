@@ -12,17 +12,17 @@ name: CI
 "on":
   push:
     branches:
-- dev
-- develop
-- 0.12.0-dev
-- main
-pull_request:
+      - dev
+      - develop
+      - 0.12.0-dev
+      - main
+  pull_request:
     branches:
-- dev
-- develop
-- 0.12.0-dev
-- main
-types: [opened, synchronize, reopened, ready_for_review]
+      - dev
+      - develop
+      - 0.12.0-dev
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===

@@ -151,7 +151,7 @@ _ALLOWED_WHATS_gen := check all apply $(shell sed -n 's/^_custom_gen_\([a-z0-9_-
 _ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_basemk := generate $(shell sed -n 's/^_custom_basemk_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 
-CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
+CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
@@ -787,9 +787,7 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# Under CI=Y the run is narrowed to make.ci.check_gates --
-# the strict complement of make.ci.local_check_gates, derived at the config
-# owner so the two contexts can never overlap nor leave a gate unowned.
+# CI=Y omits make.ci.local_check_gates (ruff + pyrefly).
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -798,18 +796,15 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $(CI))" = "Y" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			owned=0; \
-			if [ "$$gate" = "lint" ]; then owned=1; fi; \
-			if [ "$$gate" = "pyright" ]; then owned=1; fi; \
-			if [ "$$gate" = "security" ]; then owned=1; fi; \
-			if [ "$$gate" = "markdown" ]; then owned=1; fi; \
-			if [ "$$gate" = "smells" ]; then owned=1; fi; \
-			if [ "$$owned" -eq 1 ]; then \
+			skip=0; \
+			if [ "$$gate" = "lint" ]; then skip=1; fi; \
+			if [ "$$gate" = "pyrefly" ]; then skip=1; fi; \
+			if [ "$$skip" -eq 0 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y runs check gates: lint pyright security markdown smells\n'; \
+		printf 'INFO: CI=Y omits check gates: lint pyrefly\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
