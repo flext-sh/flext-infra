@@ -1621,20 +1621,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
-<<<<<<< HEAD
                     # Why: dependabot.yml.j2 branches on this and the model
                     # declares it, but the .github/ spec never supplied it, so
                     # every render died with "'has_devcontainer' is undefined".
-                    # Read from the checkout rather than declared: Dependabot
-                    # rejects its ENTIRE config when an ecosystem names an
-                    # absent directory, so a stale flag would silently disable
-                    # it for the repository.
-=======
-                    # Dependabot rejects the entire config when an ecosystem
+                    # Dependabot rejects its ENTIRE config when an ecosystem
                     # names a directory that is absent, so this is read from the
                     # checkout rather than declared: a stale flag would silently
                     # disable Dependabot for the repository.
->>>>>>> fix/codegen-restore-and-fork-always-newest
                     has_devcontainer=(repository_root / ".devcontainer").is_dir(),
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules

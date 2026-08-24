@@ -355,13 +355,9 @@ class TestsCodegenMakeEnvironment:
                     "APPLY=Y",
                 ],
                 cwd=project_root,
-<<<<<<< HEAD
-                env={"UV": str(uv), "PATH": str(uv.parent)},
-=======
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
                 env={"UV": str(uv), "PATH": str(bin_dir)},
->>>>>>> fix/codegen-restore-and-fork-always-newest
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )
