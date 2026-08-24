@@ -240,9 +240,19 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
+        # Why (flext-6itas.4): exclude-newer-package merges boolean exclusions
+        # with per-package RFC 3339 cutoffs (b3f3fb75c added
+        # dependency_cooldown_overrides so a floor published after the shared
+        # cooldown can get its own cutoff instead of only a name-only bypass).
+        expected_exclude_newer_package = {
+            package: False
+            for package in toolchain.dependency_cooldown_exclusions
+            if package not in toolchain.dependency_cooldown_overrides
+        }
+        expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
         tm.that(
             document["tool"]["uv"]["exclude-newer-package"],
-            eq=dict.fromkeys(toolchain.dependency_cooldown_exclusions, False),
+            eq=expected_exclude_newer_package,
         )
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
