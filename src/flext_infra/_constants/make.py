@@ -33,6 +33,7 @@ class FlextInfraConstantsMake:
     "GNU Make conditional control flow; structural, never a target declaration."
 
     VERB_CHECK: Final[str] = "check"
+    VERB_CLEAN: Final[str] = "clean"
     VERB_VALIDATE: Final[str] = "validate"
     VERB_PUBLISH: Final[str] = "publish"
     VERB_RUN: Final[str] = "run"
@@ -106,6 +107,35 @@ class FlextInfraConstantsMake:
         "markdown",
         "smells",
     )
+<<<<<<< HEAD
+=======
+    # Gates `make fix APPLY=Y` can actually repair. Running a gate that cannot
+    # fix anything still pays its full cost, and a fix pass built from the
+    # ALLOWED vocabulary once timed out (exit 124) doing exactly that.
+    #
+    # `format` is deliberately absent even though its gate reports can_fix:
+    # verbs own tools by intent. `fmt` owns formatting, `fix` repairs findings,
+    # `check` is read-only — so `format` appears in NO check vocabulary,
+    # neither ALLOWED nor FIXABLE.
+    # `lint` is absent for the same ownership reason as `format`: ruff mutation
+    # belongs to fmt/fix's ruff stage, and this set must stay DISJOINT from the
+    # CI=N gates (lint, pyrefly) so `make fix` under the local token resolves to
+    # a documented no-op instead of colliding with the pre-push gate set.
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = ("markdown", "smells")
+    # Why (mro-v4p5): under CI=Y, make check skips ruff lint + pyrefly — fmt/fix
+    # still mutate via ruff; CI must not re-run those read-only gates.
+    PROJECT_CHECK_GATES_CI_SKIP_VALUES: Final[tuple[str, ...]] = ("lint", "pyrefly")
+    PROJECT_CHECK_GATES_CI_SKIP: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_CI_SKIP_VALUES
+    )
+    PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+    )
+>>>>>>> fix/codegen-restore-and-fork-always-newest
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )

@@ -19,6 +19,7 @@ from flext_infra import config, p
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
@@ -836,7 +837,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_result.error or f"tooling render failed: {pyproject}"
             )
         context_result = self._project_render_context(
-            repository, target, workspace, codegen, tooling_runtime=tooling_result.value
+            repository,
+            target,
+            workspace,
+            codegen,
+            tooling_runtime=tooling_result.value,
+            repository_root=pyproject.parent,
         )
         if context_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -953,6 +959,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             artifact_context = self._artifact_render_context(
                 dist=context.dist,
                 repository=repository,
+                repository_root=root,
                 target=target,
                 workspace=workspace,
                 codegen=codegen,
@@ -1328,6 +1335,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             artifact_context = self._artifact_render_context(
                 dist=repository.distribution,
                 repository=repository,
+                repository_root=root,
                 target=target,
                 workspace=workspace,
                 codegen=codegen,
@@ -1501,6 +1509,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         *,
         dist: str,
         repository: m.Infra.RepositoryRef,
+        repository_root: Path,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
@@ -1612,6 +1621,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
+<<<<<<< HEAD
                     # Why: dependabot.yml.j2 branches on this and the model
                     # declares it, but the .github/ spec never supplied it, so
                     # every render died with "'has_devcontainer' is undefined".
@@ -1619,6 +1629,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # rejects its ENTIRE config when an ecosystem names an
                     # absent directory, so a stale flag would silently disable
                     # it for the repository.
+=======
+                    # Dependabot rejects the entire config when an ecosystem
+                    # names a directory that is absent, so this is read from the
+                    # checkout rather than declared: a stale flag would silently
+                    # disable Dependabot for the repository.
+>>>>>>> fix/codegen-restore-and-fork-always-newest
                     has_devcontainer=(repository_root / ".devcontainer").is_dir(),
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
@@ -1688,6 +1704,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dependency_cooldown_exclusions=(
                         codegen.toolchain.dependency_cooldown_exclusions
                     ),
+                    dependency_cooldown_overrides=(
+                        codegen.toolchain.dependency_cooldown_overrides
+                    ),
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -1712,7 +1731,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if project_context is not None:
             return r[p.Model].ok(project_context)
         context_result = self._project_render_context(
-            repository, target, workspace, codegen, tooling_runtime=tooling_runtime
+            repository,
+            target,
+            workspace,
+            codegen,
+            tooling_runtime=tooling_runtime,
+            repository_root=repository_root,
         )
         if context_result.failure:
             return r[p.Model].fail(
@@ -1781,6 +1805,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
                 ),
+                dependency_cooldown_overrides=(
+                    codegen.toolchain.dependency_cooldown_overrides
+                ),
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1809,6 +1836,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         *,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        repository_root: Path,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
         if workspace.project is None:
@@ -1918,6 +1946,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
                 ),
+                dependency_cooldown_overrides=(
+                    codegen.toolchain.dependency_cooldown_overrides
+                ),
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1936,6 +1967,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,
                 tooling=config.Infra.tooling,
+                # Why: the fleet policy alone is not the effective Ruff contract.
+                # A repository may carry an operator-authorized exemption in its
+                # own config/*.yaml ManagedArtifacts block, and ensure_ruff
+                # composes the two when it edits a pyproject in place. The
+                # template rendered only the fleet map, so a full render silently
+                # dropped the local overlay -- flext-infra's own _rope exemption
+                # disappeared on every conform and returned 12 SLF001 findings
+                # the operator had already ruled on. Compose here so both paths
+                # produce the same effective map.
+                ruff_per_file_ignores=(
+                    FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
+                        repository_root
+                    )
+                ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads_tool_selector=codegen.toolchain.beads.selector,
                 beads_tool_version=codegen.toolchain.beads.version,
@@ -1957,6 +2002,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                uv_version=codegen.toolchain.uv_version,
+                qlty_version=codegen.toolchain.qlty_version,
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
@@ -2078,15 +2125,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 else:
                     pending_line += " " + trimmed
                 continue
+            # A continuation collapses several physical lines into one logical
+            # line, which is reported at the line the continuation STARTED on,
+            # not the line it ended on. Assigning back onto the loop variables
+            # made the two indistinguishable and left the next iteration reading
+            # a value the iterator never produced.
+            logical_line = raw_line
+            logical_number = line_number
             if pending_line is not None:
                 joined = pending_line + " " + raw_line.strip()
                 if joined.rstrip().endswith("\\"):
                     pending_line = joined.rstrip()[:-1].rstrip()
                     continue
-                raw_line = joined
-                line_number = pending_number
+                logical_line = joined
+                logical_number = pending_number
                 pending_line = None
-            logical_lines.append((line_number, raw_line))
+            logical_lines.append((logical_number, logical_line))
         if pending_line is not None:
             if pending_line.startswith(".PHONY:"):
                 return r[bool].fail(
@@ -2412,6 +2466,53 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups=groups,
             editable_repositories=editable_repositories,
         )
+
+    @staticmethod
+    def _absent_file_plan(path: Path, current: str) -> m.Infra.CodegenFilePlan:
+        """Plan the removal of one retired projection."""
+        return m.Infra.CodegenFilePlan(
+            path=path,
+            rendered="",
+            expected_sha256=u.Cli.sha256_content(""),
+            current_sha256=u.Cli.sha256_content(current),
+            changed=True,
+            absent=True,
+        )
+
+    @classmethod
+    def retired_projection_plans(
+        cls, root: Path, profile: c.Infra.MakeProfile
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        r"""Plan removal of generated files this profile must not carry.
+
+        Operator law mro-68rcj: git hooks belong to the workspace ROOT only, and
+        the template already encodes that by excluding workspace-member from its
+        profiles. But a non-matching profile was merely SKIPPED, never retired,
+        so 31 members kept an orphan .pre-commit-config.yaml that ``make gen``
+        neither owned nor removed -- each carrying a stale entry shape that
+        failed with \"Executable `CI=Y` not found\".
+
+        A projection excluded from a profile is retired for that profile. Only
+        files still carrying the generator banner are removed, so a hand-written
+        file that happens to share the name is never touched.
+        """
+        codegen = config.Infra.codegen
+        planned: list[m.Infra.CodegenFilePlan] = []
+        for entry in codegen.templates.entries:
+            if profile in entry.profiles or "{" in entry.destination:
+                continue
+            path = root / Path(entry.destination)
+            if not path.is_file():
+                continue
+            current = u.Cli.files_read_text(path)
+            if current.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    current.error or f"retired projection read failed: {path}"
+                )
+            if c.Infra.TEMPLATE_GENERATED_MARKER not in current.value:
+                continue
+            planned.append(cls._absent_file_plan(path, current.value))
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
     def ledger_identity_for_target(

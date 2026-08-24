@@ -66,14 +66,14 @@ class TestCodegenUvExcludeNewerOverlay:
     def test_absent_overlay_keeps_the_fleet_cooldown(self) -> None:
         """Without the overlay the generated cooldown is the fleet window."""
         rendered = self._render(overlay_window=None)
-        fleet = config.Infra.codegen.toolchain.uv_exclude_newer
+        fleet: str = config.Infra.codegen.toolchain.uv_exclude_newer
         tm.that(rendered, has=f'exclude-newer = "{fleet}"')
 
     def test_overlay_pins_the_absolute_cutoff(self) -> None:
         """A declared overlay replaces the rolling fleet default."""
         pinned = "2026-08-05T00:00:00Z"
         rendered = self._render(overlay_window=pinned)
-        fleet = config.Infra.codegen.toolchain.uv_exclude_newer
+        fleet: str = config.Infra.codegen.toolchain.uv_exclude_newer
         tm.that(rendered, has=f'exclude-newer = "{pinned}"')
         tm.that(rendered, lacks=f'exclude-newer = "{fleet}"')
 
