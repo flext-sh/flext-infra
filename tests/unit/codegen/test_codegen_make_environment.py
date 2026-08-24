@@ -253,6 +253,48 @@ class TestsCodegenMakeEnvironment:
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
 
+    @pytest.mark.parametrize("ci_enabled", [False, True])
+    def test_setup_installs_git_hooks_only_outside_configured_ci(
+        self, tmp_path: Path, *, ci_enabled: bool
+    ) -> None:
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        bin_root = tmp_path / "bin"
+        bin_root.mkdir()
+        uv = bin_root / "uv"
+        test_u.Tests.write_executable(
+            uv,
+            "#!/bin/sh\n"
+            'if [ "$1" = "venv" ]; then\n'
+            '  mkdir -p "$3/bin"\n'
+            "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
+            '  chmod +x "$3/bin/python"\n'
+            "fi\n"
+            "exit 0\n",
+        )
+        hook_log = tmp_path / "hook-install.log"
+        test_u.Tests.write_executable(
+            project_root / ".github" / "scripts" / "install-git-hooks.sh",
+            f"#!/bin/sh\nprintf '%s\\n' installed > '{hook_log}'\n",
+        )
+        ci = config.Infra.codegen.make.ci
+        env = {"PATH": f"{bin_root}:{os.environ['PATH']}"}
+        if ci_enabled:
+            env[ci.variable] = ci.value
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "setup"],
+                cwd=project_root,
+                env=env,
+                remove_env_keys=(*test_c.Tests.MAKE_ISOLATION_ENV_KEYS, ci.variable),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(hook_log.exists(), eq=not ci_enabled)
+
     def test_setup_probes_before_repairing_environment(self, tmp_path: Path) -> None:
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
