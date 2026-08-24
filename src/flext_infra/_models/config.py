@@ -388,6 +388,20 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        has_devcontainer: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this repository ships a devcontainer. Dependabot "
+                    "rejects its whole configuration when an ecosystem points "
+                    "at a directory that does not exist, so the devcontainers "
+                    "block is emitted only where one actually exists; "
+                    "otherwise the repository gets a config Dependabot refuses "
+                    "to run at all."
+                ),
+            ),
+        ] = False
         checkout_submodules: Annotated[
             t.NonEmptyStr,
             m.Field(
