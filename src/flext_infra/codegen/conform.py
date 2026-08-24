@@ -1575,11 +1575,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
+            repository_branch = u.Infra.resolve_integration_branch(
+                workspace, provider.value
+            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     make_profile=target.make_profile,
-                    repository_branch=provider.value.branch,
+                    repository_branch=repository_branch,
+                    ci_trigger_branches=tuple(
+                        dict.fromkeys(
+                            (
+                                "dev",
+                                "develop",
+                                "0.12.0-dev",
+                                repository_branch,
+                                "main",
+                            )
+                        )
+                    ),
                     python_version=codegen.toolchain.python_version,
                     dependency_cooldown_days=(
                         codegen.toolchain.dependency_cooldown_days
