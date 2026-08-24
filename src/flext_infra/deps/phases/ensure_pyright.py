@@ -200,10 +200,15 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
-        env_dirs = tuple(
+        configured_env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
             if project_dir is None or (project_dir / env_dir).is_dir()
+        )
+        env_dirs = (
+            configured_env_dirs
+            if project_dir is None
+            else u.Infra.analyzer_python_roots(project_dir, configured_env_dirs)
         )
         source_path = self._project_source_path()
         return (
