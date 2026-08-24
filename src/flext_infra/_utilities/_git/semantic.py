@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 # Why (hq-36xk): `git_is_inside_work_tree` constructs `Repo(...)` and catches
 # InvalidGitRepositoryError / NoSuchPathError / GitCommandNotFound, but only
@@ -13,7 +13,9 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 # `git_identity` fails, so the defect only surfaced from a checkout whose
 # identity resolution was already unusual. Same import set as the sibling
 # semantic_identity mixin, which owns the identical Repo contract.
+# BaseIndexEntry and parse_qsl were missing for the same reason.
 from git import (
+    BaseIndexEntry,
     GitCommandError,
     GitCommandNotFound,
     InvalidGitRepositoryError,
@@ -22,9 +24,6 @@ from git import (
 )
 
 from flext_core import r
-from flext_infra._utilities._git.semantic_submodule import (
-    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
-)
 from flext_infra._utilities._git.repo import git_refresh_binary
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c

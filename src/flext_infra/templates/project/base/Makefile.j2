@@ -128,7 +128,6 @@ override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
 endif
 endif
 endif
-endif
 
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
@@ -170,8 +169,12 @@ FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
 UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dependency_groups }}-groups --{{ make.bootstrap.extras }}-extras
 # End SECTION: infra bootstrap
 
-{% include "base_mypy_limit.mk.j2" %}
-
+{# base_mypy_limit.mk.j2 was removed with the daemon-*/pr verbs it served
+   (mro-x0rau.3, recorded in FlextInfraConstantsBasemk): no generated Makefile
+   includes base.mk, so its recipes were unreachable and the Mypy cap it defined
+   was never invoked. The live cap is enforced in Python by
+   FlextInfraUtilitiesResourceLimits at the gate boundary. The include outlived
+   the file and made every render fail with "not found in search path". #}
 {% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor -%}
@@ -462,9 +465,9 @@ _builtin_help_usage:
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endfor %}
-  @printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
-  @printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
-  @printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
+	@printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
+	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -561,7 +564,7 @@ _builtin_build_artifacts:
 
 # Read-only by contract in every profile: mutation belongs to `make fix
 # APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
-# omits make.ci.check_gates_skip before orchestrating members (same contract as
+# omits make.ci.local_check_gates before orchestrating members (same contract as
 # standalone/member Makefiles and flext_infra check run).
 _builtin_check_all: _builtin_require_environment
 	@if [ -n "$(strip $(APPLYING))" ]; then \
@@ -575,7 +578,7 @@ _builtin_check_all: _builtin_require_environment
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
+			{% for skipped in make.ci.local_check_gates -%}
 			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
 			{% endfor -%}
 			if [ "$$skip" -eq 0 ]; then \
@@ -583,7 +586,7 @@ _builtin_check_all: _builtin_require_environment
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.local_check_gates %} {{ skipped }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
@@ -626,7 +629,7 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI={{ make.ci.value }} omits make.ci.check_gates_skip (ruff + pyrefly).
+# CI={{ make.ci.value }} omits make.ci.local_check_gates (ruff + pyrefly).
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -636,7 +639,7 @@ _builtin_check_all: _builtin_require_environment
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 			skip=0; \
-			{% for skipped in make.ci.check_gates_skip -%}
+			{% for skipped in make.ci.local_check_gates -%}
 			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
 			{% endfor -%}
 			if [ "$$skip" -eq 0 ]; then \
@@ -644,7 +647,7 @@ _builtin_check_all: _builtin_require_environment
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.local_check_gates %} {{ skipped }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \

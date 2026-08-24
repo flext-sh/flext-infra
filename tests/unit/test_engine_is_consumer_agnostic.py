@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, t, u
+from flext_infra import config, p, t, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -28,7 +28,10 @@ from tests import u as test_u
 def owned_provider() -> str:
     """Resolve the engine's own provider from its own catalog entry."""
     engine_root = Path(__file__).resolve().parents[2]
-    metadata: m.ProjectMetadata = tm.ok(u.read_project_metadata(engine_root))
+    # read_project_metadata returns the PROTOCOL type, not the concrete
+    # document model, so annotating the concrete class made the assignment
+    # unsound: a protocol value is not assignable to one implementation of it.
+    metadata: p.ProjectMetadata = tm.ok(u.read_project_metadata(engine_root))
     distribution = metadata.project.name
     entry = test_u.Tests.repository_ref(distribution)
     provider: str = t.Infra.STR_ADAPTER.validate_python(entry.provider)
