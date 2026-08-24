@@ -49,11 +49,28 @@ def git_refresh_binary() -> p.Result[bool]:
 def git_open_repo(repo_root: Path) -> p.Result[Repo]:
     """Open one non-bare worktree repository at ``repo_root`` (module facade)."""
     resolved = repo_root.expanduser().resolve()
+    refreshed = git_refresh_binary()
+    if refreshed.failure:
+        return r[Repo].fail(refreshed.error or "git binary unavailable")
+    # Why (flext-infra-c3h / ai-hub-n1nh.5): callers pass nested files or
+    # directories (agent cwd, open buffer). GitPython defaults to exact-root
+    # open; search parents so git_identity/git_* own ascent and consumers
+    # must not keep a parallel .git walk.
+    # Why (2026-08-07, restored 2026-08-24): search_parent_directories only
+    # ascends from a path that EXISTS — GitPython raises NoSuchPathError
+    # first otherwise. Callers legitimately probe a path that is not on disk
+    # yet (an agent's target file, a sentinel inside a worktree), so ascend
+    # to the nearest existing ancestor before opening; `git rev-parse`
+    # resolves those the same way. This ascent was lost in a later refactor
+    # and every consumer passing a nested file regressed to
+    # "cannot open git repository".
+    anchor = resolved
+    while not anchor.exists() and anchor != anchor.parent:
+        anchor = anchor.parent
+    # Only the repository open can raise; the probe above is pure path work, so
+    # the guarded block stays exactly one statement wide.
     try:
-        refreshed = git_refresh_binary()
-        if refreshed.failure:
-            return r[Repo].fail(refreshed.error or "git binary unavailable")
-        repo = Repo(resolved)
+        repo = Repo(anchor, search_parent_directories=True)
     except (
         GitCommandNotFound,
         ImportError,
