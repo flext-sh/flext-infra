@@ -704,11 +704,18 @@ class FlextInfraConfigModels:
             gate that moves into or out of ``local_check_gates`` moves out of or
             into this set in the same edit, so the two can never overlap nor
             leave a gate unowned.
+
+            The complement is taken over the DEFAULT vocabulary, not ALLOWED.
+            ``format`` is allowed as an explicit ``CHECK_GATES=format`` request
+            but is absent from the default set because it MUTATES files, so
+            deriving over ALLOWED silently scheduled a formatter inside CI's
+            read-only check — the one thing the comment on ``local_check_gates``
+            says must never happen.
             """
             local = frozenset(self.local_check_gates)
             return tuple(
                 gate
-                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
                 if gate not in local
             )
 
