@@ -225,22 +225,30 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace = workspace_result.value
         current_repository = workspace.repository
-        if root != workspace_root:
-            # Why (hq-36xk): membership is a property of repository IDENTITY, not
-            # of where a checkout happens to sit on disk. `root.relative_to()`
-            # asserted the second, so a `git worktree` of a member — the canonical
-            # way to work a lane — failed with "is not in the subpath of" purely
-            # for living outside the superproject tree. `resolve_topology_roots`
-            # already separates the render root from the primary worktree root, so
-            # the member path is derived from the identity root and both layouts
-            # resolve through one rule: in-workspace checkouts have
-            # identity_root == root and are unaffected.
-            identity_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
-            if identity_result.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    identity_result.error or "workspace topology resolution failed"
-                )
-            identity_root = identity_result.value[1]
+        # Why (hq-36xk): membership is a property of repository IDENTITY, not of
+        # where a checkout happens to sit on disk. `root.relative_to()` asserted
+        # the second, so a `git worktree` of a member — the canonical way to work
+        # a lane — failed with "is not in the subpath of" purely for living
+        # outside the superproject tree. `resolve_topology_roots` already
+        # separates the render root from the primary worktree root, so the member
+        # path is derived from the identity root.
+        #
+        # The membership branch is gated on IDENTITY too, not on the render path.
+        # A standalone repository is its own workspace owner, so its primary
+        # worktree IS the workspace root; a lane cut from it renders elsewhere
+        # (root != workspace_root) while still being that same owner. Gating on
+        # the render path sent those lanes down the member lookup, where
+        # `relative_to` yields "." — never a declared member — and conform died
+        # with "repository is not one declared workspace member: .". Comparing
+        # identity to the workspace root keeps owners on the owner path in both
+        # layouts, and still routes true members through the lookup.
+        identity_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
+        if identity_result.failure:
+            return r[m.Infra.CodegenPlan].fail(
+                identity_result.error or "workspace topology resolution failed"
+            )
+        identity_root = identity_result.value[1]
+        if identity_root != workspace_root:
             try:
                 current_path = identity_root.relative_to(workspace_root).as_posix()
             except ValueError as exc:
@@ -951,6 +959,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
+                repository_root=root,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1325,6 +1334,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
+                repository_root=root,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1497,6 +1507,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
+        repository_root: Path,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
@@ -1601,6 +1612,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
+                    # Why: dependabot.yml.j2 branches on this and the model
+                    # declares it, but the .github/ spec never supplied it, so
+                    # every render died with "'has_devcontainer' is undefined".
+                    # Read from the checkout rather than declared: Dependabot
+                    # rejects its ENTIRE config when an ecosystem names an
+                    # absent directory, so a stale flag would silently disable
+                    # it for the repository.
+                    has_devcontainer=(repository_root / ".devcontainer").is_dir(),
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
