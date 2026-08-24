@@ -1584,8 +1584,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
+            # Why: ci.yml.j2 iterates this to build its push/pull_request branch
+            # filters, so an unsupplied value fails the render outright. The
+            # repository's own integration branch is the only branch this layer
+            # can name from resolved data; a fleet-wide list hardcoded here would
+            # make every repository trigger on branches it does not have.
+            ci_trigger_branches = (provider.value.branch,)
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
+                    ci_trigger_branches=ci_trigger_branches,
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=provider.value.branch,

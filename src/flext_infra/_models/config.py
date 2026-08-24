@@ -405,6 +405,13 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Ordered, deduplicated blocking CI branches",
+            ),
+        ] = ()
         has_devcontainer: Annotated[
             bool,
             m.Field(
