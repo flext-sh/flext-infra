@@ -18,17 +18,51 @@ Infra:
       # Security updates are not delayed by Dependabot; match that behavior in
       # uv only for explicitly reviewed security floors.
       dependency_cooldown_exclusions: [cryptography]
-      # Non-Python toolchain pins consumed by generated .mise.toml and CI.
-      kubectl_version: "1.32.0"
-      helm_version: "3.19.4"
-      kind_version: "0.31.0"
-      taplo_version: "0.10.0"
-      ast_grep_version: "0.45.0"
-      gitleaks_version: "8.30.1"
-      tokei_version: "14.0.0"
-      mise_version: "2026.7.16"
+      # Per-package cutoffs for floors published after the shared window. The
+      # cooldown is one date for the whole resolution, so a dependency whose
+      # required floor is newer than that date makes the project unsatisfiable:
+      # uv refuses to resolve and names exclude-newer-package as the remedy.
+      # Switching the cooldown off is the wrong instrument here — the cutoff has
+      # to move to the instant that admits the floor and no further, which keeps
+      # the guard in force for every other release of the same package.
+      # Each entry below was reviewed against the floor that requires it.
+      dependency_cooldown_overrides:
+        # floor >=2.0.6; 2.0.7 published 2026-08-17, after the shared cutoff
+        mkdocstrings-python: "2026-08-18T00:00:00Z"
+        mypy: "2026-08-15T03:04:00Z"
+        django-stubs: "2026-08-13T00:00:00Z"
+        types-setuptools: "2026-08-13T00:00:00Z"
+      # Non-Python toolchain floors consumed by generated .mise.toml and CI.
+      #
+      # VERSION POLICY: patch releases float; minor and major do not.
+      # A patch is a fix within a contract we already validated, so holding it
+      # back only keeps known bugs. A minor or major can change behaviour, so it
+      # must not arrive silently: mise resolves the newest patch inside the
+      # declared minor and STOPS there. When a tool publishes a new minor/major,
+      # the gate that consumes it fails, and that failure is the signal to read
+      # the changelog, validate our code against it, fix what broke, and only
+      # then raise the floor here. An exact "1.2.3" pin cannot express this — it
+      # freezes patches too and turns every upgrade into a manual sweep, which
+      # is why these were drifting versions behind.
+      #
+      # `python` already uses this form ("3.13") and is the reference.
+      # uv (hq-36xk): .mise.toml.j2 pins uv so local and clean-machine setups
+      # agree, but no owner declared the version and every render failed with
+      # "'uv_version' is undefined". The toolchain owns tool versions, so it is
+      # declared here beside its peers, as a minor floor like the rest.
+      uv_version: "0.12"
+      kubectl_version: "1.32"
+      helm_version: "3.19"
+      kind_version: "0.31"
+      taplo_version: "0.10"
+      ast_grep_version: "0.45"
+      gitleaks_version: "8.30"
+      tokei_version: "14.0"
+      # qlty (hq-36xk): same missing-owner defect as uv_version above.
+      qlty_version: "0.642"
+      mise_version: "2026.7"
       # Go runtime required by mise go: backend selectors (beads).
-      go_version: "1.26.5"
+      go_version: "1.26"
       # The shared mro Dolt ledger is at schema v61; the newest official
       # gastownhall release (1.1.2) only knows v53 and fails preflight with
       # "schema version mismatch". Pin the go-module commit that migrated the
@@ -217,6 +251,20 @@ Infra:
 
     make:
       selector: WHAT
+      work_in_progress:
+        # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
+        # draft PRs; merges into dev/develop/0.12.0-dev are blocked for those states.
+        # Restored (hq-36xk): a merge resolution dropped this block while
+        # ci.yml.j2 and .pre-commit-config.yaml.j2 kept consuming it, so no
+        # repository could regenerate its CI.
+        draft_pr: true
+        branch_patterns:
+          - '^wip/'
+          - 'WIP'
+        merge_lock_target_branches:
+          - dev
+          - develop
+          - 0.12.0-dev
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
@@ -238,10 +286,23 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # Why: CI=Y check omits ruff (lint/format) and pyrefly. Local make check
-        # without CI=Y keeps the full default set. Blocking CI never runs make
-        # test (pytest); local/pre_push still own that verb.
-        check_gates_skip: [lint, format, pyrefly]
+        # local_value (hq-36xk): the local arm of the same ternary. Only the
+        # exact `value` disables coverage and narrows CHECK_GATES, so pre-push
+        # sets this instead to keep every gate and the complete pytest+coverage
+        # run. The templates consumed `make.ci.local_value` while no owner
+        # declared it, so no repository could render its pre-commit config.
+        local_value: N
+        # RULING 2 (rules, not a skip-list): local_check_gates is the ONLY
+        # declared set. CI=Y runs its strict complement, derived in
+        # MakeCiSpec.check_gates, so the two contexts can never overlap nor
+        # leave a gate unowned; an unset CI runs every allowed gate. `format`
+        # is not a check gate at all -- it mutates files, so it belongs to
+        # make fmt / make fix APPLY=Y only. This supersedes the earlier
+        # check_gates_skip list, which could drift out of sync with the set it
+        # was meant to complement.
+        # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
+        # full pytest+coverage; absent = testmon incremental.
+        local_check_gates: [lint, pyrefly]
       workflow:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
@@ -257,6 +318,34 @@ Infra:
         environment: isolated
         dependency_groups: all
         extras: all
+      # Stale caches cause FALSE DIAGNOSES — a stale __pycache__ produced a
+      # pydantic ValidationError for source that was already correct, and stale
+      # .reports made a green suite look failed. `clean` owns the full
+      # disposable set as DATA so no recipe hardcodes it and every project
+      # cleans identically.
+      clean:
+        # Directories removed anywhere under the tree.
+        cache_dirs:
+          - __pycache__
+          - .mypy_cache
+          - .pytest_cache
+          - .ruff_cache
+          - .pyrefly_cache
+          - .benchmarks
+          - .hypothesis
+        # Directories removed at the project root only.
+        root_dirs:
+          - build
+          - dist
+          - htmlcov
+          - .reports
+        # Files removed at the project root only.
+        root_files:
+          - .coverage
+          - .testmondata
+        # Trace/profile artifacts removed anywhere under the tree.
+        trace_globs:
+          - "*.pstats"
       docs:
         mutable_actions: [generate, fix]
         reports_dir: .reports/docs
@@ -321,8 +410,8 @@ Infra:
         default_what: all
         # all = incremental testmon run; cache-* maintain .testmondata locally.
         # Coverage is on unless CI=Y (no separate cov verb).
-        # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-        # test in mutation_verbs (fingerprint still ignores .testmondata*).
+        # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without declaring
+        # test apply-guarded (fingerprint still ignores .testmondata*).
         whats: [all, cache-status, cache-clear, cache-checkpoint]
         apply_guarded: false
         accepts_apply: true
@@ -812,6 +901,7 @@ Infra:
             - crg-watch.toml
             - env.example
             - bootstrap.ps1
+            - init-setup.sh
           ignore_globs:
             - skills
             - rules
@@ -1027,6 +1117,15 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
+        # Sections codegen renders, so a conflict in them is resolved by
+        # re-rendering instead of by hand. per-file-ignores renders from
+        # tooling.yaml exactly like the pytest and uv sections; leaving it
+        # undeclared made absorbing an integration base that still carried the
+        # previous lint projection unresolvable through the canonical surface.
+        conflict_sections:
+          - tool.pytest.ini_options
+          - tool.uv
+          - tool.ruff.lint.per-file-ignores
 
     scaffold:
       build:

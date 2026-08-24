@@ -243,36 +243,14 @@ class FlextInfraApplyRenames:
         return r[t.Cli.ResultValue].ok(True)
 
 
+# This module intentionally exposes NO __main__ entry point. The command is
+# already registered canonically in services/cli_routes_refactor.py, bound to
+# m.Infra.ApplyRenamesInput and FlextInfraApplyRenames.execute_command, so it
+# is reachable through the flext-infra CLI like every other verb.
+#
+# The argparse block removed here was a second, parallel route to the same
+# handler: it re-declared the flags the typed model already owns, so the two
+# surfaces could drift apart, and argparse is banned precisely to keep one
+# declaration of a command's inputs. Running this file directly is not a
+# supported surface.
 __all__: list[str] = ["FlextInfraApplyRenames"]
-
-
-def _main() -> None:
-    """CLI entry: parse --csv, --check/--apply, and root paths from argv."""
-    import argparse
-
-    from flext_infra import m
-
-    parser = argparse.ArgumentParser(
-        description="Apply symbol renames from a CSV substitution list."
-    )
-    parser.add_argument("--csv", required=True, help="Path to the old,new CSV file")
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", action="store_true", help="Detect-only (no writes)")
-    mode.add_argument("--apply", action="store_true", help="Rewrite in place")
-    parser.add_argument("roots", nargs="+", help="Root directories to scan")
-    args = parser.parse_args()
-
-    params = m.Infra.ApplyRenamesInput(
-        csv=args.csv,
-        roots=tuple(args.roots),
-        apply=args.apply,
-    )
-    result = FlextInfraApplyRenames.execute_command(params)
-    if result.failure:
-        import sys
-
-        sys.exit(result.error or 1)
-
-
-if __name__ == "__main__":
-    _main()

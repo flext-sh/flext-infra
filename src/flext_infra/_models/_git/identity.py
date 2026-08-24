@@ -68,18 +68,11 @@ class FlextInfraModelsGitIdentity:
             ),
         ]
         has_submodules: Annotated[
-            bool,
-            m.Field(
-                default=False,
-                description="Whether the repository declares any submodules",
-            ),
-        ]
+            bool, m.Field(description="Whether the repository declares any submodules")
+        ] = False
         is_inside_work_tree: Annotated[
-            bool,
-            m.Field(
-                default=False, description="Whether the path is inside a Git work tree"
-            ),
-        ]
+            bool, m.Field(description="Whether the path is inside a Git work tree")
+        ] = False
 
 
 __all__: list[str] = ["FlextInfraModelsGitIdentity"]
