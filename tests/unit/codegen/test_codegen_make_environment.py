@@ -10,7 +10,6 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
 
 
 class TestsCodegenMakeEnvironment:
@@ -405,7 +404,11 @@ class TestsCodegenMakeEnvironment:
                     "APPLY=Y",
                 ],
                 cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{bin_dir / 'uv'}"},
+                # PATH names the DIRECTORY holding the executable, never the
+                # executable itself (hq-36xk): the previous form referenced an
+                # undefined `bin_dir` and appended the binary name, so the entry
+                # could not resolve even once the name was defined.
+                env={"UV": str(uv), "PATH": str(uv.parent)},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )
