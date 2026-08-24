@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c
+from tests import c
 from flext_tests import tm
 from tests import u
 

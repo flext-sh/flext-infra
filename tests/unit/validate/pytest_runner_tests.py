@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import config
+from tests import c, u
 from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 from flext_tests import tm
 

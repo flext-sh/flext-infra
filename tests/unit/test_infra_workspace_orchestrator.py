@@ -7,7 +7,8 @@ from typing import override
 
 import pytest
 
-from flext_infra import c, r, u
+from flext_infra import r
+from tests import c, u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 from tests import m, p, t

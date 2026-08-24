@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, c, m, u
+from flext_infra import FlextInfraGitService
+from tests import c, m, u
 from flext_tests import tm
 from tests import u as test_u
 

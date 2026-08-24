@@ -7,8 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, u
+# Why (hq-36xk): this module uses BOTH production namespaces (c.Infra, m.Infra,
+# config.Infra) and test-only helpers (c.Tests, u.Tests, u.Cli). `tests` re-exports
+# both; `flext_infra` exposes only the production half, so importing `u` from it
+# made every u.Tests/c.Tests access a missing-attribute error.
+from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from tests import c, m, u
 from flext_tests import tm
 
 

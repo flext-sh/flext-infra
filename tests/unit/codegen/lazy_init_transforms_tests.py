@@ -5,7 +5,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p
+from flext_infra import p
+from tests import c
 from flext_tests import tm
 from tests import u
 

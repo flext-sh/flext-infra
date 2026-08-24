@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, u
+from flext_infra import config
+from tests import u
 from flext_tests import tm
 
 

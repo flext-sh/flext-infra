@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_core import e as core_e
-from flext_infra import c, m, u
+from tests import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_tests import tm

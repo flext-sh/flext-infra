@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
+from tests import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm

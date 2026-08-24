@@ -7,7 +7,8 @@ import shutil
 from typing import TYPE_CHECKING
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra import p, u
+from flext_infra import p
+from tests import u
 from flext_tests import tm
 
 if TYPE_CHECKING:
