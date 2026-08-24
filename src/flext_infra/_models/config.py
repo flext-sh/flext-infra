@@ -421,23 +421,15 @@ class FlextInfraConfigModels:
             m.Field(
                 default=False,
                 description=(
-<<<<<<< HEAD
-                    "Whether this repository ships a devcontainer. Dependabot "
-                    "rejects the WHOLE configuration when an ecosystem points "
-                    "at a directory that does not exist, so the devcontainers "
-                    "block is emitted only where one is present; otherwise the "
-                    "repository gets a config Dependabot refuses to run at all. "
-                    "Detected from disk rather than declared: the directory is "
-                    "the fact, and a second declaration could disagree with it."
-=======
                     "Whether the rendered repository ships a .devcontainer "
                     "directory. Dependabot only accepts a devcontainers "
                     "ecosystem entry when one exists; declaring it for a "
                     "repository without that directory makes GitHub reject the "
                     "whole manifest, which silently disables EVERY ecosystem in "
                     "it, security updates included. Derived from the repository "
-                    "on disk (hq-36xk)"
->>>>>>> fix/codegen-restore-and-fork-always-newest
+                    "on disk rather than declared, because the directory is the "
+                    "fact and a second declaration could disagree with it "
+                    "(hq-36xk)"
                 ),
             ),
         ] = False
@@ -634,32 +626,20 @@ class FlextInfraConfigModels:
                 default=None,
                 description=(
                     "Explicit WHAT selector for this step. None lets the verb "
-<<<<<<< HEAD
                     "resolve its own default_what, so a row names a selector "
                     "only when it deliberately departs from that default."
-=======
-                    "resolve its own default_what, so a row only names a "
-                    "selector when it deliberately departs from that default."
->>>>>>> fix/codegen-restore-and-fork-always-newest
                 ),
             ),
         ] = None
         gates_skip: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
-<<<<<<< HEAD
                 default=(),
-=======
->>>>>>> fix/codegen-restore-and-fork-always-newest
                 description=(
                     "Gate ids this step omits when it runs from a hook context "
                     "(pre_commit/pre_push). Local and CI invocations of the "
                     "same verb keep the full default set."
-<<<<<<< HEAD
                 ),
-=======
-                )
->>>>>>> fix/codegen-restore-and-fork-always-newest
             ),
         ] = ()
 
@@ -691,15 +671,9 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(
                 description=(
-<<<<<<< HEAD
                     "Local form of the CI ternary. A hook declares this value "
                     "explicitly so an inherited CI token from the caller can "
                     "never revoke pytest or the type-checker gates."
-=======
-                    "Local arm of the same ternary. Only the exact `value` "
-                    "disables coverage and narrows CHECK_GATES, so pre-push "
-                    "sets this to keep every gate and the full pytest run"
->>>>>>> fix/codegen-restore-and-fork-always-newest
                 )
             ),
         ] = "N"
@@ -713,11 +687,7 @@ class FlextInfraConfigModels:
                     "an unset token runs every allowed gate."
                 )
             ),
-<<<<<<< HEAD
         ] = FlextInfraConstantsMake.PROJECT_CHECK_GATES_LOCAL_VALUES
-=======
-        ] = FlextInfraConstantsMake.PROJECT_CHECK_GATES_CI_SKIP_VALUES
->>>>>>> fix/codegen-restore-and-fork-always-newest
 
         @u.model_validator(mode="after")
         def _validate_local_check_gates(self) -> Self:
@@ -951,7 +921,6 @@ class FlextInfraConfigModels:
             return self
 
     class MakeWorkInProgressSpec(_ConfigContract):
-<<<<<<< HEAD
         """Predicate for work-in-progress branches and draft-PR gate behavior.
 
         A hook that runs the full gate matrix on every push turns an
@@ -959,20 +928,6 @@ class FlextInfraConfigModels:
         bypassing the hook entirely -- which costs more than it saves. The
         predicate is DATA so the escape is declared and auditable rather than
         improvised per-repository with `--no-verify`.
-=======
-        """Predicate for work-in-progress branches and draft PR gate behavior.
-
-        Why (hq-36xk): c82e6dd2b introduced this spec and its `work_in_progress`
-        SSOT block for operator law mro-g3zl2 — pre-push gates skip WIP branches
-        and draft PRs, and merges of those states into protected integration
-        branches are blocked in CI. A later merge resolution dropped the model
-        and the config block while `ci.yml.j2` and `.pre-commit-config.yaml.j2`
-        kept consuming `make.work_in_progress`, so every render failed with
-        "'dict object' has no attribute 'work_in_progress'" and no repository
-        could regenerate its CI. Restored verbatim from c82e6dd2b: the gate is a
-        merge protection, so it is reinstated rather than deleted with its
-        consumers.
->>>>>>> fix/codegen-restore-and-fork-always-newest
         """
 
         draft_pr: Annotated[
