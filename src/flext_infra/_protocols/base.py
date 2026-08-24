@@ -447,9 +447,7 @@ class FlextInfraProtocolsBase(Protocol):
         ...
 
     @staticmethod
-    def ordered_namespace_exports(
-        *, export_names: t.StrSequence
-    ) -> t.StrSequence:
+    def ordered_namespace_exports(*, export_names: t.StrSequence) -> t.StrSequence:
         """Order root-package exports with alias hierarchy preserved."""
         ...
 

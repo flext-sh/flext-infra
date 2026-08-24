@@ -93,17 +93,11 @@ MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# `make` targets a member checkout when PROJECT names a workspace member and
-# WORKSPACE was not overridden on the command line. PROJECT alone used to keep
-# WORKSPACE at the workspace root, so finish looked up lanes in the wrong git
-# primary and failed with "worktree branch is not registered".
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
-override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
-endif
-endif
-endif
+# The member-selection block used to appear TWICE: once here against
+# PROJECT_ROOT and again below against WORKSPACE_ROOT. Both guarded on the same
+# `origin WORKSPACE` condition, so the second `override` always won and the
+# first was dead -- while still contributing its `endif`s, which is how this
+# file ended up with one more `endif` than it had conditionals.
 # === SECTION: WORKSPACE_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
 # Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
@@ -123,7 +117,6 @@ ifeq ($(filter command line override,$(origin WORKSPACE)),)
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
 override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
-endif
 endif
 endif
 endif
@@ -154,15 +147,8 @@ _ALLOWED_WHATS_basemk := generate $(shell sed -n 's/^_custom_basemk_\([a-z0-9_-]
 
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
-<<<<<<< HEAD
-DOCS_ACTIONS := generate fix audit build validate
-
-
-# End SECTION: verb dispatch
-=======
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
->>>>>>> fix/codegen-restore-and-fork-always-newest
 
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
@@ -432,12 +418,6 @@ endef
 
 $(filter-out setup,$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> fix/codegen-restore-and-fork-always-newest
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
@@ -524,9 +504,9 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
-  @printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
-  @printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
-  @printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
+	@printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
+	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -867,13 +847,8 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-<<<<<<< HEAD
-# Read-only fixed-point after `make fix APPLY=Y`, which re-runs the verb at
-# default_what=check. Dual of `ruff check --fix` — never mutate here.
-=======
 # Read-only fixed-point after `make fix APPLY=Y` (strips APPLY and
 # re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
->>>>>>> fix/codegen-restore-and-fork-always-newest
 _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check $(RUFF_PATHS)
 

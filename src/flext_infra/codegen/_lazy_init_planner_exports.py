@@ -63,8 +63,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 context.surface != c.Infra.DIR_TESTS
                 or context.current_pkg == c.Infra.DIR_TESTS
             ) and (
-                c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
-                is not None
+                c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name) is not None
             )
             # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
             # (>5 boolean expressions); retired/generated/test modules are
@@ -98,9 +97,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 )
             )
             if (
-                (not policy.include_in_lazy_init and not root_private_contract)
-                or not module_entry.module_name
-            ):
+                not policy.include_in_lazy_init and not root_private_contract
+            ) or not module_entry.module_name:
                 continue
             # In public src packages, public submodules (without expected_alias) derive
             # from their explicit __all__; non-public/private subpackages auto-discover.

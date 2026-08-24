@@ -217,12 +217,6 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv resolver/runner version")
-        ]
-        qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
-        ]
         go_version: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -931,8 +925,7 @@ class FlextInfraConfigModels:
         """
 
         draft_pr: Annotated[
-            bool,
-            m.Field(description="Treat GitHub draft PRs as work-in-progress"),
+            bool, m.Field(description="Treat GitHub draft PRs as work-in-progress")
         ]
         branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -1015,10 +1008,6 @@ class FlextInfraConfigModels:
                 default_factory=lambda: MappingProxyType({}),
                 description="Per-profile overrides of the custom handler policy",
             ),
-        ]
-        work_in_progress: Annotated[
-            FlextInfraConfigModels.MakeWorkInProgressSpec,
-            m.Field(description="Work-in-progress predicate for gates and merge locks"),
         ]
         project_check_gates: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -1128,8 +1117,29 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def handler_whats(self) -> Mapping[str, tuple[str, ...]]:
-            """Canonical public verb-to-handler matrix consumed by every renderer."""
-            return {verb.name: verb.whats for verb in self.verbs}
+            """Canonical public verb-to-handler matrix consumed by every renderer.
+
+            The check verb's what-selectors are augmented with the full gate
+            vocabulary (check_gates_allowed) so a consumer can address an
+            individual gate with `make check WHAT=<gate>`. The gates are
+            rendered into `_ALLOWED_WHATS_check` by Makefile.j2, and per-gate
+            `_builtin_check_<gate>` handlers are generated to back them.
+            """
+            whats: dict[str, tuple[str, ...]] = {
+                verb.name: verb.whats for verb in self.verbs
+            }
+            # Why (flext-7b5x9): a project declaring its own gates via
+            # project_check_gates (and every built-in gate) must be reachable
+            # through the dispatch validator. Without this augmentation the
+            # check verb's `whats` stays `[all]`, so `make check WHAT=lint`
+            # is rejected as "unsupported" even though CHECK_GATES_ALLOWED
+            # would accept the gate value itself -- the dispatch gate is
+            # strictly narrower than the runtime gate set it claims.
+            if "check" in whats:
+                whats["check"] = tuple(
+                    dict.fromkeys((*whats["check"], *self.check_gates_allowed))
+                )
+            return whats
 
         @m.computed_field()
         @property
@@ -1841,6 +1851,21 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
+        inherited_facets: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Upstream facets re-exported by the project root. The lazy-init "
+                    "public-root planner reads this to decide which upstream "
+                    "namespace names the generated root __init__ may re-export: a "
+                    "facet is inherited when declared here or actually imported "
+                    "from source. Without the field the planner cannot honour a "
+                    "manifest declaration and re-exports only what source imports "
+                    "prove -- which silently drops manifest-declared facets."
+                ),
+            ),
+        ] = ()
         homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
@@ -2061,6 +2086,16 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
+        inherited_facets: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Upstream facets re-exported by the project root; see the "
+                    "RepositoryRef namesake for the lazy-init contract."
+                ),
+            ),
+        ] = ()
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Project description")
         ]
@@ -2095,12 +2130,6 @@ class FlextInfraConfigModels:
         ]
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv resolver/runner version")
-        ]
-        qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-smell scanner version")
         ]
         go_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Go runtime version")

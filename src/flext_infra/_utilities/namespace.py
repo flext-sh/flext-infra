@@ -221,13 +221,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         expected_family = next(
             (name for name in declared_exports if name[:1].isupper()),
-            c.Infra.FAMILY_SUFFIXES.get(family_alias) if family_alias is not None else None,
+            c.Infra.FAMILY_SUFFIXES.get(family_alias)
+            if family_alias is not None
+            else None,
         )
-        family_tokens: t.StrSequence = (
-            (expected_family,)
-            if expected_family
-            else ()
-        )
+        family_tokens: t.StrSequence = (expected_family,) if expected_family else ()
         return family_alias, expected_family, expected_alias, family_tokens
 
     @classmethod
@@ -293,9 +291,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
-    def _resolve_project_prefix(
-        cls, file_path: Path
-    ) -> str:
+    def _resolve_project_prefix(cls, file_path: Path) -> str:
         """Derive the class-stem prefix for one file inside a project."""
         project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
         if project_root is None:
@@ -308,7 +304,11 @@ class FlextInfraUtilitiesCodegenNamespace:
             rel_parts = file_path.relative_to(project_root).parts
         except ValueError:
             return class_stem
-        surface_prefix = rel_parts[0].title() if rel_parts and rel_parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS else ""
+        surface_prefix = (
+            rel_parts[0].title()
+            if rel_parts and rel_parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
+            else ""
+        )
         return f"{surface_prefix}{class_stem}" if surface_prefix else class_stem
 
     @classmethod

@@ -50,9 +50,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         declared_exports = self.rope_workspace.exports(
             module_file,
             export_options=m.Infra.ExportOptions(
-                allow_assignments=True,
-                allow_functions=True,
-                require_explicit_all=True,
+                allow_assignments=True, allow_functions=True, require_explicit_all=True
             ),
         )
         if name in declared_exports:

@@ -966,7 +966,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
-                repository_root=root,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1342,7 +1341,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
-                repository_root=root,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1516,7 +1514,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
-        repository_root: Path,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
@@ -1604,15 +1601,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make_profile=target.make_profile,
                     repository_branch=repository_branch,
                     ci_trigger_branches=tuple(
-                        dict.fromkeys(
-                            (
-                                "dev",
-                                "develop",
-                                "0.12.0-dev",
-                                repository_branch,
-                                "main",
-                            )
-                        )
+                        dict.fromkeys((
+                            "dev",
+                            "develop",
+                            "0.12.0-dev",
+                            repository_branch,
+                            "main",
+                        ))
                     ),
                     python_version=codegen.toolchain.python_version,
                     dependency_cooldown_days=(
@@ -1632,7 +1627,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
-                    has_devcontainer=(target.root / ".devcontainer").is_dir(),
                     private_submodules=codegen.ci_private_submodules.get(dist),
                     ci_matrix_auto_run=target.ci_matrix_auto_run,
                 )
@@ -2001,8 +1995,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
                 tokei_version=codegen.toolchain.tokei_version,
-                uv_version=codegen.toolchain.uv_version,
-                qlty_version=codegen.toolchain.qlty_version,
                 go_version=codegen.toolchain.go_version,
                 author_name=project.author_name,
                 author_email=project.author_email,

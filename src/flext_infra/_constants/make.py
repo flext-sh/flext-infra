@@ -91,10 +91,7 @@ class FlextInfraConstantsMake:
     # program analyses, so CI=Y runs the strict complement of this set -- ruff
     # lint included -- and the two contexts can never overlap nor leave a gate
     # unowned. An unset CI runs every allowed gate.
-    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = (
-        "pyrefly",
-        "mypy",
-    )
+    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = ("pyrefly", "mypy")
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
@@ -111,10 +108,7 @@ class FlextInfraConstantsMake:
     # fmt/fix's ruff stage, and this set must stay DISJOINT from the CI=N gates
     # (lint, pyrefly) so `make fix` under the local token resolves to a
     # documented no-op instead of colliding with the pre-push gate set.
-    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = (
-        "markdown",
-        "smells",
-    )
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = ("markdown", "smells")
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
