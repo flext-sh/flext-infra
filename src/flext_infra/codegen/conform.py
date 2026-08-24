@@ -227,8 +227,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace = workspace_result.value
         current_repository = workspace.repository
         if root != workspace_root:
+            # Why (hq-36xk): membership is a property of repository IDENTITY, not
+            # of where a checkout happens to sit on disk. `root.relative_to()`
+            # asserted the second, so a `git worktree` of a member — the canonical
+            # way to work a lane — failed with "is not in the subpath of" purely
+            # for living outside the superproject tree. `resolve_topology_roots`
+            # already separates the render root from the primary worktree root, so
+            # the member path is derived from the identity root and both layouts
+            # resolve through one rule: in-workspace checkouts have
+            # identity_root == root and are unaffected.
+            identity_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
+            if identity_result.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    identity_result.error or "workspace topology resolution failed"
+                )
+            identity_root = identity_result.value[1]
             try:
-                current_path = root.relative_to(workspace_root).as_posix()
+                current_path = identity_root.relative_to(workspace_root).as_posix()
             except ValueError as exc:
                 return r[m.Infra.CodegenPlan].fail_op(
                     "repository workspace resolution", exc

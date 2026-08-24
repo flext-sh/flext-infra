@@ -55,6 +55,11 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
 
+        version_result = cls._sync_project_version(project, workspace=workspace)
+        if version_result.failure:
+            return r[str].fail(
+                version_result.error or "project version conformance failed"
+            )
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -495,6 +500,29 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
             and cls._is_workspace_root(project_name=project_name, workspace=workspace)
         )
+
+    @staticmethod
+    def _sync_project_version(
+        project: t.Cli.TomlTable, *, workspace: p.Infra.WorkspaceSpec
+    ) -> p.Result[bool]:
+        """Project the manifest-declared release version onto ``[project]``.
+
+        Why (hq-36xk): ``config/workspace.yaml`` declares ``project.version`` and
+        the scaffold template renders it as ``version = "{{ version }}"``, but the
+        template carries ``overwrite: false``, so it only ever applies at scaffold
+        time. On an existing repository this conformance pass owned dependencies,
+        groups, typecheck paths and uv sources while ``[project].version`` was left
+        untouched — so the manifest and the package disagreed silently and a
+        release bump recorded in the SSOT never reached the artifact consumers
+        install. Two owners for one fact is the defect; the manifest is the SSOT,
+        so conformance projects it here.
+        """
+        if workspace.project is None:
+            return r[bool].ok(False)
+        mutated = u.Cli.toml_sync_value(
+            project, c.Infra.VERSION, workspace.project.version
+        )
+        return r[bool].ok(mutated)
 
     @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
