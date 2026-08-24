@@ -356,6 +356,11 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Ordered, deduplicated blocking CI branches"),
+        ]
+
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
