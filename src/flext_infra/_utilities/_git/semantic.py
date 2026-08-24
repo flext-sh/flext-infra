@@ -28,7 +28,12 @@ from git.index.typ import BaseIndexEntry
 
 from flext_core import r
 from flext_infra._utilities._git.repo import git_refresh_binary
-from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra._utilities._git.semantic_refs import (
+    FlextInfraUtilitiesGitSemanticRefsMixin,
+)
+from flext_infra._utilities._git.semantic_submodule import (
+    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
+)
 from flext_infra.constants import c
 from flext_infra.models import m
 
@@ -140,22 +145,25 @@ def _redact_origin_remote(url: str) -> str:
     return urlunsplit((parsed.scheme, netloc, parsed.path, query, fragment))
 
 
-class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
-    """Monomorphic Request/Report Git ops used by work/layout/saga consumers."""
+class FlextInfraUtilitiesGitSemanticMixin(
+    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
+    FlextInfraUtilitiesGitSemanticRefsMixin,
+):
+    """Monomorphic Request/Report Git ops used by work/layout/saga consumers.
 
-    @classmethod
-    def git_list_worktrees(
-        cls, request: m.Infra.GitRepoRequest
-    ) -> p.Result[m.Infra.GitTextReport]:
-        """List registered worktrees in porcelain form."""
-        try:
-            repo = cls._repo(request.repo_root)
-            text = repo.git.worktree("list", "--porcelain")
-        except GitCommandError as exc:
-            return r[m.Infra.GitTextReport].fail(str(exc))
-        except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(f"failed to list Git worktrees: {exc}")
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
+    Why (hq-36xk): the semantic surface is a chain, not a star:
+      Identity < Submodule < Index(Paths) < Worktree < Refs
+      so inheriting SubmoduleMixin + RefsMixin brings the full surface
+      (identity / submodule / index / paths / publish / worktree / refs) in one
+      composite, which is the single facade u.Infra consumers see.
+
+      Before this lane the class inherited only WorktreeMixin (the legacy
+      removal facade), leaving git_submodule_init / git_staged_gitlink_oid /
+      git_submodule_sections / git_submodule_config_value unreachable -- root
+      cause of the 4 missing-attribute errors downstream. The duplicate
+      git_list_worktrees that lived here was removed in favour of the canonical
+      RefMixin implementation (same body, same OSError handling).
+    """
 
     @classmethod
     def git_check_branch_format(

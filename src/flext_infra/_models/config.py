@@ -666,6 +666,36 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+        @m.computed_field()
+        @property
+        def check_gates(self) -> tuple[str, ...]:
+            """Gates make check runs under the CI ternary (allowed minus skipped).
+
+            Why (hq-36xk): workspace_check.apply_ci_gate_rules reads ci.check_gates
+            and ci.local_check_gates as the owner-set that survives scoping under
+            each arm of the CI/local ternary. They are the COMPLEMENT of
+            check_gates_skip -- the gates that DO run, not the ones skipped.
+            Derived from the projected allow list so the model and the live
+            registry in tests/unit/check/gate_registry_tests.py cannot diverge.
+            """
+            return tuple(
+                gate
+                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+                if gate not in self.check_gates_skip
+            )
+
+        @m.computed_field()
+        @property
+        def local_check_gates(self) -> tuple[str, ...]:
+            """Gates make check runs outside CI (always the full allow list).
+
+            Why (hq-36xk): the local arm of the ternary runs every allowed gate,
+            so it is the allow list wholesale, exposed as the complement of the CI
+            skip so the two live/computed properties in this spec stay
+            structurally symmetric and provably consistent.
+            """
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
@@ -842,6 +872,46 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+    class MakeCleanSpec(_ConfigContract):
+        """Disposable-artifact selector for the `make clean` verb (maintenance/clean.py).
+
+        Why (hq-36xk): FlextInfraCleanService reads config.Infra.codegen.make.clean,
+        and cli_routes_validate routes c.Infra.VERB_CLEAN to that service, but the
+        spec field was never declared -- 3e5fbc747 removed the legacy work-lifecycle
+        spec without rewire-ing these consumers. Declaring the spec here is the
+        single owner-cut; clean.py is now type-correct without any suppression or
+        cast.
+        """
+
+        cache_dirs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(".pytest_cache", "__pycache__", ".mypy_cache", ".ty", "dist"),
+                description="Directory names rglobbed anywhere under the project root",
+            ),
+        ]
+        root_dirs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(".venv", ".mypy_cache", "node_modules", "build"),
+                description="Project-root entries removed only when present",
+            ),
+        ]
+        root_files: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(".coverage", ".coverage.*", "*.egg-info"),
+                description="Root-level glob patterns removed only when matched",
+            ),
+        ]
+        trace_globs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=("*~", "*.pyc", ".coverage*"),
+                description="rglob patterns for trace/profiling artifacts",
+            ),
+        ]
+
     class MakeWorkInProgressSpec(_ConfigContract):
         """Predicate for work-in-progress branches and draft PR gate behavior.
 
@@ -918,7 +988,11 @@ class FlextInfraConfigModels:
         ]
         testmon_cache: Annotated[
             FlextInfraConfigModels.TestmonCacheSpec,
-            m.Field(description="Adaptive testmon Actions cache policy"),
+            m.Field(description="Adaptive pytest-testmon GitHub Actions cache policy"),
+        ]
+        clean: Annotated[
+            FlextInfraConfigModels.MakeCleanSpec,
+            m.Field(description="Disposable-artifact selector for `make clean`"),
         ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],

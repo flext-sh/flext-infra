@@ -37,6 +37,7 @@ class FlextInfraConstantsMake:
     VERB_PUBLISH: Final[str] = "publish"
     VERB_RUN: Final[str] = "run"
     VERB_CHECKS: Final[str] = "checks"
+    VERB_CLEAN: Final[str] = "clean"
 
     # --- Canonical make contract constants (was: class Make) ---
 
@@ -91,6 +92,20 @@ class FlextInfraConstantsMake:
     )
     # Why (mro-v4p5): under CI=Y, make check skips ruff lint + pyrefly — fmt/fix
     # still mutate via ruff; CI must not re-run those read-only gates.
+    # Why (hq-36xk): PROJECT_CHECK_GATES_FIXABLE_VALUES is the Make fix vocabulary
+    # -- read by tests/unit/check/gate_registry_tests.py against the live registry
+    # and by any caller that scopes `make fix`. A gate appears here iff it owns a
+    # real fixer AND make fix -- not make fmt -- is its canonical owner. `format`
+    # is deliberately excluded: ruff-format CAN fix formatting in place, but
+    # make fmt owns that operation, so make fix must never route to it. The tuple
+    # is the source of truth; the test asserts every entry resolves to can_fix=True
+    # and that fixable <= this set, so the two stay consistent by construction.
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "markdown",
+        "canonical-alias",
+        "smells",
+    )
     PROJECT_CHECK_GATES_CI_SKIP_VALUES: Final[tuple[str, ...]] = ("lint", "pyrefly")
     PROJECT_CHECK_GATES_CI_SKIP: Final[str] = ",".join(
         PROJECT_CHECK_GATES_CI_SKIP_VALUES

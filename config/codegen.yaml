@@ -269,6 +269,17 @@ Infra:
         # without CI=Y keeps the full default set. Blocking CI never runs make
         # test (pytest); local/pre_push still own that verb.
         check_gates_skip: [lint, format, pyrefly]
+      # Why (hq-36xk): MakeCleanSpec was declared in the model
+      # (maintenance/clean.py FlextInfraCleanService reads it) but never given
+      # a default entry here, so every config build failed with 'Field required'.
+      # These defaults are the disposable-artifact selector the clean verb owns;
+      # the canonical owner is maintenance/clean.py, the SSOT lives here. Sibling
+      # of workflow at make level, NOT nested in ci (extra=forbid would reject it).
+      clean:
+        cache_dirs: [.pytest_cache, __pycache__, .mypy_cache, .ty, dist]
+        root_dirs: [.venv, .mypy_cache, node_modules, build]
+        root_files: [.coverage, .coverage.*, '*.egg-info']
+        trace_globs: ['*~', '*.pyc', '.coverage*']
       workflow:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
