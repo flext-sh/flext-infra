@@ -581,6 +581,24 @@ class FlextInfraConfigModels:
         """One canonical workflow step and its explicit mutation intent."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
+        # Why (hq-36xk): the hook templates read `step.what` and
+        # `step.gates_skip` to narrow a step's selector and revoke gates it must
+        # not skip. Neither was declared, and Jinja's StrictUndefined rejects an
+        # undeclared attribute even inside `{% if %}`, so rendering the
+        # pre-commit config failed for every repository. Both are genuinely
+        # optional per step, so they are declared with empty defaults: a step
+        # that omits them renders exactly as before.
+        what: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Optional WHAT selector for this step"),
+        ] = None
+        gates_skip: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Check gates this step must not skip, revoked from the default set",
+            ),
+        ] = ()
         apply: Annotated[
             bool,
             m.Field(description="Whether the step supplies the configured apply token"),

@@ -1647,17 +1647,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_members=tuple(
                         item.path.as_posix() for item in workspace.members
                     ),
-                workspace_repositories=members,
-                # Why (hq-36xk): the dependabot template gates its devcontainers
-                # ecosystem on this key, but nothing ever supplied it, so every
-                # render died with "'has_devcontainer' is undefined" and no
-                # repository could regenerate its security manifest. Presence of
-                # the directory is a fact about the repository, so it is measured
-                # here rather than declared: a devcontainers entry for a
-                # repository without .devcontainer makes GitHub reject the whole
-                # dependabot manifest, disabling every ecosystem in it.
-                has_devcontainer=(target.root / ".devcontainer").is_dir(),
-                workspace_gitlinks=gitlinks.value,
+                    workspace_repositories=members,
+                    workspace_gitlinks=gitlinks.value,
                     uv_link_mode=codegen.toolchain.uv_link_mode,
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                     dependency_cooldown_exclusions=(
@@ -1907,6 +1898,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     item.path.as_posix() for item in workspace.members
                 ),
                 workspace_repositories=members,
+                # Why (hq-36xk): the dependabot template gates its devcontainers
+                # ecosystem on this key, but nothing ever supplied it, so every
+                # render died with "'has_devcontainer' is undefined" and no
+                # repository could regenerate its security manifest. Presence of
+                # the directory is a fact about the repository, so it is measured
+                # here rather than declared: a devcontainers entry for a
+                # repository without .devcontainer makes GitHub reject the whole
+                # dependabot manifest, disabling every ecosystem in it.
+                has_devcontainer=(target.root / ".devcontainer").is_dir(),
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,

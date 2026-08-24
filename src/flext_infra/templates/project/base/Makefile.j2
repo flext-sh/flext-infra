@@ -125,7 +125,10 @@ ifeq ($(filter command line override,$(origin WORKSPACE)),)
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
 override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
-endif
+{# Why (hq-36xk): three conditionals, three endifs. A fourth endif sat here as
+   residue of the earlier WORKSPACE block above, which closes its own nesting at
+   line 108. GNU make aborts the whole file with "extraneous 'endif'", so no
+   verb could run from a freshly generated Makefile. #}
 endif
 endif
 endif
@@ -462,9 +465,9 @@ _builtin_help_usage:
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endfor %}
-  @printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
-  @printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
-  @printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
+	@printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
+	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
