@@ -342,9 +342,29 @@ class TestCodegenConform:
 
         tm.that(merging_current.ancestor, eq=True)
 
-    # This end-to-end scenario scaffolds a project and runs its console entry
-    # point in a fresh interpreter. The slow marker opts into the single
-    # config-owned slow-item budget; tests must not restate that policy locally.
+    @staticmethod
+    def _seed_minimal_python_project(root: Path) -> None:
+        dist = u.Tests.repository_ref(config.Infra.name).distribution
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / "flext_infra" / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+
+    # Exemplar: a genuine end-to-end scenario -- scaffold a project, then run
+    # its console entry point in a fresh interpreter -- legitimately costs more
+    # than the suite-wide 30s budget, because importing the generated package's
+    # dependency chain dominates. Declaring the real budget with an explicit
+    # marker and timeout keeps the scenario honest instead of hiding it behind
+    # a global timeout bump that would mask genuine hangs elsewhere.
     @pytest.mark.slow
     @pytest.mark.parametrize(
         ("kind", "name"),
@@ -488,7 +508,7 @@ class TestCodegenConform:
         root by itself and immediately reach a fixed point.
         """
         root = infra_git_repo
-        _seed_infra_package_tree(root)
+        self._seed_minimal_python_project(root)
         # The defect needs a Python root the declarative env_dirs never lists.
         extra_root = "tools"
         module = root / extra_root / "maintenance.py"
@@ -531,7 +551,7 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        _seed_infra_package_tree(root)
+        self._seed_minimal_python_project(root)
         (root / "scripts").mkdir()
 
         result = FlextInfraCodegenConform.execute_request(
