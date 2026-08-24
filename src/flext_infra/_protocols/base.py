@@ -162,12 +162,32 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    @runtime_checkable
+    class ProjectSpec(Protocol):
+        """Manifest-declared project metadata consumed by conformance."""
+
+        @property
+        def version(self) -> str:
+            """Declared release version, the SSOT for ``[project].version``."""
+            ...
+
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
 
         @property
         def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
             """Workspace root repository."""
+            ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsBase.ProjectSpec | None:
+            """Manifest project metadata; ``None`` outside a materialized tree.
+
+            hq-36xk projects the declared version onto ``[project]`` during
+            conformance, so the protocol must expose the fact the model already
+            carries -- otherwise the only consumer reads through a contract that
+            does not admit it.
+            """
             ...
 
         @property
