@@ -2,13 +2,13 @@
 # The typed Make verb/WHAT matrix owns every handler. This file may contain
 # only pre/post hooks for declared handlers; it cannot create or shadow one.
 
-.PHONY: _custom_basemk_generate _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
-_custom_basemk_generate:
-	@set -eu; \
-	output="$(strip $(OUTPUT))"; \
-	if [ -z "$$output" ]; then output="base.mk"; fi; \
-	$(PROJECT_FLEXT_INFRA) basemk generate \
-		--project-name "$(PROJECT_NAME)" --output "$$output"
+.PHONY: _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
+
+# _custom_basemk_generate was removed: `basemk` is not a declared public verb,
+# so the handler was unreachable through _dispatch AND rejected by the custom
+# handler policy, which blocked `codegen conform` outright. base.mk generation
+# is reached through the flext-infra CLI directly. Asserted by
+# test_custom_surface_never_shadows_public_verbs.
 
 _custom_run_cprofile-test:
 	@set -eu; \

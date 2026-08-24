@@ -126,7 +126,6 @@ override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
 endif
 endif
 endif
-endif
 
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
@@ -179,7 +178,6 @@ FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-
 FLEXT_INFRA_SOURCE_ROOT_REL := 
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 # End SECTION: infra bootstrap
-
 
 
 _DEFAULT_help := usage
@@ -511,9 +509,9 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
 
-  @printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
-  @printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
-  @printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
+	@printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
+	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
