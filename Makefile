@@ -93,17 +93,11 @@ MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# `make` targets a member checkout when PROJECT names a workspace member and
-# WORKSPACE was not overridden on the command line. PROJECT alone used to keep
-# WORKSPACE at the workspace root, so finish looked up lanes in the wrong git
-# primary and failed with "worktree branch is not registered".
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
-override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
-endif
-endif
-endif
+# The member-selection block used to appear TWICE: once here against
+# PROJECT_ROOT and again below against WORKSPACE_ROOT. Both guarded on the same
+# `origin WORKSPACE` condition, so the second `override` always won and the
+# first was dead -- while still contributing its `endif`s, which is how this
+# file ended up with one more `endif` than it had conditionals.
 # === SECTION: WORKSPACE_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
 # Rule: WORKSPACE_ROOT is always derived from the current checkout unless the

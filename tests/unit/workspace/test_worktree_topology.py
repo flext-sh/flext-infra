@@ -100,14 +100,15 @@ class TestsWorktreeTopology(WorktreeFixture):
             ).execute()
         )
 
+        child_path = str(child)
         container = epic / c.Infra.WORKTREES_DIRNAME
         tm.that(child, eq=str(container / "child-one"))
-        tm.that(Path(child).is_relative_to(container), where=bool)
+        tm.that(Path(child_path).is_relative_to(container), where=bool)
         tm.that(
             tm.ok(
                 u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=repository))
             ).text,
-            has=f"worktree {child}",
+            has=f"worktree {child_path}",
         )
 
 

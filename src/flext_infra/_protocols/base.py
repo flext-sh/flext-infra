@@ -446,6 +446,11 @@ class FlextInfraProtocolsBase(Protocol):
         """Return the public singleton exported by a runtime module."""
         ...
 
+    @staticmethod
+    def ordered_namespace_exports(*, export_names: t.StrSequence) -> t.StrSequence:
+        """Order root-package exports with alias hierarchy preserved."""
+        ...
+
     @classmethod
     def matches_project_namespace_package(cls, package_name: str) -> bool:
         """Return whether a package is a governed project namespace root."""

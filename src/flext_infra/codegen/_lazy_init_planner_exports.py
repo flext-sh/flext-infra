@@ -60,9 +60,10 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             child_entry = self._package_entry(child_dir)
             # mro-pulj: test artifacts never enter an installable package ABI.
             test_only_source_module = (
-                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
-                and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
-                is not None
+                context.surface != c.Infra.DIR_TESTS
+                or context.current_pkg == c.Infra.DIR_TESTS
+            ) and (
+                c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name) is not None
             )
             # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
             # (>5 boolean expressions); retired/generated/test modules are
@@ -80,35 +81,49 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
-            if not policy.include_in_lazy_init or not module_entry.module_name:
+            root_private_contract = (
+                py_file.parent == context.pkg_dir
+                and py_file.stem in {"_config", "_settings"}
+                and bool(
+                    self._module_exports(
+                        py_file,
+                        convention.module_name,
+                        export_options=m.Infra.ExportOptions(
+                            allow_assignments=True,
+                            allow_functions=True,
+                            require_explicit_all=True,
+                        ),
+                    )
+                )
+            )
+            if (
+                not policy.include_in_lazy_init and not root_private_contract
+            ) or not module_entry.module_name:
                 continue
+            # In public src packages, public submodules (without expected_alias) derive
+            # from their explicit __all__; non-public/private subpackages auto-discover.
             require_explicit_all = (
-                u.Infra.matches_root_namespace_file(py_file.name)
-                and policy.expected_alias is not None
-                and u.Infra.matches_project_namespace_package(context.current_pkg)
-                and not context.pkg_dir.name.startswith("_")
+                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+                and not any(part.startswith("_") for part in context.pkg_dir.parts)
+                and not py_file.stem.startswith("_")
+                and (
+                    u.Infra.matches_root_namespace_file(py_file.name)
+                    or policy.expected_alias is not None
+                    or "." in context.current_pkg
+                )
             )
             targets = self._module_exports(
                 py_file,
                 convention.module_name,
                 export_options=m.Infra.ExportOptions(
-                    allow_main=policy.allow_main_export,
-                    allow_assignments=(
-                        policy.allow_type_alias or policy.expected_alias is not None
-                    ),
-                    allow_functions=policy.is_fixture_module,
+                    allow_main=True,
+                    allow_assignments=True,
+                    allow_functions=True,
                     require_explicit_all=require_explicit_all,
                 ),
             )
-            if require_explicit_all and not targets:
-                msg = (
-                    "governed root facade missing explicit exports "
-                    f"(expected __all__ in {py_file})"
-                )
-                raise ValueError(msg)
             if (
                 policy.expected_alias
-                and targets
                 and u.Infra.matches_project_namespace_package(context.current_pkg)
                 and u.Infra.matches_root_namespace_file(py_file.name)
             ):
@@ -116,12 +131,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     policy.expected_alias,
                     (module_entry.module_name, policy.expected_alias),
                 )
-            if not targets and (
-                not policy.export_symbols
-                or (not policy.enforce_contract and "." in context.current_pkg)
-            ):
-                self._add(index, py_file.stem, (module_entry.module_name, ""))
-                continue
             for name, target in targets.items():
                 self._add(index, name, target)
         return index

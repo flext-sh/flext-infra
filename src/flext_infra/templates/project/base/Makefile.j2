@@ -95,17 +95,15 @@ MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# `make` targets a member checkout when PROJECT names a workspace member and
-# WORKSPACE was not overridden on the command line. PROJECT alone used to keep
-# WORKSPACE at the workspace root, so finish looked up lanes in the wrong git
-# primary and failed with "worktree branch is not registered".
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
-override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
-endif
-endif
-endif
+# The member-selection block used to appear TWICE: once here against
+# PROJECT_ROOT and again below against WORKSPACE_ROOT. Both guarded on the same
+# `origin WORKSPACE` condition, so the second `override` always won and the
+# first was dead -- while still contributing its `endif`s, which is how the
+# generated Makefile ended up with one more `endif` than it had conditionals
+# ("extraneous 'endif'"). The surviving block is the correct one:
+# WORKSPACE_ROOT is derived from the superproject below, whereas PROJECT_ROOT
+# is this checkout, so only the former resolves a member of the governing
+# workspace.
 # === SECTION: WORKSPACE_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
 # Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
@@ -563,9 +561,11 @@ _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 # Read-only by contract in every profile: mutation belongs to `make fix
-# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
-# omits make.ci.local_check_gates before orchestrating members (same contract as
-# standalone/member Makefiles and flext_infra check run).
+# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. Under
+# CI={{ make.ci.value }} the run is narrowed to make.ci.check_gates -- the
+# strict complement of make.ci.local_check_gates, derived at the config owner
+# so the two contexts can never overlap nor leave a gate unowned (same
+# contract as standalone/member Makefiles and flext_infra check run).
 _builtin_check_all: _builtin_require_environment
 	@if [ -n "$(strip $(APPLYING))" ]; then \
 		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
@@ -577,16 +577,16 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.local_check_gates -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
+			owned=0; \
+			{% for owned_gate in make.ci.check_gates -%}
+			if [ "$$gate" = "{{ owned_gate }}" ]; then owned=1; fi; \
 			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
+			if [ "$$owned" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.local_check_gates %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for owned_gate in make.ci.check_gates %} {{ owned_gate }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
@@ -634,7 +634,9 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI={{ make.ci.value }} omits make.ci.local_check_gates (ruff + pyrefly).
+# Under CI={{ make.ci.value }} the run is narrowed to make.ci.check_gates --
+# the strict complement of make.ci.local_check_gates, derived at the config
+# owner so the two contexts can never overlap nor leave a gate unowned.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -643,16 +645,16 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.local_check_gates -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
+			owned=0; \
+			{% for owned_gate in make.ci.check_gates -%}
+			if [ "$$gate" = "{{ owned_gate }}" ]; then owned=1; fi; \
 			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
+			if [ "$$owned" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.local_check_gates %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for owned_gate in make.ci.check_gates %} {{ owned_gate }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \

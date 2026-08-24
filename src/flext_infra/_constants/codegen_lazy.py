@@ -15,6 +15,8 @@ class FlextInfraConstantsCodegenLazy:
 
     MAX_LINE_LENGTH: Final[int] = 88
     "Maximum line length for generated import lines."
+    MAX_ALIAS_LENGTH: Final[int] = 2
+    "Maximum length of a public facade alias."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."
     ROOT_EXPORTS_FILENAME: Final[str] = "_exports.py"

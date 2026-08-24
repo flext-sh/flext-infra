@@ -359,7 +359,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = ".."
+venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]

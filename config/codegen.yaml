@@ -315,7 +315,13 @@ Infra:
         # was meant to complement.
         # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
         # full pytest+coverage; absent = testmon incremental.
-        local_check_gates: [lint, pyrefly]
+        #
+        # The set is the SLOW whole-program type checkers, matching
+        # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
+        # off the fast CI leg, and they are what CI=N exists to own. `lint` is
+        # not here -- ruff is cheap, so making CI skip it buys nothing and
+        # leaves the fast leg without a linter.
+        local_check_gates: [pyrefly, mypy]
       workflow:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans

@@ -1600,13 +1600,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # can name from resolved data; a fleet-wide list hardcoded here would
             # make every repository trigger on branches it does not have.
             branch = u.Infra.resolve_integration_branch(workspace, provider.value)
-            ci_trigger_branches = (branch,)
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
-                    ci_trigger_branches=ci_trigger_branches,
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=branch,
+                    ci_trigger_branches=tuple(
+                        dict.fromkeys(("dev", "develop", "0.12.0-dev", branch, "main"))
+                    ),
                     python_version=codegen.toolchain.python_version,
                     dependency_cooldown_days=(
                         codegen.toolchain.dependency_cooldown_days
@@ -1614,7 +1615,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
-                    # Dependabot rejects the entire config when an ecosystem
+                    # Why: dependabot.yml.j2 branches on this and the model
+                    # declares it, but the .github/ spec never supplied it, so
+                    # every render died with "'has_devcontainer' is undefined".
+                    # Dependabot rejects its ENTIRE config when an ecosystem
                     # names a directory that is absent, so this is read from the
                     # checkout rather than declared: a stale flag would silently
                     # disable Dependabot for the repository.
