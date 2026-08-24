@@ -19,6 +19,13 @@ Infra:
       # uv only for explicitly reviewed security floors.
       dependency_cooldown_exclusions: [cryptography]
       # Non-Python toolchain pins consumed by generated .mise.toml and CI.
+      # uv (hq-36xk): .mise.toml.j2 pins uv so local and clean-machine setups
+      # agree, but no owner declared the version and every render failed with
+      # "'uv_version' is undefined". The toolchain owns tool versions, so it is
+      # declared here beside its peers. Value matches the provisioned runtime.
+      uv_version: "0.12.3"
+      # qlty (hq-36xk): same missing-owner defect as uv_version above.
+      qlty_version: "0.642.0"
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
       kind_version: "0.31.0"
@@ -217,6 +224,20 @@ Infra:
 
     make:
       selector: WHAT
+      work_in_progress:
+        # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
+        # draft PRs; merges into dev/develop/0.12.0-dev are blocked for those states.
+        # Restored (hq-36xk): a merge resolution dropped this block while
+        # ci.yml.j2 and .pre-commit-config.yaml.j2 kept consuming it, so no
+        # repository could regenerate its CI.
+        draft_pr: true
+        branch_patterns:
+          - '^wip/'
+          - 'WIP'
+        merge_lock_target_branches:
+          - dev
+          - develop
+          - 0.12.0-dev
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
@@ -238,6 +259,12 @@ Infra:
       ci:
         variable: CI
         value: Y
+        # local_value (hq-36xk): the local arm of the same ternary. Only the
+        # exact `value` disables coverage and narrows CHECK_GATES, so pre-push
+        # sets this instead to keep every gate and the complete pytest+coverage
+        # run. The templates consumed `make.ci.local_value` while no owner
+        # declared it, so no repository could render its pre-commit config.
+        local_value: N
         # Why: CI=Y check omits ruff (lint/format) and pyrefly. Local make check
         # without CI=Y keeps the full default set. Blocking CI never runs make
         # test (pytest); local/pre_push still own that verb.

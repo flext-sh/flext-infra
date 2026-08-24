@@ -282,9 +282,20 @@ class FlextInfraEnsurePyrightConfigPhase:
         return validated
 
     def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
-        """Venv settings."""
+        """Return the Pyright venv location for this topology.
+
+        Why (hq-36xk): this read `rules.root_venv_path` / `rules.project_venv_path`,
+        neither of which has ever existed on the path-rules model — `git log -S`
+        finds no commit that ever declared them. Every call therefore raised
+        AttributeError and took `deps modernize`, and with it `make check`, down.
+        The model owns exactly one venv fact, `venv_name`; the location is pure
+        topology, which `_modernizer_document` already states: a workspace root
+        owns its venv in place, a member borrows the parent's. Deriving both from
+        the single declared name keeps one owner for the name and one rule for
+        the position.
+        """
         rules = self._tool_config.tools.pyright.path_rules
-        venv_path = rules.root_venv_path if is_root else rules.project_venv_path
+        venv_path = "." if is_root else ".."
         return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
     def _expected_excludes(
