@@ -23,6 +23,10 @@ repos:
       # and write intent cannot leak into an independently declared hook step.
       # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
+      # Stage gates (operator law 2026-08-24): each stage renders only when its
+      # config gate (make.pre_commit / make.pre_push) is enabled. Disabled by
+      # default; re-enable case by case in config/codegen.yaml.
+{% if make.pre_commit %}
 {% for step in make.workflow if "pre_commit" in step.contexts %}
       - id: flext-pre-commit-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
@@ -33,6 +37,8 @@ repos:
         always_run: true
         stages: [pre-commit]
 {% endfor %}
+{% endif %}
+{% if make.pre_push %}
 {% for step in make.workflow if "pre_push" in step.contexts %}
       - id: flext-pre-push-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
@@ -43,3 +49,4 @@ repos:
         always_run: true
         stages: [pre-push]
 {% endfor %}
+{% endif %}

@@ -326,6 +326,11 @@ Infra:
         # not here -- ruff is cheap, so making CI skip it buys nothing and
         # leaves the fast leg without a linter.
         local_check_gates: [pyrefly, mypy]
+      # Why (operator law 2026-08-24): git-hook stages are disabled by default;
+      # the workflow below still declares stage membership so re-enabling is a
+      # one-key change, case by case.
+      pre_commit: false
+      pre_push: false
       workflow:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans

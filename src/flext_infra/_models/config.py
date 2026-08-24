@@ -982,6 +982,24 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeBootstrapSpec,
             m.Field(description="Pre-conform project environment contract"),
         ]
+        # Why (operator law 2026-08-24): git-hook stages are OFF by default and
+        # re-enabled case by case via these config gates. The workflow keeps
+        # owning WHICH steps belong to each stage; the booleans only govern
+        # whether the stage is generated and installed at all.
+        pre_commit: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Generate and install the pre-commit git-hook stage",
+            ),
+        ] = False
+        pre_push: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Generate and install the pre-push git-hook stage",
+            ),
+        ] = False
         workflow: Annotated[
             tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
