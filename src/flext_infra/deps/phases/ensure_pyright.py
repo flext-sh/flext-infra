@@ -200,10 +200,15 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
-        env_dirs = tuple(
+        configured_env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
             if project_dir is None or (project_dir / env_dir).is_dir()
+        )
+        env_dirs = (
+            configured_env_dirs
+            if project_dir is None
+            else u.Infra.analyzer_python_roots(project_dir, configured_env_dirs)
         )
         source_path = self._project_source_path()
         return (
@@ -280,21 +285,6 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.ProjectTypeOverrideConfig.model_validate(raw)
         )
         return validated
-
-    def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
-        """Venv settings.
-
-        Why there is no root/member split: `root_venv_path` and
-        `project_venv_path` were never fields on PathRulesConfig, so every call
-        raised AttributeError and took `codegen conform` down at the pyproject
-        stage. The venv sits at the repository root in BOTH topologies -- a
-        workspace root and a standalone member each own a `.venv` beside their
-        own pyproject -- which is exactly what the config-owned `project_root`
-        already states. One declared value, no branch.
-        """
-        del is_root
-        rules = self._tool_config.tools.pyright.path_rules
-        return {c.Infra.VENV_PATH: rules.project_root, "venv": rules.venv_name}
 
     def _expected_excludes(
         self, project_root: Path | None, analysis_exclusions: t.StrSequence
@@ -476,8 +466,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        for key, value in self._venv_settings(is_root=is_root).items():
-            phase_builder = phase_builder.value(key, value)
+        phase_builder = phase_builder.deprecated("venv").deprecated(c.Infra.VENV_PATH)
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [
