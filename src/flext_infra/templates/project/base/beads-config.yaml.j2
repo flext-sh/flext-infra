@@ -28,8 +28,4 @@ dolt:
   auto-commit: {{ server.auto_commit | tojson }}
 {% if not routing -%}
 prefix: {{ database | tojson }}
-dolt.idle-timeout: {{ server.idle_timeout | tojson }}
-export.auto: {{ server.export_auto | tojson }}
-types.custom: {{ server.types_custom | tojson }}
-types.infra: {{ server.types_infra | tojson }}
 {% endif -%}
