@@ -132,7 +132,7 @@ _ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/
 _ALLOWED_WHATS_setup := environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_deps := check lock upgrade $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_build := artifacts $(shell sed -n 's/^_custom_build_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_check := all $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_WHATS_check := all lint format pyrefly mypy pyright security markdown smells $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_fmt := check all apply $(shell sed -n 's/^_custom_fmt_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_fix := check all apply $(shell sed -n 's/^_custom_fix_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
@@ -145,7 +145,7 @@ _ALLOWED_WHATS_gen := check all apply $(shell sed -n 's/^_custom_gen_\([a-z0-9_-
 _ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_basemk := generate $(shell sed -n 's/^_custom_basemk_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 
-CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
+CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
@@ -172,7 +172,6 @@ FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-
 FLEXT_INFRA_SOURCE_ROOT_REL := 
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 # End SECTION: infra bootstrap
-
 
 
 _DEFAULT_help := usage
@@ -782,9 +781,7 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# Under CI=Y the run is narrowed to make.ci.check_gates --
-# the strict complement of make.ci.local_check_gates, derived at the config
-# owner so the two contexts can never overlap nor leave a gate unowned.
+# CI=Y omits make.ci.local_check_gates (ruff + pyrefly).
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -793,18 +790,15 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $(CI))" = "Y" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			owned=0; \
-			if [ "$$gate" = "lint" ]; then owned=1; fi; \
-			if [ "$$gate" = "pyright" ]; then owned=1; fi; \
-			if [ "$$gate" = "security" ]; then owned=1; fi; \
-			if [ "$$gate" = "markdown" ]; then owned=1; fi; \
-			if [ "$$gate" = "smells" ]; then owned=1; fi; \
-			if [ "$$owned" -eq 1 ]; then \
+			skip=0; \
+			if [ "$$gate" = "lint" ]; then skip=1; fi; \
+			if [ "$$gate" = "pyrefly" ]; then skip=1; fi; \
+			if [ "$$skip" -eq 0 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y runs check gates: lint pyright security markdown smells\n'; \
+		printf 'INFO: CI=Y omits check gates: lint pyrefly\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -816,6 +810,32 @@ _builtin_check_all: _builtin_require_environment
 		exit 2; \
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+
+
+_builtin_check_lint: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "lint" --projects .
+
+_builtin_check_format: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "format" --projects .
+
+_builtin_check_pyrefly: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "pyrefly" --projects .
+
+_builtin_check_mypy: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "mypy" --projects .
+
+_builtin_check_pyright: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "pyright" --projects .
+
+_builtin_check_security: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "security" --projects .
+
+_builtin_check_markdown: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "markdown" --projects .
+
+_builtin_check_smells: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "smells" --projects .
+
 
 _builtin_test_all: _builtin_require_environment
 

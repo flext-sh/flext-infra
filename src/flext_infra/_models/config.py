@@ -378,11 +378,6 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
-        ci_trigger_branches: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Ordered, deduplicated blocking CI branches"),
-        ]
-
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
@@ -410,6 +405,12 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(), description="Ordered, deduplicated blocking CI branches"
+            ),
+        ] = ()
         has_devcontainer: Annotated[
             bool,
             m.Field(
@@ -705,11 +706,18 @@ class FlextInfraConfigModels:
             gate that moves into or out of ``local_check_gates`` moves out of or
             into this set in the same edit, so the two can never overlap nor
             leave a gate unowned.
+
+            The complement is taken over the DEFAULT vocabulary, not ALLOWED.
+            ``format`` is allowed as an explicit ``CHECK_GATES=format`` request
+            but is absent from the default set because it MUTATES files, so
+            deriving over ALLOWED silently scheduled a formatter inside CI's
+            read-only check — the one thing the comment on ``local_check_gates``
+            says must never happen.
             """
             local = frozenset(self.local_check_gates)
             return tuple(
                 gate
-                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
                 if gate not in local
             )
 
@@ -1787,6 +1795,85 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class ReleaseAutomationOverrideSpec(_ConfigContract):
+        """One distribution's deviation from the shared release contract."""
+
+        release_branch: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Branch that produces releases"),
+        ] = None
+        build_command: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Command that produces the artifacts"),
+        ] = None
+        version_variables: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Extra file:variable version anchors"),
+        ] = ()
+
+    class ReleaseAutomationSpec(_ConfigContract):
+        """Automated semantic versioning, owned by the market tool.
+
+        Why: bump_version/parse_semver and the release orchestrator already
+        existed, but nothing DERIVED the bump -- a human passed
+        ``bump=minor`` by hand, which is exactly the judgement the commit
+        history already encodes and the one a human gets wrong. Conventional
+        Commits plus python-semantic-release replace that judgement with a
+        rule, and replace local implementation with a maintained dependency.
+
+        Declared once here so every generated pyproject carries the same
+        contract. A project that genuinely differs is expressed in
+        ``overrides``, never by editing its own pyproject.
+        """
+
+        tool: Annotated[
+            t.NonEmptyStr, m.Field(description="Release automation distribution")
+        ]
+        runner: Annotated[
+            t.NonEmptyStr, m.Field(description="Command runner that invokes the tool")
+        ]
+        commit_parser: Annotated[
+            t.NonEmptyStr, m.Field(description="Commit convention driving the bump")
+        ]
+        release_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch that produces releases")
+        ]
+        version_variables: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="file:variable anchors the tool rewrites"),
+        ]
+        version_toml: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="file:tomlpath anchors the tool rewrites"),
+        ]
+        build_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Command that produces the artifacts")
+        ]
+        tag_format: Annotated[
+            t.NonEmptyStr, m.Field(description="Tag shape, shared with the workflow")
+        ]
+        changelog_file: Annotated[
+            t.NonEmptyStr, m.Field(description="Generated changelog destination")
+        ]
+        overrides: Annotated[
+            Mapping[
+                t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
+            ],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description="Per-distribution deviations from the shared contract",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_anchors(self) -> Self:
+            """Every anchor must name a target, or the tool rewrites nothing."""
+            for anchor in (*self.version_variables, *self.version_toml):
+                if ":" not in anchor:
+                    msg = f"release version anchor must be '<file>:<target>': {anchor}"
+                    raise ValueError(msg)
+            return self
+
     class SgconfigRenderSpec(_ConfigContract):
         """Typed input for the generated ast-grep project config.
 
@@ -2403,6 +2490,14 @@ class FlextInfraConfigModels:
         sgconfig: Annotated[
             FlextInfraConfigModels.SgconfigRenderSpec,
             m.Field(description="Canonical ast-grep project contract for every repo"),
+        ]
+        release: Annotated[
+            FlextInfraConfigModels.ReleaseAutomationSpec,
+            m.Field(
+                description=(
+                    "Automated semantic-release contract shared by every project"
+                )
+            ),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],

@@ -200,15 +200,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
-        configured_env_dirs = tuple(
+        env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
             if project_dir is None or (project_dir / env_dir).is_dir()
-        )
-        env_dirs = (
-            configured_env_dirs
-            if project_dir is None
-            else u.Infra.analyzer_python_roots(project_dir, configured_env_dirs)
         )
         source_path = self._project_source_path()
         return (
@@ -486,7 +481,8 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        phase_builder = phase_builder.deprecated("venv").deprecated(c.Infra.VENV_PATH)
+        for key, value in self._venv_settings(is_root=is_root).items():
+            phase_builder = phase_builder.value(key, value)
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [

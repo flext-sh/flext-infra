@@ -136,7 +136,7 @@ SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 {# Builtin whats from config, plus live `_custom_<verb>_<what>` selectors from
    custom.mk so help/allowlist stay aligned with handlers without hand-editing
    the managed Makefile after each custom surface change. #}
-{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
+{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in make.handler_whats[verb.name] %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
 {% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
 {% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
