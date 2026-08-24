@@ -427,9 +427,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
+            # Why (flext-dz4ib.2): a beadless plain member has no ledger
+            # identity to inherit; fall back to its own name so BeadsPlan
+            # still gets a non-empty canonical_prefix (enabled stays False).
             issue_prefix, _ledger_database = self.ledger_identity_for_target(
                 workspace, target
-            )
+            ) or (target.canonical_project_name, target.canonical_project_name)
             ledger_root_result = self._beads_ledger_root(repository_root)
             if ledger_root_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -445,11 +448,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # issue IDs) -- it must never be workspace.ledger_id,
                     # which is the separate Dolt-safe database identifier and
                     # can differ (e.g. "ai_hub" database vs "ai-hub" issues).
-                    # Why (mro-6fca / mro-z75t): WORKSPACE_MEMBER targets keep
-                    # canonical_project_name; root/standalone manifests still
-                    # honor their own ledger_prefix/id so a flext root
-                    # declaring ledger_prefix=mro does not rewrite every
-                    # submodule .beads/config.yaml onto the root tracker.
+                    # Why (flext-dz4ib.2): plain WORKSPACE_MEMBER targets
+                    # inherit the governing workspace's declared
+                    # ledger_prefix/ledger_id verbatim (GOVERNANCE.md: root
+                    # database serves every member); root/standalone manifests
+                    # keep their own ledger_prefix/id fallback to their own
+                    # canonical_project_name when no ledger is declared.
                     canonical_prefix=issue_prefix,
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
@@ -2513,26 +2517,28 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def ledger_identity_for_target(
         workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str] | None:
         """Return ``(issue_prefix, database)`` for one conform target.
 
-        ``WORKSPACE_MEMBER`` targets keep ``canonical_project_name`` because
-        they are planned under the parent workspace.yaml (mro-z75t). Root and
-        standalone manifests still honor their own ``ledger_prefix`` /
-        ``ledger_id`` overrides (mro-6fca). Marker-attached standalones are
-        classified as ``WORKSPACE_MEMBER`` for routing, but they own their
-        workspace.yaml at the governing root, so ledger_* still apply.
+        GOVERNANCE.md Execution Contract: the workspace-root Beads database is
+        used for the root and every member project (flext-dz4ib). Plain
+        ``WORKSPACE_MEMBER`` targets share the parent workspace.yaml, so they
+        always inherit its declared ``ledger_prefix``/``ledger_id`` verbatim;
+        they never fall back to their own ``canonical_project_name``. Root and
+        standalone manifests (including marker-attached standalones, which own
+        their own workspace.yaml at the governing root) keep the general
+        fallback to ``canonical_project_name`` when no ledger is declared.
+        Returns ``None`` when the governing workspace declares no ledger at
+        all and the target is a plain member with nothing of its own to fall
+        back to.
         """
-        # Members are planned under the parent workspace.yaml, so a root
-        # ledger_prefix must not rewrite their issue-prefix/database. A
-        # standalone's workspace.yaml is its own manifest, so ledger_* there
-        # still apply (mro-6fca). Attached standalones share the MEMBER
-        # profile only for routing; they are not parent-manifest members.
         if (
             target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
             and not target.attached_standalone
         ):
-            return target.canonical_project_name, target.canonical_project_name
+            if workspace.ledger_id is None:
+                return None
+            return workspace.ledger_prefix, workspace.ledger_id
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
 
