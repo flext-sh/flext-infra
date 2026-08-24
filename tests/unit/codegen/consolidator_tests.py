@@ -12,6 +12,8 @@ from flext_tests import tm
 
 from tests import t, u
 
+pytestmark = pytest.mark.slow
+
 
 class _ConsolidatorFilePayload(cli_m.ContractModel):
     """Typed JSON row emitted by the consolidator command."""

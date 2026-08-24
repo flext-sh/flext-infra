@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+
+pytestmark = pytest.mark.slow
 
 
 class TestCodegenCiMatrix:
