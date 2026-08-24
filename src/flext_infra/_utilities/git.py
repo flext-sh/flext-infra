@@ -9,6 +9,8 @@ from __future__ import annotations
 from flext_infra._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
 from flext_infra._utilities._git.semantic import (
     FlextInfraUtilitiesGitSemanticMixin,
+from flext_infra._utilities._git.semantic_submodule import (
+    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
 )
 
 

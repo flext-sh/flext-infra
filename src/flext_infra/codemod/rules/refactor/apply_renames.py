@@ -243,4 +243,14 @@ class FlextInfraApplyRenames:
         return r[t.Cli.ResultValue].ok(True)
 
 
+# This module intentionally exposes NO __main__ entry point. The command is
+# already registered canonically in services/cli_routes_refactor.py, bound to
+# m.Infra.ApplyRenamesInput and FlextInfraApplyRenames.execute_command, so it
+# is reachable through the flext-infra CLI like every other verb.
+#
+# The argparse block removed here was a second, parallel route to the same
+# handler: it re-declared the flags the typed model already owns, so the two
+# surfaces could drift apart, and argparse is banned precisely to keep one
+# declaration of a command's inputs. Running this file directly is not a
+# supported surface.
 __all__: list[str] = ["FlextInfraApplyRenames"]

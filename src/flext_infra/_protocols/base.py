@@ -162,12 +162,32 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    @runtime_checkable
+    class ProjectSpec(Protocol):
+        """Manifest-declared project metadata consumed by conformance."""
+
+        @property
+        def version(self) -> str:
+            """Declared release version, the SSOT for ``[project].version``."""
+            ...
+
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
 
         @property
         def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
             """Workspace root repository."""
+            ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsBase.ProjectSpec | None:
+            """Manifest project metadata; ``None`` outside a materialized tree.
+
+            hq-36xk projects the declared version onto ``[project]`` during
+            conformance, so the protocol must expose the fact the model already
+            carries -- otherwise the only consumer reads through a contract that
+            does not admit it.
+            """
             ...
 
         @property
@@ -323,9 +343,19 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package cooldown cutoffs as RFC 3339 timestamps."""
+            ...
+
+        @property
         def uv_exclude_newer(self) -> str:
             """Uv exclude-newer cooldown window for dependency resolution."""
             ...
+
+        # `uv_exclude_newer_package` used to sit here, undocumented and with no
+        # implementation on ToolchainSpec, so the model never satisfied its own
+        # protocol. `dependency_cooldown_overrides` above is that concept, named
+        # for the policy rather than the uv key it renders into.
 
         @property
         def kubectl_version(self) -> str:
@@ -414,6 +444,11 @@ class FlextInfraProtocolsBase(Protocol):
     @staticmethod
     def runtime_singleton_export(file_name: str) -> str | None:
         """Return the public singleton exported by a runtime module."""
+        ...
+
+    @staticmethod
+    def ordered_namespace_exports(*, export_names: t.StrSequence) -> t.StrSequence:
+        """Order root-package exports with alias hierarchy preserved."""
         ...
 
     @classmethod

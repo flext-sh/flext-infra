@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 # Why (hq-36xk): `git_is_inside_work_tree` constructs `Repo(...)` and catches
 # InvalidGitRepositoryError / NoSuchPathError / GitCommandNotFound, but only
@@ -18,6 +18,7 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 from urllib.parse import parse_qsl
 
 from git import (
+    BaseIndexEntry,
     GitCommandError,
     GitCommandNotFound,
     InvalidGitRepositoryError,
@@ -34,6 +35,7 @@ from flext_infra._utilities._git.semantic_refs import (
 from flext_infra._utilities._git.semantic_submodule import (
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
 )
+from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
 

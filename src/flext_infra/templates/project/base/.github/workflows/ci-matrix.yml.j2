@@ -67,6 +67,7 @@ jobs:
         run: >-
           docker build
           -f tests/fixtures/ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
+          --build-arg GITHUB_TOKEN={% raw %}${{ env.GITHUB_TOKEN }}{% endraw %}
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
