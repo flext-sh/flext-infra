@@ -81,7 +81,13 @@ Infra:
           backend: dolt
           shared_server: true
           host: 127.0.0.1
-          port: 3308
+          # Why (aihub-v01jg): 3307 is where the Gas Town town server actually
+          # listens, and what `bd config get dolt.port` reports as canonical.
+          # This key had drifted to 3308, so every generated .beads/config.yaml
+          # pointed at a closed port and `bd` failed with "Dolt server
+          # unreachable at 127.0.0.1:3308" — which took `make gen` down with it,
+          # because the gen verb inspects the beads ledger.
+          port: 3307
           user: root
           auto_commit: "on"
 
@@ -1102,6 +1108,42 @@ Infra:
           - tool.pytest.ini_options
           - tool.uv
           - tool.ruff.lint.per-file-ignores
+
+    # Automated semantic versioning, owned by the market tool rather than by a
+    # local implementation. python-semantic-release reads Conventional Commits,
+    # decides major/minor/patch, writes the version, generates the changelog and
+    # creates the tag. We already had bump_version/parse_semver and a release
+    # orchestrator, but nothing DERIVED the bump: a human still passed
+    # `bump=minor` by hand, which is exactly the judgement call the commit
+    # history already encodes and the one a human gets wrong.
+    #
+    # Declared here so every generated pyproject carries the same contract and
+    # no project hand-rolls its own. Exceptions belong in `overrides` below,
+    # never in a project-local edit.
+    release:
+      tool: python-semantic-release
+      # `uv` is the runner: no separate install step, no global state.
+      runner: uv
+      # Commit parser and the branch that produces releases. FLEXT branch model:
+      # 0.12.0-dev is the integration branch, main is the produced release.
+      commit_parser: conventional
+      release_branch: 0.12.0-dev
+      # Where the version lives. Both are kept in step by the tool itself, so a
+      # tag can never disagree with the packaged metadata.
+      version_variables:
+        - src/{package}/version.py:__version__
+      version_toml:
+        - pyproject.toml:project.version
+      # Build through the canonical verb so a release artifact is produced the
+      # same way a local build is; a second build path is a second contract.
+      build_command: uv build
+      # Tag shape shared with the workspace release workflow.
+      tag_format: "v{version}"
+      # Changelog is generated, never hand-maintained.
+      changelog_file: CHANGELOG.md
+      # Per-distribution exceptions. A project lands here only when its release
+      # contract genuinely differs -- not to opt out of the standard.
+      overrides: {}
 
     scaffold:
       build:
