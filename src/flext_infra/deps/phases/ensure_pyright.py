@@ -281,22 +281,22 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         return validated
 
-    def _venv_settings(self) -> t.StrMapping:
-        """Venv settings.
+    def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
+        """Return the Pyright venv location for this topology.
 
-        Pyright resolves an interpreter from two keys: ``venvPath`` is the
-        directory CONTAINING the environment, and ``venv`` names it inside that
-        directory. Both a workspace root and a member keep their environment at
-        their own root, so the containing directory is the config-owned
-        ``project-root`` entry in either case and the setting does not vary by
-        role. A previous revision branched on ``is_root`` to read
-        ``root_venv_path``/``project_venv_path``, neither of which exists on
-        ``PathRulesConfig`` (``tooling.yaml`` declares only ``venv-name``), so
-        every call raised AttributeError and blocked codegen. Deriving the value
-        keeps one fact in one place instead of restating a constant twice.
+        Why (hq-36xk): this read `rules.root_venv_path` / `rules.project_venv_path`,
+        neither of which has ever existed on the path-rules model — `git log -S`
+        finds no commit that ever declared them. Every call therefore raised
+        AttributeError and took `deps modernize`, and with it `make check`, down.
+        The model owns exactly one venv fact, `venv_name`; the location is pure
+        topology, which `_modernizer_document` already states: a workspace root
+        owns its venv in place, a member borrows the parent's. Deriving both from
+        the single declared name keeps one owner for the name and one rule for
+        the position.
         """
         rules = self._tool_config.tools.pyright.path_rules
-        return {c.Infra.VENV_PATH: rules.project_root, "venv": rules.venv_name}
+        venv_path = "." if is_root else ".."
+        return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
     def _expected_excludes(
         self, project_root: Path | None, analysis_exclusions: t.StrSequence
@@ -489,7 +489,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        for key, value in self._venv_settings().items():
+        for key, value in self._venv_settings(is_root=is_root).items():
             phase_builder = phase_builder.value(key, value)
         phase_builder = phase_builder.value(
             "executionEnvironments",

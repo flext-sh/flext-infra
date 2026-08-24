@@ -46,6 +46,11 @@ Infra:
       # is why these were drifting versions behind.
       #
       # `python` already uses this form ("3.13") and is the reference.
+      # uv (hq-36xk): .mise.toml.j2 pins uv so local and clean-machine setups
+      # agree, but no owner declared the version and every render failed with
+      # "'uv_version' is undefined". The toolchain owns tool versions, so it is
+      # declared here beside its peers, as a minor floor like the rest.
+      uv_version: "0.12"
       kubectl_version: "1.32"
       helm_version: "3.19"
       kind_version: "0.31"
@@ -53,6 +58,7 @@ Infra:
       ast_grep_version: "0.45"
       gitleaks_version: "8.30"
       tokei_version: "14.0"
+      # qlty (hq-36xk): same missing-owner defect as uv_version above.
       qlty_version: "0.642"
       mise_version: "2026.7"
       # Go runtime required by mise go: backend selectors (beads).
@@ -245,6 +251,20 @@ Infra:
 
     make:
       selector: WHAT
+      work_in_progress:
+        # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
+        # draft PRs; merges into dev/develop/0.12.0-dev are blocked for those states.
+        # Restored (hq-36xk): a merge resolution dropped this block while
+        # ci.yml.j2 and .pre-commit-config.yaml.j2 kept consuming it, so no
+        # repository could regenerate its CI.
+        draft_pr: true
+        branch_patterns:
+          - '^wip/'
+          - 'WIP'
+        merge_lock_target_branches:
+          - dev
+          - develop
+          - 0.12.0-dev
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
@@ -266,16 +286,20 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # A hook declares the local form explicitly: a git hook inherits the
-        # caller's environment, so a stray CI=Y would otherwise revoke pytest
-        # and the type-checker gates on a push.
+        # local_value (hq-36xk): the local arm of the same ternary. Only the
+        # exact `value` disables coverage and narrows CHECK_GATES, so pre-push
+        # sets this instead to keep every gate and the complete pytest+coverage
+        # run. The templates consumed `make.ci.local_value` while no owner
+        # declared it, so no repository could render its pre-commit config.
         local_value: N
         # RULING 2 (rules, not a skip-list): local_check_gates is the ONLY
         # declared set. CI=Y runs its strict complement, derived in
         # MakeCiSpec.check_gates, so the two contexts can never overlap nor
         # leave a gate unowned; an unset CI runs every allowed gate. `format`
         # is not a check gate at all -- it mutates files, so it belongs to
-        # make fmt / make fix APPLY=Y only.
+        # make fmt / make fix APPLY=Y only. This supersedes the earlier
+        # check_gates_skip list, which could drift out of sync with the set it
+        # was meant to complement.
         # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
         # full pytest+coverage; absent = testmon incremental.
         local_check_gates: [lint, pyrefly]
