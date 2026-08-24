@@ -21,6 +21,8 @@ from flext_tests import tm
 
 from tests import c, m, p, r, u
 
+pytestmark = pytest.mark.slow
+
 
 def _conform_target(
     root: Path, repository: m.Infra.RepositoryRef, *, make_profile: c.Infra.MakeProfile
