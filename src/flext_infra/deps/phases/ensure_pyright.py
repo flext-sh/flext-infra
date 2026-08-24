@@ -281,12 +281,6 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         return validated
 
-    def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
-        """Venv settings."""
-        rules = self._tool_config.tools.pyright.path_rules
-        venv_path = rules.root_venv_path if is_root else rules.project_venv_path
-        return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
-
     def _expected_excludes(
         self, project_root: Path | None, analysis_exclusions: t.StrSequence
     ) -> t.StrSequence:
@@ -467,8 +461,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        for key, value in self._venv_settings(is_root=is_root).items():
-            phase_builder = phase_builder.value(key, value)
+        phase_builder = phase_builder.deprecated("venv").deprecated(c.Infra.VENV_PATH)
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [
