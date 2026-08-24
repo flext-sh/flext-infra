@@ -198,6 +198,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
@@ -259,6 +260,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             )
         )
@@ -269,6 +271,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_dir=effective_project_dir,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             )
         )
         changes.extend(

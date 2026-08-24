@@ -323,12 +323,19 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package cooldown cutoffs as RFC 3339 timestamps."""
+            ...
+
+        @property
         def uv_exclude_newer(self) -> str:
             """Uv exclude-newer cooldown window for dependency resolution."""
             ...
 
-        @property
-        def uv_exclude_newer_package(self) -> t.StrMapping: ...
+        # `uv_exclude_newer_package` used to sit here, undocumented and with no
+        # implementation on ToolchainSpec, so the model never satisfied its own
+        # protocol. `dependency_cooldown_overrides` above is that concept, named
+        # for the policy rather than the uv key it renders into.
 
         @property
         def kubectl_version(self) -> str:

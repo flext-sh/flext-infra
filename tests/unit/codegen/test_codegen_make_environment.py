@@ -338,7 +338,8 @@ class TestsCodegenMakeEnvironment:
         runtime_python = project_root / ".venv" / "bin" / "python"
         test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
         uv_log = tmp_path / "uv.log"
-        uv = tmp_path / "bin" / "uv"
+        bin_dir = tmp_path / "bin"
+        uv = bin_dir / "uv"
         test_u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
@@ -354,7 +355,9 @@ class TestsCodegenMakeEnvironment:
                     "APPLY=Y",
                 ],
                 cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{bin_dir / 'uv'}"},
+                # PATH takes the DIRECTORY holding the stub, never the stub
+                # itself: pointing it at the executable makes every lookup miss.
+                env={"UV": str(uv), "PATH": str(bin_dir)},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )

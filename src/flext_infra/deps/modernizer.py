@@ -62,11 +62,19 @@ class FlextInfraPyprojectModernizer(
         *,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[str]:
-        """Return one canonical pyproject using the same phases as workspace apply."""
+        """Return one canonical pyproject using the same phases as workspace apply.
+
+        ``declared_python_dirs_are_complete`` says the caller enumerated EVERY
+        Python root, so discovery must not widen the set. An atomic scaffold
+        knows its future roots before they exist on disk; filesystem discovery
+        would find none and silently produce a different fixed point than the
+        post-write conformance pass.
+        """
         payload_source = u.Cli.toml_mapping_from_text(source)
         if payload_source is None:
             return r[str].fail(f"invalid TOML: {path}")
@@ -90,6 +98,7 @@ class FlextInfraPyprojectModernizer(
             dry_run=True,
             skip_comments=False,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             generated_python_roots=generated_python_roots,
             project_kind=project_kind,
             analysis_exclusions=analysis_exclusions,
@@ -107,6 +116,7 @@ class FlextInfraPyprojectModernizer(
         package_name: t.NonEmptyStr,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
@@ -129,6 +139,7 @@ class FlextInfraPyprojectModernizer(
             u.Cli.toml_dumps(seed),
             path=path,
             declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             project_kind=project_kind,
             analysis_exclusions=analysis_exclusions,
         )

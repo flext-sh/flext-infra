@@ -98,11 +98,37 @@ class FlextInfraEnsureRuffConfigPhase:
 
     def _per_file_ignores(self, project_dir: Path) -> t.MappingKV[str, t.StrSequence]:
         """Compose global policy with the current project's managed additions."""
-        global_ignores = self._tool_config.tools.ruff.lint.per_file_ignores
-        local_ignores = self._project_per_file_ignores(project_dir)
+        return FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
+            project_dir,
+            global_ignores=self._tool_config.tools.ruff.lint.per_file_ignores,
+        )
+
+    @staticmethod
+    def compose_per_file_ignores(
+        project_dir: Path,
+        *,
+        global_ignores: t.MappingKV[str, t.StrSequence] | None = None,
+    ) -> t.MappingKV[str, t.StrSequence]:
+        """Return the effective Ruff exemption map for one project.
+
+        The fleet policy is not the whole contract: a repository may declare an
+        operator-authorized exemption in its own ``config/*.yaml``
+        ``ManagedArtifacts`` block. Both the in-place pyproject edit and the
+        full template render must see the same composed result, or a render
+        silently drops the local overlay and reports findings the operator has
+        already ruled on.
+        """
+        effective_global = (
+            config.Infra.tooling.tools.ruff.lint.per_file_ignores
+            if global_ignores is None
+            else global_ignores
+        )
+        local_ignores = FlextInfraEnsureRuffConfigPhase._project_per_file_ignores(
+            project_dir
+        )
         return {
-            pattern: tuple(sorted({*global_ignores.get(pattern, ()), *rules}))
-            for pattern, rules in {**global_ignores, **local_ignores}.items()
+            pattern: tuple(sorted({*effective_global.get(pattern, ()), *rules}))
+            for pattern, rules in {**effective_global, **local_ignores}.items()
         }
 
     def _phase(

@@ -389,6 +389,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
@@ -399,15 +400,25 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         # mro-j47u (codex): pre-write manifests supply the same typed roots that
         # filesystem discovery observes after the atomic scaffold is materialized.
-        expected_includes = declared_python_dirs or self._expected_includes(
-            is_root=is_root,
-            workspace_root=workspace_root,
-            project_dir=project_dir,
-            generated_roots=(
-                paths_manager.generated_python_roots
-                if paths_manager is not None
-                else ()
-            ),
+        #
+        # `declared_python_dirs_are_complete` distinguishes "caller listed some
+        # roots" from "caller listed ALL of them". Only the second may suppress
+        # discovery outright, including when the declared list is EMPTY -- a
+        # project that genuinely has no Python root must render none, not fall
+        # back to scanning a directory tree that does not exist yet.
+        expected_includes = (
+            declared_python_dirs
+            if declared_python_dirs or declared_python_dirs_are_complete
+            else self._expected_includes(
+                is_root=is_root,
+                workspace_root=workspace_root,
+                project_dir=project_dir,
+                generated_roots=(
+                    paths_manager.generated_python_roots
+                    if paths_manager is not None
+                    else ()
+                ),
+            )
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -497,6 +508,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply the managed pyright configuration for one TOML document."""
@@ -509,6 +521,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_kind=project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             ),
         )
@@ -523,6 +536,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply managed pyright settings directly to one normalized payload."""
@@ -535,6 +549,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_kind=project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             ),
         )
