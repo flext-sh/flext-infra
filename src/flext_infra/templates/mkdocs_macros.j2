@@ -51,7 +51,12 @@ plugins:
             merge_init_into_class: true
             docstring_section_style: spacy
   - git-revision-date-localized:
-      enable_creation_date: true
+      # Why: enable_creation_date=true uses diff-filter=Ar which fails on merge-added
+      # files, falling back to build timestamp and causing inverted-revision warnings
+      # that abort mkdocs strict build. Revision date comes from the last commit touching
+      # the page, which is fast, robust, and the intended behavior.
+      enable_creation_date: false
+      enable_git_follow: false
       type: date
       exclude:
         - api-reference/generated/**

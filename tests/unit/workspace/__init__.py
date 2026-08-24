@@ -12,8 +12,6 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from . import make_constants_tests as make_constants_tests
     from . import resolve_what_tests as resolve_what_tests
-    from . import test_beads_lane as test_beads_lane
-    from . import test_beads_lane_typed_boundary as test_beads_lane_typed_boundary
     from . import test_docs_contract_toc_placement as test_docs_contract_toc_placement
     from . import test_docs_scope_worktree as test_docs_scope_worktree
     from . import test_flext_worktree_binding as test_flext_worktree_binding
@@ -72,8 +70,6 @@ __all__: tuple[str, ...] = (
     "s",
     "t",
     "td",
-    "test_beads_lane",
-    "test_beads_lane_typed_boundary",
     "test_docs_contract_toc_placement",
     "test_docs_scope_worktree",
     "test_flext_worktree_binding",
@@ -100,8 +96,6 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".make_constants_tests": ("make_constants_tests",),
             ".resolve_what_tests": ("resolve_what_tests",),
-            ".test_beads_lane": ("test_beads_lane",),
-            ".test_beads_lane_typed_boundary": ("test_beads_lane_typed_boundary",),
             ".test_detector_owns_no_project_registry": (
                 "TestsDetectorOwnsNoProjectRegistry",
             ),

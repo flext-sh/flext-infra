@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
@@ -32,9 +33,17 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
+        uv_exclude_newer: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
-        """Return canonical TOML with autonomous dependencies and root workspace."""
+        """Return canonical TOML with autonomous dependencies and root workspace.
+
+        ``uv_exclude_newer`` is the per-project overlay over the fleet cooldown.
+        The fleet default is a ROLLING window, which silently ages past a
+        security floor declared in override-dependencies and makes resolution
+        unsatisfiable; a project carrying such a floor pins the absolute cutoff
+        instead. ``None`` keeps the fleet window.
+        """
         source = u.Cli.toml_parse_text(pyproject_content)
         if source is None:
             return r[str].fail("pyproject content is not valid TOML")
@@ -75,8 +84,9 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
             link_mode=toolchain.uv_link_mode,
-            exclude_newer=toolchain.uv_exclude_newer,
+            exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
             exclude_newer_packages=toolchain.dependency_cooldown_exclusions,
+            exclude_newer_overrides=toolchain.dependency_cooldown_overrides,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -556,6 +566,7 @@ class FlextInfraUtilitiesPyprojectConform:
         link_mode: str | None = None,
         exclude_newer: str | None = None,
         exclude_newer_packages: t.StrSequence = (),
+        exclude_newer_overrides: t.StrMapping = MappingProxyType({}),
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
@@ -611,10 +622,18 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         if exclude_newer is not None:
             u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
-        if exclude_newer_packages:
-            exclude_newer_payload: t.JsonDict = dict.fromkeys(
-                sorted(exclude_newer_packages), False
-            )
+        # Two shapes share this uv key. A bare exemption is `false` (waive the
+        # cooldown entirely, for a reviewed security floor). An override is a
+        # timestamp, needed when the shared cutoff predates a floor the project
+        # legitimately requires: uv then reports the requirement unsatisfiable
+        # and names this key as the remedy, so switching the cooldown off is not
+        # enough — the cutoff has to move to a specific instant. Overrides win
+        # on collision, being the more specific declaration of the two.
+        exclude_newer_payload: t.JsonDict = dict.fromkeys(
+            sorted(exclude_newer_packages), False
+        )
+        exclude_newer_payload.update(sorted(exclude_newer_overrides.items()))
+        if exclude_newer_payload:
             u.Cli.toml_sync_value(uv, "exclude-newer-package", exclude_newer_payload)
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")

@@ -59,7 +59,12 @@ class TestsDocsRenderExcludeDocs:
             rendered,
             has=(
                 "  - git-revision-date-localized:\n"
-                "      enable_creation_date: true\n"
+                "      # Why: enable_creation_date=true uses diff-filter=Ar which fails on merge-added\n"
+                "      # files, falling back to build timestamp and causing inverted-revision warnings\n"
+                "      # that abort mkdocs strict build. Revision date comes from the last commit touching\n"
+                "      # the page, which is fast, robust, and the intended behavior.\n"
+                "      enable_creation_date: false\n"
+                "      enable_git_follow: false\n"
                 "      type: date\n"
                 "      exclude:\n"
                 "        - api-reference/generated/**\n"

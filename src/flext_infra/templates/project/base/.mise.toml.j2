@@ -12,9 +12,12 @@
 #          gitleaks_version, tokei_version, qlty_version, beads.selector, beads.version)
 [tools]
 python = "{{ python_version }}"
-# uv is bootstrapped by CI/Dockerfiles; mise pins the exact version used
-# during project setup so local and clean-machine environments agree.
-uv = "{{ uv_version }}"
+# uv is deliberately absent: codegen.yaml declares it "supplied by the caller
+# environment and deliberately not pinned", and no `uv_version` exists on the
+# toolchain SSOT to render. Emitting one made every conform run fail with
+# "'uv_version' is undefined". The minimum version is enforced where it is
+# actually observable instead — tool_bootstrap_recipe.j2 compares the running
+# `uv --version` against its floor during `make setup`.
 # Native toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
 kubectl = "{{ kubectl_version }}"
 helm = "{{ helm_version }}"

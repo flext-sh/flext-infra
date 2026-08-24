@@ -33,9 +33,9 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
       216              )
 ```
 
-**Decisão**: 
+**Decisão**:
 
-### 2 · ⚪ LOW · Jinja auto-escape is set to false.
+### 2 · ⚪ LOW · Jinja auto-escape is set to false
 **Local**: `tests/unit/codegen/test_codegen_catalog_extensions.py:209` · **CWE**: -
 
 ```python
@@ -50,6 +50,6 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
       213                          "name": "demo-member",
 ```
 
-**Decisão**: 
+**Decisão**:
 
 Dados brutos: `~/snyk-violations/sast/flext-sh__flext-infra.sast.json`
