@@ -26,6 +26,9 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9_-]*$"
     },
+    "beads_server": {
+      "$ref": "#/$defs/beadsServer"
+    },
     "repository": {
       "$ref": "#/$defs/repository"
     },
@@ -218,6 +221,46 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+$"
+        }
+      }
+    },
+    "beadsServer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backend",
+        "mode",
+        "host",
+        "port",
+        "user",
+        "auto_commit"
+      ],
+      "properties": {
+        "backend": {
+          "const": "dolt"
+        },
+        "mode": {
+          "const": "server"
+        },
+        "shared_server": {
+          "const": false,
+          "default": false
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": {
+          "type": "string",
+          "minLength": 1
+        },
+        "auto_commit": {
+          "enum": ["off", "on", "batch"]
         }
       }
     },
