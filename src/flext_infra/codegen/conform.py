@@ -31,6 +31,13 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
+    @staticmethod
+    def _link_mode(
+        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
+    ) -> str:
+        """Resolve the repository override through one codegen authority."""
+        return str(repository.uv_link_mode or toolchain.uv_link_mode)
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -1722,8 +1729,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
-                    uv_link_mode=(
-                        repository.uv_link_mode or codegen.toolchain.uv_link_mode
+                    uv_link_mode=FlextInfraCodegenConform._link_mode(
+                        repository, codegen.toolchain
                     ),
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                     dependency_cooldown_exclusions=(
@@ -1825,7 +1832,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     target, workspace, infra_repository.value
                 ),
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=(repository.uv_link_mode or codegen.toolchain.uv_link_mode),
+                uv_link_mode=FlextInfraCodegenConform._link_mode(
+                    repository, codegen.toolchain
+                ),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
@@ -1966,7 +1975,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     target, workspace, infra_repository.value
                 ),
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=(repository.uv_link_mode or codegen.toolchain.uv_link_mode),
+                uv_link_mode=FlextInfraCodegenConform._link_mode(
+                    repository, codegen.toolchain
+                ),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
