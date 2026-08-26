@@ -33,6 +33,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
+        uv_link_mode: str | None = None,
         uv_exclude_newer: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
@@ -88,7 +89,7 @@ class FlextInfraUtilitiesPyprojectConform:
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
-            link_mode=toolchain.uv_link_mode,
+            link_mode=uv_link_mode or toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
             exclude_newer_packages=toolchain.dependency_cooldown_exclusions,
             exclude_newer_overrides=toolchain.dependency_cooldown_overrides,

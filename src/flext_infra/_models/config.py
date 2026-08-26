@@ -57,6 +57,21 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        prerelease: Annotated[
+            bool,
+            m.Field(
+                description="Whether mise may resolve prerelease versions for this tool"
+            ),
+        ] = False
+        minimum_release_age: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Per-tool release quarantine override passed to mise; absent "
+                    "preserves mise's global security default"
+                )
+            ),
+        ] = None
         checksum: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -1470,6 +1485,15 @@ class FlextInfraConfigModels:
         read_only: Annotated[
             bool, m.Field(description="Repository rejects generated mutations")
         ]
+        uv_link_mode: Annotated[
+            Literal["clone", "copy", "hardlink", "symlink"] | None,
+            m.Field(
+                description=(
+                    "Repository-specific uv installation link mode; absent uses "
+                    "the fleet toolchain default"
+                )
+            ),
+        ] = None
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
