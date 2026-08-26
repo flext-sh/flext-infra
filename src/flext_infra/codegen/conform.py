@@ -36,7 +36,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
         """Resolve the repository override through one codegen authority."""
-        return str(repository.uv_link_mode or toolchain.uv_link_mode)
+        link_mode = repository.uv_link_mode or toolchain.uv_link_mode
+        if not isinstance(link_mode, str):
+            msg = "resolved uv link mode must be a string"
+            raise TypeError(msg)
+        return link_mode
 
     @classmethod
     def _surface_contract(
