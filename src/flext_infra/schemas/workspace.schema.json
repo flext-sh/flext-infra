@@ -167,6 +167,14 @@
         "read_only": {
           "type": "boolean"
         },
+        "uv_link_mode": {
+          "enum": [
+            "clone",
+            "copy",
+            "hardlink",
+            "symlink"
+          ]
+        },
         "extra_verbs": {
           "type": "array",
           "items": {

@@ -17,6 +17,9 @@ repository:
   package: {{ workspace_repository.package | tojson }}
   editable: {{ workspace_repository.editable | tojson }}
   read_only: {{ workspace_repository.read_only | tojson }}
+{%- if workspace_repository.uv_link_mode %}
+  uv_link_mode: {{ workspace_repository.uv_link_mode | tojson }}
+{%- endif %}
 {%- if workspace_repository.extra_verbs %}
   extra_verbs:
 {%- for verb in workspace_repository.extra_verbs %}
@@ -80,6 +83,9 @@ members:
     package: {{ repository.package | tojson }}
     editable: {{ repository.editable | tojson }}
     read_only: {{ repository.read_only | tojson }}
+{%- if repository.uv_link_mode %}
+    uv_link_mode: {{ repository.uv_link_mode | tojson }}
+{%- endif %}
 {%- if repository.extra_verbs %}
     extra_verbs:
 {%- for verb in repository.extra_verbs %}

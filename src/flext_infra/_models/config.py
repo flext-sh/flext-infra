@@ -1485,6 +1485,15 @@ class FlextInfraConfigModels:
         read_only: Annotated[
             bool, m.Field(description="Repository rejects generated mutations")
         ]
+        uv_link_mode: Annotated[
+            Literal["clone", "copy", "hardlink", "symlink"] | None,
+            m.Field(
+                description=(
+                    "Repository-specific uv installation link mode; absent uses "
+                    "the fleet toolchain default"
+                )
+            ),
+        ] = None
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(

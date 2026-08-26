@@ -1055,6 +1055,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
+            uv_link_mode=repository.uv_link_mode,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1185,6 +1186,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
+            uv_link_mode=repository.uv_link_mode,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1720,7 +1722,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
-                    uv_link_mode=codegen.toolchain.uv_link_mode,
+                    uv_link_mode=(
+                        repository.uv_link_mode or codegen.toolchain.uv_link_mode
+                    ),
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                     dependency_cooldown_exclusions=(
                         codegen.toolchain.dependency_cooldown_exclusions
@@ -1821,7 +1825,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     target, workspace, infra_repository.value
                 ),
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_link_mode=(repository.uv_link_mode or codegen.toolchain.uv_link_mode),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
@@ -1962,7 +1966,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     target, workspace, infra_repository.value
                 ),
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_link_mode=(repository.uv_link_mode or codegen.toolchain.uv_link_mode),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
