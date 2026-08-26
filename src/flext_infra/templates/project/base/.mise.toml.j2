@@ -31,5 +31,9 @@ tokei = "{{ tokei_version }}"
 "github:qltysh/qlty" = "{{ qlty_version }}"
 # Go runtime for the Go projects in this workspace.
 go = "{{ go_version }}"
-"{{ beads.selector }}" = "{{ beads.version }}"
+[tools."{{ beads.selector }}"]
+version = "{{ beads.version }}"
+prerelease = {{ "true" if beads.prerelease else "false" }}
+{% if beads.minimum_release_age %}minimum_release_age = "{{ beads.minimum_release_age }}"
+{% endif %}
 # End SECTION: tools

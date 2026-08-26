@@ -82,6 +82,8 @@ Infra:
         selector: github:marlon-costa-dc/beads
         version: "latest"
         reported_version: "latest"
+        prerelease: true
+        minimum_release_age: "0s"
         checksum: null
         expected_schema: 62
         # Gas Town Dolt server facts: every FLEXT ledger on this host routes

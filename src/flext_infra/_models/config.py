@@ -57,6 +57,21 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        prerelease: Annotated[
+            bool,
+            m.Field(
+                description="Whether mise may resolve prerelease versions for this tool"
+            ),
+        ] = False
+        minimum_release_age: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Per-tool release quarantine override passed to mise; absent "
+                    "preserves mise's global security default"
+                )
+            ),
+        ] = None
         checksum: Annotated[
             t.NonEmptyStr | None,
             m.Field(
