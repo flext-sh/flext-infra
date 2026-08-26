@@ -105,7 +105,10 @@ class FlextInfraConfigModels:
             ),
         ] = False
         host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
-        port: Annotated[int, m.Field(gt=0, le=65535, description="Dolt server port")]
+        port: Annotated[
+            Literal[3307],
+            m.Field(description="Canonical external Gas Town Dolt server port"),
+        ] = 3307
         user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
         auto_commit: Annotated[
             Literal["off", "on", "batch"],
