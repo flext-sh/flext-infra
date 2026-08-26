@@ -37,7 +37,7 @@ repos:
         always_run: true
         stages: [pre-commit]
 {% endfor %}
-{% endif %}
+{% endif -%}
 {% if make.pre_push %}
 {% for step in make.workflow if "pre_push" in step.contexts %}
       - id: flext-pre-push-{{ step.verb }}{% if step.what %}-{{ step.what }}{% endif %}
@@ -49,4 +49,4 @@ repos:
         always_run: true
         stages: [pre-push]
 {% endfor %}
-{% endif %}
+{% endif -%}
