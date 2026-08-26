@@ -95,9 +95,15 @@ class FlextInfraConfigModels:
             m.Field(description="Dolt connection mode; ledgers never embed locally"),
         ]
         shared_server: Annotated[
-            bool,
-            m.Field(description="Route through the machine-wide shared Dolt server"),
-        ]
+            Literal[False],
+            m.Field(
+                description=(
+                    "Always false: consume the explicitly configured external "
+                    "Gas Town Dolt endpoint; bd-owned shared-server lifecycle is "
+                    "forbidden"
+                )
+            ),
+        ] = False
         host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
         port: Annotated[int, m.Field(gt=0, le=65535, description="Dolt server port")]
         user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
@@ -2325,6 +2331,15 @@ class FlextInfraConfigModels:
                     "Beads issue-prefix override for workspaces whose tracker "
                     "namespace diverges from the canonical project name; None "
                     "keeps the canonical project name (see mro-6fca)"
+                )
+            ),
+        ] = None
+        beads_server: Annotated[
+            FlextInfraConfigModels.BeadsServerSpec | None,
+            m.Field(
+                description=(
+                    "Optional workspace-local override for the external Beads "
+                    "Dolt endpoint; None uses the fleet toolchain default"
                 )
             ),
         ] = None

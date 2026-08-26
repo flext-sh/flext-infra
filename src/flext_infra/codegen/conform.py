@@ -129,11 +129,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 f"governed branch ancestry violations: {details}"
             )
-        # Beads binary/ledger verification must run before drift reporting so a
-        # checksum or version mismatch is not shadowed by missing projections.
+        # Verify the binary before any write. In apply mode the ledger itself is
+        # inspected only after its generated config has been materialized; doing
+        # the live inspection here made a stale endpoint impossible to repair.
         for beads_plan in plan.beads:
             verified_beads = self._verify_beads_plan(
-                beads_plan, allow_missing=mode is c.Infra.CodegenConformMode.CHECK
+                beads_plan,
+                allow_missing=mode is c.Infra.CodegenConformMode.CHECK,
+                inspect_ledger=mode is c.Infra.CodegenConformMode.CHECK,
             )
             if verified_beads.failure:
                 return r[m.Infra.CodegenResult].fail(
@@ -197,6 +200,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 f"codegen apply did not reach a fixed point: {paths}"
             )
+        for beads_plan in verified_plan.beads:
+            verified_beads = self._verify_beads_plan(
+                beads_plan, allow_missing=False, inspect_ledger=True
+            )
+            if verified_beads.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    verified_beads.error or "Beads ledger verification failed"
+                )
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
         )
@@ -1573,12 +1584,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
-            server = codegen.toolchain.beads.server
+            server = workspace.beads_server or codegen.toolchain.beads.server
             if server is None:
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            issue_prefix, database = self.ledger_identity_for_target(workspace, target)
+            identity = self.ledger_identity_for_target(workspace, target)
+            if identity is None:
+                return r[p.Model].fail(
+                    "Beads ledger identity is not declared for the conform target"
+                )
+            issue_prefix, database = identity
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=issue_prefix,
@@ -1588,12 +1604,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
-            server = codegen.toolchain.beads.server
+            server = workspace.beads_server or codegen.toolchain.beads.server
             if server is None:
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
                 )
-            _issue_prefix, database = self.ledger_identity_for_target(workspace, target)
+            identity = self.ledger_identity_for_target(workspace, target)
+            if identity is None:
+                return r[p.Model].fail(
+                    "Beads ledger identity is not declared for the conform target"
+                )
+            _issue_prefix, database = identity
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(database=database, server=server)
             )
@@ -2548,6 +2569,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ):
             if workspace.ledger_id is None:
                 return None
+            if workspace.ledger_prefix is None:
+                return None
             return workspace.ledger_prefix, workspace.ledger_id
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
@@ -2693,7 +2716,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @classmethod
     def _verify_beads_plan(
-        cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
+        cls,
+        plan: m.Infra.BeadsPlan,
+        *,
+        allow_missing: bool,
+        inspect_ledger: bool = True,
     ) -> p.Result[bool]:
         """Validate the principal ledger route and fail closed on disagreement.
 
@@ -2783,6 +2810,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     "mise-managed Beads CLI checksum mismatch: "
                     f"{digest} != {plan.expected_checksum}"
                 )
+        if not inspect_ledger:
+            return r[bool].ok(True)
         beads_dir = ledger_root / ".beads"
         if not beads_dir.exists():
             if allow_missing:
