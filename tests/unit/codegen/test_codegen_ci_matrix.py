@@ -195,7 +195,9 @@ class TestCodegenCiMatrix:
             checkout_submodules=codegen.checkout_submodules,
             private_submodules=private,
         )
-        rendered_text = tm.ok(cli_u.Cli.template_render(tpl, spec))
+        rendered = cli_u.Cli.template_render(tpl, spec)
+        tm.ok(rendered)
+        rendered_text: str = rendered.value
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
