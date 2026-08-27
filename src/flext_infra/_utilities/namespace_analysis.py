@@ -150,7 +150,9 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             if project_root is None or not resolved_file.is_relative_to(
                 project_root.resolve()
             ):
-                msg = f"refusing future-annotations rewrite outside project: {file_path}"
+                msg = (
+                    f"refusing future-annotations rewrite outside project: {file_path}"
+                )
                 raise ValueError(msg)
             if resolved_file.name == c.Infra.PY_TYPED:
                 continue
