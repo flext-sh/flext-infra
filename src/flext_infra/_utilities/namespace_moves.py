@@ -888,6 +888,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 if source_module and target_module:
                     mappings.append((source_module, target_module, names))
             for py_file in py_files:
+                py_file = py_file.resolve()
+                if not py_file.is_relative_to(project_root.resolve()):
+                    msg = f"refusing moved-import rewrite outside project: {py_file}"
+                    raise ValueError(msg)
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, py_file
                 )

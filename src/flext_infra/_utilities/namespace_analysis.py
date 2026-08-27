@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
@@ -144,6 +145,14 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
     def rewrite_missing_future_annotations(*, py_files: t.SequenceOf[Path]) -> None:
         """Rewrite missing future annotations."""
         for file_path in py_files:
+            project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+            resolved_file = file_path.resolve()
+            if project_root is None or not resolved_file.is_relative_to(
+                project_root.resolve()
+            ):
+                msg = f"refusing future-annotations rewrite outside project: {file_path}"
+                raise ValueError(msg)
+            file_path = resolved_file
             if file_path.name == c.Infra.PY_TYPED:
                 continue
             try:
