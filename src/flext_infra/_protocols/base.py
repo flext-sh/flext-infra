@@ -175,6 +175,11 @@ class FlextInfraProtocolsBase(Protocol):
         """Workspace topology fields consumed by repository selection."""
 
         @property
+        def beads_enabled(self) -> bool:
+            """Whether this workspace participates in the Beads tracker."""
+            ...
+
+        @property
         def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
             """Workspace root repository."""
             ...

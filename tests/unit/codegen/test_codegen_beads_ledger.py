@@ -35,6 +35,7 @@ class TestCodegenBeadsLedger:
         declare_prefix: bool = True,
         overlay: bool = True,
         attached_marker: bool = False,
+        beads_enabled: bool = True,
     ) -> Path:
         """Create a manifested standalone repository with a real Git origin."""
         provider = config.Infra.codegen.providers[0]
@@ -76,6 +77,7 @@ class TestCodegenBeadsLedger:
         spec = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=repository.distribution,
+            beads_enabled=beads_enabled,
             repository=local_repository,
             ledger_id=ledger_id,
             # A tracker-owning manifest declares BOTH identifiers (mro-cdzxf).
@@ -662,6 +664,21 @@ class TestCodegenBeadsLedger:
         # negative-only check would also pass if apply failed for an unrelated
         # reason, which is the opposite of what this test claims to prove.
         tm.ok(result)
+
+    def test_workspace_manifest_can_disable_beads_integration(
+        self, tmp_path: Path
+    ) -> None:
+        """A committed workspace opt-out prevents tracker commands during codegen."""
+        root = self._standalone_workspace(
+            tmp_path / "manual-ledger",
+            ledger_id="manual-ledger",
+            beads_enabled=False,
+            overlay=True,
+        )
+
+        plan = self._beads_plan(root)
+
+        tm.that(plan.enabled, eq=False)
 
     def test_divergent_binary_does_not_block_conform(self, tmp_path: Path) -> None:
         """Mise owns its declared binaries; conform never re-audits them.

@@ -651,9 +651,12 @@ class FlextInfraWorkspaceDetector(
         # Beads participation: workspace root owns; independent standalone opts in;
         # ephemeral transaction worktrees route to the principal ledger; members and
         # attached standalones consume the governing ledger without owning it.
-        beads_enabled = make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT or (
-            make_profile is c.Infra.MakeProfile.STANDALONE
-            and (is_transaction_worktree or overlay.beads_enabled)
+        beads_enabled = resolved_workspace.beads_enabled and (
+            make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            or (
+                make_profile is c.Infra.MakeProfile.STANDALONE
+                and (is_transaction_worktree or overlay.beads_enabled)
+            )
         )
         # A marker-attached standalone resolves to itself (no Git superproject
         # link); a manifest member always resolves to its governing root.
