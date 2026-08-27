@@ -15,7 +15,7 @@ from flext_infra import config
 from flext_tests import tm
 from tests import c, t, u
 
-# NOTE(mro-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
+# NOTE(flext-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
 # the only fixture owner; conftest must not re-export or shadow its fixtures.
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
@@ -95,7 +95,7 @@ def pytest_collection_modifyitems(
 
     for item in items:
         if _is_collectable_test_module(Path(item.path)):
-            # mro-wkii.4.15: settings identity is fixed at process startup.
+            # flext-wkii.4.15: settings identity is fixed at process startup.
             kept_items.append(item)
             continue
         deselected_items.append(item)

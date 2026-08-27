@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
-    # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): source discovery is a
+    # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): source discovery is a
     # Rope boundary and consumes the exact field-only runtime request model.
     @runtime_checkable
     class SourceScanRequest(Protocol):
@@ -173,7 +173,7 @@ class FlextInfraProtocolsRope(Protocol):
         _handle_function_def_node: Callable[..., None]
         _ClassDef: Callable[..., None]
 
-        # mro-j47u (codex): model Rope node capabilities structurally; the
+        # flext-j47u (codex): model Rope node capabilities structurally; the
         # FLEXT static path never imports or traverses Python's AST directly.
         @runtime_checkable
         class PositionedNode(Protocol):

@@ -84,7 +84,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         exports: t.StrSequence, lazy_filtered: t.LazyAliasMap
     ) -> t.StrSequence:
         """Build root public exports in Ruff's canonical isort-style order."""
-        # mro-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
+        # flext-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
         # only orders its validated contract and must not reinterpret target paths.
         _ = lazy_filtered
         export_candidates = tuple(dict.fromkeys(exports))
@@ -99,7 +99,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
     def _public_export_order_key(export_name: str) -> tuple[int, str]:
         """Classify one export using Ruff's canonical ``RUF022`` order."""
         category = 0 if export_name.isupper() else 1 if export_name[:1].isupper() else 2
-        # mro-wkii.17 (Codex): dependency order belongs to facade imports;
+        # flext-wkii.17 (Codex): dependency order belongs to facade imports;
         # published __all__ values follow Ruff RUF022 (case-sensitive ASCII
         # secondary sort) so the two contracts never fight.
         return (category, export_name)

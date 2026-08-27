@@ -95,7 +95,7 @@ class FlextInfraConstantsMake:
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
-    # mro-38p39: the gates that can repair what they report. `make fix APPLY=Y`
+    # flext-38p39: the gates that can repair what they report. `make fix APPLY=Y`
     # routes through `check run --fix`, which without a selector would execute
     # every gate -- including pyright and mypy, which fix nothing and cost ~37s,
     # timing the verb out. Formatting is NOT here: `format` belongs to
@@ -130,6 +130,7 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",
+        "MAKEFILES",
         "MAKELEVEL",
         "MAKEOVERRIDES",
         "MISE_DIR",

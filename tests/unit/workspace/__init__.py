@@ -29,8 +29,6 @@ if TYPE_CHECKING:
         TestsFlextInfraFacadeBaseMk,
         TestsFlextInfraFacadeEnvironmentSync,
     )
-    from .test_main import TestsFlextInfraWorkspaceMain, workspace_main
-    from .test_manifest_v2_contract import TestsWorkspaceManifestV2Contract
     from .test_vscode import TestsFlextInfraCodegenVscode
     from .test_workspace_root_make_contract import TestsWorkspaceRootMakeContract
     from .worktree_fixture import WorktreeFixture
@@ -40,8 +38,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraFacadeBaseMk",
     "TestsFlextInfraFacadeEnvironmentSync",
     "TestsFlextInfraWorkspaceEnvironmentProvenance",
-    "TestsFlextInfraWorkspaceMain",
-    "TestsWorkspaceManifestV2Contract",
     "TestsWorkspaceRootMakeContract",
     "WorktreeFixture",
     "c",
@@ -62,7 +58,6 @@ __all__: tuple[str, ...] = (
     "tm",
     "tv",
     "u",
-    "workspace_main",
     "x",
 )
 
@@ -86,8 +81,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraFacadeBaseMk",
                 "TestsFlextInfraFacadeEnvironmentSync",
             ),
-            ".test_main": ("TestsFlextInfraWorkspaceMain", "workspace_main"),
-            ".test_manifest_v2_contract": ("TestsWorkspaceManifestV2Contract",),
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),
             ".test_workspace_root_make_contract": ("TestsWorkspaceRootMakeContract",),
             ".worktree_fixture": ("WorktreeFixture",),

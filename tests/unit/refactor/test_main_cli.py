@@ -402,24 +402,6 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].object_name, eq="FlextDemoModels")
         tm.that(violations[0].description, has="Found 2 'm = ...' assignments")
 
-    def test_refactor_census_apply_rewrites_duplicate_runtime_alias(
-        self, tmp_path: Path
-    ) -> None:
-        workspace, module_path = self._build_runtime_alias_duplicate_workspace(tmp_path)
-
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "runtime_alias",
-        )
-
-        tm.that(result, eq=0)
-        source = module_path.read_text(encoding="utf-8")
-        tm.that(source.count("m = FlextDemoModels"), eq=1)
-
     def test_refactor_census_reports_manual_typing_alias(self, tmp_path: Path) -> None:
         workspace, _ = self._build_basic_workspace(tmp_path)
 

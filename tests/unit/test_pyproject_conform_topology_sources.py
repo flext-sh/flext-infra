@@ -17,7 +17,7 @@ from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
 _ROLE = c.Infra.RepositoryRole
-# mro-o26p: provider identity, branch and base URL come from the config SSOT,
+# flext-o26p: provider identity, branch and base URL come from the config SSOT,
 # never from literals repeated in the test.
 _PROVIDER_SPEC = config.Infra.codegen.providers[0]
 _PROVIDER = _PROVIDER_SPEC.name
@@ -47,15 +47,17 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-        name="workspace-root",
+        beads=m.Infra.BeadsOverrideSpec(
+            version=1, workspace="flext", database="flext", issue_prefix="flext"
+        ),
+        name="workspace",
         repository=_repository(
-            "workspace-root",
-            role=_ROLE.WORKSPACE_ROOT,
+            "workspace",
+            role=_ROLE.WORKSPACE,
             path=".",
             checkout=c.Infra.CheckoutKind.ROOT,
         ),
-        members=(
+        subprojects=(
             _repository(
                 "flext-core",
                 role=_ROLE.STANDALONE,
@@ -75,11 +77,13 @@ def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
         path="flext-api",
         checkout=c.Infra.CheckoutKind.SUBMODULE,
     )
-    return workspace.model_copy(update={"members": (*workspace.subprojects, consumer)})
+    return workspace.model_copy(
+        update={"subprojects": (*workspace.subprojects, consumer)}
+    )
 
 
 _PYPROJECT = """[project]
-name = "workspace-root"
+name = "workspace"
 version = "0.1.0"
 dependencies = ["flext-core"]
 
@@ -165,47 +169,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
         )
 
-    def test_attached_root_rejects_explicit_member_source(self) -> None:
-        workspace = _workspace()
-        member = workspace.subprojects[0]
-        attached_root = _PYPROJECT.replace(
-            'dependencies = ["flext-core"]',
-            (
-                f'dependencies = ["{member.distribution} @ '
-                f'git+{member.url}@{_PROVIDER_SPEC.branch}"]'
-            ),
-            1,
-        )
-
-        result = u.Infra.pyproject_dependencies_conform(
-            attached_root,
-            providers=config.Infra.codegen.providers,
-            workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
-        )
-
-        tm.that(result.failure, eq=True)
-        tm.that(
-            result.error or "",
-            has="attached workspace dependency declares direct source",
-        )
-
-        local_result = u.Infra.pyproject_dependencies_conform(
-            attached_root.replace(
-                f"git+{member.url}@{_PROVIDER_SPEC.branch}",
-                "file:///home/marlonsc/flext/flext-core",
-            ),
-            providers=config.Infra.codegen.providers,
-            workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
-        )
-
-        tm.that(local_result.failure, eq=True)
-        tm.that(
-            local_result.error or "",
-            has="attached workspace dependency declares direct source",
-        )
-
     def test_publishable_member_pins_unmapped_provider_source_to_branch(self) -> None:
         """Derive the declared branch for a provider source absent from members."""
         workspace = _workspace_with_consumer()
@@ -240,7 +203,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         """Prove uv resolves member Git metadata through the root workspace overlay."""
         workspace = _workspace_with_consumer()
         provider, consumer = workspace.subprojects
-        root = tmp_path / "workspace-root"
+        root = tmp_path / "workspace"
         provider_root = root / provider.path
         consumer_root = root / consumer.path
         provider_root.mkdir(parents=True)

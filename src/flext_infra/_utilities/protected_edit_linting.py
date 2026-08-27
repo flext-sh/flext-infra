@@ -172,7 +172,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_env = cls._command_env()
         gate_timeout = max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
-        # mro-38p39: every gate is an independent subprocess -- _run_lint_gate
+        # flext-38p39: every gate is an independent subprocess -- _run_lint_gate
         # builds its own command and returns a value, touching no shared state.
         # Running any one of them ahead of the pool made a snapshot cost that
         # gate's full wall clock PLUS the slowest of the rest, instead of just

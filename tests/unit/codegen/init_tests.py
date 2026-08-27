@@ -72,7 +72,7 @@ def test_codegen_getattr_raises_attribute_error() -> None:
 def test_codegen_package_does_not_reexport_leaf_implementations() -> None:
     """Keep implementation classes lazy behind their leaf owners.
 
-    Why (mro-mhf3d lazy-init law): generated package roots publish their
+    Why (flext-mhf3d lazy-init law): generated package roots publish their
     surface through PEP 562 lazy exports. ``__all__`` and ``dir()`` name the
     public leaf owners, but resolving the surface imports no implementation
     module — the package root never reexports leaf implementations eagerly.

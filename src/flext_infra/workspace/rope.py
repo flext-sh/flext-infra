@@ -72,7 +72,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         cls, workspace_root: Path, *, rope_workspace_root: Path | None = None
     ) -> Self:
         """Create one ready-to-use Rope workspace session."""
-        # NOTE (multi-agent, mro-wkii.17.24): scan policy is owned only by the
+        # NOTE (multi-agent, flext-wkii.17.24): scan policy is owned only by the
         # validated config singleton, never copied into a session.
         workspace = cls(
             workspace_root=workspace_root,

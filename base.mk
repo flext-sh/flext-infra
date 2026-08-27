@@ -111,7 +111,7 @@ export PROJECT_NAME PYTHON_VERSION
 export FLEXT_ROOT := $(WORKSPACE_ROOT)
 
 # === MYPY RESOURCE LIMIT ===
-# mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
+# flext-0ftd.3.11: every Mypy process inherits validated memory and time caps.
 MYPY_MEMORY_LIMIT_MB ?= 6144
 MYPY_TIMEOUT_SECONDS ?= 600
 MYPY_BOUNDED = timeout --signal=TERM --kill-after=5s "$(MYPY_TIMEOUT_SECONDS)s" prlimit --as=$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )):$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )) --
@@ -162,7 +162,7 @@ elif [ "$(filter boot setup,$(MAKECMDGOALS))" = "" ] && [ ! -d "$(ACTIVE_VENV)" 
 fi
 endef
 
-# mro-wkii.17.27 (codex): validation verbs detect drift without mutating files.
+# flext-wkii.17.27 (codex): validation verbs detect drift without mutating files.
 define VALIDATE_CANONICAL_BASE_MK
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
 	if [ "$(filter boot,$(MAKECMDGOALS))" = "boot" ] && [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then \
@@ -563,7 +563,7 @@ _docs_impl:
 		eval $$cmd || exit $$?; \
 	done
 
-# kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
+# kimi-docs flext-3o9s: docs-serve padrão no template — motor único flext-infra docs
 docs-serve: ## Serve documentation via the flext-infra docs engine
 	$(call _run_verb_hooks,pre,docs-serve,$(WHAT))
 	$(call _run_verb_body,docs-serve,_docs_serve_impl)

@@ -1,4 +1,4 @@
-"""Workspace member governance derivations composed into the topology detector.
+"""Workspace project governance derivations composed into the topology detector.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,27 +8,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import c, config
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import m
 
 
 class FlextInfraWorkspaceGovernanceMixin:
-    """Derive member attachment and persistent-state ownership from typed SSOTs."""
-
-    @staticmethod
-    def _declares_attached_standalone(repository_root: Path) -> p.Result[bool]:
-        """Read the ``[tool.flext.workspace] attached`` opt-in marker."""
-        metadata = u.read_project_metadata(repository_root)
-        if metadata.failure:
-            # An absent or unreadable pyproject carries no opt-in signal; the
-            # manifest and Git topology remain the authoritative classifiers.
-            return r[bool].ok(False)
-        return r[bool].ok(metadata.value.flext.workspace.attached)
+    """Derive project topology and persistent-state ownership from typed SSOTs."""
 
     @staticmethod
     def _declares_workspace_toolchain(workspace_root: Path) -> bool:

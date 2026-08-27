@@ -91,7 +91,7 @@ class FlextInfraPytestDiagXmlMixin:
         if root is None:
             return False
         slow_rows: t.MutableSequenceOf[t.Pair[float, str]] = []
-        # NOTE (multi-agent, mro-f8vk / kimi): Element.iter() never yields
+        # NOTE (multi-agent, flext-f8vk / kimi): Element.iter() never yields
         # None; the dropped guard was dead code. _as_xml_element below stays
         # as the live XmlElementLike union guard.
         for case_raw in root.iter("testcase"):

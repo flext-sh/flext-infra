@@ -217,6 +217,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (project_root / "src").mkdir(parents=True)
+        u.Tests.declare_workspace_projects(workspace_root, ("proj-a",))
 
         discovered = u.Infra.discover_project_roots(workspace_root=workspace_root)
         tm.that(discovered, eq=[project_root])

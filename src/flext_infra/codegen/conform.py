@@ -74,7 +74,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 msg = f"Unsupported codegen conform surface: {surface}"
                 raise ValueError(msg)
 
-    # NOTE (multi-agent, mro-wkii.17 / agent: codex): this is the only
+    # NOTE (multi-agent, flext-wkii.17 / agent: codex): this is the only
     # orchestrator for Make/toolchain/source conformance. Rendering stays in
     # flext-cli; Git-source TOML policy and attached detection are composed from
     # their separately owned u.Infra/workspace services.
@@ -211,9 +211,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                root
-            )
+            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
             if workspace_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     workspace_result.error or "repository context derivation failed"
@@ -247,21 +245,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             current_repository_role = current_repository.role
             current_make_profile = {
-                c.Infra.RepositoryRole.WORKSPACE: (
-                    c.Infra.MakeProfile.WORKSPACE
-                ),
-                c.Infra.RepositoryRole.STANDALONE: (
-                    c.Infra.MakeProfile.STANDALONE
-                ),
+                c.Infra.RepositoryRole.WORKSPACE: (c.Infra.MakeProfile.WORKSPACE),
+                c.Infra.RepositoryRole.STANDALONE: (c.Infra.MakeProfile.STANDALONE),
                 c.Infra.RepositoryRole.STANDALONE: c.Infra.MakeProfile.STANDALONE,
             }[current_repository_role]
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
                 make_profile=current_make_profile,
-                beads_enabled=(
-                    current_make_profile is c.Infra.MakeProfile.WORKSPACE
-                ),
+                beads_enabled=(current_make_profile is c.Infra.MakeProfile.WORKSPACE),
                 routing_only=False,
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=baseline_branch_result.value,
@@ -307,21 +299,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if repository.name == current_target.repository.name:
                 target = current_target
             else:
-                target_result = FlextInfraWorkspaceDetector.conform_target(
-                    repository_root, workspace
+                target = current_target.model_copy(
+                    update={
+                        "repository": repository,
+                        "root": repository_root,
+                        "make_profile": (
+                            c.Infra.MakeProfile.WORKSPACE
+                            if (repository_root / c.Infra.GITMODULES).is_file()
+                            else c.Infra.MakeProfile.STANDALONE
+                        ),
+                        "beads_enabled": True,
+                        "routing_only": False,
+                        "canonical_project_name": repository.distribution,
+                    }
                 )
-                if target_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        target_result.error
-                        or f"repository target resolution failed: {repository_root}"
-                    )
-                target = target_result.value
-            # NOTE (multi-agent, mro-45r9): attached members consume the parent
-            # topology SSOT; a duplicate member-local manifest is never required.
-            # mro-j47u (codex): existing repositories cannot reach the scaffold
+            # The workspace owns fan-out selection. Each selected repository
+            # still consumes only its own files and materialized config overrides.
+            # flext-j47u (codex): existing repositories cannot reach the scaffold
             # catalog. Project creation is the only template-rendering lifecycle.
             if (
-                self.initial_workspace is not None
+                workspace.project is not None
                 and repository.name == workspace.repository.name
             ):
                 repository_plan = self._plan_scaffold_repository(
@@ -458,7 +455,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 allowed = {item for profiles in entry_profiles for item in profiles}
                 if profile not in allowed:
                     # Why: profile-excluded managed workflows must not survive as
-                    # "keep current" ghosts (ci-matrix on workspace-member).
+                    # "keep current" ghosts from retired profile projections.
                     if (
                         relative.parts[:2] == (".github", "workflows")
                         and path.is_file()
@@ -516,11 +513,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                     continue
             if governed.policy == "merge" and relative.as_posix() == c.Infra.GITIGNORE:
-                # NOTE (mro-jnm1.2): the canonical .gitignore body is rendered
+                # NOTE (flext-jnm1.2): the canonical .gitignore body is rendered
                 # from the same base/gitignore.j2 + computed
                 # CodegenConfigSpec.gitignore_sections used by `codegen new` —
                 # ONE render mechanism derived from the artifact SSOT.
-                # Per-project exception fields land with mro-jnm1.3.
+                # Per-project exception fields land with flext-jnm1.3.
                 rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
                     codegen,
                     profile=profile,
@@ -574,7 +571,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` for one named project.
 
-        Public seam consumed by the layout engine (mro-0wuz): per-project
+        Public seam consumed by the layout engine (flext-0wuz): per-project
         layout ``gitignore_additions`` from the layout SSOT are appended as
         one trailing derived section so conform and layout never diverge.
         """
@@ -592,7 +589,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
-        NOTE (mro-jnm1.2): ``codegen new`` renders ``base/gitignore.j2`` with
+        NOTE (flext-jnm1.2): ``codegen new`` renders ``base/gitignore.j2`` with
         the full project context; conform renders the same template with the
         codegen config — both consume the same computed ``gitignore_sections``
         projection, so the body is byte-identical.
@@ -622,7 +619,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # The deny-all root policy (`/*` + `/*/`) would swallow every governed
         # member directory, so their whitelist is DERIVED from the live workspace
         # topology instead of a hardcoded name glob: declaring a member in
-        # `config/workspace.yaml` is the single source that makes it trackable.
+        # The workspace's live `.gitmodules` is the sole topology source.
         # Nested paths need every ancestor unignored, otherwise git never
         # descends far enough to reach the member itself.
         member_patterns: list[str] = []
@@ -642,7 +639,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if member_patterns:
             sections.append(
                 m.Infra.ScaffoldGitignoreSectionSpec(
-                    name="WHITELIST: governed workspace members (derived)",
+                    name="WHITELIST: governed workspace projects (derived)",
                     patterns=tuple(member_patterns),
                 )
             )
@@ -671,7 +668,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         elif scope is c.Infra.CodegenConformScope.MEMBERS:
             if not workspace.subprojects:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
-                    "members scope requires a workspace-root manifest"
+                    "subprojects scope requires a workspace .gitmodules"
                 )
             selected = tuple(workspace.subprojects)
         else:
@@ -703,7 +700,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile
     ) -> t.StrSequence:
         """Return Python roots the selected scaffold manifest actually creates."""
-        # NOTE (multi-agent, mro-wkii.17.9.2.1): derive future roots from both
+        # NOTE (multi-agent, flext-wkii.17.9.2.1): derive future roots from both
         # declarative owners so scaffold and existing-tree discovery converge.
         generated_roots = {
             Path(entry.destination).parts[0]
@@ -736,9 +733,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = target.make_profile
         pyproject = root / c.Infra.PYPROJECT_FILENAME
-        # mro-j47u (codex): new and existing repositories share the exact same
+        # flext-j47u (codex): new and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
-        # NOTE(mro-p68a.5, agent codex): a declared member consumes its parent
+        # NOTE(flext-p68a.5, agent codex): a declared member consumes its parent
         # tooling profile even before the atomic scaffold creates files on disk.
         tooling_root = target.root
         modernizer = FlextInfraPyprojectModernizer(
@@ -750,9 +747,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Why (flext-6itas.4): a scaffold's declared roots are the complete
         # future topology only for a member/standalone target; a workspace
         # root aggregates member trees it has not declared here.
-        declared_python_dirs_are_complete = (
-            profile is not c.Infra.MakeProfile.WORKSPACE
-        )
+        declared_python_dirs_are_complete = profile is not c.Infra.MakeProfile.WORKSPACE
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
@@ -815,7 +810,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"template destination escapes repository root: {destination}"
                 )
             # Project .beads config files are rendered only for selected roots,
-            # transaction worktrees, and marker-attached standalones.
+            # transaction worktrees and standalone repositories.
             if destination in {
                 c.Infra.BEADS_CONFIG_RELPATH,
                 c.Infra.BEADS_METADATA_RELPATH,
@@ -848,7 +843,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if not contract.delegates:
                 continue
-            # mro-i6nq.10: One formatted path governs validation and planning.
+            # flext-i6nq.10: One formatted path governs validation and planning.
             destination = entry.destination.format(
                 package_name=context.package_name, ns=context.ns
             )
@@ -1103,7 +1098,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         planned = [pyproject_plan.value]
         if not contract.templates:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
-        # NOTE(mro-p68a.5, agent codex): managed_files is the existing-tree
+        # NOTE(flext-p68a.5, agent codex): managed_files is the existing-tree
         # ownership SSOT; templates.entries remains the single render manifest.
         managed_result = self._plan_existing_templates(
             root=root,
@@ -1204,12 +1199,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             if profile not in entry.profiles:
                 # Why: profile-excluded managed workflows must not keep firing
-                # (ci-matrix on workspace-member). Prune the orphan projection.
+                # Prune projections retired from the active profile catalog.
                 if (
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()
                 ):
-                    # Why: mro-4p0t orphan_read avoids Result[str] vs str overlap on current.
+                    # Why: flext-4p0t orphan_read avoids Result[str] vs str overlap on current.
                     orphan_read = u.Cli.files_read_text(path)
                     if orphan_read.failure:
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1372,10 +1367,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if matches:
             return r[m.Infra.RepositoryRef].ok(matches[0])
-        return r[m.Infra.RepositoryRef].ok(
-            u.Infra.derived_repository_ref(
-                config.Infra.name, provider=config.Infra.codegen.providers[0]
+        providers = tuple(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name == workspace.repository.provider
+        )
+        if len(providers) != 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "infrastructure repository provider must resolve exactly once: "
+                f"{workspace.repository.provider}"
             )
+        return r[m.Infra.RepositoryRef].ok(
+            u.Infra.derived_repository_ref(config.Infra.name, provider=providers[0])
         )
 
     @staticmethod
@@ -1460,26 +1463,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 for section in codegen.gitignore_sections
                 if not section.profiles or profile in section.profiles
             )
-            # Why (ai-hub-qwoc): mro-jnm1.3 seam -- a project-local overlay
-            # extends the fleet-wide scaffold sections instead of the
-            # generated .gitignore being hand-edited (which `codegen conform`
-            # would then treat as WIP and refuse to regenerate).
-            overlay = next(
-                (
-                    item
-                    for item in workspace.repository_policy_overlays
-                    if item.project == repository.distribution
-                ),
-                None,
-            )
-            if overlay is not None and overlay.extra_ignored_patterns:
-                sections = (
-                    *sections,
-                    m.Infra.ScaffoldGitignoreSectionSpec(
-                        name="Project-local exceptions (config/workspace.yaml overlay)",
-                        patterns=overlay.extra_ignored_patterns,
-                    ),
-                )
             return r[p.Model].ok(
                 m.Infra.GitignoreRenderSpec(gitignore_sections=sections)
             )
@@ -1574,7 +1557,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         dist, codegen.checkout_submodules
                     ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
-                    ci_matrix_auto_run=target.ci_matrix_auto_run,
                 )
             )
         destination_path = Path(destination)
@@ -1627,7 +1609,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                         workspace
                     ),
-                    workspace_members=tuple(
+                    workspace_subprojects=tuple(
                         item.path.as_posix() for item in workspace.subprojects
                     ),
                     workspace_repositories=members,
@@ -1759,7 +1741,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_members=tuple(
+                workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
                 ),
                 workspace_repositories=members,
@@ -1834,7 +1816,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else ()
         )
         # Emit only the .gitignore sections that apply to this profile: a
-        # section with no declared profiles is universal; a workspace-root-only
+        # section with no declared profiles is universal; a workspace-only
         # section (member-directory allowlist, workspace manifest, submodule
         # coordination) never reaches a member or standalone .gitignore.
         profile_gitignore_sections = tuple(
@@ -2100,7 +2082,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # CI/local gates do not compare against a stale remote-tracking SHA.
         # Fixtures and offline clones keep the existing tracking ref.
         remote_probe = u.Cli.run_raw(
-            (c.Infra.GIT, "remote", "get-url", "origin"), cwd=root
+            (c.Infra.GIT, "remote", "get-url", "origin"),
+            cwd=root,
+            timeout=c.Infra.TIMEOUT_SHORT,
         )
         if (
             remote_probe.success
@@ -2118,11 +2102,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"refs/remotes/origin/{target.baseline_branch}"
                 ),
             )
-            fetch_result = u.Cli.run_raw(fetch_command, cwd=root)
+            fetch_result = u.Cli.run_raw(
+                fetch_command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT
+            )
             if fetch_result.failure or fetch_result.value.exit_code != 0:
-                # Soft: ancestry still validates against the local tracking ref
-                # when present; hard-fail only if that ref is missing below.
-                pass
+                detail = (
+                    fetch_result.error
+                    if fetch_result.failure
+                    else fetch_result.value.stderr.strip()
+                )
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "failed to refresh governed baseline from origin: "
+                    f"{detail or fetch_command}"
+                )
         baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
@@ -2245,7 +2237,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if reference.startswith("worktree:")
                 else reference
             )
-            # mro-e9j0.6: ancestry is a development-line rule. Only refs on the
+            # flext-e9j0.6: ancestry is a development-line rule. Only refs on the
             # governed allowlist are gated; parked releases (0.10/0.11), snapshots
             # and lane branches are inventoried but must never block conform.
             excluded = cls._technical_branch(
@@ -2313,9 +2305,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
         del workspace_root
-        workspace_environment = (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE
-        )
+        workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
         editable_repositories: tuple[m.Infra.RepositoryRef, ...] = ()
@@ -2353,8 +2343,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         r"""Plan removal of generated files this profile must not carry.
 
-        Operator law mro-68rcj: git hooks belong to the workspace ROOT only, and
-        the template already encodes that by excluding workspace-member from its
+        Operator law flext-68rcj: git hooks belong to the workspace ROOT only, and
+        the template already encodes that through its workspace-only
         profiles. But a non-matching profile was merely SKIPPED, never retired,
         so 31 members kept an orphan .pre-commit-config.yaml that ``make gen``
         neither owned nor removed -- each carrying a stale entry shape that

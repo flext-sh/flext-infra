@@ -75,7 +75,7 @@ class TestsCodegenCatalogExtensions:
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance.
 
-        Operator contract (mro-e9j0.6 C7 final): setup installs mise, the
+        Operator contract (flext-e9j0.6 C7 final): setup installs mise, the
         venv, and dependencies — it never generates, conforms, or mutates
         project code. gen/gen APPLY=Y is the single public conformance and
         generation surface, and no public ``conform`` verb exists.
@@ -161,11 +161,13 @@ class TestsCodegenCatalogExtensions:
             year=2026,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            beads=m.Infra.BeadsOverrideSpec(
+                version=1, workspace="flext", database="flext", issue_prefix="flext"
+            ),
             name=root.name,
             repository=root,
             project=project,
-            members=(
+            subprojects=(
                 _repository(
                     "acme-charts",
                     path="acme-charts",
@@ -173,6 +175,7 @@ class TestsCodegenCatalogExtensions:
                 ),
             ),
         )
+
         member_root = tmp_path / "acme-charts"
         member_root.mkdir()
         (member_root / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -285,13 +288,13 @@ class TestsCodegenCatalogExtensions:
             )
         )
         tm.ok(u.Cli.run_checked(["rm", "-rf", bare_repo.as_posix()]))
-        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        manifest_path.parent.mkdir(parents=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                manifest_path, workspace.model_dump(mode="json", exclude_none=True)
+        for project_root in (tmp_path, member_root):
+            tm.ok(
+                u.Cli.yaml_dump(
+                    project_root / c.Infra.BEADS_OVERRIDE_RELPATH,
+                    workspace.beads.model_dump(mode="json"),
+                )
             )
-        )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=tmp_path,
@@ -320,7 +323,7 @@ class TestsCodegenCatalogExtensions:
             for file in plan.files
             if file.path == tmp_path.resolve() / c.Infra.MAKEFILE_FILENAME
         )
-        tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
+        tm.that(root_makefile.rendered, has="WORKSPACE_SUBPROJECTS := acme-charts")
         tm.that("acme-content" in root_makefile.rendered, eq=False)
         workflows = tuple(
             file for file in plan.files if ".github/workflows" in file.path.as_posix()

@@ -47,7 +47,7 @@ class FlextInfraConstantsCodegenLazy:
     "Test-module filenames forbidden from installable package export maps."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
-    # mro-wkii.17.26 (codex): cleanup is the only owner of retired init artifacts.
+    # flext-wkii.17.26 (codex): cleanup is the only owner of retired init artifacts.
     OBSOLETE_GENERATED_INIT_FILES: Final[t.StrSequence] = ("__unit__.py",)
     "Generated initializer artifacts removed during every codegen pass."
     INIT_PYI: Final[str] = "__init__.pyi"
@@ -67,7 +67,7 @@ class FlextInfraConstantsCodegenLazy:
         "tests",
     })
     "Root import surfaces generated as private lazy plumbing, not public ABI."
-    # mro-pulj (codex): pytest must register fixture plugins before importing
+    # flext-pulj (codex): pytest must register fixture plugins before importing
     # them, so their private package initializer is always side-effect free.
     # Real cycle exceptions are the bootstrap packages imported while
     # ``flext_core.lazy`` initializes; importing them with a lazy facade would
@@ -148,7 +148,7 @@ class FlextInfraConstantsCodegenLazy:
         "lazy",
         "normalize_lazy_imports",
     })
-    # mro-pulj (codex): these remain direct inline lazy imports without
+    # flext-pulj (codex): these remain direct inline lazy imports without
     # widening the explicit wildcard contract or requiring root sidecars.
     "Public-module symbols withheld from generated root-facade __all__."
     PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
@@ -167,7 +167,7 @@ class FlextInfraConstantsCodegenLazy:
         "main",
     )
     "Canonical dependency order for public aliases and operational entry points."
-    # mro-wkii.17 (Codex): static analyzers bind local facade classes, not rebinds.
+    # flext-wkii.17 (Codex): static analyzers bind local facade classes, not rebinds.
     PUBLIC_ROOT_TYPING_FACADE_SUFFIXES: Final[t.MappingKV[str, str]] = (
         MappingProxyType({
             "c": "Constants",

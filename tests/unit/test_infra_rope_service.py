@@ -227,7 +227,6 @@ class TestsFlextInfraInfraRopeService:
             tm.that(
                 objects.get(("FlextDemoModels.build.nested", "function")), none=False
             )
-            tm.that(objects["FlextDemoModels", "class"].is_facade_member, eq=True)
 
     def test_workspace_dsl_reload_refreshes_cached_objects(
         self, tmp_path: Path
@@ -522,10 +521,10 @@ class TestsFlextInfraInfraRopeService:
         tm.that(candidate.runtime_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
 
-    def test_workspace_dsl_skips_reference_scan_for_facade_members(
+    def test_workspace_dsl_does_not_classify_legacy_root_facade(
         self, tmp_path: Path
     ) -> None:
-        """Governed facade members expose zero production references."""
+        """Legacy root facade declarations are ordinary objects."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -546,10 +545,8 @@ class TestsFlextInfraInfraRopeService:
                 for item in rope.objects(module_path, include_local_scopes=False)
             }
 
-        tm.that(objects["FlextDemoModels"].is_facade_member, eq=True)
-        tm.that(objects["FlextDemoModels"].references_count, eq=0)
-        tm.that(objects["m"].is_facade_member, eq=True)
-        tm.that(objects["m"].references_count, eq=0)
+        tm.that(objects["FlextDemoModels"].is_facade_member, eq=False)
+        tm.that(objects["m"].is_facade_member, eq=False)
 
     def test_workspace_dsl_skips_reference_scan_for_private_names(
         self, tmp_path: Path

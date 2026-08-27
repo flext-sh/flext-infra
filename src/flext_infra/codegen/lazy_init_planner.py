@@ -133,7 +133,7 @@ class FlextInfraCodegenLazyInitPlanner(
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
             and "." not in context.current_pkg
-            # Why (mro-27a9e.1, multi-agent): governed consumers such as ai_hub
+            # Why (flext-27a9e.1, multi-agent): governed consumers such as ai_hub
             # are first-class project roots; package prefixes are not architecture.
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
@@ -152,7 +152,7 @@ class FlextInfraCodegenLazyInitPlanner(
             ):
                 export_names.add(package_alias)
         if is_facade_root:
-            # mro-pulj (codex) + ulw follow-up: __all__ is the one public
+            # flext-pulj (codex) + ulw follow-up: __all__ is the one public
             # contract (dir()/star-import/docs already respect it). Do NOT
             # narrow lazy_map/_LAZY_MODULES to match -- internal fragments across
             # the package rely on lazy __getattr__ resolving the root facade
@@ -199,7 +199,7 @@ class FlextInfraCodegenLazyInitPlanner(
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )
-        # mro-pulj (codex): publish the dependency-complete bottom-up plan so
+        # flext-pulj (codex): publish the dependency-complete bottom-up plan so
         # later alias resolution never rebuilds this package without children.
         self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)

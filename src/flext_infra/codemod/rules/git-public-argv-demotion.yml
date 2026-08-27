@@ -1,4 +1,4 @@
-# GitPython MRO demotion guard (workspace epic mro-ga9q, member flext-infra-a8q).
+# GitPython MRO demotion guard (workspace epic flext-ga9q, member flext-infra-a8q).
 #
 # The raw-argv surface `git_run` / `git_capture` / `git_capture_bytes` was
 # demoted off the public utilities facade: argv execution is PRIVATE and lives

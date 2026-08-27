@@ -185,7 +185,7 @@ class FlextInfraCodegenScaffolder(s[str]):
             if request.dry_run:
                 files_created.append(str(filepath))
                 continue
-            # mro-j47u (codex): templates own final source shape; codegen never fixes it.
+            # flext-j47u (codex): templates own final source shape; codegen never fixes it.
             written = u.Cli.atomic_write_text_file(filepath, content)
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"

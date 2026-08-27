@@ -23,7 +23,7 @@ from typing import Final
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
-    # NOTE (multi-agent, mro-wkii.17 / agent: codex): these enums define the
+    # NOTE (multi-agent, flext-wkii.17 / agent: codex): these enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
     # closed vocabulary used by models and CLI dispatch.
@@ -115,8 +115,8 @@ class FlextInfraConstantsCodegenProject:
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
     # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
-    # NOTE (multi-agent, mro-wkii.17): one base catalog serves both profiles;
-    # workspace topology is owned only by config/workspace.yaml.
+    # NOTE (multi-agent, flext-wkii.17): one base catalog serves both profiles;
+    # Workspace topology is owned only by the repository's .gitmodules.
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenProject"]

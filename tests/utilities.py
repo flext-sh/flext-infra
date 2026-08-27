@@ -42,14 +42,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._result = result
 
             def resolve_projects(
-                self,
-                workspace_root: Path,
-                names: t.StrSequence,
-                *,
-                include_attached: bool = False,
+                self, workspace_root: Path, names: t.StrSequence
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
-                del workspace_root, names, include_attached
+                del workspace_root, names
                 return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
@@ -393,33 +389,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def declare_workspace_ledger(
-            repository: Path, ledger_id: str, ledger_prefix: str | None = None
-        ) -> None:
-            """Declare typed inputs for the fixture's ``.beads`` projections."""
-            repository_ref = TestsFlextInfraUtilities.Tests.repository_ref(
-                "fixture"
-            ).model_copy(update={"path": Path(), "package": False, "editable": False})
-            tm.ok(
-                u.Cli.yaml_dump(
-                    repository / "config" / "workspace.yaml",
-                    m.Infra.WorkspaceSpec(
-                        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                        name=repository_ref.distribution,
-                        repository=repository_ref,
-                        ledger_id=ledger_id,
-                        # Callers may state a prefix distinct from the SQL-safe
-                        # database identity.
-                        ledger_prefix=(
-                            ledger_id if ledger_prefix is None else ledger_prefix
-                        ),
-                    ).model_dump(mode="json", exclude_none=True),
-                )
-            )
-
-        @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
-            # mro-wkii.17 (codex): tests consume the validated config singleton;
+            # flext-wkii.17 (codex): tests consume the validated config singleton;
             # the removed utility loader must not survive as a hidden test path.
             """Provide the typed test helper `tool_config_document`."""
             return config.Infra.tooling
@@ -542,63 +513,38 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project_dir
 
         @staticmethod
-        def write_standalone_workspace_manifest(
-            project_dir: Path,
-            name: str,
-            *,
-            upstream: str = "flext_core",
-            inherited_facets: t.StrSequence = (),
-        ) -> Path:
-            """Write a local standalone workspace manifest for codegen conform."""
+        def write_standalone_beads_override(project_dir: Path) -> Path:
+            """Write the required repository-local Beads override fixture."""
             config_dir = project_dir / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            package_name = name.replace("-", "_")
-            class_stem = "".join(part.capitalize() for part in name.split("-"))
-            namespace = class_stem
-            env_prefix = f"{name.upper().replace('-', '_')}_"
-            manifest_path = config_dir / "workspace.yaml"
-            manifest_path.write_text(
+            override_path = config_dir / "beads.yaml"
+            override_path.write_text(
                 (
-                    "version: 3\n"
-                    f"name: {name}\n"
-                    "repository:\n"
-                    f"  name: {name}\n"
-                    f"  distribution: {name}\n"
-                    "  provider: flext-sh\n"
-                    f"  url: https://github.com/flext-sh/{name}.git\n"
-                    "  path: .\n"
-                    "  role: standalone\n"
-                    "  state: active\n"
-                    "  checkout: independent\n"
-                    "  codegen: conform\n"
-                    "  package: true\n"
-                    "  editable: true\n"
-                    "  read_only: false\n"
-                    "project:\n"
-                    f"  package_name: {package_name}\n"
-                    f"  class_stem: {class_stem}\n"
-                    f"  namespace: {namespace}\n"
-                    f"  constant_name: {name}\n"
-                    f"  namespace_attribute: {package_name}\n"
-                    f"  alias: {package_name}\n"
-                    f"  environment_prefix: {env_prefix}\n"
-                    f'  description: "Demo {name}"\n'
-                    '  version: "0.1.0"\n'
-                    "  license: MIT\n"
-                    "  author_name: FLEXT Team\n"
-                    "  author_email: team@flext.sh\n"
-                    f"  upstream: {upstream}\n"
-                    f"  inherited_facets: {list(inherited_facets)!r}\n"
-                    f"  homepage: https://github.com/flext-sh/{name}\n"
-                    f"  documentation: https://github.com/flext-sh/{name}\n"
-                    "  workspace_root_rel: .\n"
-                    "  year: 2026\n"
-                    "members: []\n"
-                    "exclusions: []\n"
+                    "version: 1\n"
+                    "workspace: flext\n"
+                    "database: flext\n"
+                    "issue_prefix: flext\n"
                 ),
                 encoding="utf-8",
             )
-            return manifest_path
+            return override_path
+
+        @staticmethod
+        def declare_workspace_projects(
+            workspace: Path, project_names: t.StrSequence
+        ) -> None:
+            """Declare fixture projects through the production topology contract."""
+            sections: list[str] = []
+            for name in project_names:
+                sections.extend([
+                    f'[submodule "{name}"]\n',
+                    f"\tpath = {name}\n",
+                    f"\turl = https://github.com/flext-sh/{name}.git\n",
+                ])
+                TestsFlextInfraUtilities.Tests.write_standalone_beads_override(
+                    workspace / name
+                )
+            (workspace / ".gitmodules").write_text("".join(sections), encoding="utf-8")
 
         @staticmethod
         def create_docs_workspace(
@@ -659,6 +605,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 _write(project / "docs/dev.md", "# Development\n")
                 _write(project / "docs/api.md", "# API\n")
 
+            if project_names:
+                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
+                    workspace, project_names
+                )
+
             return workspace
 
         @staticmethod
@@ -689,6 +640,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir = project / "src" / name.replace("-", "_")
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
+            if project_names:
+                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
+                    workspace, project_names
+                )
             return workspace
 
         @staticmethod
@@ -712,7 +667,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             (workspace / "pyproject.toml").write_text(
                 (
                     "[project]\n"
-                    'name = "workspace-root"\n'
+                    'name = "workspace"\n'
                     'version = "0.1.0"\n'
                     'dependencies = ["flext-core>=0.1.0"]\n'
                 ),
@@ -778,6 +733,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 validate_exit_code = validate_exit_codes.get(name, "0")
                 (project / "Makefile").write_text(
                     f"val:\n\t@exit {validate_exit_code}\n", encoding="utf-8"
+                )
+            if project_names:
+                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
+                    workspace, project_names
                 )
             if initialize_root_git:
                 TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace)
@@ -885,7 +844,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             name: str,
             dependency_path: str = "",
-            workspace_members: t.StrSequence = (),
+            workspace_subprojects: t.StrSequence = (),
         ) -> str:
             """Render a pyproject fixture for dependency-path tests."""
             lines = ["[project]", f'name = "{name}"']
@@ -898,8 +857,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "[tool.poetry.dependencies]",
                     f'flext-core = {{ path = "{dependency_path}" }}',
                 ))
-            if workspace_members:
-                members = ", ".join(f'"{member}"' for member in workspace_members)
+            if workspace_subprojects:
+                members = ", ".join(f'"{member}"' for member in workspace_subprojects)
                 lines.extend(("", "[tool.uv.workspace]", f"members = [{members}]"))
             return "\n".join(lines) + "\n"
 
@@ -948,7 +907,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             Isolation is expressed with ``remove_env_keys`` because ``env`` is an
             overlay that can only add or replace keys, never remove them
-            (mro-wt8qp). ``overrides`` carries topology the fixture itself
+            (flext-wt8qp). ``overrides`` carries topology the fixture itself
             requires, such as permitting the file transport for a local bare
             origin.
             """
@@ -1198,7 +1157,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 (
-                    f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
+                    f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
+                    'dependencies = ["flext-core>=0.1.0"]\n\n'
                     + TestsFlextInfraUtilities.Tests.ruff_per_file_ignores_toml()
                 ),
                 encoding=c.Infra.ENCODING_DEFAULT,

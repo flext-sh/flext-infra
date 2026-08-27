@@ -96,7 +96,7 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
     def test_signature_propagation_renames_call_keyword(self) -> None:
         source = "result = migrate(project_root=root, dry_run=True)\n"
         migration = m.Infra.SignatureMigration.model_validate({
-            "id": "migrate-project-root-to-workspace-root",
+            "id": "migrate-project-root-to-workspace",
             "enabled": True,
             "target_simple_names": ["migrate"],
             "keyword_renames": {"project_root": "workspace_root"},

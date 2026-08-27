@@ -61,10 +61,6 @@ if TYPE_CHECKING:
     from .test_custom_surface_never_shadows_public_verbs import (
         TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs,
     )
-    from .test_engine_is_consumer_agnostic import (
-        TestsFlextInfraEngineIsConsumerAgnostic,
-        owned_provider,
-    )
     from .test_gitignore_is_generated_from_ssot import (
         TestsFlextInfraGitignoreIsGeneratedFromSsot,
     )
@@ -97,7 +93,6 @@ if TYPE_CHECKING:
     from .test_infra_version_core import TestsFlextInfraInfraVersionCore
     from .test_infra_version_extra import TestsFlextInfraInfraVersionExtra
     from .test_infra_versioning import TestsFlextInfraInfraVersioning
-    from .test_infra_workspace_detector import TestsFlextInfraInfraWorkspaceDetector
     from .test_infra_workspace_orchestrator import (
         TestsFlextInfraInfraWorkspaceOrchestrator,
         orchestrator,
@@ -134,7 +129,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCustomMakeSurfaceIsDerived",
     "TestsFlextInfraCustomMakeSurfaceIsSingle",
     "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs",
-    "TestsFlextInfraEngineIsConsumerAgnostic",
     "TestsFlextInfraGitignoreIsGeneratedFromSsot",
     "TestsFlextInfraInfraConstantsCore",
     "TestsFlextInfraInfraConstantsExtra",
@@ -157,7 +151,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraInfraVersionCore",
     "TestsFlextInfraInfraVersionExtra",
     "TestsFlextInfraInfraVersioning",
-    "TestsFlextInfraInfraWorkspaceDetector",
     "TestsFlextInfraInfraWorkspaceOrchestrator",
     "TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot",
     "TestsFlextInfraMakeParseIsSideEffectFree",
@@ -194,7 +187,6 @@ __all__: tuple[str, ...] = (
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
     "orchestrator",
-    "owned_provider",
     "p",
     "r",
     "real_docs_project",
@@ -275,10 +267,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_custom_surface_never_shadows_public_verbs": (
                 "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs",
             ),
-            ".test_engine_is_consumer_agnostic": (
-                "TestsFlextInfraEngineIsConsumerAgnostic",
-                "owned_provider",
-            ),
             ".test_gitignore_is_generated_from_ssot": (
                 "TestsFlextInfraGitignoreIsGeneratedFromSsot",
             ),
@@ -314,9 +302,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_version_core": ("TestsFlextInfraInfraVersionCore",),
             ".test_infra_version_extra": ("TestsFlextInfraInfraVersionExtra",),
             ".test_infra_versioning": ("TestsFlextInfraInfraVersioning",),
-            ".test_infra_workspace_detector": (
-                "TestsFlextInfraInfraWorkspaceDetector",
-            ),
             ".test_infra_workspace_orchestrator": (
                 "TestsFlextInfraInfraWorkspaceOrchestrator",
                 "orchestrator",

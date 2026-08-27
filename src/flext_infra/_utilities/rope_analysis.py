@@ -419,7 +419,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         """Recurse the rope scope tree, appending one entry per child scope."""
         for child in scope.get_scopes():
             start = child.get_start()
-            # NOTE (multi-agent, mro-f8vk / kimi): RopeScope.get_start() is
+            # NOTE (multi-agent, flext-f8vk / kimi): RopeScope.get_start() is
             # declared int in p.Infra; the old isinstance guard was dead code.
             definitions.append(
                 m.Infra.ScopeDefinition(
@@ -627,7 +627,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
     ) -> bool:
         """Return whether one Rope name is defined in ``resource``."""
-        # NOTE (multi-agent, mro-f8vk / kimi): p.Infra declares
+        # NOTE (multi-agent, flext-f8vk / kimi): p.Infra declares
         # get_definition_location() as tuple-always (every other caller
         # unpacks directly); the old None guard was dead code.
         module, line = pyname.get_definition_location()
@@ -1209,7 +1209,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     def _keyword_value_source(args: t.StrSequence, keyword: str) -> str:
         """Return a keyword argument value source from split call args."""
         prefix = f"{keyword}="
-        # NOTE (multi-agent, mro-f8vk / kimi): args is t.StrSequence
+        # NOTE (multi-agent, flext-f8vk / kimi): args is t.StrSequence
         # (SequenceOf[str]); the old isinstance guard was dead code.
         for arg in args:
             text = arg.strip()
@@ -1433,7 +1433,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         """Return a process-wide rope project usable for string parsing."""
         cached = FlextInfraUtilitiesRopeAnalysis._parse_project
         if cached is None:
-            # mro-o6h5 (agent: kimi) — root-cause fix: the anchor was a hardcoded
+            # flext-o6h5 (agent: kimi) — root-cause fix: the anchor was a hardcoded
             # operator path that crashed CI (FileNotFoundError) and silently bound
             # the parse project to the wrong tree locally. Anchor on the validated
             # settings SSOT, with cwd as last resort — both exist where CLI runs.

@@ -13,13 +13,13 @@ implementations directly.
 
 ## Effective topology
 
-- Effective Make profiles are only `workspace-root` and `standalone`.
-- A repository is a workspace root only when its live `.gitmodules`, its
-  `WorkspaceSpec.members`, and each member's provider URL and
-  `ProviderSpec.branch` agree exactly for at least one mutable first-party member.
-- An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
-  metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
-  CI surface, and project runtime.
+- Effective Make profiles are only `workspace` and `standalone`.
+- A repository is a workspace only when it owns `.gitmodules`. Its projects are
+  derived exclusively from that file; flext-infra owns no project registry.
+- Every declared project owns a matching `config/beads.yaml`. A missing or
+  inconsistent override makes workspace validation fail before generation.
+- A standalone repository never reads parent topology. Its local
+  `config/beads.yaml` is the complete static Beads projection input.
 - A development lane owns a real lane-local `.venv`. START invokes `make setup`
   from the lane, with the lane as both project and runtime root; it never links to
   or mutates another checkout's environment.
@@ -59,7 +59,7 @@ Public accessors:
 
 The operator updates the current root through the repository's GitFlow before
 starting conform; conform never guesses a merge or mutates root history.
-Generated root setup handles only governed member paths: it fetches the
+Generated root setup handles only governed project paths: it fetches the
 provider-owned branch and performs `git pull --ff-only` before validating the
 recorded gitlink ancestry. Divergence fails closed with the exact command, exit
 status, and stderr.
@@ -72,8 +72,7 @@ any tracker lifecycle.
 
 ## MCP / CRG identity (out of scope for conform)
 
-The two `.beads/` files consume `ledger_id`, `ledger_prefix`, and optional server
-values from `config/workspace.yaml`, with fleet defaults from
-`config/codegen.yaml`. Runtime behavior belongs to each consuming project. MCP
+The two `.beads/` files consume the repository-local `config/beads.yaml`, with
+static defaults from `config/codegen.yaml`. Runtime behavior belongs to each consuming project. MCP
 gateway routing, CRG graph paths, memory `project_id` stores, and activation
 inventory remain outside conform.

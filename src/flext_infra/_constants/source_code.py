@@ -545,7 +545,7 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: pytest block-end markers (summary/warnings/timing)."
 
-    # mro-r3r8: analyzers cover production; pytest owns executable test validation.
+    # flext-r3r8: analyzers cover production; pytest owns executable test validation.
     CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = ("src",)
     "Productive Python root passed positionally to subproject analyzers."
 

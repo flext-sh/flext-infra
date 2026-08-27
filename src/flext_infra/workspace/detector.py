@@ -100,7 +100,9 @@ class FlextInfraWorkspaceDetector(
                 contract.error or f"invalid Git submodule: {path.as_posix()}"
             )
         member_url, member_branch = contract.value
-        member_provider = cls._provider_for_url(member_url)
+        member_provider = cls._declared_provider_for_url(member_url)
+        if member_provider is None:
+            return r[tuple[m.Infra.RepositoryRef, ...]].ok(())
         if not u.Infra.gitmodule_branch_is_governed(
             member_branch, provider_branch=member_provider.branch
         ):
@@ -130,9 +132,9 @@ class FlextInfraWorkspaceDetector(
 
         Operator law: flext-infra owns generic conform behaviour and must not
         carry a catalog of the projects it serves. A repository that ships no
-        ``config/workspace.yaml`` is therefore derived from two sources it
-        owns outright: its ``pyproject.toml`` metadata for identity, and its
-        live Git submodule contract for members. Nothing is fabricated and
+        Repository context is therefore derived from sources it owns outright:
+        ``pyproject.toml`` metadata, repository-local ``config/*.yaml`` overrides,
+        and its own live Git submodule contract. Nothing is fabricated and
         nothing is looked up in flext-infra.
         """
         resolved_metadata = project_metadata
@@ -158,13 +160,12 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.WorkspaceSpec].fail(
                 origin.error or f"unable to read Git origin: {repository_root}"
             )
-        provider = cls._provider_for_url(origin.value)
-        # A checkout with no declared origin (fresh scaffold, transaction
-        # worktree) still has a canonical identity: the provider contract plus
-        # its own project name. That is derived, not looked up in a registry.
-        repository_url = origin.value or (
-            f"{provider.base_url.rstrip('/')}/{project_name}.git"
-        )
+        provider = cls._declared_provider_for_url(origin.value)
+        if provider is None:
+            return r[m.Infra.WorkspaceSpec].fail(
+                f"repository origin is not governed by a declared provider: {origin.value}"
+            )
+        repository_url = origin.value
         mode = (
             c.Infra.WorkspaceMode.WORKSPACE
             if (repository_root / c.Infra.GITMODULES).is_file()
@@ -233,15 +234,16 @@ class FlextInfraWorkspaceDetector(
 
     @staticmethod
     def _git_origin_url(repository_root: Path) -> p.Result[str]:
-        """Read the repository's own declared origin, or an empty remote."""
+        """Read the repository's required origin without fallback."""
         result = u.Infra.git_remote_url(
             m.Infra.GitRemoteUrlRequest(repo_root=repository_root, remote="origin")
         )
         if result.failure:
-            # A repository with no origin is still a valid standalone checkout;
-            # it simply has no provider-governed identity to match.
-            return r[str].ok("")
-        return r[str].ok(result.value.text.strip())
+            return r[str].fail(result.error or "repository origin is missing")
+        origin = result.value.text.strip()
+        if not origin:
+            return r[str].fail("repository origin is empty")
+        return r[str].ok(origin)
 
     @staticmethod
     def _declared_provider_for_url(url: str) -> m.Infra.ProviderSpec | None:
@@ -262,11 +264,6 @@ class FlextInfraWorkspaceDetector(
             ):
                 return provider
         return None
-
-    @classmethod
-    def _provider_for_url(cls, url: str) -> m.Infra.ProviderSpec:
-        """Resolve the declared provider owning ``url``, else the default one."""
-        return cls._declared_provider_for_url(url) or config.Infra.codegen.providers[0]
 
     @classmethod
     def _validate_observed_dependencies(
@@ -301,7 +298,7 @@ class FlextInfraWorkspaceDetector(
                 member_checkout = repository_root / member.path
                 if not (member_checkout / ".git").exists():
                     return r[tuple[Path, ...]].fail(
-                        "governed workspace member is absent from .gitmodules "
+                        "governed workspace project is absent from .gitmodules "
                         f"and has no live checkout: {member.path.as_posix()}"
                     )
                 governed_paths.add(member.path)
@@ -316,7 +313,7 @@ class FlextInfraWorkspaceDetector(
                 declared_branch, provider_branch=provider.branch
             ):
                 return r[tuple[Path, ...]].fail(
-                    f"governed workspace member contract differs: {member.name}"
+                    f"governed workspace project contract differs: {member.name}"
                 )
             governed_paths.add(member.path)
         observed_external = tuple(
@@ -451,73 +448,6 @@ class FlextInfraWorkspaceDetector(
         return r[bool].ok(True)
 
     @classmethod
-    def _unattached_mode(
-        cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec | None
-    ) -> p.Result[c.Infra.WorkspaceMode]:
-        """Infer root from actual first-party governed submodule declarations."""
-        attached_marker = cls._declares_attached_standalone(repository_root)
-        if attached_marker.failure:
-            return r[c.Infra.WorkspaceMode].fail(
-                attached_marker.error or "unable to read workspace attachment marker"
-            )
-        if attached_marker.value:
-            return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-        declared = u.Infra.git_declared_submodule_paths(repository_root)
-        if declared.failure:
-            return r[c.Infra.WorkspaceMode].fail(
-                declared.error or "unable to read Git submodule topology"
-            )
-        if not declared.value:
-            return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-        resolved_workspace = workspace_spec
-        if resolved_workspace is None:
-            # mro-5qfa: an aggregator declares submodules without owning the FLEXT
-            # toolchain; .gitmodules alone never promotes it to a workspace root.
-            if not cls._declares_workspace_toolchain(repository_root):
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            workspace_result = cls.load_workspace_spec(repository_root)
-            if workspace_result.failure:
-                return r[c.Infra.WorkspaceMode].fail(
-                    workspace_result.error or "unable to derive governed topology"
-                )
-            resolved_workspace = workspace_result.value
-        providers = {item.name: item for item in config.Infra.codegen.providers}
-        governed: t.MutableSequenceOf[Path] = []
-        declared_set = frozenset(declared.value)
-        for member in resolved_workspace.subprojects:
-            if member.read_only:
-                continue
-            provider = providers.get(member.provider)
-            if provider is None or not cls.repository_is_governed(member, provider):
-                return r[c.Infra.WorkspaceMode].fail(
-                    "mutable workspace member is not first-party governed: "
-                    f"{member.name}"
-                )
-            if member.path not in declared_set:
-                return r[c.Infra.WorkspaceMode].fail(
-                    "governed workspace member is absent from .gitmodules: "
-                    f"{member.path.as_posix()}"
-                )
-            contract = cls._gitmodule_contract(repository_root, member.path.as_posix())
-            if contract.failure:
-                return r[c.Infra.WorkspaceMode].fail(
-                    contract.error or f"invalid governed member: {member.name}"
-                )
-            declared_url, declared_branch = contract.value
-            if declared_url != member.url or not u.Infra.gitmodule_branch_is_governed(
-                declared_branch, provider_branch=provider.branch
-            ):
-                return r[c.Infra.WorkspaceMode].fail(
-                    f"governed workspace member contract differs: {member.name}"
-                )
-            governed.append(member.path)
-        return r[c.Infra.WorkspaceMode].ok(
-            c.Infra.WorkspaceMode.WORKSPACE
-            if governed
-            else c.Infra.WorkspaceMode.STANDALONE
-        )
-
-    @classmethod
     def conform_target(
         cls,
         repository_root: Path,
@@ -582,20 +512,6 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external or fork URL: {repository.url}"
             )
-        overlays = tuple(
-            item
-            for item in resolved_workspace.repository_policy_overlays
-            if item.project == canonical_project_name
-        )
-        if len(overlays) > 1:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                f"repository policy overlay is duplicated: {canonical_project_name}"
-            )
-        overlay = (
-            overlays[0]
-            if overlays
-            else m.Infra.RepositoryPolicyOverlaySpec(project=canonical_project_name)
-        )
         mode_result = cls().detect(identity_root)
         if mode_result.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
@@ -610,13 +526,9 @@ class FlextInfraWorkspaceDetector(
         # environment flag, so the same code path works for real worktrees and for
         # unit fixtures that simulate CLI transaction scope.
         is_transaction_worktree = identity_root != resolved_root
-        # Projection selection: workspace roots always receive the two .beads
-        # config files; independent standalones opt in through their repository
-        # overlay. Transaction worktrees reuse the governing manifest values.
-        beads_enabled = make_profile is c.Infra.MakeProfile.WORKSPACE or (
-            make_profile is c.Infra.MakeProfile.STANDALONE
-            and (is_transaction_worktree or overlay.beads_enabled)
-        )
+        # Every managed repository projects its repository-local static Beads
+        # override. Topology and policy overlays cannot opt out of the contract.
+        beads_enabled = True
         routing_only = is_transaction_worktree
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
@@ -627,8 +539,7 @@ class FlextInfraWorkspaceDetector(
                 routing_only=routing_only,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_branch_result.value,
-                ci_enabled=overlay.ci_enabled,
-                ci_matrix_auto_run=overlay.ci_matrix_auto_run,
+                ci_enabled=True,
                 external_dependency_paths=(
                     resolved_workspace.external_dependency_paths
                 ),

@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesPyprojectConform:
     """Render root workspace and autonomous library metadata deterministically."""
 
-    # NOTE (multi-agent, mro-wkii.17.9): this pure renderer replaces the
+    # NOTE (multi-agent, flext-wkii.17.9): this pure renderer replaces the
     # mutating deps path-sync command; codegen is the only public orchestrator.
 
     @classmethod
@@ -133,12 +133,12 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
-        attached_workspace_root = cls._is_attached_workspace_root(
+        workspace_root = cls._is_workspace_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        if attached_workspace_root:
+        if workspace_root:
             sources_result = cls._validate_root_uv_sources(
                 source, workspace=workspace, providers=providers
             )
@@ -164,7 +164,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         sources_result = (
             r[bool].ok(True)
-            if attached_workspace_root
+            if workspace_root
             else cls._sync_uv_sources(
                 source,
                 project_name=project_name,
@@ -203,12 +203,12 @@ class FlextInfraUtilitiesPyprojectConform:
         """Render internal requirements for root workspace or detached operation."""
         available = (workspace.repository, *workspace.subprojects)
         # Only the root expresses the active workspace overlay in its own
-        # requirements. A publishable member keeps its configured Git source so
+        # requirements. A publishable project keeps its configured Git source so
         # the same pyproject remains resolvable in a standalone checkout; uv
-        # replaces it with workspace=true from the attached root.
-        attached = (
+        # replaces it with workspace=true when rendered by the workspace root.
+        workspace_distributions = (
             frozenset(member.distribution for member in workspace.subprojects)
-            if cls._is_attached_workspace_root(
+            if cls._is_workspace_root(
                 project_name=project_name,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
@@ -222,7 +222,7 @@ class FlextInfraUtilitiesPyprojectConform:
             repositories=available,
             providers=providers,
             canonicalize_all=canonicalize_all,
-            attached=attached,
+            workspace_distributions=workspace_distributions,
         )
         if normalized.failure:
             return normalized
@@ -240,7 +240,7 @@ class FlextInfraUtilitiesPyprojectConform:
                     repositories=available,
                     providers=providers,
                     canonicalize_all=canonicalize_all,
-                    attached=attached,
+                    workspace_distributions=workspace_distributions,
                 )
                 if group_result.failure:
                     return group_result
@@ -255,7 +255,7 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         canonicalize_all: bool,
-        attached: frozenset[str],
+        workspace_distributions: frozenset[str],
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries."""
         raw_value = u.Cli.toml_value(container, key)
@@ -269,7 +269,10 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item, repositories=repositories, providers=providers, attached=attached
+                item,
+                repositories=repositories,
+                providers=providers,
+                workspace_distributions=workspace_distributions,
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -297,7 +300,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         providers: t.SequenceOf[m.Infra.ProviderSpec],
-        attached: frozenset[str],
+        workspace_distributions: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from its manifest repository reference."""
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
@@ -309,10 +312,10 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].fail(f"invalid internal requirement: {requirement}")
         head = head_match.group("head").strip()
         marker_text = marker.strip()
-        if dependency_name in attached:
+        if dependency_name in workspace_distributions:
             if "@" in requirement_part:
                 return r[str].fail(
-                    "attached workspace dependency declares direct source: "
+                    "workspace dependency declares a conflicting direct source: "
                     f"{dependency_name}"
                 )
             return r[str].ok(
@@ -362,9 +365,18 @@ class FlextInfraUtilitiesPyprojectConform:
             if repository.distribution == distribution
         )
         if not matches:
+            provider_names = frozenset(item.provider for item in repositories)
+            candidates = tuple(
+                provider for provider in providers if provider.name in provider_names
+            )
+            if len(candidates) != 1:
+                return r.fail(
+                    "implicit repository provider must resolve exactly once: "
+                    f"distribution={distribution}, providers={sorted(provider_names)}"
+                )
             return r.ok(
                 FlextInfraUtilitiesRepository.derived_repository_ref(
-                    distribution, provider=providers[0]
+                    distribution, provider=candidates[0]
                 )
             )
         reference = matches[0]
@@ -458,7 +470,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> None:
         """Keep the generated workspace dependency group only at the root."""
-        workspace_root = cls._is_attached_workspace_root(
+        workspace_root = cls._is_workspace_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -467,7 +479,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if groups is None:
             if not workspace_root:
                 return
-            # NOTE (multi-agent, mro-qb4y.2): the root dependency overlay is
+            # NOTE (multi-agent, flext-qb4y.2): the root dependency overlay is
             # complete even when an older manifest has no groups table yet.
             groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
         if workspace_root:
@@ -480,43 +492,42 @@ class FlextInfraUtilitiesPyprojectConform:
         u.Cli.toml_remove_key_if_present(groups, "workspace")
 
     @staticmethod
-    def _is_workspace_root(
+    def _matches_workspace_repository(
         *, project_name: str, workspace: p.Infra.WorkspaceSpec
     ) -> bool:
-        """Identify the real multi-project root, not an autonomous repository."""
+        """Return whether project identity matches the multi-project repository."""
         return bool(workspace.subprojects) and (
             project_name == workspace.repository.distribution
         )
 
     @classmethod
-    def _is_attached_workspace_root(
+    def _is_workspace_root(
         cls,
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> bool:
-        """Identify the root only when the active topology is attached."""
+        """Identify a workspace solely from its own live topology."""
         return (
             workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
-            and cls._is_workspace_root(project_name=project_name, workspace=workspace)
+            and cls._matches_workspace_repository(
+                project_name=project_name, workspace=workspace
+            )
         )
 
     @staticmethod
     def _sync_project_version(
         project: t.Cli.TomlTable, *, workspace: p.Infra.WorkspaceSpec
     ) -> p.Result[bool]:
-        """Project the manifest-declared release version onto ``[project]``.
+        """Project scaffold release metadata onto ``[project]`` when declared.
 
-        Why (hq-36xk): ``config/workspace.yaml`` declares ``project.version`` and
+        Project release metadata comes from the repository's own pyproject and
         the scaffold template renders it as ``version = "{{ version }}"``, but the
         template carries ``overwrite: false``, so it only ever applies at scaffold
-        time. On an existing repository this conformance pass owned dependencies,
-        groups, typecheck paths and uv sources while ``[project].version`` was left
-        untouched — so the manifest and the package disagreed silently and a
-        release bump recorded in the SSOT never reached the artifact consumers
-        install. Two owners for one fact is the defect; the manifest is the SSOT,
-        so conformance projects it here.
+        time. Existing repositories normally omit ``workspace.project`` and keep
+        their own ``[project].version`` as authority. A scaffold request that
+        explicitly supplies project metadata is projected here.
         """
         if workspace.project is None:
             return r[bool].ok(False)
@@ -529,14 +540,17 @@ class FlextInfraUtilitiesPyprojectConform:
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
         """Delete legacy packaging owners superseded by canonical conformance.
 
-        The ``[tool.flext]`` table is always preserved: it carries declared
-        project policy, including the ``workspace.attached`` marker consumed
-        by the topology detector (mro-z89e governance).
+        The ``[tool.flext]`` table keeps unrelated project policy, but its former
+        ``workspace`` registry is removed completely because topology belongs to
+        ``.gitmodules``.
         """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
+        flext = u.Cli.toml_table_child(tool, "flext")
+        if flext is not None:
+            u.Cli.toml_remove_key_if_present(flext, "workspace")
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
@@ -600,7 +614,7 @@ class FlextInfraUtilitiesPyprojectConform:
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
-        workspace_root = cls._is_attached_workspace_root(
+        workspace_root = cls._is_workspace_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -706,7 +720,7 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[bool].ok(True)
         workspace_names = {member.distribution for member in workspace.subprojects}
         for source_name in tuple(sources):
-            # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
+            # NOTE (multi-agent, flext-wkii.17 / agent: codex): preserve resolved
             # TOML tables in place so conformance cannot accumulate blank trivia.
             if source_name.startswith("flext-") and (
                 not workspace_root or source_name not in workspace_names
@@ -771,10 +785,12 @@ class FlextInfraUtilitiesPyprojectConform:
                 uv_workspace.get("members"), strict=True
             )
         except c.ValidationError as exc:
-            return r[bool].fail_op("validate root uv workspace members", exc)
-        expected_members = tuple(member.path.as_posix() for member in workspace.subprojects)
+            return r[bool].fail_op("validate root uv workspace projects", exc)
+        expected_members = tuple(
+            member.path.as_posix() for member in workspace.subprojects
+        )
         if tuple(members) != expected_members:
-            return r[bool].fail("root uv workspace members differ from workspace SSOT")
+            return r[bool].fail("root uv workspace projects differ from Git topology")
         sources = uv.get("sources")
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
@@ -811,12 +827,14 @@ class FlextInfraUtilitiesPyprojectConform:
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
             return r[bool].fail("pyproject document is not a TOML mapping")
-        member_names = frozenset(member.distribution for member in workspace.subprojects)
+        member_names = frozenset(
+            member.distribution for member in workspace.subprojects
+        )
         raw_values: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return r[bool].fail("pyproject content must define [project]")
-        attached_workspace_root = cls._is_attached_workspace_root(
+        workspace_root = cls._is_workspace_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -837,12 +855,12 @@ class FlextInfraUtilitiesPyprojectConform:
             if dependency_name not in member_names:
                 continue
             has_direct_source = "@" in requirement.partition(";")[0]
-            if attached_workspace_root and has_direct_source:
+            if workspace_root and has_direct_source:
                 return r[bool].fail(
-                    "attached workspace dependency declares direct source: "
+                    "workspace dependency declares a conflicting direct source: "
                     f"{dependency_name}"
                 )
-            if not attached_workspace_root and not has_direct_source:
+            if not workspace_root and not has_direct_source:
                 return r[bool].fail(
                     "publishable dependency lacks configured Git source: "
                     f"{dependency_name}"

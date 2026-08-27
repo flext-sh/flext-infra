@@ -50,7 +50,7 @@ class FlextInfraUtilitiesIterationDirectory:
                 if file_path.suffixes == [c.Infra.EXT_PYTHON]
             ]
         )
-        # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): exclusion is read
+        # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): exclusion is read
         # directly from validated config and applies below the explicit scan boundary.
         return [
             file_path

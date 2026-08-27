@@ -19,7 +19,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-# mro-j47u (codex): annotation-only stdlib types are safe runtime imports;
+# flext-j47u (codex): annotation-only stdlib types are safe runtime imports;
 # TYPE_CHECKING is reserved for real reverse-dependency cycle boundaries.
 
 

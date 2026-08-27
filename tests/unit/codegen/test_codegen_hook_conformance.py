@@ -34,9 +34,10 @@ class TestGitHookConformance:
     @staticmethod
     def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
         """Load the smallest owner-written manifest needed by conform."""
-        test_u.Tests.write_standalone_workspace_manifest(
-            root, "flext-demo", upstream="flext_cli"
+        (root / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'flext-demo'\nversion = '0.1.0'\n", encoding="utf-8"
         )
+        test_u.Tests.write_standalone_beads_override(root)
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
     @staticmethod
@@ -216,7 +217,7 @@ class TestGitHookConformance:
         tm.that(commit_only, lacks="stages: [pre-push]")
 
     def test_member_hook_config_is_retired_by_conform(self, tmp_path: Path) -> None:
-        """A workspace member keeps its own hook config; conform does not retire it."""
+        """A workspace project keeps its own hook config; conform does not retire it."""
         root = tmp_path / "flext-member"
         root.mkdir()
         hook_config = root / ".pre-commit-config.yaml"

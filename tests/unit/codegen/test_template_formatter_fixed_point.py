@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, u
+from flext_infra import config, m, u
 from flext_tests import tm
 
 _TEMPLATES = (
@@ -23,7 +23,11 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=()
+                    dist="demo",
+                    workspace_repositories=(),
+                    dependency_cooldown_days=(
+                        config.Infra.codegen.toolchain.dependency_cooldown_days
+                    ),
                 ),
             )
         )
@@ -34,7 +38,11 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=(repository,)
+                    dist="demo",
+                    workspace_repositories=(repository,),
+                    dependency_cooldown_days=(
+                        config.Infra.codegen.toolchain.dependency_cooldown_days
+                    ),
                 ),
             )
         )
@@ -47,7 +55,12 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=(), has_devcontainer=False
+                    dist="demo",
+                    workspace_repositories=(),
+                    has_devcontainer=False,
+                    dependency_cooldown_days=(
+                        config.Infra.codegen.toolchain.dependency_cooldown_days
+                    ),
                 ),
             )
         )
@@ -55,7 +68,12 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=(), has_devcontainer=True
+                    dist="demo",
+                    workspace_repositories=(),
+                    has_devcontainer=True,
+                    dependency_cooldown_days=(
+                        config.Infra.codegen.toolchain.dependency_cooldown_days
+                    ),
                 ),
             )
         )

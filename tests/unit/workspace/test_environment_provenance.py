@@ -9,6 +9,7 @@ from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
 from flext_tests import tm
+from tests import u as test_u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,46 +19,17 @@ def _workspace(root: Path, distribution: str = "sample-member") -> Path:
     root.mkdir()
     member = root / distribution
     (member / "src").mkdir(parents=True)
-    (root / ".gitmodules").write_text(
-        f'[submodule "{distribution}"]\n\tpath = {distribution}\n\turl = https://github.com/flext-sh/{distribution}.git\n\tbranch = 0.12.0-dev\n',
-        encoding="utf-8",
+    (root / "pyproject.toml").write_text(
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n", encoding="utf-8"
     )
-    config_dir = root / "config"
-    config_dir.mkdir()
-    (config_dir / "workspace.yaml").write_text(
-        f"""
-version: 3
-name: sample
-repository:
-  name: sample
-  distribution: sample
-  provider: flext-sh
-  url: https://github.com/flext-sh/sample.git
-  path: .
-  role: workspace-root
-  state: active
-  checkout: root
-  codegen: conform
-  package: false
-  editable: false
-  read_only: false
-members:
-  - name: {distribution}
-    distribution: {distribution}
-    provider: flext-sh
-    url: https://github.com/flext-sh/{distribution}.git
-    path: {distribution}
-    role: workspace-member
-    state: active
-    checkout: submodule
-    codegen: conform
-    package: true
-    editable: true
-    read_only: false
-exclusions: []
-""".lstrip(),
-        encoding="utf-8",
+    (member / "pyproject.toml").write_text(
+        f"[project]\nname = '{distribution}'\nversion = '0.1.0'\n", encoding="utf-8"
     )
+    override = "version: 1\nworkspace: flext\ndatabase: flext\nissue_prefix: flext\n"
+    for project in (root, member):
+        config_dir = project / "config"
+        config_dir.mkdir()
+        (config_dir / "beads.yaml").write_text(override, encoding="utf-8")
     (root / ".gitmodules").write_text(
         f"""[submodule \"{distribution}\"]
 \tpath = {distribution}
@@ -65,6 +37,12 @@ exclusions: []
 \tbranch = 0.12.0-dev
 """,
         encoding="utf-8",
+    )
+    test_u.Tests.initialize_git_repo(
+        member, origin_url=f"https://github.com/flext-sh/{distribution}.git"
+    )
+    test_u.Tests.initialize_git_repo(
+        root, origin_url="https://github.com/flext-sh/sample.git"
     )
     return root
 

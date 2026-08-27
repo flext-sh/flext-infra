@@ -1,6 +1,6 @@
 Infra:
   codegen:
-    # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
+    # NOTE(flext-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
 
     toolchain:
@@ -97,7 +97,7 @@ Infra:
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
-    # Per-distribution private workspace-member auth for CI. The default
+    # Per-distribution private project auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
@@ -204,7 +204,7 @@ Infra:
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
       # External consumer organization: standalone repositories governed by
-      # conform through their own config/workspace.yaml. A linha de integracao
+      # conform through their own repository-local config overrides. A linha de integracao
       # e 'develop', fixada pela ADR-134 do operador, que proibe 'dev' e
       # 'master' como sinonimos. Verificado na API do GitHub em 2026-08-03:
       # cosmos-main, cosmos-charts e cosmos-gitops tem default_branch=develop
@@ -241,7 +241,7 @@ Infra:
     make:
       selector: WHAT
       work_in_progress:
-        # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
+        # Operator law (flext-g3zl2): pre-push gates skip WIP branches and GitHub
         # draft PRs; merges into dev/develop/0.12.0-dev are blocked for those states.
         # Restored (hq-36xk): a merge resolution dropped this block while
         # ci.yml.j2 and .pre-commit-config.yaml.j2 kept consuming it, so no
@@ -254,7 +254,7 @@ Infra:
           - dev
           - develop
           - 0.12.0-dev
-      # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
+      # Why (flext-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
       testmon_cache:
@@ -312,7 +312,7 @@ Infra:
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
-        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
+        # Why (flext-v4p5): CI must not execute pytest. Local + pre-push keep make test.
         - { verb: test, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
@@ -491,7 +491,7 @@ Infra:
           allow_public_targets: true
           allow_toolchain_declarations: true
 
-    # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
+    # NOTE (flext-jnm1.1 / flext-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
     # (source_scan_ignore) are DERIVED from this list by CodegenConfigSpec
@@ -502,13 +502,13 @@ Infra:
       - { name: __pyrefly_virtual__ }
       - { name: .agents }
       - { name: .benchmarks }
-      # mro-0wuz: archive-not-delete target for the layout engine; the generated
+      # flext-0wuz: archive-not-delete target for the layout engine; the generated
       # .gitignore projection must never track archived loose files.
       - { name: .bkp }
       - { name: .cache, source_scan_ignore: true }
-      # mro-j47u: agent worktrees are duplicate repositories, never production input.
+      # flext-j47u: agent worktrees are duplicate repositories, never production input.
       - { name: .claude, source_scan_ignore: true }
-      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # flext-jnm1.2: gitignore-only entries absorbed from the removed
       # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
       # watch/source-scan projections (order-sensitive, after .claude).
       - { name: .direnv, source_scan_ignore: true }
@@ -601,7 +601,7 @@ Infra:
           watch_exclude: false,
           source_scan_ignore: true,
         }
-      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # flext-jnm1.2: gitignore-only entries absorbed from the removed
       # REQUIRED_GITIGNORE_ENTRIES constant; they feed no other projection.
       # NOTA: .flext-deps foi removido — o cutover para fontes git eliminou o
       # cache, e o gate de actions proibe qualquer referencia ao mecanismo.
@@ -674,7 +674,7 @@ Infra:
           PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
           VIRTUAL_ENV: ${workspaceFolder}/.venv
 
-    # NOTE(mro-0wuz, epic mro-hzox): declarative project-layout SSOT consumed by
+    # NOTE(flext-0wuz, epic flext-hzox): declarative project-layout SSOT consumed by
     # the layout engine (codegen/layout.py) and the layout quality gate. Every
     # move/archive/gitignore decision derives from this section — the engine
     # carries zero hardcoded layout knowledge. severity=warning keeps the gate
@@ -847,7 +847,7 @@ Infra:
         - pytest_*.txt
         - pyright_errors*.log
         - test_output.txt
-        - mro-to59-*
+        - flext-to59-*
       # Content submodule trees and agent law dirs are out of product-docs relocate.
       # .agents is already skipped via allow_hidden (dotdir); data/ is explicit.
       special_root_dirs:
@@ -1228,11 +1228,11 @@ Infra:
         enabled_default: true
         reply: pong
         disabled_reply: disabled
-      # mro-jnm1.2: the first section is merged AFTER the artifact-SSOT derived
+      # flext-jnm1.2: the first section is merged AFTER the artifact-SSOT derived
       # patterns by the CodegenConfigSpec.gitignore_sections projection
       # (deduplicated, SSOT wins); declare here only what the SSOT cannot
       # express (file globs, secrets, editor/OS noise). Per-project exception
-      # fields are added by mro-jnm1.3.
+      # fields are added by flext-jnm1.3.
       gitignore_sections:
         - name: "BLOCK EVERYTHING BY DEFAULT"
           profiles: [workspace]
@@ -1240,11 +1240,9 @@ Infra:
             - "/*"
             - "/*/"
             - "!/LICENSE"
-        # NOTE: governed member directories are NOT declared here. They are
-        # derived from the live workspace topology (`config/workspace.yaml`
-        # members) by conform._render_gitignore, so declaring a member in the
-        # manifest is the single source that makes it trackable. A hardcoded
-        # name glob here would be a second, silently-diverging source.
+        # NOTE: governed project directories are derived from the workspace's
+        # live `.gitmodules` by conform._render_gitignore. A hardcoded project
+        # glob here would be a second, silently-diverging source.
         - name: "WHITELIST: Workspace Directories"
           profiles: [workspace]
           patterns:
@@ -1267,10 +1265,6 @@ Infra:
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
-        - name: "Workspace topology manifest"
-          profiles: [workspace]
-          patterns:
-            - "!/config/workspace.yaml"
         - name: "Dispatcher-based command surface (Make SSOT)"
           profiles: [workspace]
           patterns:
@@ -1357,17 +1351,6 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
-        # mro-zmoc6: `uv sync` inside a member lane writes a member-local
-        # uv.lock. Only the workspace root resolves and tracks a lockfile
-        # (whitelisted in "Python configuration" above); for a member the
-        # file is a local build artifact of that shared resolution. Left
-        # undeclared it surfaced as untracked in every freshly created lane
-        # and made the retired Make lane lifecycle refuse a committed increment
-        # with "requires a clean lane worktree".
-        - name: "BLOCK: member-local lockfile (the workspace root owns uv.lock)"
-          profiles: [standalone]
-          patterns:
-            - "uv.lock"
         # Only the workspace root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config
@@ -1645,7 +1628,7 @@ Infra:
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
           destination: .github/workflows/ci-matrix.yml
-          # Workspace members are covered by the root matrix; do not duplicate.
+          # Workspace projects are covered by the root matrix; do not duplicate.
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
@@ -1720,7 +1703,7 @@ Infra:
         - source: base/.github/workflows/docs.yml.j2
           destination: .github/workflows/docs.yml
           # O workflow chama `uv sync`; e esta projecao que instala o uv antes.
-          # Restringir a workspace-root deixava os membros com uma copia stale
+          # Restringir a workspace deixava os projetos com uma copia stale
           # sem o passo Install uv, e o job morria em "uv: command not found".
           profiles: [workspace, standalone]
           delegate: render
@@ -1755,7 +1738,7 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE(mro-wkii.17.11, agent codex): workspace topology owns git submodules;
+        # NOTE(flext-wkii.17.11, agent codex): workspace topology owns git submodules;
         # environment activation is owned by mise + the generated Makefile.
         - source: base/gitmodules.j2
           destination: .gitmodules
@@ -1765,7 +1748,7 @@ Infra:
         - source: base/Makefile.j2
           destination: Makefile
           # The generic conform engine is the single Makefile owner for every
-          # profile; workspace-root fan-out is selected inside this template.
+          # profile; workspace fan-out is selected inside this template.
           # Fully generated (overwrite: true): a project never owns a verb.
           # `overwrite: false` froze every existing Makefile at the shape it
           # had when first written, so new builtin verbs never reached the
@@ -1859,20 +1842,20 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE(codex, mro-j47u): domain behavior is generated in services, not base.py.
+        # NOTE(codex, flext-j47u): domain behavior is generated in services, not base.py.
         - source: base/src/services/ping.py.j2
           destination: "src/{package_name}/services/ping.py"
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE (multi-agent, mro-wkii.19.1): runtime config is app-owned and loaded
+        # NOTE (multi-agent, flext-wkii.19.1): runtime config is app-owned and loaded
         # by FlextConfig from the project-root config directory.
         - source: base/src/config/ns.yaml.j2
           destination: "config/{ns}.yaml"
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE (multi-agent, mro-wkii.19.1): config/settings declarations live in
+        # NOTE (multi-agent, flext-wkii.19.1): config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
         - source: base/src/_models/__init__.py.j2
           destination: "src/{package_name}/_models/__init__.py"

@@ -132,7 +132,7 @@ class FlextInfraGate(ABC):
         ...
 
     @abstractmethod
-    # mro-r3r8: every gate override consumes the structural p.Cli process contract.
+    # flext-r3r8: every gate override consumes the structural p.Cli process contract.
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:

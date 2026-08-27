@@ -31,7 +31,7 @@ class TestsFlextInfraBasemkGenerator:
         tm.ok(result)
         tm.that(result.value, has="PROJECT_NAME ?=")
 
-    # mro-x0rau.3 deleted the `pr` recipe (base_pr.mk.j2) with the rest of the
+    # flext-x0rau.3 deleted the `pr` recipe (base_pr.mk.j2) with the rest of the
     # unreachable verb surface, so the two tests that guarded its PR_* flag
     # rendering are removed with the feature rather than kept asserting a
     # template that no longer exists.
@@ -39,7 +39,7 @@ class TestsFlextInfraBasemkGenerator:
     def test_generator_enforces_pytest_process_deadline(self) -> None:
         """The rendered base.mk carries the config-owned invocation deadline.
 
-        mro-wkii.17.37 renamed the hard process boundary to
+        flext-wkii.17.37 renamed the hard process boundary to
         ``PYTEST_RUN_TIMEOUT_SECONDS`` and moved enforcement into the typed
         Python runner, so the generated Make surface publishes the budget and
         delegates execution instead of wrapping pytest in a shell timeout.

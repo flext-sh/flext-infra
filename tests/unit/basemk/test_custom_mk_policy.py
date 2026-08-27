@@ -1,6 +1,6 @@
 """Unit tests for the custom.mk reserved-target blacklist policy.
 
-The custom.mk surface is a BLACKLIST (mro-ga9q): members may define ANY custom
+The custom.mk surface is a BLACKLIST (flext-ga9q): members may define ANY custom
 verb/WHAT through ``_custom_<verb>_<what>`` handlers and ``(pre|post)-`` hooks
 EXCEPT the reserved verbs/WHATs that stay a flext-infra monopoly. These tests
 pin the typed owner of that rule; the generated base.mk enforces the same
@@ -59,7 +59,7 @@ class TestsFlextInfraCustomMkPolicy:
         reserved = FlextInfraCustomMkPolicy.reserved_verbs()
 
         tm.that({"check", "gen", "work"} <= reserved, eq=True)
-        # mro-x0rau.3 unreserved `pr` with the recipe it named; `clean` and
+        # flext-x0rau.3 unreserved `pr` with the recipe it named; `clean` and
         # `help` are the project-surface verbs base.mk still ships.
         tm.that({"clean", "help"} <= reserved, eq=True)
         tm.that(

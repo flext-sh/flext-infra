@@ -58,7 +58,9 @@ class TestsCodegenMakeEnvironment:
             else ()
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            beads=m.Infra.BeadsOverrideSpec(
+                version=1, workspace="flext", database="flext", issue_prefix="flext"
+            ),
             name="fixture-project",
             repository=repository,
             project=m.Infra.ProjectSpec(
@@ -80,8 +82,9 @@ class TestsCodegenMakeEnvironment:
                 workspace_root_rel=".",
                 year=2026,
             ),
-            members=local_members,
+            subprojects=local_members,
         )
+
         request = m.Infra.CodegenConformRequest(
             root=project_root,
             scope=c.Infra.CodegenConformScope.SELF,

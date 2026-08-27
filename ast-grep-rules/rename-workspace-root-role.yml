@@ -1,7 +1,7 @@
-id: rename-workspace-root-role
+id: rename-workspace-role
 language: Python
 severity: error
-message: the .gitmodules topology is named workspace, not workspace-root
+message: the .gitmodules topology is named workspace, not workspace
 rule:
   pattern: c.Infra.RepositoryRole.WORKSPACE_ROOT
 fix: c.Infra.RepositoryRole.WORKSPACE

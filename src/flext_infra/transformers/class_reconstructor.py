@@ -121,7 +121,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             method_obj = method_pyname.get_object()
             if not FlextInfraUtilitiesRopeAnalysis.is_pyfunction(method_obj):
                 continue
-            # mro-j47u (codex): Rope returns a tuple; only its line is optional.
+            # flext-j47u (codex): Rope returns a tuple; only its line is optional.
             location = method_pyname.get_definition_location()
             if location[1] is None:
                 continue

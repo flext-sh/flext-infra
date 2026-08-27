@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config
+from flext_infra import c, config, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
@@ -32,7 +32,9 @@ def _standalone(root: Path, *, name: str) -> Path:
         "version: 1\nworkspace: flext\ndatabase: flext\nissue_prefix: flext\n",
         encoding="utf-8",
     )
-    test_u.Tests.initialize_git_repo(root)
+    test_u.Tests.initialize_git_repo(
+        root, origin_url=f"https://github.com/flext-sh/{name}.git"
+    )
     return root
 
 
@@ -71,3 +73,30 @@ class TestsDetectorOwnsNoProjectRegistry:
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(child))
 
         tm.that(mode, eq=c.Infra.WorkspaceMode.STANDALONE)
+
+    def test_missing_local_override_never_falls_back_to_parent(
+        self, tmp_path: Path
+    ) -> None:
+        """Require adoption to materialize config instead of reading ``../``."""
+        parent = _standalone(tmp_path / "parent", name="parent")
+        child = parent / "child"
+        (child / "src" / "child").mkdir(parents=True)
+        (child / "pyproject.toml").write_text(
+            "[project]\nname = 'child'\nversion = '0.1.0'\n", encoding="utf-8"
+        )
+        test_u.Tests.initialize_git_repo(child)
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(child)
+
+        tm.fail(result, has="missing required repository-local Beads override")
+
+    def test_missing_origin_fails_without_provider_fallback(
+        self, tmp_path: Path
+    ) -> None:
+        """Never synthesize a managed identity from the default provider."""
+        root = _standalone(tmp_path / "missing-origin", name="missing-origin")
+        tm.ok(u.Cli.run_checked(["git", "remote", "remove", "origin"], cwd=root))
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="origin")

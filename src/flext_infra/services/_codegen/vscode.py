@@ -162,9 +162,7 @@ class FlextInfraCodegenVscodeMixin:
         return "".join(output)
 
     @classmethod
-    def _apply_canonical_settings(
-        cls, settings: t.MutableJsonMapping
-    ) -> bool:
+    def _apply_canonical_settings(cls, settings: t.MutableJsonMapping) -> bool:
         """Merge canonical codegen VS Code settings into one settings mapping."""
         spec = config.Infra.codegen.vscode
         changed = cls._apply_enforced_settings(

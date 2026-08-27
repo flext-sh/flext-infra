@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, t
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -221,38 +222,19 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     @cache
-    def workspace_member_names(workspace_root: Path) -> t.StrSequence:
-        """Return configured workspace members from ``[tool.flext.workspace]`` or ``[tool.uv.workspace]``.
+    def workspace_project_paths(workspace_root: Path) -> t.StrSequence:
+        """Return project paths declared by this directory's own ``.gitmodules``.
 
-        Cached by ``workspace_root`` (``Path`` is hashable). Both
-        ``[tool.flext.workspace] members`` and ``[tool.uv.workspace] members``
-        are honoured (first non-empty wins).
+        A missing file denotes a standalone project and therefore an empty
+        sequence. A malformed declaration is an invalid workspace contract and
+        remains a loud error; no pyproject table or parent directory is used as
+        an alternate topology source.
         """
-        pyproject_path = workspace_root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject_path.is_file():
-            return ()
-        payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)
-        if not payload:
-            return ()
-        tool = payload.get(c.Infra.TOOL)
-        if not isinstance(tool, dict):
-            return ()
-        for tool_name in ("flext", "uv"):
-            tool_config = tool.get(tool_name)
-            if not isinstance(tool_config, dict):
-                continue
-            workspace_config = tool_config.get("workspace")
-            if not isinstance(workspace_config, dict):
-                continue
-            members = workspace_config.get("members")
-            if not isinstance(members, list):
-                continue
-            normalized = tuple(
-                member_name for item in members if (member_name := str(item).strip())
-            )
-            if normalized:
-                return normalized
-        return ()
+        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(workspace_root)
+        if declared.failure:
+            msg = declared.error or f"invalid workspace topology: {workspace_root}"
+            raise ValueError(msg)
+        return tuple(path.as_posix() for path in declared.value)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPyproject"]

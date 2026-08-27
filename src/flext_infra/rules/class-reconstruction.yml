@@ -124,7 +124,7 @@ from collections.abc import Mapping, Sequence"
       type_hints: true
       decorators: true
 
-  - id: fix-mro-redeclaration
+  - id: fix-flext-redeclaration
     name: "Fix MRO redeclaration"
     description: "Remove herança redundante em classes aninhadas (MRO issues)"
     enabled: true

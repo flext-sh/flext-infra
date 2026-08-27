@@ -165,7 +165,7 @@ class FlextInfraUtilitiesDiscovery(
     @staticmethod
     def package_importable(package_name: str) -> bool:
         """Return whether the active official environment resolves one package."""
-        # Why (mro-27a9e.1, multi-agent): standalone consumers inherit aliases
+        # Why (flext-27a9e.1, multi-agent): standalone consumers inherit aliases
         # from installed FLEXT artifacts; plain modules are never facade parents.
         try:
             spec = importlib_util.find_spec(package_name)
@@ -231,7 +231,7 @@ class FlextInfraUtilitiesDiscovery(
         roots that actually exist, which is the only set an analyzer accepts.
 
         A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace members are Python directories too,
+        never a root of this one: workspace projects are Python directories too,
         and each is analyzed under its own manifest.
         """
         discovered = cls.discover_python_dirs(project_dir)
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesDiscovery(
         """Return first segments of manifest-excluded workspace-relative paths.
 
         Immutable ``content_only`` repositories and explicit ``exclusions`` in
-        ``config/workspace.yaml`` must never be discovered as Python source,
+        repository-local ``config/*.yaml`` must never be discovered as Python source,
         regardless of any Python files they happen to contain.
         """
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -326,21 +326,13 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def rope_workspace_root(cls, workspace_root: Path) -> Path:
-        """Return the canonical root for a shared Rope project."""
+        """Keep repository roots local while accepting paths inside Python wrappers."""
         resolved_root = workspace_root.resolve()
-        has_project_marker = any(
-            candidate.is_file()
-            for candidate in (
-                resolved_root / c.Infra.PYPROJECT_FILENAME,
-                resolved_root / c.Infra.MAKEFILE_FILENAME,
-            )
-        )
-        if not has_project_marker and cls.namespace_scan_dirs(resolved_root):
-            return resolved_root
-        if cls._child_project_roots(resolved_root):
-            return resolved_root
         project_root = cls.project_root(resolved_root)
-        if project_root is not None:
+        if project_root is None or project_root == resolved_root:
+            return resolved_root
+        relative = resolved_root.relative_to(project_root)
+        if relative.parts and relative.parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS:
             return project_root
         return resolved_root
 
@@ -356,15 +348,12 @@ class FlextInfraUtilitiesDiscovery(
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        # NOTE (multi-agent, mro-wkii.17): explicit project paths are a hard
+        # NOTE (multi-agent, flext-wkii.17): explicit project paths are a hard
         # write-scope boundary; sibling workspaces remain discovery-only otherwise.
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
-            else [
-                workspace_root.resolve(),
-                *cls.discover_external_workspace_roots(workspace_root),
-            ]
+            else [workspace_root.resolve()]
         )
         all_files: list[Path] = []
         for scan_root in scan_roots:

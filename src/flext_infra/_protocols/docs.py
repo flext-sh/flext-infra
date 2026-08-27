@@ -8,7 +8,7 @@ from typing import Protocol, runtime_checkable
 from flext_cli import p as cli_p
 
 
-# NOTE (multi-agent, mro-wkii.17.23 / agent: uv_overlay_owner): protocols mirror
+# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): protocols mirror
 # source models structurally; no concrete m type crosses a public interface.
 @runtime_checkable
 class FlextInfraProtocolsDocs(Protocol):

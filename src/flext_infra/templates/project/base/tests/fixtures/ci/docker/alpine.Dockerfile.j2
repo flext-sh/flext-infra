@@ -16,7 +16,7 @@ FROM alpine:3.21
 # runtime, so on Alpine they install cleanly and then fail with "Error loading
 # shared library". Glibc images ship it in the base system.
 RUN apk add --no-cache \
-      bash ca-certificates curl git make libstdc++
+      bash build-base ca-certificates curl git make libstdc++
 # End SECTION: base packages
 
 WORKDIR /workspace

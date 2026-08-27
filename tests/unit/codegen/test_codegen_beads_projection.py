@@ -26,12 +26,7 @@ class TestsCodegenBeadsProjection:
 
     @classmethod
     def _standalone_workspace(
-        cls,
-        root: Path,
-        *,
-        ledger_id: str | None,
-        ledger_prefix: str | None = None,
-        overlay: bool = True,
+        cls, root: Path, *, database: str, issue_prefix: str
     ) -> Path:
         """Create a standalone manifest whose baseline is entirely local."""
         provider = config.Infra.codegen.providers[0]
@@ -58,39 +53,32 @@ class TestsCodegenBeadsProjection:
                 "editable": False,
             }
         )
-        overlays = (
-            (
-                m.Infra.RepositoryPolicyOverlaySpec(
-                    project=repository.distribution, beads_enabled=True
-                ),
-            )
-            if overlay
-            else ()
-        )
         spec = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            beads=m.Infra.BeadsOverrideSpec(
+                version=1,
+                workspace="flext",
+                database=database,
+                issue_prefix=issue_prefix,
+            ),
             name=repository.distribution,
             repository=local_repository,
-            ledger_id=ledger_id,
-            ledger_prefix=ledger_prefix or ledger_id,
-            repository_policy_overlays=overlays,
         )
+
         tm.ok(
             u.Cli.yaml_dump(
-                root / "config" / "workspace.yaml",
-                spec.model_dump(
-                    mode="json",
-                    exclude_none=True,
-                    exclude={"external_dependency_paths"},
-                ),
+                root / c.Infra.BEADS_OVERRIDE_RELPATH,
+                spec.beads.model_dump(mode="json"),
             )
         )
-        origin = root.parent / f"{root.name}-origin.git"
-        cls._git(root.parent, "init", "-q", "--bare", str(origin))
         cls._git(root, "add", "-A")
         cls._git(root, "commit", "-q", "--no-verify", "-m", "Seed workspace")
-        cls._git(root, "remote", "add", "origin", str(origin))
-        cls._git(root, "push", "-q", "-u", "origin", provider.branch)
+        cls._git(
+            root,
+            "remote",
+            "add",
+            "origin",
+            f"{provider.base_url}/{repository.distribution}.git",
+        )
         return root
 
     @staticmethod
@@ -100,7 +88,10 @@ class TestsCodegenBeadsProjection:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        return tm.ok(FlextInfraCodegenConform(workspace_root=root).plan(request))
+        planned: m.Infra.CodegenPlan = tm.ok(
+            FlextInfraCodegenConform(workspace_root=root).plan(request)
+        )
+        return planned
 
     @staticmethod
     def _rendered(plan: m.Infra.CodegenPlan, destination: str) -> str | None:
@@ -115,8 +106,8 @@ class TestsCodegenBeadsProjection:
     ) -> None:
         root = self._standalone_workspace(
             tmp_path / "project",
-            ledger_id="project_database",
-            ledger_prefix="project-prefix",
+            database="project_database",
+            issue_prefix="project-prefix",
         )
 
         plan = self._plan(root)
@@ -137,15 +128,15 @@ class TestsCodegenBeadsProjection:
         tm.that(metadata["dolt_mode"], eq=server.mode)
         tm.that(hasattr(plan, "beads"), eq=False)
 
-    def test_plain_standalone_receives_no_beads_files(self, tmp_path: Path) -> None:
+    def test_plain_standalone_always_receives_beads_files(self, tmp_path: Path) -> None:
         root = self._standalone_workspace(
-            tmp_path / "plain", ledger_id=None, overlay=False
+            tmp_path / "plain", database="flext", issue_prefix="flext"
         )
 
         plan = self._plan(root)
 
-        tm.that(self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH), eq=None)
-        tm.that(self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH), eq=None)
+        tm.that(self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH), none=False)
+        tm.that(self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH), none=False)
 
     def test_workspace_identity_is_only_projection_input(self, tmp_path: Path) -> None:
         branch_policy = config.Infra.codegen.branch_policy
@@ -163,11 +154,14 @@ class TestsCodegenBeadsProjection:
             governed_branch_patterns=branch_policy.governed_branch_patterns,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            beads=m.Infra.BeadsOverrideSpec(
+                version=1,
+                workspace="flext",
+                database="project_database",
+                issue_prefix="project-prefix",
+            ),
             name=repository.distribution,
             repository=repository,
-            ledger_id="project_database",
-            ledger_prefix="project-prefix",
         )
 
         identity = FlextInfraCodegenConform.ledger_identity_for_target(
@@ -175,27 +169,6 @@ class TestsCodegenBeadsProjection:
         )
 
         tm.that(identity, eq=("project-prefix", "project_database"))
-
-    @pytest.mark.parametrize(
-        ("ledger_id", "ledger_prefix", "expected"),
-        [
-            ("project_database", None, "ledger_prefix"),
-            (None, "project-prefix", "ledger_id"),
-        ],
-    )
-    def test_workspace_rejects_half_declared_projection_identity(
-        self, ledger_id: str | None, ledger_prefix: str | None, expected: str
-    ) -> None:
-        repository = test_u.Tests.repository_ref(config.Infra.name)
-
-        with pytest.raises(c.ValidationError, match=expected):
-            m.Infra.WorkspaceSpec(
-                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                name=repository.distribution,
-                repository=repository,
-                ledger_id=ledger_id,
-                ledger_prefix=ledger_prefix,
-            )
 
     def test_codegen_exposes_no_beads_runtime_surface(self) -> None:
         forbidden_models = ("BeadsPlan", "BeadsTrackerDeclaration")

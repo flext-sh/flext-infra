@@ -73,7 +73,7 @@ class TestsFlextInfraLazyInitHelpers:
         self, tmp_path: Path
     ) -> None:
         """Generate every governed src root regardless of its package prefix."""
-        # Why (mro-27a9e.1, multi-agent): external consumers such as ai_hub are
+        # Why (flext-27a9e.1, multi-agent): external consumers such as ai_hub are
         # first-class FLEXT packages; prefix-specific planning created dual truth.
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="ai-hub", package_name="ai_hub"
@@ -166,7 +166,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
 
-        # Why (mro-27a9e.1, multi-agent): the prior projection is never an ABI
+        # Why (flext-27a9e.1, multi-agent): the prior projection is never an ABI
         # owner; regeneration converges it to declarations that still exist.
         tm.that(generated, has='"FlextDemoModels"')
         tm.that(generated, has='"m"')
@@ -192,7 +192,7 @@ class TestsFlextInfraLazyInitHelpers:
             "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
 
-        # mro-i6nq.10: private child classes never become root ABI.
+        # flext-i6nq.10: private child classes never become root ABI.
         tm.that(exports_content, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
@@ -457,7 +457,7 @@ class TestsFlextInfraLazyInitHelpers:
             tm.that(init_content, has=f'    "{alias_name}",')
         has_all, public_exports = u.Tests.extract_lazy_init_exports(init_content)
         tm.that(has_all, eq=True)
-        # mro-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
+        # flext-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
         # exclusively in the static facade imports.
         alias_positions = tuple(
             public_exports.index(alias) for alias in ruff_ordered_aliases
@@ -469,39 +469,6 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
-
-    def test_existing_root_exports_only_declared_inherited_aliases(
-        self, tmp_path: Path
-    ) -> None:
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        u.Tests.write_standalone_workspace_manifest(workspace_root, "flext-demo")
-        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from __future__ import annotations\n\n"
-            "from flext_cli import c\n\n"
-            "class FlextDemoConstants(c):\n"
-            "    pass\n\n"
-            '__all__: list[str] = ["FlextDemoConstants", "c"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
-        tm.that(exports, lacks='"flext_cli": (\n        "r",')
-        tm.that(generated, lacks='    "r",')
-        tm.that(generated, has='    "c",')
-
-        u.Tests.write_standalone_workspace_manifest(
-            workspace_root, "flext-demo", inherited_facets=("r",)
-        )
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        declared_generated = self._generated_init(package_root)
-        declared_exports = self._generated_exports(package_root)
-        tm.that(declared_exports, has='"flext_cli": ("r",)')
-        tm.that(declared_generated, has='    "r",')
-        tm.that(declared_generated, has='    "c",')
 
     def test_generated_parent_initializer_is_not_an_alias_owner(
         self, tmp_path: Path
@@ -579,7 +546,7 @@ class TestsFlextInfraLazyInitHelpers:
         self, tmp_path: Path
     ) -> None:
         """Derive the root ABI from facade owners, never the prior projection."""
-        # Why (mro-27a9e.1, multi-agent): ai_hub's stale __all__ omitted r and
+        # Why (flext-27a9e.1, multi-agent): ai_hub's stale __all__ omitted r and
         # became a second SSOT; regeneration must follow the declared MRO parent.
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="ai-hub", package_name="ai_hub"

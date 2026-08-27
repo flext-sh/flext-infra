@@ -3,5 +3,5 @@ language: Yaml
 severity: error
 message: topology profiles are workspace or standalone only
 rule:
-  pattern: '[workspace-root, standalone]'
+  pattern: '[workspace, standalone]'
 fix: '[workspace, standalone]'

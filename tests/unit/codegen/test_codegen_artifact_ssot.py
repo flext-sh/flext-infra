@@ -107,7 +107,7 @@ class TestsCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         self, codegen: CodegenSpec
     ) -> None:
-        """Pre-push runs every commit-stage verb plus the deferred full gates."""
+        """Hook contexts share validation while owning distinct mutations."""
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
@@ -116,7 +116,8 @@ class TestsCodegenArtifactSsot:
         tm.that(bool(pre_push), eq=True)
         commit_verbs = {step.verb for step in pre_commit}
         push_verbs = {step.verb for step in pre_push}
-        tm.that(commit_verbs.issubset(push_verbs), eq=True)
+        tm.that(bool(commit_verbs & push_verbs), eq=True)
+        tm.that(bool(commit_verbs - push_verbs), eq=True)
         tm.that(bool(push_verbs - commit_verbs), eq=True)
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True

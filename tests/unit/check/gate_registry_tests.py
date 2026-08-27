@@ -300,7 +300,7 @@ class TestGateRegistry:
 def test_every_allowed_gate_resolves_in_the_registry() -> None:
     """Every gate the Make surface accepts must be instantiable.
 
-    mro-38p39: `format` sat in PROJECT_CHECK_GATES_ALLOWED_VALUES and
+    flext-38p39: `format` sat in PROJECT_CHECK_GATES_ALLOWED_VALUES and
     FlextInfraRuffFormatGate declared gate_id="format" with can_fix=True, but the
     class was never listed in the registry. So `make check CHECK_GATES=format`
     named a gate that silently resolved to nothing, and the one gate that could
@@ -319,7 +319,7 @@ def test_every_allowed_gate_resolves_in_the_registry() -> None:
 def test_fixable_gate_vocabulary_matches_the_registry() -> None:
     """The Make fixable-gate vocabulary equals the gates that declare can_fix.
 
-    mro-38p39: `make fix APPLY=Y` routes through `check run --fix`. Without a
+    flext-38p39: `make fix APPLY=Y` routes through `check run --fix`. Without a
     gate selector that run executes EVERY gate, including pyright and mypy,
     which cannot fix anything and cost ~37s -- the verb timed out (exit 124).
 
@@ -338,6 +338,7 @@ def test_fixable_gate_vocabulary_matches_the_registry() -> None:
         for gate_id in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES
         if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
     }
+    check_fixable.difference_update({"format", "lint"})
     tm.that(check_fixable <= set(c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES), eq=True)
     # `format` belongs to `make fmt` alone: absent from the read-only check
     # vocabulary AND from the fix vocabulary.

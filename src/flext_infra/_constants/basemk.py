@@ -16,12 +16,12 @@ class FlextInfraConstantsBasemk:
     "Prefix naming a custom.mk handler dispatched for a project-specific WHAT."
     CUSTOM_LIFECYCLE_HOOK_PREFIXES: Final[t.StrSequence] = ("pre-", "post-")
     "Prefixes naming custom.mk lifecycle hooks running before/after a verb."
-    # Why (mro-ga9q): custom.mk policy is a BLACKLIST, not a whitelist. A member
+    # Why (flext-ga9q): custom.mk policy is a BLACKLIST, not a whitelist. A member
     # project may define ANY custom verb/WHAT through _custom_<verb>_<what>
     # handlers and (pre|post)-<verb>[-<what>] lifecycle hooks EXCEPT the
     # reserved surface, which stays a flext-infra monopoly.
     #
-    # Why (mro-x0rau.3): this list adds ONLY the project-surface verbs that are
+    # Why (flext-x0rau.3): this list adds ONLY the project-surface verbs that are
     # reserved but not declared in config/codegen.yaml. R12 reorganized the verb
     # surface into verb+WHAT pairs, and 14 of the 22 names this list carried no
     # longer resolve to any recipe -- `make --dry-run <verb>` reported NO RULE
@@ -50,7 +50,7 @@ class FlextInfraConstantsBasemk:
     # allowlist before any recipe interpolates it into a command.
     SETUP_BRANCH_GUARD: Final[str] = "_setup_require_safe_branch"
     SETUP_BRANCH_PATTERN: Final[str] = "*[!a-zA-Z0-9._/-]*"
-    # mro-x0rau.3: base_daemons.mk.j2, base_pr.mk.j2 and base_mypy_limit.mk.j2
+    # flext-x0rau.3: base_daemons.mk.j2, base_pr.mk.j2 and base_mypy_limit.mk.j2
     # were dropped with the daemon-*/pr verbs they served. No generated Makefile
     # includes base.mk, so those recipes were unreachable, and the Mypy cap they
     # defined (MYPY_BOUNDED / VALIDATE_MYPY_LIMITS / REPORT_MYPY_FAILURE) was

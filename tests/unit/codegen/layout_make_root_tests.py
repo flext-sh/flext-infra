@@ -2,7 +2,7 @@
 
 Guards the root-cause fix for the env-leak defect: an inherited
 ``WORKSPACE_ROOT`` from a foreign checkout (e.g. a leaked ``.envrc`` export)
-must never redirect make verbs to another working tree (mro-hzox).
+must never redirect make verbs to another working tree (flext-hzox).
 """
 
 from __future__ import annotations
@@ -40,9 +40,7 @@ def test_make_workspace_root_ignores_foreign_env_leak(tmp_path: Path) -> None:
     """A poisoned environment WORKSPACE_ROOT never wins over the checkout."""
     env = dict(os.environ, WORKSPACE_ROOT=str(tmp_path / "foreign-checkout"))
     resolved = _make_database_workspace_root(env=env)
-    expected = _git_root("--show-superproject-working-tree") or _git_root(
-        "--show-toplevel"
-    )
+    expected = _git_root("--show-toplevel")
     tm.that(resolved, eq=expected)
 
 

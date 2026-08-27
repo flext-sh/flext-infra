@@ -2302,7 +2302,7 @@ fix: |-
       Issues extracted from SARIF results for the project.
   """
 ---
-id: doc201-065-workspace-root-from-file
+id: doc201-065-workspace-from-file
 language: Python
 severity: warning
 message: Add the semantic Returns section for _workspace_root_from_file.

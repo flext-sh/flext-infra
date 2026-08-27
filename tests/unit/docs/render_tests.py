@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class TestsDocsRenderExcludeDocs:
-    """nav404 regression: exclude_docs must keep nested section READMEs (mro-3o9s).
+    """nav404 regression: exclude_docs must keep nested section READMEs (flext-3o9s).
 
     MkDocs evaluates ``exclude_docs`` as gitignore-style patterns
     (``pathspec.GitIgnoreSpec``). A bare ``README.md`` drops every section
@@ -31,7 +31,7 @@ class TestsDocsRenderExcludeDocs:
 
         rendered = u.Infra.docs_project_mkdocs(scope, {}, [])
 
-        # mro-i6nq.10: Validate the rendered public artifact through pathspec's
+        # flext-i6nq.10: Validate the rendered public artifact through pathspec's
         # documented text-stream boundary, without an ad-hoc extraction helper.
         match = re.search(r"exclude_docs: \|\n((?: {2}\S.*\n)+)", rendered)
         tm.that(match, none=False)

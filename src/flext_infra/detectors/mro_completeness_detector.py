@@ -36,7 +36,7 @@ class FlextInfraMROCompletenessDetector:
                 parse_failures.append(
                     m.Infra.ParseFailureViolation(
                         file=str(file_path),
-                        stage="mro-completeness",
+                        stage="flext-completeness",
                         error_type="ResourceNotFound",
                         detail=f"Cannot resolve {file_path.name}",
                     )

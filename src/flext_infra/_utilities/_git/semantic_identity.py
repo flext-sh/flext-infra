@@ -122,7 +122,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         has_submodules = any(
             line.startswith(f"{_GITLINK_MODE} ") for line in staged_entries.splitlines()
         )
-        # Why (mro-2cafk / ai-hub-n1nh.5): git rev-parse --show-superproject-
+        # Why (flext-2cafk / ai-hub-n1nh.5): git rev-parse --show-superproject-
         # working-tree already means "this working tree is a submodule".
         # Requiring .git to be a gitfile excluded absorbed/converted submodules
         # whose .git is a real directory (cosmos-charts under cosmos-main), so

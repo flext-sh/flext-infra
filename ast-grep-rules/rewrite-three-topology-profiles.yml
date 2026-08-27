@@ -1,7 +1,0 @@
-id: rewrite-three-topology-profiles
-language: Yaml
-severity: error
-message: topology profiles are workspace or standalone only
-rule:
-  pattern: '[workspace-root, workspace-member, standalone]'
-fix: '[workspace, standalone]'

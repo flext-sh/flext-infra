@@ -179,7 +179,7 @@ class FlextInfraUtilitiesDocsGenerate:
         The root site is an AGGREGATE of every workspace project, so scope
         discovery always enumerates all projects: honoring a ``projects``
         filter here would produce a partial aggregate whose prune step
-        deletes the pages of every filtered-out project (mro-o6h5 incident).
+        deletes the pages of every filtered-out project (flext-o6h5 incident).
         """
         _ = projects
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesDocsGenerate:
         )
         catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
         class_counts: dict[str, int] = {}
-        # mro-o6h5 (agent: kimi) — root site aggregates per-project module
+        # flext-o6h5 (agent: kimi) — root site aggregates per-project module
         # pages: module names come from the already-loaded public contract
         # and src paths feed the mkdocstrings resolution block.
         scope_modules: dict[str, list[str]] = {}
@@ -270,7 +270,7 @@ class FlextInfraUtilitiesDocsGenerate:
                     apply=apply,
                 )
             )
-            # mro-o6h5 (agent: kimi) — per-project module pages reuse the
+            # flext-o6h5 (agent: kimi) — per-project module pages reuse the
             # exact project-scope renderers (docs_modules_index +
             # docs_directive_page); index lives inside modules/ so relative
             # links resolve identically to the project-scope layout.

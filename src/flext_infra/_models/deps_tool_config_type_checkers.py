@@ -104,7 +104,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="root-typings-paths",
-                    description="Typings paths used in workspace-root settings.",
+                    description="Typings paths used in workspace settings.",
                 ),
             ]
             project_typings_paths: Annotated[
@@ -232,7 +232,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="root-typings-paths",
-                    description="Typings paths used in workspace-root settings.",
+                    description="Typings paths used in workspace settings.",
                 ),
             ]
             project_typings_paths: Annotated[

@@ -2,7 +2,7 @@
 
 Gerado do dump da plataforma SonarCloud (2026-08-06).
 
-Bead: `mro-2wjm.8`
+Bead: `flext-2wjm.8`
 
 ## Resumo
 
@@ -553,7 +553,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        25          base_import_block: str = m.Field(description="Rendered base import block.")
 >>>    26          docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
        27  
-       28      # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the docs
+       28      # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): the docs
        29      # renderer sends one immutable model directly to the flext-cli boundary.
        30      class MkdocsRenderContext(m.ContractModel):
 ```
@@ -2200,7 +2200,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
 ```python
-      103                  # mro-pulj (codex): the generated root TYPE_CHECKING contract
+      103                  # flext-pulj (codex): the generated root TYPE_CHECKING contract
       104                  # makes the public package itself the single inherited owner.
       105                  lazy_map[alias_name] = (package_name, alias_name)
       106  
@@ -2316,7 +2316,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 ```python
       526                  if profile not in allowed:
       527                      # Why: profile-excluded managed workflows must not survive as
-      528                      # "keep current" ghosts (ci-matrix on workspace-member).
+      528                      # "keep current" ghosts (ci-matrix on workspace projects).
       529                      if (
 >>>   530                          relative.parts[:2] == (".github", "workflows")
       531                          and path.is_file()
@@ -2713,13 +2713,13 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
 ```python
-       38      workspace member list.  No manual directory iteration.
+       38      workspace project list. No manual directory iteration.
        39      """
        40  
        41      @override
 >>>    42      def execute(self) -> p.Result[bool]:
        43          """Generate __version__.py for each discovered project."""
-       44          # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the exact
+       44          # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): the exact
        45          # source metadata model crosses the sole CLI rendering boundary.
        46          template_path = (
 ```
@@ -2808,7 +2808,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
 ```python
-      185                  value.strip() == c.Infra.MakeProfile.WORKSPACE_MEMBER.value
+      185                  value.strip() == c.Infra.MakeProfile.WORKSPACE.value
       186              )
       187          return r[bool].ok(False)
       188  
@@ -4393,7 +4393,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       330          """Execute pytest, profile it, and preserve reports under one deadline."""
       331          if self._is_cache_maintenance():
       332              return self._execute_cache_maintenance()
-      333          # Why (mro-v4p5): CI workflows must not run pytest. Fail loud if invoked
+      333          # Why (flext-v4p5): CI workflows must not run pytest. Fail loud if invoked
 ```
 
 **Decisão**:
@@ -4488,7 +4488,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       420          cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec | None
       421      ) -> p.Result[c.Infra.WorkspaceMode]:
       422          """Infer root from actual first-party governed submodule declarations."""
-      423          attached_marker = cls._declares_attached_standalone(repository_root)
+      423          workspace_marker = (repository_root / c.Infra.GITMODULES).is_file()
 ```
 
 **Decisão**:
@@ -5568,7 +5568,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        99      def _public_export_order_key(export_name: str) -> tuple[int, str]:
       100          """Classify one export using Ruff's canonical ``RUF022`` order."""
 >>>   101          category = 0 if export_name.isupper() else 1 if export_name[:1].isupper() else 2
-      102          # mro-wkii.17 (Codex): dependency order belongs to facade imports;
+      102          # flext-wkii.17 (Codex): dependency order belongs to facade imports;
       103          # published __all__ values follow Ruff RUF022 (case-sensitive ASCII
       104          # secondary sort) so the two contracts never fight.
       105          return (category, export_name)
@@ -6896,7 +6896,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       310          """Collect optional dependency groups from one TOML document."""
       311          normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
       312          if not normalized:
-      313              # mro-j47u (codex): keep the empty mapping immutable and fully typed.
+      313              # flext-j47u (codex): keep the empty mapping immutable and fully typed.
 >>>   314              return MappingProxyType(dict[str, tuple[str, ...]]())
       315          return cls.project_dev_groups_from_payload(normalized)
       316  
@@ -7103,7 +7103,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```python
        86          """Build root public exports in Ruff's canonical isort-style order."""
-       87          # mro-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
+       87          # flext-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
        88          # only orders its validated contract and must not reinterpret target paths.
        89          _ = lazy_filtered
 >>>    90          export_candidates = tuple(dict.fromkeys(exports))

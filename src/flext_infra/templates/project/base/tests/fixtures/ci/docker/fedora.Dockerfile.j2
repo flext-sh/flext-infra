@@ -16,7 +16,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # which in turn needs it — init-setup.sh provisions Rust via mise, so the native
 # ICU headers must be present at the system layer.
 RUN dnf install -y \
-      bash ca-certificates curl git make libicu-devel \
+      bash ca-certificates curl git make libatomic libicu-devel \
     && dnf clean all
 # End SECTION: base packages
 

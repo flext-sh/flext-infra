@@ -17,7 +17,7 @@ $(LINT_CACHE_DIR):
 # public verb into the generated project Makefile, and a verb declared here
 # without a recipe is not harmless: Make treats it as a satisfied target, so the
 # verb becomes a silent no-op and a gate like `check` exits 0 having validated
-# nothing. mro-x0rau.3 removed the `pr` and daemon-* recipes with their
+# nothing. flext-x0rau.3 removed the `pr` and daemon-* recipes with their
 # templates, so `help` (base_venv) and `clean` (base_clean) are the only
 # recipes this file composes.
 .PHONY: help clean _preflight
@@ -48,7 +48,7 @@ elif [ "$(filter setup,$(MAKECMDGOALS))" = "" ] && [ ! -d "$(ACTIVE_VENV)" ]; th
 fi
 endef
 
-# mro-wkii.17.27 (codex): validation verbs detect drift without mutating files.
+# flext-wkii.17.27 (codex): validation verbs detect drift without mutating files.
 define VALIDATE_CANONICAL_BASE_MK
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
 	if [ "$(filter setup,$(MAKECMDGOALS))" = "setup" ] && [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then \
@@ -62,7 +62,7 @@ elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 fi
 endef
 
-# mro-ga9q (custom.mk blacklist): member projects may define ANY custom
+# flext-ga9q (custom.mk blacklist): member projects may define ANY custom
 # verb/WHAT through _custom_<verb>_<what> handlers and (pre|post)-<verb>[-<what>]
 # hooks EXCEPT the reserved verbs/WHATs below, which stay a flext-infra
 # monopoly (SSOT: flext_infra.basemk.custom_policy). Parse-time guard: every

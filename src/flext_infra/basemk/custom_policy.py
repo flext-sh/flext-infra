@@ -1,6 +1,6 @@
 """Reserved-target blacklist for member custom.mk surfaces.
 
-Policy (mro-ga9q): custom.mk is a BLACKLIST surface, not a whitelist. A member
+Policy (flext-ga9q): custom.mk is a BLACKLIST surface, not a whitelist. A member
 project may define ANY custom verb/WHAT through ``_custom_<verb>_<what>``
 handlers and ``(pre|post)-<verb>[-<what>]`` lifecycle hooks EXCEPT the reserved
 verbs/WHATs that stay a flext-infra monopoly:

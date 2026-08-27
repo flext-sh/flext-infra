@@ -44,23 +44,18 @@ if TYPE_CHECKING:
     from .test_codegen_beads_projection import TestsCodegenBeadsProjection
     from .test_codegen_conform_progress import TestsFlextInfraCodegenConformProgress
     from .test_codegen_hook_conformance import TestGitHookConformance
-    from .test_codegen_linked_worktree_manifest import TestCodegenLinkedWorktreeManifest
     from .test_codegen_make_environment import TestsCodegenMakeEnvironment
     from .test_codegen_pyproject_conform import TestsFlextInfraCodegenPyprojectConform
-    from .test_codegen_uv_exclude_newer_overlay import TestCodegenUvExcludeNewerOverlay
     from .test_managed_conflicts import TestsFlextInfraCodegenManagedConflicts
     from .test_managed_maintenance_headers import (
         TestsFlextInfraManagedMaintenanceHeaders,
     )
-    from .test_review_mro_vw2w_template_contracts import TestsReviewTemplateContracts
     from .test_vscode_owner_merge import TestsVscodeOwnerMerge
     from .test_workspace_root_setup_submodules import TestsWorkspaceRootSetupSubmodules
 __all__: tuple[str, ...] = (
     "CodegenSpec",
     "TestAllDirectoriesScanned",
     "TestCheckOnlyMode",
-    "TestCodegenLinkedWorktreeManifest",
-    "TestCodegenUvExcludeNewerOverlay",
     "TestEdgeCases",
     "TestExcludedDirectories",
     "TestGeneratedClassNamingConvention",
@@ -83,7 +78,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLazyInitTransforms",
     "TestsFlextInfraManagedMaintenanceHeaders",
     "TestsMakeTestSelector",
-    "TestsReviewTemplateContracts",
     "TestsVscodeOwnerMerge",
     "TestsWorkspaceRootSetupSubmodules",
     "c",
@@ -142,22 +136,13 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenConformProgress",
             ),
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
-            ".test_codegen_linked_worktree_manifest": (
-                "TestCodegenLinkedWorktreeManifest",
-            ),
             ".test_codegen_make_environment": ("TestsCodegenMakeEnvironment",),
             ".test_codegen_pyproject_conform": (
                 "TestsFlextInfraCodegenPyprojectConform",
             ),
-            ".test_codegen_uv_exclude_newer_overlay": (
-                "TestCodegenUvExcludeNewerOverlay",
-            ),
             ".test_managed_conflicts": ("TestsFlextInfraCodegenManagedConflicts",),
             ".test_managed_maintenance_headers": (
                 "TestsFlextInfraManagedMaintenanceHeaders",
-            ),
-            ".test_review_mro_vw2w_template_contracts": (
-                "TestsReviewTemplateContracts",
             ),
             ".test_vscode_owner_merge": ("TestsVscodeOwnerMerge",),
             ".test_workspace_root_setup_submodules": (

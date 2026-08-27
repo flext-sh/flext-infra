@@ -337,13 +337,13 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_workspace_root_declared_roots_do_not_override_fleet_discovery(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Render the workspace-root fleet surface even when roots are declared.
+        """Render the workspace fleet surface even when roots are declared.
 
         A workspace root owns a real tree, so its analyzer surface is decided by
         that tree's topology. Declared roots are the pre-write scaffold seed and
         must never narrow a real root back to its own local directories, or the
         root renders one shape from the fleet fan-out and another from inside
-        itself and no content is a fixed point (mro-dph2).
+        itself and no content is a fixed point (flext-dph2).
         """
         rules = tool_config_document.tools.pyright.path_rules
         _ = (tmp_path / "pyproject.toml").write_text(

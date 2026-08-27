@@ -3,7 +3,7 @@
 The generator filters the shared policy by the repository profile. Workspace
 roots receive the ordered whitelist while members receive only universal
 ignore sections. This test follows that same typed topology instead of freezing
-the workspace-root projection into every repository.
+the workspace projection into every repository.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -60,7 +60,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
     def test_declared_members_are_trackable_under_the_rendered_policy(self) -> None:
         """A member declared in the manifest is trackable in the rendered body.
 
-        The workspace-root policy denies every top-level directory (``/*`` and
+        The workspace policy denies every top-level directory (``/*`` and
         ``/*/``), so a governed member only becomes trackable when the whitelist
         is DERIVED from the live topology. Arbitrary member paths are used —
         including a nested one, whose every ancestor must be unignored — so the
@@ -68,10 +68,12 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         """
         members = ("probe-member", "nested/probe-member")
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            beads=m.Infra.BeadsOverrideSpec(
+                version=1, workspace="flext", database="flext", issue_prefix="flext"
+            ),
             name="probe-root",
             repository=test_u.Tests.repository_ref("probe-root"),
-            members=tuple(
+            subprojects=tuple(
                 test_u.Tests.repository_ref(
                     Path(item).name,
                     path=Path(item),
@@ -80,6 +82,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
                 for item in members
             ),
         )
+
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,

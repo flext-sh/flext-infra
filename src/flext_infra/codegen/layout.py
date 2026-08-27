@@ -1,4 +1,4 @@
-"""Project-layout engine command service (mro-0wuz, epic mro-hzox).
+"""Project-layout engine command service (flext-0wuz, epic flext-hzox).
 
 Check mode reports layout violations from the declarative SSOT in
 ``config/codegen.yaml``; apply mode performs the reorganization idempotently

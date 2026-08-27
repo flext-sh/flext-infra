@@ -27,7 +27,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
-        # mro-j47u: configure the inherited runtime once; no settings proxy/property.
+        # flext-j47u: configure the inherited runtime once; no settings proxy/property.
         return m.RuntimeBootstrapOptions(settings_type=type(settings))
 
     workspace_root: Annotated[

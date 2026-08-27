@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import flext_infra.maintenance
 import pytest
-from flext_infra.maintenance import FlextInfraPythonVersionEnforcer
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_tests import tm
 
 # Why: the symbol must be absent for the test to mean anything, so it
@@ -30,7 +30,4 @@ class TestsFlextInfraInfraMaintenanceInit:
 
     def test_package_exposes_only_generated_lazy_exports(self) -> None:
         """Keep the package surface equal to the generated lazy export set."""
-        tm.that(
-            flext_infra.maintenance.__all__,
-            eq=("FlextInfraCleanService", "FlextInfraPythonVersionEnforcer"),
-        )
+        tm.that(flext_infra.maintenance.__all__, eq=("FlextInfraCleanService",))

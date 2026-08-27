@@ -1,11 +1,11 @@
 Infra:
   tooling:
-    # mro-j47u (codex): canonical validated tooling and suppression-policy SSOT.
+    # flext-j47u (codex): canonical validated tooling and suppression-policy SSOT.
     tools:
       codespell:
         check-filenames: true
         ignore-words-list: crate,nd
-      # mro-j47u (codex): non-linter tool sections are config-owned as well.
+      # flext-j47u (codex): non-linter tool sections are config-owned as well.
       deptry:
         known-first-party: [flext_core]
         pep621-dev-dependency-groups: [dev]
@@ -114,7 +114,7 @@ Infra:
         lint:
           select:
             - ALL
-          # mro-j47u (codex): banned API messages are policy data, never template literals.
+          # flext-j47u (codex): banned API messages are policy data, never template literals.
           banned-api:
             argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
             click:
@@ -232,7 +232,7 @@ Infra:
 
       mypy:
         plugins: [pydantic.mypy]
-        # mro-j47u: every retained global exclusion carries its tested rationale;
+        # flext-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         boolean-settings:
           namespace_packages: true
@@ -351,7 +351,7 @@ Infra:
           reportArgumentType: "none"
           reportReturnType: "none"
         path-rules:
-          # mro-wkii.17 (codex): source and tracked consumer surfaces are all
+          # flext-wkii.17 (codex): source and tracked consumer surfaces are all
           # first-class environments so no analyzer can hide their diagnostics.
           source-dir: src
           project-root: .
@@ -382,7 +382,7 @@ Infra:
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []
-          # mro-j47u (codex): Rope 1.14/latest has no public PEP 695 walker
+          # flext-j47u (codex): Rope 1.14/latest has no public PEP 695 walker
           # registration API. This existing-path-only environment is the tested
           # vendor boundary; broad src code keeps reportPrivateUsage=error.
           diagnostic-path-overrides:
@@ -531,8 +531,8 @@ Infra:
           workspace-include-child-env-dirs: []
           project-shared-search-paths: ["."]
       pytest:
-        # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
-        # OPERATOR LAW mro-38p39 (2026-08-13), reaffirmed by mro-09686
+        # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
+        # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686
         # measurement. 10s per case, 60s for an explicitly slow case, 120s for
         # the complete suite. A case that does not fit is a TEST DEFECT and is
         # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
@@ -541,7 +541,7 @@ Infra:
         # rule let the suite run 30 minutes, so make test never aborted on
         # overrun and a push could be attempted without a full green suite.
         case-timeout-seconds: 10
-        # The 60s arm of OPERATOR LAW mro-38p39, made executable. The law
+        # The 60s arm of OPERATOR LAW flext-38p39, made executable. The law
         # already granted an explicitly slow case 60s, but no key projected it,
         # so `flext_slow_timeout_seconds` stayed empty and every `@pytest.mark.slow`
         # item was still judged at 10s. A nested `pytester.runpytest_subprocess()`
@@ -611,9 +611,9 @@ Infra:
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          # mro-99ae: --timeout/--session-timeout are runner-owned and derived
+          # flext-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
-        # mro-99ae: hard process boundary independent of pytest hook progress.
+        # flext-99ae: hard process boundary independent of pytest hook progress.
         # Must exceed run-timeout-seconds (120) by a small grace only: this caps
         # the whole Make/pytest process (shell `timeout`), not a single session
         # hook. A wide outer wall is itself an escape hatch — it would let an
@@ -625,7 +625,7 @@ Infra:
         in_place: true
         sort_first: [project, build-system, tool, dependency-groups]
       vulture:
-        # NOTE (multi-agent, mro-j47u): Vulture 2.16 reports keyword-bearing
+        # NOTE (multi-agent, flext-j47u): Vulture 2.16 reports keyword-bearing
         # Protocol signature parameters as unused variables at 100% confidence,
         # even with --ignore-decorators @runtime_checkable. The declaration-only
         # protocol facet is excluded; production models and runtime code remain scanned.

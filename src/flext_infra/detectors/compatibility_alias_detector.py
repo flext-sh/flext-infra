@@ -160,7 +160,7 @@ class FlextInfraCompatibilityAliasDetector:
 
         local_aliases_set = frozenset(local_aliases)
         violations: list[m.Infra.CompatibilityAliasViolation] = []
-        # mro-j47u (codex): parse each Rope-owned runtime statement in place;
+        # flext-j47u (codex): parse each Rope-owned runtime statement in place;
         # the module-wide table intentionally excludes conditional imports.
         for statement in u.Infra.logical_statements(source):
             if (

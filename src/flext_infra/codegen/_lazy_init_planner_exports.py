@@ -47,7 +47,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if package_entry is None:
             return {}
         index: t.MutableLazyAliasMap = {}
-        # mro-i6nq.10: Generated support modules are output, never public input.
+        # flext-i6nq.10: Generated support modules are output, never public input.
         skip_names = {
             c.Infra.INIT_PY,
             "__main__.py",
@@ -58,14 +58,14 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            # mro-pulj: test artifacts never enter an installable package ABI.
+            # flext-pulj: test artifacts never enter an installable package ABI.
             test_only_source_module = (
                 context.surface != c.Infra.DIR_TESTS
                 or context.current_pkg == c.Infra.DIR_TESTS
             ) and (
                 c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name) is not None
             )
-            # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
+            # flext-6int (claude-ulw): extract predicate to satisfy PLR0916
             # (>5 boolean expressions); retired/generated/test modules are
             # never semantic input for the lazy export map.
             is_generated_or_test = (

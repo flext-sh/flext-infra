@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
-from flext_infra import u as infra_u
 from flext_tests import tm
 from tests import u
 
@@ -13,7 +11,7 @@ from tests import u
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
-    def test_discover_projects_includes_non_git_flext_projects(
+    def test_standalone_never_discovers_undeclared_child_projects(
         self, tmp_path: Path
     ) -> None:
         service = u.Infra()
@@ -26,9 +24,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         )
         result = service.discover_projects(workspace_root)
         tm.ok(result)
-        tm.that(len(result.value), eq=1)
-        tm.that(result.value[0].name, eq="non_git_project")
-        tm.that(result.value[0].path, eq=non_git_dir)
+        tm.that(result.value, empty=True)
 
     def test_find_all_pyproject_files_with_nonexistent_path(self) -> None:
         service = u.Infra()
@@ -76,22 +72,3 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             blocked_dir.chmod(0o755)
         tm.ok(result)
         tm.that(result.value, eq=[])
-
-    def test_external_discovery_skips_inaccessible_sibling(
-        self, tmp_path: Path
-    ) -> None:
-        workspace = tmp_path / "workspace"
-        blocked = tmp_path / "blocked"
-        workspace.mkdir()
-        blocked.mkdir()
-        original_is_file = Path.is_file
-
-        def is_file(path: Path) -> bool:
-            if path == blocked / "pyproject.toml":
-                raise PermissionError(path)
-            return original_is_file(path)
-
-        with patch.object(Path, "is_file", is_file):
-            roots = infra_u.Infra.discover_external_workspace_roots(workspace)
-
-        tm.that(roots, eq=())

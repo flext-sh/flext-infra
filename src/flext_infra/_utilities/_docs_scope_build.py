@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
             resolved_root
         )
         has_declared_members = bool(
-            FlextInfraUtilitiesPyproject.workspace_member_names(resolved_root)
+            FlextInfraUtilitiesPyproject.workspace_project_paths(resolved_root)
         )
         has_child_projects = any(
             project.path.resolve() != resolved_root for project in discovered

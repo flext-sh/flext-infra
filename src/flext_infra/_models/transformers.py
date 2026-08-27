@@ -31,7 +31,7 @@ class FlextInfraModelsTransformers:
     class AliasMigrationEdit(m.ContractModel):
         """One validated in-memory canonical alias source rewrite."""
 
-        # Why (mro-ygc2k): source bytes must survive validation byte-exact;
+        # Why (flext-ygc2k): source bytes must survive validation byte-exact;
         # the strict base strips whitespace, which corrupts CAS comparisons.
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
 

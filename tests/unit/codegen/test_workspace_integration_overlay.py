@@ -23,7 +23,9 @@ def _workspace(
     *, integration: m.Infra.WorkspaceIntegrationSpec | None
 ) -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        beads=m.Infra.BeadsOverrideSpec(
+            version=1, workspace="flext", database="flext", issue_prefix="flext"
+        ),
         name="flext",
         repository=m.Infra.RepositoryRef(
             name="flext",
@@ -39,7 +41,7 @@ def _workspace(
             editable=False,
             read_only=False,
         ),
-        members=(
+        subprojects=(
             m.Infra.RepositoryRef(
                 name="flext-core",
                 distribution="flext-core",

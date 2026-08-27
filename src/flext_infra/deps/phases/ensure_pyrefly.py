@@ -41,7 +41,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         else:
             expected_search = [c.Infra.DEFAULT_SRC_DIR]
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
-        # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
+        # flext-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
         if declared_python_dirs_are_complete:
             declared_import_roots = (
@@ -63,7 +63,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 merged_search.discard(pyrefly_rules.path_rules.source_dir)
             merged_search.difference_update(declared_import_roots)
             expected_search = [*declared_import_roots, *sorted(merged_search)]
-            # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
+            # NOTE (multi-agent, flext-wkii.17.9.2.1): analysis roots belong in
             # project-includes; only import roots belong in search-path.
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs

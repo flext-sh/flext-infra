@@ -46,7 +46,7 @@ class FlextInfraModels(m):
         FlextInfraModelsCensus,
         FlextInfraModelsBasemk,
         FlextInfraModelsCheck,
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): conform contracts are
+        # NOTE (multi-agent, flext-wkii.17 / agent: codex): conform contracts are
         # isolated from the active detector work in _models/codegen.py while
         # remaining exposed through the single public m.Infra facade.
         FlextInfraConfigModels,
@@ -64,7 +64,7 @@ class FlextInfraModels(m):
         FlextInfraModelsMixins,
         FlextInfraModelsTransformers,
         FlextInfraModelsWorkspace,
-        # mro-wkii.17.26 (codex): all fix/codegen mutations share one typed
+        # flext-wkii.17.26 (codex): all fix/codegen mutations share one typed
         # worktree transaction report rather than command-local backup shapes.
         FlextInfraModelsWorktree,
         FlextInfraModelsGit,

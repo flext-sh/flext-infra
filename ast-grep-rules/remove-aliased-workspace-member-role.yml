@@ -1,7 +1,0 @@
-id: remove-aliased-workspace-member-role
-language: Python
-severity: error
-message: aliased repository role must use standalone for a subproject checkout
-rule:
-  pattern: _ROLE.WORKSPACE_MEMBER
-fix: _ROLE.STANDALONE

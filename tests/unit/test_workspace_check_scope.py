@@ -1,4 +1,4 @@
-"""Tests that workspace-root checks fan out through the declared topology.
+"""Tests that workspace checks fan out through the declared topology.
 
 A workspace root delegates each check to its member instead of aggregating
 member paths into one root process. This preserves project isolation while
@@ -33,11 +33,11 @@ class TestsFlextInfraWorkspaceCheckScope:
         tm.that(
             template,
             has=(
-                "WORKSPACE_MEMBERS :={% for member in workspace_members %} "
+                "WORKSPACE_SUBPROJECTS :={% for member in workspace_subprojects %} "
                 "{{ member }}{% endfor %}"
             ),
         )
-        tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)")
+        tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)")
         tm.that(template, has="override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)")
         tm.that(template, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(template, has='--make-arg "CHECK_GATES=$$gates"')

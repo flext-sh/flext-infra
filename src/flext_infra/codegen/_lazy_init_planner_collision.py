@@ -59,7 +59,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 3
         part_number = module_file.stem.rpartition("_part_")[2]
         if part_number.isdecimal():
-            # mro-pulj (codex): the final public facade owns the external
+            # flext-pulj (codex): the final public facade owns the external
             # class identity; numbered implementation parts only rank among
             # themselves when no facade candidate exists.
             score -= 50
@@ -86,7 +86,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if existing is None or existing == target:
             index[name] = target
             return
-        # mro-j47u (codex): MutableLazyAliasMap values are always StrPair.
+        # flext-j47u (codex): MutableLazyAliasMap values are always StrPair.
         winner = self._pick_preferred_target(name, existing, target)
         if self._is_intentional_reexport(existing, target):
             index[name] = winner
@@ -102,7 +102,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
         if self._is_mro_part_reexport(a, b):
             return True
-        # mro-pulj (codex): root typing sidecars are removed; real source
+        # flext-pulj (codex): root typing sidecars are removed; real source
         # owners now participate in the normal collision policy.
         if self._is_private_facade_reexport(a, b):
             return True

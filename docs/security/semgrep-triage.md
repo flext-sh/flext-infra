@@ -2,7 +2,7 @@
 
 Gerado do dump da plataforma Semgrep (deployment `datacosmos`, 2026-08-06).
 
-Bead: `mro-p57t.12`
+Bead: `flext-p57t.12`
 
 ## Resumo
 

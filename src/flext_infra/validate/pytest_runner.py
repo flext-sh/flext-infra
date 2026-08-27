@@ -333,11 +333,11 @@ class FlextInfraPytestRunner(s[int]):
         """Execute pytest, profile it, and preserve reports under one deadline."""
         if self._is_cache_maintenance():
             return self._execute_cache_maintenance()
-        # Why (mro-v4p5): CI workflows must not run pytest. Fail loud if invoked
+        # Why (flext-v4p5): CI workflows must not run pytest. Fail loud if invoked
         # under CI=Y so regenerated jobs cannot reintroduce make test silently.
         if self._ci_disables_coverage():
             return r[int].fail(
-                "make test is forbidden under CI=Y (mro-v4p5); "
+                "make test is forbidden under CI=Y (flext-v4p5); "
                 "CI workflows must not execute pytest — run make test locally "
                 "without CI=Y"
             )

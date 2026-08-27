@@ -1,6 +1,6 @@
 """Layout engine config contracts and planning/apply result models.
 
-mro-0wuz (epic mro-hzox): every layout decision is declarative data validated
+flext-0wuz (epic flext-hzox): every layout decision is declarative data validated
 from ``config/codegen.yaml`` — the engine carries zero hardcoded knowledge.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.

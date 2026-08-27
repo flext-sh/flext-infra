@@ -1,4 +1,4 @@
-"""Workspace-root submodule setup behavior through generated Make surfaces."""
+"""Workspace submodule setup behavior through generated Make surfaces."""
 
 from __future__ import annotations
 
@@ -20,7 +20,9 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
         "flext-core", role=c.Infra.RepositoryRole.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        beads=m.Infra.BeadsOverrideSpec(
+            version=1, workspace="flext", database="flext", issue_prefix="flext"
+        ),
         name="flext",
         repository=root_repository,
         project=m.Infra.ProjectSpec(
@@ -42,8 +44,9 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
             workspace_root_rel=".",
             year=2026,
         ),
-        members=(member,),
+        subprojects=(member,),
     )
+
     root = tmp_path / "render-root"
     request = m.Infra.CodegenConformRequest(
         root=root,
@@ -121,7 +124,7 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
             cwd=source,
         )
     )
-    test_u.Tests.commit_git_changes(source, "Declare workspace member")
+    test_u.Tests.commit_git_changes(source, "Declare workspace project")
     tm.ok(u.Cli.run_checked([c.Infra.GIT, "checkout", "-b", "0.12.0-dev"], cwd=source))
     tm.ok(u.Cli.run_checked([c.Infra.GIT, "checkout", "main"], cwd=source))
     remote_root = tmp_path / "workspace-remote"
@@ -159,7 +162,7 @@ class TestsWorkspaceRootSetupSubmodules:
     def test_make_setup_initializes_local_submodule_before_environment(
         self, tmp_path: Path
     ) -> None:
-        """Generated workspace-root setup initializes declared submodules first."""
+        """Generated workspace setup initializes declared submodules first."""
         rendered = _render_workspace_root_makefile(tmp_path)
         workspace = _create_uninitialized_workspace(tmp_path, rendered)
         env = os.environ.copy()

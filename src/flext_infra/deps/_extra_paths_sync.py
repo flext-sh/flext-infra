@@ -180,7 +180,7 @@ class FlextInfraExtraPathsSyncMixin:
         # symbol imported from them degraded to Any.
         targets: t.MutableSequenceOf[Path] = [self.root]
         targets.extend(
-            self.root / member for member in u.Infra.workspace_member_names(self.root)
+            self.root / member for member in u.Infra.workspace_project_paths(self.root)
         )
         updated = 0
         for target in targets:

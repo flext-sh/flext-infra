@@ -60,16 +60,16 @@ def _project_spec(*, version: str) -> m.Infra.ProjectSpec:
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-        name="workspace-root",
-        repository=_repository(
-            "workspace-root", role=c.Infra.RepositoryRole.WORKSPACE, path="."
+        beads=m.Infra.BeadsOverrideSpec(
+            version=1, workspace="flext", database="flext", issue_prefix="flext"
         ),
-        members=(
+        name="workspace",
+        repository=_repository(
+            "workspace", role=c.Infra.RepositoryRole.WORKSPACE, path="."
+        ),
+        subprojects=(
             _repository(
-                "flext-core",
-                role=c.Infra.RepositoryRole.STANDALONE,
-                path="flext-core",
+                "flext-core", role=c.Infra.RepositoryRole.STANDALONE, path="flext-core"
             ),
         ),
     )
@@ -80,7 +80,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         workspace = _workspace()
         result = u.Infra.pyproject_dependencies_conform(
             """[project]
-name = "workspace-root"
+name = "workspace"
 dependencies = ["flext-core"]
 
 [tool.uv.workspace]
@@ -170,7 +170,7 @@ constraint-dependencies = ["uv>=0"]
         member = workspace.subprojects[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
         )
-        invalid_workspace = workspace.model_copy(update={"members": (member,)})
+        invalid_workspace = workspace.model_copy(update={"subprojects": (member,)})
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
@@ -179,12 +179,12 @@ constraint-dependencies = ["uv>=0"]
         )
         tm.that(result.failure, eq=True)
 
-    def test_attached_root_rejects_direct_source(self) -> None:
+    def test_workspace_rejects_conflicting_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
-                '[project]\nname = "workspace-root"\n'
+                '[project]\nname = "workspace"\n'
                 f'dependencies = ["{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"]\n'
                 "\n[tool.uv.workspace]\n"
                 'members = ["flext-core"]\n'
@@ -195,7 +195,7 @@ constraint-dependencies = ["uv>=0"]
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        tm.fail(result, has="attached workspace dependency declares direct source")
+        tm.fail(result, has="workspace dependency declares a conflicting direct source")
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
@@ -267,7 +267,7 @@ python-interpreter-path = "../.venv/bin/python"
         # measures. The expectation now derives from the same SSOT sequence
         # production reads, so it survives any legitimate change to that set.
         # A declared floor reaches the rendered group verbatim UNLESS it names a
-        # workspace member, which dependency provenance rewrites to its pinned
+        # workspace project, which dependency provenance rewrites to its pinned
         # git requirement (measured: "flext-tests" renders as
         # "flext-tests @ git+.../flext-tests.git@<branch>"). Asserting by
         # package name keeps both shapes in scope without re-encoding either.
@@ -385,33 +385,6 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         tm.that("rumdl>=0.2.45" in document["dependency-groups"]["dev"], eq=True)
         tm.that("rumdl>=0.2.46" not in document["dependency-groups"]["dev"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
-
-    def test_tool_flext_workspace_marker_is_preserved(self) -> None:
-        """Preserve [tool.flext] policy while removing legacy tool.poetry."""
-        workspace = _workspace()
-        source = """[project]
-name = "external-consumer"
-dependencies = []
-
-[tool.flext.workspace]
-attached = true
-
-[tool.poetry]
-name = "legacy-packaging"
-"""
-        conformed = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
-                toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
-            )
-        )
-        document = tomllib.loads(conformed)
-        tm.that(document["tool"]["flext"]["workspace"]["attached"], eq=True)
-        tm.that("poetry" not in document["tool"], eq=True)
 
     def test_exclude_dependencies_emit_for_standalone_without_project_key(self) -> None:
         """Standalone member CI needs scoped excludes without the routing key."""

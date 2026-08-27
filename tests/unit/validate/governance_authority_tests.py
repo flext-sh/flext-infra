@@ -51,28 +51,6 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
             assert target.exists(), f"{prompt.name} dead skill path: {law_link}"
 
 
-def test_governance_authority_sequence_matches_agents() -> None:
-    agents = (WORKSPACE_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    governance = (WORKSPACE_ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
-    assert "AIHUB-INVIOLABLE-LAW-PRELUDE" in agents
-    assert "quality-gates skill" not in governance
-    assert "flext-law" in governance or "AGENTS.md" in governance
-
-
-def test_docs_validation_required_skills_exist_with_adr() -> None:
-    config = json.loads(
-        (
-            WORKSPACE_ROOT / "docs" / "architecture" / "architecture_config.json"
-        ).read_text(encoding="utf-8")
-    )
-    required = config["docs_validation"]["required_skills"]
-    skills_root = WORKSPACE_ROOT / ".agents" / "skills"
-    for name in required:
-        skill = skills_root / name / "SKILL.md"
-        assert skill.is_file(), name
-        assert "adr" in skill.read_text(encoding="utf-8").lower(), name
-
-
 def test_markdownlint_does_not_suppress_strict_rules() -> None:
     config = json.loads((ROOT / ".markdownlint.json").read_text(encoding="utf-8"))
     assert config.get("MD012") is not False

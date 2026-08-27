@@ -127,7 +127,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         root_source_path = self._project_source_path()
-        # mro-j47u (codex): specific roots precede the broad source environment.
+        # flext-j47u (codex): specific roots precede the broad source environment.
         expected_envs.extend(
             self._diagnostic_override_envs(
                 project_dir=workspace_root,
@@ -199,7 +199,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
-        # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
+        # flext-j47u (codex): absent optional roots are not valid Pyright inputs.
         env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
@@ -234,7 +234,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     @staticmethod
     def _declared_environment_dirs(env_dirs: t.StrSequence) -> t.StrSequence:
         """Apply canonical Python discovery exclusions to pre-write declarations."""
-        # NOTE (multi-agent, mro-wkii.17.9.2.1): declared and on-disk roots must
+        # NOTE (multi-agent, flext-wkii.17.9.2.1): declared and on-disk roots must
         # select the same first-class analyzer environments in the first pass.
         return tuple(
             env_dir
@@ -373,10 +373,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             (
                 project.path
                 for project in discovered.value
-                if (
-                    project.workspace_role
-                    == c.Infra.WorkspaceProjectRole.SUBPROJECT
-                )
+                if (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
             ),
             key=lambda project_path: project_path.name,
         )
@@ -404,7 +401,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         expected_ignores = self._expected_ignores(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
-        # mro-j47u (codex): pre-write manifests supply the same typed roots that
+        # flext-j47u (codex): pre-write manifests supply the same typed roots that
         # filesystem discovery observes after the atomic scaffold is materialized.
         #
         # `declared_python_dirs_are_complete` distinguishes "caller listed some

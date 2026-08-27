@@ -40,7 +40,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         resolved_pkg_dir = pkg_dir.resolve()
         direct: list[str] = []
         for child_dir in package_entry.descendant_child_dirs:
-            # mro-pulj (codex): do not merge retired root registries into the
+            # flext-pulj (codex): do not merge retired root registries into the
             # inline map that replaces them.
             if child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES:
                 continue
@@ -55,7 +55,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
                 continue
-            # mro-pulj (codex): private fixture modules are pytest-owned plugin
+            # flext-pulj (codex): private fixture modules are pytest-owned plugin
             # boundaries and never bubble into their production package root.
             if is_fixture_child:
                 continue

@@ -58,21 +58,26 @@ class TestsFlextInfraWorkspaceFactory:
         project_names = [f"test-proj-{idx + 1}" for idx in range(projects)]
         for project_name in project_names:
             self.create_minimal(tmp_path=workspace_root, name=project_name)
-        members = ", ".join(f'"{name}"' for name in project_names)
         workspace_pyproject = (
             "[tool.poetry]\n"
             '"name" = "workspace"\n'
             f'"version" = "{self.default_version}"\n'
             '"description" = "Generated workspace fixture"\n'
-            '"authors" = ["FLEXT Tests <tests@flext.dev>"]\n\n'
-            "[tool.flext.workspace]\n"
-            f"members = [{members}]\n"
+            '"authors" = ["FLEXT Tests <tests@flext.dev>"]\n'
         )
         (workspace_root / "pyproject.toml").write_text(
             workspace_pyproject, encoding=self.encoding
         )
         (workspace_root / "Makefile").write_text(
             "check:\n\t@echo workspace-check\n", encoding=self.encoding
+        )
+        (workspace_root / ".gitmodules").write_text(
+            "".join(
+                f'[submodule "{name}"]\n\tpath = {name}\n'
+                f"\turl = https://github.com/flext-sh/{name}.git\n"
+                for name in project_names
+            ),
+            encoding=self.encoding,
         )
         return workspace_root
 

@@ -22,7 +22,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     borrows workspace_root + the include-init / dry-run flags + the wrapper
     package set from the facade via MRO. ``module_ast`` is typed ``object`` to
     mirror the rope-AST abstraction (FlextInfraUtilitiesRopeAnalysis), which
-    deliberately avoids ``import ast`` at the consumer layer (tracked: mro-6flt).
+    deliberately avoids ``import ast`` at the consumer layer (tracked: flext-6flt).
     """
 
     if TYPE_CHECKING:

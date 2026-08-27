@@ -3,5 +3,5 @@ language: Yaml
 severity: error
 message: the .gitmodules topology uses the workspace profile
 rule:
-  pattern: '[workspace-root]'
+  pattern: '[workspace]'
 fix: '[workspace]'

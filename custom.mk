@@ -36,9 +36,9 @@ _custom_run_cprofile-report:
 	@set -eu; \
 	"$(RUNTIME_PYTHON)" -m flext_infra._cprofile_entry
 
-# mro-0wuz: project-layout engine (SSOT in flext-infra/config/codegen.yaml).
+# flext-0wuz: project-layout engine (SSOT in flext-infra/config/codegen.yaml).
 # Dry-run report by default; APPLY=Y executes the idempotent reorganization.
-# PROJECT=<name> scopes to one workspace member; otherwise the whole
+# PROJECT=<name> scopes to one workspace project; otherwise the whole
 # workspace rooted at WORKSPACE_ROOT is planned/applied.
 _custom_build_layout:
 	@set -eu; \
@@ -48,7 +48,7 @@ _custom_build_layout:
 	if [ -n "$(strip $(PROJECT))" ]; then project="--project $(strip $(PROJECT))"; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen layout --workspace "$(WORKSPACE_ROOT)" $$project $$apply
 
-# mro-0wuz: layout warning gate (severity from codegen.yaml layout.severity).
+# flext-0wuz: layout warning gate (severity from codegen.yaml layout.severity).
 _custom_check_layout:
 	@set -eu; \
 	projects="."; \
