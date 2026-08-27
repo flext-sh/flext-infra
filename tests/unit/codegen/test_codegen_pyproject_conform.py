@@ -244,7 +244,7 @@ python-interpreter-path = "../.venv/bin/python"
         # with per-package RFC 3339 cutoffs (b3f3fb75c added
         # dependency_cooldown_overrides so a floor published after the shared
         # cooldown can get its own cutoff instead of only a name-only bypass).
-        expected_exclude_newer_package = {
+        expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
             for package in toolchain.dependency_cooldown_exclusions
             if package not in toolchain.dependency_cooldown_overrides

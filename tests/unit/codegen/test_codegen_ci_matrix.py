@@ -196,6 +196,7 @@ class TestCodegenCiMatrix:
             private_submodules=private,
         )
         rendered_text = tm.ok(cli_u.Cli.template_render(tpl, spec))
+        assert isinstance(rendered_text, str)
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
