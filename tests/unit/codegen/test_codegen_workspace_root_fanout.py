@@ -25,7 +25,7 @@ class TestsCodegenWorkspaceRootFanout:
             if entry.destination == c.Infra.MAKEFILE_FILENAME
         )
         tm.that(makefile_entries, len=1)
-        tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE)
 
     def test_workspace_root_gate_verbs_fan_out_via_orchestrator(
         self, tmp_path: Path

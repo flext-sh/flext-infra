@@ -34,7 +34,7 @@ class TestsCodegenGitignoreProfileAware:
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
-                profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+                profile=c.Infra.MakeProfile.STANDALONE,
                 project_name="probe-member",
             )
         )
@@ -52,7 +52,7 @@ class TestsCodegenGitignoreProfileAware:
         member = test_u.Tests.repository_ref(
             "probe-member",
             path=Path("probe-member"),
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            role=c.Infra.RepositoryRole.STANDALONE,
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -64,7 +64,7 @@ class TestsCodegenGitignoreProfileAware:
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
-                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                profile=c.Infra.MakeProfile.WORKSPACE,
                 project_name="probe-root",
                 workspace=workspace,
             )

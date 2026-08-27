@@ -356,7 +356,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def repository_ref(
             name: str,
             *,
-            role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE,
             path: Path | None = None,
         ) -> m.Infra.RepositoryRef:
             """Build a repository reference from the provider contract.
@@ -373,7 +373,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             which is not a valid submodule pathspec.
             """
             provider = config.Infra.codegen.providers[0]
-            is_member = role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            is_member = role is c.Infra.RepositoryRole.STANDALONE
             return m.Infra.RepositoryRef(
                 name=name,
                 distribution=name,
@@ -1468,14 +1468,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 FlextInfraWorkspaceDetector.load_workspace_spec(root)
             )
             role = workspace.repository.role.value
-            if role == c.Infra.MakeProfile.WORKSPACE_ROOT.value:
-                return c.Infra.MakeProfile.WORKSPACE_ROOT
-            if role == c.Infra.MakeProfile.WORKSPACE_MEMBER.value:
-                return c.Infra.MakeProfile.WORKSPACE_MEMBER
+            if role == c.Infra.MakeProfile.WORKSPACE.value:
+                return c.Infra.MakeProfile.WORKSPACE
+            if role == c.Infra.MakeProfile.STANDALONE.value:
+                return c.Infra.MakeProfile.STANDALONE
             if role == c.Infra.MakeProfile.STANDALONE.value:
                 return c.Infra.MakeProfile.STANDALONE
             return (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
+                c.Infra.MakeProfile.WORKSPACE
                 if workspace.members
                 else c.Infra.MakeProfile.STANDALONE
             )

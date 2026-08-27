@@ -50,7 +50,7 @@ class FlextInfraWorkspaceGovernanceMixin:
         make_profile: c.Infra.MakeProfile,
     ) -> tuple[m.Infra.CodegenArtifactSpec, ...]:
         """Project the persistent-state artifacts owned by one Make profile."""
-        if make_profile is not c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if make_profile is not c.Infra.MakeProfile.WORKSPACE:
             return ()
         persistent = c.Infra.PERSISTENT_STATE_ARTIFACT_NAMES
         return tuple(

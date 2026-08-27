@@ -24,12 +24,12 @@ def _repository(
         provider=provider.name,
         checkout=(
             c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+            if role is c.Infra.RepositoryRole.WORKSPACE
             else c.Infra.CheckoutKind.SUBMODULE
         ),
         codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
-        editable=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
+        package=role is not c.Infra.RepositoryRole.WORKSPACE,
+        editable=role is not c.Infra.RepositoryRole.WORKSPACE,
         read_only=False,
     )
 
@@ -63,12 +63,12 @@ def _workspace() -> m.Infra.WorkspaceSpec:
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name="workspace-root",
         repository=_repository(
-            "workspace-root", role=c.Infra.RepositoryRole.WORKSPACE_ROOT, path="."
+            "workspace-root", role=c.Infra.RepositoryRole.WORKSPACE, path="."
         ),
         members=(
             _repository(
                 "flext-core",
-                role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                role=c.Infra.RepositoryRole.STANDALONE,
                 path="flext-core",
             ),
         ),

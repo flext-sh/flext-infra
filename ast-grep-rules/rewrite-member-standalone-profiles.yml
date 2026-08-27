@@ -1,0 +1,7 @@
+id: rewrite-member-standalone-profiles
+language: Yaml
+severity: error
+message: subproject checkouts use the standalone profile
+rule:
+  pattern: '[workspace-member, standalone]'
+fix: '[standalone]'

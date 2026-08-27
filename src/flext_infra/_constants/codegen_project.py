@@ -57,16 +57,14 @@ class FlextInfraConstantsCodegenProject:
     class MakeProfile(StrEnum):
         """Generated Makefile profile for one repository."""
 
-        WORKSPACE_ROOT = "workspace-root"
-        WORKSPACE_MEMBER = "workspace-member"
+        WORKSPACE = "workspace"
         STANDALONE = "standalone"
 
     @unique
     class RepositoryRole(StrEnum):
         """Repository role in a declared workspace topology."""
 
-        WORKSPACE_ROOT = "workspace-root"
-        WORKSPACE_MEMBER = "workspace-member"
+        WORKSPACE = "workspace"
         STANDALONE = "standalone"
         EXCLUDED = "excluded"
 

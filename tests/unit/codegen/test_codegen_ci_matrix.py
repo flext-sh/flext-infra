@@ -184,7 +184,7 @@ class TestCodegenCiMatrix:
         )
         spec = m.Infra.GithubWorkflowRenderSpec(
             dist="cosmos-main",
-            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
@@ -467,7 +467,7 @@ class TestCodegenCiMatrix:
             encoding="utf-8",
         )
         repository = test_u.Tests.repository_ref(
-            name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
+            name, role=c.Infra.RepositoryRole.STANDALONE, path=Path()
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,

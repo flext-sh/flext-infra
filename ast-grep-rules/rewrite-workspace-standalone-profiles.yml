@@ -1,0 +1,7 @@
+id: rewrite-workspace-standalone-profiles
+language: Yaml
+severity: error
+message: topology profiles are workspace or standalone only
+rule:
+  pattern: '[workspace-root, standalone]'
+fix: '[workspace, standalone]'

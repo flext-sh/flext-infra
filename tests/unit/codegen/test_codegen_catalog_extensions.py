@@ -29,12 +29,12 @@ def _repository(
         state=state,
         checkout=(
             c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+            if role is c.Infra.RepositoryRole.WORKSPACE
             else c.Infra.CheckoutKind.SUBMODULE
         ),
         codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        package=role is c.Infra.RepositoryRole.STANDALONE,
+        editable=role is c.Infra.RepositoryRole.STANDALONE,
         read_only=False,
     )
 
@@ -125,7 +125,7 @@ class TestsCodegenCatalogExtensions:
         self, tmp_path: Path
     ) -> None:
         root = _repository(
-            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE
         ).model_copy(
             update={
                 "extra_verbs": (
@@ -169,7 +169,7 @@ class TestsCodegenCatalogExtensions:
                 _repository(
                     "acme-charts",
                     path="acme-charts",
-                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                    role=c.Infra.RepositoryRole.STANDALONE,
                 ),
             ),
         )

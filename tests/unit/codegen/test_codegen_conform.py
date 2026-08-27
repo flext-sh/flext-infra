@@ -35,7 +35,7 @@ def _conform_target(
         repository=repository,
         root=root,
         make_profile=make_profile,
-        beads_enabled=make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT,
+        beads_enabled=make_profile is c.Infra.MakeProfile.WORKSPACE,
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
         ci_enabled=True,
@@ -727,7 +727,7 @@ class TestCodegenConform:
         """Keep workspace setup data complete without Make-side re-derivation."""
         root_repository = u.Tests.repository_ref("flext")
         member = u.Tests.repository_ref(
-            "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            "flext-core", role=c.Infra.RepositoryRole.STANDALONE
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -785,8 +785,8 @@ class TestCodegenConform:
                 "distribution": "arbitrary-root",
                 "url": f"{provider.base_url}/arbitrary-root.git",
                 "path": Path(),
-                "role": c.Infra.RepositoryRole.WORKSPACE_ROOT,
-                "profile": c.Infra.MakeProfile.WORKSPACE_ROOT,
+                "role": c.Infra.RepositoryRole.WORKSPACE,
+                "profile": c.Infra.MakeProfile.WORKSPACE,
                 "package": False,
                 "editable": False,
             }
@@ -978,7 +978,7 @@ class TestCodegenConform:
         target = _conform_target(
             tmp_path,
             workspace_repository,
-            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            make_profile=c.Infra.MakeProfile.WORKSPACE,
         )
         tooling_runtime = tm.ok(
             FlextInfraPyprojectModernizer(

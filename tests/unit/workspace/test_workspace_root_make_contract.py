@@ -21,7 +21,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     root_repository = u.Tests.repository_ref("fixture-workspace")
     members = tuple(
         u.Tests.repository_ref(
-            name, path=Path(name), role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            name, path=Path(name), role=c.Infra.RepositoryRole.STANDALONE
         )
         for name in ("fixture-member-one", "fixture-member-two")
     )
@@ -132,7 +132,7 @@ class TestsWorkspaceRootMakeContract:
         )
 
         tm.that(make_entries, len=1)
-        tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE)
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.

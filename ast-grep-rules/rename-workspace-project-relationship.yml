@@ -1,0 +1,7 @@
+id: rename-workspace-project-relationship
+language: Python
+severity: error
+message: use the subproject relationship; workspace-member is not a role
+rule:
+  pattern: c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+fix: c.Infra.WorkspaceProjectRole.SUBPROJECT

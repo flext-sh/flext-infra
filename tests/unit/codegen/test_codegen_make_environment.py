@@ -28,7 +28,7 @@ class TestsCodegenMakeEnvironment:
     ) -> tuple[Path, Path]:
         provider = config.Infra.codegen.providers[0]
         role = (
-            c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            c.Infra.RepositoryRole.STANDALONE
             if attached
             else c.Infra.RepositoryRole(profile.value)
         )
@@ -134,7 +134,7 @@ class TestsCodegenMakeEnvironment:
     @pytest.mark.parametrize(
         ("profile", "attached"),
         [
-            (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
+            (c.Infra.MakeProfile.WORKSPACE, False),
             (c.Infra.MakeProfile.STANDALONE, True),
             (c.Infra.MakeProfile.STANDALONE, False),
         ],
@@ -201,7 +201,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE]
     )
     def test_setup_provisions_environment_before_project_runtime(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
@@ -252,7 +252,7 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --project")
-        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
     def test_dispatched_runner_preserves_provisioned_external_tools(

@@ -134,7 +134,7 @@ class FlextInfraWorkspaceDetector(
             distribution=path.name,
             url=member_url,
             path=path,
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            role=c.Infra.RepositoryRole.STANDALONE,
             provider=member_provider.name,
             checkout=c.Infra.CheckoutKind.SUBMODULE,
             codegen=c.Infra.CodegenKind.CONFORM,
@@ -189,7 +189,7 @@ class FlextInfraWorkspaceDetector(
             distribution=project_name,
             url=repository_url,
             path=Path(),
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            role=c.Infra.RepositoryRole.WORKSPACE,
             provider=provider.name,
             checkout=c.Infra.CheckoutKind.ROOT,
             codegen=c.Infra.CodegenKind.CONFORM,
@@ -445,16 +445,16 @@ class FlextInfraWorkspaceDetector(
         if repository.state != c.Infra.RepositoryState.ACTIVE:
             return r[bool].fail("local repository must have active state")
         if repository.role not in {
-            c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            c.Infra.RepositoryRole.WORKSPACE,
+            c.Infra.RepositoryRole.STANDALONE,
             c.Infra.RepositoryRole.STANDALONE,
         }:
             return r[bool].fail(
                 f"unsupported local repository role: {repository.role.value}"
             )
         expected_checkout = {
-            c.Infra.RepositoryRole.WORKSPACE_ROOT: c.Infra.CheckoutKind.ROOT,
-            c.Infra.RepositoryRole.WORKSPACE_MEMBER: c.Infra.CheckoutKind.SUBMODULE,
+            c.Infra.RepositoryRole.WORKSPACE: c.Infra.CheckoutKind.ROOT,
+            c.Infra.RepositoryRole.STANDALONE: c.Infra.CheckoutKind.SUBMODULE,
             c.Infra.RepositoryRole.STANDALONE: c.Infra.CheckoutKind.INDEPENDENT,
         }[repository.role]
         if repository.checkout is not expected_checkout:
@@ -477,7 +477,7 @@ class FlextInfraWorkspaceDetector(
                 attached_marker.error or "unable to read workspace attachment marker"
             )
         if attached_marker.value:
-            return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
+            return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
         declared = u.Infra.git_declared_submodule_paths(repository_root)
         if declared.failure:
             return r[c.Infra.WorkspaceMode].fail(
@@ -637,9 +637,9 @@ class FlextInfraWorkspaceDetector(
                 mode_result.error or "unable to infer repository topology"
             )
         make_profile = {
-            c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE_ROOT,
-            c.Infra.WorkspaceMode.WORKSPACE_MEMBER: (
-                c.Infra.MakeProfile.WORKSPACE_MEMBER
+            c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
+            c.Infra.WorkspaceMode.STANDALONE: (
+                c.Infra.MakeProfile.STANDALONE
             ),
             c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
         }[mode_result.value]
@@ -651,14 +651,14 @@ class FlextInfraWorkspaceDetector(
         # Projection selection: workspace roots always receive the two .beads
         # config files; independent standalones opt in through their repository
         # overlay. Transaction worktrees reuse the governing manifest values.
-        beads_enabled = make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT or (
+        beads_enabled = make_profile is c.Infra.MakeProfile.WORKSPACE or (
             make_profile is c.Infra.MakeProfile.STANDALONE
             and (is_transaction_worktree or overlay.beads_enabled)
         )
         # A marker-attached standalone resolves to itself (no Git superproject
         # link); a manifest member always resolves to its governing root.
         attached_standalone = (
-            mode_result.value is c.Infra.WorkspaceMode.WORKSPACE_MEMBER
+            mode_result.value is c.Infra.WorkspaceMode.STANDALONE
             and resolved_root == governing_root
         )
         routing_only = is_transaction_worktree and (
@@ -747,7 +747,7 @@ class FlextInfraWorkspaceDetector(
         parent_contract = cls._validate_local_repository(parent_spec.repository)
         if parent_contract.failure:
             return r[c.Infra.WorkspaceMode].fail(parent_contract.error)
-        if parent_spec.repository.role != c.Infra.RepositoryRole.WORKSPACE_ROOT:
+        if parent_spec.repository.role != c.Infra.RepositoryRole.WORKSPACE:
             return r[c.Infra.WorkspaceMode].fail(
                 "Git superproject manifest role must be workspace-root"
             )
@@ -766,7 +766,7 @@ class FlextInfraWorkspaceDetector(
         declared = declared_members[0]
         if (
             declared.state != c.Infra.RepositoryState.ACTIVE
-            or declared.role != c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            or declared.role != c.Infra.RepositoryRole.STANDALONE
             or declared.checkout != c.Infra.CheckoutKind.SUBMODULE
         ):
             return r[c.Infra.WorkspaceMode].fail(
@@ -874,7 +874,7 @@ class FlextInfraWorkspaceDetector(
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
             )
-        return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE_MEMBER)
+        return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
 
     def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
         """Detect workspace mode from typed manifests and real Git metadata."""

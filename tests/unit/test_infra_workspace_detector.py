@@ -32,7 +32,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             state=c.Infra.RepositoryState.ACTIVE,
             checkout=(
                 c.Infra.CheckoutKind.ROOT
-                if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+                if role is c.Infra.RepositoryRole.WORKSPACE
                 else (
                     c.Infra.CheckoutKind.INDEPENDENT
                     if role is c.Infra.RepositoryRole.STANDALONE
@@ -40,8 +40,8 @@ class TestsFlextInfraInfraWorkspaceDetector:
                 )
             ),
             codegen=c.Infra.CodegenKind.CONFORM,
-            package=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            package=role is not c.Infra.RepositoryRole.WORKSPACE,
+            editable=role is c.Infra.RepositoryRole.STANDALONE,
             read_only=False,
         )
 
@@ -151,18 +151,18 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
         root_repository = cls._repository(
-            name="workspace-root", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+            name="workspace-root", path=".", role=c.Infra.RepositoryRole.WORKSPACE
         )
         declared_repository = cls._repository(
             name="flext-member",
             path=member_path,
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            role=c.Infra.RepositoryRole.STANDALONE,
             url=canonical_url,
         )
         local_repository = cls._repository(
             name="flext-member",
             path=".",
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            role=c.Infra.RepositoryRole.STANDALONE,
             url=canonical_url,
         )
         cls._write_manifest(
@@ -176,7 +176,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
     def test_root_without_governed_gitlinks_is_standalone(self, tmp_path: Path) -> None:
         """Infer effective profile from live topology, not declared role metadata."""
         root_repository = self._repository(
-            name="workspace-root", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+            name="workspace-root", path=".", role=c.Infra.RepositoryRole.WORKSPACE
         )
         self._write_manifest(tmp_path, root_repository)
 
@@ -201,7 +201,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         project_root = tmp_path / "flext-member"
         self._initialize_repository(project_root)
         member_repository = self._repository(
-            name="flext-member", path=".", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            name="flext-member", path=".", role=c.Infra.RepositoryRole.STANDALONE
         )
         self._write_manifest(project_root, member_repository)
 
@@ -216,7 +216,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
+            eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
     def test_feature_branch_at_gitlink_is_workspace_member(
@@ -232,7 +232,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
+            eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
     def test_detached_head_at_gitlink_is_workspace_member(self, tmp_path: Path) -> None:
@@ -245,7 +245,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
+            eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
     def test_member_head_different_from_gitlink_fails_closed(
@@ -379,7 +379,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         repository = self._repository(
             name="consumer-project",
             path=".",
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            role=c.Infra.RepositoryRole.WORKSPACE,
         )
         self._write_manifest(tmp_path, repository)
 
@@ -413,7 +413,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(project_root),
-            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
+            eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
     def test_pyproject_without_attached_marker_stays_standalone(
@@ -492,13 +492,13 @@ class TestsFlextInfraInfraWorkspaceDetector:
             self._repository(
                 name="workspace-root",
                 path=".",
-                role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+                role=c.Infra.RepositoryRole.WORKSPACE,
             ),
             members=(
                 self._repository(
                     name="flext-member",
                     path="members/flext-member",
-                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                    role=c.Infra.RepositoryRole.STANDALONE,
                     url=canonical_url,
                 ),
             ),
@@ -510,7 +510,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(target.beads_enabled, eq=False)
 
     def test_conform_target_standalone_overlay_enables_beads_projection(
@@ -551,7 +551,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         member_root = self._attached_member(tmp_path)
 
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(target.attached_standalone, eq=False)
         tm.that(target.beads_enabled, eq=False)
 
@@ -559,7 +559,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         member_root = self._attached_member(tmp_path)
 
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(target.routing_only, eq=False)
         tm.that(target.beads_enabled, eq=False)
 
@@ -596,7 +596,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             eq=workspace_root.resolve(),
         )
         tm.that(target.root, eq=lane.resolve())
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(target.routing_only, eq=False)
         tm.that(target.beads_enabled, eq=False)
 
@@ -705,7 +705,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(target.attached_standalone, eq=True)
         tm.that(target.beads_enabled, eq=False)
 
@@ -719,11 +719,11 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
         tm.that(bool(ssot_owned), eq=True)
         tm.that(
-            detector.persistent_state_artifacts(c.Infra.MakeProfile.WORKSPACE_ROOT),
+            detector.persistent_state_artifacts(c.Infra.MakeProfile.WORKSPACE),
             eq=ssot_owned,
         )
         for profile in (
-            c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            c.Infra.MakeProfile.STANDALONE,
             c.Infra.MakeProfile.STANDALONE,
         ):
             tm.that(detector.persistent_state_artifacts(profile), eq=())

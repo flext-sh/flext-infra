@@ -28,7 +28,7 @@ class TestsFlextInfraRootMakefileSingleOwner:
         )
 
         tm.that(entries, len=1)
-        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE)
         tm.that(entries[0].profiles, has=c.Infra.MakeProfile.STANDALONE)
 
     def test_no_divergent_workspace_makefile_template_remains(self) -> None:

@@ -17,7 +17,7 @@ pytestmark = pytest.mark.slow
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
     member = test_u.Tests.repository_ref(
-        "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        "flext-core", role=c.Infra.RepositoryRole.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,

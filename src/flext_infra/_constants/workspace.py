@@ -91,14 +91,13 @@ class FlextInfraConstantsWorkspace:
         """Workspace execution mode enumeration."""
 
         WORKSPACE = "workspace"
-        WORKSPACE_MEMBER = "workspace-member"
         STANDALONE = "standalone"
 
     @unique
     class WorkspaceProjectRole(StrEnum):
-        """Role of one discovered project relative to the uv workspace root."""
+        """Relationship of one discovered project to an aggregate workspace."""
 
-        WORKSPACE_MEMBER = "member"
+        SUBPROJECT = "subproject"
         ATTACHED = "attached"
 
     EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (

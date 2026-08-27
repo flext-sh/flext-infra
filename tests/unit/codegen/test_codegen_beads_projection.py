@@ -153,7 +153,7 @@ class TestsCodegenBeadsProjection:
         target = m.Infra.RepositoryConformTarget(
             repository=repository,
             root=tmp_path / "flext",
-            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            make_profile=c.Infra.MakeProfile.WORKSPACE,
             beads_enabled=True,
             canonical_project_name=repository.distribution,
             baseline_branch=config.Infra.codegen.providers[0].branch,

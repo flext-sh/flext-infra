@@ -163,7 +163,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             if separator != ":=" or key.strip() != "MAKE_PROFILE":
                 continue
             return r[bool].ok(
-                value.strip() == c.Infra.MakeProfile.WORKSPACE_MEMBER.value
+                value.strip() == c.Infra.MakeProfile.STANDALONE.value
             )
         return r[bool].ok(False)
 

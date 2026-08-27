@@ -296,11 +296,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             current_repository_role = current_repository.role
             current_make_profile = {
-                c.Infra.RepositoryRole.WORKSPACE_ROOT: (
-                    c.Infra.MakeProfile.WORKSPACE_ROOT
+                c.Infra.RepositoryRole.WORKSPACE: (
+                    c.Infra.MakeProfile.WORKSPACE
                 ),
-                c.Infra.RepositoryRole.WORKSPACE_MEMBER: (
-                    c.Infra.MakeProfile.WORKSPACE_MEMBER
+                c.Infra.RepositoryRole.STANDALONE: (
+                    c.Infra.MakeProfile.STANDALONE
                 ),
                 c.Infra.RepositoryRole.STANDALONE: c.Infra.MakeProfile.STANDALONE,
             }[current_repository_role]
@@ -309,7 +309,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 root=root,
                 make_profile=current_make_profile,
                 beads_enabled=(
-                    current_make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                    current_make_profile is c.Infra.MakeProfile.WORKSPACE
                 ),
                 routing_only=False,
                 canonical_project_name=current_repository.distribution,
@@ -800,7 +800,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # future topology only for a member/standalone target; a workspace
         # root aggregates member trees it has not declared here.
         declared_python_dirs_are_complete = (
-            profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+            profile is not c.Infra.MakeProfile.WORKSPACE
         )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
@@ -829,7 +829,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Workspace root owns resolution for attached members (uv reads
         # exclude-dependencies only from the workspace root). Members still
         # receive their own routed excludes for standalone CI clones.
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
             uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
         else:
             uv_exclude_dependencies = tuple(
@@ -1080,13 +1080,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         workspace_mode = (
             c.Infra.WorkspaceMode.WORKSPACE
-            if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            if target.make_profile is c.Infra.MakeProfile.WORKSPACE
             else c.Infra.WorkspaceMode.STANDALONE
         )
         # Workspace root owns resolution for attached members (uv reads
         # exclude-dependencies only from the workspace root). Members still
         # receive their own routed excludes for standalone CI clones.
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
             uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
         else:
             uv_exclude_dependencies = tuple(
@@ -1494,7 +1494,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         infra_repository: m.Infra.RepositoryRef,
     ) -> str | None:
         """Return a local engine source path only when the workspace declares it."""
-        if target.make_profile is not c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if target.make_profile is not c.Infra.MakeProfile.WORKSPACE:
             return None
         workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = (
             workspace.repository,
@@ -1613,7 +1613,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace_repositories = (
                 tuple(workspace.members)
-                if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
             # Why: ci.yml.j2 iterates this to build its push/pull_request branch
@@ -1668,7 +1668,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             profile = target.make_profile
             members = (
                 tuple(workspace.members)
-                if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
             infra_repository = self._infra_repository(workspace)
@@ -1781,7 +1781,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         members = (
             tuple(workspace.members)
-            if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
@@ -1905,7 +1905,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     for entry in codegen.templates.entries
                 )
             )
-            if profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+            if profile is not c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         # Emit only the .gitignore sections that apply to this profile: a
@@ -2416,7 +2416,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Describe the exact setup overlay without executing uv."""
         del workspace_root
         workspace_environment = (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            target.make_profile is c.Infra.MakeProfile.WORKSPACE
         )
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
@@ -2496,7 +2496,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governing values receives no projection.
         """
         if (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+            target.make_profile is c.Infra.MakeProfile.STANDALONE
             and not target.attached_standalone
         ):
             if workspace.ledger_id is None:
