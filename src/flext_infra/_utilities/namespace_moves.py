@@ -888,16 +888,21 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 if source_module and target_module:
                     mappings.append((source_module, target_module, names))
             for py_file in py_files:
-                py_file = py_file.resolve()
-                if not py_file.is_relative_to(project_root.resolve()):
-                    msg = f"refusing moved-import rewrite outside project: {py_file}"
+                resolved_py_file = py_file.resolve()
+                if not resolved_py_file.is_relative_to(project_root.resolve()):
+                    msg = (
+                        "refusing moved-import rewrite outside project: "
+                        f"{resolved_py_file}"
+                    )
                     raise ValueError(msg)
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project, py_file
+                    rope_project, resolved_py_file
                 )
                 if resource is None:
                     continue
-                original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                original_source = resolved_py_file.read_text(
+                    encoding=c.Cli.ENCODING_DEFAULT
+                )
                 changed = False
                 for source_module, target_module, names in mappings:
                     updated = (
@@ -913,13 +918,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     changed = changed or updated is not None
                 if changed:
                     cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
-                        rope_project, file_paths=(py_file,)
+                        rope_project, file_paths=(resolved_py_file,)
                     )
                     if cleanup_result.failure:
                         msg = cleanup_result.error or "rope import cleanup failed"
                         raise RuntimeError(msg)
-                    backup_path = py_file.with_suffix(
-                        py_file.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
+                    backup_path = resolved_py_file.with_suffix(
+                        resolved_py_file.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
                     )
                     if not backup_path.exists():
                         backup_path.write_text(

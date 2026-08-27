@@ -152,11 +152,10 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             ):
                 msg = f"refusing future-annotations rewrite outside project: {file_path}"
                 raise ValueError(msg)
-            file_path = resolved_file
-            if file_path.name == c.Infra.PY_TYPED:
+            if resolved_file.name == c.Infra.PY_TYPED:
                 continue
             try:
-                source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                source = resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except c.EXC_OS_DECODING:
                 continue
             if c.Infra.FUTURE_ANNOTATIONS in source:
@@ -167,7 +166,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             rewritten = FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
                 lines=lines, imports=["", c.Infra.FUTURE_ANNOTATIONS, ""]
             )
-            _ = file_path.write_text(
+            _ = resolved_file.write_text(
                 "\n".join(rewritten).rstrip() + "\n", encoding=c.Cli.ENCODING_DEFAULT
             )
 
