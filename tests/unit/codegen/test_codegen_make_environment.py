@@ -435,6 +435,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$root" submodule update --init --recursive -- "$$child_path"',
+            'git -C "$$child_root" rev-parse --git-dir',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)

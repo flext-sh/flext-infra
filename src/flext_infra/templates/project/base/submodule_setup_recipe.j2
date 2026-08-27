@@ -36,7 +36,10 @@
 	if [ -z "$$managed" ]; then exit 0; fi; \
 	git -C "$$root" submodule sync --recursive --quiet; \
 	for child_path in $$managed; do \
-		git -C "$$root" submodule update --init --recursive -- "$$child_path"; \
+		child_root="$$root/$$child_path"; \
+		if ! git -C "$$child_root" rev-parse --git-dir >/dev/null 2>&1; then \
+			git -C "$$root" submodule update --init --recursive -- "$$child_path"; \
+		fi; \
 	done; \
 	validate_submodule() { \
 		superproject="$$1"; \
