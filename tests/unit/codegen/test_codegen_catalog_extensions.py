@@ -75,23 +75,10 @@ class TestsCodegenCatalogExtensions:
         tm.that(beads_is_semver or beads_is_commit, eq=True)
 
     def test_beads_gate_compares_the_binary_reported_version(self) -> None:
-        """The conform preflight gate uses the binary's self-reported version.
-
-        The pinned Beads build is a go-module commit (schema v61-capable) whose
-        ``bd version`` output does NOT echo the pin. The toolchain therefore
-        declares ``reported_version`` — what the binary actually prints — and
-        the gate consumes that value directly so preflight compares like with
-        like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
-        """
+        """The release pin and the binary-reported version are identical."""
         beads = config.Infra.codegen.toolchain.beads
-        tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
-        is_commit = len(beads.version) == 40 and all(
-            char in "0123456789abcdef" for char in beads.version
-        )
-        tm.that(is_commit, eq=True)
-        # ONE declared field, no optional/computed pair: the model states what
-        # the binary prints and the gate reads exactly that.
-        tm.that(beads.reported_version, eq="1.1.0")
+        tm.that(beads.selector.startswith("github:"), eq=True)
+        tm.that(beads.reported_version, eq=beads.version)
         tm.that(hasattr(beads, "gate_version"), eq=False)
 
     def test_mise_tool_spec_requires_the_reported_version(self) -> None:

@@ -5,47 +5,50 @@ from __future__ import annotations
 from flext_infra import config
 from flext_tests import tm
 
-_GOVERNED_REPOSITORY = "marlon-costa-dc/beads"
+_GOVERNED_REPOSITORY = "gastownhall/beads"
+_GOVERNED_VERSION = "1.2.2"
+_GOVERNED_SCHEMA = 53
+_LINUX_X64_SHA256 = "54fc0e0581ce4c5487a5b242f0a4f34af1ef09cf056e164a1af63a6ec7aa1e0e"
 
 
 class TestsToolchainBeadsDistribution:
-    """beads installs from the governed fork, never from an upstream module.
+    """Beads installs from the canonical Gas City release contract."""
 
-    The upstream module path resolves to a distribution this workspace does not
-    control: it lags the ledger schema the projects run, and it cannot receive
-    fix-forward changes. The governed fork publishes release assets, so the
-    selector consumes them through mise's github backend.
-    """
-
-    def test_selector_targets_the_governed_fork(self) -> None:
-        """The pin names the governed fork through the github backend."""
+    def test_selector_targets_the_gas_city_distribution(self) -> None:
+        """The pin names the official distribution through the GitHub backend."""
         toolchain = config.Infra.codegen.toolchain
 
         tm.that(toolchain.beads.selector, eq=f"github:{_GOVERNED_REPOSITORY}")
 
-    def test_selector_never_targets_an_upstream_module(self) -> None:
-        """No upstream owner may reappear in the selector."""
+    def test_selector_never_targets_legacy_distributions(self) -> None:
+        """Neither the legacy module nor the downstream fork may reappear."""
         selector = config.Infra.codegen.toolchain.beads.selector
 
-        for upstream in ("steveyegge", "gastownhall"):
-            tm.that(upstream in selector, eq=False)
+        for legacy in ("steveyegge", "marlon-costa-dc"):
+            tm.that(legacy in selector, eq=False)
 
-    def test_version_is_the_governed_release_tag(self) -> None:
-        """The installed version is the fork's published release tag."""
+    def test_version_is_the_gas_city_release_tag(self) -> None:
+        """The installed and reported versions are exactly 1.2.2."""
         toolchain = config.Infra.codegen.toolchain
 
-        tm.that(toolchain.beads.version, eq="1.1.2-dc1")
+        tm.that(toolchain.beads.version, eq=_GOVERNED_VERSION)
+        tm.that(toolchain.beads.reported_version, eq=_GOVERNED_VERSION)
 
     def test_reported_version_matches_the_installed_binary(self) -> None:
         """`bd version` self-reports the same version the selector installs.
 
-        The upstream module reported 1.1.0 while installing a later commit, so
-        the preflight gate compared two different identities. The fork builds
-        its own tag, so both are the same string.
+        A release asset and its runtime identity must never diverge.
         """
         toolchain = config.Infra.codegen.toolchain
 
         tm.that(toolchain.beads.reported_version, eq=toolchain.beads.version)
+
+    def test_schema_and_linux_binary_are_canonical(self) -> None:
+        """The host contract is schema v53 with the extracted binary digest."""
+        beads = config.Infra.codegen.toolchain.beads
+
+        tm.that(beads.expected_schema, eq=_GOVERNED_SCHEMA)
+        tm.that(beads.checksum, eq=_LINUX_X64_SHA256)
 
 
 __all__: tuple[str, ...] = ()
