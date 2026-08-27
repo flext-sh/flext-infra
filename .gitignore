@@ -236,6 +236,7 @@ __pyrefly_virtual__/
 .benchmarks/
 .bkp/
 .cache/
+.test-tmp/
 .codegraph/
 .dolt_dropped_databases/
 .doltcfg/

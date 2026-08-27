@@ -49,6 +49,9 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.that("DIRENV_DIR" in envrc, eq=False)
         tm.that('PROJECT_ROOT="$(find_up pyproject.toml)"' in envrc, eq=True)
         tm.that('PROJECT_ROOT="${PROJECT_ROOT%/*}"' in envrc, eq=True)
+        tm.that('PROJECT_SCRATCH="${PROJECT_ROOT}/.test-tmp"' in envrc, eq=True)
+        tm.that('export TMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
+        tm.that('export GOTMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
         tm.that('python = "3.13"' in mise, eq=True)
 
     def test_sync_preserves_custom_envrc_without_force(self, tmp_path: Path) -> None:
