@@ -166,9 +166,12 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             rewritten = FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
                 lines=lines, imports=["", c.Infra.FUTURE_ANNOTATIONS, ""]
             )
-            _ = resolved_file.write_text(
-                "\n".join(rewritten).rstrip() + "\n", encoding=c.Cli.ENCODING_DEFAULT
+            write_result = u.Cli.files_write_text(
+                resolved_file, "\n".join(rewritten).rstrip() + "\n"
             )
+            if write_result.failure:
+                msg = write_result.error or f"failed to rewrite {resolved_file}"
+                raise RuntimeError(msg)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceMro"]
