@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import pytest
-
-from flext_infra import c, config
+from flext_infra import config
 from flext_tests import tm
+
+from tests import c
 
 
 class TestsFlextInfraPytestTimeoutConfig:
@@ -25,7 +26,7 @@ class TestsFlextInfraPytestTimeoutConfig:
             "termination_grace_seconds",
             "parallel_workers",
         ),
-        [(1, 2, 1, 1), (7, 20, 2, 8)],
+        [(1, 3, 1, 1), (7, 20, 2, 8)],
     )
     def test_arbitrary_valid_execution_policy_round_trips(
         self,
@@ -39,6 +40,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload.update({
             "case-timeout-seconds": case_timeout_seconds,
             "run-timeout-seconds": run_timeout_seconds,
+            "slow-timeout-seconds": case_timeout_seconds + 1,
             "termination-grace-seconds": termination_grace_seconds,
             "parallel-workers": parallel_workers,
         })
@@ -82,10 +84,60 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload["run-timeout-seconds"] = (
             policy.case_timeout_seconds + policy.termination_grace_seconds - 1
         )
+        payload["slow-timeout-seconds"] = policy.case_timeout_seconds + 1
 
         with pytest.raises(
             c.ValidationError,
             match="pytest run timeout must include item and termination budgets",
+        ):
+            type(policy).model_validate(payload)
+
+    def test_slow_budget_is_declared_and_bounded_by_the_case_and_run_walls(
+        self,
+    ) -> None:
+        """An explicitly slow item gets the law's 60s arm, not the 10s default."""
+        policy = config.Infra.tooling.tools.pytest
+
+        tm.that(policy.slow_timeout_seconds, eq=60)
+        tm.that(policy.slow_timeout_seconds > policy.case_timeout_seconds, eq=True)
+        tm.that(policy.slow_timeout_seconds < policy.run_timeout_seconds, eq=True)
+
+    @pytest.mark.parametrize(
+        "expected",
+        [
+            "pytest slow timeout must exceed the per-case timeout",
+            "pytest slow timeout must be less than run timeout",
+        ],
+    )
+    def test_slow_budget_is_a_hard_typed_boundary(self, expected: str) -> None:
+        """A slow budget outside the case/run walls is unrepresentable."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True)
+        if "exceed the per-case" in expected:
+            payload["slow-timeout-seconds"] = policy.case_timeout_seconds
+        else:
+            payload["slow-timeout-seconds"] = policy.run_timeout_seconds
+
+        with pytest.raises(c.ValidationError, match=expected):
+            type(policy).model_validate(payload)
+
+    def test_canonical_full_suite_budget_matches_timeout_policy(self) -> None:
+        """The generated pre-push suite carries the typed wall-clock budget."""
+        policy = config.Infra.tooling.tools.pytest
+
+        tm.that(policy.run_timeout_seconds, eq=600)
+        tm.that(policy.process_timeout_seconds, eq=660)
+
+    def test_process_budget_must_exceed_run_and_termination_windows(self) -> None:
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True)
+        payload["process-timeout-seconds"] = (
+            policy.run_timeout_seconds + policy.termination_grace_seconds
+        )
+
+        with pytest.raises(
+            c.ValidationError,
+            match="pytest process timeout must exceed run and termination budgets",
         ):
             type(policy).model_validate(payload)
 

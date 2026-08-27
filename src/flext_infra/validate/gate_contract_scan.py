@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import u
-from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
+from flext_infra.validate.gate_contract_errors import GateContractInfraError
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -34,15 +34,11 @@ class FlextInfraGateContractScanMixin:
             cwd=root,
         )
         if result.failure:
-            raise FlextInfraGateContractModels.InfraError(
-                result.error or "git ls-files failed"
-            )
+            raise GateContractInfraError(result.error or "git ls-files failed")
         output = result.value
         if output.exit_code != 0:
             stderr = (output.stderr or "").strip()
-            raise FlextInfraGateContractModels.InfraError(
-                stderr or "git ls-files failed"
-            )
+            raise GateContractInfraError(stderr or "git ls-files failed")
 
         scripts = (
             Path(line.strip())

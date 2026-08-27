@@ -54,7 +54,7 @@ class TestsFlextInfraRefactorMainCli:
             "[tool.pyrefly]\n"
             "disable-project-excludes-heuristics = true\n"
             "project-excludes = []\n"
-            'search-path = [".", "src"]\n',
+            'search-path = [".", "src"]\n\n' + u.Tests.ruff_per_file_ignores_toml(),
         )
 
     @staticmethod
@@ -783,6 +783,22 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(init_source, lacks="only_for_tests")
         tm.that(helpers_source, lacks="only_for_tests")
         tm.that(test_source, has="only_for_tests")
+        # Free functions are lazy exports only for fixture modules, so the
+        # regenerated init keeps the generated shape without function names.
+        # Why: e75d5aa6f "fix(codegen): inline immutable lazy export
+        # metadata" retired the named `_LAZY_IMPORTS` variable for generated
+        # inits; the generator now inlines build_lazy_import_map(...)
+        # directly as install_lazy_exports's third positional argument
+        # (see templates/lazy_init_root.py.j2) — align to the proven runtime.
+        tm.that(init_source, has="install_lazy_exports(")
+        tm.that(init_source, has="build_lazy_import_map(")
+        # Why: e75d5aa6f's inlined build_lazy_import_map({".operations": (...)})
+        # lists per-function names verbatim from operations.py's __all__ — it
+        # does not drop symbols that lack an external consumer, only symbols
+        # actually deleted as dead code. helper_used stays alive (used by
+        # OBSERVED = helper_used(2)) so it stays in __all__ and the lazy map;
+        # the prior lacks="helper_used" dated from 362bbb080's now-superseded
+        # _LAZY_MODULES shape (verified: no _LAZY_MODULES emitter exists today).
         tm.that(init_source, has="helper_used")
         tm.that(helpers_source, has="helper_used")
         tm.that(_parse_source_ast(init_source), none=False)
@@ -895,7 +911,13 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(clone_helpers.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_init.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_test.read_text(encoding="utf-8"), has="only_for_tests")
-        tm.that(clone_init.read_text(encoding="utf-8"), has="helper_used")
+        # Why: e75d5aa6f retired the named `_LAZY_IMPORTS` variable for
+        # generated inits in favor of an inlined build_lazy_import_map(...)
+        # argument — align to the proven runtime (see the sibling assertion
+        # above in test_refactor_census_apply_cascades_through_init_lazy_map_and_all).
+        clone_init_source = clone_init.read_text(encoding="utf-8")
+        tm.that(clone_init_source, has="install_lazy_exports(")
+        tm.that(clone_init_source, has="build_lazy_import_map(")
 
         report_result = FlextInfraRefactorCensus(
             workspace_root=clone,

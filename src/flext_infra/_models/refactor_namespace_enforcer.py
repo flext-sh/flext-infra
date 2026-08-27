@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Self
 
-from flext_cli import m
+from flext_core import m
 from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -433,7 +433,7 @@ class FlextInfraModelsNamespaceEnforcer:
         @m.computed_field()
         @property
         def has_violations(self) -> bool:
-            """Check if this project has any violations."""
+            """Whether this project has any violations."""
             missing_facades = any(not f.exists for f in self.facade_statuses)
             violation_fields = (
                 self.loose_objects,

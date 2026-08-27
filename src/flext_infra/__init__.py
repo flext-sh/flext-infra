@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from types import MappingProxyType
+
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 from .__version__ import __author__ as __author__
@@ -27,41 +29,17 @@ if TYPE_CHECKING:
     from .base_selection import FlextInfraProjectSelectionServiceBase
     from .cli import FlextInfraCli, docs_main, main
     from .constants import FlextInfraConstants, FlextInfraConstants as c
+    from .git import FlextInfraGitService
     from .models import FlextInfraModels, FlextInfraModels as m
     from .protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from .typings import FlextInfraTypes, FlextInfraTypes as t
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from .worktree import FlextInfraWorktreeService
-
-_LAZY_MODULES: dict[str, tuple[str, ...]] = {
-    "._config": ("config",),
-    "._settings": ("settings",),
-    ".api": ("FlextInfra", "infra"),
-    ".base": ("FlextInfraServiceBase", "s"),
-    ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-    ".basemk": ("basemk",),
-    ".cli": ("FlextInfraCli", "docs_main", "main"),
-    ".constants": ("FlextInfraConstants", "c"),
-    ".models": ("FlextInfraModels", "m"),
-    ".protocols": ("FlextInfraProtocols", "p"),
-    ".typings": ("FlextInfraTypes", "t"),
-    ".utilities": ("FlextInfraUtilities", "u"),
-    ".worktree": ("FlextInfraWorktreeService",),
-    "flext_cli": ("d", "e", "h", "r", "x"),
-}
-
-
-_LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
-
-
-_LAZY_IMPORTS = build_lazy_import_map(
-    _LAZY_MODULES, alias_groups=_LAZY_ALIAS_GROUPS, sort_keys=False
-)
-
 __all__: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
+    "FlextInfraGitService",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
@@ -94,6 +72,30 @@ __all__: tuple[str, ...] = (
     "t",
     "u",
     "x",
+)
+
+_LAZY_IMPORTS = MappingProxyType(
+    build_lazy_import_map(
+        MappingProxyType({
+            "._config": ("config",),
+            "._settings": ("settings",),
+            ".api": ("FlextInfra", "infra"),
+            ".base": ("FlextInfraServiceBase", "s"),
+            ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
+            ".basemk": ("basemk",),
+            ".cli": ("FlextInfraCli", "docs_main", "main"),
+            ".constants": ("FlextInfraConstants", "c"),
+            ".git": ("FlextInfraGitService",),
+            ".models": ("FlextInfraModels", "m"),
+            ".protocols": ("FlextInfraProtocols", "p"),
+            ".typings": ("FlextInfraTypes", "t"),
+            ".utilities": ("FlextInfraUtilities", "u"),
+            ".worktree": ("FlextInfraWorktreeService",),
+            "flext_cli": ("d", "e", "h", "r", "x"),
+        }),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
+    )
 )
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

@@ -17,11 +17,15 @@ repository:
   package: {{ workspace_repository.package | tojson }}
   editable: {{ workspace_repository.editable | tojson }}
   read_only: {{ workspace_repository.read_only | tojson }}
+{%- if workspace_repository.uv_link_mode %}
+  uv_link_mode: {{ workspace_repository.uv_link_mode | tojson }}
+{%- endif %}
 {%- if workspace_repository.extra_verbs %}
   extra_verbs:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
       default_what: {{ verb.default_what | tojson }}
+      whats: {{ verb.whats | tojson }}
       apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}
@@ -47,12 +51,24 @@ project:
   author_name: {{ author_name | tojson }}
   author_email: {{ author_email | tojson }}
   upstream: {{ upstream | tojson }}
+  inherited_facets: {{ inherited_facets | list | tojson }}
   homepage: {{ homepage | tojson }}
   documentation: {{ documentation | tojson }}
   workspace_root_rel: {{ workspace_root_rel | tojson }}
   year: {{ year }}
 # NOTE (multi-agent, mro-wkii.17 / agent: codex): the typed manifest context is
 # the sole topology owner; every declared member/exclusion round-trips here.
+{%- if workspace_integration %}
+integration:
+  provider: {{ workspace_integration.provider | tojson }}
+  branch: {{ workspace_integration.branch | tojson }}
+{%- if workspace_integration.organization %}
+  organization: {{ workspace_integration.organization | tojson }}
+{%- endif %}
+{%- if workspace_integration.base_url %}
+  base_url: {{ workspace_integration.base_url | tojson }}
+{%- endif %}
+{%- endif %}
 members:
 {% for repository in workspace_repositories %}
   - name: {{ repository.name | tojson }}
@@ -67,11 +83,15 @@ members:
     package: {{ repository.package | tojson }}
     editable: {{ repository.editable | tojson }}
     read_only: {{ repository.read_only | tojson }}
+{%- if repository.uv_link_mode %}
+    uv_link_mode: {{ repository.uv_link_mode | tojson }}
+{%- endif %}
 {%- if repository.extra_verbs %}
     extra_verbs:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
         default_what: {{ verb.default_what | tojson }}
+        whats: {{ verb.whats | tojson }}
         apply_guarded: {{ verb.apply_guarded | tojson }}
 {%- endfor %}
 {%- endif %}
@@ -91,6 +111,7 @@ repository_policy_overlays:
   - project: {{ overlay.project | tojson }}
     beads_enabled: {{ overlay.beads_enabled | tojson }}
     ci_enabled: {{ overlay.ci_enabled | tojson }}
+    ci_matrix_auto_run: {{ overlay.ci_matrix_auto_run | tojson }}
 {% else %}
   []
 {%- endfor %}

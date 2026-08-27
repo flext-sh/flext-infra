@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_cli import m
+from flext_core import m
 from flext_infra import t
 
 
@@ -49,8 +49,6 @@ class FlextInfraModelsCodegenRender:
 
         scope_name: t.NonEmptyStr = m.Field(description="Workspace project scope.")
 
-    # NOTE (multi-agent, mro-wkii.17.26 / agent: codex): root lazy data is
-    # rendered inline; the removed __unit__ sidecar is no longer a model surface.
     class LazyInitRootRender(m.ArbitraryTypesModel):
         """Template context for one lazy public root ``__init__.py``."""
 
@@ -66,14 +64,14 @@ class FlextInfraModelsCodegenRender:
             default_factory=str,
             description="Static declarations for public lazy exports.",
         )
-        lazy_module_groups: t.StrSequencePairSequence = m.Field(
-            default_factory=tuple, description="Public lazy imports grouped by module."
-        )
-        lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
-            default_factory=tuple, description="Public lazy aliases grouped by module."
-        )
         exports: t.StrSequence = m.Field(
             default_factory=tuple, description="Published root ``__all__`` names."
+        )
+        lazy_module_groups: t.StrSequencePairSequence = m.Field(
+            default_factory=tuple, description="Lazy imports grouped by module."
+        )
+        lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
+            default_factory=tuple, description="Lazy aliases grouped by module."
         )
 
     class StaticPackageInitRender(m.ArbitraryTypesModel):

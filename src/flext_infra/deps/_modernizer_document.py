@@ -53,8 +53,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        @property
-        def tomlsort_sort_first(self) -> t.StrSequence: ...
+        # Declared as a plain attribute, not a property: the concrete owner
+        # (FlextInfraPyprojectModernizer) supplies it as a Pydantic field whose
+        # default comes from the tomlsort SSOT. A property here would make the
+        # field an incompatible override of a read-only descriptor.
+        tomlsort_sort_first: t.StrSequence
 
         def _reorder_document_inplace(
             self,
@@ -101,35 +104,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = [
-            "mise",
-            "exec",
-            f"taplo@{config.Infra.codegen.toolchain.taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
-        config_path = self.root / ".taplo.toml"
-        if config_path.is_file():
-            cmd.extend(["--config", str(config_path)])
-        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
-        format_cwd = next(
-            (candidate for candidate in self.root.parents if candidate.is_dir()),
-            self.root,
+        # Why (flext-6itas.4): restored delegation to the shared cached facade
+        # dropped by merge 0d4d07b33; the inline duplicate reimplemented the
+        # same mise/taplo invocation without the cache or relative-path fix.
+        return u.Infra.format_toml_source(
+            rendered,
+            path=path,
+            toolchain_root=self.root,
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
-        format_result = u.Cli.run_raw(
-            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
-        )
-        if format_result.failure:
-            return r[str].fail(format_result.error or "taplo format failed")
-        output = format_result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
-        return r[str].ok(output.stdout)
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
         """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
@@ -145,17 +128,23 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
-        if (project_dir / venv_name).is_dir():
-            return r[bool].ok(False)
-        superproject = u.Infra.git_capture(
-            project_dir, ("rev-parse", "--show-superproject-working-tree")
+        superproject = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
+            cwd=project_dir,
         )
         if superproject.success:
             # Git topology is authoritative inside a work tree: a nested
             # repository names its superproject, an independent checkout or
-            # linked worktree names nothing. A sibling .venv is only a
-            # coincidence of layout, so it must not outrank this answer.
+            # linked worktree names nothing. A local .venv (including a
+            # borrowed symlink to the parent runtime) must not outrank this.
             return r[bool].ok(bool(superproject.value.strip()))
+        local_venv = project_dir / venv_name
+        if local_venv.is_symlink():
+            target = local_venv.resolve()
+            if not target.is_relative_to(project_dir.resolve()):
+                return r[bool].ok(True)
+        if local_venv.is_dir():
+            return r[bool].ok(False)
         if (project_dir.parent / venv_name).is_dir():
             return r[bool].ok(True)
         makefile = project_dir / "Makefile"
@@ -185,10 +174,13 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        format_source: bool = True,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs_are_complete: bool = False,
+        generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
@@ -208,7 +200,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         project_root_exists = path.is_file()
         effective_project_dir = path.parent if project_root_exists else None
         effective_workspace_root = self.root if project_root_exists else None
-        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
+        paths_manager = FlextInfraExtraPathsManager(
+            workspace_root=self.root, generated_python_roots=generated_python_roots
+        )
         effective_paths_manager = paths_manager if project_root_exists else None
         resolved_project_kind: str = project_kind or "core"
         if project_kind is None and not is_root:
@@ -217,6 +211,13 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 resolved_project_kind = kind_result.value
         # mro-j47u (codex): declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
+        # Why (flext-6itas.4): restored after merge 0d4d07b33 dropped this gate
+        # while ensure_pyrefly.py kept requiring it (declared_python_dirs_are_complete
+        # still guards its replace-model; pyright moved to an additive-union model
+        # in dd4c4b53f and no longer needs this flag).
+        declared_roots_are_usable = (
+            declared_python_dirs_are_complete or not project_root_exists
+        )
         changes: t.MutableSequenceOf[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
@@ -247,6 +248,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
             )
         )
@@ -257,6 +259,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_dir=effective_project_dir,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_roots_are_usable,
             )
         )
         changes.extend(
@@ -296,11 +299,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload, project_kind=resolved_project_kind
             )
         )
-        changes.extend(
-            paths_manager.sync_payload(
-                payload, project_dir=path.parent, is_root=is_root
+        if effective_paths_manager is not None:
+            changes.extend(
+                effective_paths_manager.sync_payload(
+                    payload, project_dir=path.parent, is_root=is_root
+                )
             )
-        )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
         self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
@@ -308,10 +312,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        formatted_result = self._format_rendered_pyproject(path, rendered)
-        if formatted_result.failure:
-            return [formatted_result.error or "taplo format failed"]
-        rendered = formatted_result.value
+        if format_source:
+            formatted_result = self._format_rendered_pyproject(path, rendered)
+            if formatted_result.failure:
+                return [formatted_result.error or "taplo format failed"]
+            rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         state.rendered = normalized_rendered

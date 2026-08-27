@@ -21,13 +21,47 @@ pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture
-def infra_public_root() -> ModuleType:
-    """Reload the root public package after clearing lazy-export caches."""
-    for export_name in c.Tests.INFRA_PUBLIC_ROOT_EXPORTS:
-        _ = infra_pkg.__dict__.pop(export_name, None)
-    for module_name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
-        _ = sys.modules.pop(module_name, None)
-    return importlib.reload(infra_pkg)
+def infra_public_root() -> Iterator[ModuleType]:
+    """Reload the root public package after clearing lazy-export caches.
+
+    Why (root cause, reload isolation): ``importlib.reload(flext_infra)``
+    re-executes the package ``__init__``, which re-imports ``pathlib`` and
+    binds a NEW ``Path`` class. Any ``Path`` instance created before the
+    reload keeps the OLD class, whose private slots (``_str``/``_drv``) no
+    longer match, so every later ``path.exists()`` on a pre-reload instance
+    raises ``AttributeError`` — corrupting every test that runs after this
+    fixture. The purge also drops the lazy-export registry the ``tests``
+    package shares, so ``tests.u`` resolved to the infra facade without
+    ``Tests``. Both module snapshots are restored after the fixture so the
+    process-global interpreter state is left exactly as found.
+    """
+    stdlib_snapshots = {
+        name: module
+        for name, module in sys.modules.items()
+        if name == "pathlib" or name.startswith("pathlib.")
+    }
+    wrapper_snapshots = {
+        name: sys.modules[name]
+        for name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES
+        if name in sys.modules
+    }
+    for name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
+        _ = sys.modules.pop(name, None)
+    try:
+        for export_name in c.Tests.INFRA_PUBLIC_ROOT_EXPORTS:
+            _ = infra_pkg.__dict__.pop(export_name, None)
+        yield importlib.reload(infra_pkg)
+    finally:
+        for name, module in stdlib_snapshots.items():
+            sys.modules[name] = module
+        # Why (review #355): a wrapper the reload imported but that was absent
+        # before the fixture must be dropped, not kept — leaving it would leak
+        # the reloaded module identity into later tests.
+        for name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
+            if name in wrapper_snapshots:
+                sys.modules[name] = wrapper_snapshots[name]
+            else:
+                _ = sys.modules.pop(name, None)
 
 
 def _is_collectable_test_module(collection_path: Path) -> bool:
@@ -148,38 +182,42 @@ def infra_safe_command_output(
 
 
 @pytest.fixture
-def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
-    """Initialize a local Git repository through the public CLI facade."""
+def infra_git_repo(infra_test_workspace: Path) -> Path:
+    """Provide a provider-governed clone whose upstream is a local bare repo.
+
+    Conformance reads this repository twice and both reads must agree. Detection
+    only accepts a remote whose host and organization match the provider, while
+    baseline ancestry resolves the provider branch by fetching that same remote.
+    Declaring the real upstream URL satisfies detection but grades the fixture
+    against the live repository; declaring a local path fails detection outright.
+    The fixture therefore declares the provider URL and rewrites it to a local
+    bare origin through Git's own ``url.<base>.insteadOf`` mechanism, so the two
+    reads observe one self-consistent topology without any network access.
+    """
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    tm.ok(infra_subprocess.run_checked(["git", "init"], cwd=repo))
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "config", "user.email", "infra@example.com"], cwd=repo
-        )
-    )
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "config", "user.name", "Infra Fixtures"], cwd=repo
-        )
-    )
-    # mro-j47u (codex): existing-repository conformance inventories refs against the
-    # provider baseline. Seed a commit and a fake remote ref so tests exercise the
-    # same topology a real clone would have.
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
-    tm.ok(infra_subprocess.run_checked(["git", "add", str(baseline_file)], cwd=repo))
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "commit", "-q", "-m", "infra fixture baseline"], cwd=repo
-        )
+    provider = config.Infra.codegen.providers[0]
+    upstream = u.Tests.repository_ref(config.Infra.name).url
+    origin = infra_test_workspace / "origin.git"
+    origin.mkdir(parents=True, exist_ok=True)
+    u.Tests.git_bootstrap(origin, ("init", "--bare"))
+    u.Tests.initialize_git_repo(repo, origin_url=upstream)
+    u.Tests.git_bootstrap(
+        repo, ("config", "--local", f"url.{origin}.insteadOf", upstream)
     )
-    baseline_branch = config.Infra.codegen.providers[0].branch
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "update-ref", f"refs/remotes/origin/{baseline_branch}", "HEAD"],
-            cwd=repo,
-        )
+    u.Tests.git_bootstrap(
+        repo, ("push", "-q", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{provider.branch}")
+    )
+    u.Tests.git_bootstrap(
+        repo,
+        (
+            "fetch",
+            "-q",
+            c.Infra.GIT_ORIGIN,
+            f"+refs/heads/{provider.branch}:refs/remotes/origin/{provider.branch}",
+        ),
     )
     return repo
 

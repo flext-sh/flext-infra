@@ -12,6 +12,7 @@ from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
 from flext_infra import c, config, m, p, r, s, t, u
+from flext_infra.basemk.custom_policy import FlextInfraCustomMkPolicy
 
 
 def _templates_dir() -> Path:
@@ -112,7 +113,13 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     settings=active_config,
                     apply_value=config.Infra.codegen.make.apply_value,
                     apply_variable=config.Infra.codegen.make.apply_variable,
-                    docs=config.Infra.codegen.make.docs,
+                    # custom.mk blacklist SSOT: the parse-time guard in
+                    # base_preflight.mk.j2 reserves every public verb name and
+                    # builtin _custom_<verb>_<what> pair; all other custom
+                    # handlers/hooks are permitted.
+                    custom_mk_reserved=" ".join(
+                        sorted(FlextInfraCustomMkPolicy.reserved_targets())
+                    ),
                     pytest=config.Infra.tooling.tools.pytest,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
@@ -32,9 +33,18 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
+        uv_link_mode: str | None = None,
+        uv_exclude_newer: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
-        """Return canonical TOML with autonomous dependencies and root workspace."""
+        """Return canonical TOML with autonomous dependencies and root workspace.
+
+        ``uv_exclude_newer`` is the per-project overlay over the fleet cooldown.
+        The fleet default is a ROLLING window, which silently ages past a
+        security floor declared in override-dependencies and makes resolution
+        unsatisfiable; a project carrying such a floor pins the absolute cutoff
+        instead. ``None`` keeps the fleet window.
+        """
         source = u.Cli.toml_parse_text(pyproject_content)
         if source is None:
             return r[str].fail("pyproject content is not valid TOML")
@@ -46,6 +56,11 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
 
+        version_result = cls._sync_project_version(project, workspace=workspace)
+        if version_result.failure:
+            return r[str].fail(
+                version_result.error or "project version conformance failed"
+            )
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -74,7 +89,10 @@ class FlextInfraUtilitiesPyprojectConform:
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
-            link_mode=toolchain.uv_link_mode,
+            link_mode=uv_link_mode or toolchain.uv_link_mode,
+            exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
+            exclude_newer_packages=toolchain.dependency_cooldown_exclusions,
+            exclude_newer_overrides=toolchain.dependency_cooldown_overrides,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -387,14 +405,18 @@ class FlextInfraUtilitiesPyprojectConform:
             optional_dev = u.Cli.toml_as_string_list(
                 u.Cli.toml_value(optional, str(c.Infra.DEV))
             )
+        # SSOT required floors win over existing same-name pins: dedupe_specs
+        # keeps the first occurrence, so toolchain floors must lead the merge.
+        # Otherwise stale member pins (e.g. rumdl>=0.2.46) block exclude-newer.
+        required_dev = tuple(
+            requirement
+            for requirement in required_dev_dependencies
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+        )
         dev = [
+            *required_dev,
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
-            *(
-                requirement
-                for requirement in required_dev_dependencies
-                if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
-            ),
         ]
         if dev:
             u.Cli.toml_sync_string_list(
@@ -481,13 +503,27 @@ class FlextInfraUtilitiesPyprojectConform:
         )
 
     @staticmethod
-    def _owns_uv_root_policy(
-        *, project_name: str, workspace: p.Infra.WorkspaceSpec
-    ) -> bool:
-        """Identify autonomous and multi-project roots that own uv root policy."""
-        return not workspace.members or (
-            project_name == workspace.repository.distribution
+    def _sync_project_version(
+        project: t.Cli.TomlTable, *, workspace: p.Infra.WorkspaceSpec
+    ) -> p.Result[bool]:
+        """Project the manifest-declared release version onto ``[project]``.
+
+        Why (hq-36xk): ``config/workspace.yaml`` declares ``project.version`` and
+        the scaffold template renders it as ``version = "{{ version }}"``, but the
+        template carries ``overwrite: false``, so it only ever applies at scaffold
+        time. On an existing repository this conformance pass owned dependencies,
+        groups, typecheck paths and uv sources while ``[project].version`` was left
+        untouched — so the manifest and the package disagreed silently and a
+        release bump recorded in the SSOT never reached the artifact consumers
+        install. Two owners for one fact is the defect; the manifest is the SSOT,
+        so conformance projects it here.
+        """
+        if workspace.project is None:
+            return r[bool].ok(False)
+        mutated = u.Cli.toml_sync_value(
+            project, c.Infra.VERSION, workspace.project.version
         )
+        return r[bool].ok(mutated)
 
     @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
@@ -504,24 +540,26 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
-        """Remove checkout- and interpreter-specific type checker paths."""
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): port the 0.20
-        # canonical path policy so all generated 0.12 projects are portable.
+        """Remove checkout-absolute type checker interpreter pins.
+
+        Search paths belong to FlextInfraExtraPathsManager. Top-level
+        ``venv`` / ``venvPath`` belong to deps modernize (root vs child
+        runtime). Conform must not strip those or gen oscillates.
+        """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return r[bool].ok(True)
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
-            u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
-        mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
-        if mypy is not None:
-            u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
+
         pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
         if pyright is None:
             return r[bool].ok(True)
-        u.Cli.toml_sync_string_list(pyright, c.Infra.EXTRA_PATHS, (".", "src"))
-        interpreter_keys = ("venv", "venvPath", "pythonPath", "pythonInterpreterPath")
+
+        # venv / venvPath are owned by deps modernize (workspace vs child
+        # runtime). Conform only strips checkout-absolute interpreter pins.
+        interpreter_keys = ("pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
         raw_environments = u.Cli.json_as_sequence(
@@ -537,7 +575,7 @@ class FlextInfraUtilitiesPyprojectConform:
             normalized: t.JsonDict = dict(mapping)
             root = normalized.get("root")
             normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]
-            for key in interpreter_keys:
+            for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
                 normalized.pop(key, None)
             normalized_environments.append(normalized)
         if raw_environments:
@@ -555,6 +593,9 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         link_mode: str | None = None,
+        exclude_newer: str | None = None,
+        exclude_newer_packages: t.StrSequence = (),
+        exclude_newer_overrides: t.StrMapping = MappingProxyType({}),
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
@@ -564,17 +605,26 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        owns_uv_root_policy = cls._owns_uv_root_policy(
-            project_name=project_name, workspace=workspace
-        )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if not workspace_root and link_mode is None and not exclude_dependencies:
+            if (
+                not workspace_root
+                and link_mode is None
+                and exclude_newer is None
+                and not exclude_newer_packages
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if not workspace_root and link_mode is None and not exclude_dependencies:
+            if (
+                not workspace_root
+                and link_mode is None
+                and exclude_newer is None
+                and not exclude_newer_packages
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
@@ -599,13 +649,40 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
+        if exclude_newer is not None:
+            u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
+        # Two shapes share this uv key. A bare exemption is `false` (waive the
+        # cooldown entirely, for a reviewed security floor). An override is a
+        # timestamp, needed when the shared cutoff predates a floor the project
+        # legitimately requires: uv then reports the requirement unsatisfiable
+        # and names this key as the remedy, so switching the cooldown off is not
+        # enough — the cutoff has to move to a specific instant. Overrides win
+        # on collision, being the more specific declaration of the two.
+        exclude_newer_payload: t.JsonDict = dict.fromkeys(
+            sorted(exclude_newer_packages), False
+        )
+        exclude_newer_payload.update(sorted(exclude_newer_overrides.items()))
+        if exclude_newer_payload:
+            u.Cli.toml_sync_value(uv, "exclude-newer-package", exclude_newer_payload)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
+        # Project is a flext-infra routing key only; uv scoped form is
+        # {package={name, version?}, dependencies=[...]} (uv settings docs).
+        # Emit on every owning pyproject so standalone CI clones resolve;
+        # do not gate on owns_uv_root_policy (that stripped member excludes).
         exclude_payload = list(
             t.Cli.JSON_LIST_ADAPTER.validate_python([
-                item.model_dump(mode="json", exclude_none=True)
+                {
+                    key: value
+                    for key, value in item.model_dump(
+                        mode="json", exclude_none=True
+                    ).items()
+                    if key != "project"
+                }
                 for item in exclude_dependencies
             ])
         )
-        if owns_uv_root_policy and exclude_payload:
+        if exclude_payload:
             u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")

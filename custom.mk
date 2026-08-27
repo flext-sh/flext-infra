@@ -1,17 +1,14 @@
-# Private project handlers for flext-infra.
-# This versioned extension accepts only `_custom_<verb>_<what>` handlers and
-# `(pre|post)-<verb>[-<what>]` hooks. Public targets, aliases, toolchain setup,
-# generated-target redefinitions, and help entries are invalid; the standardized
-# FLEXT verbs in base.mk own those. Add project-specific actions as
-# `_custom_<verb>_<what>` (e.g. run WHAT=<what>) or wrap a verb with a hook.
+# Private project hooks for flext-infra.
+# The typed Make verb/WHAT matrix owns every handler. This file may contain
+# only pre/post hooks for declared handlers; it cannot create or shadow one.
 
-.PHONY: _custom_basemk_generate _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
-_custom_basemk_generate:
-	@set -eu; \
-	output="$(strip $(OUTPUT))"; \
-	if [ -z "$$output" ]; then output="base.mk"; fi; \
-	$(PROJECT_FLEXT_INFRA) basemk generate \
-		--project-name "$(PROJECT_NAME)" --output "$$output"
+.PHONY: _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
+
+# _custom_basemk_generate was removed: `basemk` is not a declared public verb,
+# so the handler was unreachable through _dispatch AND rejected by the custom
+# handler policy, which blocked `codegen conform` outright. base.mk generation
+# is reached through the flext-infra CLI directly. Asserted by
+# test_custom_surface_never_shadows_public_verbs.
 
 _custom_run_cprofile-test:
 	@set -eu; \

@@ -354,8 +354,11 @@ known-first-party = [
 ]
 split-on-trailing-comma = {{ tooling.tools.ruff.lint.isort.split_on_trailing_comma | lower }}
 
+{# ruff_per_file_ignores is the COMPOSED map: fleet policy plus this
+   repository's own ManagedArtifacts overlay. Rendering the fleet map alone
+   dropped operator-authorized local exemptions on every full render. #}
 [tool.ruff.lint.per-file-ignores]
-{% for pattern, rules in tooling.tools.ruff.lint.per_file_ignores | dictsort %}
+{% for pattern, rules in ruff_per_file_ignores | dictsort %}
 {{ pattern | tojson }} = [
 {% for item in rules | sort %}
   {{ item | tojson }},
@@ -396,3 +399,11 @@ whitelines = {{ tooling.tools.yamlfix.whitelines }}
 
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
+exclude-newer = "{{ uv_exclude_newer }}"
+{# A bare exemption renders `false` (waive the cooldown). An override renders a
+   timestamp, for a floor published after the shared cutoff: uv then reports the
+   requirement unsatisfiable and names this key as the remedy, so the cutoff has
+   to move to an instant rather than be switched off. #}
+{% if dependency_cooldown_exclusions or dependency_cooldown_overrides %}
+exclude-newer-package = { {% for package in dependency_cooldown_exclusions %}{% if package not in dependency_cooldown_overrides %}{{ package }} = false, {% endif %}{% endfor %}{% for package, cutoff in dependency_cooldown_overrides | dictsort %}{{ package }} = "{{ cutoff }}"{% if not loop.last %}, {% endif %}{% endfor %} }
+{% endif %}

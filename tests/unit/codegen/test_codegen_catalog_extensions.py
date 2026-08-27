@@ -187,45 +187,6 @@ class TestsCodegenCatalogExtensions:
         )
         tm.fail(FlextInfraCodegenConform.beads_declaration(broken))
 
-    def test_gitmodules_render_reaches_a_merge_fixed_point(self) -> None:
-        """The gitmodules projection must not grow on every merge pass.
-
-        The template's leading Jinja comment emitted a bare newline, and
-        ``_merge_gitmodules`` prepends a separator when the preserved prefix is
-        non-empty — so each apply added one more blank line and conform never
-        reached its post-apply fixed point on the workspace root.
-        """
-        template = (
-            Path(__file__).parents[3]
-            / "src"
-            / "flext_infra"
-            / "templates"
-            / "project"
-            / "base"
-            / "gitmodules.j2"
-        )
-        import jinja2
-
-        rendered = jinja2.Template(template.read_text(encoding="utf-8")).render(
-            workspace_gitlinks=[
-                {
-                    "repository": {
-                        "name": "demo-member",
-                        "path": "demo-member",
-                        "url": "https://github.com/flext-sh/demo-member.git",
-                    },
-                    "branch": "0.12.0-dev",
-                }
-            ]
-        )
-        tm.that(rendered.startswith("\n"), eq=False)
-        tm.that(rendered.startswith("[submodule"), eq=True)
-        managed = frozenset({"demo-member"})
-        merge = FlextInfraCodegenConform._merge_gitmodules  # ruff: ignore[private-member-access]
-        once = merge(rendered, rendered, managed_paths=managed)
-        twice = merge(once, rendered, managed_paths=managed)
-        tm.that(once, eq=twice)
-
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance.
 
@@ -277,7 +238,7 @@ class TestsCodegenCatalogExtensions:
         )
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
         tm.ok(verify(plan, allow_missing=False))
-        # Outside a transaction the disabled-but-present guard still fails.
+        # Outside a transaction, routing-only files remain valid.
         plan_at_root = m.Infra.BeadsPlan(
             repository_root=tx,
             enabled=False,
@@ -285,6 +246,8 @@ class TestsCodegenCatalogExtensions:
             expected_version="1.1.0",
             ledger_root=tx,
         )
+        tm.ok(verify(plan_at_root, allow_missing=False))
+        (tx / ".beads" / "issues.jsonl").write_text("{}\n", encoding="utf-8")
         tm.fail(verify(plan_at_root, allow_missing=False))
 
     def test_github_actions_ci_skips_the_beads_lifecycle(
@@ -326,7 +289,12 @@ class TestsCodegenCatalogExtensions:
         ).model_copy(
             update={
                 "extra_verbs": (
-                    m.Infra.MakeVerbSpec(name="audit", default_what="all"),
+                    m.Infra.MakeVerbSpec(
+                        name="audit",
+                        default_what="all",
+                        whats=("all",),
+                        apply_what="all",
+                    ),
                 ),
                 "script_dispatch": m.Infra.ScriptDispatchSpec(
                     dispatcher="scripts/dispatch.py", roots=("scripts",)

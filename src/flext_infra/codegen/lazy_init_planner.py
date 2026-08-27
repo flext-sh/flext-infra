@@ -133,7 +133,8 @@ class FlextInfraCodegenLazyInitPlanner(
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
             and "." not in context.current_pkg
-            and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+            # Why (mro-27a9e.1, multi-agent): governed consumers such as ai_hub
+            # are first-class project roots; package prefixes are not architecture.
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
         is_test_facade_root = (
@@ -143,6 +144,13 @@ class FlextInfraCodegenLazyInitPlanner(
         )
         is_facade_root = is_public_project_root or is_test_facade_root
         export_names = {*lazy_map, *eager_dunders}
+        if is_public_project_root:
+            package_alias = u.Infra.package_alias(package_name=context.current_pkg)
+            if (
+                package_alias not in export_names
+                and (context.pkg_dir / c.Infra.API_PY).is_file()
+            ):
+                export_names.add(package_alias)
         if is_facade_root:
             # mro-pulj (codex) + ulw follow-up: __all__ is the one public
             # contract (dir()/star-import/docs already respect it). Do NOT
@@ -153,12 +161,13 @@ class FlextInfraCodegenLazyInitPlanner(
             # with a circular ImportError the moment any pruned name is touched
             # before __init__ finishes executing. Only export_names (-> __all__)
             # is filtered; lazy_map stays the full discovered set.
-            export_names, _unused_filtered_lazy_map = self._filter_public_root_exports(
+            export_names, filtered_lazy_map = self._filter_public_root_exports(
                 context=context,
                 export_names=export_names,
                 lazy_map=lazy_map,
                 eager_names=frozenset(eager_dunders),
             )
+            lazy_map = filtered_lazy_map
             child_lazy = ()
             excluded_lazy_names = ()
         preserve_manual_init = (

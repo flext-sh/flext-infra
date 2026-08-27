@@ -5,7 +5,6 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-
 from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
@@ -77,6 +76,9 @@ class TestsFlextInfraDepsModernizerCoverage:
         tm.that(
             list(_strings(run["omit"])), eq=sorted(set(tool_config.tools.coverage.omit))
         )
+        # Declaration-layer Protocol facades are never runtime coverage targets.
+        tm.that("*/protocols.py" in tool_config.tools.coverage.omit, eq=True)
+        tm.that("*/_protocols/*" in tool_config.tools.coverage.omit, eq=True)
 
     def test_apply_is_idempotent(self) -> None:
         """Verify apply is idempotent."""
@@ -99,12 +101,12 @@ class TestsFlextInfraDepsModernizerCoverage:
         root_modernizer = FlextInfraPyprojectModernizer(
             workspace_root=tmp_path, skip_check=True
         )
-        root_first = tm.ok(
+        root_first: str = tm.ok(
             root_modernizer.conform_source(
                 root_source, path=root_path, project_kind="platform"
             )
         )
-        root_second = tm.ok(
+        root_second: str = tm.ok(
             root_modernizer.conform_source(
                 root_first, path=root_path, project_kind="platform"
             )
@@ -115,10 +117,10 @@ class TestsFlextInfraDepsModernizerCoverage:
 name = "arbitrary-member"
 dependencies = ["flext-core", "flext-cli", "flext-ldap"]
 """
-        member_first = tm.ok(
+        member_first: str = tm.ok(
             root_modernizer.conform_source(member_source, path=member_path)
         )
-        member_second = tm.ok(
+        member_second: str = tm.ok(
             root_modernizer.conform_source(member_first, path=member_path)
         )
 

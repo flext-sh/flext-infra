@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_core import m
 from flext_infra import c, t
 
 
@@ -152,20 +152,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="reportPrivateUsage value for non-source/non-test-like envs.",
                 ),
             ]
-            root_venv_path: Annotated[
-                str,
-                m.Field(
-                    alias="root-venv-path",
-                    description="venvPath to use in workspace-root pyright settings.",
-                ),
-            ]
-            project_venv_path: Annotated[
-                str,
-                m.Field(
-                    alias="project-venv-path",
-                    description="venvPath to use in subproject pyright settings.",
-                ),
-            ]
             venv_name: Annotated[
                 str,
                 m.Field(
@@ -275,13 +261,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 m.Field(
                     alias="workspace-include-child-env-dirs",
                     description="Child env dirs included by root pyrefly when enabled.",
-                ),
-            ]
-            include_path_dependencies_in_search_path: Annotated[
-                bool,
-                m.Field(
-                    alias="include-path-dependencies-in-search-path",
-                    description="Include resolved path dependencies in pyrefly search-path.",
                 ),
             ]
             project_shared_search_paths: Annotated[

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -16,7 +17,23 @@ if TYPE_CHECKING:
 class FlextInfraConstantsMake:
     """Make-related constants for Makefile generation and CLI routing."""
 
+    # Why: conform Makefile policy classifies declarations via these patterns;
+    # they belong on c.Infra, not as leaf module re.compile copies.
+    MAKE_ASSIGNMENT_RE: Final[t.RegexPattern] = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?="
+    )
+    "GNU Make variable assignment at column 0 (``=``, ``:=``, ``::=``, ``?=``, ``+=``)."
+    MAKE_DIRECTIVE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:export|unexport|override|include|-include|sinclude|vpath)\b"
+    )
+    "GNU Make directives that scope or include a declaration rather than define a target."
+    MAKE_CONDITIONAL_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)"
+    )
+    "GNU Make conditional control flow; structural, never a target declaration."
+
     VERB_CHECK: Final[str] = "check"
+    VERB_CLEAN: Final[str] = "clean"
     VERB_VALIDATE: Final[str] = "validate"
     VERB_PUBLISH: Final[str] = "publish"
     VERB_RUN: Final[str] = "run"
@@ -37,6 +54,12 @@ class FlextInfraConstantsMake:
     CLI_GROUP_VALIDATE: Final[str] = "validate"
     CLI_ROUTE_MAINTENANCE: Final[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: Final[str] = "workspace"
+    CLI_GROUPS_TRANSLATING_WHAT: Final[frozenset[str]] = frozenset({
+        CLI_GROUP_CHECK,
+        CLI_GROUP_VALIDATE,
+        CLI_GROUP_CODEGEN,
+    })
+    "Groups whose --what maps onto a selector instead of a subcommand option."
     MYPY_MEMORY_LIMIT_MB_ENV: Final[str] = "MYPY_MEMORY_LIMIT_MB"
     MYPY_MEMORY_LIMIT_MB_DEFAULT: Final[int] = 6144
     MYPY_TIMEOUT_SECONDS_ENV: Final[str] = "MYPY_TIMEOUT_SECONDS"
@@ -48,9 +71,15 @@ class FlextInfraConstantsMake:
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
+    # The BUILT-IN check vocabulary: read-only gates this package implements.
+    # It is the BASE of the vocabulary, never the whole of it -- a project
+    # declares its own gates in config and they are unioned in by
+    # MakeSpec.check_gates_allowed. `format` is NOT here: it rewrites files, so
+    # it is owned by `make fmt APPLY=Y` / `make fix APPLY=Y`
+    # (PROJECT_CHECK_GATES_FIXABLE_VALUES) and a read-only verb must never
+    # invoke it.
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
         "lint",
-        "format",
         "pyrefly",
         "mypy",
         "pyright",
@@ -58,31 +87,33 @@ class FlextInfraConstantsMake:
         "markdown",
         "smells",
     )
+    # The gates CI=N owns: the type checkers only. They are the slow, whole-
+    # program analyses, so CI=Y runs the strict complement of this set -- ruff
+    # lint included -- and the two contexts can never overlap nor leave a gate
+    # unowned. An unset CI runs every allowed gate.
+    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = ("pyrefly", "mypy")
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
-        "lint",
-        "format",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "security",
-        "markdown",
-        "smells",
+        PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
-    PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
-        "lint",
-        "format",
-        "pyrefly",
-        "mypy",
-        "pyright",
-    )
+    # mro-38p39: the gates that can repair what they report. `make fix APPLY=Y`
+    # routes through `check run --fix`, which without a selector would execute
+    # every gate -- including pyright and mypy, which fix nothing and cost ~37s,
+    # timing the verb out. Formatting is NOT here: `format` belongs to
+    # `make fmt` alone -- fix repairs findings, fmt rewrites style.
+    # `format` is deliberately absent even though its gate reports can_fix:
+    # verbs own tools by intent. `fmt` owns formatting, `fix` repairs findings,
+    # `check` is read-only -- so `format` appears in NO check vocabulary,
+    # neither ALLOWED nor FIXABLE.
+    # `lint` is absent for the same ownership reason: ruff mutation belongs to
+    # fmt/fix's ruff stage, and this set must stay DISJOINT from the CI=N gates
+    # (lint, pyrefly) so `make fix` under the local token resolves to a
+    # documented no-op instead of colliding with the pre-push gate set.
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = ("markdown", "smells")
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
     PROJECT_CHECK_GATES_DEFAULT: Final[str] = ",".join(
         PROJECT_CHECK_GATES_DEFAULT_VALUES
-    )
-    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = ",".join(
-        PROJECT_FAST_PATH_CHECK_GATE_VALUES
     )
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
@@ -91,6 +122,7 @@ class FlextInfraConstantsMake:
         "clean",
         "docs",
         "fmt",
+        "fix",
         "scan",
         "test",
         "val",
@@ -109,6 +141,8 @@ class FlextInfraConstantsMake:
         "MISE_VERBOSE",
         "MFLAGS",
         "MYPYPATH",
+        "PROJECT",
+        "PROJECTS",
         "PYTHONPATH",
         "UV_PROJECT",
         "UV_PROJECT_ENVIRONMENT",
@@ -132,6 +166,8 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_TARGET: Final[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
+    PYTEST_ENV_COV: Final[str] = "FLEXT_PYTEST_COV_RAW"
+    PYTEST_ENV_CI: Final[str] = "CI"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
@@ -157,6 +193,7 @@ class FlextInfraConstantsMake:
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
         ("MATCH", ""),
+        ("COV", ""),
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),
@@ -185,6 +222,7 @@ class FlextInfraConstantsMake:
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
         ("MATCH", ""),
+        ("COV", ""),
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),

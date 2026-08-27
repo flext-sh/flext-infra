@@ -6,18 +6,28 @@
 # Multi-environment CI base: proves the project bootstrap and canonical Make
 # verbs work identically across distros, macOS, and Windows. The CI invokes
 # the project's own Make surface; it never reimplements bootstrap.
+# Projected only for workspace-root/standalone. Auto-run is opt-in via
+# repository_policy_overlays.ci_matrix_auto_run (default false = workflow_dispatch
+# only). When enabled, also push to main. Workspace members are covered by the
+# root matrix; conform/make gen WHAT=apply APPLY=Y prunes orphan member copies.
+# Never bind triggers to the integration-line variable.
 ---
 name: ci-matrix
 
 # === SECTION: triggers (managed) ===
-# Source: config:repository_branch
+# Source: overlay ci_matrix_auto_run (default dispatch-only; no pull_request;
+# no integration-line binding)
 "on":
+{%- if ci_matrix_auto_run %}
   push:
-    branches: [{{ repository_branch }}]
-  pull_request:
-    branches: [{{ repository_branch }}]
+    branches: [main]
   workflow_dispatch: {}
+{%- else %}
+  workflow_dispatch: {}
+{%- endif %}
 # End SECTION: triggers
+
+
 
 # === SECTION: permissions (managed) ===
 # Source: template (minimal read-only permissions)
@@ -40,6 +50,8 @@ jobs:
     # full project bootstrap at image-build time), then smoke the verb surface
     # inside the built container.
     runs-on: ubuntu-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     strategy:
       fail-fast: false
       matrix:
@@ -47,27 +59,41 @@ jobs:
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
+          # No step needs authenticated git after checkout; persisting the
+          # token into .git/config would expose it to every later command.
+          persist-credentials: false
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
         run: >-
           docker build
-          -f ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
+          -f tests/fixtures/ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
+          --build-arg GITHUB_TOKEN={% raw %}${{ env.GITHUB_TOKEN }}{% endraw %}
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
+        env:
+          {{ make.ci.variable }}: {{ make.ci.value }}
         run: |
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
-          docker run --rm ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make help
+          docker run --rm -e {{ make.ci.variable }}={{ make.ci.value }} ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %} make check
+          # ci-matrix proves bootstrap + check across distros; it never runs make test.
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   macos:
     runs-on: macos-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
+          # No step needs authenticated git after checkout; persisting the
+          # token into .git/config would expose it to every later command.
+          persist-credentials: false
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
@@ -79,19 +105,31 @@ jobs:
         with:
           enable-cache: true
       - name: Bootstrap
-        run: make setup
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
-        run: make help
+        run: {{ make.ci.variable }}={{ make.ci.value }} make help
+      # The canonical gate, not just the verb surface: this matrix exists to
+      # catch platform-specific failures, and `make help` exercises none of
+      # the gates. The linux job already runs it.
+      - name: Canonical check
+        run: {{ make.ci.variable }}={{ make.ci.value }} make check
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
   # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
   windows:
     runs-on: windows-latest
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - name: Setup Python
+        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
-          submodules: recursive
+          submodules: {{ checkout_submodules }}
+          # No step needs authenticated git after checkout; persisting the
+          # token into .git/config would expose it to every later command.
+          persist-credentials: false
       - name: Setup Python
         uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
@@ -104,8 +142,14 @@ jobs:
           enable-cache: true
       - name: Bootstrap
         shell: bash
-        run: make setup
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
         shell: bash
-        run: make help
+        run: {{ make.ci.variable }}={{ make.ci.value }} make help
+      # The canonical gate, not just the verb surface: this matrix exists to
+      # catch platform-specific failures, and `make help` exercises none of
+      # the gates. The linux job already runs it.
+      - name: Canonical check
+        shell: bash
+        run: {{ make.ci.variable }}={{ make.ci.value }} make check
   # End SECTION: windows

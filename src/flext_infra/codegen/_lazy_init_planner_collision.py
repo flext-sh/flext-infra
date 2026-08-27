@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerCollisionMixin:
@@ -46,14 +47,13 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 20
         if policy.enforce_contract:
             score += 10
-        if module_file.name in self.lazy_init.root_namespace_files:
-            score += 5
-        preferred_stem_by_alias = {
-            alias: file_name.removesuffix(".py")
-            for file_name, alias in self.lazy_init.public_file_aliases.items()
-        }
-        preferred_stem = preferred_stem_by_alias.get(name, "")
-        if preferred_stem and module_file.stem == preferred_stem:
+        declared_exports = self.rope_workspace.exports(
+            module_file,
+            export_options=m.Infra.ExportOptions(
+                allow_assignments=True, allow_functions=True, require_explicit_all=True
+            ),
+        )
+        if name in declared_exports:
             score += 15
         if attr == name:
             score += 3
@@ -98,16 +98,17 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         )
         index[name] = winner
 
-    @classmethod
-    def _is_intentional_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
+    def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
-        if cls._is_mro_part_reexport(a, b):
+        if self._is_mro_part_reexport(a, b):
             return True
         # mro-pulj (codex): root typing sidecars are removed; real source
         # owners now participate in the normal collision policy.
-        if cls._is_private_facade_reexport(a, b):
+        if self._is_private_facade_reexport(a, b):
             return True
-        if cls._is_test_collection_collision(a, b):
+        if self._is_declared_public_reexport(a, b):
+            return True
+        if self._is_test_collection_collision(a, b):
             return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
@@ -116,6 +117,44 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
                 return True
         return False
+
+    def _is_declared_public_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
+        if a[1] != b[1]:
+            return False
+        a_owner = self._declared_export_owner(a)
+        b_owner = self._declared_export_owner(b)
+        return (
+            a_owner == b or b_owner == a or (a_owner is not None and a_owner == b_owner)
+        )
+
+    def _declared_export_owner(self, target: t.StrPair) -> t.StrPair | None:
+        module_path, attr = target
+        module_file = self._module_file(module_path)
+        if module_file is None or module_file.name == "__init__.py":
+            return None
+        tree = ast.parse(module_file.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            package_parts = module_path.split(".")[:-1]
+            if node.level:
+                retained_parts = package_parts[: len(package_parts) - node.level + 1]
+                imported_parts = node.module.split(".") if node.module else []
+                imported_module = ".".join((*retained_parts, *imported_parts))
+            elif node.module:
+                imported_module = node.module
+            else:
+                continue
+            for alias in node.names:
+                exported_name = alias.asname or alias.name
+                if exported_name == attr:
+                    owner_module = (
+                        f"{imported_module}.{alias.name}"
+                        if node.level and node.module is None
+                        else imported_module
+                    )
+                    return (owner_module, alias.name)
+        return None
 
     @staticmethod
     def _module_parts(module_path: str) -> tuple[str, ...]:

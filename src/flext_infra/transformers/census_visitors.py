@@ -40,8 +40,8 @@ class FlextInfraCensusImportDiscoveryVisitor:
             ):
                 continue
             names_part = match.group(2).strip().rstrip("\\")
-            for name_entry in names_part.split(","):
-                name_entry = name_entry.strip()
+            for raw_name_entry in names_part.split(","):
+                name_entry = raw_name_entry.strip()
                 if not name_entry:
                     continue
                 parts = c.Infra.AS_KEYWORD_RE.split(name_entry, maxsplit=1)

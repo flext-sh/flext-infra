@@ -10,15 +10,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+import tomllib
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
+from flext_infra import config
 from flext_infra import main as infra_main
 from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from tests import t
 
 
@@ -84,6 +87,10 @@ class TestMainCommandDispatch:
         tm.that(result, eq=0)
 
 
+# Exemplar: every test here spawns a fresh interpreter to prove the real
+# `python -m flext_infra` entry point. That import chain, not the assertion,
+# dominates the runtime, so the class opts into the config-owned slow budget.
+@pytest.mark.slow
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 
@@ -106,15 +113,81 @@ class TestMainEntryPoint:
         tm.that(result.value.exit_code, eq=0)
         tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
 
+    def test_apply_bootstraps_managed_conflict_before_facade_imports(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Repair invalid target metadata through the real process entrypoint."""
+        root = infra_git_repo
+        project_root = Path(__file__).resolve().parents[3]
+        tm.ok(
+            u.Cli.files_copy_directory(
+                project_root / "src" / "flext_infra",
+                root / "src" / "flext_infra",
+                dirs_exist_ok=True,
+            )
+        )
+        tm.ok(
+            u.Cli.files_copy_directory(
+                project_root / "config", root / "config", dirs_exist_ok=True
+            )
+        )
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "flext-infra"\nversion = "0.12.0.dev0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "\n"
+            "[tool.pytest.ini_options]\n"
+            "addopts = [\n"
+            "<<<<<<< HEAD\n"
+            '  "--timeout=90",\n'
+            "=======\n"
+            '  "--timeout=10",\n'
+            ">>>>>>> origin/0.12.0-dev\n"
+            "]\n",
+            encoding="utf-8",
+        )
+
+        result = u.Cli.run_raw(
+            [
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "codegen",
+                "conform",
+                "--root",
+                str(root),
+                "--scope",
+                "self",
+                "--mode",
+                "apply",
+            ],
+            cwd=root,
+            env={"PYTHONPATH": str(root / "src")},
+        )
+
+        tm.ok(result)
+        tm.that(result.value.exit_code, eq=0)
+        tm.that(
+            result.value.stdout + result.value.stderr,
+            contains="recovered owner-declared managed conflicts",
+        )
+        rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
+        tm.that(rendered, lacks="<<<<<<<")
+        payload = tomllib.loads(rendered)
+        tm.that(
+            payload["tool"]["pytest"]["ini_options"]["addopts"],
+            has=(f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"),
+        )
+
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""
-        result = u.Cli.run_raw([
-            sys.executable,
-            "-m",
-            "flext_infra",
-            "codegen",
-            "unknown-command",
-        ])
+        # The child renders through the CLI console, which honours COLUMNS and
+        # would otherwise wrap the message at the developer's terminal width,
+        # splitting the asserted phrase. Pin the width so the assertion tests
+        # the message, not the terminal the suite happens to run in.
+        result = u.Cli.run_raw(
+            [sys.executable, "-m", "flext_infra", "codegen", "unknown-command"],
+            env={"COLUMNS": "200"},
+        )
 
         tm.ok(result)
         tm.that(result.value.exit_code, eq=2)

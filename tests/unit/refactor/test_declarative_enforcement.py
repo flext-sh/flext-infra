@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
 import pytest
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
 
     from flext_infra.typings import t
 
+importlib.import_module("flext_infra.constants")
+
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:
     """Root-cause coverage for declarative detection strategies."""
@@ -28,7 +31,10 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     @staticmethod
     def _rule(rule_id: str) -> m.EnforcementRuleSpec:
         catalog = u.build_canonical_catalog()
-        return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
+        rule: m.EnforcementRuleSpec = next(
+            rule for rule in catalog.enabled_rules() if rule.id == rule_id
+        )
+        return rule
 
     @staticmethod
     def _ctx(
@@ -185,6 +191,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         """ENFORCE-080 detects a canonical alias imported from flext_core."""
         source = tmp_path / "src" / "demo_pkg" / "consumer.py"
         source.parent.mkdir(parents=True)
+        # Why (mro-ygc2k): package discovery requires src/<pkg>/__init__.py;
+        # without it the policy owner resolves empty and detection is vacuous.
+        (source.parent / "__init__.py").write_text("", encoding="utf-8")
         source.write_text(
             "from __future__ import annotations\nfrom flext_core import c\n",
             encoding="utf-8",

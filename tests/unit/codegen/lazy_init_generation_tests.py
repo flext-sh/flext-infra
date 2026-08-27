@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from types import MappingProxyType
 
+import flext_core
 from flext_infra import c, m, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_tests import tm
@@ -19,7 +21,7 @@ class TestsFlextInfraCodegenGeneration:
         exports: t.StrSequence,
         lazy_map: t.LazyAliasMap,
         *,
-        eager_dunders: t.LazyAliasMap | None = None,
+        eager_dunders: t.MappingKV[str, t.StrPair] | None = None,
         child_packages: t.StrSequence = (),
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
@@ -50,26 +52,44 @@ class TestsFlextInfraCodegenGeneration:
                 "Demo": ("demo_pkg.api", "Demo"),
                 "r": ("flext_core", "r"),
             }),
-            eager_dunders=MappingProxyType({
-                "__version__": ("demo_pkg.__version__", "__version__")
-            }),
+            eager_dunders={"__version__": ("demo_pkg.__version__", "__version__")},
             child_packages=("demo_pkg.services",),
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="_LAZY_MODULES")
-        tm.that(content, contains="_LAZY_ALIAS_GROUPS")
+        tm.that(content, lacks="_LAZY_MODULES")
+        tm.that(content, lacks="_LAZY_ALIAS_GROUPS")
+        # _LAZY_IMPORTS is the canonical metadata binding flext_core reads
+        # (lazy.merge child inheritance + runtime_alias_names).
+        tm.that(content, contains="_LAZY_IMPORTS = MappingProxyType(")
+        tm.that(content, contains="MappingProxyType(")
+        tm.that(content, contains="build_lazy_import_map(")
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="from .__version__ import __version__ as __version__")
         tm.that(
             content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
         )
-        tm.that(content, contains="from .api import Demo")
-        tm.that(content, lacks="if TYPE_CHECKING:")
+        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="    from .api import Demo")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
+
+    def test_generated_runtime_surfaces_import_without_bootstrap_cycles(self) -> None:
+        lazy_parts = import_module("flext_core._lazy_parts")
+        typings = import_module("flext_core._typings")
+        infra_utilities = import_module("flext_infra._utilities")
+
+        tm.that(lazy_parts.__all__, eq=())
+        tm.that(typings.__all__, eq=())
+        tm.that(flext_core.__all__, has="c")
+        tm.that(dir(flext_core), has="c")
+        tm.that(flext_core.c.__name__, eq="FlextConstants")
+        tm.that(
+            infra_utilities.FlextInfraUtilitiesRopeCore.__name__,
+            eq="FlextInfraUtilitiesRopeCore",
+        )
 
     def test_root_initializer_contains_static_and_lazy_contracts(self) -> None:
         """Public root initializer keeps typing and runtime targets aligned."""
@@ -80,10 +100,28 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from .api import Demo")
+        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="    from .api import Demo")
+        runtime_prefix = content.split("if TYPE_CHECKING:", maxsplit=1)[0]
+        tm.that(runtime_prefix, lacks="from .api import Demo")
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
+
+    def test_nested_package_initializer_is_static(self) -> None:
+        plan = self._plan(
+            "flext_core._lazy_parts",
+            ("FlextLazy",),
+            MappingProxyType({
+                "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, lacks="from flext_core.lazy import")
+        tm.that(content, contains="__all__: tuple[str, ...] = ()")
 
     def test_root_initializer_rejects_private_entries_outside_all(self) -> None:
         """Render no package attribute that is absent from the public contract."""
@@ -121,8 +159,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, lacks="from flext_cli._settings import")
         tm.that(content, lacks="    _ = (")
 
-    def test_non_root_package_uses_lazy_package_facade(self) -> None:
-        """Subpackages expose their owned symbols lazily through one facade."""
+    def test_public_nested_package_preserves_lazy_exports(self) -> None:
         plan = self._plan(
             "demo_pkg.services",
             ("Demo", "Nested"),
@@ -135,11 +172,8 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from .demo import Demo")
-        tm.that(init_content, contains='".demo": ("Demo",)')
-        tm.that(init_content, contains='".nested.item": ("Nested",)')
-        tm.that(init_content, contains='"Demo"')
-        tm.that(init_content, contains='"Nested"')
+        tm.that(init_content, contains="from flext_core.lazy import")
+        tm.that(init_content, contains='__all__: tuple[str, ...] = ("Demo", "Nested")')
         tm.that(init_content, contains="install_lazy_exports")
 
     def test_private_fixture_package_initializer_is_side_effect_free(self) -> None:
@@ -155,9 +189,58 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, lacks="from .settings import")
+        tm.that(init_content, contains="from .settings import DemoFixture")
+        tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
+        tm.that(init_content, contains="install_lazy_exports")
+
+    def test_lazy_bootstrap_package_initializer_is_side_effect_free(self) -> None:
+        """Keep the lazy runtime importable while its implementation initializes."""
+        plan = self._plan(
+            "flext_core._lazy_parts",
+            ("FlextLazy",),
+            MappingProxyType({
+                "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy")
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(init_content, lacks="from flext_core.lazy import")
         tm.that(init_content, lacks="install_lazy_exports")
+
+    def test_lazy_typings_bootstrap_initializer_is_side_effect_free(self) -> None:
+        """Keep the lazy runtime's typing dependency free of import callbacks."""
+        plan = self._plan(
+            "flext_core._typings",
+            ("FlextTypesLazy",),
+            MappingProxyType({
+                "FlextTypesLazy": ("flext_core._typings.lazy", "FlextTypesLazy")
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(init_content, lacks="from flext_core.lazy import")
+        tm.that(init_content, lacks="install_lazy_exports")
+
+    def test_normal_package_initializer_keeps_full_lazy_map(self) -> None:
+        """Keep ordinary package boundaries backed by the lazy runtime."""
+        plan = self._plan(
+            "flext_core._models",
+            ("FlextModel",),
+            MappingProxyType({"FlextModel": ("flext_core._models.base", "FlextModel")}),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, contains="from flext_core.lazy import")
+        tm.that(init_content, contains='".base": ("FlextModel",)')
+        tm.that(init_content, contains="install_lazy_exports(")
 
     def test_tests_root_renders_only_its_facade_contract(self) -> None:
         """Render test facades without importing collected test classes."""
@@ -205,14 +288,14 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(init_content, contains='".constants": ("TestsDemoConstants", "c"),')
         tm.that(init_content, contains='".utilities": ("TestsDemoUtilities", "u"),')
         import_block = init_content.split(
-            "from flext_core.lazy import build_lazy_import_map, "
-            "install_lazy_exports\n\n",
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n",
             maxsplit=1,
         )[1]
-        import_block = import_block.split("_LAZY_MODULES:", maxsplit=1)[0]
+        import_block = import_block.split("install_lazy_exports(", maxsplit=1)[0]
         module_offsets = tuple(
             import_block.index(module)
             for module in (
+                "from flext_tests import tm",
                 "from .base import",
                 "from .constants import",
                 "from .models import",
@@ -220,12 +303,11 @@ class TestsFlextInfraCodegenGeneration:
                 "from .settings import",
                 "from .typings import",
                 "from .utilities import",
-                "from flext_tests import tm",
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
         tm.that(import_block, contains="from flext_tests import tm\n")
-        tm.that(init_content, lacks="if TYPE_CHECKING:")
+        tm.that(init_content, contains="if TYPE_CHECKING:")
         tm.that(init_content, contains="install_lazy_exports")
         tm.that(init_content, lacks="TestsDemoCase")
         tm.that(init_content, lacks=".unit.test_demo")

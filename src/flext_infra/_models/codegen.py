@@ -7,8 +7,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
-from flext_cli import u
+from flext_cli import m, u
 from flext_infra import c, t
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
@@ -203,11 +202,10 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class LazyInitPackageContext(m.ArbitraryTypesModel):
         """Declarative package context for one lazy-init directory."""
 
-        # mro-i6nq.10: Render strategy is derived by the generator, not stored.
         pkg_dir: Path = m.Field(description="Directory being processed.")
         init_path: Path = m.Field(description="Target __init__.py path.")
         current_pkg: str = m.Field(description="Importable package name.")
-        surface: str = m.Field(description="Root surface for alias inheritance.")
+        surface: str = m.Field(description="Root surface for wrapper alias resolution.")
         generated_init: Annotated[
             bool,
             m.Field(

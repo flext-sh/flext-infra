@@ -104,12 +104,30 @@ class TestsCodegenArtifactSsot:
         }
         tm.that(set(entries[0].profiles), eq=declared_profiles)
 
+    def test_hook_workflow_contexts_partition_mutation_and_validation(
+        self, codegen: CodegenSpec
+    ) -> None:
+        """Pre-push runs every commit-stage verb plus the deferred full gates."""
+        workflow = codegen.make.workflow
+        pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
+        pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
+
+        tm.that(bool(pre_commit), eq=True)
+        tm.that(bool(pre_push), eq=True)
+        commit_verbs = {step.verb for step in pre_commit}
+        push_verbs = {step.verb for step in pre_push}
+        tm.that(commit_verbs.issubset(push_verbs), eq=True)
+        tm.that(bool(push_verbs - commit_verbs), eq=True)
+        tm.that(
+            push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True
+        )
+
     def test_rendered_vscode_document_consumes_projection_maps(
         self, tmp_path: Path, codegen: CodegenSpec
     ) -> None:
         """Validate the public renderer output instead of private implementation."""
-        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(tmp_path))
-        parsed = tm.ok(u.Cli.json_parse(rendered))
+        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(tmp_path))
+        parsed: t.JsonValue = tm.ok(u.Cli.json_parse(rendered))
         settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
         tm.that(settings["files.exclude"], eq=dict(codegen.vscode_files_exclude_map))
         tm.that(settings["search.exclude"], eq=dict(codegen.vscode_search_exclude_map))

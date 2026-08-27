@@ -381,7 +381,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     dry_run=False,
                 )
                 applied_one = True
-            except Exception:
+            except c.EXC_BROAD_IO_TYPE:
                 applied_one = False
             changed = changed or applied_one
         return changed
@@ -474,7 +474,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         try:
             changes = mover.get_changes(target_resource)
             rope.rope_project.do(changes)
-        except Exception:
+        except c.EXC_BROAD_IO_TYPE:
             return False
         return True
 

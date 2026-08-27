@@ -117,3 +117,21 @@ class TestsFlextInfraDepsModernizerComments:
         with_trivia, _changes = phase.apply('\n[project]\nname = "test"\n')
         without_trivia, _changes = phase.apply('[project]\nname = "test"\n')
         tm.that(with_trivia, eq=without_trivia)
+
+    def test_inject_comments_is_idempotent_when_marker_precedes_blank_line(
+        self,
+    ) -> None:
+        """Converge when a blank line already separates marker and section."""
+        # A rendered pyproject separates tables with a blank line, so a marker
+        # emitted above a table yields "# [MANAGED] x", "", "[tool.x]". Every
+        # re-run must be a fixed point on that shape; re-inserting a separator
+        # each pass made `make gen APPLY=Y` never idempotent.
+        rendered = (
+            '[project]\nname = "test"\n'
+            '\n# [MANAGED] pytest\n\n[tool.pytest.ini_options]\nminversion = "8.0"\n'
+        )
+        phase = FlextInfraInjectCommentsPhase()
+        first_result, _first_changes = phase.apply(rendered)
+        second_result, second_changes = phase.apply(first_result)
+        tm.that(second_result, eq=first_result)
+        tm.that(second_changes, empty=True)

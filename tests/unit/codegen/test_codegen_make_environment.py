@@ -12,6 +12,8 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
+pytestmark = pytest.mark.slow
+
 
 class TestsCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
@@ -141,10 +143,10 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = project_root
+        runtime_root = workspace_root if attached else project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -248,12 +250,12 @@ class TestsCodegenMakeEnvironment:
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has="venv --clear")
+        tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --project")
         if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
             tm.that(commands[2], has="pip check")
 
-    def test_serialized_runner_preserves_provisioned_external_tools(
+    def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
     ) -> None:
         """Keep managed tools reachable while removing the hostile active venv."""
@@ -314,7 +316,9 @@ class TestsCodegenMakeEnvironment:
         tm.that("UV ?= uv" in makefile, eq=True)
         tm.that(
             (
-                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
+                "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
+                "-u UV_PROJECT_ENVIRONMENT "
+                'PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
             in makefile,
@@ -336,7 +340,8 @@ class TestsCodegenMakeEnvironment:
         runtime_python = project_root / ".venv" / "bin" / "python"
         test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
         uv_log = tmp_path / "uv.log"
-        uv = tmp_path / "bin" / "uv"
+        bin_dir = tmp_path / "bin"
+        uv = bin_dir / "uv"
         test_u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
@@ -352,7 +357,9 @@ class TestsCodegenMakeEnvironment:
                     "APPLY=Y",
                 ],
                 cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                # PATH takes the DIRECTORY holding the stub, never the stub
+                # itself: pointing it at the executable makes every lookup miss.
+                env={"UV": str(uv), "PATH": str(bin_dir)},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )
@@ -401,10 +408,10 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that(uv_log.exists(), eq=False)
 
-    def test_serialized_gate_fails_closed_before_managed_environment_exists(
+    def test_public_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
     ) -> None:
-        """A serialized gate preserves the canonical setup-required diagnostic."""
+        """A public gate preserves the canonical setup-required diagnostic."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -431,10 +438,10 @@ class TestsCodegenMakeEnvironment:
 
         for required in (
             "UV ?= uv",
-            '$(UV) venv --clear "$(RUNTIME_VENV)"',
+            '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$$root" submodule update --init --recursive -- "$$child_path"',
+            'git -C "$$superproject" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)

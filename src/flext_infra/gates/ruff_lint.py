@@ -42,6 +42,25 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             c.Infra.VERB_CHECK,
             *check_dirs,
             *ctx.ruff_args,
+            # `check` never mutates: fixing belongs to `make fix`.
+            "--no-fix",
+            "--output-format",
+            c.Infra.OUTPUT_JSON,
+            "--quiet",
+        )
+
+    @override
+    def _build_fix_command(
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+    ) -> t.StrSequence:
+        """Build the explicit Ruff fix command."""
+        _ = project_dir
+        return self._python_module_command(
+            c.Infra.RUFF,
+            c.Infra.VERB_CHECK,
+            *targets,
+            *ctx.ruff_args,
+            "--fix",
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--quiet",
@@ -85,21 +104,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             )
             return False, issues
         return result.exit_code == 0, issues
-
-    @override
-    def _build_fix_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
-    ) -> t.StrSequence:
-        """Build fix command."""
-        _ = project_dir
-        return self._python_module_command(
-            c.Infra.RUFF,
-            c.Infra.VERB_CHECK,
-            *targets,
-            *ctx.ruff_args,
-            "--fix",
-            "--quiet",
-        )
 
 
 __all__: list[str] = ["FlextInfraRuffLintGate"]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
@@ -317,6 +318,32 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
+        def toml_table_at(content: str, *path: str) -> t.JsonMapping:
+            current = TestsFlextInfraUtilities.Tests.toml_mapping(
+                tomllib.loads(content)
+            )
+            for segment in path:
+                current = TestsFlextInfraUtilities.Tests.toml_mapping(current[segment])
+            return current
+
+        @staticmethod
+        def toml_strings_at(content: str, *path: str) -> t.StrSequence:
+            if not path:
+                return ()
+            table = TestsFlextInfraUtilities.Tests.toml_table_at(content, *path[:-1])
+            return TestsFlextInfraUtilities.Tests.toml_strings(table[path[-1]])
+
+        @staticmethod
+        def toml_tables_at(content: str, *path: str) -> t.SequenceOf[t.JsonMapping]:
+            if not path:
+                return ()
+            table = TestsFlextInfraUtilities.Tests.toml_table_at(content, *path[:-1])
+            values = TestsFlextInfraUtilities.Tests.toml_list(table[path[-1]])
+            return tuple(
+                TestsFlextInfraUtilities.Tests.toml_mapping(value) for value in values
+            )
+
+        @staticmethod
         def infra_mapping_result(
             value: t.Infra.InfraMapping,
         ) -> p.Result[t.JsonMapping]:
@@ -363,6 +390,38 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 package=True,
                 editable=is_member,
                 read_only=False,
+            )
+
+        @staticmethod
+        def declare_workspace_ledger(
+            repository: Path, ledger_id: str, ledger_prefix: str | None = None
+        ) -> None:
+            """Declare the typed workspace manifest that owns the ledger.
+
+            A bare ``.beads/config.yaml`` no longer makes a checkout a tracker:
+            the ledger is resolved from the typed manifest. Fixtures that need a
+            tracker therefore declare it here, in one place, instead of each
+            repeating the same manifest construction.
+            """
+            repository_ref = TestsFlextInfraUtilities.Tests.repository_ref(
+                "fixture"
+            ).model_copy(update={"path": Path(), "package": False, "editable": False})
+            tm.ok(
+                u.Cli.yaml_dump(
+                    repository / "config" / "workspace.yaml",
+                    m.Infra.WorkspaceSpec(
+                        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                        name=repository_ref.distribution,
+                        repository=repository_ref,
+                        ledger_id=ledger_id,
+                        # A tracker-owning manifest declares BOTH identifiers
+                        # (mro-cdzxf); callers that need a prefix distinct from
+                        # the SQL-safe database identity state it explicitly.
+                        ledger_prefix=(
+                            ledger_id if ledger_prefix is None else ledger_prefix
+                        ),
+                    ).model_dump(mode="json", exclude_none=True),
+                )
             )
 
         @staticmethod
@@ -491,7 +550,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def write_standalone_workspace_manifest(
-            project_dir: Path, name: str, *, upstream: str = "flext_core"
+            project_dir: Path,
+            name: str,
+            *,
+            upstream: str = "flext_core",
+            inherited_facets: t.StrSequence = (),
         ) -> Path:
             """Write a local standalone workspace manifest for codegen conform."""
             config_dir = project_dir / "config"
@@ -532,6 +595,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  author_name: FLEXT Team\n"
                     "  author_email: team@flext.sh\n"
                     f"  upstream: {upstream}\n"
+                    f"  inherited_facets: {list(inherited_facets)!r}\n"
                     f"  homepage: https://github.com/flext-sh/{name}\n"
                     f"  documentation: https://github.com/flext-sh/{name}\n"
                     "  workspace_root_rel: .\n"
@@ -775,21 +839,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def commit_git_changes(repo_root: Path, message: str) -> None:
             """Commit the current real fixture changes with deterministic identity."""
-            tm.ok(cli_facade.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root))
+            TestsFlextInfraUtilities.Tests.git_bootstrap(repo_root, ("add", "-A"))
             tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "commit", "-m", message], cwd=repo_root
+                u.Infra.git_commit(
+                    m.Infra.GitCommitRequest(repo_root=repo_root, message=message)
                 )
             )
 
         @staticmethod
         def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
             """Return whether a real Git fixture contains the exact ref."""
-            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(
-                cli_facade.capture(
-                    [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
-                ).success
+            report = tm.ok(
+                u.Infra.git_ref_exists(
+                    m.Infra.GitRefRequest(repo_root=repo_root, reference=ref_name)
+                )
             )
+            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(report.value)
             return exists
 
         @staticmethod
@@ -800,38 +865,25 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             remote is re-pointed rather than added: a second ``remote add``
             fails with "remote origin already exists".
             """
+            bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
             bare_remote = remote_root / "origin.git"
-            tm.ok(
-                cli_facade.run_checked([
-                    c.Infra.GIT,
-                    "init",
-                    "--bare",
-                    str(bare_remote),
-                ])
+            bare_remote.mkdir(parents=True, exist_ok=True)
+            bootstrap(bare_remote, ("init", "--bare"))
+            bootstrap(
+                repo_root, ("remote", "set-url", c.Infra.GIT_ORIGIN, str(bare_remote))
             )
             tm.ok(
-                cli_facade.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "remote",
-                        "set-url",
-                        c.Infra.GIT_ORIGIN,
-                        str(bare_remote),
-                    ],
-                    cwd=repo_root,
+                u.Infra.git_push_upstream(
+                    m.Infra.GitPushRequest(
+                        repo_root=repo_root,
+                        remote=c.Infra.GIT_ORIGIN,
+                        branch=c.Infra.GIT_MAIN,
+                    )
                 )
             )
-            tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
-                    cwd=repo_root,
-                )
-            )
-            tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/main"],
-                    cwd=bare_remote,
-                )
+            bootstrap(
+                bare_remote,
+                ("symbolic-ref", c.Infra.GIT_HEAD, f"refs/heads/{c.Infra.GIT_MAIN}"),
             )
             return bare_remote
 
@@ -861,22 +913,58 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def configure_git_identity(repository_root: Path) -> None:
             """Set deterministic repository-local identity for real Git fixtures."""
-            tm.ok(
-                cli_facade.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "config",
-                        "--local",
-                        "user.email",
-                        "tests@flext.local",
-                    ],
-                    cwd=repository_root,
-                )
+            bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
+            bootstrap(
+                repository_root,
+                ("config", "--local", "user.email", "tests@flext.local"),
             )
+            bootstrap(
+                repository_root, ("config", "--local", "user.name", "Flext Tests")
+            )
+
+        @staticmethod
+        def isolated_git_keys() -> t.StrSequence:
+            """Return the repository-local Git variables a fixture must not inherit.
+
+            Git exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE while running
+            hooks. A fixture that inherits them silently operates on the calling
+            repository instead of its own tmp_path, so repository construction
+            must never inherit them. The set is whatever the installed Git
+            declares, never a hardcoded list.
+            """
+            declared = cli_facade.capture([
+                c.Infra.GIT,
+                "rev-parse",
+                "--local-env-vars",
+            ])
+            tm.ok(declared)
+            return tuple(declared.value.split())
+
+        @staticmethod
+        def git_bootstrap(
+            repo_root: Path,
+            command: t.StrSequence,
+            *,
+            overrides: t.StrMapping | None = None,
+        ) -> None:
+            """Run one repository-construction command isolated from the caller.
+
+            Only repository creation belongs here: once a worktree exists, every
+            behavioral operation is expressed through the typed ``u.Infra.git_*``
+            facade, which binds the repository explicitly.
+
+            Isolation is expressed with ``remove_env_keys`` because ``env`` is an
+            overlay that can only add or replace keys, never remove them
+            (mro-wt8qp). ``overrides`` carries topology the fixture itself
+            requires, such as permitting the file transport for a local bare
+            origin.
+            """
             tm.ok(
                 cli_facade.run_checked(
-                    [c.Infra.GIT, "config", "--local", "user.name", "Flext Tests"],
-                    cwd=repository_root,
+                    [c.Infra.GIT, *command],
+                    cwd=repo_root,
+                    env=overrides,
+                    remove_env_keys=TestsFlextInfraUtilities.Tests.isolated_git_keys(),
                 )
             )
 
@@ -893,22 +981,24 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             provider-governed pass their declared provider URL instead.
             """
             baseline_branch = config.Infra.codegen.providers[0].branch
-            commands: t.SequenceOf[t.StrSequence] = (
-                (c.Infra.GIT, "init", "-b", "main"),
-                (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
-                (c.Infra.GIT, "config", "user.name", "Flext Tests"),
-                (c.Infra.GIT, "add", "-A"),
-                (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
-                (c.Infra.GIT, "remote", "add", "origin", origin_url or str(repo_root)),
+            bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
+            bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
+            bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))
+            bootstrap(repo_root, ("config", "user.name", "Flext Tests"))
+            bootstrap(
+                repo_root,
+                ("remote", "add", c.Infra.GIT_ORIGIN, origin_url or str(repo_root)),
+            )
+            bootstrap(repo_root, ("add", "-A"))
+            bootstrap(repo_root, ("commit", "--allow-empty", "-m", "init"))
+            bootstrap(
+                repo_root,
                 (
-                    c.Infra.GIT,
                     "update-ref",
-                    f"refs/remotes/origin/{baseline_branch}",
-                    "HEAD",
+                    f"refs/remotes/{c.Infra.GIT_ORIGIN}/{baseline_branch}",
+                    c.Infra.GIT_HEAD,
                 ),
             )
-            for command in commands:
-                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
 
         @staticmethod
         def to_pascal(snake: str) -> str:
@@ -1073,6 +1163,33 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return service
 
         @staticmethod
+        def ruff_per_file_ignores_toml() -> str:
+            """Render the fleet Ruff policy as a pyproject fragment.
+
+            Reads the same typed SSOT production reads (P0): fixture
+            workspaces carry the real policy — select, ignore, preview and
+            the per-file-ignores map — never a hand-rolled fragment.
+            """
+            ruff_cfg = config.Infra.tooling.tools.ruff
+            select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
+            ignore = ", ".join(
+                f'"{rule}"'
+                for rule in sorted({
+                    *ruff_cfg.lint.ignore,
+                    *ruff_cfg.lint.ignored_rule_rationales,
+                })
+            )
+            rows = "\n".join(
+                f'"{pattern}" = [{", ".join(f'"{rule}"' for rule in rules)}]'
+                for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
+            )
+            return (
+                f"[tool.ruff]\npreview = {str(ruff_cfg.preview).lower()}\n\n"
+                f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
+                f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
+            )
+
+        @staticmethod
         def create_lazy_init_workspace(
             tmp_path: Path,
             *,
@@ -1089,10 +1206,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 (
                     f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
-                    "[tool.ruff.lint.per-file-ignores]\n"
-                    "# PEP 562 lazy facades import typing-only names that are "
-                    "published as strings in __all__.\n"
-                    '"**/__init__.py" = ["TC004"]\n'
+                    + TestsFlextInfraUtilities.Tests.ruff_per_file_ignores_toml()
                 ),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
@@ -1350,8 +1464,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             and races other tests' temp fixtures under xdist.
 
             Returns:
+                Profile from ``repository.role`` when declared; otherwise
                 ``WORKSPACE_ROOT`` when the manifest declares members, else
-                ``WORKSPACE_MEMBER``.
+                ``STANDALONE``.
 
             """
             from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -1359,10 +1474,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace: m.Infra.WorkspaceSpec = tm.ok(
                 FlextInfraWorkspaceDetector.load_workspace_spec(root)
             )
+            role = workspace.repository.role.value
+            if role == c.Infra.MakeProfile.WORKSPACE_ROOT.value:
+                return c.Infra.MakeProfile.WORKSPACE_ROOT
+            if role == c.Infra.MakeProfile.WORKSPACE_MEMBER.value:
+                return c.Infra.MakeProfile.WORKSPACE_MEMBER
+            if role == c.Infra.MakeProfile.STANDALONE.value:
+                return c.Infra.MakeProfile.STANDALONE
             return (
                 c.Infra.MakeProfile.WORKSPACE_ROOT
                 if workspace.members
-                else c.Infra.MakeProfile.WORKSPACE_MEMBER
+                else c.Infra.MakeProfile.STANDALONE
             )
 
         @staticmethod
@@ -1374,9 +1496,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             """
             profile = TestsFlextInfraUtilities.Tests.repository_profile(root)
+            gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
+                config.Infra.codegen.gitignore_sections
+            )
             return tuple(
                 pattern
-                for section in config.Infra.codegen.gitignore_sections
+                for section in gitignore_sections
                 if not section.profiles or profile in section.profiles
                 for pattern in section.patterns
             )

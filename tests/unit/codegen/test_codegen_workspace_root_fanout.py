@@ -11,9 +11,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m
-from tests import u as test_u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
+from tests import u as test_u
 
 
 class TestsCodegenWorkspaceRootFanout:
@@ -72,7 +72,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
         scope=c.Infra.CodegenConformScope.SELF,
         mode=c.Infra.CodegenConformMode.CHECK,
     )
-    plan = tm.ok(
+    plan: m.Infra.CodegenPlan = tm.ok(
         FlextInfraCodegenConform(
             workspace_root=workspace_root, request=request, initial_workspace=workspace
         ).plan(request)

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t, u
+from flext_infra import c, m, t, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
@@ -19,16 +19,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         lazy_init: m.Infra.LazyInitConfig
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
-    def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]:
-        """Return the package-root ABI declared by its existing ``__all__``."""
-        init_path = pkg_dir / c.Infra.INIT_PY
-        if self.rope_workspace.resource(init_path) is None:
-            return frozenset()
-        source = u.Cli.files_read_text(init_path).unwrap()
-        return frozenset(
-            u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)
-        )
-
     def _filter_public_root_exports(
         self,
         *,
@@ -37,41 +27,33 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         lazy_map: t.MutableLazyAliasMap,
         eager_names: frozenset[str],
     ) -> tuple[set[str], t.MutableLazyAliasMap]:
-        """Keep only direct facades in one generated root contract."""
-        explicit_exports = (
-            frozenset()
-            if context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
-            else self._root_public_contract_exports(context.pkg_dir)
+        inherited_facets = self._declared_inherited_facets(context)
+        declared_contract = (
+            self._declared_root_contract(context)
+            if context.current_pkg.startswith("flext_")
+            else None
         )
-        if explicit_exports:
-            missing_owners = explicit_exports.difference(export_names)
-            if missing_owners:
-                missing = ", ".join(sorted(missing_owners))
-                msg = f"public root contract has no source owner: {missing}"
-                raise ValueError(msg)
-        module_export_names = {
-            name
+        source_import_names = self._source_import_names(context.pkg_dir)
+        governed_lazy_map = {
+            name: target
             for name, target in lazy_map.items()
-            if (not target[1] and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS)
+            if self._is_declared_root_export(
+                name,
+                target,
+                root_pkg=context.current_pkg,
+                inherited_facets=inherited_facets,
+                declared_contract=declared_contract,
+                source_import_names=source_import_names,
+            )
         }
+        lazy_map.clear()
+        lazy_map.update(governed_lazy_map)
         public_export_names = {
             name
             for name in export_names
             if name in eager_names
-            or (
-                name in lazy_map
-                and self._is_public_root_export(
-                    name,
-                    lazy_map,
-                    root_pkg=context.current_pkg,
-                    root_namespace_files=self.lazy_init.root_namespace_files,
-                )
-            )
-        } | module_export_names
-        if explicit_exports:
-            # NOTE (multi-agent): mro-pulj keeps regeneration ABI-stable while
-            # module-local helper exports remain available only from their owner.
-            public_export_names.intersection_update(explicit_exports)
+            or (name in governed_lazy_map and name not in c.Infra.PUBLISHED_ALL_EXCLUDE)
+        }
         filtered_lazy_map = {
             name: target
             for name, target in lazy_map.items()
@@ -79,48 +61,97 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         }
         return public_export_names, filtered_lazy_map
 
-    def _is_public_root_export(
-        self,
+    def _declared_root_contract(
+        self, context: m.Infra.LazyInitPackageContext
+    ) -> frozenset[str] | None:
+        if context.generated_init or not context.init_path.is_file():
+            return None
+        # If the project declares subpackages (e.g. services/), root aggregates from sources;
+        # only single-directory/flat projects can declare an ABI filter via manual __init__.py.
+        entry = self.rope_workspace.package(context.pkg_dir)
+        if entry is not None and entry.descendant_child_dirs:
+            return None
+        constants_path = context.pkg_dir / c.Infra.CONSTANTS_PY
+        if self.rope_workspace.resource(constants_path) is not None:
+            imports = self.rope_workspace.semantic(constants_path).declared_imports
+            if any(
+                name != "annotations" and not target.startswith("__future__")
+                for name, target in imports.items()
+            ):
+                return None
+        contract = frozenset(
+            self.rope_workspace.exports(
+                context.init_path,
+                export_options=m.Infra.ExportOptions(allow_assignments=True),
+            )
+        )
+        return contract or None
+
+    def _source_import_names(self, pkg_dir: Path) -> frozenset[str]:
+        constants_path = pkg_dir / c.Infra.CONSTANTS_PY
+        if self.rope_workspace.resource(constants_path) is None:
+            return frozenset()
+        return frozenset(
+            name
+            for name, target in self.rope_workspace.semantic(
+                constants_path
+            ).declared_imports.items()
+            if name != "annotations" and not target.startswith("__future__")
+        )
+
+    @staticmethod
+    def _is_declared_root_export(
         name: str,
-        lazy_map: t.LazyAliasMap,
+        target: t.StrPair,
         *,
         root_pkg: str,
-        root_namespace_files: t.StrSequence,
+        inherited_facets: frozenset[str] | None,
+        declared_contract: frozenset[str] | None,
+        source_import_names: frozenset[str],
     ) -> bool:
-        """Return whether a root-facade export belongs in the external API."""
-        if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
+        # mro-6szaq.14: private names never widen the public root ABI.
+        if name.startswith("_"):
             return False
-        module_path, attr_name = lazy_map[name]
-        if not attr_name:
-            return name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
-        if name in c.Infra.ALIAS_NAMES:
-            return True
-        if name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
-            return True
-        # NOTE (multi-agent): mro-i6nq.10 keeps private descendants out of root ABI.
-        prefix = f"{root_pkg}."
-        if not module_path.startswith(prefix):
+        if declared_contract is not None and name not in declared_contract:
             return False
-        local_module = module_path.removeprefix(prefix)
-        runtime_singleton_export = u.Infra.runtime_singleton_export(
-            f"{local_module}.py"
+        module_path, _attr_name = target
+        runtime_module = f"{module_path.rsplit('.', maxsplit=1)[-1]}.py"
+        if u.Infra.runtime_singleton_export(runtime_module) == name:
+            return True
+        if module_path == root_pkg:
+            return True
+        if module_path.startswith(f"{root_pkg}."):
+            # mro-6szaq.14 contract: any underscore-prefixed source segment
+            # marks the owner as private; the symbol stays behind its facade.
+            tail = module_path[len(root_pkg) + 1 :].split(".")
+            return not any(
+                part.startswith("_") and not part.startswith("__") for part in tail
+            )
+        return not (
+            inherited_facets is not None
+            and name not in inherited_facets
+            and name not in source_import_names
         )
-        if runtime_singleton_export is not None:
-            # mro-j47u: explicit module exports are public; consumers subclass the
-            # validated loader while sharing the exact singleton identity.
-            return True
-        if "." in local_module or local_module.startswith("_"):
-            return False
-        file_name = f"{local_module}.py"
-        if file_name not in root_namespace_files:
-            return False
-        expected_alias = self.lazy_init.public_file_aliases.get(file_name)
-        expected_suffix = self.lazy_init.public_file_suffixes.get(file_name)
-        if name == expected_alias:
-            return True
-        if expected_suffix is not None:
-            return name.endswith(expected_suffix)
-        return True
+
+    def _declared_inherited_facets(
+        self, context: m.Infra.LazyInitPackageContext
+    ) -> frozenset[str] | None:
+        package_entry = self.rope_workspace.package(context.pkg_dir)
+        if package_entry is None or package_entry.project_root is None:
+            return None
+        manifest_path = (
+            package_entry.project_root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        if not manifest_path.is_file():
+            return None
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            package_entry.project_root
+        )
+        if workspace.failure:
+            msg = workspace.error or f"invalid workspace manifest: {manifest_path}"
+            raise ValueError(msg)
+        project = workspace.value.project
+        return frozenset(project.inherited_facets if project is not None else ())
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlannerPublicRootMixin"]

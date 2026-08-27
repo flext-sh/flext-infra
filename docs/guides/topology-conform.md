@@ -1,5 +1,12 @@
 # Topology and Conform Contract
 
+<!-- TOC START -->
+- [Effective topology](#effective-topology)
+- [Full refactor workflow](#full-refactor-workflow)
+- [Synchronization and setup](#synchronization-and-setup)
+- [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
+<!-- TOC END -->
+
 `flext-infra codegen conform` is the sole owner of repository conformance.
 Consumers use the public `u.Infra` accessors and never import workspace detector
 implementations directly.
@@ -13,6 +20,9 @@ implementations directly.
 - An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
   metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
   CI surface, and project runtime.
+- A development lane owns a real lane-local `.venv`. START invokes `make setup`
+  from the lane, with the lane as both project and runtime root; it never links to
+  or mutates another checkout's environment.
 - Generated `.envrc` files derive `PROJECT_ROOT` from the nearest
   `pyproject.toml` through direnv's documented `find_up` stdlib function. They
   do not depend on undocumented `DIRENV_*` variables, so strict evaluation is
@@ -32,9 +42,6 @@ Public accessors:
   `-> Result[m.Infra.RepositoryConformTarget]`
 - `u.Infra.repository_provider(repository, providers) -> Result[m.Infra.ProviderSpec]`
 - `u.Infra.repository_baseline_branch(repository, providers) -> Result[str]`
-- `u.Infra.serialization_lock_execute(lock_paths, timeout_seconds,`
-  `operation, *, timeout_failure, acquisition_failure)`
-  `-> Result[TValue]`
 
 ## Full refactor workflow
 
@@ -62,3 +69,13 @@ repositories enable it only through a typed repository-local overlay. The
 generated `.mise.toml` pins the official Beads CLI version, and conform verifies
 that `mise exec -- bd version` equals that pin before inspecting or initializing
 the tracker.
+
+## MCP / CRG identity (out of scope for conform)
+
+flext-infra conform owns Beads ledger projections only: `ledger_id` from
+`config/workspace.yaml`, `.beads/config.yaml`, and `.beads/metadata.json`, plus
+worktree checkouts that `routes_to_principal_ledger`. It does **not** own MCP
+gateway routing, CRG graph paths, memory `project_id` stores, or activation
+inventory. Those stay in ai-hub (`docs/worktrees.md` three-axis identity).
+Empty `.mcp.json` at a flext root is not a conform defect when Cursor uses the
+ai-hub gateway.

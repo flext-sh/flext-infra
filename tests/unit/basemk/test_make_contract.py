@@ -174,6 +174,25 @@ def _run_make(
 class TestsFlextInfraBasemkMakeContract:
     """Behavior contract for test_make_contract."""
 
+    def test_setup_is_a_declared_public_verb(self) -> None:
+        """`setup` is part of the canonical verb surface and the config loads.
+
+        3e5fbc747 extirpated make serialization and rewrote the surviving guard
+        `if "setup" in serialized` to read `declared`. The two sets are not the
+        same: `serialized` held the verbs that required a serialization lock,
+        and `setup` was excluded because it is what builds the environment those
+        locks protect; `declared` holds every public verb, and `setup` has been
+        one since the surface existed. The rewrite therefore rejected the
+        shipped config/codegen.yaml, so `config.Infra` raised on import and
+        every consumer's `make gen` died before doing any work.
+
+        Reading the config here is the assertion: a guard that rejects the
+        product's own SSOT cannot survive it.
+        """
+        verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
+        assert "setup" in verbs
+        assert len(verbs) == len(config.Infra.codegen.make.verbs)
+
     def test_make_verb_runs_pre_and_post_hooks_from_custom_mk(
         self, tmp_path: Path
     ) -> None:
@@ -278,17 +297,18 @@ class TestsFlextInfraBasemkMakeContract:
             tm.that(result.exit_code, eq=0)
             tm.that(output, has=marker)
 
-    def test_make_run_verb_requires_and_validates_what(self, tmp_path: Path) -> None:
-        """Run needs WHAT and fails clearly when the custom handler is absent."""
+    def test_make_run_verb_defaults_and_validates_what(self, tmp_path: Path) -> None:
+        """Run owns a default command and rejects undeclared selectors."""
         _write_project(tmp_path)
         (tmp_path / "Makefile").write_text(
             "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
             encoding="utf-8",
         )
         (tmp_path / "custom.mk").write_text("# no handlers\n", encoding="utf-8")
-        no_what = _run_make(tmp_path, "run")
-        tm.that(no_what.exit_code, ne=0)
-        tm.that(no_what.stdout + no_what.stderr, has="requires WHAT")
+        run = next(
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == "run"
+        )
+        tm.that(run.default_what, eq="default")
         missing = _run_make(tmp_path, "run", "WHAT=nope")
         tm.that(missing.exit_code, ne=0)
         tm.that(missing.stdout + missing.stderr, has="no custom handler")

@@ -43,6 +43,23 @@ fail() {
 
 command -v bd >/dev/null 2>&1 || fail "bd is not installed; install Beads before provisioning hooks"
 
+# Stage gates (operator law 2026-08-24): install only the stages the config
+# SSOT enables (make.pre_commit / make.pre_push). Both disabled means no
+# pre-commit framework install at all; Beads provisioning still runs.
+{% if make.pre_commit or make.pre_push %}
+command -v pre-commit >/dev/null 2>&1 || fail "pre-commit is not installed; install it before provisioning hooks"
+
+# The config is a codegen projection, so installing without it would leave a
+# shim pointing at a file `make gen` never wrote.
+[ -f "${WORKSPACE_ROOT}/.pre-commit-config.yaml" ] \
+	|| fail ".pre-commit-config.yaml is missing; run 'make gen APPLY=Y' before provisioning hooks"
+
+_log "Installing enabled git-hook stages at ${WORKSPACE_ROOT}"
+pre-commit install{% if make.pre_commit %} -t pre-commit{% endif %}{% if make.pre_push %} -t pre-push{% endif %} >/dev/null \
+	|| fail "pre-commit hook installation failed"
+{% else %}
+_log "Git-hook stages disabled by config gate; skipping pre-commit install"
+{% endif %}
 _log "Installing Beads git hooks (chained) at ${WORKSPACE_ROOT}"
 bd hooks install --chain >/dev/null || fail "bd hooks install --chain failed"
 
@@ -96,5 +113,13 @@ grep -q 'BD_ALLOW_AGENT_COMMIT_TRAILERS' "${hook_path}" \
 	|| fail "guard token missing after injection"
 grep -q 'bd hooks run prepare-commit-msg' "${hook_path}" \
 	|| fail "bd delegation missing; refusing to leave hook without beads integration"
+{% if make.pre_commit %}
+[ -f "$(git rev-parse --git-path hooks/pre-commit)" ] \
+	|| fail "pre-commit hook missing after provisioning"
+{% endif %}
+{% if make.pre_push %}
+[ -f "$(git rev-parse --git-path hooks/pre-push)" ] \
+	|| fail "pre-push hook missing after provisioning"
+{% endif %}
 
 echo "install-git-hooks: prepare-commit-msg guarded (BD_ALLOW_AGENT_COMMIT_TRAILERS opt-in)"

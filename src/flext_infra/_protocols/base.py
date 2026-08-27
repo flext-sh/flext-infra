@@ -162,12 +162,32 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    @runtime_checkable
+    class ProjectSpec(Protocol):
+        """Manifest-declared project metadata consumed by conformance."""
+
+        @property
+        def version(self) -> str:
+            """Declared release version, the SSOT for ``[project].version``."""
+            ...
+
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
 
         @property
         def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
             """Workspace root repository."""
+            ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsBase.ProjectSpec | None:
+            """Manifest project metadata; ``None`` outside a materialized tree.
+
+            hq-36xk projects the declared version onto ``[project]`` during
+            conformance, so the protocol must expose the fact the model already
+            carries -- otherwise the only consumer reads through a contract that
+            does not admit it.
+            """
             ...
 
         @property
@@ -202,32 +222,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def branch(self) -> str:
             """Provider-owned integration baseline."""
-            ...
-
-    @runtime_checkable
-    class ResultOperation[TValue](Protocol):
-        """One typed operation executed while serialization locks are held."""
-
-        def __call__(self) -> p.Result[TValue]:
-            """Run the operation and return its typed result."""
-            ...
-
-    @runtime_checkable
-    class LockTimeoutFailure[TValue](Protocol):
-        """Typed timeout mapping for the public serialization lock facade."""
-
-        def __call__(
-            self, lock_path: Path, timeout_seconds: int, /
-        ) -> p.Result[TValue]:
-            """Map one lock timeout to the caller's result domain."""
-            ...
-
-    @runtime_checkable
-    class LockAcquisitionFailure[TValue](Protocol):
-        """Typed acquisition-error mapping for the serialization lock facade."""
-
-        def __call__(self, detail: str, /) -> p.Result[TValue]:
-            """Map one lock acquisition failure to the caller's result domain."""
             ...
 
     @runtime_checkable
@@ -339,6 +333,31 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def dependency_cooldown_days(self) -> int:
+            """Supply-chain cooldown shared by dependency update tools."""
+            ...
+
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from cooldown for urgent security floors."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package cooldown cutoffs as RFC 3339 timestamps."""
+            ...
+
+        @property
+        def uv_exclude_newer(self) -> str:
+            """Uv exclude-newer cooldown window for dependency resolution."""
+            ...
+
+        # `uv_exclude_newer_package` used to sit here, undocumented and with no
+        # implementation on ToolchainSpec, so the model never satisfied its own
+        # protocol. `dependency_cooldown_overrides` above is that concept, named
+        # for the policy rather than the uv key it renders into.
+
+        @property
         def kubectl_version(self) -> str:
             """Exact kubectl version."""
             ...
@@ -379,6 +398,16 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def qlty_version(self) -> str:
+            """Exact qlty code-smell scanner version."""
+            ...
+
+        @property
+        def go_version(self) -> str:
+            """Exact Go runtime version backing go: mise selectors."""
+            ...
+
+        @property
         def mise_version(self) -> str:
             """Exact mise binary version."""
             ...
@@ -415,6 +444,11 @@ class FlextInfraProtocolsBase(Protocol):
     @staticmethod
     def runtime_singleton_export(file_name: str) -> str | None:
         """Return the public singleton exported by a runtime module."""
+        ...
+
+    @staticmethod
+    def ordered_namespace_exports(*, export_names: t.StrSequence) -> t.StrSequence:
+        """Order root-package exports with alias hierarchy preserved."""
         ...
 
     @classmethod

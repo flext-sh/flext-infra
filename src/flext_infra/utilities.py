@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import u
+from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -25,7 +26,7 @@ from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
-from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
@@ -37,7 +38,6 @@ from flext_infra._utilities.namespace_analysis import (
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
-from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.namespace_facades import (
     FlextInfraUtilitiesRefactorNamespaceFacades,
 )
@@ -46,9 +46,7 @@ from flext_infra._utilities.namespace_moves import (
 )
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.refactor_discovery import (
@@ -57,7 +55,6 @@ from flext_infra._utilities.refactor_discovery import (
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
@@ -72,22 +69,13 @@ from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModu
 from flext_infra._utilities.rope_mro_transform import (
     FlextInfraUtilitiesRopeMroTransform,
 )
-from flext_infra._utilities.rope_patch.pep695_patch import (
-    FlextInfraUtilitiesRopePep695Patch,
-)
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-from flext_infra._utilities.serialization_lock import (
-    FlextInfraUtilitiesSerializationLock,
-)
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
-)
-from flext_infra._utilities.worktree_transaction import (
-    FlextInfraUtilitiesWorktreeTransaction,
 )
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
@@ -97,9 +85,9 @@ class FlextInfraUtilities(u):
 
     Usage::
 
-        from flext_infra import u
+        from flext_infra import m, u
 
-        u.Cli.run_checked(["git", "status"])
+        u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)
         u.Infra.discover_projects(workspace_root)
         u.Infra.parse_semver("1.2.3")
@@ -114,7 +102,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
-        FlextInfraUtilitiesRopeAnalysis,
         FlextInfraUtilitiesRopeAnalysisWorkspace,
         FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRopeHelpers,
@@ -137,11 +124,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsValidate,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesGithubPr,
-        FlextInfraUtilitiesPyproject,
-        FlextInfraUtilitiesNamespaceConfig,
         FlextInfraUtilitiesDependencies,
-        FlextInfraUtilitiesGitScope,
-        FlextInfraUtilitiesProjectDiscovery,
+        FlextInfraUtilitiesGit,
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesProtectedEdit,
@@ -158,12 +142,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesSerializationLock,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
-        # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing
-        # u.Infra Git owner and expose one central execution/report surface.
-        FlextInfraUtilitiesWorktreeTransaction,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

@@ -20,6 +20,7 @@ class FlextInfraConstantsSourceCode:
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
         ".venv",
+        ".worktrees",
         "node_modules",
         "__pycache__",
         "dist",
@@ -49,7 +50,12 @@ class FlextInfraConstantsSourceCode:
         "legado",
     }
     "Directories to skip when scanning pyproject.toml files."
-    CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"reports"}
+    CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        ".archive",
+        "reports",
+        ".agents",
+        ".beads",
+    }
     "Directories to exclude during quality checks."
     ITERATION_EXCLUDED_PARTS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         "dist-packages",
@@ -59,6 +65,7 @@ class FlextInfraConstantsSourceCode:
     }
     "Path parts to skip during file iteration (superset of COMMON_EXCLUDED_DIRS)."
     VALIDATION_CLONE_EXCLUDES: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        ".archive",
         ".ropeproject",
         "htmlcov",
     }
@@ -160,8 +167,8 @@ class FlextInfraConstantsSourceCode:
     "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
     DICT_GENERIC_RE: Final[t.RegexPattern] = re.compile(r"\b(?:dict|Dict)\[")
     "Regex: opening of any ``dict[...]`` / ``Dict[...]`` annotation."
-    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9\s-]")
-    "Regex: characters to strip when generating an anchor slug."
+    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9_\s-]")
+    "Regex: characters to strip when generating an anchor slug (``_`` is kept, as python-markdown does)."
     ANCHOR_WHITESPACE_RE: Final[t.RegexPattern] = re.compile(r"\s+")
     "Regex: any run of whitespace (collapsed to single hyphen in anchors)."
     ANCHOR_DASH_COLLAPSE_RE: Final[t.RegexPattern] = re.compile(r"-+")
@@ -327,6 +334,22 @@ class FlextInfraConstantsSourceCode:
             rf"(from\s+{re.escape(module_name)}\s+import\s+)"
             rf"(\b{re.escape(old_symbol)}\b)"
         )
+
+    @staticmethod
+    def compile_mro_facade_alias_import(
+        module_name: str, facade_alias: str
+    ) -> t.RegexPattern:
+        r"""Compile ``^from <module> import <facade> as (alias)$`` (MULTILINE) capturing the alias."""
+        return re.compile(
+            rf"^from[ \t]+{re.escape(module_name)}[ \t]+import[ \t]+"
+            rf"{re.escape(facade_alias)}[ \t]+as[ \t]+([A-Za-z_]\w*)[ \t]*$",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_mro_alias_reference(alias_name: str) -> t.RegexPattern:
+        r"""Compile a bare ``<alias>`` reference (excludes attribute suffixes and import binders)."""
+        return re.compile(rf"(?<![.\w])(?<!from )(?<!import ){re.escape(alias_name)}\b")
 
     @staticmethod
     def compile_mro_bare_qualify(old_symbol: str) -> t.RegexPattern:
@@ -632,8 +655,8 @@ class FlextInfraConstantsSourceCode:
     # --- Lint output parsing patterns ---
     LINE_COL_RE: Final[t.RegexPattern] = re.compile(r":\d+(?::\d+)?")
     "Regex: line:col or line:col:col reference in lint output."
-    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s+\|")
-    "Regex: code frame lines (e.g. '  5 | ...' from ruff output)."
+    CODE_FRAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*\d+\s*[|+-]")
+    "Regex: code/suggestion frame lines ('5 | code', '5 + added', '5 - removed')."
     CODE_FRAME_BODY_RE: Final[t.RegexPattern] = re.compile(r"^\s*\|")
     "Regex: code frame continuation lines."
     UNUSED_IMPORT_RE: Final[t.RegexPattern] = re.compile(

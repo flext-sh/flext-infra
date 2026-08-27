@@ -6,7 +6,7 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -55,8 +55,8 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve and validate requested gate names."""
-        resolved: t.MutableSequenceOf[str] = []
+        """Resolve, validate and deduplicate requested gate names."""
+        resolved: list[str] = []
         for gate in gates:
             name = gate.strip()
             if not name:
@@ -66,6 +66,26 @@ class FlextInfraWorkspaceChecker(
             if name not in resolved:
                 resolved.append(name)
         return r[list[str]].ok(list(resolved))
+
+    @staticmethod
+    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
+        """Scope *gates* to the CI ternary owner set (RULING 2)."""
+        ci = config.Infra.codegen.make.ci
+        raw = u.Cli.env_read(ci.variable).unwrap().strip()
+        owned: frozenset[str]
+        if raw == ci.value:
+            owned = frozenset(ci.check_gates)
+        elif raw == ci.local_value:
+            owned = frozenset(ci.local_check_gates)
+        else:
+            return [gate for gate in gates if gate]
+        scoped = [gate for gate in gates if gate and gate in owned]
+        FlextInfraWorkspaceChecker._gate_logger.info(
+            "ci_run_check_gates",
+            gates=scoped,
+            reason=f"{ci.variable}={raw} scopes check gates to its owner set",
+        )
+        return scoped
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -82,7 +102,30 @@ class FlextInfraWorkspaceChecker(
                 project_targets_result.error or "project resolution failed"
             )
         project_targets = project_targets_result.value
-        gates = params.gates
+        requested_gates = [gate for gate in params.gates if gate]
+        gates = cls.apply_ci_gate_rules(params.gates)
+        if not gates:
+            if requested_gates:
+                # A caller that named its gates (``make fix APPLY=Y`` asks for
+                # the fixable set) and whose selection the CI token does not
+                # own ran them in the token's complementary stage instead:
+                # pre-commit (CI=Y) owns markdown/smells fixing, pre-push
+                # (CI=N) owns the whole-program type checkers. The verb is a
+                # documented no-op here, never a failure.
+                FlextInfraWorkspaceChecker._gate_logger.info(
+                    "ci_gate_noop",
+                    gates=requested_gates,
+                    reason=(
+                        "requested gates are owned by the complementary CI "
+                        "stage; nothing to run under this token"
+                    ),
+                )
+                return r[bool].ok(True)
+            return r[bool].fail(
+                "no check gates remain after CI token filtering "
+                f"({config.Infra.codegen.make.ci.variable}="
+                f"{config.Infra.codegen.make.ci.value})"
+            )
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,

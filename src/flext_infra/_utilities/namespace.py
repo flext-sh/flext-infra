@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import ast
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar, Final
 
 from flext_cli import r, u
-from flext_infra._config import config
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -48,17 +48,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         return False
 
     @classmethod
-    def _lazy_init_config(cls) -> m.Infra.LazyInitConfig:
-        """Return the validated lazy-init policy document."""
-        return config.Infra.tooling.lazy_init
-
-    @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether *file_name* is a governed root-namespace facade file."""
-        return (
-            file_name in cls._lazy_init_config().root_namespace_files
-            or cls.runtime_singleton_export(file_name) is not None
-        )
+        return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
 
     @staticmethod
     def runtime_singleton_export(file_name: str) -> str | None:
@@ -78,8 +70,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         parts = tuple(part for part in package_name.split(".") if part)
         if not parts:
             return ""
-        settings = cls._lazy_init_config()
-        return parts[0] if parts[0] in settings.surface_prefixes else "src"
+        return parts[0] if parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS else "src"
 
     @classmethod
     def matches_project_namespace_package(cls, package_name: str) -> bool:
@@ -94,40 +85,27 @@ class FlextInfraUtilitiesCodegenNamespace:
             return False
         return len(parts) == 1
 
-    @classmethod
+    @staticmethod
     def ordered_namespace_exports(
-        cls, *, package_dir: Path, package_name: str, export_names: t.StrSequence
+        *, package_dir: Path, package_name: str, export_names: t.StrSequence
     ) -> t.StrSequence:
         """Order root-package exports with alias hierarchy preserved."""
+        _ = (package_dir, package_name)
         ordered_unique = tuple(dict.fromkeys(export_names))
         export_set = set(ordered_unique)
-        settings = cls._lazy_init_config()
-        local_aliases = tuple(
-            alias
-            for file_name, alias in settings.public_file_aliases.items()
-            if alias in export_set and (package_dir / file_name).is_file()
-        )
-        inherited_aliases = tuple(
-            alias
-            for alias in settings.inherited_exports.get(
-                cls.surface_name(package_name), ()
-            )
-            if alias in export_set and alias not in local_aliases
-        )
-        configured_aliases = tuple(dict.fromkeys((*local_aliases, *inherited_aliases)))
         preferred_aliases = tuple(
             alias for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER if alias in export_set
         )
-        ordered_aliases = tuple(
-            dict.fromkeys((
-                *preferred_aliases,
-                *(
-                    alias
-                    for alias in configured_aliases
-                    if alias not in preferred_aliases
-                ),
-            ))
+        declared_aliases = tuple(
+            name
+            for name in ordered_unique
+            if (
+                name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+                and name not in preferred_aliases
+            )
         )
+        ordered_aliases = (*preferred_aliases, *declared_aliases)
         alias_set = set(ordered_aliases)
         other_exports = tuple(name for name in ordered_unique if name not in alias_set)
         return (*other_exports, *ordered_aliases)
@@ -145,9 +123,38 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Return the runtime aliases actually published by one package root."""
         return tuple(
             alias
-            for file_name, alias in cls._lazy_init_config().public_file_aliases.items()
-            if alias.isidentifier() and (package_dir / file_name).is_file()
+            for module_file in sorted(package_dir.glob("*.py"))
+            for alias in cls._declared_exports(module_file)
+            if (
+                alias.isidentifier()
+                and alias.islower()
+                and len(alias) <= c.Infra.MAX_ALIAS_LENGTH
+            )
         )
+
+    @staticmethod
+    def _declared_exports(file_path: Path) -> t.StrSequence:
+        if not file_path.is_file():
+            return ()
+        tree = ast.parse(file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+        for node in tree.body:
+            match node:
+                case ast.Assign(targets=targets, value=value) if any(
+                    isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
+                    for target in targets
+                ):
+                    literal = ast.literal_eval(value)
+                case ast.AnnAssign(target=ast.Name(id=name), value=value) if (
+                    name == c.Infra.DUNDER_ALL and value is not None
+                ):
+                    literal = ast.literal_eval(value)
+                case _:
+                    continue
+            if isinstance(literal, (list, tuple)) and all(
+                isinstance(item, str) for item in literal
+            ):
+                return tuple(literal)
+        return ()
 
     @classmethod
     def layout(
@@ -162,16 +169,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         if not package_name:
             return None
-        project_name = (
-            project.name
-            if project is not None and project.name
-            else FlextInfraUtilitiesDocsScope.project_name_from_payload(
+        if project is not None and project.name:
+            project_name = project.name
+        elif (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file():
+            project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
                 resolved_root,
                 FlextInfraUtilitiesDocsScope.project_payload(resolved_root),
             )
-            if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
-            else resolved_root.name
-        )
+        else:
+            project_name = resolved_root.name
         class_name_source = (
             project_name
             if project_name != resolved_root.name
@@ -193,7 +199,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _resolve_family(
-        cls, file_path: Path, settings: m.Infra.LazyInitConfig
+        cls, file_path: Path
     ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
@@ -204,23 +210,22 @@ class FlextInfraUtilitiesCodegenNamespace:
             ),
             None,
         )
-        expected_family = (
-            c.Infra.FAMILY_SUFFIXES[family_alias]
-            if family_alias is not None
-            else settings.public_file_suffixes.get(file_path.name)
+        declared_exports = cls._declared_exports(file_path)
+        expected_alias = next(
+            (
+                name
+                for name in declared_exports
+                if name.islower() and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            ),
+            family_alias,
         )
-        expected_alias = (
-            family_alias
+        expected_family = next(
+            (name for name in declared_exports if name[:1].isupper()),
+            c.Infra.FAMILY_SUFFIXES.get(family_alias)
             if family_alias is not None
-            else settings.public_file_aliases.get(file_path.name)
+            else None,
         )
-        family_tokens: t.StrSequence = (
-            tuple(settings.private_family_tokens.get(family_alias, ()))
-            if family_alias is not None
-            else (expected_family,)
-            if expected_family
-            else ()
-        )
+        family_tokens: t.StrSequence = (expected_family,) if expected_family else ()
         return family_alias, expected_family, expected_alias, family_tokens
 
     @classmethod
@@ -232,7 +237,6 @@ class FlextInfraUtilitiesCodegenNamespace:
         family_alias: str | None,
         expected_alias: str | None,
         expected_family: str | None,
-        settings: m.Infra.LazyInitConfig,
     ) -> tuple[bool, bool, bool, bool, bool, bool, bool, bool, str | None]:
         """Return all is_* booleans and resolved surface_name.
 
@@ -256,10 +260,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if len(resolved_rel_path.parts) == 1 and package_depth <= 1
             else None
         )
-        is_namespace_file = (
-            resolved_rel_path.name in settings.root_namespace_files
-            or runtime_singleton_export is not None
-        )
+        is_namespace_file = bool(cls._declared_exports(file_path))
         is_governed_namespace = (
             expected_alias is not None or expected_family is not None
         )
@@ -290,9 +291,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
-    def _resolve_project_prefix(
-        cls, file_path: Path, settings: m.Infra.LazyInitConfig
-    ) -> str:
+    def _resolve_project_prefix(cls, file_path: Path) -> str:
         """Derive the class-stem prefix for one file inside a project."""
         project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
         if project_root is None:
@@ -306,7 +305,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         except ValueError:
             return class_stem
         surface_prefix = (
-            settings.surface_prefixes.get(rel_parts[0], "") if rel_parts else ""
+            rel_parts[0].title()
+            if rel_parts and rel_parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
+            else ""
         )
         return f"{surface_prefix}{class_stem}" if surface_prefix else class_stem
 
@@ -315,7 +316,6 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls, file_path: Path, *, rel_path: Path | None = None, current_pkg: str = ""
     ) -> m.Infra.NamespaceModulePolicy:
         """Return the derived Pydantic policy for one governed module."""
-        settings = cls._lazy_init_config()
         package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
             file_path
         )
@@ -323,7 +323,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         package_parts = tuple(part for part in package_name.split(".") if part)
 
         family_alias, expected_family, expected_alias, family_tokens = (
-            cls._resolve_family(file_path, settings)
+            cls._resolve_family(file_path)
         )
         (
             is_fixture_module,
@@ -342,11 +342,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             family_alias,
             expected_alias,
             expected_family,
-            settings,
         )
 
         surface_name = package_parts[0] if package_parts else ""
-        if surface_name not in settings.surface_prefixes:
+        if surface_name not in c.Infra.NON_PUBLIC_LAZY_ROOTS:
             surface_name = "src"
 
         enforce_contract = (
@@ -375,22 +374,23 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         type_checking_imports = tuple(
             name
-            for name in dict.fromkeys((
-                *settings.public_file_aliases.values(),
-                *settings.inherited_exports.get(surface_name, ()),
-            ))
-            if name.isidentifier()
+            for name in cls._declared_exports(file_path)
+            if (
+                name.isidentifier()
+                and name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            )
         )
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=enforce_contract,
             export_symbols=export_symbols,
             include_in_lazy_init=include_in_lazy_init,
-            project_prefix=cls._resolve_project_prefix(file_path, settings),
+            project_prefix=cls._resolve_project_prefix(file_path),
             expected_alias=expected_alias,
             expected_family=expected_family,
             family_tokens=family_tokens,
             accepted_suffixes=((expected_family,) if expected_family else ()),
-            allow_main_export=file_path.name in settings.main_export_files,
+            allow_main_export="main" in cls._declared_exports(file_path),
             allow_type_alias=(
                 file_path.name == c.Infra.TYPINGS_PY
                 or file_path.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
