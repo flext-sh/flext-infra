@@ -1433,6 +1433,7 @@ class TestScriptDispatchMakefile:
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
         tm.that(gen.default_what, eq="check")
         tm.that(gen.apply_guarded, eq=True)
+        tm.that("init" in gen.whats, eq=True)
         tm.that(hasattr(make_config, "serialization"), eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
@@ -1444,6 +1445,7 @@ class TestScriptDispatchMakefile:
         tm.that(" codegen" in public_line, eq=False)
         tm.that("_DEFAULT_gen := check" in rendered, eq=True)
         tm.that("_builtin_gen_check:" in rendered, eq=True)
+        tm.that("_builtin_gen_init:" in rendered, eq=True)
         tm.that("_builtin_gen_apply:" in rendered, eq=True)
         tm.that("_builtin_codegen_check" in rendered, eq=False)
         tm.that("_builtin_codegen_apply" in rendered, eq=False)
@@ -1460,6 +1462,7 @@ class TestScriptDispatchMakefile:
             if line.startswith(".PHONY:") and "_builtin_" in line
         )
         tm.that("_builtin_gen_check" in phony_line, eq=True)
+        tm.that("_builtin_gen_init" in phony_line, eq=True)
         tm.that("_builtin_gen_apply" in phony_line, eq=True)
         # Both handlers drive the conform engine (CLI namespace is unchanged).
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
@@ -1474,6 +1477,9 @@ class TestScriptDispatchMakefile:
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
+        gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
+        tm.that(gen_init_body.count("codegen init"), eq=2)
+        tm.that(gen_init_body, lacks=["codegen conform", "WORKSPACE_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
         tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
@@ -1483,6 +1489,72 @@ class TestScriptDispatchMakefile:
         for policy in handler_policies.values():
             tm.that("|gen|" in policy.target_pattern, eq=True)
             tm.that("|codegen|" in policy.target_pattern, eq=False)
+
+    def test_make_gen_init_bypasses_runtime_and_topology_discovery(
+        self, tmp_path: Path
+    ) -> None:
+        """Execute the public selector with process sentinels around its owner."""
+        rendered = self._render_root_makefile(
+            tmp_path, extra_verbs=(), script_dispatch=None
+        )
+        root = tmp_path / "declared-target"
+        package = root / "src" / "demo_root"
+        package.mkdir(parents=True)
+        makefile = root / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(rendered, encoding="utf-8")
+        (root / "custom.mk").write_text(
+            "$(error init selector evaluated custom.mk)\n", encoding="utf-8"
+        )
+
+        calls = root / "init.calls"
+        forbidden = root / "forbidden.calls"
+        sentinel_bin = root / "sentinel-bin"
+        for command in ("git", "bd", "mise", "uv", "sed", "sort", "tr"):
+            u.Tests.write_executable(
+                sentinel_bin / command,
+                f"#!/bin/sh\nprintf '%s\\n' '{command}' >> '{forbidden}'\nexit 97\n",
+            )
+        driver = root / "init-owner"
+        u.Tests.write_executable(
+            driver,
+            "#!/bin/sh\n"
+            "set -eu\n"
+            f"printf '%s\\n' \"$*\" >> '{calls}'\n"
+            "test \"$1 $2\" = 'codegen init'\n"
+            'case " $* " in\n'
+            f"  *' --apply '*) printf '%s\\n' '# generated' > '{package / '__init__.py'}' ;;\n"
+            f"  *' --check '*) test -f '{package / '__init__.py'}' ;;\n"
+            "  *) exit 98 ;;\n"
+            "esac\n",
+        )
+        environment = dict(os.environ)
+        environment["PATH"] = f"{sentinel_bin}:{environment['PATH']}"
+
+        invoked = u.Cli.run_raw(
+            [
+                "make",
+                "--no-print-directory",
+                "-f",
+                str(makefile),
+                "gen",
+                "WHAT=init",
+                "APPLY=Y",
+                f"PROJECT_FLEXT_INFRA={driver}",
+            ],
+            cwd=root,
+            env=environment,
+        )
+
+        tm.ok(invoked)
+        tm.that(invoked.value.exit_code, eq=0)
+        tm.that(forbidden.exists(), eq=False)
+        tm.that(
+            calls.read_text(encoding="utf-8").splitlines(),
+            eq=[
+                f"codegen init --workspace {root} --apply",
+                f"codegen init --workspace {root} --check",
+            ],
+        )
 
     def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
         """Gas Town owns lifecycle; generated Make exposes no work command."""
