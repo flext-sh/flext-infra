@@ -465,7 +465,10 @@ Infra:
         apply_guarded: false
       - name: gen
         default_what: check
-        whats: [check, all, apply]
+        # `init` is the narrow package-initializer owner. It intentionally
+        # bypasses conform so regenerating lazy ``__init__.py`` files never
+        # discovers workspace topology or inspects external runtime state.
+        whats: [check, all, apply, init]
         apply_guarded: true
         apply_what: apply
       - name: mod

@@ -124,6 +124,24 @@ def test_gen_routes_through_project_root() -> None:
         assert all('--root "$(PROJECT_ROOT)"' in line for line in generation_lines)
 
 
+def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
+    """The narrow init selector never enters conform, hooks, or topology."""
+    text = _template_text()
+    init_lines = _recipe_bodies()["_builtin_gen_init"]
+    init_commands = [line for line in init_lines if "codegen init" in line]
+
+    assert len(init_commands) == 2
+    assert all('--workspace "$(PROJECT_ROOT)"' in line for line in init_commands)
+    assert all("codegen conform" not in line for line in init_lines)
+    assert "$(filter-out setup gen,$(PUBLIC_VERBS)):" in text
+    public_init = text.split("gen:\n", 1)[1].split("\n\n", 1)[0]
+    init_branch = public_init.split("else", 1)[0]
+    assert "_builtin_gen_init" in init_branch
+    assert "_dispatch" not in init_branch
+    assert "WORKSPACE_ROOT := $(PROJECT_ROOT)" in text
+    assert "INIT_FLEXT_INFRA" not in text
+
+
 def test_project_selector_resolves_members_from_workspace_root() -> None:
     text = _template_text()
     assert "override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)" in text
