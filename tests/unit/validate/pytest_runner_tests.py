@@ -398,6 +398,56 @@ class TestsFlextInfraPytestRunner:
             ],
         )
 
+    def test_summary_uses_effective_failure_exit_from_diagnostics(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A zero child status cannot produce a green summary for failed JUnit."""
+        runner = self._runner(tmp_path)
+
+        def fake_run_to_file(
+            cmd: t.StrSequence,
+            output_file: t.Cli.TextPath,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            live: bool = False,
+            deadline: p.Cli.ProcessDeadline | None = None,
+        ) -> p.Result[int]:
+            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
+            log_path = Path(output_file)
+            report_dir = log_path.parent
+            log_path.write_text("1 failed in 0.01s\n", encoding="utf-8")
+            (report_dir / "junit.xml").write_text(
+                (
+                    '<?xml version="1.0"?>'
+                    '<testsuites><testsuite tests="1" failures="1" errors="0" '
+                    'skipped="0" time="0.01"><testcase classname="Tests" '
+                    'name="test_bad" time="0.01"><failure message="boom">'
+                    "assert false</failure></testcase></testsuite></testsuites>"
+                ),
+                encoding="utf-8",
+            )
+            _dump_real_profile(report_dir / "pytest.pstats")
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+
+        exit_code: int = tm.ok(runner.execute())
+        latest = (
+            (tmp_path / ".reports" / "tests" / "latest.txt")
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+        summary = (tmp_path / ".reports" / "tests" / latest / "summary.txt").read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(exit_code, eq=1)
+        tm.that(summary, has=["failed=1", "exit=1", "state=COMPLETED"])
+
     def test_local_full_argv_keeps_testmon_without_coverage(
         self, tmp_path: Path
     ) -> None:
