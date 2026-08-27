@@ -31,6 +31,17 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
+    @staticmethod
+    def _link_mode(
+        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
+    ) -> str:
+        """Resolve the repository override through one codegen authority."""
+        link_mode = repository.uv_link_mode or toolchain.uv_link_mode
+        if not isinstance(link_mode, str):
+            msg = "resolved uv link mode must be a string"
+            raise TypeError(msg)
+        return link_mode
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -129,11 +140,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 f"governed branch ancestry violations: {details}"
             )
-        # Beads binary/ledger verification must run before drift reporting so a
-        # checksum or version mismatch is not shadowed by missing projections.
+        # Verify the binary before any write. In apply mode the ledger itself is
+        # inspected only after its generated config has been materialized; doing
+        # the live inspection here made a stale endpoint impossible to repair.
         for beads_plan in plan.beads:
             verified_beads = self._verify_beads_plan(
-                beads_plan, allow_missing=mode is c.Infra.CodegenConformMode.CHECK
+                beads_plan,
+                allow_missing=mode is c.Infra.CodegenConformMode.CHECK,
+                inspect_ledger=mode is c.Infra.CodegenConformMode.CHECK,
             )
             if verified_beads.failure:
                 return r[m.Infra.CodegenResult].fail(
@@ -197,6 +211,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 f"codegen apply did not reach a fixed point: {paths}"
             )
+        for beads_plan in verified_plan.beads:
+            verified_beads = self._verify_beads_plan(
+                beads_plan, allow_missing=False, inspect_ledger=True
+            )
+            if verified_beads.failure:
+                return r[m.Infra.CodegenResult].fail(
+                    verified_beads.error or "Beads ledger verification failed"
+                )
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
         )
@@ -1044,6 +1066,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
+            uv_link_mode=repository.uv_link_mode,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1174,6 +1197,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
+            uv_link_mode=repository.uv_link_mode,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1573,7 +1597,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
-            server = codegen.toolchain.beads.server
+            server = workspace.beads_server or codegen.toolchain.beads.server
             if server is None:
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
@@ -1581,7 +1605,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             identity = self.ledger_identity_for_target(workspace, target)
             if identity is None:
                 return r[p.Model].fail(
-                    "Beads ledger identity is not declared for the target"
+                    "Beads ledger identity is not declared for the conform target"
                 )
             issue_prefix, database = identity
             return r[p.Model].ok(
@@ -1593,7 +1617,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
-            server = codegen.toolchain.beads.server
+            server = workspace.beads_server or codegen.toolchain.beads.server
             if server is None:
                 return r[p.Model].fail(
                     "Beads ledger server is not declared in the toolchain SSOT"
@@ -1601,7 +1625,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             identity = self.ledger_identity_for_target(workspace, target)
             if identity is None:
                 return r[p.Model].fail(
-                    "Beads ledger identity is not declared for the target"
+                    "Beads ledger identity is not declared for the conform target"
                 )
             _issue_prefix, database = identity
             return r[p.Model].ok(
@@ -1709,7 +1733,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
-                    uv_link_mode=codegen.toolchain.uv_link_mode,
+                    uv_link_mode=FlextInfraCodegenConform._link_mode(
+                        repository, codegen.toolchain
+                    ),
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                     dependency_cooldown_exclusions=(
                         codegen.toolchain.dependency_cooldown_exclusions
@@ -1810,7 +1836,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     target, workspace, infra_repository.value
                 ),
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_link_mode=FlextInfraCodegenConform._link_mode(
+                    repository, codegen.toolchain
+                ),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
@@ -1873,18 +1901,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"supported licenses: {supported}"
             )
         profile = target.make_profile
-        infra_repository = FlextInfraCodegenConform._infra_repository(workspace)
-        if infra_repository.failure:
-            return r[m.Infra.ProjectRenderContext].fail(
-                infra_repository.error
-                or "infrastructure CLI repository resolution failed"
-            )
-        infra_provider = FlextInfraCodegenConform._repository_provider(
-            infra_repository.value, codegen
+        make_context = FlextInfraCodegenConform.make_render_context(
+            repository, target, workspace, codegen, tooling_runtime=tooling_runtime
         )
-        if infra_provider.failure:
+        if make_context.failure:
             return r[m.Infra.ProjectRenderContext].fail(
-                infra_provider.error or "infrastructure provider resolution failed"
+                make_context.error or "Make render context resolution failed"
             )
         repository_provider = FlextInfraCodegenConform._repository_provider(
             repository, codegen
@@ -1894,16 +1916,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository_provider.error or "repository provider resolution failed"
             )
         flext_provider = repository_provider.value
-        members = (
-            tuple(workspace.members)
-            if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-            else ()
-        )
-        gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
-        if gitlinks.failure:
-            return r[m.Infra.ProjectRenderContext].fail(
-                gitlinks.error or "managed Gitlink resolution failed"
-            )
         packaged_data_dirs = (
             tuple(
                 data_dir
@@ -1929,53 +1941,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
-                pytest=config.Infra.tooling.tools.pytest,
+                **make_context.value.model_dump(),
                 scaffold=codegen.scaffold,
                 gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,
-                make=codegen.make,
-                mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
-                mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
-                mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
-                mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
-                prlimit_command=c.Infra.PRLIMIT_COMMAND,
-                prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
-                timeout_command=c.Infra.TIMEOUT_COMMAND,
-                timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                tooling_runtime=tooling_runtime,
-                dist=repository.distribution,
-                infra_cli=config.Infra.name,
-                infra_repository=infra_repository.value,
-                infra_repository_branch=infra_provider.value.branch,
-                infra_source_root_rel=FlextInfraCodegenConform._infra_source_root_rel(
-                    target, workspace, infra_repository.value
-                ),
-                python_version=codegen.toolchain.python_version,
-                uv_link_mode=codegen.toolchain.uv_link_mode,
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=(
-                    codegen.toolchain.dependency_cooldown_exclusions
-                ),
-                dependency_cooldown_overrides=(
-                    codegen.toolchain.dependency_cooldown_overrides
-                ),
-                make_profile=profile,
-                orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
-                workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                project_selection_conflict_error=(
-                    c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
-                ),
-                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
-                    workspace
-                ),
-                makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_members=tuple(
-                    item.path.as_posix() for item in workspace.members
-                ),
-                workspace_repositories=members,
-                workspace_gitlinks=gitlinks.value,
-                extra_verbs=repository.extra_verbs,
-                script_dispatch=repository.script_dispatch,
                 tooling=config.Infra.tooling,
                 # Why: the fleet policy alone is not the effective Ruff contract.
                 # A repository may carry an operator-authorized exemption in its
@@ -2705,7 +2674,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @classmethod
     def _verify_beads_plan(
-        cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
+        cls,
+        plan: m.Infra.BeadsPlan,
+        *,
+        allow_missing: bool,
+        inspect_ledger: bool = True,
     ) -> p.Result[bool]:
         """Validate the principal ledger route and fail closed on disagreement.
 
@@ -2795,6 +2768,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     "mise-managed Beads CLI checksum mismatch: "
                     f"{digest} != {plan.expected_checksum}"
                 )
+        if not inspect_ledger:
+            return r[bool].ok(True)
         beads_dir = ledger_root / ".beads"
         if not beads_dir.exists():
             if allow_missing:

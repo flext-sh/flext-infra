@@ -90,8 +90,15 @@ class FlextInfraReleaseOrchestratorPhases(
         return r[t.SequenceOf[m.Infra.BuildRecord]].ok(tuple(records))
 
     @staticmethod
-    def _snapshot_policy_file(source: Path, destination: Path) -> p.Result[str]:
+    def _snapshot_policy_file(
+        source: Path, destination: Path, *, policy_root: Path
+    ) -> p.Result[str]:
         """Persist immutable policy bytes and return their SHA-256 digest."""
+        destination = destination.resolve()
+        if not destination.is_relative_to(policy_root.resolve()):
+            return r[str].fail(
+                f"release policy destination escapes policy root: {destination}"
+            )
         try:
             content = source.read_bytes()
         except OSError as exc:
@@ -122,7 +129,9 @@ class FlextInfraReleaseOrchestratorPhases(
         policy_dir = output_dir / "policy"
         constraints_path = policy_dir / "build-constraints.txt"
         constraints_result = cls._snapshot_policy_file(
-            workspace_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH, constraints_path
+            workspace_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
+            constraints_path,
+            policy_root=policy_dir,
         )
         if constraints_result.failure:
             return r[m.Infra.BuildPolicy].fail(
@@ -130,7 +139,9 @@ class FlextInfraReleaseOrchestratorPhases(
             )
         gitleaks_path = policy_dir / "gitleaks-release.toml"
         gitleaks_result = cls._snapshot_policy_file(
-            workspace_root / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH, gitleaks_path
+            workspace_root / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
+            gitleaks_path,
+            policy_root=policy_dir,
         )
         if gitleaks_result.failure:
             return r[m.Infra.BuildPolicy].fail(

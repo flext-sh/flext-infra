@@ -79,11 +79,13 @@ Infra:
         # silently stall. The binary is content-attested by GitHub at install;
         # the version gate below validates the live binary against what the
         # repository's .mise.toml resolves, not against a fleet-wide hash.
-        selector: go:github.com/marlon-costa-dc/beads/cmd/bd
+        selector: github:marlon-costa-dc/beads
         version: "latest"
         reported_version: "latest"
+        prerelease: true
+        minimum_release_age: "0s"
         checksum: null
-        expected_schema: 61
+        expected_schema: 62
         # Gas Town Dolt server facts: every FLEXT ledger on this host routes
         # through the Gas Town town server on :3307 (managed by `gt dolt start`).
         # Why (aihub-g8e1j): shared_server: true routes bd's PID/port/lock

@@ -57,6 +57,21 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        prerelease: Annotated[
+            bool,
+            m.Field(
+                description="Whether mise may resolve prerelease versions for this tool"
+            ),
+        ] = False
+        minimum_release_age: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Per-tool release quarantine override passed to mise; absent "
+                    "preserves mise's global security default"
+                )
+            ),
+        ] = None
         checksum: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -95,11 +110,20 @@ class FlextInfraConfigModels:
             m.Field(description="Dolt connection mode; ledgers never embed locally"),
         ]
         shared_server: Annotated[
-            bool,
-            m.Field(description="Route through the machine-wide shared Dolt server"),
-        ]
+            Literal[False],
+            m.Field(
+                description=(
+                    "Always false: consume the explicitly configured external "
+                    "Gas Town Dolt endpoint; bd-owned shared-server lifecycle is "
+                    "forbidden"
+                )
+            ),
+        ] = False
         host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
-        port: Annotated[int, m.Field(gt=0, le=65535, description="Dolt server port")]
+        port: Annotated[
+            Literal[3307],
+            m.Field(description="Canonical external Gas Town Dolt server port"),
+        ] = 3307
         user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
         auto_commit: Annotated[
             Literal["off", "on", "batch"],
@@ -1461,6 +1485,15 @@ class FlextInfraConfigModels:
         read_only: Annotated[
             bool, m.Field(description="Repository rejects generated mutations")
         ]
+        uv_link_mode: Annotated[
+            Literal["clone", "copy", "hardlink", "symlink"] | None,
+            m.Field(
+                description=(
+                    "Repository-specific uv installation link mode; absent uses "
+                    "the fleet toolchain default"
+                )
+            ),
+        ] = None
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
@@ -2325,6 +2358,15 @@ class FlextInfraConfigModels:
                     "Beads issue-prefix override for workspaces whose tracker "
                     "namespace diverges from the canonical project name; None "
                     "keeps the canonical project name (see mro-6fca)"
+                )
+            ),
+        ] = None
+        beads_server: Annotated[
+            FlextInfraConfigModels.BeadsServerSpec | None,
+            m.Field(
+                description=(
+                    "Optional workspace-local override for the external Beads "
+                    "Dolt endpoint; None uses the fleet toolchain default"
                 )
             ),
         ] = None
