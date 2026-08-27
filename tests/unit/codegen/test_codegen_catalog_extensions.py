@@ -281,6 +281,24 @@ class TestsCodegenCatalogExtensions:
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
         )
 
+    def test_codegen_composes_project_mise_tools_through_toml(
+        self, tmp_path: Path
+    ) -> None:
+        """The codegen artifact boundary consumes the project YAML overlay."""
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "tooling.yaml").write_text(
+            "ManagedArtifacts:\n  Mise:\n    tools:\n      node: '26'\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraCodegenConform._compose_project_artifact(  # ruff: ignore[private-member-access]
+            tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
+        )
+
+        rendered = tomllib.loads(tm.ok(result))
+        tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
+
     def test_local_manifest_conforms_without_global_repository_rows(
         self, tmp_path: Path
     ) -> None:

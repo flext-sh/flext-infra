@@ -21,6 +21,9 @@ from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
@@ -1018,7 +1021,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"template={entry.source}: template render failed"
                     )
                 )
-            file_plan = self._file_plan(root, destination, rendered.value)
+            rendered_content = self._compose_project_artifact(
+                root, destination, rendered.value
+            )
+            if rendered_content.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    rendered_content.error
+                    or f"managed artifact composition failed: {destination}"
+                )
+            file_plan = self._file_plan(root, destination, rendered_content.value)
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     file_plan.error
@@ -1297,7 +1308,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if managed.path.as_posix() in {
                 c.Infra.BEADS_CONFIG_RELPATH,
                 c.Infra.BEADS_METADATA_RELPATH,
-            } and not (target.beads_enabled or target.routing_only):
+            } and not (
+                target.beads_enabled
+                or target.routing_only
+                # A committed Beads projection is an explicit routing
+                # declaration even when an older manifest classified this
+                # checkout as standalone. Keep it governed and regenerate it;
+                # otherwise active lanes silently retain stale endpoints.
+                or (root / managed.path).is_file()
+            ):
                 continue
             entries = tuple(
                 entry
@@ -1395,6 +1414,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     rendered.error or f"template render failed: {entry.source}"
                 )
             rendered_content = rendered.value
+            composed = self._compose_project_artifact(
+                root, entry.destination, rendered_content
+            )
+            if composed.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    composed.error
+                    or f"managed artifact composition failed: {entry.destination}"
+                )
+            rendered_content = composed.value
             if entry.destination == c.Infra.GITMODULES and path.is_file():
                 current = u.Cli.files_read_text(path)
                 if current.failure:
@@ -1416,6 +1444,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
+    @staticmethod
+    def _compose_project_artifact(
+        repository_root: Path, destination: str, rendered: str
+    ) -> p.Result[str]:
+        """Apply typed project overlays after canonical template rendering."""
+        if destination != c.Infra.MISE_TOML_FILENAME:
+            return r[str].ok(rendered)
+        return FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
+            repository_root, rendered
+        )
 
     @staticmethod
     def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
@@ -1846,6 +1885,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 dependency_cooldown_overrides=(
                     codegen.toolchain.dependency_cooldown_overrides
                 ),
+                # ProjectRenderContext replaces this with the composed map.
+                # Pass the neutral value explicitly so Pydantic never deep-copies
+                # the MappingProxyType model default while building the base.
+                ruff_per_file_ignores={},
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1941,7 +1984,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
-                **make_context.value.model_dump(),
+                **make_context.value.model_dump(
+                    by_alias=True,
+                    exclude={"ruff_per_file_ignores"},
+                    exclude_computed_fields=True,
+                ),
                 scaffold=codegen.scaffold,
                 gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,

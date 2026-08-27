@@ -19,6 +19,9 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -101,7 +104,12 @@ class FlextInfraWorkspaceEnvironmentMixin:
         rendered = cls._render_environment_template(c.Infra.MISE_TOML_FILENAME)
         if rendered.failure:
             return r[str].fail(rendered.error or ".mise.toml template render failed")
-        doc = u.Cli.toml_parse_text(rendered.value)
+        composed = FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
+            workspace_root, rendered.value
+        )
+        if composed.failure:
+            return r[str].fail(composed.error or "project Mise composition failed")
+        doc = u.Cli.toml_parse_text(composed.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
         python_version = cls._workspace_python_version(workspace_root)

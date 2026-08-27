@@ -8,6 +8,7 @@ These tests pin that contract against the canonical codegen SSOT templates.
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 from flext_infra import c, infra, m
@@ -129,6 +130,76 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.ok(result)
         rendered = (workspace / ".mise.toml").read_text(encoding="utf-8")
         tm.that('python = "3.14"' in rendered, eq=True)
+
+    def test_sync_composes_project_mise_tools_from_yaml(self, tmp_path: Path) -> None:
+        """A project extends the generated tool table from its own YAML."""
+        workspace = tmp_path / "workspace"
+        _write_pyproject(workspace)
+        config_dir = workspace / "config"
+        config_dir.mkdir()
+        (config_dir / "tooling.yaml").write_text(
+            "ManagedArtifacts:\n"
+            "  Mise:\n"
+            "    tools:\n"
+            '      node: "26"\n'
+            '      docker-compose: "5.5"\n',
+            encoding="utf-8",
+        )
+
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
+
+        tm.ok(result)
+        tools = tomllib.loads((workspace / ".mise.toml").read_text(encoding="utf-8"))[
+            "tools"
+        ]
+        tm.that(tools["node"], eq="26")
+        tm.that(tools["docker-compose"], eq="5.5")
+
+    def test_sync_rejects_duplicate_project_mise_selectors(
+        self, tmp_path: Path
+    ) -> None:
+        """Two YAML owners cannot silently select the same local tool."""
+        workspace = tmp_path / "workspace"
+        _write_pyproject(workspace)
+        config_dir = workspace / "config"
+        config_dir.mkdir()
+        for filename, version in (("one.yaml", "20"), ("two.yaml", "22")):
+            (config_dir / filename).write_text(
+                f'ManagedArtifacts:\n  Mise:\n    tools:\n      node: "{version}"\n',
+                encoding="utf-8",
+            )
+
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
+
+        tm.that(result.failure, eq=True)
+        tm.that(result.error or "", has=["node", "one.yaml", "two.yaml"])
+
+    def test_sync_rejects_project_collision_with_fleet_mise_tool(
+        self, tmp_path: Path
+    ) -> None:
+        """A project tool may extend the fleet table but never override it."""
+        workspace = tmp_path / "workspace"
+        _write_pyproject(workspace)
+        config_dir = workspace / "config"
+        config_dir.mkdir()
+        (config_dir / "tooling.yaml").write_text(
+            'ManagedArtifacts:\n  Mise:\n    tools:\n      python: "3.14"\n',
+            encoding="utf-8",
+        )
+
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
+
+        tm.that(result.failure, eq=True)
+        tm.that(
+            result.error or "",
+            has=["python", "global .mise.toml template", "tooling.yaml"],
+        )
 
     def test_sync_removes_generated_files_without_pyproject(
         self, tmp_path: Path
