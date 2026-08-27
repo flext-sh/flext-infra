@@ -236,7 +236,6 @@ __pyrefly_virtual__/
 .benchmarks/
 .bkp/
 .cache/
-.test-tmp/
 .codegraph/
 .dolt_dropped_databases/
 .doltcfg/
@@ -245,6 +244,7 @@ __pyrefly_virtual__/
 .omo/
 .pylance_cache/
 .pytest_cache/
+.test-tmp/
 .testmondata
 .testmondata-wal
 .testmondata-shm

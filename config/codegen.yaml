@@ -61,16 +61,11 @@ Infra:
       # qlty (hq-36xk): same missing-owner defect as uv_version above.
       qlty_version: "0.642"
       mise_version: "2026.7"
-      # Go runtime required by mise go: backend selectors (beads).
+      # Go runtime retained for projects that use mise go: backend selectors.
       go_version: "1.26"
-      # The shared mro Dolt ledger is at schema v61; the newest official
-      # gastownhall release (1.1.2) only knows v53 and fails preflight with
-      # "schema version mismatch". Pin the go-module commit that migrated the
-      # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform preflight gate; the immutable commit
-      # stays the installed selector version. The artifact identity is
-      # content-proven: checksum is the SHA-256 of the pinned binary, and
-      # expected_schema is the ledger schema the binary must know.
+      # Canonical Beads distribution for every governed repository. The exact
+      # official release and extracted binary digest are fleet-wide invariants;
+      # schema v53 is the only supported destination schema for this migration.
       beads:
         # Why (dedup-t0m): the fleet pins the beads Go selector so every
         # repository renders a deterministic .mise.toml entry, but the version
@@ -79,22 +74,24 @@ Infra:
         # silently stall. The binary is content-attested by GitHub at install;
         # the version gate below validates the live binary against what the
         # repository's .mise.toml resolves, not against a fleet-wide hash.
-        selector: github:marlon-costa-dc/beads
-        version: "latest"
-        reported_version: "latest"
-        prerelease: true
-        minimum_release_age: "0s"
-        checksum: null
-        expected_schema: 62
-        # Gas Town Dolt server facts: every FLEXT ledger on this host routes
-        # through the Gas Town town server on :3307 (managed by `gt dolt start`).
+        selector: github:gastownhall/beads
+        version: "1.2.2"
+        reported_version: "1.2.2"
+        prerelease: false
+        minimum_release_age: null
+        # SHA-256 of the extracted linux-x64 `bd` executable. The release
+        # archive digest remains platform-specific in each generated mise.lock.
+        checksum: 54fc0e0581ce4c5487a5b242f0a4f34af1ef09cf056e164a1af63a6ec7aa1e0e
+        expected_schema: 53
+        # Gas City Dolt server facts: every FLEXT ledger on this host routes
+        # through the Gas City managed server on :3307 (`gc dolt start`).
         # Why (aihub-g8e1j): shared_server: true routes bd's PID/port/lock
         # bookkeeping through bd's OWN independently-lifecycled server at
         # ~/.beads/shared-server/ (see beads internal/doltserver resolveServerDir),
         # ignoring the host/port below entirely — a distinct bd feature flag, not
         # "shared" in the sense this comment used to imply. shared_server: false
         # makes bd honor the per-project host/port and consume only the external
-        # Gas Town town server; a repository-local or bd-owned server is never
+        # Gas City managed server; a repository-local or bd-owned server is never
         # used. This exact value was fixed once in 6d5fc8df and silently reverted
         # by a later merge-conflict resolution before the port-only fix in
         # 62238830 (aihub-v01jg) — restoring it here, do not re-flip it back.
@@ -554,6 +551,8 @@ Infra:
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
       - { name: .pytest_cache, source_scan_ignore: true }
+      # Project-local scratch owned by generated .envrc (TMPDIR/GOTMPDIR).
+      - { name: .test-tmp, source_scan_ignore: true }
       - { name: .testmondata, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }

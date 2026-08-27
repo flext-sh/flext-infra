@@ -452,6 +452,10 @@ class TestsCodegenCatalogExtensions:
                 manifest_path, workspace.model_dump(mode="json", exclude_none=True)
             )
         )
+        (manifest_path.parent / "tooling.yaml").write_text(
+            "ManagedArtifacts:\n  Mise:\n    tools:\n      node: '26'\n",
+            encoding="utf-8",
+        )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=tmp_path,
@@ -515,9 +519,10 @@ class TestsCodegenCatalogExtensions:
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
         tm.that(
-            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+            mise["tools"][config.Infra.codegen.toolchain.beads.selector],
             eq=config.Infra.codegen.toolchain.beads.version,
         )
+        tm.that(mise["tools"]["node"], eq="26")
         pyproject = tomllib.loads(
             next(
                 file.rendered
