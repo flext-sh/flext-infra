@@ -151,9 +151,9 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
 
         tm.ok(result)
-        tools = tomllib.loads(
-            (workspace / ".mise.toml").read_text(encoding="utf-8")
-        )["tools"]
+        tools = tomllib.loads((workspace / ".mise.toml").read_text(encoding="utf-8"))[
+            "tools"
+        ]
         tm.that(tools["node"], eq="26")
         tm.that(tools["docker-compose"], eq="5.5")
 
@@ -167,8 +167,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         config_dir.mkdir()
         for filename, version in (("one.yaml", "20"), ("two.yaml", "22")):
             (config_dir / filename).write_text(
-                "ManagedArtifacts:\n  Mise:\n    tools:\n"
-                f'      node: "{version}"\n',
+                f'ManagedArtifacts:\n  Mise:\n    tools:\n      node: "{version}"\n',
                 encoding="utf-8",
             )
 

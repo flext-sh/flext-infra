@@ -12,9 +12,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
 
     @staticmethod
-    def load(
-        project_dir: Path,
-    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+    def load(project_dir: Path) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Load every YAML and compose each artifact by its declared policy."""
         config_dir = project_dir / c.CONFIG_DIR_NAME
         empty = m.Infra.ProjectManagedArtifactsResolution(
@@ -71,9 +69,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
 
     @classmethod
-    def compose_mise_toml(
-        cls, project_dir: Path, rendered: str
-    ) -> p.Result[str]:
+    def compose_mise_toml(cls, project_dir: Path, rendered: str) -> p.Result[str]:
         """Add local tools through TOML types and reject global collisions."""
         resolved = cls.load(project_dir)
         if resolved.failure:
