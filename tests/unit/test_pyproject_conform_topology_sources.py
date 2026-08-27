@@ -58,7 +58,7 @@ def _workspace() -> m.Infra.WorkspaceSpec:
         members=(
             _repository(
                 "flext-core",
-                role=_ROLE.WORKSPACE_MEMBER,
+                role=_ROLE.STANDALONE,
                 path="flext-core",
                 checkout=c.Infra.CheckoutKind.SUBMODULE,
             ),
@@ -71,7 +71,7 @@ def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
     workspace = _workspace()
     consumer = _repository(
         "flext-api",
-        role=_ROLE.WORKSPACE_MEMBER,
+        role=_ROLE.STANDALONE,
         path="flext-api",
         checkout=c.Infra.CheckoutKind.SUBMODULE,
     )

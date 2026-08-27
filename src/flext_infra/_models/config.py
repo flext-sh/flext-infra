@@ -1560,15 +1560,6 @@ class FlextInfraConfigModels:
             bool,
             m.Field(description="Whether this repository receives .beads projections"),
         ]
-        attached_standalone: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Marker-attached standalone receiving workspace-derived "
-                    ".beads config values"
-                )
-            ),
-        ] = False
         routing_only: Annotated[
             bool,
             m.Field(
@@ -2249,31 +2240,24 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
-        workspace_manifest_version: Annotated[
-            int,
-            m.Field(
-                ge=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                le=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                description="Workspace manifest schema version",
-            ),
-        ]
-        workspace_repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(description="Repository rendered into the workspace manifest"),
-        ]
         year: Annotated[int, m.Field(description="Copyright year")]
-        workspace_exclusions: Annotated[
-            tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
-            m.Field(description="Ordered excluded workspace paths"),
-        ] = ()
-        workspace_policy_overlays: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
-            m.Field(description="Repository-local policy overlays"),
-        ] = ()
-        workspace_integration: Annotated[
-            FlextInfraConfigModels.WorkspaceIntegrationSpec | None,
-            m.Field(description="Optional workspace provider-default overlay"),
-        ] = None
+
+    class BeadsOverrideSpec(_ConfigContract):
+        """Static ledger identity copied from a workspace into each subproject."""
+
+        version: Annotated[Literal[1], m.Field(description="Override format version")]
+        workspace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project name of the governing workspace"),
+        ]
+        database: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Dolt database rendered into project Beads files"),
+        ]
+        issue_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Issue prefix rendered into project Beads files"),
+        ]
 
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""
@@ -2282,44 +2266,13 @@ class FlextInfraConfigModels:
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
     class WorkspaceSpec(_ConfigContract):
-        """Declared topology for exactly one orchestrated workspace."""
+        """Live repository context derived from pyproject.toml and .gitmodules."""
 
-        version: Annotated[
-            int,
-            m.Field(
-                ge=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                le=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                description="Manifest version",
-            ),
-        ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        ledger_id: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description=(
-                    "Database identity rendered into project .beads files; None "
-                    "uses the standalone canonical project name"
-                )
-            ),
-        ] = None
-        ledger_prefix: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description=(
-                    "Issue-prefix override rendered into project .beads files; "
-                    "None uses the canonical project name"
-                )
-            ),
-        ] = None
-        beads_server: Annotated[
-            FlextInfraConfigModels.BeadsServerSpec | None,
-            m.Field(
-                description=(
-                    "Optional workspace-local Dolt values for generated .beads "
-                    "files; None uses the fleet projection default"
-                )
-            ),
-        ] = None
+        beads: Annotated[
+            FlextInfraConfigModels.BeadsOverrideSpec,
+            m.Field(description="Static ledger identity from config/beads.yaml"),
+        ]
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
             m.Field(description="Root repository Git contract"),
@@ -2328,9 +2281,9 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ProjectSpec | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
-        members: Annotated[
+        subprojects: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered active member repository contracts"),
+            m.Field(description="Repositories derived from the live .gitmodules"),
         ] = ()
         external_dependency_paths: Annotated[
             tuple[Path, ...],

@@ -2495,15 +2495,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         name when the manifest omits either value. A member without both
         governing values receives no projection.
         """
-        if (
-            target.make_profile is c.Infra.MakeProfile.STANDALONE
-            and not target.attached_standalone
-        ):
-            if workspace.ledger_id is None:
-                return None
-            if workspace.ledger_prefix is None:
-                return None
-            return workspace.ledger_prefix, workspace.ledger_id
         issue_prefix = workspace.ledger_prefix or target.canonical_project_name
         return issue_prefix, workspace.ledger_id or issue_prefix
 

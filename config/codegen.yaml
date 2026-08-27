@@ -1106,9 +1106,6 @@ Infra:
       - path: base.mk
         owner: make
         policy: delegated
-      - path: config/workspace.yaml
-        owner: workspace
-        policy: manual
       - path: custom.mk
         owner: custom
         policy: create-only
@@ -1781,11 +1778,6 @@ Infra:
           destination: pyproject.toml
           profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
-        - source: base/config/workspace.yaml.j2
-          destination: config/workspace.yaml
-          profiles: [workspace, standalone]
-          delegate: manifest
           overwrite: false
         - source: base/src/__init__.py.j2
           destination: "src/{package_name}/__init__.py"

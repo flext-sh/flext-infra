@@ -1,0 +1,7 @@
+id: rename-derived-members-to-subprojects
+language: Python
+severity: error
+message: subprojects are derived from .gitmodules and are not workspace members
+rule:
+  pattern: $CONTEXT.members
+fix: $CONTEXT.subprojects

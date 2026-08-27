@@ -77,7 +77,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(
             (
                 projects[1].workspace_role
-                == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+                == c.Infra.WorkspaceProjectRole.SUBPROJECT
             ),
             eq=True,
         )

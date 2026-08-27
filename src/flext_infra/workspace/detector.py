@@ -29,26 +29,6 @@ class FlextInfraWorkspaceDetector(
     # superproject metadata; ancestor and sibling discovery is intentionally absent.
 
     @staticmethod
-    def _manifest_path(repository_root: Path) -> Path:
-        """Return the repository-local topology manifest path."""
-        config_dir: Path = t.Infra.PATH_ADAPTER.validate_python(c.CONFIG_DIR_NAME)
-        manifest_name: Path = t.Infra.PATH_ADAPTER.validate_python(
-            c.Infra.WORKSPACE_MANIFEST_FILENAME
-        )
-        return repository_root / config_dir / manifest_name
-
-    @staticmethod
-    def _schema_path() -> Path:
-        """Return the packaged schema consumed by the public config facade."""
-        schemas_dir: Path = t.Infra.PATH_ADAPTER.validate_python(
-            c.CONFIG_SCHEMAS_DIR_NAME
-        )
-        schema_name: Path = t.Infra.PATH_ADAPTER.validate_python(
-            c.Infra.WORKSPACE_SCHEMA_FILENAME
-        )
-        return Path(__file__).resolve().parents[1] / schemas_dir / schema_name
-
-    @staticmethod
     def repository_is_governed(
         repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
     ) -> bool:
@@ -81,36 +61,9 @@ class FlextInfraWorkspaceDetector(
     def load_workspace_spec(
         cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.WorkspaceSpec]:
-        """Load the repository-local manifest, or derive it from the SSOT catalog."""
-        manifest_path = cls._manifest_path(repository_root)
-        if not manifest_path.is_file():
-            return cls._derive_workspace_spec(
-                repository_root, project_metadata=project_metadata
-            )
-        loaded = u.Cli.config_load(
-            manifest_path, schema_path=cls._schema_path(), expand_env=False
-        )
-        if loaded.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                loaded.error or f"invalid workspace manifest: {manifest_path}"
-            )
-        try:
-            # mro-i6nq.10: Validate the pure config model at its loading boundary.
-            validated = m.Infra.WorkspaceSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
-            return r[m.Infra.WorkspaceSpec].fail_op(
-                f"workspace manifest model validation ({manifest_path})", exc
-            )
-        external_paths = cls._validate_observed_dependencies(repository_root, validated)
-        if external_paths.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                external_paths.error
-                or f"workspace dependency inventory is invalid: {manifest_path}"
-            )
-        return r[m.Infra.WorkspaceSpec].ok(
-            validated.model_copy(
-                update={"external_dependency_paths": external_paths.value}
-            )
+        """Derive repository identity and subprojects from live project files."""
+        return cls._derive_workspace_spec(
+            repository_root, project_metadata=project_metadata
         )
 
     @classmethod
@@ -447,14 +400,12 @@ class FlextInfraWorkspaceDetector(
         if repository.role not in {
             c.Infra.RepositoryRole.WORKSPACE,
             c.Infra.RepositoryRole.STANDALONE,
-            c.Infra.RepositoryRole.STANDALONE,
         }:
             return r[bool].fail(
                 f"unsupported local repository role: {repository.role.value}"
             )
         expected_checkout = {
             c.Infra.RepositoryRole.WORKSPACE: c.Infra.CheckoutKind.ROOT,
-            c.Infra.RepositoryRole.STANDALONE: c.Infra.CheckoutKind.SUBMODULE,
             c.Infra.RepositoryRole.STANDALONE: c.Infra.CheckoutKind.INDEPENDENT,
         }[repository.role]
         if repository.checkout is not expected_checkout:
@@ -550,32 +501,13 @@ class FlextInfraWorkspaceDetector(
         resolved_root, identity_root, governing_root = topology_result.value
         resolved_workspace = workspace_spec
         if resolved_workspace is None:
-            workspace_result = cls.load_workspace_spec(governing_root)
+            workspace_result = cls.load_workspace_spec(identity_root)
             if workspace_result.failure:
                 return r[m.Infra.RepositoryConformTarget].fail(
-                    workspace_result.error or "unable to load governing workspace"
+                    workspace_result.error or "unable to derive repository topology"
                 )
             resolved_workspace = workspace_result.value
-        if identity_root == governing_root:
-            repository = resolved_workspace.repository
-        else:
-            try:
-                relative_path = identity_root.relative_to(governing_root)
-            except ValueError as exc:
-                return r[m.Infra.RepositoryConformTarget].fail_op(
-                    "Conformance target resolution", exc
-                )
-            matches = tuple(
-                item
-                for item in resolved_workspace.members
-                if item.path == relative_path
-            )
-            if len(matches) != 1:
-                return r[m.Infra.RepositoryConformTarget].fail(
-                    "attached repository is an external read-only dependency, "
-                    f"not one governed member: {relative_path.as_posix()}"
-                )
-            repository = matches[0]
+        repository = resolved_workspace.repository
         if repository.read_only:
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external read-only dependency: {repository.name}"
@@ -638,9 +570,6 @@ class FlextInfraWorkspaceDetector(
             )
         make_profile = {
             c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
-            c.Infra.WorkspaceMode.STANDALONE: (
-                c.Infra.MakeProfile.STANDALONE
-            ),
             c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
         }[mode_result.value]
         # Ephemeral transaction worktrees share storage with the primary checkout.
@@ -655,22 +584,13 @@ class FlextInfraWorkspaceDetector(
             make_profile is c.Infra.MakeProfile.STANDALONE
             and (is_transaction_worktree or overlay.beads_enabled)
         )
-        # A marker-attached standalone resolves to itself (no Git superproject
-        # link); a manifest member always resolves to its governing root.
-        attached_standalone = (
-            mode_result.value is c.Infra.WorkspaceMode.STANDALONE
-            and resolved_root == governing_root
-        )
-        routing_only = is_transaction_worktree and (
-            make_profile is c.Infra.MakeProfile.STANDALONE or attached_standalone
-        )
+        routing_only = is_transaction_worktree
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
                 root=resolved_root,
                 make_profile=make_profile,
                 beads_enabled=beads_enabled,
-                attached_standalone=attached_standalone,
                 routing_only=routing_only,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_branch_result.value,
@@ -877,7 +797,7 @@ class FlextInfraWorkspaceDetector(
         return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
 
     def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
-        """Detect workspace mode from typed manifests and real Git metadata."""
+        """Classify a repository solely by its own ``.gitmodules`` surface."""
         try:
             resolved_project_root = project_root.resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
@@ -886,45 +806,10 @@ class FlextInfraWorkspaceDetector(
             return r[c.Infra.WorkspaceMode].fail(
                 f"project root is not a directory: {resolved_project_root}"
             )
-
-        workspace_spec: m.Infra.WorkspaceSpec | None = None
-        local_manifest = self._manifest_path(resolved_project_root)
-        if local_manifest.is_file():
-            local_result = self.load_workspace_spec(resolved_project_root)
-            if local_result.failure:
-                return r[c.Infra.WorkspaceMode].fail(local_result.error)
-            # mro-i6nq.10: Unwrap only after the fail-closed result branch.
-            local_spec = local_result.unwrap()
-            local_contract = self._validate_local_repository(local_spec.repository)
-            if local_contract.failure:
-                return r[c.Infra.WorkspaceMode].fail(local_contract.error)
-            workspace_spec = local_spec
-
-        git_probe = u.Infra.git_is_inside_work_tree(
-            m.Infra.GitRepoRequest(repo_root=resolved_project_root)
-        )
-        if git_probe.failure:
-            return r[c.Infra.WorkspaceMode].fail(
-                git_probe.error or "unable to execute Git workspace probe"
-            )
-        if not git_probe.value.value:
-            if (resolved_project_root / c.Infra.GIT_DIR).exists():
-                return r[c.Infra.WorkspaceMode].fail("invalid Git repository metadata")
-            return self._unattached_mode(resolved_project_root, workspace_spec)
-
-        superproject_result = u.Infra.git_superproject_working_tree(
-            m.Infra.GitRepoRequest(repo_root=resolved_project_root)
-        )
-        if superproject_result.failure:
-            return r[c.Infra.WorkspaceMode].fail(
-                superproject_result.error or "unable to resolve Git superproject"
-            )
-        if not superproject_result.value.text:
-            return self._unattached_mode(resolved_project_root, workspace_spec)
-        return self._detect_attached(
-            resolved_project_root,
-            Path(superproject_result.value.text).resolve(),
-            workspace_spec,
+        return r[c.Infra.WorkspaceMode].ok(
+            c.Infra.WorkspaceMode.WORKSPACE
+            if (resolved_project_root / c.Infra.GITMODULES).is_file()
+            else c.Infra.WorkspaceMode.STANDALONE
         )
 
     @override
