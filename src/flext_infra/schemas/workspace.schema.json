@@ -18,6 +18,11 @@
     "name": {
       "$ref": "#/$defs/name"
     },
+    "beads_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this workspace participates in the Beads tracker."
+    },
     "ledger_id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_-]*$"
