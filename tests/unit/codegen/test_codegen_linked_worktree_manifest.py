@@ -10,17 +10,17 @@ from flext_infra.codegen import FlextInfraCodegenConform
 from flext_tests import tm
 
 from tests import c, m, u
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
-# Exemplar: conform materializes a full managed tree on disk, so the render
-# itself dominates the runtime. The class declares its true end-to-end budget
-# instead of raising the global unit-test timeout and masking real hangs.
+# Conform materializes a full managed tree; the real Git scenarios therefore use
+# the config-owned slow budget instead of weakening the global timeout.
 @pytest.mark.slow
 class TestCodegenLinkedWorktreeManifest:
-    """Render generated artifacts from the active lane's declared manifest."""
+    """Render into the active lane from its canonical topology owner."""
 
-    def test_conform_renders_the_lane_local_manifest(self, tmp_path: Path) -> None:
-        """Use lane declarations while retaining the shared ledger database."""
+    def test_standalone_lane_uses_its_principal_manifest(self, tmp_path: Path) -> None:
+        """Use principal policy while preserving dirty principal bytes."""
         repository = u.Tests.repository_ref(config.Infra.name).model_copy(
             update={
                 "path": Path(),
@@ -30,31 +30,18 @@ class TestCodegenLinkedWorktreeManifest:
             }
         )
         primary = tmp_path / "primary"
-        primary.mkdir()
-        (primary / "pyproject.toml").write_text(
-            f'[project]\nname = "{repository.distribution}"\nversion = "0.12.0.dev0"\n'
-            'requires-python = ">=3.13,<3.14"\n',
-            encoding="utf-8",
+        primary_pyproject = WorktreeFixture.write_python_project(
+            primary, repository.distribution
         )
-        package_init = primary / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True)
-        package_init.write_text("", encoding="utf-8")
-        spec = m.Infra.WorkspaceSpec(
+        workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=repository.distribution,
             repository=repository,
-            ledger_id="workspace-ledger",
-            ledger_prefix="primary-prefix",
-            repository_policy_overlays=(
-                m.Infra.RepositoryPolicyOverlaySpec(
-                    project=repository.distribution, beads_enabled=True
-                ),
-            ),
         )
         tm.ok(
             u.Cli.yaml_dump(
                 primary / "config" / "workspace.yaml",
-                spec.model_dump(
+                workspace.model_dump(
                     mode="json",
                     exclude_none=True,
                     exclude={"external_dependency_paths"},
@@ -73,29 +60,102 @@ class TestCodegenLinkedWorktreeManifest:
                 )
             )
         )
-        loaded = tm.ok(u.Infra.workspace_spec_load(lane))
-        tm.ok(
-            u.Cli.yaml_dump(
-                lane / "config" / "workspace.yaml",
-                loaded.model_copy(update={"ledger_prefix": "lane-prefix"}).model_dump(
-                    mode="json",
-                    exclude_none=True,
-                    exclude={"external_dependency_paths"},
-                ),
+        primary_pyproject.write_text(
+            f"{primary_pyproject.read_text(encoding='utf-8')}# human WIP\n",
+            encoding="utf-8",
+        )
+        primary_snapshot = WorktreeFixture.repository_snapshot(primary)
+        applied = tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=lane,
+                    what=c.Infra.CodegenConformSurface.MAKEFILE,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
             )
         )
-        request = m.Infra.CodegenConformRequest(
-            root=lane,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
+        makefile = (lane / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+
+        tm.that(makefile, has="MAKE_PROFILE := standalone")
+        tm.that(applied.plan.workspace, eq=workspace)
+        tm.that(bool(applied.written_files), eq=True)
+        tm.that(
+            all(path.is_relative_to(lane) for path in applied.written_files), eq=True
+        )
+        tm.that((primary / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
+        tm.that(WorktreeFixture.repository_snapshot(primary), eq=primary_snapshot)
+
+    def test_member_lane_uses_superproject_manifest_and_only_writes_lane(
+        self, tmp_path: Path
+    ) -> None:
+        """Run the ALL surface for one member without mutating either dirty owner."""
+        (
+            superproject,
+            primary,
+            lane,
+            workspace,
+            superproject_snapshot,
+            primary_snapshot,
+        ) = WorktreeFixture.codegen_member_lane(tmp_path)
+        applied = tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=lane,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
+            )
+        )
+        makefile = (lane / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+
+        tm.that(makefile, has="MAKE_PROFILE := workspace-member")
+        tm.that(applied.plan.workspace.name, eq=workspace.name)
+        tm.that(bool(applied.written_files), eq=True)
+        tm.that(
+            all(path.is_relative_to(lane) for path in applied.written_files), eq=True
+        )
+        tm.that((primary / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
+        tm.that(WorktreeFixture.repository_snapshot(primary), eq=primary_snapshot)
+        tm.that(
+            WorktreeFixture.repository_snapshot(superproject), eq=superproject_snapshot
         )
 
-        plan = tm.ok(FlextInfraCodegenConform(workspace_root=lane).plan(request))
-        rendered = next(
-            item.rendered
-            for item in plan.files
-            if item.path == lane / c.Infra.BEADS_CONFIG_RELPATH
+    def test_declared_member_cannot_escape_through_a_linked_path(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject a declared member whose nominal path resolves outside its owner."""
+        root = tmp_path / "workspace"
+        outside = tmp_path / "outside-member"
+        WorktreeFixture.write_python_project(root, config.Infra.name)
+        member = u.Tests.repository_ref(
+            "flext-cli", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        ).model_copy(update={"path": Path("linked-member")})
+        WorktreeFixture.write_python_project(outside, member.distribution)
+        root_repository = u.Tests.repository_ref(config.Infra.name).model_copy(
+            update={
+                "path": Path(),
+                "role": c.Infra.RepositoryRole.WORKSPACE_ROOT,
+                "codegen": c.Infra.CodegenKind.NONE,
+            }
+        )
+        (root / member.path).symlink_to(outside, target_is_directory=True)
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=root_repository.distribution,
+            repository=root_repository,
+            members=(member,),
         )
 
-        tm.that(rendered, has='issue-prefix: "lane-prefix"')
-        tm.that(rendered, has="database: workspace-ledger")
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.ALL,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            ),
+            initial_workspace=workspace,
+        )
+
+        tm.fail(result, has="declared repository path escapes workspace root")
+        tm.that((outside / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
