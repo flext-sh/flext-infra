@@ -167,10 +167,14 @@ class FlextInfraWorkspaceEnvironmentMixin:
             )
         mapping = u.Cli.toml_mapping_from_text(rendered.value)
         if mapping is None:
-            return r[dict[str, t.JsonValue]].fail("canonical .mise.toml template is invalid")
+            return r[dict[str, t.JsonValue]].fail(
+                "canonical .mise.toml template is invalid"
+            )
         tools = u.Cli.toml_mapping_child(mapping, "tools")
         if tools is None:
-            return r[dict[str, t.JsonValue]].fail("canonical .mise.toml template lacks [tools]")
+            return r[dict[str, t.JsonValue]].fail(
+                "canonical .mise.toml template lacks [tools]"
+            )
         pins: dict[str, t.JsonValue] = {}
         for name, value in tools.items():
             if not isinstance(value, (str, dict)):

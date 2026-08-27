@@ -215,19 +215,10 @@ class TestsFlextInfraPytestRunner:
         monkeypatch.setenv(c.Infra.PYTEST_ENV_COV, "Y")
         runner = self._runner(tmp_path, what="all")
 
-        def fake_run_to_file(
-            cmd: t.StrSequence,
-            output_file: t.Cli.TextPath,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            live: bool = False,
-            deadline: p.Cli.ProcessDeadline | None = None,
-        ) -> p.Result[int]:
-            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
+        def fake_run_to_file(*args: object, **kwargs: object) -> p.Result[int]:
+            del kwargs
+            output_file = args[1]
+            assert isinstance(output_file, (str, Path))
             log_path = Path(output_file)
             report_dir = log_path.parent
             log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
