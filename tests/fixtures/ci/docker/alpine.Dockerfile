@@ -46,10 +46,9 @@ RUN mise trust .mise.toml && mise install --yes
 # mentioned uv.lock/flext-core, which turned the proof into a bypass -- a
 # broken bootstrap still produced a green image.
 ENV CI=Y
-RUN make setup
+RUN make setup && addgroup -S runner && adduser -S -G runner runner
 # End SECTION: bootstrap proof
 
-RUN addgroup -S runner && adduser -S -G runner runner
 USER runner
 ENTRYPOINT []
 CMD ["/bin/bash", "-lc", "make help"]

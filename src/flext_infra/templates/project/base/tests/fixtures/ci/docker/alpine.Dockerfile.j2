@@ -50,8 +50,9 @@ ENV PATH="/root/.local/share/mise/shims:${PATH}"
 # mentioned uv.lock/flext-core, which turned the proof into a bypass -- a
 # broken bootstrap still produced a green image.
 ENV {{ make.ci.variable }}={{ make.ci.value }}
-RUN make setup
+RUN make setup && addgroup -S runner && adduser -S -G runner runner
 # End SECTION: bootstrap proof
 
+USER runner
 ENTRYPOINT []
 CMD ["/bin/bash", "-lc", "make help"]
