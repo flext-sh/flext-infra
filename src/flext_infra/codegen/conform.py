@@ -336,6 +336,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     current_make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                     and workspace.beads_enabled
                 ),
+                beads_integration_enabled=workspace.beads_enabled,
                 routing_only=False,
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=baseline_branch_result.value,
@@ -469,6 +470,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
+                    integration_enabled=target.beads_integration_enabled,
                     # Why (ai-hub-qwoc): canonical_prefix verifies the LIVE
                     # Beads ledger's issue-prefix (hyphenated, matches real
                     # issue IDs) -- it must never be workspace.ledger_id,
@@ -930,8 +932,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if destination in {
                 c.Infra.BEADS_CONFIG_RELPATH,
                 c.Infra.BEADS_METADATA_RELPATH,
-            } and not (target.beads_enabled or target.routing_only):
-                continue
+            }:
+                if not target.beads_integration_enabled:
+                    continue
+                if not (target.beads_enabled or target.routing_only):
+                    continue
             if destination in seen_destinations:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"duplicate template destination: {destination}"
@@ -1309,16 +1314,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if managed.path.as_posix() in {
                 c.Infra.BEADS_CONFIG_RELPATH,
                 c.Infra.BEADS_METADATA_RELPATH,
-            } and not (
-                target.beads_enabled
-                or target.routing_only
-                # A committed Beads projection is an explicit routing
-                # declaration even when an older manifest classified this
-                # checkout as standalone. Keep it governed and regenerate it;
-                # otherwise active lanes silently retain stale endpoints.
-                or (root / managed.path).is_file()
-            ):
-                continue
+            }:
+                if not target.beads_integration_enabled:
+                    continue
+                if not (
+                    target.beads_enabled
+                    or target.routing_only
+                    # A committed Beads projection is an explicit routing
+                    # declaration even when an older manifest classified this
+                    # checkout as standalone. Keep it governed and regenerate it;
+                    # otherwise active lanes silently retain stale endpoints.
+                    or (root / managed.path).is_file()
+                ):
+                    continue
             entries = tuple(
                 entry
                 for entry in codegen.templates.entries
@@ -2734,6 +2742,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         lifecycle: verification is skipped there and re-run at the real tree on
         apply.
         """
+        if not plan.integration_enabled:
+            return r[bool].ok(True)
         if plan.routes_to_principal_ledger:
             return r[bool].ok(True)
         if os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true":

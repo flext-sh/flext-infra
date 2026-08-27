@@ -675,10 +675,24 @@ class TestCodegenBeadsLedger:
             beads_enabled=False,
             overlay=True,
         )
+        historical = root / ".beads" / "issues.jsonl"
+        historical.parent.mkdir()
+        historical.write_text('{"id":"preserved"}\n', encoding="utf-8")
 
         plan = self._beads_plan(root)
 
         tm.that(plan.enabled, eq=False)
+        tm.that(plan.integration_enabled, eq=False)
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+        tm.ok(result)
+        tm.that(historical.read_text(encoding="utf-8"), eq='{"id":"preserved"}\n')
 
     def test_divergent_binary_does_not_block_conform(self, tmp_path: Path) -> None:
         """Mise owns its declared binaries; conform never re-audits them.

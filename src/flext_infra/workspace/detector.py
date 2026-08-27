@@ -673,6 +673,7 @@ class FlextInfraWorkspaceDetector(
                 root=resolved_root,
                 make_profile=make_profile,
                 beads_enabled=beads_enabled,
+                beads_integration_enabled=resolved_workspace.beads_enabled,
                 attached_standalone=attached_standalone,
                 routing_only=routing_only,
                 canonical_project_name=canonical_project_name,

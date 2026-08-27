@@ -1592,6 +1592,12 @@ class FlextInfraConfigModels:
         beads_enabled: Annotated[
             bool, m.Field(description="Whether this repository owns a Beads tracker")
         ]
+        beads_integration_enabled: Annotated[
+            bool,
+            m.Field(
+                description="Whether conform manages or verifies Beads for this workspace"
+            ),
+        ] = True
         attached_standalone: Annotated[
             bool,
             m.Field(
@@ -2978,6 +2984,12 @@ class FlextInfraConfigModels:
         enabled: Annotated[
             bool, m.Field(description="Whether this repository owns a Beads tracker")
         ]
+        integration_enabled: Annotated[
+            bool,
+            m.Field(
+                description="Whether conform manages or verifies Beads for this workspace"
+            ),
+        ] = True
         canonical_prefix: Annotated[
             t.NonEmptyStr,
             m.Field(description="Required issue prefix derived from project metadata"),
