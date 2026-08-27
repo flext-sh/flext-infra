@@ -1,0 +1,77 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: changed files: tests/unit/codegen/test_codegen_beads_ledger.py, unchanged files: 75, environment: default
+Using --randomly-seed=1617450090
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 33 items
+
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_external_member_worktree_inherits_governing_topology PASSED [  3%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_member_is_not_routing_only PASSED [  6%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_standalone_overlay_enables_beads PASSED [  9%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_marker_repo_is_attached_standalone PASSED [ 12%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_gitmodule_branch_mismatch_fails_closed PASSED [ 15%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_member_overlay_never_promotes_beads PASSED [ 18%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_detached_head_at_gitlink_is_workspace_member PASSED [ 21%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_manifested_repo_absent_from_catalog_loads_spec PASSED [ 24%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_attached_standalone_marker_is_workspace_member PASSED [ 27%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_repository_is_governed_accepts_remote_url_without_git_suffix PASSED [ 30%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_pyproject_without_attached_marker_stays_standalone PASSED [ 33%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_malformed_local_manifest_fails PASSED [ 36%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_linked_worktree_without_resolvable_primary_fails_closed PASSED [ 39%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_persistent_state_artifacts_follow_make_profile PASSED [ 42%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_toolchain_owner_with_branchless_gitlink_fails_closed PASSED [ 45%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_declared_real_submodule_is_workspace_member PASSED [ 48%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_independent_member_clone_is_standalone PASSED [ 51%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_root_without_governed_gitlinks_is_standalone PASSED [ 54%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_gitmodule_url_mismatch_fails_closed PASSED [ 57%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_unknown_submodule_path_fails_closed PASSED [ 60%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_feature_branch_at_gitlink_is_workspace_member PASSED [ 63%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_workspace_root_with_governed_member_is_workspace PASSED [ 66%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_malformed_parent_manifest_fails PASSED [ 69%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_external_member_worktree_reads_lane_metadata PASSED [ 72%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_member_head_different_from_gitlink_fails_closed PASSED [ 75%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_invalid_path_returns_failure PASSED [ 78%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_ancestor_gitmodules_does_not_attach_project PASSED [ 81%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_execute_uses_workspace_root PASSED [ 84%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_member_is_not_attached_standalone PASSED [ 87%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_external_standalone_worktree_stays_standalone PASSED [ 90%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_manifestless_repo_derives_its_own_identity PASSED [ 93%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_manifestless_repo_derives_spec_from_catalog PASSED [ 96%]
+tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_aggregator_gitmodules_without_toolchain_is_standalone PASSED [100%]
+
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T175655.538642Z-1837621/junit.xml -
+================================================= slowest 25 durations =================================================
+1.30s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_external_member_worktree_inherits_governing_topology
+0.85s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_external_member_worktree_reads_lane_metadata
+0.76s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_member_overlay_never_promotes_beads
+0.71s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_member_is_not_routing_only
+0.70s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_member_is_not_attached_standalone
+0.50s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_detached_head_at_gitlink_is_workspace_member
+0.50s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_feature_branch_at_gitlink_is_workspace_member
+0.49s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_external_standalone_worktree_stays_standalone
+0.46s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_declared_real_submodule_is_workspace_member
+0.44s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_standalone_overlay_enables_beads
+0.42s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_gitmodule_branch_mismatch_fails_closed
+0.42s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_malformed_parent_manifest_fails
+0.41s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_gitmodule_url_mismatch_fails_closed
+0.41s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_conform_target_marker_repo_is_attached_standalone
+0.35s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_unknown_submodule_path_fails_closed
+0.30s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_workspace_root_with_governed_member_is_workspace
+0.28s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_member_head_different_from_gitlink_fails_closed
+0.14s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_manifestless_repo_derives_its_own_identity
+0.12s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_linked_worktree_without_resolvable_primary_fails_closed
+0.11s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_toolchain_owner_with_branchless_gitlink_fails_closed
+0.11s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_independent_member_clone_is_standalone
+0.10s setup    tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_external_member_worktree_inherits_governing_topology
+0.09s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_attached_standalone_marker_is_workspace_member
+0.08s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_aggregator_gitmodules_without_toolchain_is_standalone
+0.08s call     tests/unit/test_infra_workspace_detector.py::TestsFlextInfraInfraWorkspaceDetector::test_pyproject_without_attached_marker_stays_standalone
+================================================= 33 passed in 12.76s ==================================================

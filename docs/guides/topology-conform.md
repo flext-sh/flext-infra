@@ -64,18 +64,16 @@ provider-owned branch and performs `git pull --ff-only` before validating the
 recorded gitlink ancestry. Divergence fails closed with the exact command, exit
 status, and stderr.
 
-Beads is project-local. Root workspaces enable it automatically; standalone
-repositories enable it only through a typed repository-local overlay. The
-generated `.mise.toml` pins the official Beads CLI version, and conform verifies
-that `mise exec -- bd version` equals that pin before inspecting or initializing
-the tracker.
+flext-infra has a projection-only Beads boundary. It writes the configured
+selector/version to `.mise.toml` and, for selected projects, renders
+`.beads/config.yaml` and `.beads/metadata.json`. It does not invoke the CLI,
+inspect or initialize storage, install hooks, enforce tracking policy, or own
+any tracker lifecycle.
 
 ## MCP / CRG identity (out of scope for conform)
 
-flext-infra conform owns Beads ledger projections only: `ledger_id` from
-`config/workspace.yaml`, `.beads/config.yaml`, and `.beads/metadata.json`, plus
-worktree checkouts that `routes_to_principal_ledger`. It does **not** own MCP
-gateway routing, CRG graph paths, memory `project_id` stores, or activation
-inventory. Those stay in ai-hub (`docs/worktrees.md` three-axis identity).
-Empty `.mcp.json` at a flext root is not a conform defect when Cursor uses the
-ai-hub gateway.
+The two `.beads/` files consume `ledger_id`, `ledger_prefix`, and optional server
+values from `config/workspace.yaml`, with fleet defaults from
+`config/codegen.yaml`. Runtime behavior belongs to each consuming project. MCP
+gateway routing, CRG graph paths, memory `project_id` stores, and activation
+inventory remain outside conform.

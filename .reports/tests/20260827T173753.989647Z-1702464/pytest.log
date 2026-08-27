@@ -1,0 +1,53 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: changed files: tests/unit/codegen/test_codegen_catalog_extensions.py, unchanged files: 132, environment: default
+Using --randomly-seed=1354892508
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 10 items / 1 deselected / 9 selected
+
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_force_converts_custom_envrc_to_generated PASSED [ 11%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_rejects_duplicate_project_mise_selectors PASSED [ 22%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_rejects_project_collision_with_fleet_mise_tool PASSED [ 33%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_composes_project_mise_tools_from_yaml PASSED [ 44%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_renders_mise_python_from_pyproject PASSED [ 55%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_merges_custom_mise_tools_and_prunes_forbidden PASSED [ 66%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_preserves_custom_envrc_without_force PASSED [ 77%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_removes_generated_files_without_pyproject PASSED [ 88%]
+tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_creates_environment_files_from_ssot_templates PASSED [100%]
+
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T173753.989647Z-1702464/junit.xml -
+================================================= slowest 25 durations =================================================
+0.24s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_force_converts_custom_envrc_to_generated
+0.16s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_composes_project_mise_tools_from_yaml
+0.15s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_force_converts_custom_envrc_to_generated
+0.13s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_rejects_duplicate_project_mise_selectors
+0.09s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_merges_custom_mise_tools_and_prunes_forbidden
+0.06s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_preserves_custom_envrc_without_force
+0.04s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_rejects_project_collision_with_fleet_mise_tool
+0.04s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_removes_generated_files_without_pyproject
+0.04s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_renders_mise_python_from_pyproject
+0.04s call     tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_creates_environment_files_from_ssot_templates
+0.01s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_removes_generated_files_without_pyproject
+0.01s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_preserves_custom_envrc_without_force
+0.01s teardown tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_creates_environment_files_from_ssot_templates
+0.01s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_rejects_duplicate_project_mise_selectors
+0.00s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_creates_environment_files_from_ssot_templates
+0.00s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_merges_custom_mise_tools_and_prunes_forbidden
+0.00s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_rejects_project_collision_with_fleet_mise_tool
+0.00s teardown tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_force_converts_custom_envrc_to_generated
+0.00s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_renders_mise_python_from_pyproject
+0.00s setup    tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_composes_project_mise_tools_from_yaml
+0.00s teardown tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_preserves_custom_envrc_without_force
+0.00s teardown tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_merges_custom_mise_tools_and_prunes_forbidden
+0.00s teardown tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_composes_project_mise_tools_from_yaml
+0.00s teardown tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_removes_generated_files_without_pyproject
+0.00s teardown tests/unit/workspace/test_facade_environment_sync.py::TestsFlextInfraFacadeEnvironmentSync::test_sync_rejects_project_collision_with_fleet_mise_tool
+=========================================== 9 passed, 1 deselected in 3.37s ============================================

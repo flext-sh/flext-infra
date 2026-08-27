@@ -1,0 +1,60 @@
+Thu Aug 27 15:26:40 2026    /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T182615.163530Z-2047396/pytest.pstats
+
+         25442656 function calls (24784419 primitive calls) in 25.139 seconds
+
+   Ordered by: cumulative time
+   List reduced from 18018 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    607/2    0.002    0.000   29.600   14.800 _hooks.py:497(__call__)
+   3879/1    0.284    0.000   25.064   25.064 {built-in method builtins.exec}
+      2/1    0.000    0.000   25.064   25.064 <string>:1(<module>)
+      2/1    0.000    0.000   25.064   25.064 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000   25.012   25.012 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000   25.012   25.012 __main__.py:1(<module>)
+        1    0.000    0.000   25.012   25.012 __init__.py:246(_console_main)
+        1    0.000    0.000   25.012   25.012 __init__.py:204(_main)
+   908/70    0.001    0.000   22.329    0.319 _manager.py:111(_hookexec)
+   908/70    0.009    0.000   22.329    0.319 _callers.py:76(_multicall)
+        1    0.000    0.000   15.131   15.131 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000   15.131   15.131 main.py:317(wrap_session)
+        1    0.000    0.000   14.632   14.632 main.py:380(_main)
+        2    0.001    0.000   13.533    6.766 conform.py:96(execute_request)
+        1    0.000    0.000   12.443   12.443 main.py:397(pytest_runtestloop)
+        1    0.000    0.000   12.442   12.442 runner.py:115(pytest_runtest_protocol)
+        5    0.003    0.001   12.078    2.416 conform.py:228(plan)
+        3    0.000    0.000   12.034    4.011 runner.py:236(call_and_report)
+        1    0.000    0.000   11.934   11.934 runner.py:123(runtestprotocol)
+      481    0.013    0.000   10.500    0.022 __init__.py:1(<module>)
+     11/4    0.000    0.000   10.377    2.594 runner.py:340(from_call)
+ 3936/131    0.027    0.000   10.167    0.078 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3381/81    0.023    0.000   10.162    0.125 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3265/97    0.018    0.000   10.121    0.104 <frozen importlib._bootstrap>:911(_load_unlocked)
+        3    0.000    0.000   10.005    3.335 runner.py:250(<lambda>)
+        1    0.000    0.000    9.900    9.900 runner.py:173(pytest_runtest_call)
+        1    0.000    0.000    9.899    9.899 python.py:1705(runtest)
+        1    0.000    0.000    9.899    9.899 python.py:160(pytest_pyfunc_call)
+        1    0.000    0.000    9.899    9.899 test_codegen_beads_ledger.py:671(test_workspace_manifest_can_disable_beads_integration)
+  703/110    0.001    0.000    9.626    0.088 __init__.py:71(import_module)
+  723/110    0.001    0.000    9.623    0.087 <frozen importlib._bootstrap>:1375(_gcd_import)
+   302/61    0.005    0.000    9.391    0.154 rewrite.py:148(exec_module)
+5653/2114    0.011    0.000    8.893    0.004 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+ 6661/144    0.013    0.000    8.369    0.058 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+  2878/78    0.010    0.000    8.089    0.104 <frozen importlib._bootstrap_external>:1017(exec_module)
+332029/266732    0.174    0.000    7.678    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    7.235    7.235 __init__.py:387(_prepareconfig)
+    89/24    0.000    0.000    7.210    0.300 flextlazy_part_02.py:210(<lambda>)
+    89/24    0.001    0.000    7.210    0.300 flextlazy_part_02.py:89(get)
+    73/10    0.001    0.000    7.209    0.721 flextlazy_part_01.py:135(_load)
+        8    0.000    0.000    7.208    0.901 pathlib.py:502(import_path)
+        4    0.001    0.000    7.200    1.800 conftest.py:1(<module>)
+        1    0.000    0.000    7.192    7.192 __init__.py:1228(pytest_cmdline_parse)
+        5    0.000    0.000    7.188    1.438 __init__.py:684(_loadconftestmodules)
+        1    0.000    0.000    7.188    7.188 __init__.py:1512(parse)
+        9    0.000    0.000    7.188    0.799 __init__.py:733(_importconftest)
+        1    0.000    0.000    7.186    7.186 __init__.py:1298(pytest_load_initial_conftests)
+        1    0.000    0.000    7.186    7.186 __init__.py:615(_set_initial_conftests)
+        2    0.001    0.000    7.096    3.548 conform.py:110(execute)
+        5    0.003    0.001    6.868    1.374 conform.py:1111(_plan_existing_repository)
+
+

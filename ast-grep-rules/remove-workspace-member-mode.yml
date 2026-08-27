@@ -1,0 +1,7 @@
+id: remove-workspace-member-mode
+language: Python
+severity: error
+message: workspace-member is not an execution mode; repositories are workspace or standalone
+rule:
+  pattern: c.Infra.WorkspaceMode.WORKSPACE_MEMBER
+fix: c.Infra.WorkspaceMode.STANDALONE

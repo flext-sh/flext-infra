@@ -1,0 +1,60 @@
+Thu Aug 27 13:23:28 2026    /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T161933.775351Z-890445/pytest.pstats
+
+         43855435 function calls (41137566 primitive calls) in 233.913 seconds
+
+   Ordered by: cumulative time
+   List reduced from 14975 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   3465/1    0.229    0.000  233.460  233.460 {built-in method builtins.exec}
+      2/1    0.000    0.000  233.460  233.460 <string>:1(<module>)
+      2/1    0.000    0.000  233.348  233.348 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000  233.348  233.348 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000  233.348  233.348 __main__.py:1(<module>)
+      2/1    0.000    0.000  233.348  233.348 __init__.py:246(_console_main)
+        1    0.000    0.000  229.990  229.990 __init__.py:204(_main)
+  28182/2    0.169    0.000  229.990  114.995 _hooks.py:497(__call__)
+ 28461/70    0.057    0.000  229.956    3.285 _manager.py:111(_hookexec)
+ 28461/70    0.442    0.000  229.955    3.285 _callers.py:76(_multicall)
+        1    0.000    0.000  221.764  221.764 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000  221.764  221.764 main.py:317(wrap_session)
+        1    0.000    0.000  216.229  216.229 dsession.py:94(pytest_sessionfinish)
+        1    0.000    0.000  216.228  216.228 workermanage.py:116(teardown_nodes)
+        1    0.000    0.000  216.228  216.228 multi.py:210(terminate)
+     16/7    0.000    0.000  216.177   30.882 threading.py:641(wait)
+        1    0.000    0.000  216.177  216.177 multi.py:331(safe_terminate)
+      8/2    0.000    0.000  216.177  108.089 gateway_base.py:321(get)
+      8/2    0.000    0.000  216.177  108.089 gateway_base.py:333(waitfinish)
+     12/1    0.000    0.000  216.109  216.109 gateway_base.py:410(_perform_spawn)
+     12/1    0.000    0.000  216.109  216.109 gateway_base.py:337(run)
+      4/1    0.000    0.000  216.109  216.109 multi.py:336(termkill)
+      4/1    0.000    0.000  216.048  216.048 multi.py:229(join_wait)
+    15276    0.422    0.000  213.886    0.014 dsession.py:146(loop_once)
+        1    0.000    0.000  213.326  213.326 main.py:380(_main)
+        1    0.050    0.050  213.326  213.326 dsession.py:128(pytest_runtestloop)
+      433    0.011    0.000   18.337    0.042 __init__.py:1(<module>)
+     7617    0.061    0.000   18.224    0.002 dsession.py:326(worker_testreport)
+  3240/75    0.029    0.000   15.010    0.200 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3186/55    0.025    0.000   15.005    0.273 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3086/69    0.021    0.000   14.976    0.217 <frozen importlib._bootstrap>:911(_load_unlocked)
+   193/37    0.058    0.000   13.859    0.375 rewrite.py:148(exec_module)
+17565/303    0.400    0.000   13.628    0.045 queue.py:177(get)
+ 6857/162    0.015    0.000   12.972    0.080 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+    27807    0.408    0.000   12.917    0.000 process_code.py:291(create_fingerprint)
+     7617    0.041    0.000   12.057    0.002 pytest_testmon.py:408(pytest_runtest_logreport)
+    27807    0.032    0.000   11.974    0.000 process_code.py:194(blocks)
+  2825/58    0.013    0.000   11.350    0.196 <frozen importlib._bootstrap_external>:1017(exec_module)
+   168/57    0.001    0.000   11.245    0.197 __init__.py:71(import_module)
+   184/57    0.001    0.000   11.242    0.197 <frozen importlib._bootstrap>:1375(_gcd_import)
+4016/1180    0.010    0.000   11.215    0.010 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+1386947/730    5.094    0.000    9.754    0.013 process_code.py:134(dump_and_block)
+15291/15118    0.033    0.000    8.978    0.001 gateway_base.py:579(received)
+15284/15111    0.046    0.000    8.495    0.001 gateway_base.py:627(_channel_data)
+1089757/1019852    0.176    0.000    8.346    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    8.226    8.226 __init__.py:387(_prepareconfig)
+        1    0.000    0.000    8.182    8.182 __init__.py:1228(pytest_cmdline_parse)
+        2    0.000    0.000    8.178    4.089 __init__.py:733(_importconftest)
+        1    0.000    0.000    8.177    8.177 __init__.py:1512(parse)
+     74/8    0.000    0.000    8.177    1.022 flextlazy_part_02.py:181(<lambda>)
+
+

@@ -216,9 +216,6 @@ class FlextInfraWorktreeService(s[str]):
             container = self.epic_lane / c.Infra.WORKTREES_DIRNAME
             if container.is_symlink():
                 return r.fail(f"epic worktree container is a symlink: {container}")
-            beads = self.epic_lane / ".beads"
-            if beads.is_symlink():
-                return r.fail(f"epic tracker entry is a symlink: {beads}")
         existing = self.registered_lane(primary_root, branch)
         if existing.success:
             return r.fail(f"worktree branch is already registered: {branch}")

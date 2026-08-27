@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.689" timestamp="2026-08-27T14:37:00.060851-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_codegen_composes_project_mise_tools_through_toml" time="0.213"><failure message="AssertionError: Expected {'python': '3.13', 'node': '26'} to contain {'python': '3.13', 'node': '26'}">tests/unit/codegen/test_codegen_catalog_extensions.py:300: in test_codegen_composes_project_mise_tools_through_toml
+    tm.that(rendered["tools"], has={"python": "3.13", "node": "26"})
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:719: in that
+    cls._validate_common(
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:323: in _validate_common
+    FlextTestsMatchersContainmentMixin.check_has_lacks(
+../flext-tests/src/flext_tests/_utilities/_matchers/_containment.py:69: in check_has_lacks
+    FlextTestsMatchersAssertionsMixin.raise_match_assertion(
+../flext-tests/src/flext_tests/_utilities/_matchers/_assertions.py:26: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected {'python': '3.13', 'node': '26'} to contain {'python': '3.13', 'node': '26'}</failure></testcase></testsuite></testsuites>

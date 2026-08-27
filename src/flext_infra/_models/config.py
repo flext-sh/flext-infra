@@ -46,17 +46,6 @@ class FlextInfraConfigModels:
         version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact tool version installed by mise")
         ]
-        reported_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Version string the pinned binary self-reports; runtime "
-                    "gates compare exactly against this value. It differs from "
-                    "the mise selector version whenever the pin is a go-module "
-                    "commit whose --version output is the module version."
-                )
-            ),
-        ]
         prerelease: Annotated[
             bool,
             m.Field(
@@ -72,37 +61,14 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
-        checksum: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                pattern=r"^[0-9a-f]{64}$",
-                description=(
-                    "SHA-256 of the pinned artifact; runtime verification fails "
-                    "closed when the resolved binary digest diverges"
-                ),
-            ),
-        ] = None
-        expected_schema: Annotated[
-            int | None,
-            m.Field(
-                gt=0,
-                description=(
-                    "Schema version the pinned tool must report for its managed "
-                    "data store (e.g. the Beads Dolt ledger schema)"
-                ),
-            ),
-        ] = None
 
     class BeadsServerSpec(_ConfigContract):
-        """Machine-wide shared Dolt server connection for Beads ledgers."""
+        """Dolt connection rendered into the project-owned Beads config files."""
 
         backend: Annotated[
             Literal["dolt"],
             m.Field(
-                description=(
-                    "Ledger storage engine bd binds a checkout to through "
-                    ".beads/metadata.json"
-                )
+                description=("Ledger storage engine written to .beads/metadata.json")
             ),
         ]
         mode: Annotated[
@@ -113,9 +79,7 @@ class FlextInfraConfigModels:
             Literal[False],
             m.Field(
                 description=(
-                    "Always false: consume the explicitly configured external "
-                    "Gas Town Dolt endpoint; bd-owned shared-server lifecycle is "
-                    "forbidden"
+                    "Value written to the project config for an external Dolt endpoint"
                 )
             ),
         ] = False
@@ -131,14 +95,14 @@ class FlextInfraConfigModels:
         ]
 
     class BeadsToolSpec(MiseToolSpec):
-        """Beads tool pin plus the shared Dolt ledger connection."""
+        """Beads Mise pin plus values rendered into project config files."""
 
         server: Annotated[
             FlextInfraConfigModels.BeadsServerSpec | None,
             m.Field(
                 description=(
-                    "Shared Dolt server connection rendered into ledger routing "
-                    "configs; None keeps repository-local embedded state"
+                    "Dolt connection rendered into .beads/config.yaml and "
+                    ".beads/metadata.json"
                 )
             ),
         ] = None
@@ -245,9 +209,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Exact Go runtime version; mise resolves go: backend "
-                    "selectors through it, so beads only installs when Go "
-                    "is a declared tool"
+                    "Exact Go runtime version used by declared go: backend selectors"
                 )
             ),
         ]
@@ -256,7 +218,7 @@ class FlextInfraConfigModels:
         ]
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
-            m.Field(description="Official Beads CLI installed through mise"),
+            m.Field(description="Beads version projected into .mise.toml"),
         ]
 
         @m.computed_field()
@@ -1405,7 +1367,7 @@ class FlextInfraConfigModels:
                     "Make profiles this section applies to; empty means every "
                     "profile (universal). Sections that only make sense at the "
                     "superproject root (member-directory allowlists, workspace "
-                    "manifest, submodule/Beads coordination) declare "
+                    "manifest, submodule coordination) declare "
                     "[workspace-root] so members and standalone projects never "
                     "receive the phantom entries."
                 )
@@ -1546,7 +1508,12 @@ class FlextInfraConfigModels:
         ]
         beads_enabled: Annotated[
             bool,
-            m.Field(description="Opt an independent standalone project into Beads"),
+            m.Field(
+                description=(
+                    "Whether an independent standalone receives generated "
+                    ".beads config files"
+                )
+            ),
         ] = False
         ci_enabled: Annotated[
             bool,
@@ -1590,20 +1557,15 @@ class FlextInfraConfigModels:
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads_enabled: Annotated[
-            bool, m.Field(description="Whether this repository owns a Beads tracker")
-        ]
-        beads_integration_enabled: Annotated[
             bool,
-            m.Field(
-                description="Whether conform manages or verifies Beads for this workspace"
-            ),
-        ] = True
+            m.Field(description="Whether this repository receives .beads projections"),
+        ]
         attached_standalone: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Marker-attached standalone routed to the workspace ledger; "
-                    "receives a routing-only Beads config, never tracker state"
+                    "Marker-attached standalone receiving workspace-derived "
+                    ".beads config values"
                 )
             ),
         ] = False
@@ -1611,13 +1573,12 @@ class FlextInfraConfigModels:
             bool,
             m.Field(
                 description=(
-                    "Routing-only Beads config; never initializes local tracker state"
+                    "Whether .beads projections use the governing workspace identity"
                 )
             ),
         ] = False
         canonical_project_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical PEP 621 project name and Beads namespace"),
+            t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
         baseline_branch: Annotated[
             t.NonEmptyStr,
@@ -1794,15 +1755,15 @@ class FlextInfraConfigModels:
         ]
 
     class BeadsConfigRenderSpec(_ConfigContract):
-        """Field-only render input for the generated Beads ledger config."""
+        """Field-only input for generated ``.beads/config.yaml``."""
 
         issue_prefix: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Ledger issue prefix from the declared ledger_id"),
+            m.Field(description="Issue prefix from the declared workspace identity"),
         ]
         database: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Ledger Dolt database from the declared ledger_id"),
+            m.Field(description="Dolt database from the declared workspace identity"),
         ]
         server: Annotated[
             FlextInfraConfigModels.BeadsServerSpec,
@@ -1811,24 +1772,11 @@ class FlextInfraConfigModels:
             ),
         ]
         routing: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Routing-only client config for an attached standalone; "
-                    "False marks the workspace-root owned ledger"
-                )
-            ),
+            bool, m.Field(description="Routing value written to the generated config")
         ]
 
     class BeadsMetadataRenderSpec(_ConfigContract):
-        """Field-only render input for the generated Beads ledger marker.
-
-        The Beads CLI resolves a checkout to its Dolt database through
-        ``.beads/metadata.json``; ``bd init`` never writes it, so a fresh
-        clone that carries only the generated ``config.yaml`` silently falls
-        back to the default ``beads`` database. Generating the marker binds
-        every checkout to the shared server database declared by the SSOT.
-        """
+        """Field-only input for generated ``.beads/metadata.json``."""
 
         database: Annotated[
             t.NonEmptyStr,
@@ -2200,11 +2148,8 @@ class FlextInfraConfigModels:
         beads_tool_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Beads CLI version")
         ]
-        beads_enabled: Annotated[
-            bool, m.Field(description="Whether conform owns this repository's tracker")
-        ]
         canonical_project_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Canonical project and Beads namespace")
+            t.NonEmptyStr, m.Field(description="Canonical project name")
         ]
         const_name: Annotated[
             t.NonEmptyStr, m.Field(description="Configured constant project name")
@@ -2348,21 +2293,12 @@ class FlextInfraConfigModels:
             ),
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        beads_enabled: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether this workspace participates in the Beads tracker; "
-                    "disable only through the committed workspace manifest"
-                )
-            ),
-        ] = True
         ledger_id: Annotated[
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Beads ledger identity declared by the workspace root; None "
-                    "falls back to the standalone canonical project name"
+                    "Database identity rendered into project .beads files; None "
+                    "uses the standalone canonical project name"
                 )
             ),
         ] = None
@@ -2370,9 +2306,8 @@ class FlextInfraConfigModels:
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Beads issue-prefix override for workspaces whose tracker "
-                    "namespace diverges from the canonical project name; None "
-                    "keeps the canonical project name (see mro-6fca)"
+                    "Issue-prefix override rendered into project .beads files; "
+                    "None uses the canonical project name"
                 )
             ),
         ] = None
@@ -2380,8 +2315,8 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.BeadsServerSpec | None,
             m.Field(
                 description=(
-                    "Optional workspace-local override for the external Beads "
-                    "Dolt endpoint; None uses the fleet toolchain default"
+                    "Optional workspace-local Dolt values for generated .beads "
+                    "files; None uses the fleet projection default"
                 )
             ),
         ] = None
@@ -2713,9 +2648,8 @@ class FlextInfraConfigModels:
                 FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
             ] = []
             # Declared sections are emitted verbatim. Cross-section dedup is
-            # unsound for ignore files: repeating `.beads/*` after an
-            # intervening `!.beads/` is what keeps the directory scanned, so
-            # dropping the repeat silently un-ignores its contents.
+            # unsound for ignore files because later negations can make a
+            # repeated pattern semantically significant.
             sections.extend(scaffold_sections)
             # Derived artifacts are appended as their own trailing section: an
             # ignore file is evaluated in order, so injecting them into the
@@ -2961,90 +2895,6 @@ class FlextInfraConfigModels:
             m.Field(description="Local repositories overlaid after locked sync"),
         ] = ()
 
-    class BeadsTrackerDeclaration(_ConfigContract):
-        """The tracker identity a repository commits in ``.beads/config.yaml``.
-
-        mro-o0cc: the committed file IS the declaration (e.g. the shared
-        ``mro`` ledger on the machine-wide Dolt server). It is parsed once at
-        the boundary into this model, so consumers read a validated prefix
-        instead of probing an untyped mapping at runtime.
-        """
-
-        issue_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Tracker namespace declared by the repository"),
-        ]
-
-    class BeadsPlan(_ConfigContract):
-        """One repository-local Beads lifecycle owned by conform."""
-
-        repository_root: Annotated[
-            Path, m.Field(description="Repository receiving Beads initialization")
-        ]
-        enabled: Annotated[
-            bool, m.Field(description="Whether this repository owns a Beads tracker")
-        ]
-        integration_enabled: Annotated[
-            bool,
-            m.Field(
-                description="Whether conform manages or verifies Beads for this workspace"
-            ),
-        ] = True
-        canonical_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Required issue prefix derived from project metadata"),
-        ]
-        expected_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact official Beads version pinned by mise"),
-        ]
-        expected_checksum: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                pattern=r"^[0-9a-f]{64}$",
-                description=(
-                    "SHA-256 the resolved Beads binary must match; declared by "
-                    "the toolchain SSOT, verified fail-closed"
-                ),
-            ),
-        ] = None
-        expected_schema: Annotated[
-            int | None,
-            m.Field(
-                gt=0,
-                description=(
-                    "Ledger schema the pinned binary must know; content identity "
-                    "of the artifact is the enforcement surface"
-                ),
-            ),
-        ] = None
-        ledger_root: Annotated[
-            Path,
-            m.Field(
-                description=(
-                    "Checkout root that owns the ledger. Equal to "
-                    "repository_root when this repository owns its own tracker, "
-                    "and the principal checkout when the tracker is routed."
-                )
-            ),
-        ]
-
-        @m.computed_field()
-        @property
-        def routes_to_principal_ledger(self) -> bool:
-            """Whether the tracker lives in another checkout than this one."""
-            return self.ledger_root != self.repository_root
-
-        ledger_id: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description=(
-                    "Ledger identity declared by the workspace manifest SSOT; "
-                    "never derived from the repository name"
-                )
-            ),
-        ] = None
-
     class BranchAncestryRef(_ConfigContract):
         """One exact branch or registered worktree ancestry observation."""
 
@@ -3219,10 +3069,6 @@ class FlextInfraConfigModels:
         uv_environments: Annotated[
             tuple[FlextInfraConfigModels.UvEnvironmentPlan, ...],
             m.Field(description="uv plans paired with selected repositories"),
-        ]
-        beads: Annotated[
-            tuple[FlextInfraConfigModels.BeadsPlan, ...],
-            m.Field(description="Beads lifecycle plans paired with repositories"),
         ]
         branch_ancestry: Annotated[
             tuple[FlextInfraConfigModels.BranchAncestryPlan, ...],

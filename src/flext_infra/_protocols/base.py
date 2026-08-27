@@ -92,11 +92,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Exact tool version installed by mise."""
             ...
 
-        @property
-        def reported_version(self) -> str:
-            """Version string the pinned binary self-reports."""
-            ...
-
     @runtime_checkable
     class RepositoryRef(Protocol):
         """Repository fields consumed by codegen path and profile selection."""
@@ -175,11 +170,6 @@ class FlextInfraProtocolsBase(Protocol):
         """Workspace topology fields consumed by repository selection."""
 
         @property
-        def beads_enabled(self) -> bool:
-            """Whether this workspace participates in the Beads tracker."""
-            ...
-
-        @property
         def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
             """Workspace root repository."""
             ...
@@ -256,11 +246,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def external_gitlinks(self) -> t.StrSequence:
             """Manifest-declared read-only content gitlinks."""
-            ...
-
-        @property
-        def beads_enabled(self) -> bool:
-            """Whether canonical Beads provisioning is enabled."""
             ...
 
         @property
@@ -419,7 +404,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def beads(self) -> FlextInfraProtocolsBase.MiseToolSpec:
-            """Official Beads CLI installed through mise."""
+            """Beads selector and version projected into Mise."""
             ...
 
     @runtime_checkable

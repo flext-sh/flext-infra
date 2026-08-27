@@ -1,0 +1,7 @@
+id: remove-workspace-member-role
+language: Python
+severity: error
+message: workspace-member is a relationship, not a repository role
+rule:
+  pattern: c.Infra.RepositoryRole.WORKSPACE_MEMBER
+fix: c.Infra.RepositoryRole.STANDALONE

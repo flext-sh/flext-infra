@@ -479,10 +479,10 @@ class TestsFlextInfraInfraWorkspaceDetector:
             has="Git submodule branch is missing: vendored",
         )
 
-    def test_conform_target_member_overlay_never_promotes_beads(
+    def test_conform_target_member_overlay_never_enables_beads_projection(
         self, tmp_path: Path
     ) -> None:
-        """Keep an attached member beadless even with an enabling overlay."""
+        """Keep .beads projections off attached members despite an overlay."""
         member_root = self._attached_member(tmp_path)
         workspace_root = member_root.parents[1]
         provider = config.Infra.codegen.providers[0]
@@ -513,10 +513,10 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
         tm.that(target.beads_enabled, eq=False)
 
-    def test_conform_target_standalone_overlay_enables_beads(
+    def test_conform_target_standalone_overlay_enables_beads_projection(
         self, tmp_path: Path
     ) -> None:
-        """Keep the overlay opt-in for an independent standalone repository."""
+        """Let an independent standalone opt into .beads projections."""
         project_root = tmp_path / "flext-alone"
         self._initialize_repository(project_root)
         (project_root / "pyproject.toml").write_text(
@@ -546,7 +546,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         A manifest member resolves to its governing root, so it is never an
         attached standalone; a marker-attached repository owns its own
         workspace.yaml and resolves to itself. The two classes stay separate
-        even though both now project routing-only Beads client config.
+        even though both can consume workspace-derived .beads values.
         """
         member_root = self._attached_member(tmp_path)
 

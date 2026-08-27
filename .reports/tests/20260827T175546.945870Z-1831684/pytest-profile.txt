@@ -1,0 +1,60 @@
+Thu Aug 27 14:56:03 2026    /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T175546.945870Z-1831684/pytest.pstats
+
+         14175525 function calls (13758838 primitive calls) in 15.819 seconds
+
+   Ordered by: cumulative time
+   List reduced from 17105 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   3858/1    0.296    0.000   15.670   15.670 {built-in method builtins.exec}
+      2/1    0.000    0.000   15.670   15.670 <string>:1(<module>)
+      2/1    0.000    0.000   15.621   15.621 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000   15.621   15.621 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000   15.621   15.621 __main__.py:1(<module>)
+      2/1    0.000    0.000   15.621   15.621 __init__.py:246(_console_main)
+      481    0.015    0.000   13.296    0.028 __init__.py:1(<module>)
+        1    0.000    0.000   12.085   12.085 __init__.py:204(_main)
+    631/2    0.003    0.000   12.085    6.042 _hooks.py:497(__call__)
+   932/70    0.001    0.000   12.034    0.172 _manager.py:111(_hookexec)
+   932/70    0.009    0.000   12.034    0.172 _callers.py:76(_multicall)
+ 3935/130    0.031    0.000   11.016    0.085 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3380/80    0.026    0.000   11.010    0.138 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3264/96    0.020    0.000   10.967    0.114 <frozen importlib._bootstrap>:911(_load_unlocked)
+  703/110    0.001    0.000   10.298    0.094 __init__.py:71(import_module)
+  723/110    0.001    0.000   10.294    0.094 <frozen importlib._bootstrap>:1375(_gcd_import)
+   302/61    0.007    0.000   10.157    0.167 rewrite.py:148(exec_module)
+5312/1773    0.011    0.000    9.425    0.005 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+ 6661/142    0.013    0.000    9.151    0.064 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+  2877/77    0.011    0.000    8.751    0.114 <frozen importlib._bootstrap_external>:1017(exec_module)
+203628/139945    0.135    0.000    7.608    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    7.206    7.206 __init__.py:387(_prepareconfig)
+    89/24    0.000    0.000    7.160    0.298 flextlazy_part_02.py:210(<lambda>)
+    89/24    0.001    0.000    7.160    0.298 flextlazy_part_02.py:89(get)
+    73/10    0.001    0.000    7.159    0.716 flextlazy_part_01.py:135(_load)
+        8    0.000    0.000    7.154    0.894 pathlib.py:502(import_path)
+        1    0.000    0.000    7.150    7.150 __init__.py:1228(pytest_cmdline_parse)
+        4    0.001    0.000    7.149    1.787 conftest.py:1(<module>)
+        5    0.000    0.000    7.146    1.429 __init__.py:684(_loadconftestmodules)
+        1    0.000    0.000    7.145    7.145 __init__.py:1512(parse)
+        9    0.000    0.000    7.145    0.794 __init__.py:733(_importconftest)
+        1    0.000    0.000    7.142    7.142 __init__.py:1298(pytest_load_initial_conftests)
+        1    0.000    0.000    7.142    7.142 __init__.py:615(_set_initial_conftests)
+9159/7615    0.209    0.000    5.648    0.001 {built-in method builtins.__build_class__}
+        1    0.000    0.000    4.878    4.878 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000    4.878    4.878 main.py:317(wrap_session)
+      877    0.046    0.000    4.536    0.005 _model_construction.py:84(__new__)
+       11    0.001    0.000    4.480    0.407 models.py:1(<module>)
+ 1012/183    0.003    0.000    4.131    0.023 {built-in method builtins.__import__}
+        6    0.000    0.000    3.828    0.638 _config.py:1(<module>)
+        2    0.002    0.001    3.205    1.602 _manager.py:392(load_setuptools_entrypoints)
+        5    0.001    0.000    3.147    0.629 utilities.py:1(<module>)
+       21    0.000    0.000    3.017    0.144 __init__.py:173(load)
+        3    0.000    0.000    2.667    0.889 matchers.py:1(<module>)
+        1    0.000    0.000    2.552    2.552 tmatchers.py:1(<module>)
+       20    0.001    0.000    2.523    0.126 config.py:1(<module>)
+        1    0.000    0.000    2.460    2.460 _containment.py:1(<module>)
+        1    0.000    0.000    2.458    2.458 payload.py:1(<module>)
+       52    0.003    0.000    2.256    0.043 base.py:1(<module>)
+        1    0.000    0.000    2.206    2.206 main.py:380(_main)
+
+

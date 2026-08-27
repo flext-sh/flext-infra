@@ -1,0 +1,450 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: changed files: 0, unchanged files: 77, environment: default
+Using --randomly-seed=2783863212
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 21 items / 1 deselected / 20 selected
+
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_attached_standalone_plan_renders_no_ledger_resolution_marker PASSED [  5%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_manifest_ledger_id_defaults_database_and_issue_prefix PASSED [ 10%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_attached_standalone_plan_renders_no_beads_config PASSED [ 15%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_plan_renders_full_ledger_config PASSED [ 20%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_transaction_renders_the_integrated_ledger_projection FAILED [ 25%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_external_member_lane_plans_no_beads_surfaces FAILED [ 30%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_spec_rejects_prefix_without_ledger_id FAILED [ 35%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_spec_accepts_prefix_declared_equal_to_ledger PASSED [ 40%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_without_beads_conforms FAILED [ 45%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_tool_spec_rejects_malformed_checksum PASSED [ 50%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_member_of_beadless_workspace_resolves_no_ledger PASSED [ 55%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_server_block_loads_from_typed_ssot PASSED [ 60%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_declared_ledger_prefix_overrides_canonical_project_name PASSED [ 65%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_transaction_worktree_routes_ledger_to_principal FAILED [ 70%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_divergent_binary_does_not_block_conform +++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-async-log-writer (140625424549568) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/gt/flext/mayor/rig/flext-core/src/flext_core/_utilities/_logging_config_parts/logging_config_part_01.py", line 137, in _worker
+    msg = self.queue.get(timeout=0.1)
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+FAILED                                                                                                           [ 75%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_ledger_identity_flows_to_member_targets PASSED [ 80%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_principal_keeps_ledger_at_repository_root PASSED [ 85%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_plan_renders_ledger_resolution_marker PASSED [ 90%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_ledger_id_without_prefix_is_refused FAILED [ 95%]
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_plain_standalone_plan_renders_no_ledger_config PASSED [100%]
+
+======================================================= FAILURES =======================================================
+________________ TestCodegenBeadsLedger.test_owner_transaction_renders_the_integrated_ledger_projection ________________
+tests/unit/codegen/test_codegen_beads_ledger.py:155: in test_owner_transaction_renders_the_integrated_ledger_projection
+    tm.that(rendered, has="Owned ledger config")
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:719: in that
+    cls._validate_common(
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:323: in _validate_common
+    FlextTestsMatchersContainmentMixin.check_has_lacks(
+../flext-tests/src/flext_tests/_utilities/_matchers/_containment.py:69: in check_has_lacks
+    FlextTestsMatchersAssertionsMixin.raise_match_assertion(
+../flext-tests/src/flext_tests/_utilities/_matchers/_assertions.py:26: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected '# @flext-managed: continuous\n# @flext-regenerate: make gen WHAT=apply APPLY=Y\n# @flext-ssot: config/workspace.yaml (ledger_id) + flext-infra config/codegen.yaml (toolchain.beads.server)\n# @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate\n# Generated by `flext-infra gen conform`.\n# Source: database and default issue prefix = workspace manifest ledger_id;\n# ledger_prefix is an optional distinct issue-prefix override.\n# Source: dolt server block = flext-infra config/codegen.yaml\n# toolchain.beads.server (machine-wide shared Dolt server facts).\n# Routing-only client config: this attached standalone owns no tracker state;\n# bd commands route to the shared ledger below. Local data is never written.\nissue-prefix: "fleet-ledger"\n\n# Dolt server connection (Gas City managed server on :3307).\n# The `fleet-ledger` database lives there; a repository-local server is never used.\ndolt:\n  mode: server\n  shared-server: false\n  host: 127.0.0.1\n  port: 3307\n  user: root\n  database: fleet-ledger\n  auto-commit: "on"\n' to contain 'Owned ledger config'
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+INFO:   stage=templates repository=flext-infra
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/beads-config.yaml.j2 -> .beads/config.yaml
+  template base/beads-metadata.json.j2 -> .beads/metadata.json
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  flext-infra              1.67s
+_______________________ TestCodegenBeadsLedger.test_external_member_lane_plans_no_beads_surfaces _______________________
+tests/unit/codegen/test_codegen_beads_ledger.py:271: in test_external_member_lane_plans_no_beads_surfaces
+    tm.that(plan.beads[0].repository_root, eq=lane.resolve())
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: PosixPath('/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-64/test_external_member_lane_plan0/workspace/flext-core') did not satisfy constraints
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=1
+[1/1] flext-core conform ...
+INFO:   stage=pyproject repository=flext-core
+INFO:   stage=templates repository=flext-core
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  flext-core               1.37s
+_____________________ TestCodegenBeadsLedger.test_workspace_spec_rejects_prefix_without_ledger_id ______________________
+tests/unit/codegen/test_codegen_beads_ledger.py:467: in test_workspace_spec_rejects_prefix_without_ledger_id
+    with pytest.raises(c.ValidationError, match="ledger_id"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValidationError
+_____________________________ TestCodegenBeadsLedger.test_workspace_without_beads_conforms _____________________________
+tests/unit/codegen/test_codegen_beads_ledger.py:666: in test_workspace_without_beads_conforms
+    tm.ok(result)
+../flext-tests/src/flext_tests/_utilities/_matchers/_result.py:330: in ok
+    return FlextTestsResultUtilitiesMixin.assert_success(result)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../flext-tests/src/flext_tests/_utilities/result.py:41: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: mise-managed Beads CLI version mismatch: 1.2.2-dc3 != 1.2.2
+------------------------------------------------- Captured stdout call -------------------------------------------------
+
+============================================================
+  Codegen Conform
+============================================================
+INFO: stage=plan mode=apply scope=self what=makefile root=/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-64/test_workspace_without_beads_c0/no-beads
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+INFO:   stage=templates repository=flext-infra
+  template base/Makefile.j2 -> Makefile
+  [OK] conform  flext-infra              0.62s
+_____________________ TestCodegenBeadsLedger.test_transaction_worktree_routes_ledger_to_principal ______________________
+tests/unit/codegen/test_codegen_beads_ledger.py:136: in test_transaction_worktree_routes_ledger_to_principal
+    tm.that(plan.repository_root, eq=transaction.resolve())
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: PosixPath('/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-64/test_transaction_worktree_rout0/principal') did not satisfy constraints
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+INFO:   stage=templates repository=flext-infra
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/beads-config.yaml.j2 -> .beads/config.yaml
+  template base/beads-metadata.json.j2 -> .beads/metadata.json
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  flext-infra              1.30s
+_________________________ TestCodegenBeadsLedger.test_divergent_binary_does_not_block_conform __________________________
+tests/unit/codegen/test_codegen_beads_ledger.py:754: in test_divergent_binary_does_not_block_conform
+    result = FlextInfraCodegenConform.execute_request(
+src/flext_infra/codegen/conform.py:109: in execute_request
+    return service.execute()
+           ^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/conform.py:122: in execute
+    planned = self.plan(request)
+              ^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/conform.py:297: in plan
+    current_target_result = FlextInfraWorkspaceDetector.conform_target(
+src/flext_infra/workspace/detector.py:545: in conform_target
+    topology_result = cls.resolve_topology_roots(repository_root)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/workspace/detector.py:353: in resolve_topology_roots
+    superproject = u.Infra.git_superproject_working_tree(
+src/flext_infra/_utilities/_git/semantic.py:202: in git_superproject_working_tree
+    return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/main.py:965: in __class_getitem__
+    submodel = _generics.create_generic_submodel(model_name, origin, args, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generics.py:127: in create_generic_submodel
+    created_model = meta(
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py:256: in __new__
+    complete_model_class(
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py:667: in complete_model_class
+    schema = gen_schema.generate_schema(cls)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:744: in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1038: in _generate_schema_inner
+    return self._model_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:868: in _model_schema
+    {k: self._generate_md_field_schema(k, v, decorators) for k, v in fields.items()},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1245: in _generate_md_field_schema
+    schema, metadata = self._common_field_schema(name, field_info, decorators)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1299: in _common_field_schema
+    schema = self._apply_annotations(
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2252: in _apply_annotations
+    schema = get_inner_schema(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_schema_generation_shared.py:83: in __call__
+    schema = self._handler(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2231: in inner_handler
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1043: in _generate_schema_inner
+    return self.match_type(obj)
+           ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1161: in match_type
+    return self._match_generic_type(obj, origin)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1184: in _match_generic_type
+    return self._union_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1344: in _union_schema
+    choices.append(self.generate_schema(arg))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:744: in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1043: in _generate_schema_inner
+    return self.match_type(obj)
+           ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1119: in match_type
+    return self._type_alias_type_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1376: in _type_alias_type_schema
+    schema = self.generate_schema(annotation)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:744: in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1043: in _generate_schema_inner
+    return self.match_type(obj)
+           ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1161: in match_type
+    return self._match_generic_type(obj, origin)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1194: in _match_generic_type
+    return self._dict_schema(*self._get_first_two_args_or_any(obj))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:402: in _dict_schema
+    return core_schema.dict_schema(self.generate_schema(keys_type), self.generate_schema(values_type))
+                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:744: in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1043: in _generate_schema_inner
+    return self.match_type(obj)
+           ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1119: in match_type
+    return self._type_alias_type_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1376: in _type_alias_type_schema
+    schema = self.generate_schema(annotation)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:744: in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1043: in _generate_schema_inner
+    return self.match_type(obj)
+           ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1119: in match_type
+    return self._type_alias_type_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1376: in _type_alias_type_schema
+    schema = self.generate_schema(annotation)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:744: in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1022: in _generate_schema_inner
+    return self._annotated_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2202: in _annotated_schema
+    schema = self._apply_annotations(source_type, annotations)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2252: in _apply_annotations
+    schema = get_inner_schema(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_schema_generation_shared.py:83: in __call__
+    schema = self._handler(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2423: in new_handler
+    schema = annotation_get_schema(source, get_inner_schema)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/types.py:3181: in __get_pydantic_core_schema__
+    python_schema = handler(source_type)
+                    ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_schema_generation_shared.py:83: in __call__
+    schema = self._handler(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2423: in new_handler
+    schema = annotation_get_schema(source, get_inner_schema)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/types.py:3072: in __get_pydantic_core_schema__
+    original_schema = handler(source_type)
+                      ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_schema_generation_shared.py:83: in __call__
+    schema = self._handler(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2231: in inner_handler
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1043: in _generate_schema_inner
+    return self.match_type(obj)
+           ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1161: in match_type
+    return self._match_generic_type(obj, origin)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1184: in _match_generic_type
+    return self._union_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1344: in _union_schema
+    choices.append(self.generate_schema(arg))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:744: in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:1022: in _generate_schema_inner
+    return self._annotated_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2202: in _annotated_schema
+    schema = self._apply_annotations(source_type, annotations)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2223: in _apply_annotations
+    annotations = list(_known_annotated_metadata.expand_grouped_metadata(annotations))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/pydantic/_internal/_known_annotated_metadata.py:131: in expand_grouped_metadata
+    if isinstance(annotation, at.GroupedMetadata):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/typing.py:2138: in __instancecheck__
+    val = getattr_static(instance, attr)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/inspect.py:1842: in getattr_static
+    instance_result = _check_instance(obj, attr)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/inspect.py:1781: in _check_instance
+    return dict.get(instance_dict, attr, _sentinel)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>10.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+
+============================================================
+  Codegen Conform
+============================================================
+INFO: stage=plan mode=check scope=self what=all root=/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-64/test_divergent_binary_does_not0/fake-bd-repo
+___________________________ TestCodegenBeadsLedger.test_ledger_id_without_prefix_is_refused ____________________________
+tests/unit/codegen/test_codegen_beads_ledger.py:456: in test_ledger_id_without_prefix_is_refused
+    with pytest.raises(c.ValidationError, match="ledger_prefix"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValidationError
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T182016.259089Z-1997208/junit.xml -
+================================================= slowest 25 durations =================================================
+10.00s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_divergent_binary_does_not_block_conform
+4.13s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_plain_standalone_plan_renders_no_ledger_config
+2.69s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_attached_standalone_plan_renders_no_ledger_resolution_marker
+2.50s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_plan_renders_full_ledger_config
+2.48s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_external_member_lane_plans_no_beads_surfaces
+2.41s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_transaction_renders_the_integrated_ledger_projection
+2.27s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_principal_keeps_ledger_at_repository_root
+2.14s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_manifest_ledger_id_defaults_database_and_issue_prefix
+2.08s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_plan_renders_ledger_resolution_marker
+2.00s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_attached_standalone_plan_renders_no_beads_config
+1.98s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_declared_ledger_prefix_overrides_canonical_project_name
+1.94s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_transaction_worktree_routes_ledger_to_principal
+1.28s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_without_beads_conforms
+0.09s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_attached_standalone_plan_renders_no_ledger_resolution_marker
+0.01s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_ledger_identity_flows_to_member_targets
+0.01s teardown tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_plain_standalone_plan_renders_no_ledger_config
+0.00s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_tool_spec_rejects_malformed_checksum
+0.00s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_transaction_worktree_routes_ledger_to_principal
+0.00s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_transaction_renders_the_integrated_ledger_projection
+0.00s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_plan_renders_ledger_resolution_marker
+0.00s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_plan_renders_full_ledger_config
+0.00s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_manifest_ledger_id_defaults_database_and_issue_prefix
+0.00s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_attached_standalone_plan_renders_no_beads_config
+0.00s teardown tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_attached_standalone_plan_renders_no_ledger_resolution_marker
+0.00s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_ledger_identity_flows_to_member_targets
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_owner_transaction_renders_the_integrated_ledger_projection
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_external_member_lane_plans_no_beads_surfaces
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_spec_rejects_prefix_without_ledger_id
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_without_beads_conforms
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_transaction_worktree_routes_ledger_to_principal
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_divergent_binary_does_not_block_conform
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_ledger_id_without_prefix_is_refused
+===================================== 7 failed, 13 passed, 1 deselected in 47.38s ======================================

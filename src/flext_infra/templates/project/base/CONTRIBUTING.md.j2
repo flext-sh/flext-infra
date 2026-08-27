@@ -26,10 +26,9 @@ make test  PROJECT={{ package_name }}
 ## Development Workflow
 
 1. Create a focused branch from `{{ flext_git_branch }}`.
-2. Track work with `bd` (Beads) and use the Gas Town rig lane lifecycle.
-3. Keep changes scoped to one concern per commit.
-4. Run quality gates before opening a PR.
-5. Update docs when API, behavior, or architecture changes.
+2. Keep changes scoped to one concern per commit.
+3. Run quality gates before opening a PR.
+4. Update docs when API, behavior, or architecture changes.
 
 ### Commit Conventions
 
@@ -40,14 +39,6 @@ Use conventional commit messages:
 - `docs:` — documentation only
 - `refactor:` — code restructuring, no behavior change
 - `chore:` — tooling, dependencies, maintenance
-
-### Lane Lifecycle
-
-```bash
-gt sling <id> flext
-gt hook status
-gt done
-```
 
 ## Testing
 

@@ -1,0 +1,60 @@
+Thu Aug 27 15:49:50 2026    /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T184937.459432Z-2251208/pytest.pstats
+
+         12873606 function calls (12546345 primitive calls) in 12.843 seconds
+
+   Ordered by: cumulative time
+   List reduced from 16559 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   3857/1    0.240    0.000   12.685   12.685 {built-in method builtins.exec}
+      2/1    0.000    0.000   12.685   12.685 <string>:1(<module>)
+      2/1    0.000    0.000   12.642   12.642 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000   12.642   12.642 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000   12.642   12.642 __main__.py:1(<module>)
+      2/1    0.000    0.000   12.642   12.642 __init__.py:246(_console_main)
+        1    0.000    0.000   10.215   10.215 __init__.py:204(_main)
+    419/2    0.002    0.000   10.215    5.107 _hooks.py:497(__call__)
+   700/70    0.001    0.000   10.177    0.145 _manager.py:111(_hookexec)
+   700/70    0.007    0.000   10.177    0.145 _callers.py:76(_multicall)
+      481    0.012    0.000    9.828    0.020 __init__.py:1(<module>)
+ 3934/129    0.026    0.000    9.756    0.076 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3379/79    0.022    0.000    9.751    0.123 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3263/95    0.017    0.000    9.713    0.102 <frozen importlib._bootstrap>:911(_load_unlocked)
+  703/110    0.001    0.000    9.182    0.083 __init__.py:71(import_module)
+  723/110    0.001    0.000    9.179    0.083 <frozen importlib._bootstrap>:1375(_gcd_import)
+   302/61    0.004    0.000    8.984    0.147 rewrite.py:148(exec_module)
+5260/1723    0.010    0.000    8.510    0.005 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+ 6657/140    0.013    0.000    8.136    0.058 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+  2876/76    0.009    0.000    7.863    0.103 <frozen importlib._bootstrap_external>:1017(exec_module)
+201052/137586    0.132    0.000    7.353    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    7.025    7.025 __init__.py:387(_prepareconfig)
+    89/24    0.000    0.000    7.001    0.292 flextlazy_part_02.py:210(<lambda>)
+    89/24    0.001    0.000    7.001    0.292 flextlazy_part_02.py:89(get)
+    73/10    0.001    0.000    7.000    0.700 flextlazy_part_01.py:135(_load)
+        4    0.001    0.000    6.990    1.747 conftest.py:1(<module>)
+        1    0.000    0.000    6.981    6.981 __init__.py:1228(pytest_cmdline_parse)
+        5    0.000    0.000    6.978    1.396 __init__.py:684(_loadconftestmodules)
+        1    0.000    0.000    6.978    6.978 __init__.py:1512(parse)
+        9    0.000    0.000    6.978    0.775 __init__.py:733(_importconftest)
+        8    0.000    0.000    6.977    0.872 pathlib.py:502(import_path)
+        1    0.000    0.000    6.976    6.976 __init__.py:1298(pytest_load_initial_conftests)
+        1    0.000    0.000    6.976    6.976 __init__.py:615(_set_initial_conftests)
+9152/7611    0.172    0.000    5.496    0.001 {built-in method builtins.__build_class__}
+      863    0.045    0.000    4.413    0.005 _model_construction.py:84(__new__)
+       11    0.001    0.000    4.387    0.399 models.py:1(<module>)
+        6    0.000    0.000    4.058    0.676 _config.py:1(<module>)
+        1    0.000    0.000    3.190    3.190 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000    3.190    3.190 main.py:317(wrap_session)
+ 1012/183    0.003    0.000    3.180    0.017 {built-in method builtins.__import__}
+        5    0.000    0.000    2.917    0.583 utilities.py:1(<module>)
+       20    0.001    0.000    2.500    0.125 config.py:1(<module>)
+        3    0.000    0.000    2.434    0.811 matchers.py:1(<module>)
+        1    0.000    0.000    2.332    2.332 tmatchers.py:1(<module>)
+        1    0.000    0.000    2.273    2.273 _containment.py:1(<module>)
+        1    0.000    0.000    2.272    2.272 payload.py:1(<module>)
+        2    0.002    0.001    2.253    1.127 _manager.py:392(load_setuptools_entrypoints)
+       21    0.000    0.000    2.095    0.100 __init__.py:173(load)
+       52    0.002    0.000    1.928    0.037 base.py:1(<module>)
+      867    0.040    0.000    1.900    0.002 _model_construction.py:600(complete_model_class)
+
+

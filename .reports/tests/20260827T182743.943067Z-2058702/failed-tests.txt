@@ -1,0 +1,1 @@
+tests.unit.codegen.test_codegen_beads_ledger.TestCodegenBeadsLedger::test_local_binary_cannot_override_official_beads_version

@@ -54,7 +54,6 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
 def test_governance_authority_sequence_matches_agents() -> None:
     agents = (WORKSPACE_ROOT / "AGENTS.md").read_text(encoding="utf-8")
     governance = (WORKSPACE_ROOT / "docs" / "GOVERNANCE.md").read_text(encoding="utf-8")
-    assert "USER REQUEST > BEADS" in agents
     assert "AIHUB-INVIOLABLE-LAW-PRELUDE" in agents
     assert "quality-gates skill" not in governance
     assert "flext-law" in governance or "AGENTS.md" in governance
@@ -72,24 +71,6 @@ def test_docs_validation_required_skills_exist_with_adr() -> None:
         skill = skills_root / name / "SKILL.md"
         assert skill.is_file(), name
         assert "adr" in skill.read_text(encoding="utf-8").lower(), name
-
-
-def test_july_handoff_plans_are_marked_historical() -> None:
-    plans = (
-        WORKSPACE_ROOT
-        / "docs"
-        / "superpowers"
-        / "plans"
-        / "2026-07-29-flext-beads-governance-reorganization-handoff.md",
-        WORKSPACE_ROOT
-        / "docs"
-        / "superpowers"
-        / "plans"
-        / "2026-07-29-flext-governance-beads-execution-continuation.md",
-    )
-    for plan in plans:
-        text = plan.read_text(encoding="utf-8")
-        assert "HISTORICAL / SUPERSEDED" in text
 
 
 def test_markdownlint_does_not_suppress_strict_rules() -> None:

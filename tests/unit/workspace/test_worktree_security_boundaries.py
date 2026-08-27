@@ -83,7 +83,7 @@ def test_unresolved_base_fails_before_lane_mutation(tmp_path: Path) -> None:
     )
 
 
-@pytest.mark.parametrize("entry", ["epic", "container", "beads"])
+@pytest.mark.parametrize("entry", ["epic", "container"])
 def test_symlinked_epic_topology_fails_closed(tmp_path: Path, entry: str) -> None:
     repository = _repository(tmp_path)
     epic = Path(tm.ok(_add(repository, "feature/secure-epic")))
@@ -92,9 +92,6 @@ def test_symlinked_epic_topology_fails_closed(tmp_path: Path, entry: str) -> Non
     target = epic
     if entry == "container":
         target = epic / c.Infra.WORKTREES_DIRNAME
-        target.symlink_to(outside, target_is_directory=True)
-    elif entry == "beads":
-        target = epic / ".beads"
         target.symlink_to(outside, target_is_directory=True)
     else:
         tm.ok(u.Infra.git_remove_clean_worktree(repository, epic))

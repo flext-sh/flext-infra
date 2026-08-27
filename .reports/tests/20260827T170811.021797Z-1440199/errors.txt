@@ -1,0 +1,39 @@
+=== FAILURE: tests.unit.codegen.toolchain_beads_distribution_tests.TestsToolchainBeadsDistribution::test_selector_targets_the_gas_city_distribution ===
+AssertionError: Assertion failed: 'github:marlon-costa-dc/beads' did not satisfy constraints
+tests/unit/codegen/toolchain_beads_distribution_tests.py:21: in test_selector_targets_the_gas_city_distribution
+    tm.that(toolchain.beads.selector, eq=f"github:{_GOVERNED_REPOSITORY}")
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 'github:marlon-costa-dc/beads' did not satisfy constraints
+
+=== FAILURE: tests.unit.codegen.toolchain_beads_distribution_tests.TestsToolchainBeadsDistribution::test_schema_and_linux_asset_are_canonical ===
+AssertionError: Assertion failed: 62 did not satisfy constraints
+tests/unit/codegen/toolchain_beads_distribution_tests.py:50: in test_schema_and_linux_asset_are_canonical
+    tm.that(beads.expected_schema, eq=_GOVERNED_SCHEMA)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 62 did not satisfy constraints
+
+=== FAILURE: tests.unit.codegen.toolchain_beads_distribution_tests.TestsToolchainBeadsDistribution::test_selector_never_targets_legacy_distributions ===
+AssertionError: Assertion failed: True did not satisfy constraints
+tests/unit/codegen/toolchain_beads_distribution_tests.py:28: in test_selector_never_targets_legacy_distributions
+    tm.that(legacy in selector, eq=False)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: True did not satisfy constraints
+
+=== FAILURE: tests.unit.codegen.toolchain_beads_distribution_tests.TestsToolchainBeadsDistribution::test_version_is_the_gas_city_release_tag ===
+AssertionError: Assertion failed: 'latest' did not satisfy constraints
+tests/unit/codegen/toolchain_beads_distribution_tests.py:34: in test_version_is_the_gas_city_release_tag
+    tm.that(toolchain.beads.version, eq=_GOVERNED_VERSION)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 'latest' did not satisfy constraints

@@ -61,46 +61,16 @@ Infra:
       # qlty (hq-36xk): same missing-owner defect as uv_version above.
       qlty_version: "0.642"
       mise_version: "2026.7"
-      # Go runtime required by mise go: backend selectors (beads).
+      # Go runtime retained for projects that use mise go: backend selectors.
       go_version: "1.26"
-      # The shared mro Dolt ledger is at schema v61; the newest official
-      # gastownhall release (1.1.2) only knows v53 and fails preflight with
-      # "schema version mismatch". Pin the go-module commit that migrated the
-      # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform preflight gate; the immutable commit
-      # stays the installed selector version. The artifact identity is
-      # content-proven: checksum is the SHA-256 of the pinned binary, and
-      # expected_schema is the ledger schema the binary must know.
+      # Values projected into each project's .mise.toml and .beads config files.
+      # flext-infra does not execute, validate, initialize, or manage Beads.
       beads:
-        # Why (dedup-t0m): the fleet pins the beads Go selector so every
-        # repository renders a deterministic .mise.toml entry, but the version
-        # is `latest` not a commit hash: marlon-costa-dc/beads is an owner-maintained
-        # fork that advances continuously, and a hash pin against it would
-        # silently stall. The binary is content-attested by GitHub at install;
-        # the version gate below validates the live binary against what the
-        # repository's .mise.toml resolves, not against a fleet-wide hash.
-        selector: github:marlon-costa-dc/beads
-        version: "latest"
-        reported_version: "latest"
-        prerelease: true
-        minimum_release_age: "0s"
-        checksum: null
-        expected_schema: 62
-        # Gas Town Dolt server facts: every FLEXT ledger on this host routes
-        # through the Gas Town town server on :3307 (managed by `gt dolt start`).
-        # Why (aihub-g8e1j): shared_server: true routes bd's PID/port/lock
-        # bookkeeping through bd's OWN independently-lifecycled server at
-        # ~/.beads/shared-server/ (see beads internal/doltserver resolveServerDir),
-        # ignoring the host/port below entirely — a distinct bd feature flag, not
-        # "shared" in the sense this comment used to imply. shared_server: false
-        # makes bd honor the per-project host/port and consume only the external
-        # Gas Town town server; a repository-local or bd-owned server is never
-        # used. This exact value was fixed once in 6d5fc8df and silently reverted
-        # by a later merge-conflict resolution before the port-only fix in
-        # 62238830 (aihub-v01jg) — restoring it here, do not re-flip it back.
-        # Rendered into .beads/config.yaml and .beads/metadata.json by codegen
-        # for ledger owners (workspace-root) and attached standalones (routing
-        # only).
+        selector: github:gastownhall/beads
+        version: "1.2.2"
+        prerelease: false
+        minimum_release_age: null
+        # Rendered verbatim into .beads/config.yaml and .beads/metadata.json.
         server:
           mode: server
           backend: dolt
@@ -531,7 +501,6 @@ Infra:
       - { name: __pycache__, source_scan_ignore: true }
       - { name: __pyrefly_virtual__ }
       - { name: .agents }
-      - { name: .beads }
       - { name: .benchmarks }
       # mro-0wuz: archive-not-delete target for the layout engine; the generated
       # .gitignore projection must never track archived loose files.
@@ -1054,9 +1023,6 @@ Infra:
       - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
         owner: codegen
         policy: full
-      - path: .github/scripts/check-beads-policy.sh
-        owner: codegen
-        policy: full
       - path: .github/scripts/check-cqrs-compliance.sh
         owner: codegen
         policy: full
@@ -1315,22 +1281,6 @@ Infra:
             - "scripts/maintenance/"
             - "!scripts/dispatch.py"
             - "!scripts/__init__.py"
-        - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
-          profiles: [workspace-root, standalone]
-          patterns:
-            - "!.beads/"
-            - ".beads/*"
-            - "!.beads/config.yaml"
-            # metadata.json is what bd reads to resolve the ledger. Without it
-            # bd warns "no beads configuration found" and silently falls back
-            # to the default database, so beads created from a clean clone land
-            # in a throwaway store (mro-9wv8). In workspace-root and standalone
-            # the file holds only facts already declared in the generated
-            # config.yaml (backend/dolt_mode/dolt_database) -- no secret and no
-            # per-machine value -- so it is safe to track. Members keep it
-            # ignored: their embedded-mode file carries a per-machine
-            # project_id UUID.
-            - "!.beads/metadata.json"
         - name: "Python configuration"
           profiles: [workspace-root]
           patterns:
@@ -1627,35 +1577,11 @@ Infra:
         - name: "--- codegen conform: tracked owner inputs ---"
           patterns:
             - "!base.mk"
-        # This final policy re-ignores .beads/* for every profile, so the
-        # workspace-root exception for metadata.json is re-stated in a
-        # workspace-root-scoped section immediately after it (last rule wins).
-        # Members are deliberately NOT covered: their embedded-mode
-        # metadata.json carries a per-machine project_id UUID.
-        - name: "FINAL BEADS TRACKING POLICY"
+        - name: "Local runtime and workspace state"
           patterns:
-            - "!.beads/"
-            - ".beads/*"
-            - ".beads/.*"
-            - "!.beads/config.yaml"
-            - ".beads/proxieddb/"
-            # The bd gate lock is per-run runtime state written at the
-            # REPOSITORY ROOT, not inside .beads/, so the .beads/* rules above
-            # never reach it. Every profile runs bd, so every profile must
-            # ignore it. Without this the lock reappears after every bd
-            # invocation and dirties the checkout -- in a submodule that also
-            # dirties the superproject gitlink, which is enough to fail
-            # `make release WHAT=status` and block the release verb outright.
-            - ".beads.gate.lock"
-            - ".dolt/"
             - "*.db"
-            - ".beads-credential-key"
             - ".worktrees/"
             - "legado/"
-        - name: "Beads ledger identity (workspace-root and standalone; see mro-9wv8)"
-          profiles: [workspace-root, standalone]
-          patterns:
-            - "!.beads/metadata.json"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
           patterns:
             - "*.tpl.rej"
@@ -1695,11 +1621,6 @@ Infra:
           overwrite: false
         - source: base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2
           destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-          profiles: [workspace-root]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/check-beads-policy.sh.j2
-          destination: .github/scripts/check-beads-policy.sh
           profiles: [workspace-root]
           delegate: render
           overwrite: false
@@ -1776,17 +1697,14 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        # Ledger routing config: rendered only for the workspace root (owned
-        # ledger) and marker-attached standalones (routing-only); the engine
-        # planner skips every other profile/class (mro-z89e governance).
+        # Project-owned Beads configuration; the engine selects roots and
+        # explicitly opted-in standalones.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        # Ledger-resolution marker: bd binds a checkout to its Dolt database
-        # through this file and `bd init` never writes it, so a clone carrying
-        # only config.yaml fell back to the default "beads" database (mro-9wv8).
+        # Project-owned Beads metadata configuration.
         - source: base/beads-metadata.json.j2
           destination: .beads/metadata.json
           profiles: [workspace-root, workspace-member, standalone]

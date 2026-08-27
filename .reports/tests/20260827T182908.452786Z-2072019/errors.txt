@@ -1,0 +1,26 @@
+=== FAILURE: tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors ===
+AssertionError: Assertion failed: 2 did not satisfy constraints
+tests/unit/codegen/test_codegen_catalog_extensions.py:65: in test_bootstrap_toolchain_uses_immutable_release_selectors
+    tm.that(len(mise_parts), eq=3)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 2 did not satisfy constraints
+
+=== FAILURE: tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions::test_beads_gate_compares_the_binary_reported_version ===
+AssertionError: Assertion failed: 'github:gastownhall/beads' did not satisfy constraints
+tests/unit/codegen/test_codegen_catalog_extensions.py:87: in test_beads_gate_compares_the_binary_reported_version
+    tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 'github:gastownhall/beads' did not satisfy constraints
+
+=== FAILURE: tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows ===
+KeyError: 'go:github.com/steveyegge/beads/cmd/bd'
+tests/unit/codegen/test_codegen_catalog_extensions.py:540: in test_local_manifest_conforms_without_global_repository_rows
+    mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'go:github.com/steveyegge/beads/cmd/bd'

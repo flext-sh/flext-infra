@@ -1,0 +1,25 @@
+=== FAILURE: tests.unit.workspace.test_worktree_security_boundaries::test_unresolved_base_fails_before_lane_mutation ===
+gitdb.exc.BadName: Ref 'missing/base' did not resolve to an object
+tests/unit/workspace/test_worktree_security_boundaries.py:75: in test_unresolved_base_fails_before_lane_mutation
+    result = _add(repository, "feature/missing-base", "missing/base")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/workspace/test_worktree_security_boundaries.py:37: in _add
+    ).execute()
+      ^^^^^^^^^
+src/flext_infra/worktree.py:335: in execute
+    return self._add(primary.value, branch.value, base)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/worktree.py:195: in _add
+    resolved = u.Infra.git_resolve_commit(
+src/flext_infra/_utilities/_git/semantic.py:266: in git_resolve_commit
+    oid = repo.commit(request.commitish).hexsha
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/base.py:772: in commit
+    return self.rev_parse(str(rev) + "^0")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/fun.py:661: in rev_parse
+    obj = name_to_object(repo, rev[:first_token])
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/fun.py:226: in name_to_object
+    raise BadName(name)
+E   gitdb.exc.BadName: Ref 'missing/base' did not resolve to an object

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="11" time="7.416" timestamp="2026-08-27T14:11:09.020744-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_beads_gate_compares_the_binary_reported_version" time="0.206" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_local_manifest_conforms_without_global_repository_rows" time="1.895"><failure message="TypeError: cannot pickle 'mappingproxy' object">tests/unit/codegen/test_codegen_catalog_extensions.py:442: in test_local_manifest_conforms_without_global_repository_rows
+    result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
+src/flext_infra/codegen/conform.py:398: in plan
+    repository_plan = self._plan_scaffold_repository(
+src/flext_infra/codegen/conform.py:874: in _plan_scaffold_repository
+    context_result = self._project_render_context(
+src/flext_infra/codegen/conform.py:1904: in _project_render_context
+    make_context = FlextInfraCodegenConform.make_render_context(
+src/flext_infra/codegen/conform.py:1819: in make_render_context
+    m.Infra.MakeRenderContext(
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/copy.py:152: in deepcopy
+    rv = reductor(4)
+         ^^^^^^^^^^^
+E   TypeError: cannot pickle 'mappingproxy' object</failure></testcase><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_setup_provisions_only_and_gen_owns_conformance" time="0.012" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_mise_tool_spec_requires_the_reported_version" time="0.014" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_beads_plan_declares_the_ledger_root_it_owns" time="0.017" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_github_actions_ci_skips_the_beads_lifecycle" time="0.012" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_beads_tracker_declaration_is_a_validated_model" time="0.079" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_transaction_worktrees_skip_the_beads_lifecycle" time="0.045" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_beads_toolchain_uses_an_immutable_release_selector" time="0.009" /><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_bootstrap_toolchain_uses_immutable_release_selectors" time="0.011"><failure message="AssertionError: Assertion failed: 2 did not satisfy constraints">tests/unit/codegen/test_codegen_catalog_extensions.py:65: in test_bootstrap_toolchain_uses_immutable_release_selectors
+    tm.that(len(mise_parts), eq=3)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 2 did not satisfy constraints</failure></testcase><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_conform_has_no_global_workspace_catalog_validator" time="0.011" /></testsuite></testsuites>

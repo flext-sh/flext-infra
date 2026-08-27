@@ -1,0 +1,6 @@
+=== FAILURE: tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows ===
+KeyError: 'go:github.com/steveyegge/beads/cmd/bd'
+tests/unit/codegen/test_codegen_catalog_extensions.py:522: in test_local_manifest_conforms_without_global_repository_rows
+    mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'go:github.com/steveyegge/beads/cmd/bd'

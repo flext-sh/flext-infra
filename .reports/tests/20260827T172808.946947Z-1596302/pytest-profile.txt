@@ -1,0 +1,60 @@
+Thu Aug 27 14:28:34 2026    /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T172808.946947Z-1596302/pytest.pstats
+
+         21969345 function calls (21254044 primitive calls) in 25.529 seconds
+
+   Ordered by: cumulative time
+   List reduced from 19937 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   4370/1    0.339    0.000   25.375   25.375 {built-in method builtins.exec}
+      2/1    0.000    0.000   25.375   25.375 <string>:1(<module>)
+      2/1    0.000    0.000   25.309   25.309 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000   25.309   25.309 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000   25.309   25.309 __main__.py:1(<module>)
+      2/1    0.000    0.000   25.309   25.309 __init__.py:246(_console_main)
+        1    0.000    0.000   21.698   21.698 __init__.py:204(_main)
+    566/2    0.003    0.000   21.698   10.849 _hooks.py:497(__call__)
+   857/70    0.001    0.000   21.641    0.309 _manager.py:111(_hookexec)
+   857/70    0.010    0.000   21.641    0.309 _callers.py:76(_multicall)
+      531    0.019    0.000   15.246    0.029 __init__.py:1(<module>)
+ 4378/131    0.042    0.000   12.962    0.099 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3821/81    0.034    0.000   12.955    0.160 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3696/97    0.027    0.000   12.901    0.133 <frozen importlib._bootstrap>:911(_load_unlocked)
+        1    0.000    0.000   12.653   12.653 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000   12.653   12.653 main.py:317(wrap_session)
+ 7574/144    0.018    0.000   12.461    0.087 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+  706/110    0.001    0.000   12.272    0.112 __init__.py:71(import_module)
+  726/110    0.001    0.000   12.268    0.112 <frozen importlib._bootstrap>:1375(_gcd_import)
+  3305/78    0.016    0.000   12.093    0.155 <frozen importlib._bootstrap_external>:1017(exec_module)
+   302/61    0.007    0.000   11.922    0.195 rewrite.py:148(exec_module)
+6702/2889    0.016    0.000   11.267    0.004 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+        1    0.000    0.000   10.177   10.177 main.py:380(_main)
+        1    0.000    0.000    9.850    9.850 main.py:397(pytest_runtestloop)
+315163/237412    0.190    0.000    9.584    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    9.242    9.242 runner.py:115(pytest_runtest_protocol)
+        1    0.000    0.000    9.238    9.238 runner.py:123(runtestprotocol)
+        3    0.000    0.000    9.238    3.079 runner.py:236(call_and_report)
+        1    0.000    0.000    9.045    9.045 __init__.py:387(_prepareconfig)
+    90/24    0.000    0.000    9.003    0.375 flextlazy_part_02.py:181(<lambda>)
+    90/24    0.001    0.000    9.003    0.375 flextlazy_part_02.py:70(get)
+    73/10    0.001    0.000    9.002    0.900 flextlazy_part_01.py:135(_load)
+        4    0.001    0.000    8.987    2.247 conftest.py:1(<module>)
+        1    0.000    0.000    8.981    8.981 __init__.py:1228(pytest_cmdline_parse)
+        5    0.000    0.000    8.976    1.795 __init__.py:684(_loadconftestmodules)
+        1    0.000    0.000    8.975    8.975 __init__.py:1512(parse)
+        9    0.000    0.000    8.975    0.997 __init__.py:733(_importconftest)
+        1    0.000    0.000    8.972    8.972 __init__.py:1298(pytest_load_initial_conftests)
+        1    0.000    0.000    8.972    8.972 __init__.py:615(_set_initial_conftests)
+        8    0.000    0.000    8.972    1.121 pathlib.py:502(import_path)
+     11/4    0.000    0.000    8.381    2.095 runner.py:340(from_call)
+        3    0.000    0.000    8.058    2.686 runner.py:250(<lambda>)
+        1    0.000    0.000    7.936    7.936 runner.py:173(pytest_runtest_call)
+        1    0.000    0.000    7.936    7.936 python.py:1705(runtest)
+        1    0.000    0.000    7.935    7.935 python.py:160(pytest_pyfunc_call)
+        1    0.002    0.002    7.935    7.935 test_codegen_catalog_extensions.py:284(test_local_manifest_conforms_without_global_repository_rows)
+        1    0.002    0.002    7.611    7.611 conform.py:229(plan)
+10642/9068    0.281    0.000    6.714    0.001 {built-in method builtins.__build_class__}
+     1090    0.077    0.000    6.569    0.006 _model_construction.py:84(__new__)
+       11    0.001    0.000    5.762    0.524 models.py:1(<module>)
+
+

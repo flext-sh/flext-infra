@@ -648,15 +648,12 @@ class FlextInfraWorkspaceDetector(
         # environment flag, so the same code path works for real worktrees and for
         # unit fixtures that simulate CLI transaction scope.
         is_transaction_worktree = identity_root != resolved_root
-        # Beads participation: workspace root owns; independent standalone opts in;
-        # ephemeral transaction worktrees route to the principal ledger; members and
-        # attached standalones consume the governing ledger without owning it.
-        beads_enabled = resolved_workspace.beads_enabled and (
-            make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-            or (
-                make_profile is c.Infra.MakeProfile.STANDALONE
-                and (is_transaction_worktree or overlay.beads_enabled)
-            )
+        # Projection selection: workspace roots always receive the two .beads
+        # config files; independent standalones opt in through their repository
+        # overlay. Transaction worktrees reuse the governing manifest values.
+        beads_enabled = make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT or (
+            make_profile is c.Infra.MakeProfile.STANDALONE
+            and (is_transaction_worktree or overlay.beads_enabled)
         )
         # A marker-attached standalone resolves to itself (no Git superproject
         # link); a manifest member always resolves to its governing root.
@@ -673,7 +670,6 @@ class FlextInfraWorkspaceDetector(
                 root=resolved_root,
                 make_profile=make_profile,
                 beads_enabled=beads_enabled,
-                beads_integration_enabled=resolved_workspace.beads_enabled,
                 attached_standalone=attached_standalone,
                 routing_only=routing_only,
                 canonical_project_name=canonical_project_name,

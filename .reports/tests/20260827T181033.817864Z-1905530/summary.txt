@@ -1,0 +1,8 @@
+junit=/home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T181033.817864Z-1905530/junit.xml
+coverage=not-generated
+failed=1
+errors=0
+warnings=0
+skipped=0
+exit=1
+state=COMPLETED

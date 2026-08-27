@@ -39,7 +39,6 @@ Infra:
           MD076: false
         exclude:
           - .omo/**
-          - .beads/**
           - .tmp/**
           - .claude/**
           - .vscode/**

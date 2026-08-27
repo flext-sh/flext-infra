@@ -1,0 +1,47 @@
+=== FAILURE: tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows ===
+pydantic_core._pydantic_core.ValidationError: 6 validation errors for ProjectRenderContext
+make.ci.check_gates
+  Extra inputs are not permitted [type=extra_forbidden]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+make.handler_whats
+  Extra inputs are not permitted [type=extra_forbidden]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+make.check_gates_allowed
+  Extra inputs are not permitted [type=extra_forbidden]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+make.check_gates_default
+  Extra inputs are not permitted [type=extra_forbidden]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+make.check_gates_fixable
+  Extra inputs are not permitted [type=extra_forbidden]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+make.custom_handler_policies
+  Extra inputs are not permitted [type=extra_forbidden]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+tests/unit/codegen/test_codegen_catalog_extensions.py:459: in test_local_manifest_conforms_without_global_repository_rows
+    result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
+src/flext_infra/codegen/conform.py:401: in plan
+    repository_plan = self._plan_scaffold_repository(
+src/flext_infra/codegen/conform.py:877: in _plan_scaffold_repository
+    context_result = self._project_render_context(
+src/flext_infra/codegen/conform.py:1986: in _project_render_context
+    m.Infra.ProjectRenderContext(
+E   pydantic_core._pydantic_core.ValidationError: 6 validation errors for ProjectRenderContext
+E   make.ci.check_gates
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.handler_whats
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.check_gates_allowed
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.check_gates_default
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.check_gates_fixable
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.custom_handler_policies
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden

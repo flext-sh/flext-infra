@@ -1,0 +1,141 @@
+{
+  "schema_uri": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "E301",
+              "shortDescription": {
+                "text": "lint issue"
+              }
+            },
+            {
+              "id": "SIM102",
+              "shortDescription": {
+                "text": "lint issue"
+              }
+            },
+            {
+              "id": "E305",
+              "shortDescription": {
+                "text": "lint issue"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "E301",
+          "level": "error",
+          "message": {
+            "text": "Expected 1 blank line, found 0"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/gt/flext/mayor/rig/flext-infra/src/flext_infra/_constants/workspace.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 88,
+                  "startColumn": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SIM102",
+          "level": "error",
+          "message": {
+            "text": "Use a single `if` statement instead of nested `if` statements"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/gt/flext/mayor/rig/flext-infra/src/flext_infra/codegen/conform.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 868,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SIM102",
+          "level": "error",
+          "message": {
+            "text": "Use a single `if` statement instead of nested `if` statements"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/gt/flext/mayor/rig/flext-infra/src/flext_infra/codegen/conform.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1248,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "E305",
+          "level": "error",
+          "message": {
+            "text": "Expected 2 blank lines after class or function definition, found (1)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/gt/flext/mayor/rig/flext-infra/src/flext_infra/codegen/conform.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2514,
+                  "startColumn": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "E301",
+          "level": "error",
+          "message": {
+            "text": "Expected 1 blank line, found 0"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/gt/flext/mayor/rig/flext-infra/tests/unit/codegen/test_codegen_gitignore_profile_aware.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 81,
+                  "startColumn": 5
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

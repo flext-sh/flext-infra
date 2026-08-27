@@ -1,0 +1,13 @@
+=== FAILURE: tests.unit.workspace.test_workspace_root_make_contract.TestsWorkspaceRootMakeContract::test_generated_make_does_not_reintroduce_docs_verb ===
+AssertionError: Expected ['help', 'setup', 'deps', 'build', 'check', 'test', 'fmt', 'fix', 'run', 'status', 'docs', 'clean', 'release', 'gen', 'mod'] to NOT contain 'docs'
+tests/unit/workspace/test_workspace_root_make_contract.py:180: in test_generated_make_does_not_reintroduce_docs_verb
+    tm.that(
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:719: in that
+    cls._validate_common(
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:323: in _validate_common
+    FlextTestsMatchersContainmentMixin.check_has_lacks(
+../flext-tests/src/flext_tests/_utilities/_matchers/_containment.py:115: in check_has_lacks
+    FlextTestsMatchersAssertionsMixin.raise_match_assertion(
+../flext-tests/src/flext_tests/_utilities/_matchers/_assertions.py:26: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected ['help', 'setup', 'deps', 'build', 'check', 'test', 'fmt', 'fix', 'run', 'status', 'docs', 'clean', 'release', 'gen', 'mod'] to NOT contain 'docs'

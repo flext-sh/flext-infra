@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.373" timestamp="2026-08-27T15:10:46.295552-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_codegen_beads_ledger.TestCodegenBeadsLedger" name="test_workspace_manifest_can_disable_beads_integration" time="0.242"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-58/test_workspace_manifest_can_di0/manual-ledger/.beads/issues.jsonl'">tests/unit/codegen/test_codegen_beads_ledger.py:679: in test_workspace_manifest_can_disable_beads_integration
+    historical.write_text('{"id":"preserved"}\n', encoding="utf-8")
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py:543: in write_text
+    return PathBase.write_text(self, data, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/pathlib/_abc.py:651: in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py:525: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-58/test_workspace_manifest_can_di0/manual-ledger/.beads/issues.jsonl'</failure></testcase></testsuite></testsuites>

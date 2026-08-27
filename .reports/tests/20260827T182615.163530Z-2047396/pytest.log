@@ -1,0 +1,249 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: selection automatically deactivated because you selected tests manually, environment: default
+Using --randomly-seed=2448122688
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 1 item
+
+tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration +++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-async-log-writer (140180258608832) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/gt/flext/mayor/rig/flext-core/src/flext_core/_utilities/_logging_config_parts/logging_config_part_01.py", line 137, in _worker
+    msg = self.queue.get(timeout=0.1)
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+  File "/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+FAILED                                                                                                           [100%]
+
+======================================================= FAILURES =======================================================
+_____________________ TestCodegenBeadsLedger.test_workspace_manifest_can_disable_beads_integration _____________________
+tests/unit/codegen/test_codegen_beads_ledger.py:695: in test_workspace_manifest_can_disable_beads_integration
+    result = FlextInfraCodegenConform.execute_request(
+src/flext_infra/codegen/conform.py:108: in execute_request
+    return service.execute()
+           ^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/conform.py:203: in execute
+    verified = self.plan(request)
+               ^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/conform.py:410: in plan
+    repository_plan = self._plan_existing_repository(
+src/flext_infra/codegen/conform.py:1208: in _plan_existing_repository
+    prepared_result = u.Infra.pyproject_conform(
+src/flext_infra/_utilities/pyproject_conform.py:48: in pyproject_conform
+    source = u.Cli.toml_parse_text(pyproject_content)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../flext-cli/src/flext_cli/_utilities/_toml_parts/flextcliutilitiestoml_part_01.py:87: in toml_parse_text
+    return tomlkit.parse(text)
+           ^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/tomlkit/api.py:106: in parse
+    return Parser(string).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/tomlkit/parser.py:200: in parse
+    key, value = self._parse_table()
+                 ^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/tomlkit/parser.py:1143: in _parse_table
+    key_next, table_next = self._parse_table(full_key, table)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/tomlkit/parser.py:1126: in _parse_table
+    table.raw_append(_key, _val)
+../.venv/lib/python3.13/site-packages/tomlkit/items.py:1932: in raw_append
+    if isinstance(key, Key):
+       ^^^^^^^^^^^^^^^^^^^^
+<frozen abc>:117: in __instancecheck__
+    ???
+E   Failed: Timeout (>10.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+INFO:   stage=templates repository=flext-infra
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  flext-infra              1.97s
+
+============================================================
+  Codegen Conform
+============================================================
+INFO: stage=plan mode=apply scope=self what=all root=/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+INFO:   stage=templates repository=flext-infra
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  flext-infra              1.23s
+INFO: stage=apply changed=18
+  write [1/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/pyproject.toml
+  write [2/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.github/dependabot.yml
+  write [3/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/tests/fixtures/ci/docker/alpine.Dockerfile
+  write [4/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/tests/fixtures/ci/docker/arch.Dockerfile
+  write [5/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/tests/fixtures/ci/docker/debian.Dockerfile
+  write [6/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/tests/fixtures/ci/docker/fedora.Dockerfile
+  write [7/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/tests/fixtures/ci/docker/ubuntu.Dockerfile
+  write [8/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.github/workflows/ci-matrix.yml
+  write [9/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.github/workflows/ci.yml
+  write [10/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.github/workflows/docs.yml
+  write [11/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.envrc
+  write [12/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/sgconfig.yml
+  write [13/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.gitignore
+  write [14/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.mise.toml
+  write [15/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.pre-commit-config.yaml
+  write [16/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.python-version
+  write [17/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/Makefile
+  write [18/18] /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger/.vscode/settings.json
+INFO: stage=verify-fixed-point
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+INFO:   stage=templates repository=flext-infra
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  flext-infra              1.46s
+
+============================================================
+  Codegen Conform
+============================================================
+INFO: stage=plan mode=apply scope=self what=all root=/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-70/test_workspace_manifest_can_di0/manual-ledger
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+INFO:   stage=templates repository=flext-infra
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  flext-infra              1.88s
+INFO: stage=apply changed=0
+INFO: stage=verify-fixed-point
+INFO: stage=plan repositories=1
+[1/1] flext-infra conform ...
+INFO:   stage=pyproject repository=flext-infra
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T182615.163530Z-2047396/junit.xml -
+================================================= slowest 25 durations =================================================
+9.90s call     tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration
+0.10s setup    tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration
+0.00s teardown tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_beads_ledger.py::TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration
+================================================== 1 failed in 13.20s ==================================================

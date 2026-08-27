@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="4.047" timestamp="2026-08-27T14:26:16.416760-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_local_manifest_conforms_without_global_repository_rows" time="1.389"><failure message="TypeError: flext_infra._models.config.FlextInfraConfigModels.ProjectRenderContext() got multiple values for keyword argument 'ruff_per_file_ignores'">tests/unit/codegen/test_codegen_catalog_extensions.py:459: in test_local_manifest_conforms_without_global_repository_rows
+    result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
+src/flext_infra/codegen/conform.py:401: in plan
+    repository_plan = self._plan_scaffold_repository(
+src/flext_infra/codegen/conform.py:877: in _plan_scaffold_repository
+    context_result = self._project_render_context(
+src/flext_infra/codegen/conform.py:1978: in _project_render_context
+    m.Infra.ProjectRenderContext(
+E   TypeError: flext_infra._models.config.FlextInfraConfigModels.ProjectRenderContext() got multiple values for keyword argument 'ruff_per_file_ignores'</failure></testcase></testsuite></testsuites>

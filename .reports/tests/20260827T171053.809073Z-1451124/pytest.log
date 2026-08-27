@@ -1,0 +1,85 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: changed files: 0, unchanged files: 11, environment: default
+Using --randomly-seed=3165817179
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 11 items
+
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_gate_compares_the_binary_reported_version PASSED [  9%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows FAILED [ 18%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_setup_provisions_only_and_gen_owns_conformance PASSED [ 27%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_mise_tool_spec_requires_the_reported_version PASSED [ 36%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns PASSED [ 45%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_github_actions_ci_skips_the_beads_lifecycle PASSED [ 54%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model PASSED [ 63%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle PASSED [ 72%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_toolchain_uses_an_immutable_release_selector PASSED [ 81%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors FAILED [ 90%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_conform_has_no_global_workspace_catalog_validator PASSED [100%]
+
+======================================================= FAILURES =======================================================
+______________ TestsCodegenCatalogExtensions.test_local_manifest_conforms_without_global_repository_rows _______________
+tests/unit/codegen/test_codegen_catalog_extensions.py:442: in test_local_manifest_conforms_without_global_repository_rows
+    result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
+src/flext_infra/codegen/conform.py:398: in plan
+    repository_plan = self._plan_scaffold_repository(
+src/flext_infra/codegen/conform.py:874: in _plan_scaffold_repository
+    context_result = self._project_render_context(
+src/flext_infra/codegen/conform.py:1904: in _project_render_context
+    make_context = FlextInfraCodegenConform.make_render_context(
+src/flext_infra/codegen/conform.py:1819: in make_render_context
+    m.Infra.MakeRenderContext(
+/home/marlonsc/.local/share/uv/python/cpython-3.13.11-linux-x86_64-gnu/lib/python3.13/copy.py:152: in deepcopy
+    rv = reductor(4)
+         ^^^^^^^^^^^
+E   TypeError: cannot pickle 'mappingproxy' object
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=2
+[1/2] acme-platform conform ...
+_______________ TestsCodegenCatalogExtensions.test_bootstrap_toolchain_uses_immutable_release_selectors ________________
+tests/unit/codegen/test_codegen_catalog_extensions.py:65: in test_bootstrap_toolchain_uses_immutable_release_selectors
+    tm.that(len(mise_parts), eq=3)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 2 did not satisfy constraints
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T171053.809073Z-1451124/junit.xml -
+================================================= slowest 25 durations =================================================
+1.88s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.13s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_gate_compares_the_binary_reported_version
+0.07s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model
+0.07s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_gate_compares_the_binary_reported_version
+0.04s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle
+0.01s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.01s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns
+0.01s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.01s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns
+0.01s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_mise_tool_spec_requires_the_reported_version
+0.01s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_setup_provisions_only_and_gen_owns_conformance
+0.01s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_mise_tool_spec_requires_the_reported_version
+0.01s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_conform_has_no_global_workspace_catalog_validator
+0.01s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_github_actions_ci_skips_the_beads_lifecycle
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model
+0.00s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_toolchain_uses_an_immutable_release_selector
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_github_actions_ci_skips_the_beads_lifecycle
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors
+0.00s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_conform_has_no_global_workspace_catalog_validator
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_setup_provisions_only_and_gen_owns_conformance
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+FAILED tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors
+============================================= 2 failed, 9 passed in 7.69s ==============================================

@@ -20,7 +20,7 @@ class TestCodegenLinkedWorktreeManifest:
     """Render generated artifacts from the active lane's declared manifest."""
 
     def test_conform_renders_the_lane_local_manifest(self, tmp_path: Path) -> None:
-        """Use lane declarations while retaining the shared ledger database."""
+        """Render lane-local ``.beads`` values from the lane manifest."""
         repository = u.Tests.repository_ref(config.Infra.name).model_copy(
             update={
                 "path": Path(),

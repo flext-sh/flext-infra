@@ -204,16 +204,8 @@ secrets.yml
 # --- codegen conform: tracked owner inputs ---
 !base.mk
 
-# FINAL BEADS TRACKING POLICY
-!.beads/
-.beads/*
-.beads/.*
-!.beads/config.yaml
-.beads/proxieddb/
-.beads.gate.lock
-.dolt/
+# Local runtime and workspace state
 *.db
-.beads-credential-key
 .worktrees/
 legado/
 
@@ -237,6 +229,7 @@ __pyrefly_virtual__/
 .bkp/
 .cache/
 .codegraph/
+.dolt/
 .dolt_dropped_databases/
 .doltcfg/
 .hypothesis/
@@ -283,7 +276,6 @@ CLAUDE.local.md
 !.github/prompts/flext-aggressive-scale-refactor.prompt.md
 !.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
 !.github/scripts/
-!.github/scripts/check-beads-policy.sh
 !.github/scripts/check-cqrs-compliance.sh
 !.github/scripts/flext-law-loop.sh
 !.github/scripts/install-git-hooks.sh
@@ -300,6 +292,9 @@ CLAUDE.local.md
 !.github/workflows/ci.yml
 !.github/workflows/docs.yml
 !.github/workflows/release.yml
+!.beads/
+!.beads/config.yaml
+!.beads/metadata.json
 !sgconfig.yml
 !.vscode/settings.json
 !LICENSE

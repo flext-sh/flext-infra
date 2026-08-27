@@ -1,0 +1,119 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: changed files: tests/unit/codegen/test_codegen_beads_ledger.py, unchanged files: 81, environment: default
+Using --randomly-seed=1734992625
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 12 items
+
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors FAILED [  8%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_setup_provisions_only_and_gen_owns_conformance PASSED [ 16%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_gate_compares_the_binary_reported_version FAILED [ 25%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows FAILED [ 33%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_conform_has_no_global_workspace_catalog_validator PASSED [ 41%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_github_actions_ci_skips_the_beads_lifecycle PASSED [ 50%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns PASSED [ 58%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_mise_tool_spec_requires_the_reported_version PASSED [ 66%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model PASSED [ 75%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle PASSED [ 83%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml PASSED [ 91%]
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_toolchain_uses_an_immutable_release_selector PASSED [100%]
+
+======================================================= FAILURES =======================================================
+_______________ TestsCodegenCatalogExtensions.test_bootstrap_toolchain_uses_immutable_release_selectors ________________
+tests/unit/codegen/test_codegen_catalog_extensions.py:65: in test_bootstrap_toolchain_uses_immutable_release_selectors
+    tm.that(len(mise_parts), eq=3)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 2 did not satisfy constraints
+__________________ TestsCodegenCatalogExtensions.test_beads_gate_compares_the_binary_reported_version __________________
+tests/unit/codegen/test_codegen_catalog_extensions.py:87: in test_beads_gate_compares_the_binary_reported_version
+    tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:711: in that
+    cls._validate_scalar(subject_payload, params, raw_eq, raw_ne, kwargs)
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:296: in _validate_scalar
+    raise AssertionError(
+E   AssertionError: Assertion failed: 'github:gastownhall/beads' did not satisfy constraints
+______________ TestsCodegenCatalogExtensions.test_local_manifest_conforms_without_global_repository_rows _______________
+tests/unit/codegen/test_codegen_catalog_extensions.py:540: in test_local_manifest_conforms_without_global_repository_rows
+    mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'go:github.com/steveyegge/beads/cmd/bd'
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=2
+[1/2] acme-platform conform ...
+  [OK] conform  acme-platform            4.95s
+[2/2] acme-charts conform ...
+INFO:   stage=pyproject repository=acme-charts
+INFO:   stage=templates repository=acme-charts
+  template base/.github/ci-template/ci.yml.j2 -> .github/ci-template/ci.yml
+  template base/.github/copilot-instructions.md.j2 -> .github/copilot-instructions.md
+  template base/.github/dependabot.yml.j2 -> .github/dependabot.yml
+  template base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2 -> .github/prompts/flext-aggressive-scale-refactor.prompt.md
+  template base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2 -> .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+  template base/.github/scripts/check-beads-policy.sh.j2 -> .github/scripts/check-beads-policy.sh
+  template base/.github/scripts/check-cqrs-compliance.sh.j2 -> .github/scripts/check-cqrs-compliance.sh
+  template base/.github/scripts/flext-law-loop.sh.j2 -> .github/scripts/flext-law-loop.sh
+  template base/.github/scripts/install-git-hooks.sh.j2 -> .github/scripts/install-git-hooks.sh
+  template base/tests/fixtures/ci/docker/alpine.Dockerfile.j2 -> tests/fixtures/ci/docker/alpine.Dockerfile
+  template base/tests/fixtures/ci/docker/arch.Dockerfile.j2 -> tests/fixtures/ci/docker/arch.Dockerfile
+  template base/tests/fixtures/ci/docker/debian.Dockerfile.j2 -> tests/fixtures/ci/docker/debian.Dockerfile
+  template base/tests/fixtures/ci/docker/fedora.Dockerfile.j2 -> tests/fixtures/ci/docker/fedora.Dockerfile
+  template base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2 -> tests/fixtures/ci/docker/ubuntu.Dockerfile
+  template base/.github/workflows/ci-matrix.yml.j2 -> .github/workflows/ci-matrix.yml
+  template base/.github/workflows/ci.yml.j2 -> .github/workflows/ci.yml
+  template base/.github/workflows/docs.yml.j2 -> .github/workflows/docs.yml
+  template base/.github/workflows/release.yml.j2 -> .github/workflows/release.yml
+  template base/env.example.j2 -> .env.example
+  template base/.envrc.j2 -> .envrc
+  template base/sgconfig.yml.j2 -> sgconfig.yml
+  template base/gitignore.j2 -> .gitignore
+  template base/gitmodules.j2 -> .gitmodules
+  template base/.mise.toml.j2 -> .mise.toml
+  template base/.pre-commit-config.yaml.j2 -> .pre-commit-config.yaml
+  template base/python-version.j2 -> .python-version
+  template base/LICENSE.j2 -> LICENSE
+  template base/Makefile.j2 -> Makefile
+  template base/README.md.j2 -> README.md
+  [OK] conform  acme-charts              1.72s
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T182908.452786Z-2072019/junit.xml -
+================================================= slowest 25 durations =================================================
+7.07s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.11s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors
+0.07s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors
+0.04s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model
+0.03s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml
+0.01s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_toolchain_uses_an_immutable_release_selector
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_github_actions_ci_skips_the_beads_lifecycle
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle
+0.00s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_setup_provisions_only_and_gen_owns_conformance
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns
+0.00s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_github_actions_ci_skips_the_beads_lifecycle
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_tracker_declaration_is_a_validated_model
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_transaction_worktrees_skip_the_beads_lifecycle
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_conform_has_no_global_workspace_catalog_validator
+0.00s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_github_actions_ci_skips_the_beads_lifecycle
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_plan_declares_the_ledger_root_it_owns
+0.00s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_setup_provisions_only_and_gen_owns_conformance
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_bootstrap_toolchain_uses_immutable_release_selectors
+FAILED tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_beads_gate_compares_the_binary_reported_version
+FAILED tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+============================================= 3 failed, 9 passed in 10.05s =============================================

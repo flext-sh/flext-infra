@@ -1,0 +1,52 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: changed files: 2, unchanged files: 125, environment: default
+Using --randomly-seed=1443668633
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 5 items
+
+tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_runs_in_lane_and_creates_real_local_environment FAILED [ 20%]
+tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_existing_real_lane_environment_is_preserved PASSED [ 40%]
+tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_initializes_lane_gitlink_without_mutating_primary PASSED [ 60%]
+tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_foreign_environment_symlink_is_unlinked_without_following_target PASSED [ 80%]
+tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_add_only_creates_git_lane_without_setup PASSED [100%]
+
+======================================================= FAILURES =======================================================
+______________________________ test_setup_runs_in_lane_and_creates_real_local_environment ______________________________
+tests/unit/workspace/test_lane_owns_an_isolated_environment.py:104: in test_setup_runs_in_lane_and_creates_real_local_environment
+    assert (lane / "setup-runs.log").read_text(encoding="utf-8") == (
+E   AssertionError: assert '/home/marlon...unset|unset\n' == '/home/marlon...unset|unset\n'
+E     
+E     - /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-94/test_setup_runs_in_lane_and_cr0/.worktrees/repository-10debf1e1860/feature/isolated-environment|unset|unset|unset
+E     ?                                                                                                                                                        ^^^^^
+E     + /home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-94/test_setup_runs_in_lane_and_cr0/.worktrees/repository-10debf1e1860/feature/isolated-environment|/home/marlonsc/.local/tmp/pytest-of-marlonsc/pytest-94/test_setup_runs_in_lane_and_cr0/hostile....
+E     
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T184648.459894Z-2228112/junit.xml -
+================================================= slowest 25 durations =================================================
+0.77s call     tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_initializes_lane_gitlink_without_mutating_primary
+0.50s call     tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_runs_in_lane_and_creates_real_local_environment
+0.45s call     tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_foreign_environment_symlink_is_unlinked_without_following_target
+0.45s call     tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_existing_real_lane_environment_is_preserved
+0.39s call     tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_add_only_creates_git_lane_without_setup
+0.10s setup    tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_runs_in_lane_and_creates_real_local_environment
+0.00s teardown tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_add_only_creates_git_lane_without_setup
+0.00s teardown tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_runs_in_lane_and_creates_real_local_environment
+0.00s setup    tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_existing_real_lane_environment_is_preserved
+0.00s setup    tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_initializes_lane_gitlink_without_mutating_primary
+0.00s setup    tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_foreign_environment_symlink_is_unlinked_without_following_target
+0.00s setup    tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_add_only_creates_git_lane_without_setup
+0.00s teardown tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_existing_real_lane_environment_is_preserved
+0.00s teardown tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_initializes_lane_gitlink_without_mutating_primary
+0.00s teardown tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_foreign_environment_symlink_is_unlinked_without_following_target
+=============================================== short test summary info ================================================
+FAILED tests/unit/workspace/test_lane_owns_an_isolated_environment.py::test_setup_runs_in_lane_and_creates_real_local_environment
+============================================= 1 failed, 4 passed in 4.42s ==============================================

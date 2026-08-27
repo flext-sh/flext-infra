@@ -78,21 +78,6 @@ class FlextInfraConstantsWorkspace:
 
         SETUP = "setup"
 
-    @unique
-    class BeadIssueStatus(StrEnum):
-        """Beads issue states relevant to live lane ownership."""
-
-        OPEN = "open"
-        IN_PROGRESS = "in_progress"
-        BLOCKED = "blocked"
-        CLOSED = "closed"
-
-    WORK_ACTIVE_ISSUE_STATUSES: Final[frozenset[BeadIssueStatus]] = frozenset({
-        BeadIssueStatus.OPEN,
-        BeadIssueStatus.IN_PROGRESS,
-        BeadIssueStatus.BLOCKED,
-    })
-
     WORK_FORBIDDEN_SLUGS: Final[frozenset[str]] = frozenset({
         "teste",
         "ajuste",
@@ -100,26 +85,6 @@ class FlextInfraConstantsWorkspace:
         "temp",
         "nova-branch",
     })
-    WORK_BEADS_METADATA_KEYS: Final[t.StrSequence] = (
-        "branch",
-        "namespace",
-        "worktree",
-        "kind",
-        "slug",
-        "integration_base",
-        "head_oid",
-        "pr_number",
-        "pr_url",
-        "provisioning",
-        "recovery",
-        "error_category",
-        "role",
-        "epic_bead",
-        "epic_branch",
-        "epic_worktree",
-        "child_slug",
-    )
-    WORK_BEADS_MATRIX_KEY: Final[str] = "matrix"
 
     @unique
     class WorkspaceMode(StrEnum):
@@ -144,7 +109,6 @@ class FlextInfraConstantsWorkspace:
     "Sibling directory patterns for FLEXT-managed external workspaces."
 
     PERSISTENT_STATE_ARTIFACT_NAMES: Final[frozenset[str]] = frozenset({
-        ".beads",
         ".code-review-graph",
         ".codegraph",
         ".serena",

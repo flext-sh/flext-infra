@@ -1,0 +1,65 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: The packages installed in your Python environment have been changed. All tests have to be re-executed. environment: default
+Using --randomly-seed=4028398207
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 21 items
+
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_run_records_coverage_as_not_generated PASSED [  4%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cov_y_disables_testmon_and_enables_coverage PASSED [  9%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_argv_preserves_nodeid_and_disables_parallel_coverage PASSED [ 14%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_timeout_preserves_exit_124_without_partial_artifacts PASSED [ 19%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_local_full_argv_keeps_docker_remote_markers_selected PASSED [ 23%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cache_clear_requires_apply PASSED  [ 28%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_parallel_run_disables_benchmarks PASSED [ 33%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_summary_uses_effective_failure_exit_from_diagnostics PASSED [ 38%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_environment_rejects_free_form_pytest_args PASSED [ 42%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_execute_passes_one_absolute_deadline_and_writes_regular_latest_pointer PASSED [ 47%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_full_run_fails_when_coverage_artifact_is_missing PASSED [ 52%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cache_clear_removes_db PASSED      [ 57%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero PASSED [ 61%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_ci_true_keeps_default_testmon_without_coverage PASSED [ 66%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_run_keeps_benchmarks_enabled PASSED [ 71%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_full_argv_is_config_derived_and_profiled PASSED [ 76%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_local_full_argv_keeps_testmon_without_coverage PASSED [ 80%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_ci_y_forbids_pytest_execute PASSED [ 85%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cov_y_forbids_focused_selectors PASSED [ 90%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_ci_y_disables_coverage_keeps_testmon PASSED [ 95%]
+tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cache_status_skips_pytest PASSED   [100%]
+
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T170641.310448Z-1433271/junit.xml -
+================================================= slowest 25 durations =================================================
+0.19s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_run_records_coverage_as_not_generated
+0.16s setup    tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_run_records_coverage_as_not_generated
+0.10s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero
+0.10s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_timeout_preserves_exit_124_without_partial_artifacts
+0.06s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_execute_passes_one_absolute_deadline_and_writes_regular_latest_pointer
+0.06s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cov_y_disables_testmon_and_enables_coverage
+0.04s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_full_run_fails_when_coverage_artifact_is_missing
+0.04s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_summary_uses_effective_failure_exit_from_diagnostics
+0.02s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_argv_preserves_nodeid_and_disables_parallel_coverage
+0.02s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_full_argv_is_config_derived_and_profiled
+0.02s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_ci_y_disables_coverage_keeps_testmon
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cache_clear_removes_db
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_run_keeps_benchmarks_enabled
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_ci_true_keeps_default_testmon_without_coverage
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_local_full_argv_keeps_testmon_without_coverage
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cov_y_forbids_focused_selectors
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_parallel_run_disables_benchmarks
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_local_full_argv_keeps_docker_remote_markers_selected
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cache_status_skips_pytest
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cache_clear_requires_apply
+0.01s teardown tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_cache_status_skips_pytest
+0.01s call     tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_ci_y_forbids_pytest_execute
+0.01s teardown tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_timeout_preserves_exit_124_without_partial_artifacts
+0.01s teardown tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_focused_run_records_coverage_as_not_generated
+0.01s setup    tests/unit/validate/pytest_runner_tests.py::TestsFlextInfraPytestRunner::test_full_run_fails_when_coverage_fail_under_prints_with_exit_zero
+================================================== 21 passed in 4.47s ==================================================

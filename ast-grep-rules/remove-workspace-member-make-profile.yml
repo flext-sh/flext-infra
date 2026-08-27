@@ -1,0 +1,7 @@
+id: remove-workspace-member-make-profile
+language: Python
+severity: error
+message: workspace-member is not a Make profile; submodule checkouts are standalone projects
+rule:
+  pattern: c.Infra.MakeProfile.WORKSPACE_MEMBER
+fix: c.Infra.MakeProfile.STANDALONE

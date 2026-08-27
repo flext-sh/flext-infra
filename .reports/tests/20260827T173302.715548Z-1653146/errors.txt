@@ -1,0 +1,39 @@
+=== FAILURE: tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows ===
+Failed: Timeout (>10.0s) from pytest-timeout.
+tests/unit/codegen/test_codegen_catalog_extensions.py:459: in test_local_manifest_conforms_without_global_repository_rows
+    result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
+src/flext_infra/codegen/conform.py:410: in plan
+    repository_plan = self._plan_existing_repository(
+src/flext_infra/codegen/conform.py:1223: in _plan_existing_repository
+    tooling_result = modernizer.conform_source(
+src/flext_infra/deps/modernizer.py:96: in conform_source
+    changes = self._process_document_state(
+src/flext_infra/deps/_modernizer_document.py:309: in _process_document_state
+    self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
+src/flext_infra/deps/_modernizer_payload.py:153: in _reorder_document_inplace
+    self._reorder_table_inplace(tool_child, table_key="tool")
+src/flext_infra/deps/_modernizer_payload.py:134: in _reorder_table_inplace
+    self._recurse_into_item(item_value, key)
+src/flext_infra/deps/_modernizer_payload.py:104: in _recurse_into_item
+    self._reorder_table_inplace(item, table_key=table_key)
+src/flext_infra/deps/_modernizer_payload.py:134: in _reorder_table_inplace
+    self._recurse_into_item(item_value, key)
+src/flext_infra/deps/_modernizer_payload.py:104: in _recurse_into_item
+    self._reorder_table_inplace(item, table_key=table_key)
+src/flext_infra/deps/_modernizer_payload.py:135: in _reorder_table_inplace
+    table[key] = item_value
+    ^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/tomlkit/items.py:1838: in __setitem__
+    self._value[key] = value
+    ^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/tomlkit/container.py:851: in __setitem__
+    self.append(key, value)
+../.venv/lib/python3.13/site-packages/tomlkit/container.py:387: in append
+    last_index = self._get_last_index_before_table()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/tomlkit/container.py:162: in _get_last_index_before_table
+    if isinstance(v, (Table, AoT)) and k is not None and not k.is_dotted():
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen abc>:119: in __instancecheck__
+    ???
+E   Failed: Timeout (>10.0s) from pytest-timeout.

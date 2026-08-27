@@ -1,0 +1,60 @@
+Thu Aug 27 15:50:50 2026    /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T185003.414942Z-2255676/pytest.pstats
+
+         36872128 function calls (35977846 primitive calls) in 46.478 seconds
+
+   Ordered by: cumulative time
+   List reduced from 18173 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   3894/1    0.248    0.000   46.426   46.426 {built-in method builtins.exec}
+      2/1    0.000    0.000   46.426   46.426 <string>:1(<module>)
+      2/1    0.000    0.000   46.368   46.368 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000   46.368   46.368 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000   46.368   46.368 __main__.py:1(<module>)
+      2/1    0.000    0.000   46.368   46.368 __init__.py:246(_console_main)
+        1    0.000    0.000   43.819   43.819 __init__.py:204(_main)
+    653/2    0.003    0.000   43.819   21.909 _hooks.py:497(__call__)
+   943/70    0.001    0.000   43.783    0.625 _manager.py:111(_hookexec)
+   943/70    0.013    0.000   43.783    0.625 _callers.py:76(_multicall)
+        1    0.000    0.000   37.065   37.065 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000   37.065   37.065 main.py:317(wrap_session)
+        1    0.000    0.000   35.184   35.184 main.py:380(_main)
+        1    0.000    0.000   34.948   34.948 main.py:397(pytest_runtestloop)
+       10    0.000    0.000   34.435    3.443 runner.py:115(pytest_runtest_protocol)
+       10    0.000    0.000   34.428    3.443 runner.py:123(runtestprotocol)
+       30    0.001    0.000   34.427    1.148 runner.py:236(call_and_report)
+    38/34    0.001    0.000   32.586    0.958 runner.py:340(from_call)
+       30    0.000    0.000   32.355    1.078 runner.py:250(<lambda>)
+       10    0.000    0.000   32.184    3.218 runner.py:173(pytest_runtest_call)
+       10    0.000    0.000   32.183    3.218 python.py:1705(runtest)
+        9    0.006    0.001   30.567    3.396 test_workspace_root_make_contract.py:16(_write_workspace)
+        9    0.004    0.000   29.183    3.243 conform.py:205(plan)
+       10    0.000    0.000   27.622    2.762 python.py:160(pytest_pyfunc_call)
+        9    0.005    0.001   16.011    1.779 conform.py:1046(_plan_existing_repository)
+      395    0.032    0.000   15.732    0.040 queue.py:177(get)
+  405/395    0.027    0.000   12.678    0.032 threading.py:327(wait)
+1676/1584    7.235    0.004   12.345    0.008 {method 'acquire' of '_thread.lock' objects}
+       18    0.012    0.001   12.196    0.678 modernizer.py:59(conform_source)
+       18    0.009    0.000   11.472    0.637 _modernizer_document.py:170(_process_document_state)
+      481    0.012    0.000    9.951    0.021 __init__.py:1(<module>)
+     1606    0.109    0.000    9.885    0.006 _model_construction.py:84(__new__)
+      260    0.019    0.000    9.838    0.038 runtime.py:93(run_raw)
+ 3949/140    0.027    0.000    9.578    0.068 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3385/81    0.022    0.000    9.572    0.118 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3269/97    0.017    0.000    9.532    0.098 <frozen importlib._bootstrap>:911(_load_unlocked)
+      268    0.008    0.000    9.211    0.034 subprocess.py:512(run)
+      540    0.008    0.000    9.174    0.017 subprocess.py:1178(communicate)
+  712/119    0.001    0.000    9.075    0.076 __init__.py:71(import_module)
+  732/119    0.001    0.000    9.072    0.076 <frozen importlib._bootstrap>:1375(_gcd_import)
+   302/61    0.005    0.000    8.845    0.145 rewrite.py:148(exec_module)
+6190/2653    0.013    0.000    8.315    0.003 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+ 6669/146    0.013    0.000    7.896    0.054 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+  2882/79    0.009    0.000    7.629    0.097 <frozen importlib._bootstrap_external>:1017(exec_module)
+581915/513178    0.276    0.000    7.331    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    6.754    6.754 __init__.py:387(_prepareconfig)
+        8    0.000    0.000    6.747    0.843 pathlib.py:502(import_path)
+    89/24    0.000    0.000    6.730    0.280 flextlazy_part_02.py:210(<lambda>)
+    89/24    0.001    0.000    6.730    0.280 flextlazy_part_02.py:89(get)
+    73/10    0.001    0.000    6.729    0.673 flextlazy_part_01.py:135(_load)
+
+

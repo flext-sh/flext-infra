@@ -1,0 +1,60 @@
+Thu Aug 27 13:53:01 2026    /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T165153.480111Z-1292995/pytest.pstats
+
+         11802610 function calls (11433088 primitive calls) in 66.642 seconds
+
+   Ordered by: cumulative time
+   List reduced from 15606 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      460    0.012    0.000   85.147    0.185 __init__.py:1(<module>)
+   3554/1    0.244    0.000   64.268   64.268 {built-in method builtins.exec}
+      2/1    0.000    0.000   64.268   64.268 <string>:1(<module>)
+      2/1    0.000    0.000   63.750   63.750 <frozen runpy>:201(run_module)
+      2/1    0.000    0.000   63.750   63.750 <frozen runpy>:65(_run_code)
+      2/1    0.000    0.000   63.750   63.750 __main__.py:1(<module>)
+      2/1    0.000    0.000   63.750   63.750 __init__.py:246(_console_main)
+ 3378/148    0.030    0.000   38.599    0.261 <frozen importlib._bootstrap>:1349(_find_and_load)
+  3274/78    0.026    0.000   38.592    0.495 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  3172/91    0.022    0.000   38.440    0.422 <frozen importlib._bootstrap>:911(_load_unlocked)
+ 6567/140    0.013    0.000   34.221    0.244 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+  2902/62    0.014    0.000   32.846    0.530 <frozen importlib._bootstrap_external>:1017(exec_module)
+   202/56    0.007    0.000   31.885    0.569 rewrite.py:148(exec_module)
+        1    0.000    0.000   31.689   31.689 __init__.py:204(_main)
+    909/2    0.004    0.000   31.689   15.845 _hooks.py:497(__call__)
+  1203/70    0.002    0.000   31.653    0.452 _manager.py:111(_hookexec)
+  1203/70    0.015    0.000   31.653    0.452 _callers.py:76(_multicall)
+  239/128    0.001    0.000   30.200    0.236 __init__.py:71(import_module)
+  255/128    0.001    0.000   30.197    0.236 <frozen importlib._bootstrap>:1375(_gcd_import)
+4396/1553    0.010    0.000   26.229    0.017 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+  889/199    0.003    0.000   22.858    0.115 {built-in method builtins.__import__}
+     3151   21.210    0.007   21.210    0.007 {method 'read' of '_io.BufferedReader' objects}
+        1    0.000    0.000   19.734   19.734 main.py:376(pytest_cmdline_main)
+        1    0.000    0.000   19.734   19.734 main.py:317(wrap_session)
+     2903    0.042    0.000   18.321    0.006 <frozen importlib._bootstrap_external>:1090(get_code)
+        2    0.001    0.001   17.867    8.934 _manager.py:392(load_setuptools_entrypoints)
+     2904    0.016    0.000   17.725    0.006 <frozen importlib._bootstrap_external>:1211(get_data)
+       19    0.000    0.000   16.889    0.889 __init__.py:173(load)
+    23679   15.780    0.001   15.881    0.001 {built-in method posix.stat}
+        1    0.000    0.000   14.168   14.168 __init__.py:1325(_consider_importhook)
+        1    0.000    0.000   14.168   14.168 __init__.py:1348(_mark_plugins_for_rewrite)
+       20    0.001    0.000   14.168    0.708 __init__.py:951(_iter_rewritable_modules)
+     1079    0.002    0.000   14.167    0.013 __init__.py:1361(<genexpr>)
+       17    0.000    0.000   14.113    0.830 __init__.py:498(files)
+     3783    0.003    0.000   13.896    0.004 _local.py:498(stat)
+      508    0.000    0.000   13.819    0.027 _functools.py:99(wrapper)
+       17    0.007    0.000   13.814    0.813 __init__.py:529(skip_missing_files)
+     1192    0.003    0.000   13.792    0.012 _abc.py:442(exists)
+     1078    0.006    0.000   13.787    0.013 __init__.py:531(<lambda>)
+201345/131307    0.097    0.000   12.426    0.000 {built-in method builtins.hasattr}
+        8    0.000    0.000   12.116    1.514 pathlib.py:502(import_path)
+    90/24    0.000    0.000   11.985    0.499 flextlazy_part_02.py:181(<lambda>)
+    90/24    0.001    0.000   11.985    0.499 flextlazy_part_02.py:70(get)
+    73/10    0.001    0.000   11.984    1.198 flextlazy_part_01.py:135(_load)
+        1    0.000    0.000   11.954   11.954 __init__.py:387(_prepareconfig)
+        1    0.000    0.000   11.912   11.912 __init__.py:1228(pytest_cmdline_parse)
+        5    0.000    0.000   11.909    2.382 __init__.py:684(_loadconftestmodules)
+        1    0.000    0.000   11.909   11.909 __init__.py:1512(parse)
+        9    0.000    0.000   11.908    1.323 __init__.py:733(_importconftest)
+        1    0.000    0.000   11.906   11.906 __init__.py:1298(pytest_load_initial_conftests)
+
+

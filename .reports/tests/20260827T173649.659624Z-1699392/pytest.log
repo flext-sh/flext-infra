@@ -1,0 +1,38 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: selection automatically deactivated because you selected tests manually, environment: default
+Using --randomly-seed=2205505812
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 1 item
+
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml FAILED [100%]
+
+======================================================= FAILURES =======================================================
+_________________ TestsCodegenCatalogExtensions.test_codegen_composes_project_mise_tools_through_toml __________________
+tests/unit/codegen/test_codegen_catalog_extensions.py:300: in test_codegen_composes_project_mise_tools_through_toml
+    tm.that(rendered["tools"], has={"python": "3.13", "node": "26"})
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:719: in that
+    cls._validate_common(
+../flext-tests/src/flext_tests/_utilities/_matchers/_that.py:323: in _validate_common
+    FlextTestsMatchersContainmentMixin.check_has_lacks(
+../flext-tests/src/flext_tests/_utilities/_matchers/_containment.py:69: in check_has_lacks
+    FlextTestsMatchersAssertionsMixin.raise_match_assertion(
+../flext-tests/src/flext_tests/_utilities/_matchers/_assertions.py:26: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected {'python': '3.13', 'node': '26'} to contain {'python': '3.13', 'node': '26'}
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T173649.659624Z-1699392/junit.xml -
+================================================= slowest 25 durations =================================================
+0.12s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml
+0.09s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml
+================================================== 1 failed in 1.69s ===================================================

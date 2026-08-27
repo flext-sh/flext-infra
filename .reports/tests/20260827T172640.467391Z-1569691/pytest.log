@@ -1,0 +1,177 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- /home/marlonsc/gt/flext/mayor/rig/.venv/bin/python3
+cachedir: .pytest_cache
+testmon: selection automatically deactivated because you selected tests manually, environment: default
+Using --randomly-seed=3264070145
+hypothesis profile 'default'
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/marlonsc/gt/flext/mayor/rig/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0rc0, sugar-1.1.1, pytest_codeblocks-0.18.0, cov-7.1.0, testmon-2.2.0, deadfixtures-3.1.0, timeout-2.4.0, env-1.7.0, xdist-3.8.0, markdown-docs-0.9.2, mock-3.15.1, randomly-4.1.0, hypothesis-6.163.0, reportlog-1.0.0, benchmark-5.2.3, clarity-1.0.1, Faker-40.36.0, anyio-4.14.2, singer-sdk-0.54.5
+timeout: 10.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 1 item
+
+tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows FAILED [100%]
+
+======================================================= FAILURES =======================================================
+______________ TestsCodegenCatalogExtensions.test_local_manifest_conforms_without_global_repository_rows _______________
+tests/unit/codegen/test_codegen_catalog_extensions.py:459: in test_local_manifest_conforms_without_global_repository_rows
+    result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
+src/flext_infra/codegen/conform.py:401: in plan
+    repository_plan = self._plan_scaffold_repository(
+src/flext_infra/codegen/conform.py:877: in _plan_scaffold_repository
+    context_result = self._project_render_context(
+src/flext_infra/codegen/conform.py:1986: in _project_render_context
+    m.Infra.ProjectRenderContext(
+E   pydantic_core._pydantic_core.ValidationError: 46 validation errors for ProjectRenderContext
+E   pytest.case-timeout-seconds
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.slow-timeout-seconds
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.run-timeout-seconds
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.termination-grace-seconds
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.enforcement-plugin
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.progress-args
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.report-args
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.diagnostic-args
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.parallel-workers
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.parallel-distribution
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.profile-sort
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.profile-limit
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.min-version
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.python-classes
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.python-files
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.test-paths
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.filter-warnings
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.standard-markers
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.standard-addopts
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.process-timeout-seconds
+E     Field required [type=missing]
+E       For further information visit https://errors.pydantic.dev/2.13/v/missing
+E   pytest.case_timeout_seconds
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.slow_timeout_seconds
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.run_timeout_seconds
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.termination_grace_seconds
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.enforcement_plugin
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.progress_args
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.report_args
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.diagnostic_args
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.parallel_workers
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.parallel_distribution
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.profile_sort
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.profile_limit
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.min_version
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.python_classes
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.python_files
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.test_paths
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.filter_warnings
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.standard_markers
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.standard_addopts
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   pytest.process_timeout_seconds
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.ci.check_gates
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.handler_whats
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.check_gates_allowed
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.check_gates_default
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.check_gates_fixable
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+E   make.custom_handler_policies
+E     Extra inputs are not permitted [type=extra_forbidden]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=2
+[1/2] acme-platform conform ...
+- generated xml file: /home/marlonsc/gt/flext/mayor/rig/flext-infra/.reports/tests/20260827T172640.467391Z-1569691/junit.xml -
+================================================= slowest 25 durations =================================================
+1.71s call     tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.14s setup    tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+0.00s teardown tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_catalog_extensions.py::TestsCodegenCatalogExtensions::test_local_manifest_conforms_without_global_repository_rows
+================================================== 1 failed in 5.40s ===================================================

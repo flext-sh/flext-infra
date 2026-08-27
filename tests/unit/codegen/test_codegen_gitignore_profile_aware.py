@@ -9,6 +9,7 @@ appears in the workspace-root ``.gitignore``.
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 from flext_infra import c, config, m
@@ -20,11 +21,6 @@ from tests import u as test_u
 # expectation is built from the fixture's own members instead of freezing the
 # glob the generator happens to emit today.
 _WORKSPACE_ONLY_MARKERS = ("!/config/workspace.yaml",)
-_BEADS_CONFIG = "!.beads/config.yaml"
-# The bd gate lock is per-run runtime state written at the repository root
-# (not inside .beads/), so the .beads/* rules never reach it. Every profile
-# runs bd, so every profile must ignore it.
-_BEADS_GATE_LOCK = ".beads.gate.lock"
 
 
 class TestsCodegenGitignoreProfileAware:
@@ -44,9 +40,6 @@ class TestsCodegenGitignoreProfileAware:
         )
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker not in rendered, eq=True, msg=f"phantom {marker} in member")
-        tm.that(rendered, has=".beads/")
-        tm.that(rendered, has=_BEADS_CONFIG)
-        tm.that(rendered, has=_BEADS_GATE_LOCK)
 
     def test_workspace_root_gitignore_keeps_member_allowlist(self) -> None:
         """The workspace-root .gitignore keeps the member-directory allowlist.
@@ -86,27 +79,20 @@ class TestsCodegenGitignoreProfileAware:
             tm.that(
                 marker in rendered, eq=True, msg=f"missing derived {marker} at root"
             )
-        tm.that(rendered, has=_BEADS_CONFIG)
-        tm.that(rendered, has=_BEADS_GATE_LOCK)
 
-    def test_independent_overlay_generates_canonical_beads_environment(
+    def test_independent_overlay_projects_configured_mise_tool(
         self, tmp_path: Path
     ) -> None:
-        """Derive bd tool and project identity from typed production owners."""
+        """Derive the Mise tool selector and version from the typed owner."""
         repository, plan = _plan_independent_overlay(tmp_path)
         by_path = {
             file.path.relative_to(tmp_path / repository.name).as_posix(): file.rendered
             for file in plan.files
         }
-        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
-        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_GATE_LOCK)
-        tm.that(
-            by_path[".mise.toml"],
-            has=(
-                f'"{config.Infra.codegen.toolchain.beads.selector}" = '
-                f'"{config.Infra.codegen.toolchain.beads.version}"'
-            ),
-        )
+        beads = config.Infra.codegen.toolchain.beads
+        rendered_beads = tomllib.loads(by_path[".mise.toml"])["tools"][beads.selector]
+        tm.that(rendered_beads["version"], eq=beads.version)
+        tm.that(rendered_beads["prerelease"], eq=beads.prerelease)
 
 
 def _plan_independent_overlay(

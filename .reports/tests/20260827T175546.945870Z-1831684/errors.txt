@@ -1,0 +1,625 @@
+=== FAILURE: tests.unit.codegen.test_codegen_beads_ledger.TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration ===
+AssertionError: Expected success but got failure: schema_validate failed: Additional properties are not allowed ('beads_enabled' was unexpected)
+
+Failed validating 'additionalProperties' in schema:
+    {'$schema': 'https://json-schema.org/draft/2020-12/schema',
+     '$id': 'https://github.com/flext-sh/flext-infra/schemas/workspace.schema.json',
+     '$comment': 'NOTE(mro-wkii.17, agent codex): strict local workspace '
+                 'topology SSOT.',
+     'title': 'FLEXT Workspace Manifest',
+     'type': 'object',
+     'additionalProperties': False,
+     'required': ['version', 'name', 'repository', 'members'],
+     'properties': {'version': {'const': 3},
+                    'name': {'$ref': '#/$defs/name'},
+                    'ledger_id': {'type': 'string',
+                                  'pattern': '^[a-z][a-z0-9_-]*$'},
+                    'ledger_prefix': {'type': 'string',
+                                      'pattern': '^[a-z][a-z0-9_-]*$'},
+                    'beads_server': {'$ref': '#/$defs/beadsServer'},
+                    'repository': {'$ref': '#/$defs/repository'},
+                    'project': {'$ref': '#/$defs/project'},
+                    'members': {'type': 'array',
+                                'uniqueItems': True,
+                                'items': {'$ref': '#/$defs/repository'}},
+                    'content_only': {'$comment': 'Vendored or content-only '
+                                                 'gitlinks: present in the '
+                                                 'tree but never managed, '
+                                                 'mutated, or included in '
+                                                 'conform fan-out.',
+                                     'type': 'array',
+                                     'uniqueItems': True,
+                                     'items': {'$ref': '#/$defs/relativePath'}},
+                    'exclusions': {'type': 'array',
+                                   'uniqueItems': True,
+                                   'items': {'$ref': '#/$defs/exclusion'}},
+                    'external_dependency_paths': {'type': 'array',
+                                                  'uniqueItems': True,
+                                                  'items': {'$ref': '#/$defs/relativePath'}},
+                    'integration': {'$ref': '#/$defs/workspaceIntegration'},
+                    'work': {'$ref': '#/$defs/workspaceWork'},
+                    'repository_policy_overlays': {'type': 'array',
+                                                   'uniqueItems': True,
+                                                   'items': {'$ref': '#/$defs/repositoryPolicyOverlay'}}},
+     'dependentRequired': {'ledger_prefix': ['ledger_id']},
+     '$defs': {'name': {'type': 'string',
+                        'pattern': '^[a-z0-9]+(?:-[a-z0-9]+)*$'},
+               'relativePath': {'type': 'string',
+                                'minLength': 1,
+                                'pattern': '^(?:\\.|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)$',
+                                'not': {'pattern': '(^|/)\\.\\.(/|$)'}},
+               'repository': {'type': 'object',
+                              'additionalProperties': False,
+                              'required': ['name',
+                                           'distribution',
+                                           'provider',
+                                           'url',
+                                           'path',
+                                           'role',
+                                           'state',
+                                           'checkout',
+                                           'codegen',
+                                           'package',
+                                           'editable',
+                                           'read_only'],
+                              'properties': {'name': {'$ref': '#/$defs/name'},
+                                             'distribution': {'$ref': '#/$defs/name'},
+                                             'provider': {'$ref': '#/$defs/name'},
+                                             'url': {'type': 'string',
+                                                     'pattern': '^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\.git$'},
+                                             'path': {'$ref': '#/$defs/relativePath'},
+                                             'role': {'enum': ['workspace-root',
+                                                               'workspace-member',
+                                                               'standalone',
+                                                               'excluded']},
+                                             'state': {'enum': ['active',
+                                                                'excluded']},
+                                             'checkout': {'enum': ['root',
+                                                                   'submodule',
+                                                                   'independent']},
+                                             'codegen': {'enum': ['conform',
+                                                                  'python',
+                                                                  'none']},
+                                             'package': {'type': 'boolean'},
+                                             'editable': {'type': 'boolean'},
+                                             'read_only': {'type': 'boolean'},
+                                             'uv_link_mode': {'enum': ['clone',
+                                                                       'copy',
+                                                                       'hardlink',
+                                                                       'symlink']},
+                                             'extra_verbs': {'type': 'array',
+                                                             'items': {'$ref': '#/$defs/makeVerb'}},
+                                             'script_dispatch': {'type': ['object',
+                                                                          'null'],
+                                                                 'additionalProperties': False,
+                                                                 'required': ['dispatcher',
+                                                                              'roots'],
+                                                                 'properties': {'dispatcher': {'$ref': '#/$defs/relativePath'},
+                                                                                'roots': {'type': 'array',
+                                                                                          'minItems': 1,
+                                                                                          'items': {'$ref': '#/$defs/relativePath'}}}}}},
+               'workspaceIntegration': {'type': 'object',
+                                        'additionalProperties': False,
+                                        'required': ['provider', 'branch'],
+                                        'properties': {'provider': {'$ref': '#/$defs/name'},
+                                                       'branch': {'type': 'string',
+                                                                  'minLength': 1},
+                                                       'organization': {'type': 'string',
+                                                                        'minLength': 1},
+                                                       'base_url': {'type': 'string',
+                                                                    'minLength': 1,
+                                                                    'pattern': '^https://github\\.com/[A-Za-z0-9_.-]+$'}}},
+               'beadsServer': {'type': 'object',
+                               'additionalProperties': False,
+                               'required': ['backend',
+                                            'mode',
+                                            'host',
+                                            'port',
+                                            'user',
+                                            'auto_commit'],
+                               'properties': {'backend': {'const': 'dolt'},
+                                              'mode': {'const': 'server'},
+                                              'shared_server': {'const': False,
+                                                                'default': False},
+                                              'host': {'type': 'string',
+                                                       'minLength': 1},
+                                              'port': {'const': 3307},
+                                              'user': {'type': 'string',
+                                                       'minLength': 1},
+                                              'auto_commit': {'enum': ['off',
+                                                                       'on',
+                                                                       'batch']}}},
+               'workspaceWork': {'type': 'object',
+                                 'additionalProperties': False,
+                                 'properties': {'task_kind': {'enum': ['feature',
+                                                                       'bugfix']},
+                                                'chore_kind': {'enum': ['feature',
+                                                                        'bugfix']}}},
+               'repositoryPolicyOverlay': {'type': 'object',
+                                           'additionalProperties': False,
+                                           'required': ['project',
+                                                        'beads_enabled',
+                                                        'ci_enabled'],
+                                           'properties': {'project': {'$ref': '#/$defs/name'},
+                                                          'beads_enabled': {'type': 'boolean'},
+                                                          'ci_enabled': {'type': 'boolean'},
+                                                          'ci_matrix_auto_run': {'type': 'boolean',
+                                                                                 'description': 'When '
+                                                                                                'true, '
+                                                                                                'projected '
+                                                                                                'ci-matrix '
+                                                                                                'also '
+                                                                                                'auto-runs '
+                                                                                                'on '
+                                                                                                'push '
+                                                                                                'to '
+                                                                                                'main; '
+                                                                                                'default '
+                                                                                                'false '
+                                                                                                'is '
+                                                                                                'workflow_dispatch '
+                                                                                                'only'},
+                                                          'extra_ignored_patterns': {'type': 'array',
+                                                                                     'uniqueItems': True,
+                                                                                     'items': {'type': 'string',
+                                                                                               'minLength': 1}},
+                                                          'uv_exclude_newer': {'type': 'string',
+                                                                               'minLength': 1,
+                                                                               'description': 'Project-local '
+                                                                                              '[tool.uv].exclude-newer '
+                                                                                              'cooldown. '
+                                                                                              'The '
+                                                                                              'fleet '
+                                                                                              'default '
+                                                                                              'is '
+                                                                                              'a '
+                                                                                              'rolling '
+                                                                                              'window, '
+                                                                                              'which '
+                                                                                              'silently '
+                                                                                              'ages '
+                                                                                              'past '
+                                                                                              'a '
+                                                                                              'security '
+                                                                                              'floor '
+                                                                                              'declared '
+                                                                                              'in '
+                                                                                              'override-dependencies '
+                                                                                              'and '
+                                                                                              'makes '
+                                                                                              'resolution '
+                                                                                              'unsatisfiable; '
+                                                                                              'a '
+                                                                                              'project '
+                                                                                              'carrying '
+                                                                                              'such '
+                                                                                              'a '
+                                                                                              'floor '
+                                                                                              'pins '
+                                                                                              'the '
+                                                                                              'absolute '
+                                                                                              'cutoff '
+                                                                                              'here'}}},
+               'makeVerb': {'type': 'object',
+                            'additionalProperties': False,
+                            'required': ['name', 'default_what', 'whats'],
+                            'properties': {'name': {'$ref': '#/$defs/name'},
+                                           'default_what': {'type': 'string',
+                                                            'pattern': '^[a-z0-9][a-z0-9-]*$'},
+                                           'whats': {'type': 'array',
+                                                     'minItems': 1,
+                                                     'uniqueItems': True,
+                                                     'items': {'type': 'string',
+                                                               'pattern': '^[a-z0-9][a-z0-9-]*$'}},
+                                           'apply_guarded': {'type': 'boolean'},
+                                           'accepts_apply': {'type': 'boolean'},
+                                           'apply_what': {'type': 'string',
+                                                          'pattern': '^[a-z0-9][a-z0-9-]*$'}}},
+               'project': {'type': 'object',
+                           'additionalProperties': False,
+                           'required': ['package_name',
+                                        'class_stem',
+                                        'namespace',
+                                        'constant_name',
+                                        'namespace_attribute',
+                                        'alias',
+                                        'environment_prefix',
+                                        'description',
+                                        'version',
+                                        'license',
+                                        'author_name',
+                                        'author_email',
+                                        'upstream',
+                                        'homepage',
+                                        'documentation',
+                                        'workspace_root_rel',
+                                        'year'],
+                           'properties': {'package_name': {'type': 'string',
+                                                           'pattern': '^[a-z][a-z0-9_]*$'},
+                                          'class_stem': {'type': 'string',
+                                                         'pattern': '^[A-Z][A-Za-z0-9]*$'},
+                                          'namespace': {'type': 'string',
+                                                        'pattern': '^[A-Z][A-Za-z0-9]*$'},
+                                          'constant_name': {'$ref': '#/$defs/name'},
+                                          'namespace_attribute': {'type': 'string',
+                                                                  'pattern': '^[a-z][a-z0-9_]*$'},
+                                          'alias': {'type': 'string',
+                                                    'pattern': '^[a-z][a-z0-9_]*$'},
+                                          'environment_prefix': {'type': 'string',
+                                                                 'pattern': '^[A-Z][A-Z0-9_]*_$'},
+                                          'description': {'type': 'string',
+                                                          'minLength': 1},
+                                          'version': {'type': 'string',
+                                                      'minLength': 1},
+                                          'license': {'type': 'string',
+                                                      'minLength': 1},
+                                          'author_name': {'type': 'string',
+                                                          'minLength': 1},
+                                          'author_email': {'type': 'string',
+                                                           'minLength': 3},
+                                          'upstream': {'enum': ['flext_core',
+                                                                'flext_cli']},
+                                          'inherited_facets': {'type': 'array',
+                                                               'items': {'type': 'string',
+                                                                         'pattern': '^[a-z][a-z0-9_]*$'},
+                                                               'uniqueItems': True,
+                                                               'default': []},
+                                          'homepage': {'type': 'string',
+                                                       'format': 'uri'},
+                                          'documentation': {'type': 'string',
+                                                            'format': 'uri'},
+                                          'workspace_root_rel': {'type': 'string',
+                                                                 'pattern': '^(?:\\.|\\.\\.(?:/\\.\\.)*)$'},
+                                          'year': {'type': 'integer',
+                                                   'minimum': 2025}}},
+               'exclusion': {'type': 'object',
+                             'additionalProperties': False,
+                             'required': ['path', 'reason'],
+                             'properties': {'path': {'$ref': '#/$defs/relativePath'},
+                                            'reason': {'type': 'string',
+                                                       'minLength': 1}}}}}
+
+On instance:
+    {'version': 3,
+     'name': 'flext-infra',
+     'beads_enabled': False,
+     'ledger_id': 'manual-ledger',
+     'ledger_prefix': 'manual-ledger',
+     'repository': {'name': 'flext-infra',
+                    'distribution': 'flext-infra',
+                    'url': 'https://github.com/flext-sh/flext-infra.git',
+                    'path': '.',
+                    'role': 'standalone',
+                    'state': 'active',
+                    'provider': 'flext-sh',
+                    'checkout': 'independent',
+                    'codegen': 'conform',
+                    'package': True,
+                    'editable': False,
+                    'read_only': False,
+                    'extra_verbs': []},
+     'members': [],
+     'content_only': [],
+     'exclusions': [],
+     'repository_policy_overlays': [{'project': 'flext-infra',
+                                     'beads_enabled': True,
+                                     'ci_enabled': True,
+                                     'ci_matrix_auto_run': False,
+                                     'extra_ignored_patterns': []}]}
+tests/unit/codegen/test_codegen_beads_ledger.py:679: in test_workspace_manifest_can_disable_beads_integration
+    plan = self._beads_plan(root)
+           ^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/codegen/test_codegen_beads_ledger.py:119: in _beads_plan
+    planned: m.Infra.CodegenPlan = tm.ok(
+../flext-tests/src/flext_tests/_utilities/_matchers/_result.py:330: in ok
+    return FlextTestsResultUtilitiesMixin.assert_success(result)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../flext-tests/src/flext_tests/_utilities/result.py:41: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: schema_validate failed: Additional properties are not allowed ('beads_enabled' was unexpected)
+E   
+E   Failed validating 'additionalProperties' in schema:
+E       {'$schema': 'https://json-schema.org/draft/2020-12/schema',
+E        '$id': 'https://github.com/flext-sh/flext-infra/schemas/workspace.schema.json',
+E        '$comment': 'NOTE(mro-wkii.17, agent codex): strict local workspace '
+E                    'topology SSOT.',
+E        'title': 'FLEXT Workspace Manifest',
+E        'type': 'object',
+E        'additionalProperties': False,
+E        'required': ['version', 'name', 'repository', 'members'],
+E        'properties': {'version': {'const': 3},
+E                       'name': {'$ref': '#/$defs/name'},
+E                       'ledger_id': {'type': 'string',
+E                                     'pattern': '^[a-z][a-z0-9_-]*$'},
+E                       'ledger_prefix': {'type': 'string',
+E                                         'pattern': '^[a-z][a-z0-9_-]*$'},
+E                       'beads_server': {'$ref': '#/$defs/beadsServer'},
+E                       'repository': {'$ref': '#/$defs/repository'},
+E                       'project': {'$ref': '#/$defs/project'},
+E                       'members': {'type': 'array',
+E                                   'uniqueItems': True,
+E                                   'items': {'$ref': '#/$defs/repository'}},
+E                       'content_only': {'$comment': 'Vendored or content-only '
+E                                                    'gitlinks: present in the '
+E                                                    'tree but never managed, '
+E                                                    'mutated, or included in '
+E                                                    'conform fan-out.',
+E                                        'type': 'array',
+E                                        'uniqueItems': True,
+E                                        'items': {'$ref': '#/$defs/relativePath'}},
+E                       'exclusions': {'type': 'array',
+E                                      'uniqueItems': True,
+E                                      'items': {'$ref': '#/$defs/exclusion'}},
+E                       'external_dependency_paths': {'type': 'array',
+E                                                     'uniqueItems': True,
+E                                                     'items': {'$ref': '#/$defs/relativePath'}},
+E                       'integration': {'$ref': '#/$defs/workspaceIntegration'},
+E                       'work': {'$ref': '#/$defs/workspaceWork'},
+E                       'repository_policy_overlays': {'type': 'array',
+E                                                      'uniqueItems': True,
+E                                                      'items': {'$ref': '#/$defs/repositoryPolicyOverlay'}}},
+E        'dependentRequired': {'ledger_prefix': ['ledger_id']},
+E        '$defs': {'name': {'type': 'string',
+E                           'pattern': '^[a-z0-9]+(?:-[a-z0-9]+)*$'},
+E                  'relativePath': {'type': 'string',
+E                                   'minLength': 1,
+E                                   'pattern': '^(?:\\.|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)$',
+E                                   'not': {'pattern': '(^|/)\\.\\.(/|$)'}},
+E                  'repository': {'type': 'object',
+E                                 'additionalProperties': False,
+E                                 'required': ['name',
+E                                              'distribution',
+E                                              'provider',
+E                                              'url',
+E                                              'path',
+E                                              'role',
+E                                              'state',
+E                                              'checkout',
+E                                              'codegen',
+E                                              'package',
+E                                              'editable',
+E                                              'read_only'],
+E                                 'properties': {'name': {'$ref': '#/$defs/name'},
+E                                                'distribution': {'$ref': '#/$defs/name'},
+E                                                'provider': {'$ref': '#/$defs/name'},
+E                                                'url': {'type': 'string',
+E                                                        'pattern': '^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\.git$'},
+E                                                'path': {'$ref': '#/$defs/relativePath'},
+E                                                'role': {'enum': ['workspace-root',
+E                                                                  'workspace-member',
+E                                                                  'standalone',
+E                                                                  'excluded']},
+E                                                'state': {'enum': ['active',
+E                                                                   'excluded']},
+E                                                'checkout': {'enum': ['root',
+E                                                                      'submodule',
+E                                                                      'independent']},
+E                                                'codegen': {'enum': ['conform',
+E                                                                     'python',
+E                                                                     'none']},
+E                                                'package': {'type': 'boolean'},
+E                                                'editable': {'type': 'boolean'},
+E                                                'read_only': {'type': 'boolean'},
+E                                                'uv_link_mode': {'enum': ['clone',
+E                                                                          'copy',
+E                                                                          'hardlink',
+E                                                                          'symlink']},
+E                                                'extra_verbs': {'type': 'array',
+E                                                                'items': {'$ref': '#/$defs/makeVerb'}},
+E                                                'script_dispatch': {'type': ['object',
+E                                                                             'null'],
+E                                                                    'additionalProperties': False,
+E                                                                    'required': ['dispatcher',
+E                                                                                 'roots'],
+E                                                                    'properties': {'dispatcher': {'$ref': '#/$defs/relativePath'},
+E                                                                                   'roots': {'type': 'array',
+E                                                                                             'minItems': 1,
+E                                                                                             'items': {'$ref': '#/$defs/relativePath'}}}}}},
+E                  'workspaceIntegration': {'type': 'object',
+E                                           'additionalProperties': False,
+E                                           'required': ['provider', 'branch'],
+E                                           'properties': {'provider': {'$ref': '#/$defs/name'},
+E                                                          'branch': {'type': 'string',
+E                                                                     'minLength': 1},
+E                                                          'organization': {'type': 'string',
+E                                                                           'minLength': 1},
+E                                                          'base_url': {'type': 'string',
+E                                                                       'minLength': 1,
+E                                                                       'pattern': '^https://github\\.com/[A-Za-z0-9_.-]+$'}}},
+E                  'beadsServer': {'type': 'object',
+E                                  'additionalProperties': False,
+E                                  'required': ['backend',
+E                                               'mode',
+E                                               'host',
+E                                               'port',
+E                                               'user',
+E                                               'auto_commit'],
+E                                  'properties': {'backend': {'const': 'dolt'},
+E                                                 'mode': {'const': 'server'},
+E                                                 'shared_server': {'const': False,
+E                                                                   'default': False},
+E                                                 'host': {'type': 'string',
+E                                                          'minLength': 1},
+E                                                 'port': {'const': 3307},
+E                                                 'user': {'type': 'string',
+E                                                          'minLength': 1},
+E                                                 'auto_commit': {'enum': ['off',
+E                                                                          'on',
+E                                                                          'batch']}}},
+E                  'workspaceWork': {'type': 'object',
+E                                    'additionalProperties': False,
+E                                    'properties': {'task_kind': {'enum': ['feature',
+E                                                                          'bugfix']},
+E                                                   'chore_kind': {'enum': ['feature',
+E                                                                           'bugfix']}}},
+E                  'repositoryPolicyOverlay': {'type': 'object',
+E                                              'additionalProperties': False,
+E                                              'required': ['project',
+E                                                           'beads_enabled',
+E                                                           'ci_enabled'],
+E                                              'properties': {'project': {'$ref': '#/$defs/name'},
+E                                                             'beads_enabled': {'type': 'boolean'},
+E                                                             'ci_enabled': {'type': 'boolean'},
+E                                                             'ci_matrix_auto_run': {'type': 'boolean',
+E                                                                                    'description': 'When '
+E                                                                                                   'true, '
+E                                                                                                   'projected '
+E                                                                                                   'ci-matrix '
+E                                                                                                   'also '
+E                                                                                                   'auto-runs '
+E                                                                                                   'on '
+E                                                                                                   'push '
+E                                                                                                   'to '
+E                                                                                                   'main; '
+E                                                                                                   'default '
+E                                                                                                   'false '
+E                                                                                                   'is '
+E                                                                                                   'workflow_dispatch '
+E                                                                                                   'only'},
+E                                                             'extra_ignored_patterns': {'type': 'array',
+E                                                                                        'uniqueItems': True,
+E                                                                                        'items': {'type': 'string',
+E                                                                                                  'minLength': 1}},
+E                                                             'uv_exclude_newer': {'type': 'string',
+E                                                                                  'minLength': 1,
+E                                                                                  'description': 'Project-local '
+E                                                                                                 '[tool.uv].exclude-newer '
+E                                                                                                 'cooldown. '
+E                                                                                                 'The '
+E                                                                                                 'fleet '
+E                                                                                                 'default '
+E                                                                                                 'is '
+E                                                                                                 'a '
+E                                                                                                 'rolling '
+E                                                                                                 'window, '
+E                                                                                                 'which '
+E                                                                                                 'silently '
+E                                                                                                 'ages '
+E                                                                                                 'past '
+E                                                                                                 'a '
+E                                                                                                 'security '
+E                                                                                                 'floor '
+E                                                                                                 'declared '
+E                                                                                                 'in '
+E                                                                                                 'override-dependencies '
+E                                                                                                 'and '
+E                                                                                                 'makes '
+E                                                                                                 'resolution '
+E                                                                                                 'unsatisfiable; '
+E                                                                                                 'a '
+E                                                                                                 'project '
+E                                                                                                 'carrying '
+E                                                                                                 'such '
+E                                                                                                 'a '
+E                                                                                                 'floor '
+E                                                                                                 'pins '
+E                                                                                                 'the '
+E                                                                                                 'absolute '
+E                                                                                                 'cutoff '
+E                                                                                                 'here'}}},
+E                  'makeVerb': {'type': 'object',
+E                               'additionalProperties': False,
+E                               'required': ['name', 'default_what', 'whats'],
+E                               'properties': {'name': {'$ref': '#/$defs/name'},
+E                                              'default_what': {'type': 'string',
+E                                                               'pattern': '^[a-z0-9][a-z0-9-]*$'},
+E                                              'whats': {'type': 'array',
+E                                                        'minItems': 1,
+E                                                        'uniqueItems': True,
+E                                                        'items': {'type': 'string',
+E                                                                  'pattern': '^[a-z0-9][a-z0-9-]*$'}},
+E                                              'apply_guarded': {'type': 'boolean'},
+E                                              'accepts_apply': {'type': 'boolean'},
+E                                              'apply_what': {'type': 'string',
+E                                                             'pattern': '^[a-z0-9][a-z0-9-]*$'}}},
+E                  'project': {'type': 'object',
+E                              'additionalProperties': False,
+E                              'required': ['package_name',
+E                                           'class_stem',
+E                                           'namespace',
+E                                           'constant_name',
+E                                           'namespace_attribute',
+E                                           'alias',
+E                                           'environment_prefix',
+E                                           'description',
+E                                           'version',
+E                                           'license',
+E                                           'author_name',
+E                                           'author_email',
+E                                           'upstream',
+E                                           'homepage',
+E                                           'documentation',
+E                                           'workspace_root_rel',
+E                                           'year'],
+E                              'properties': {'package_name': {'type': 'string',
+E                                                              'pattern': '^[a-z][a-z0-9_]*$'},
+E                                             'class_stem': {'type': 'string',
+E                                                            'pattern': '^[A-Z][A-Za-z0-9]*$'},
+E                                             'namespace': {'type': 'string',
+E                                                           'pattern': '^[A-Z][A-Za-z0-9]*$'},
+E                                             'constant_name': {'$ref': '#/$defs/name'},
+E                                             'namespace_attribute': {'type': 'string',
+E                                                                     'pattern': '^[a-z][a-z0-9_]*$'},
+E                                             'alias': {'type': 'string',
+E                                                       'pattern': '^[a-z][a-z0-9_]*$'},
+E                                             'environment_prefix': {'type': 'string',
+E                                                                    'pattern': '^[A-Z][A-Z0-9_]*_$'},
+E                                             'description': {'type': 'string',
+E                                                             'minLength': 1},
+E                                             'version': {'type': 'string',
+E                                                         'minLength': 1},
+E                                             'license': {'type': 'string',
+E                                                         'minLength': 1},
+E                                             'author_name': {'type': 'string',
+E                                                             'minLength': 1},
+E                                             'author_email': {'type': 'string',
+E                                                              'minLength': 3},
+E                                             'upstream': {'enum': ['flext_core',
+E                                                                   'flext_cli']},
+E                                             'inherited_facets': {'type': 'array',
+E                                                                  'items': {'type': 'string',
+E                                                                            'pattern': '^[a-z][a-z0-9_]*$'},
+E                                                                  'uniqueItems': True,
+E                                                                  'default': []},
+E                                             'homepage': {'type': 'string',
+E                                                          'format': 'uri'},
+E                                             'documentation': {'type': 'string',
+E                                                               'format': 'uri'},
+E                                             'workspace_root_rel': {'type': 'string',
+E                                                                    'pattern': '^(?:\\.|\\.\\.(?:/\\.\\.)*)$'},
+E                                             'year': {'type': 'integer',
+E                                                      'minimum': 2025}}},
+E                  'exclusion': {'type': 'object',
+E                                'additionalProperties': False,
+E                                'required': ['path', 'reason'],
+E                                'properties': {'path': {'$ref': '#/$defs/relativePath'},
+E                                               'reason': {'type': 'string',
+E                                                          'minLength': 1}}}}}
+E   
+E   On instance:
+E       {'version': 3,
+E        'name': 'flext-infra',
+E        'beads_enabled': False,
+E        'ledger_id': 'manual-ledger',
+E        'ledger_prefix': 'manual-ledger',
+E        'repository': {'name': 'flext-infra',
+E                       'distribution': 'flext-infra',
+E                       'url': 'https://github.com/flext-sh/flext-infra.git',
+E                       'path': '.',
+E                       'role': 'standalone',
+E                       'state': 'active',
+E                       'provider': 'flext-sh',
+E                       'checkout': 'independent',
+E                       'codegen': 'conform',
+E                       'package': True,
+E                       'editable': False,
+E                       'read_only': False,
+E                       'extra_verbs': []},
+E        'members': [],
+E        'content_only': [],
+E        'exclusions': [],
+E        'repository_policy_overlays': [{'project': 'flext-infra',
+E                                        'beads_enabled': True,
+E                                        'ci_enabled': True,
+E                                        'ci_matrix_auto_run': False,
+E                                        'extra_ignored_patterns': []}]}

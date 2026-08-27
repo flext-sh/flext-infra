@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="9" time="5.818" timestamp="2026-08-27T15:47:37.693877-03:00" hostname="tungs"><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_option_like_base_fails_before_lane_mutation[--help]" time="0.375" /><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_unresolved_base_fails_before_lane_mutation" time="0.206"><failure message="gitdb.exc.BadName: Ref 'missing/base' did not resolve to an object">tests/unit/workspace/test_worktree_security_boundaries.py:75: in test_unresolved_base_fails_before_lane_mutation
+    result = _add(repository, "feature/missing-base", "missing/base")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/workspace/test_worktree_security_boundaries.py:37: in _add
+    ).execute()
+      ^^^^^^^^^
+src/flext_infra/worktree.py:335: in execute
+    return self._add(primary.value, branch.value, base)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/worktree.py:195: in _add
+    resolved = u.Infra.git_resolve_commit(
+src/flext_infra/_utilities/_git/semantic.py:266: in git_resolve_commit
+    oid = repo.commit(request.commitish).hexsha
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/base.py:772: in commit
+    return self.rev_parse(str(rev) + "^0")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/fun.py:661: in rev_parse
+    obj = name_to_object(repo, rev[:first_token])
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/fun.py:226: in name_to_object
+    raise BadName(name)
+E   gitdb.exc.BadName: Ref 'missing/base' did not resolve to an object</failure></testcase><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_epic_path_must_match_git_registry" time="0.504" /><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_option_like_base_fails_before_lane_mutation[--upload-pack=payload]" time="0.223" /><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_false_branch_format_report_fails_closed" time="0.157" /><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_symlinked_epic_topology_fails_closed[epic]" time="0.508" /><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_symlinked_epic_topology_fails_closed[container]" time="0.387" /><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_same_child_branch_cannot_be_reused_under_another_epic" time="0.850" /><testcase classname="tests.unit.workspace.test_worktree_security_boundaries" name="test_option_like_base_fails_before_lane_mutation[-C]" time="0.198" /></testsuite></testsuites>
