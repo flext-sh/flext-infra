@@ -2342,15 +2342,6 @@ class FlextInfraConfigModels:
             ),
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        beads_enabled: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether this workspace participates in the Beads tracker; "
-                    "disable only through the committed workspace manifest"
-                )
-            ),
-        ] = True
         ledger_id: Annotated[
             t.NonEmptyStr | None,
             m.Field(

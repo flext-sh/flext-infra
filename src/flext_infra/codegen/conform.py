@@ -334,7 +334,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=current_make_profile,
                 beads_enabled=(
                     current_make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-                    and workspace.beads_enabled
                 ),
                 routing_only=False,
                 canonical_project_name=current_repository.distribution,
