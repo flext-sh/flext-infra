@@ -1,0 +1,6 @@
+id: workspace-spec-members-keyword
+language: Python
+message: WorkspaceSpec topology uses subprojects derived from .gitmodules
+rule:
+  pattern: m.Infra.WorkspaceSpec($$$BEFORE, members=$VALUE, $$$AFTER)
+fix: m.Infra.WorkspaceSpec($$$BEFORE, subprojects=$VALUE, $$$AFTER)

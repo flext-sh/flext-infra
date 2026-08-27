@@ -2335,7 +2335,7 @@ class FlextInfraConfigModels:
             ):
                 msg = "external dependency paths must be unique"
                 raise ValueError(msg)
-            member_paths = {item.path for item in self.members}
+            member_paths = {item.path for item in self.subprojects}
             overlap = member_paths.intersection(self.external_dependency_paths)
             if overlap:
                 msg = (
@@ -2354,7 +2354,7 @@ class FlextInfraConfigModels:
                 )
                 raise ValueError(msg)
             repository_names = {
-                item.distribution for item in (self.repository, *self.members)
+                item.distribution for item in (self.repository, *self.subprojects)
             }
             unknown = set(projects) - repository_names
             if unknown:

@@ -186,8 +186,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def members(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
-            """Attached workspace member repositories."""
+        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+            """Repositories declared by this workspace's own .gitmodules."""
             ...
 
         @property

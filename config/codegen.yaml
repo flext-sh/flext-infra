@@ -647,7 +647,9 @@ Infra:
       # scalar/list keys are enforced, map keys are union-merged (project entries
       # are preserved). Recursive "**" venv search globs are forbidden: they make
       # the Python Environments locator (pet) walk entire repository trees and
-      # hang interpreter discovery on large monorepos.
+      # hang interpreter discovery on large monorepos. This projection is
+      # topology-independent: `${workspaceFolder}` points at the workspace when
+      # it is opened and at the subproject when opened directly.
       scalar_settings:
         files.autoSave: afterDelay
         python.analysis.diagnosticMode: workspace
@@ -1106,6 +1108,9 @@ Infra:
       - path: base.mk
         owner: make
         policy: delegated
+      - path: config/beads.yaml
+        owner: codegen
+        policy: full
       - path: custom.mk
         owner: custom
         policy: create-only
@@ -1779,6 +1784,11 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
+        - source: base/config/beads.yaml.j2
+          destination: config/beads.yaml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
         - source: base/src/__init__.py.j2
           destination: "src/{package_name}/__init__.py"
           profiles: [workspace, standalone]

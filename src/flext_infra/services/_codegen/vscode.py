@@ -4,9 +4,11 @@ This is the only place that knows how ``.vscode/settings.json`` is produced.
 It parses that explicitly JSONC document through the canonical string-aware
 normalizer, validates the resulting mapping, merges the config-driven canonical
 keys from ``config.Infra.codegen.vscode`` plus the artifact-derived exclude maps,
-derives shallow member ``.venv`` globs from the workspace manifest, and serializes
-the result with ``u.Cli.json_dumps``. Rendering, planning, atomic writes, and
-fixed-point verification stay owned by ``FlextInfraCodegenConform``.
+and serializes the result with ``u.Cli.json_dumps``. The canonical projection is
+topology-independent: a workspace and a directly opened subproject receive the
+same settings, whose ``${workspaceFolder}`` paths resolve to whichever repository
+VS Code opened. Rendering, planning, atomic writes, and fixed-point verification
+stay owned by ``FlextInfraCodegenConform``.
 """
 
 from __future__ import annotations
@@ -39,7 +41,7 @@ class FlextInfraCodegenVscodeMixin:
             key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
-        _ = cls._apply_canonical_settings(settings, workspace_root)
+        _ = cls._apply_canonical_settings(settings)
         serialized = u.Cli.json_dumps(dict(settings), indent=2)
         if serialized.failure:
             return r[str].fail(serialized.error or "VS Code settings serialize failed")
@@ -161,7 +163,7 @@ class FlextInfraCodegenVscodeMixin:
 
     @classmethod
     def _apply_canonical_settings(
-        cls, settings: t.MutableJsonMapping, workspace_root: Path
+        cls, settings: t.MutableJsonMapping
     ) -> bool:
         """Merge canonical codegen VS Code settings into one settings mapping."""
         spec = config.Infra.codegen.vscode
@@ -169,7 +171,6 @@ class FlextInfraCodegenVscodeMixin:
             settings,
             scalar_settings=spec.scalar_settings,
             list_settings=spec.list_settings,
-            workspace_root=workspace_root,
         )
         # The three exclude maps derive from the codegen artifact SSOT;
         # map_union_settings keeps only the remaining non-artifact keys.
@@ -189,7 +190,6 @@ class FlextInfraCodegenVscodeMixin:
         *,
         scalar_settings: Mapping[str, str | bool],
         list_settings: Mapping[str, tuple[str, ...]],
-        workspace_root: Path,
     ) -> bool:
         """Enforce exact scalar and list VS Code keys from the codegen config."""
         changed = False
@@ -200,11 +200,8 @@ class FlextInfraCodegenVscodeMixin:
             settings[key] = normalized
             changed = True
         for key, list_value in list_settings.items():
-            entries = cls._resolve_list_setting(
-                key, list_value, workspace_root=workspace_root
-            )
             canonical: list[t.JsonValue] = [
-                u.normalize_to_json_value(entry) for entry in entries
+                u.normalize_to_json_value(entry) for entry in list_value
             ]
             if settings.get(key) == canonical:
                 continue
@@ -238,31 +235,6 @@ class FlextInfraCodegenVscodeMixin:
             settings[key] = merged
             changed = True
         return changed
-
-    @staticmethod
-    def _resolve_list_setting(
-        key: str, base_entries: tuple[str, ...], *, workspace_root: Path
-    ) -> tuple[str, ...]:
-        """Resolve one canonical list, deriving extra globs from the topology."""
-        if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
-            return base_entries
-        derived = list(base_entries)
-        manifest = (
-            workspace_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        )
-        if manifest.is_file():
-            loaded = u.Cli.yaml_safe_load(manifest)
-            if loaded.success:
-                members = loaded.value.get("members")
-                if isinstance(members, list):
-                    for member in members:
-                        if not isinstance(member, Mapping):
-                            continue
-                        path = member.get("path")
-                        if not isinstance(path, str) or path in {"", "."}:
-                            continue
-                        derived.append(f"./{path}/.venv")
-        return tuple(dict.fromkeys(derived))
 
 
 __all__: list[str] = ["FlextInfraCodegenVscodeMixin"]

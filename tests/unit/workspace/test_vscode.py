@@ -76,36 +76,35 @@ class TestsFlextInfraCodegenVscode:
         tm.ok(second)
         tm.that(second.value, eq=first.value)
 
-    def test_derives_member_venv_globs_from_workspace_manifest(
+    def test_workspace_and_subproject_receive_the_same_canonical_settings(
         self, tmp_path: Path
     ) -> None:
-        """Derive shallow venv globs from config/workspace.yaml member paths."""
+        """Do not specialize VS Code settings from repository topology."""
         project_root = tmp_path / "workspace"
         project_root.mkdir()
-        config_dir = project_root / "config"
-        config_dir.mkdir()
-        (config_dir / "workspace.yaml").write_text(
-            "version: 2\nmembers:\n  - name: a\n    path: apps/a\n"
-            "  - name: b\n    path: libs/b\n",
+        (project_root / ".gitmodules").write_text(
+            '[submodule "apps/a"]\n\tpath = apps/a\n\turl = ../a.git\n',
             encoding="utf-8",
         )
+        subproject_root = tmp_path / "subproject"
+        subproject_root.mkdir()
 
-        result = FlextInfraCodegen.render_vscode_settings(project_root)
+        workspace_result = FlextInfraCodegen.render_vscode_settings(project_root)
+        subproject_result = FlextInfraCodegen.render_vscode_settings(subproject_root)
 
-        tm.ok(result)
-        doc = json.loads(result.value)
+        tm.ok(workspace_result)
+        tm.ok(subproject_result)
+        tm.that(subproject_result.value, eq=workspace_result.value)
+        doc = json.loads(workspace_result.value)
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
             search_paths,
-            eq=[
-                *config.Infra.codegen.vscode.list_settings[
+            eq=list(
+                config.Infra.codegen.vscode.list_settings[
                     c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ],
-                "./apps/a/.venv",
-                "./libs/b/.venv",
-            ],
+                ]
+            ),
         )
-        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_invalid_json_fails_without_producing_a_document(
         self, tmp_path: Path

@@ -201,13 +201,13 @@ class FlextInfraUtilitiesPyprojectConform:
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
-        available = (workspace.repository, *workspace.members)
+        available = (workspace.repository, *workspace.subprojects)
         # Only the root expresses the active workspace overlay in its own
         # requirements. A publishable member keeps its configured Git source so
         # the same pyproject remains resolvable in a standalone checkout; uv
         # replaces it with workspace=true from the attached root.
         attached = (
-            frozenset(member.distribution for member in workspace.members)
+            frozenset(member.distribution for member in workspace.subprojects)
             if cls._is_attached_workspace_root(
                 project_name=project_name,
                 workspace=workspace,
@@ -474,7 +474,7 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_string_list(
                 groups,
                 "workspace",
-                tuple(sorted(member.distribution for member in workspace.members)),
+                tuple(sorted(member.distribution for member in workspace.subprojects)),
             )
             return
         u.Cli.toml_remove_key_if_present(groups, "workspace")
@@ -484,7 +484,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *, project_name: str, workspace: p.Infra.WorkspaceSpec
     ) -> bool:
         """Identify the real multi-project root, not an autonomous repository."""
-        return bool(workspace.members) and (
+        return bool(workspace.subprojects) and (
             project_name == workspace.repository.distribution
         )
 
@@ -693,7 +693,7 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_string_list(
                 workspace_table,
                 "members",
-                tuple(member.path.as_posix() for member in workspace.members),
+                tuple(member.path.as_posix() for member in workspace.subprojects),
             )
         else:
             u.Cli.toml_remove_key_if_present(uv, "workspace")
@@ -704,7 +704,7 @@ class FlextInfraUtilitiesPyprojectConform:
             if not workspace_root and not tuple(uv):
                 u.Cli.toml_remove_key_if_present(tool, "uv")
             return r[bool].ok(True)
-        workspace_names = {member.distribution for member in workspace.members}
+        workspace_names = {member.distribution for member in workspace.subprojects}
         for source_name in tuple(sources):
             # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
             # TOML tables in place so conformance cannot accumulate blank trivia.
@@ -713,7 +713,7 @@ class FlextInfraUtilitiesPyprojectConform:
             ):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if workspace_root:
-            for member in workspace.members:
+            for member in workspace.subprojects:
                 u.Cli.toml_sync_mapping_table(
                     sources, member.distribution, {"workspace": True}
                 )
@@ -731,7 +731,7 @@ class FlextInfraUtilitiesPyprojectConform:
         providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
         """Resolve the workspace source overlay from typed metadata."""
-        candidates = (workspace.repository, *workspace.members)
+        candidates = (workspace.repository, *workspace.subprojects)
         for distribution in dict.fromkeys(item.distribution for item in candidates):
             reference_result = cls._repository_reference(
                 distribution, repositories=candidates, providers=providers
@@ -739,7 +739,7 @@ class FlextInfraUtilitiesPyprojectConform:
             if reference_result.failure:
                 return r.fail(reference_result.error or "repository resolution failed")
         return r.ok({
-            member.distribution: {"workspace": True} for member in workspace.members
+            member.distribution: {"workspace": True} for member in workspace.subprojects
         })
 
     @staticmethod
@@ -772,7 +772,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         except c.ValidationError as exc:
             return r[bool].fail_op("validate root uv workspace members", exc)
-        expected_members = tuple(member.path.as_posix() for member in workspace.members)
+        expected_members = tuple(member.path.as_posix() for member in workspace.subprojects)
         if tuple(members) != expected_members:
             return r[bool].fail("root uv workspace members differ from workspace SSOT")
         sources = uv.get("sources")
@@ -811,7 +811,7 @@ class FlextInfraUtilitiesPyprojectConform:
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
             return r[bool].fail("pyproject document is not a TOML mapping")
-        member_names = frozenset(member.distribution for member in workspace.members)
+        member_names = frozenset(member.distribution for member in workspace.subprojects)
         raw_values: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):

@@ -1476,7 +1476,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return c.Infra.MakeProfile.STANDALONE
             return (
                 c.Infra.MakeProfile.WORKSPACE
-                if workspace.members
+                if workspace.subprojects
                 else c.Infra.MakeProfile.STANDALONE
             )
 

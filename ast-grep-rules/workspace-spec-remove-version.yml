@@ -1,0 +1,6 @@
+id: workspace-spec-remove-version
+language: Python
+message: WorkspaceSpec is live context and has no serialized manifest version
+rule:
+  pattern: m.Infra.WorkspaceSpec($$$BEFORE, version=$VALUE, $$$AFTER)
+fix: m.Infra.WorkspaceSpec($$$BEFORE, $$$AFTER)

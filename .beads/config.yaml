@@ -7,7 +7,7 @@
 # ledger_prefix is an optional distinct issue-prefix override.
 # Source: dolt server block = flext-infra config/codegen.yaml toolchain.beads.server.
 # Root-project configuration.
-issue-prefix: "mro"
+issue-prefix: "flext"
 
 # Declared Dolt connection values.
 dolt:

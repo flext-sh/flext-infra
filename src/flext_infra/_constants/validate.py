@@ -156,6 +156,7 @@ class FlextInfraConstantsSharedInfra:
     "Hook-config projection whose presence decides whether a checkout runs hooks."
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
+    BEADS_OVERRIDE_RELPATH: Final[str] = "config/beads.yaml"
     "Generated project-owned Beads configuration paths."
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."

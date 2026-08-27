@@ -2,19 +2,18 @@
 
 Operator law: flext-infra owns generic conform behaviour only. It must not
 carry a registry of the projects it serves, so a repository's identity and its
-governed members are derived from that repository's own
-``config/workspace.yaml`` plus live Git, and from nothing else.
+projects are derived from that repository's own ``.gitmodules`` and local
+``config/*.yaml`` overrides, and from nothing else.
 
-A standalone repository that ships no manifest is still derivable: its identity
-comes from its own ``pyproject.toml`` metadata and its members from the Git
-submodule contract it actually declares.
+A standalone repository derives its identity from its own ``pyproject.toml``
+metadata and never consults a parent repository.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, u
+from flext_infra import c, config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
@@ -26,6 +25,11 @@ def _standalone(root: Path, *, name: str) -> Path:
     (root / "pyproject.toml").write_text(
         f"[project]\nname = '{name}'\nversion = '0.1.0'\n"
         "requires-python = '>=3.13,<3.14'\n",
+        encoding="utf-8",
+    )
+    (root / "config").mkdir()
+    (root / "config" / "beads.yaml").write_text(
+        "version: 1\nworkspace: flext\ndatabase: flext\nissue_prefix: flext\n",
         encoding="utf-8",
     )
     test_u.Tests.initialize_git_repo(root)
@@ -52,40 +56,18 @@ class TestsDetectorOwnsNoProjectRegistry:
         tm.that(spec.name, eq="totally-unknown")
         tm.that(spec.repository.name, eq="totally-unknown")
         tm.that(spec.repository.path, eq=Path())
-        tm.that(spec.members, empty=True)
+        tm.that(spec.subprojects, empty=True)
 
-    def test_declared_manifest_remains_the_topology_ssot(self, tmp_path: Path) -> None:
-        """When the project ships a manifest, that manifest wins."""
-        root = _standalone(tmp_path / "manifested", name="manifested")
-        provider = config.Infra.codegen.providers[0]
-        (root / "config").mkdir()
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
-                    "name": "manifested",
-                    "repository": {
-                        "name": "manifested",
-                        "distribution": "manifested",
-                        "provider": provider.name,
-                        "url": f"https://github.com/{provider.name}/manifested.git",
-                        "path": ".",
-                        "role": "workspace-root",
-                        "state": "active",
-                        "checkout": "root",
-                        "codegen": "conform",
-                        "package": True,
-                        "editable": False,
-                        "read_only": False,
-                    },
-                    "members": [],
-                    "exclusions": [],
-                },
-            )
+    def test_only_own_gitmodules_changes_repository_mode(self, tmp_path: Path) -> None:
+        """A parent .gitmodules never changes a standalone classification."""
+        parent = tmp_path / "parent"
+        parent.mkdir()
+        (parent / ".gitmodules").write_text(
+            '[submodule "child"]\n\tpath = child\n\turl = ../child.git\n',
+            encoding="utf-8",
         )
+        child = _standalone(parent / "child", name="child")
 
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        mode = tm.ok(FlextInfraWorkspaceDetector().detect(child))
 
-        tm.that(spec.name, eq="manifested")
-        tm.that(spec.repository.distribution, eq="manifested")
+        tm.that(mode, eq=c.Infra.WorkspaceMode.STANDALONE)

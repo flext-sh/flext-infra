@@ -127,8 +127,13 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=self.name,
+            beads=m.Infra.BeadsOverrideSpec(
+                version=1,
+                workspace=self.name,
+                database=self.name,
+                issue_prefix=self.name,
+            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,

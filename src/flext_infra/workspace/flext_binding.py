@@ -78,7 +78,7 @@ class FlextInfraFlextBindingService:
             )
         available = {
             member.distribution: member
-            for member in workspace.value.members
+            for member in workspace.value.subprojects
             if member.package
         }
         declared = cls._declared_distributions(consumer_root)
@@ -107,7 +107,7 @@ class FlextInfraFlextBindingService:
             return r[int].fail(workspace.error or "workspace manifest unreadable")
         paths = {
             member.distribution: (flext_root / member.path).resolve()
-            for member in workspace.value.members
+            for member in workspace.value.subprojects
             if member.package
         }
         editables: list[str] = []

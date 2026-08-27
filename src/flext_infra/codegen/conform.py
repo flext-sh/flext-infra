@@ -211,64 +211,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_root_result = FlextInfraWorkspaceDetector.resolve_workspace_root(
-                root
-            )
-            if workspace_root_result.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    workspace_root_result.error or "workspace root resolution failed"
-                )
-            workspace_root = workspace_root_result.value
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                workspace_root
+                root
             )
             if workspace_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
-                    workspace_result.error or "workspace manifest load failed"
+                    workspace_result.error or "repository context derivation failed"
                 )
             workspace = workspace_result.value
         current_repository = workspace.repository
-        if root != workspace_root:
-            # Why (hq-36xk): membership is a property of repository IDENTITY, not
-            # of where a checkout happens to sit on disk. `root.relative_to()`
-            # asserted the second, so a `git worktree` of a member — the canonical
-            # way to work a lane — failed with "is not in the subpath of" purely
-            # for living outside the superproject tree. `resolve_topology_roots`
-            # already separates the render root from the primary worktree root, so
-            # the member path is derived from the identity root and both layouts
-            # resolve through one rule: in-workspace checkouts have
-            # identity_root == root and are unaffected.
-            identity_result = FlextInfraWorkspaceDetector.resolve_topology_roots(root)
-            if identity_result.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    identity_result.error or "workspace topology resolution failed"
-                )
-            identity_root = identity_result.value[1]
-            try:
-                current_path = identity_root.relative_to(workspace_root).as_posix()
-            except ValueError as exc:
-                return r[m.Infra.CodegenPlan].fail_op(
-                    "repository workspace resolution", exc
-                )
-            # Why: `root != workspace_root` is true for BOTH a member checked out
-            # elsewhere AND a standalone repository worked from a `git worktree`.
-            # Only the first is a membership question. A standalone resolves to
-            # its own identity root, so `current_path` is "." and can never match
-            # a declared member — gating it here failed every standalone lane
-            # with "is not one declared workspace member: ." even though the
-            # repository declares no members at all.
-            if current_path != ".":
-                current_matches = tuple(
-                    repository
-                    for repository in workspace.members
-                    if repository.path.as_posix() == current_path
-                )
-                if len(current_matches) != 1:
-                    return r[m.Infra.CodegenPlan].fail(
-                        "repository is not one declared workspace member: "
-                        f"{current_path}"
-                    )
-                current_repository = current_matches[0]
         if self.initial_workspace is None:
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
                 root, workspace
@@ -676,7 +627,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # descends far enough to reach the member itself.
         member_patterns: list[str] = []
         if workspace is not None:
-            for member in workspace.members:
+            for member in workspace.subprojects:
                 parts = member.path.as_posix().strip("/").split("/")
                 # Every ancestor is unignored so git can descend into the
                 # member, then its contents are unignored with the `/**` form.
@@ -718,13 +669,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
         elif scope is c.Infra.CodegenConformScope.MEMBERS:
-            if not workspace.members:
+            if not workspace.subprojects:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "members scope requires a workspace-root manifest"
                 )
-            selected = tuple(workspace.members)
+            selected = tuple(workspace.subprojects)
         else:
-            selected = (workspace.repository, *workspace.members)
+            selected = (workspace.repository, *workspace.subprojects)
         mutable = tuple(
             repository
             for repository in selected
@@ -901,34 +852,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             destination = entry.destination.format(
                 package_name=context.package_name, ns=context.ns
             )
-            if entry.delegate == "manifest":
-                # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner):
-                # template rendering retains the canonical context instance.
-                rendered_manifest = u.Cli.template_render(
-                    templates_root / entry.source, context
-                )
-                if rendered_manifest.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        rendered_manifest.error
-                        or f"manifest render failed: {entry.source}"
-                    )
-                manifest_validation = self._validate_initial_manifest(
-                    rendered_manifest.value, workspace
-                )
-                if manifest_validation.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        manifest_validation.error
-                        or "initial workspace manifest validation failed"
-                    )
-                manifest_plan = self._file_plan(
-                    root, destination, rendered_manifest.value
-                )
-                if manifest_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        manifest_plan.error or "workspace manifest planning failed"
-                    )
-                planned.append(manifest_plan.value)
-                continue
             if entry.delegate != "render":
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
@@ -1368,7 +1291,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     current.value,
                     rendered.value,
                     managed_paths=frozenset(
-                        member.path.as_posix() for member in workspace.members
+                        member.path.as_posix() for member in workspace.subprojects
                     ),
                 )
             file_plan = self._file_plan(root, entry.destination, rendered_content)
@@ -1439,7 +1362,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """
         matches = tuple(
             item
-            for item in (workspace.repository, *workspace.members)
+            for item in (workspace.repository, *workspace.subprojects)
             if item.distribution == config.Infra.name
         )
         if len(matches) > 1:
@@ -1471,7 +1394,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[tuple[m.Infra.ManagedGitlinkSpec, ...]]:
         """Resolve provider baselines only for mutable governed members."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
-        for repository in workspace.members:
+        for repository in workspace.subprojects:
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
                 return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].fail(
@@ -1498,7 +1421,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return None
         workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = (
             workspace.repository,
-            *workspace.members,
+            *workspace.subprojects,
         )
         local: m.Infra.RepositoryRef | None = next(
             (
@@ -1564,6 +1487,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
+        if destination == c.Infra.BEADS_OVERRIDE_RELPATH:
+            return r[p.Model].ok(workspace.beads)
         if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
@@ -1571,7 +1496,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
-            server = workspace.beads_server or codegen.toolchain.beads.server
+            server = codegen.toolchain.beads.server
             if server is None:
                 return r[p.Model].fail(
                     ".beads server values are not declared in the toolchain SSOT"
@@ -1591,7 +1516,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
-            server = workspace.beads_server or codegen.toolchain.beads.server
+            server = codegen.toolchain.beads.server
             if server is None:
                 return r[p.Model].fail(
                     ".beads server values are not declared in the toolchain SSOT"
@@ -1612,7 +1537,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     provider.error or "workflow provider resolution failed"
                 )
             workspace_repositories = (
-                tuple(workspace.members)
+                tuple(workspace.subprojects)
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -1667,7 +1592,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
             profile = target.make_profile
             members = (
-                tuple(workspace.members)
+                tuple(workspace.subprojects)
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -1703,7 +1628,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         workspace
                     ),
                     workspace_members=tuple(
-                        item.path.as_posix() for item in workspace.members
+                        item.path.as_posix() for item in workspace.subprojects
                     ),
                     workspace_repositories=members,
                     workspace_gitlinks=gitlinks.value,
@@ -1780,7 +1705,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 infra_provider.error or "infrastructure provider resolution failed"
             )
         members = (
-            tuple(workspace.members)
+            tuple(workspace.subprojects)
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
@@ -1835,7 +1760,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
-                    item.path.as_posix() for item in workspace.members
+                    item.path.as_posix() for item in workspace.subprojects
                 ),
                 workspace_repositories=members,
                 workspace_gitlinks=gitlinks.value,
@@ -1986,36 +1911,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository_branch=u.Infra.resolve_integration_branch(
                     workspace, repository_provider.value
                 ),
-                workspace_manifest_version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                workspace_repository=repository,
                 year=project.year,
-                workspace_exclusions=tuple(workspace.exclusions),
-                workspace_policy_overlays=tuple(workspace.repository_policy_overlays),
-                workspace_integration=workspace.integration,
             )
         )
-
-    @classmethod
-    def _validate_initial_manifest(
-        cls, rendered: str, expected: m.Infra.WorkspaceSpec
-    ) -> p.Result[bool]:
-        """Validate rendered manifest syntax, schema, model, and exact payload."""
-        parsed = u.Cli.yaml_parse(rendered)
-        if parsed.failure:
-            return r[bool].fail(parsed.error or "workspace manifest YAML is invalid")
-        schema = cls._package_root() / "schemas" / c.Infra.WORKSPACE_SCHEMA_FILENAME
-        schema_result = u.Cli.schema_validate(parsed.value, schema)
-        if schema_result.failure:
-            return r[bool].fail(
-                schema_result.error or "workspace manifest schema is invalid"
-            )
-        try:
-            validated = m.Infra.WorkspaceSpec.model_validate(parsed.value)
-        except c.ValidationError as exc:
-            return r[bool].fail_op("workspace manifest model validation", exc)
-        if validated != expected:
-            return r[bool].fail("rendered workspace manifest differs from input model")
-        return r[bool].ok(True)
 
     def _plan_existing_custom(
         self,
@@ -2425,7 +2323,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups = (*groups, "workspace")
             editable_repositories = tuple(
                 item
-                for item in (workspace.repository, *workspace.members)
+                for item in (workspace.repository, *workspace.subprojects)
                 if item.package and item.editable and not item.read_only
             )
         return m.Infra.UvEnvironmentPlan(
@@ -2486,17 +2384,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def ledger_identity_for_target(
-        workspace: m.Infra.WorkspaceSpec, target: m.Infra.RepositoryConformTarget
+        workspace: m.Infra.WorkspaceSpec, _target: m.Infra.RepositoryConformTarget
     ) -> tuple[str, str] | None:
-        """Return values rendered into one target's two ``.beads`` files.
-
-        Plain workspace members inherit the governing manifest's explicit
-        prefix and database. Roots and standalones use the canonical project
-        name when the manifest omits either value. A member without both
-        governing values receives no projection.
-        """
-        issue_prefix = workspace.ledger_prefix or target.canonical_project_name
-        return issue_prefix, workspace.ledger_id or issue_prefix
+        """Return the repository-local override rendered into ``.beads`` files."""
+        return workspace.beads.issue_prefix, workspace.beads.database
 
 
 __all__: list[str] = ["FlextInfraCodegenConform"]

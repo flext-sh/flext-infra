@@ -1,0 +1,7 @@
+id: rewrite-legacy-beads-prefix
+language: Yaml
+severity: error
+message: the FLEXT workspace ledger uses the flext issue prefix
+rule:
+  pattern: 'issue-prefix: "mro"'
+fix: 'issue-prefix: "flext"'

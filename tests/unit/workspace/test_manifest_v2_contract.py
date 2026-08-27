@@ -151,4 +151,4 @@ class TestsWorkspaceManifestV2Contract:
         spec = m.Infra.WorkspaceSpec.model_validate(self._v2_workspace())
         tm.that(spec.version, eq=c.Infra.WORKSPACE_MANIFEST_VERSION)
         tm.that(spec.repository.checkout, eq=c.Infra.CheckoutKind.ROOT)
-        tm.that(spec.members[0].checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
+        tm.that(spec.subprojects[0].checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
