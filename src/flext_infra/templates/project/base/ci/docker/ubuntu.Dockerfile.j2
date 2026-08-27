@@ -56,5 +56,7 @@ RUN set +e; \
     fi
 # End SECTION: bootstrap soft-pass
 
+RUN useradd --create-home --shell /bin/bash runner
+USER runner
 ENTRYPOINT []
 CMD ["make", "help"]

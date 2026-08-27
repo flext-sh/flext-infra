@@ -53,5 +53,7 @@ RUN /bin/bash -c 'set +e; \
     fi'
 # End SECTION: bootstrap soft-pass
 
+RUN addgroup -S runner && adduser -S -G runner runner
+USER runner
 ENTRYPOINT []
 CMD ["/bin/bash", "-lc", "make help"]
