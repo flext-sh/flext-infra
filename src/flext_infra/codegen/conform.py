@@ -283,24 +283,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             u.Cli.progress(
                 repository_index, total_repositories, repository.name, "conform"
             )
-            is_current_repository = repository.name == current_target.repository.name
-            if is_current_repository:
-                repository_root = current_target.root
-                if repository_root != root:
-                    return r[m.Infra.CodegenPlan].fail(
-                        "current conformance target differs from the requested root: "
-                        f"{repository_root} != {root}"
-                    )
-            else:
-                repository_root_result = self._repository_root(
-                    workspace_root, workspace, repository
-                )
-                if repository_root_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        repository_root_result.error
-                        or f"invalid repository root: {repository.name}"
-                    )
-                repository_root = repository_root_result.value
+            repository_root = self._repository_root(
+                workspace_root, workspace, repository
+            )
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository path is not a directory: {repository_root}"
@@ -309,7 +294,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository checkout is missing: {repository_root}"
                 )
-            if is_current_repository:
+            if repository.name == current_target.repository.name:
                 target = current_target
                 local_workspace = workspace
             else:
@@ -716,18 +701,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _repository_root(
         root: Path, workspace: p.Infra.WorkspaceSpec, repository: p.Infra.RepositoryRef
-    ) -> p.Result[Path]:
-        """Resolve one declared checkout without escaping its workspace owner."""
+    ) -> Path:
+        """Resolve one selected checkout without sibling discovery."""
         if repository.name == workspace.repository.name:
-            return r[Path].ok(root)
-        resolved_root = root.resolve()
-        resolved: Path = (resolved_root / repository.path).resolve()
-        if not resolved.is_relative_to(resolved_root):
-            return r[Path].fail(
-                "declared repository path escapes workspace root: "
-                f"{repository.path.as_posix()}"
-            )
-        return r[Path].ok(resolved)
+            return root
+        resolved: Path = (root / repository.path).resolve()
+        return resolved
 
     @staticmethod
     def _scaffold_python_dirs(
