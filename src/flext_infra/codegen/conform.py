@@ -1433,20 +1433,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
-            server = codegen.toolchain.beads.server
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=target.beads.issue_prefix,
                     database=target.beads.database,
-                    server=server,
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
-            server = codegen.toolchain.beads.server
             return r[p.Model].ok(
-                m.Infra.BeadsMetadataRenderSpec(
-                    database=target.beads.database, server=server
-                )
+                m.Infra.BeadsMetadataRenderSpec(database=target.beads.database)
             )
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)

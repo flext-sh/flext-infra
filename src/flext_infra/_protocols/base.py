@@ -103,7 +103,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class BeadsToolSpec(ProtectedMiseToolSpec, Protocol):
-        """Beads distribution and shared ledger connection."""
+        """Canonical Beads distribution identity."""
 
     @runtime_checkable
     class RepositoryRef(Protocol):

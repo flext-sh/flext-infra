@@ -63,47 +63,6 @@ class FlextInfraConfigModels:
             ),
         ] = None
 
-    class BeadsServerSpec(_ConfigContract):
-        """Machine-wide shared Dolt server connection for Beads ledgers."""
-
-        backend: Annotated[
-            Literal["dolt"],
-            m.Field(
-                description=(
-                    "Ledger storage engine bd binds a checkout to through "
-                    ".beads/metadata.json"
-                )
-            ),
-        ]
-        mode: Annotated[
-            Literal["server"],
-            m.Field(description="Dolt connection mode; ledgers never embed locally"),
-        ]
-        shared_server: Annotated[
-            Literal[False],
-            m.Field(
-                description=(
-                    "Always false: consume the explicitly configured external "
-                    "Gas Town Dolt endpoint; bd-owned shared-server lifecycle is "
-                    "forbidden"
-                )
-            ),
-        ] = False
-        host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
-        port: Annotated[
-            int,
-            m.Field(
-                ge=1,
-                le=65535,
-                description="External Dolt server TCP port declared by deployment",
-            ),
-        ]
-        user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
-        auto_commit: Annotated[
-            Literal["off", "on", "batch"],
-            m.Field(description="Dolt auto-commit policy for ledger writes"),
-        ]
-
     class ProtectedMiseToolSpec(MiseToolSpec):
         """One fleet-owned mise distribution identity."""
 
@@ -133,17 +92,7 @@ class FlextInfraConfigModels:
             return self
 
     class BeadsToolSpec(ProtectedMiseToolSpec):
-        """Beads tool pin plus the shared Dolt ledger connection."""
-
-        server: Annotated[
-            FlextInfraConfigModels.BeadsServerSpec | None,
-            m.Field(
-                description=(
-                    "Shared Dolt server connection rendered into ledger routing "
-                    "configs; None keeps repository-local embedded state"
-                )
-            ),
-        ] = None
+        """Canonical Beads distribution identity."""
 
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
@@ -1805,32 +1754,19 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
         ]
-        server: Annotated[
-            FlextInfraConfigModels.BeadsServerSpec,
-            m.Field(
-                description="Shared Dolt server connection from the toolchain SSOT"
-            ),
-        ]
 
     class BeadsMetadataRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
         The Beads CLI resolves a checkout to its Dolt database through
-        ``.beads/metadata.json``; ``bd init`` never writes it, so a fresh
-        clone that carries only the generated ``config.yaml`` silently falls
-        back to the default ``beads`` database. Generating the marker binds
-        every checkout to the shared server database declared by the SSOT.
+        ``.beads/metadata.json``. The generated marker contains only portable
+        storage and database identity; runtime connection facts remain owned
+        outside the repository.
         """
 
         database: Annotated[
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
-        ]
-        server: Annotated[
-            FlextInfraConfigModels.BeadsServerSpec,
-            m.Field(
-                description="Shared Dolt server connection from the toolchain SSOT"
-            ),
         ]
 
     class GitignoreRenderSpec(_ConfigContract):
