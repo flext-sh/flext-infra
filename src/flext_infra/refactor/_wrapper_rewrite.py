@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from operator import itemgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -28,7 +28,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     if TYPE_CHECKING:
         workspace_root: Path
         include_init: bool
-        _WRAPPER_PACKAGES: t.StrSequence
+        _WRAPPER_PACKAGES: ClassVar[t.StrSequence]
 
         @property
         def effective_dry_run(self) -> bool: ...
