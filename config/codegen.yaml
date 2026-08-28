@@ -1175,7 +1175,7 @@ Infra:
       # Changelog is generated, never hand-maintained.
       changelog_file: CHANGELOG.md
       # Per-distribution exceptions. A project lands here only when its release
-      # contract genuinely differs -- not to opt out of the standard.
+      # contract genuinely differs from the standard.
       overrides: {}
 
     scaffold:
