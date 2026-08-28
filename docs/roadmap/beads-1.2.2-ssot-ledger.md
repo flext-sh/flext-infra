@@ -30,6 +30,7 @@ this rollout.
 | 2026-08-28T08:19:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `a06217d0885d68d29134f972b017fce8834d92d7` | Topology-local, one-pass-idempotent generation fixes pushed to `origin` |
 | 2026-08-28T08:27:37-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `b08c6ffb3c52ae77d9c1a77ea5b69a7646cf1eb7` | Static projections, launchers, 75-entry Mise lock, and owner-driven report/cache cleanup pushed to `origin` |
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `fc498bad217ef8f12dbb0def079c10837dc26b78` | Repository-local topology fixture convergence pushed to `origin` |
+| 2026-08-28T08:57:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0acb0ba7e9951e63c8324f075569195057735114` | Conditional execution-context Rope scope, standalone isolation, and manual evidence pushed to `origin` |
 
 ## Validation log
 
@@ -57,6 +58,11 @@ this rollout.
 | 2026-08-28T08:56:34-03:00 | worktree | `make test WHAT=all FILE=tests/unit/test_infra_rope_service.py` from `flext-infra` | PASS: 20 tests | Workspace-root, internal-project, and internal-package calls all index the full workspace, including an undeclared internal project; standalone remains local |
 | 2026-08-28T08:57:13-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 1 file reformatted, 887 unchanged | Formatted the current source/test slice through the canonical Make owner |
 | 2026-08-28T08:57:50-03:00 | worktree | `make test WHAT=all FILE=tests/unit/discovery/test_infra_discovery_edge_cases.py` from `flext-infra` | PASS: 4 selected, 2 impact-deselected | Repository-local generic pyproject discovery stays isolated from parent and sibling trees |
+| 2026-08-28T08:59:11-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_catalog_extensions.py` from `flext-infra` | PASS: 5 tests | Removed the obsolete second workspace manifest fixture while retaining generic selector, setup/gen ownership, and TOML composition coverage |
+| 2026-08-28T08:59:32-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py` from `flext-infra` | FAIL: 20 failed, 2 passed | New-project helper lacked mandatory local Beads identity; three remaining expectations also described divergent current CI policy |
+| 2026-08-28T09:00:43-03:00 | worktree | Same CI matrix test gate after typed local Beads fixture repair | FAIL: 19 passed, 3 failed | One matcher defect and the unresolved `ci_matrix_auto_run` owner/template contradiction remained |
+| 2026-08-28T09:02:24-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py::TestCodegenCiMatrix::test_dependabot_uses_uv_dependency_cooldown` from `flext-infra` | PASS: 1 test | Corrected set equality assertion; two CI auto-run policy tests remain intentionally unresolved pending operator direction |
+| 2026-08-28T09:02:54-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 888 files unchanged | Current WIP is formatter-clean |
 
 ## Unresolved boundaries
 
@@ -66,6 +72,10 @@ this rollout.
 - The checked-out FLEXT command router still names three superseded home-level
   skill paths. Current installed owners were used for this slice; repairing that
   generated governance projection is not yet part of this checkpoint.
+- `GithubWorkflowRenderSpec.ci_matrix_auto_run` and its config model still claim
+  that `true` projects a push-to-main trigger, while the canonical template is
+  static `workflow_dispatch` and ignores the field. This policy contradiction
+  awaits operator direction; no owner has been selected unilaterally.
 
 ## GitHub lifecycle
 
