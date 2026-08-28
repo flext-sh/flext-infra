@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra import c, config
 from flext_tests import tm
-from tests import m, u
+from tests import u
 
 
 class WorktreeFixture:
@@ -162,5 +162,6 @@ class WorktreeFixture:
             )
         )
         return tree, status
+
 
 __all__: tuple[str, ...] = ("WorktreeFixture",)

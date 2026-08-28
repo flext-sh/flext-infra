@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import config, infra, m
 from flext_tests import tm
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 def _workspace(root: Path) -> Path:
@@ -28,7 +32,7 @@ def _alternate_selector() -> str:
     return f"{backend}{separator}alternate-owner/{name}"
 
 
-def _sync(root: Path):
+def _sync(root: Path) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
     return infra.sync_environment_files(
         m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=root)
     )

@@ -559,7 +559,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 database=name,
                 issue_prefix=name,
             )
-            return manifest_path
 
         @staticmethod
         def create_docs_workspace(

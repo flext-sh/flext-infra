@@ -493,7 +493,6 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(generated, lacks='    "r",')
         tm.that(generated, has='    "c",')
 
-
     def test_generated_parent_initializer_is_not_an_alias_owner(
         self, tmp_path: Path
     ) -> None:

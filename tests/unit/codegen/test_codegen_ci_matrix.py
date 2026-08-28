@@ -222,7 +222,6 @@ class TestCodegenCiMatrix:
     def test_dependabot_uses_uv_dependency_cooldown(self, tmp_path: Path) -> None:
         """Dependabot never raises floors newer than uv will resolve."""
         root = self._render_project(tmp_path / "external")
-        dependabot = (root / ".github" / "dependabot.yml").read_text(encoding="utf-8")
         cooldown = config.Infra.codegen.toolchain.dependency_cooldown_days
 
         document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")

@@ -2297,4 +2297,5 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             planned.append(cls._absent_file_plan(path, current.value))
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
+
 __all__: list[str] = ["FlextInfraCodegenConform"]
