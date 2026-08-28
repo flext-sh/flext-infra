@@ -60,8 +60,11 @@ def _project_spec(*, version: str) -> m.Infra.ProjectSpec:
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsOverrideSpec(
-            version=1, workspace="flext", database="flext", issue_prefix="flext"
+        beads=m.Infra.BeadsProjectSpec(
+            version=c.Infra.BEADS_CONFIG_VERSION,
+            workspace="flext",
+            database="flext",
+            issue_prefix="flext",
         ),
         name="workspace",
         repository=_repository(

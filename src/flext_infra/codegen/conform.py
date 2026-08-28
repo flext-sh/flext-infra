@@ -1437,11 +1437,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=target.beads.issue_prefix,
                     database=target.beads.database,
+                    endpoint=codegen.toolchain.beads.endpoint,
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
             return r[p.Model].ok(
-                m.Infra.BeadsMetadataRenderSpec(database=target.beads.database)
+                m.Infra.BeadsMetadataRenderSpec(
+                    database=target.beads.database,
+                    endpoint=codegen.toolchain.beads.endpoint,
+                )
             )
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)
@@ -2032,7 +2036,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"refs/remotes/origin/{target.baseline_branch}"
                 ),
             )
-            fetch_result = u.Cli.run_raw(fetch_command, cwd=root)
+            fetch_result = u.Cli.run_raw(
+                fetch_command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT
+            )
             if fetch_result.failure or fetch_result.value.exit_code != 0:
                 # Soft: ancestry still validates against the local tracking ref
                 # when present; hard-fail only if that ref is missing below.

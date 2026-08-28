@@ -16,13 +16,11 @@ pytestmark = pytest.mark.slow
 
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
-    member = test_u.Tests.repository_ref(
-        "flext-core", role=c.Infra.RepositoryRole.STANDALONE
+    project = test_u.Tests.repository_ref(
+        "flext-core", path=Path("flext-core"), role=c.Infra.RepositoryRole.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsOverrideSpec(
-            version=1, workspace="flext", database="flext", issue_prefix="flext"
-        ),
+        beads=test_u.Tests.beads_project("flext"),
         name="flext",
         repository=root_repository,
         project=m.Infra.ProjectSpec(
@@ -44,7 +42,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
             workspace_root_rel=".",
             year=2026,
         ),
-        subprojects=(member,),
+        subprojects=(project,),
     )
 
     root = tmp_path / "render-root"
@@ -175,6 +173,10 @@ class TestsWorkspaceRootSetupSubmodules:
 
         # The fixture bootstraps through submodules; the invariant we care about
         # is that the submodule is initialized before environment provisioning.
+        if process.exit_code != 0:
+            start = rendered.index("_builtin_setup_environment:")
+            excerpt = rendered[start : rendered.index("_builtin_deps_check:", start)]
+            pytest.fail(f"{process.stdout}{process.stderr}\n{excerpt}")
         tm.that(process.exit_code, eq=0)
         tm.that(process.stdout + process.stderr, has="Submodule path 'flext-core'")
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)

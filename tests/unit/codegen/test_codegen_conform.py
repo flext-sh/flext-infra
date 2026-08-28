@@ -957,10 +957,10 @@ class TestCodegenConform:
         )
         tm.that(rendered.infra_source_root_rel, eq=None)
 
-    def test_make_context_resolves_attached_infra_member_from_workspace(
+    def test_make_context_resolves_workspace_infra_project(
         self, tmp_path: Path
     ) -> None:
-        """An attached member bootstraps from its declared local checkout."""
+        """A workspace project bootstraps from its declared local checkout."""
         workspace_repository = u.Tests.repository_ref("workspace-root-fixture")
         infra_repository = u.Tests.repository_ref(config.Infra.name)
         workspace = m.Infra.WorkspaceSpec(

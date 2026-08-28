@@ -34,9 +34,9 @@ class _ConfigContract(m.ContractModel):
 class FlextInfraConfigModels:
     """Field-only models for config loading and codegen plans."""
 
-    # NOTE (multi-agent, mro-wkii.17 / agent: codex): these models replace the
-    # former model-less workspace/make dictionaries. YAML is accepted only at
-    # the flext-cli loading boundary and is immediately model-validated here.
+    # These models replace the former model-less workspace/make dictionaries.
+    # YAML is accepted only at the flext-cli loading boundary and is immediately
+    # model-validated here.
 
     class MiseToolSpec(_ConfigContract):
         """One exact mise backend selector and immutable version."""
@@ -91,8 +91,26 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+    class BeadsEndpointSpec(_ConfigContract):
+        """Static network endpoint projected into Beads configuration."""
+
+        host: Annotated[t.NonEmptyStr, m.Field(description="Beads server host")]
+        port: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=65535,
+                description="Beads server TCP port declared by deployment",
+            ),
+        ]
+
     class BeadsToolSpec(ProtectedMiseToolSpec):
-        """Canonical Beads distribution identity."""
+        """Canonical Beads distribution and endpoint identity."""
+
+        endpoint: Annotated[
+            FlextInfraConfigModels.BeadsEndpointSpec,
+            m.Field(description="Required static Beads server endpoint"),
+        ]
 
     class MiseLockPlatformSpec(_ConfigContract):
         """Immutable download metadata for one tool platform."""
@@ -1831,19 +1849,25 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
         ]
+        endpoint: Annotated[
+            FlextInfraConfigModels.BeadsEndpointSpec,
+            m.Field(description="Static endpoint from config/codegen.yaml"),
+        ]
 
     class BeadsMetadataRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
-        The Beads CLI resolves a checkout to its Dolt database through
-        ``.beads/metadata.json``. The generated marker contains only portable
-        storage and database identity; runtime connection facts remain owned
-        outside the repository.
+        The generated marker contains only portable storage, database identity,
+        and the static endpoint declared by the codegen SSOT.
         """
 
         database: Annotated[
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
+        ]
+        endpoint: Annotated[
+            FlextInfraConfigModels.BeadsEndpointSpec,
+            m.Field(description="Static endpoint from config/codegen.yaml"),
         ]
 
     class GitignoreRenderSpec(_ConfigContract):

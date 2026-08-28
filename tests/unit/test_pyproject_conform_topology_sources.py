@@ -1,7 +1,7 @@
 """Tests for canonical dependency source selection by topology role.
 
-The attached root owns the local ``workspace = true`` overlay. Publishable
-members retain their catalog Git provenance so the same package metadata works
+The workspace root owns the local ``workspace = true`` overlay. Publishable
+projects retain their catalog Git provenance so the same package metadata works
 outside the workspace; uv applies the root overlay when resolving them locally.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -47,9 +47,7 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsOverrideSpec(
-            version=1, workspace="flext", database="flext", issue_prefix="flext"
-        ),
+        beads=tu.Tests.beads_project("flext"),
         name="workspace",
         repository=_repository(
             "workspace",
@@ -65,7 +63,6 @@ def _workspace() -> m.Infra.WorkspaceSpec:
                 checkout=c.Infra.CheckoutKind.SUBMODULE,
             ),
         ),
-        exclusions=(),
     )
 
 
@@ -99,7 +96,7 @@ workspace = true
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
-    def test_attached_root_never_gets_git_specifier(self) -> None:
+    def test_workspace_root_never_gets_git_specifier(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(
@@ -135,23 +132,23 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         # The expected specifier is derived from the same declared repository
         # contract the generator reads - never a hardcoded URL or branch.
-        member = workspace.subprojects[0]
+        project = workspace.subprojects[0]
         tm.that(
             dependencies,
-            eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
+            eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
 
-    def test_publishable_member_keeps_catalog_git_provenance(self) -> None:
+    def test_publishable_project_keeps_catalog_git_provenance(self) -> None:
         workspace = _workspace_with_consumer()
         provider = workspace.subprojects[0]
-        publishable_member = (
+        publishable_project = (
             f'[project]\nname = "{workspace.subprojects[1].distribution}"\n'
             'version = "0.1.0"\n'
             'dependencies = ["flext-core"]\n'
         )
 
         result = u.Infra.pyproject_dependencies_conform(
-            publishable_member,
+            publishable_project,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
@@ -169,8 +166,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
         )
 
-    def test_publishable_member_pins_unmapped_provider_source_to_branch(self) -> None:
-        """Derive the declared branch for a provider source absent from members."""
+    def test_publishable_project_pins_unmapped_provider_source_to_branch(self) -> None:
+        """Derive the declared branch for a provider absent from subprojects."""
         workspace = _workspace_with_consumer()
         consumer = workspace.subprojects[1]
         result = u.Infra.pyproject_dependencies_conform(
@@ -197,10 +194,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
         )
 
-    def test_root_workspace_overlay_resolves_publishable_member_with_uv(
+    def test_root_workspace_overlay_resolves_publishable_project_with_uv(
         self, tmp_path: Path
     ) -> None:
-        """Prove uv resolves member Git metadata through the root workspace overlay."""
+        """Prove uv resolves project Git metadata through the root overlay."""
         workspace = _workspace_with_consumer()
         provider, consumer = workspace.subprojects
         root = tmp_path / "workspace"
@@ -291,12 +288,12 @@ workspace = true
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-        member = workspace.subprojects[0]
+        project = workspace.subprojects[0]
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(
             dependencies,
-            eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
+            eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
         document = tu.Tests.toml_table_at(rendered)
         tm.that("tool" in document, eq=False)

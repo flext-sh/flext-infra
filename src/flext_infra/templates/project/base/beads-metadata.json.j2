@@ -1,5 +1,8 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_database": {{ database | tojson }}
+  "dolt_mode": "server",
+  "dolt_database": {{ database | tojson }},
+  "dolt_server_host": {{ endpoint.host | tojson }},
+  "dolt_server_port": {{ endpoint.port | tojson }}
 }

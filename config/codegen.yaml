@@ -105,6 +105,9 @@ Infra:
         version: "1.2.2"
         prerelease: false
         minimum_release_age: null
+        endpoint:
+          host: 127.0.0.1
+          port: 3307
 
     # Why (ai-hub-qwoc): the ast-grep project contract for every governed
     # repository. A provider manifest may declare sgconfig.yml as a required
@@ -1045,9 +1048,6 @@ Infra:
       - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
         owner: codegen
         policy: full
-      - path: .github/scripts/check-beads-policy.sh
-        owner: codegen
-        policy: full
       - path: .github/scripts/check-cqrs-compliance.sh
         owner: codegen
         policy: full
@@ -1679,11 +1679,6 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
-        - source: base/.github/scripts/check-beads-policy.sh.j2
-          destination: .github/scripts/check-beads-policy.sh
-          profiles: [workspace]
-          delegate: render
-          overwrite: false
         - source: base/.github/scripts/check-cqrs-compliance.sh.j2
           destination: .github/scripts/check-cqrs-compliance.sh
           profiles: [workspace]
@@ -1698,7 +1693,7 @@ Infra:
           destination: .github/scripts/install-git-hooks.sh
           profiles: [workspace]
           delegate: render
-          overwrite: false
+          overwrite: true
         # Multi-environment CI base: reusable ci-matrix workflow + per-distro
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
@@ -1757,17 +1752,14 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Ledger routing config: rendered only for the workspace root (owned
-        # ledger) and marker-attached standalones (routing-only); the engine
-        # planner skips every other profile/class (mro-z89e governance).
+        # Static repository-local projection rendered for every governed
+        # workspace root and standalone repository.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Ledger-resolution marker: bd binds a checkout to its Dolt database
-        # through this file and `bd init` never writes it, so a clone carrying
-        # only config.yaml fell back to the default "beads" database (mro-9wv8).
+        # Static repository-local storage, database, and endpoint projection.
         - source: base/beads-metadata.json.j2
           destination: .beads/metadata.json
           profiles: [workspace, standalone]

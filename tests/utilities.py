@@ -893,29 +893,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return bare_remote
 
         @staticmethod
-        def create_path_sync_pyproject(
-            *,
-            name: str,
-            dependency_path: str = "",
-            workspace_members: t.StrSequence = (),
-        ) -> str:
-            """Render a pyproject fixture for dependency-path tests."""
-            lines = ["[project]", f'name = "{name}"']
-            if dependency_path:
-                lines.append(
-                    f'dependencies = ["flext-core @ file://{dependency_path}"]'
-                )
-                lines.extend((
-                    "",
-                    "[tool.poetry.dependencies]",
-                    f'flext-core = {{ path = "{dependency_path}" }}',
-                ))
-            if workspace_members:
-                members = ", ".join(f'"{member}"' for member in workspace_members)
-                lines.extend(("", "[tool.uv.workspace]", f"members = [{members}]"))
-            return "\n".join(lines) + "\n"
-
-        @staticmethod
         def configure_git_identity(repository_root: Path) -> None:
             """Set deterministic repository-local identity for real Git fixtures."""
             bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
@@ -960,9 +937,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             Isolation is expressed with ``remove_env_keys`` because ``env`` is an
             overlay that can only add or replace keys, never remove them
-            (mro-wt8qp). ``overrides`` carries topology the fixture itself
-            requires, such as permitting the file transport for a local bare
-            origin.
+            ``overrides`` carries topology the fixture itself requires, such as
+            permitting the file transport for a local bare origin.
             """
             tm.ok(
                 cli_facade.run_checked(
@@ -1295,42 +1271,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             result: p.Result[str] = service.execute()
             return result
-
-        @staticmethod
-        def build_mro_import_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
-            """Provide the typed test helper `build_mro_import_workspace`."""
-            workspace_root = tmp_path
-            project_root = workspace_root / "flext-demo"
-            package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "demo_pkg"
-            package_root.mkdir(parents=True)
-            (project_root / ".git").mkdir()
-            (project_root / "Makefile").write_text(
-                "test:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
-            )
-            (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
-                "[project]\nname = 'flext-demo'\nversion = '0.1.0'\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
-            )
-            (package_root / c.Infra.INIT_PY).write_text(
-                "", encoding=c.Infra.ENCODING_DEFAULT
-            )
-            constants_path = package_root / "constants.py"
-            constants_path.write_text(
-                "from __future__ import annotations\n\n"
-                'DEMO_VALUE = "demo"\n\n'
-                "class DemoConstants:\n"
-                "    pass\n\n"
-                "c = DemoConstants\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
-            )
-            consumer_path = package_root / "consumer.py"
-            consumer_path.write_text(
-                "from __future__ import annotations\n\n"
-                "from demo_pkg.constants import DEMO_VALUE\n\n"
-                "value = DEMO_VALUE\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
-            )
-            return (workspace_root, constants_path, consumer_path)
 
         @staticmethod
         def detect_command(

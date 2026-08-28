@@ -102,8 +102,27 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class BeadsEndpointSpec(Protocol):
+        """Static endpoint consumed by generated Beads projections."""
+
+        @property
+        def host(self) -> str:
+            """Beads server host."""
+            ...
+
+        @property
+        def port(self) -> int:
+            """Beads server TCP port."""
+            ...
+
+    @runtime_checkable
     class BeadsToolSpec(ProtectedMiseToolSpec, Protocol):
-        """Canonical Beads distribution identity."""
+        """Canonical Beads distribution and endpoint identity."""
+
+        @property
+        def endpoint(self) -> FlextInfraProtocolsBase.BeadsEndpointSpec:
+            """Required static server endpoint."""
+            ...
 
     @runtime_checkable
     class RepositoryRef(Protocol):
