@@ -68,19 +68,15 @@ class FlextInfraNamespaceEnforcer(
     def _resolve_project_roots(
         self, *, project_names: t.StrSequence | None = None
     ) -> t.SequenceOf[Path]:
-        """Discover and optionally filter project roots."""
-        project_roots = u.Infra.discover_project_roots(
-            workspace_root=self._workspace_root
+        """Resolve the local repository or explicit relative locators."""
+        resolved = u.Infra.resolve_projects(self._workspace_root, project_names or ())
+        if resolved.failure:
+            raise ValueError(resolved.error or "project resolution failed")
+        return tuple(
+            project.path
+            for project in resolved.value
+            if u.Infra.namespace_enabled(project.path)
         )
-        project_roots = [
-            project_root
-            for project_root in project_roots
-            if u.Infra.namespace_enabled(project_root)
-        ]
-        if project_names:
-            name_set = set(project_names)
-            project_roots = [r for r in project_roots if r.name in name_set]
-        return project_roots
 
     @override
     def _detect_and_apply[V](

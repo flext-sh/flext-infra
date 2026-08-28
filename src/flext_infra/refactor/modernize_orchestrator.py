@@ -38,7 +38,12 @@ class FlextInfraModernizeOrchestrator:
     ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
         """Run modernize across selected projects."""
         workspace_root = params.workspace_path
-        project_roots = self._resolve_projects(workspace_root, params.projects)
+        project_roots_result = self._resolve_projects(workspace_root, params.projects)
+        if project_roots_result.failure:
+            return r[t.SequenceOf[m.Infra.Result]].fail(
+                project_roots_result.error or "project resolution failed"
+            )
+        project_roots = project_roots_result.value
         if not project_roots:
             return r[t.SequenceOf[m.Infra.Result]].fail(
                 "No projects selected", error_code="MODERNIZE_NO_PROJECTS"
@@ -80,13 +85,16 @@ class FlextInfraModernizeOrchestrator:
 
     def _resolve_projects(
         self, workspace_root: Path, project_names: t.StrSequence | None
-    ) -> t.SequenceOf[Path]:
-        """Resolve project roots, optionally filtered by name."""
-        project_roots = u.Infra.discover_project_roots(workspace_root=workspace_root)
-        if project_names:
-            name_set = set(project_names)
-            project_roots = [p for p in project_roots if p.name in name_set]
-        return project_roots
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Resolve the local repository or explicit relative locators."""
+        resolved = u.Infra.resolve_projects(workspace_root, project_names or ())
+        if resolved.failure:
+            return r[t.SequenceOf[Path]].fail(
+                resolved.error or "project resolution failed"
+            )
+        return r[t.SequenceOf[Path]].ok(
+            tuple(project.path for project in resolved.value)
+        )
 
     def _modernize_project(
         self, *, rope_project: t.Infra.RopeProject, project_root: Path, apply: bool

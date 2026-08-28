@@ -225,6 +225,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         (project_root / "pyproject.toml").write_text(
             '[project]\nname = "flext-demo"\n', encoding="utf-8"
         )
+        (package_root / "__init__.py").write_text("", encoding="utf-8")
         sample_path = package_root / "sample.py"
         sample_path.write_text(source, encoding="utf-8")
         return sample_path

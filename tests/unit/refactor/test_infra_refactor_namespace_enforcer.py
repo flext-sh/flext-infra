@@ -38,9 +38,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
-            apply=True
-        )
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(apply=True)
 
         tm.that(report.total_facades_missing, eq=0)
         tm.that(report.total_import_violations, eq=0)
@@ -75,7 +73,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -130,7 +128,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -167,7 +165,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -198,7 +196,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -311,7 +309,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -349,7 +347,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -390,7 +388,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -733,9 +731,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
-            apply=True
-        )
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(apply=True)
 
         tm.that(report.total_manual_protocol_violations, eq=0)
         protocols_file = pkg / "protocols.py"
@@ -771,9 +767,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
-            apply=True
-        )
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(apply=True)
 
         tm.that(report.has_violations, eq=True)
         tm.that(report.total_manual_protocol_violations, eq=0)
@@ -810,7 +804,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -836,7 +830,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -863,7 +857,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -889,7 +883,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        report = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(
             apply=False
         )
 
@@ -916,7 +910,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        _ = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(apply=True)
+        _ = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(apply=True)
 
         rewritten_lines = script_file.read_text(encoding="utf-8").splitlines()
         tm.that(rewritten_lines[0], eq="#!/usr/bin/env python3")
@@ -949,7 +943,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        _ = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(apply=True)
+        _ = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(apply=True)
 
         rewritten_lines = target_file.read_text(encoding="utf-8").splitlines()
         tm.that(rewritten_lines[0].startswith('"""Improved test base'), eq=True)
@@ -980,7 +974,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        _ = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(apply=True)
+        _ = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(apply=True)
 
         service_source = service_file.read_text(encoding="utf-8")
         tm.that(service_source, has="    from flext_core import System")
@@ -1012,7 +1006,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
-        _ = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(apply=True)
+        _ = FlextInfraNamespaceEnforcer(workspace_root=project).enforce(apply=True)
 
         module_source = module_file.read_text(encoding="utf-8")
         tm.that(module_source, has="from flext_infra import (")
