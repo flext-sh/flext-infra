@@ -958,7 +958,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
-            providers=codegen.providers,
+            codegen=codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
@@ -1044,7 +1044,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
-                providers=codegen.providers,
+                codegen=codegen,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
             )
@@ -1089,7 +1089,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
-            providers=codegen.providers,
+            codegen=codegen,
             workspace=workspace,
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
@@ -1324,32 +1324,31 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _infra_repository(
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Resolve the repository that owns the infrastructure CLI.
 
         The owner is read from the live workspace topology when that topology
         declares it. A standalone consumer legitimately declares no
-        flext-infra subproject, so the reference is then derived from the provider
-        contract. Either way nothing is looked up in a project catalog, which
-        flext-infra is forbidden to own.
+        infrastructure subproject, so the reference is then derived from the
+        typed source and provider contracts. Either way nothing is read from a
+        generated pyproject or looked up in a project catalog.
         """
+        source = codegen.infra_repository
         matches = tuple(
             item
             for item in (workspace.repository, *workspace.subprojects)
-            if item.distribution == config.Infra.name
+            if item.distribution == source.distribution
         )
         if len(matches) > 1:
             return r[m.Infra.RepositoryRef].fail(
                 "workspace topology declares more than one "
-                f"{config.Infra.name} checkout"
+                f"{source.distribution} checkout"
             )
         if matches:
             return r[m.Infra.RepositoryRef].ok(matches[0])
-        return r[m.Infra.RepositoryRef].ok(
-            u.Infra.derived_repository_ref(
-                config.Infra.name, provider=config.Infra.codegen.providers[0]
-            )
+        return u.Infra.configured_repository_ref(
+            source.distribution, codegen=codegen
         )
 
     @staticmethod
@@ -1525,7 +1524,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
-            infra_repository = self._infra_repository(workspace)
+            infra_repository = self._infra_repository(workspace, codegen)
             if infra_repository.failure:
                 return r[p.Model].fail(
                     infra_repository.error
@@ -1623,7 +1622,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        infra_repository = FlextInfraCodegenConform._infra_repository(workspace)
+        infra_repository = FlextInfraCodegenConform._infra_repository(
+            workspace, codegen
+        )
         if infra_repository.failure:
             return r[m.Infra.MakeRenderContext].fail(
                 infra_repository.error

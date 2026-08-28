@@ -43,6 +43,30 @@ class FlextInfraUtilitiesRepository:
             read_only=False,
         )
 
+    @classmethod
+    def configured_repository_ref(
+        cls,
+        distribution: str,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Derive one repository from the unique provider selected by config."""
+        source = codegen.infra_repository
+        matches = tuple(
+            provider
+            for provider in codegen.providers
+            if provider.name == source.provider
+        )
+        if len(matches) != 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "configured repository provider must resolve exactly once: "
+                f"{source.provider}"
+            )
+        (provider,) = matches
+        return r[m.Infra.RepositoryRef].ok(
+            cls.derived_repository_ref(distribution, provider=provider)
+        )
+
     @staticmethod
     def repository_provider(
         repository: p.Infra.RepositoryRef, providers: t.SequenceOf[m.Infra.ProviderSpec]

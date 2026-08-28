@@ -216,6 +216,10 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
+    infra_repository:
+      distribution: flext-infra
+      provider: flext-sh
+
     providers:
       - name: flext-sh
         organization: flext-sh

@@ -387,6 +387,23 @@ class FlextInfraConfigModels:
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
+    class RepositorySourceSpec(_ConfigContract):
+        """Portable repository identity derived through one declared provider."""
+
+        distribution: Annotated[
+            t.NonEmptyStr, m.Field(description="Repository distribution name")
+        ]
+        provider: Annotated[
+            t.NonEmptyStr, m.Field(description="Provider key owning URL and branch")
+        ]
+
+        @m.computed_field()
+        @property
+        def internal_distribution_prefix(self) -> str:
+            """Derive the internal distribution namespace from the owner name."""
+            namespace, _, _ = self.distribution.partition("-")
+            return f"{namespace}-"
+
     class BranchPolicySpec(_ConfigContract):
         """Global ancestry policy shared by every governed provider."""
 
@@ -2531,6 +2548,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
         ] = ()
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositorySourceSpec,
+            m.Field(description="Canonical infrastructure repository identity"),
+        ]
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),

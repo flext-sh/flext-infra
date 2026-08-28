@@ -8,7 +8,7 @@ from pathlib import Path
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u
+from tests import WorktreeFixture, u
 
 
 def _repository(
@@ -29,6 +29,18 @@ def _repository(
 
 
 class TestsCodegenCatalogExtensions:
+    def test_infra_repository_identity_is_owned_by_codegen_config(self) -> None:
+        source = config.Infra.codegen.infra_repository
+        providers = tuple(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name == source.provider
+        )
+
+        tm.that(source.distribution, eq=config.Infra.name)
+        tm.that(source.internal_distribution_prefix, eq="flext-")
+        tm.that(providers, len=1)
+
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
         selector = config.Infra.codegen.toolchain.beads.version
 
@@ -169,6 +181,12 @@ class TestsCodegenCatalogExtensions:
             'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
             encoding="utf-8",
         )
+        WorktreeFixture.write_beads_project(
+            member_root,
+            workspace="acme-charts",
+            database="acme-charts",
+            issue_prefix="acme-charts",
+        )
         tm.ok(
             u.Cli.run_checked(
                 ["git", "init", "-q", "-b", "development"], cwd=member_root
@@ -186,7 +204,13 @@ class TestsCodegenCatalogExtensions:
         )
         tm.ok(
             u.Cli.run_checked(
-                ["git", "add", c.Infra.PYPROJECT_FILENAME], cwd=member_root
+                [
+                    "git",
+                    "add",
+                    c.Infra.PYPROJECT_FILENAME,
+                    "config/beads.yaml",
+                ],
+                cwd=member_root,
             )
         )
         tm.ok(
@@ -229,6 +253,18 @@ class TestsCodegenCatalogExtensions:
             u.Cli.run_checked(
                 [
                     "git",
+                    "remote",
+                    "add",
+                    "origin",
+                    f"{provider.base_url}/acme-platform.git",
+                ],
+                cwd=tmp_path,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
                     "config",
                     "remote.origin.url",
                     f"{provider.base_url}/acme-charts.git",
@@ -242,6 +278,12 @@ class TestsCodegenCatalogExtensions:
                 '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
                 'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
             )
+        )
+        WorktreeFixture.write_beads_project(
+            tmp_path,
+            workspace=root.name,
+            database=root.name,
+            issue_prefix=root.name,
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -264,7 +306,13 @@ class TestsCodegenCatalogExtensions:
         )
         tm.ok(
             u.Cli.run_checked(
-                ["git", "add", c.Infra.PYPROJECT_FILENAME, c.Infra.GITMODULES],
+                [
+                    "git",
+                    "add",
+                    c.Infra.PYPROJECT_FILENAME,
+                    c.Infra.GITMODULES,
+                    "config/beads.yaml",
+                ],
                 cwd=tmp_path,
             )
         )
@@ -302,7 +350,7 @@ class TestsCodegenCatalogExtensions:
             for file in plan.files
             if file.path == tmp_path.resolve() / c.Infra.MAKEFILE_FILENAME
         )
-        tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
+        tm.that(root_makefile.rendered, has="WORKSPACE_SUBPROJECTS := acme-charts")
         tm.that("acme-content" in root_makefile.rendered, eq=False)
         workflows = tuple(
             file for file in plan.files if ".github/workflows" in file.path.as_posix()
@@ -328,9 +376,10 @@ class TestsCodegenCatalogExtensions:
             )
         for workflow in workflows:
             tm.that("acme-content" in workflow.rendered, eq=False)
-        gitmodules = next(
-            file.rendered for file in plan.files if file.path.name == ".gitmodules"
+        tm.that(
+            any(file.path.name == c.Infra.GITMODULES for file in plan.files), eq=False
         )
+        gitmodules = (tmp_path / c.Infra.GITMODULES).read_text(encoding="utf-8")
         tm.that(gitmodules, has='[submodule "acme-charts"]')
         tm.that("acme-content" in gitmodules, eq=False)
         mise = tomllib.loads(
