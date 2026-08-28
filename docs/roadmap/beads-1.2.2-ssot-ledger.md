@@ -56,6 +56,7 @@ this rollout.
 | 2026-08-28T12:16:16-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `fc68f07da` | Stable complete-suite evidence recorded and pushed after the typed worker-budget repair |
 | 2026-08-28T12:17:59-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `c7a2818e0` | Final static and zero-residue evidence recorded and pushed |
 | 2026-08-28T12:19:08-03:00 | `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | `c7a2818e0` | Neutral replacement lane created at the fully validated tip and pushed without altering the preserved predecessor |
+| 2026-08-28T12:20:04-03:00 | `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | `24688ac22` | Active-lane transition recorded and pushed before opening the replacement pull request |
 
 ## Validation log
 
@@ -130,6 +131,7 @@ this rollout.
 | 2026-08-28T12:17:25-03:00 | `fc68f07da` | Full `make check` | PASS: all seven static stages; 0 errors and 0 skips | Lint, smells, Markdown, Pyrefly, Mypy, security, and Pyright are green after the worker-budget projection and validation evidence update |
 | 2026-08-28T12:17:48-03:00 | `fc68f07da` | Precise tracked-content, filename, runtime-command, topology, and static-projection audit | PASS: zero active retired-contract or prohibited-command matches; projections equal `1.2.2`, `flext`, and `127.0.0.1:3307` | Historical ledger wording and its recorded branch names are evidence, not executable/product contract; production has no parent inference or runtime Beads surface |
 | 2026-08-28T12:18:43-03:00 | `c7a2818e0` | `git fetch origin 0.12.0-dev` and integration ancestry | PASS: feature is 0 commits behind and 59 ahead; `origin/0.12.0-dev` is an ancestor | No synchronization merge is needed; the next required graph edge is the explicit non-FF PR merge after operator approval |
+| 2026-08-28T12:21:00-03:00 | `24688ac22` | GitHub pull-request lifecycle | OPEN: replacement PR [#444](https://github.com/flext-sh/flext-infra/pull/444) targets `0.12.0-dev`; superseded #441 links to it | Approval and merge remain pending; predecessor branches stay preserved until the integrated SHA proves complete adoption |
 
 ## Unresolved boundaries
 
@@ -144,7 +146,7 @@ this rollout.
 
 | Repository | Source branch | Pull request | Approval | Merge SHA | Integrated verification |
 | --- | --- | --- | --- | --- | --- |
-| `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | PENDING | PENDING | PENDING | PENDING |
+| `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | [#444](https://github.com/flext-sh/flext-infra/pull/444) | PENDING | PENDING | PENDING |
 
 The phase remains OPEN until every required repository has an independently
 approved pull request, an explicit merge commit on its integration branch, and
