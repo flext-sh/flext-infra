@@ -156,15 +156,15 @@ this rollout.
 | 2026-08-28T14:20:00-03:00 | `flext-core` PR #412 | Ready-for-review clean-checkout CI | RED: merge-guard passed, but the blocking complement reported 100 Pyrefly diagnostics across pre-existing owners | Do not merge; reproduce the clean branch with the canonical integration tooling and repair the configuration/tool owner rather than suppressing diagnostics or weakening the memory-isolation change |
 | 2026-08-28T14:28:02-03:00 | `407e3b7f3` plus lazy-init projection | Two independent `make gen WHAT=apply APPLY=Y`, explicit `make gen WHAT=check`, `make gen WHAT=init APPLY=Y`, formatting and full static check | PASS: both conform applications changed 0; lazy-init apply/check scanned 51 owned directories with 0 errors/warnings; all seven static stages passed | Rope opened the containing workspace at `/home/marlonsc/gt/flext/mayor/rig` and indexed 402 package directories/3,617 modules from the subproject invocation; regenerated test exports removed the final stale `constants_module` instrumentation |
 | 2026-08-28T14:31:57-03:00 | `7aef45fa0` | Complete `COV=Y make test` without testmon, random seed `939482768` | PASS: 2,387 tests in 180.27s; 80.23% coverage against 45% minimum | Zero failures, errors, warnings, skips, worker crashes, or `MemoryError`; the complete randomized order proves the public-alias and generated-Make repairs together without retry, scope reduction, or fallback |
+| 2026-08-28T15:05:00-03:00 | Pyrefly release-policy correction | Operator correction after PR #412 CI | ACTIVE: Pyrefly 1.2.0 diagnostics are mandatory product work; analyzer incompatibility, cap, downgrade, suppression, or disabled diagnostics are not accepted without prior operator discussion and reproducible evidence | Remove the suppression schema from the flext-infra SSOT, regenerate every projection, then correct every diagnostic in flext-core before integration |
 
 ## Unresolved boundaries
 
 - Canonical tracking remains suspended by current operator instruction. No
   tracker, daemon, database, lifecycle, or endpoint command is permitted; the
   phase remains OPEN and evidence is recorded in this ledger plus Git/GitHub.
-- The checked-out FLEXT command router still names three superseded home-level
-  skill paths. Current installed owners were used for this slice; repairing that
-  generated governance projection is not yet part of this checkpoint.
+- Home-level agent governance belongs to its independent owner and is outside
+  this FLEXT cutover. No FLEXT commit adopts or modifies that repository.
 
 ## GitHub lifecycle
 

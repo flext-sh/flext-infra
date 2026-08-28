@@ -34,7 +34,7 @@ dependencies = [
   "mkdocs-section-index>=0.3.12",
   "mkdocstrings>=1.0.6",
   "mkdocstrings-python>=2.0.5",
-  "pyrefly>=1.1.1",
+  "pyrefly>=1.2.0",
   "rope>=1.14.0",
   "ruff>=0.16.0",
 ]
@@ -186,7 +186,6 @@ warn_untyped_fields = true
 # [MANAGED] pyrefly
 [tool.pyrefly]
 disable-project-excludes-heuristics = true
-ignore-errors-in-generated-code = true
 project-excludes = [
   "**/*_pb2*.py",
   "**/*_pb2_grpc*.py",
@@ -208,7 +207,6 @@ search-path = ["src", "."]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
-abstract-method-call = false
 bad-argument-count = "error"
 bad-argument-type = "error"
 bad-assignment = "error"
@@ -220,7 +218,6 @@ bad-index = "error"
 bad-instantiation = "error"
 bad-keyword-argument = "error"
 bad-match = "error"
-bad-override = false
 bad-param-name-override = "error"
 bad-raise = "error"
 bad-return = "error"
@@ -260,8 +257,6 @@ missing-source = "error"
 missing-source-for-stubs = "error"
 no-access = "error"
 no-matching-overload = "error"
-non-convergent-recursion = false
-non-exhaustive-match = false
 not-a-type = "error"
 not-async = "error"
 not-callable = "error"
@@ -668,7 +663,7 @@ dev = [
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.1",
   "pylint>=4.0.6",
-  "pyrefly>=1.1.1",
+  "pyrefly>=1.2.0",
   "pyright>=1.1.411",
   "pytest>=9.0.3",
   "pytest-benchmark>=5.2.3",

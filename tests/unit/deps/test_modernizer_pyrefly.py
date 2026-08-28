@@ -172,22 +172,29 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(pyrefly, is_=MutableMapping)
         tm.that(u.Cli.toml_unwrap_item(pyrefly["python-version"]), eq="3.13")
 
-    def test_ensure_pyrefly_config_phase_apply_ignore_errors(
+    def test_ensure_pyrefly_config_removes_generated_code_suppression(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Verify generated-code error handling follows canonical policy."""
+        """Verify the retired generated-code suppression is removed."""
         doc = u.Cli.toml_document()
         doc["tool"] = u.Cli.toml_table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = u.Cli.toml_table()
-        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
-            doc, is_root=True
-        )
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
+        pyrefly["ignore-errors-in-generated-code"] = True
+
+        changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
+            doc, is_root=True
+        )
+        tm.that(pyrefly, lacks="ignore-errors-in-generated-code")
         tm.that(
-            u.Cli.toml_unwrap_item(pyrefly["ignore-errors-in-generated-code"]), eq=True
+            any(
+                "tool.pyrefly.ignore-errors-in-generated-code removed" in change
+                for change in changes
+            ),
+            eq=True,
         )
 
     def test_ensure_pyrefly_config_phase_apply_search_path(

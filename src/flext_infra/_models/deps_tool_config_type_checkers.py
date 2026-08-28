@@ -277,13 +277,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 alias="python-version", description="Pyrefly python-version baseline."
             ),
         ]
-        ignore_errors_in_generated_code: Annotated[
-            bool,
-            m.Field(
-                alias="ignore-errors-in-generated-code",
-                description="Enable ignoring errors in generated code.",
-            ),
-        ]
         disable_project_excludes_heuristics: Annotated[
             bool,
             m.Field(
@@ -303,13 +296,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             m.Field(
                 alias="strict-errors",
                 description="Pyrefly errors enabled as strict defaults.",
-            ),
-        ]
-        disabled_errors: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="disabled-errors",
-                description="Pyrefly errors disabled by default.",
             ),
         ]
         project_exclude_globs: Annotated[
