@@ -275,17 +275,6 @@ class FlextInfraUtilitiesDependencies:
                 continue
             names.add(dependency_name)
 
-    @classmethod
-    def local_dependency_names_from_payload(
-        cls, payload: t.JsonMapping, *, workspace_project_names: t.StrSequence = ()
-    ) -> t.StrSequence:
-        """Return workspace-local dependency names from one payload."""
-        declared = set(cls.declared_dependency_names_from_payload(payload))
-        if not workspace_project_names:
-            return ()
-        workspace_names = set(workspace_project_names)
-        return tuple(sorted(name for name in declared if name in workspace_names))
-
     @staticmethod
     def project_dev_groups_from_payload(
         payload: t.JsonMapping,

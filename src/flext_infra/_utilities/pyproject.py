@@ -219,40 +219,5 @@ class FlextInfraUtilitiesPyproject:
             project_root, payload, docs_meta
         )
 
-    @staticmethod
-    @cache
-    def workspace_member_names(workspace_root: Path) -> t.StrSequence:
-        """Return configured workspace members from ``[tool.flext.workspace]`` or ``[tool.uv.workspace]``.
-
-        Cached by ``workspace_root`` (``Path`` is hashable). Both
-        ``[tool.flext.workspace] members`` and ``[tool.uv.workspace] members``
-        are honoured (first non-empty wins).
-        """
-        pyproject_path = workspace_root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject_path.is_file():
-            return ()
-        payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)
-        if not payload:
-            return ()
-        tool = payload.get(c.Infra.TOOL)
-        if not isinstance(tool, dict):
-            return ()
-        for tool_name in ("flext", "uv"):
-            tool_config = tool.get(tool_name)
-            if not isinstance(tool_config, dict):
-                continue
-            workspace_config = tool_config.get("workspace")
-            if not isinstance(workspace_config, dict):
-                continue
-            members = workspace_config.get("members")
-            if not isinstance(members, list):
-                continue
-            normalized = tuple(
-                member_name for item in members if (member_name := str(item).strip())
-            )
-            if normalized:
-                return normalized
-        return ()
-
 
 __all__: list[str] = ["FlextInfraUtilitiesPyproject"]

@@ -204,14 +204,12 @@ class FlextInfraUtilitiesDiscovery(
         effective_skip = (
             skip_dirs if skip_dirs is not None else c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
         )
-        workspace_excluded = cls._workspace_excluded_top_dirs(project_dir)
         return [
             subdir.name
             for subdir in sorted(project_dir.iterdir())
             if subdir.is_dir()
             and not subdir.name.startswith(".")
             and subdir.name not in effective_skip
-            and subdir.name not in workspace_excluded
             and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
         ]
 
@@ -231,9 +229,8 @@ class FlextInfraUtilitiesDiscovery(
         scaffold can only offer those, and discovery appends the remaining
         roots that actually exist, which is the only set an analyzer accepts.
 
-        A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace members are Python directories too,
-        and each is analyzed under its own manifest.
+        A directory owning a ``pyproject.toml`` is a project in its own right
+        and is analyzed under its own manifest.
         """
         discovered = cls.discover_python_dirs(project_dir)
         return (
@@ -245,22 +242,6 @@ class FlextInfraUtilitiesDiscovery(
                 and not (project_dir / root / c.Infra.PYPROJECT_FILENAME).is_file()
             ),
         )
-
-    @staticmethod
-    def _workspace_excluded_top_dirs(project_dir: Path) -> frozenset[str]:
-        """Return first segments of manifest-excluded workspace-relative paths.
-
-        Immutable ``content_only`` repositories and explicit ``exclusions`` in
-        ``config/workspace.yaml`` must never be discovered as Python source,
-        regardless of any Python files they happen to contain.
-        """
-        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-
-        excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
-        if excluded.failure:
-            msg = excluded.error or "workspace analysis scope is unavailable"
-            raise ValueError(msg)
-        return frozenset(path.parts[0] for path in excluded.value if path.parts)
 
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
@@ -298,52 +279,9 @@ class FlextInfraUtilitiesDiscovery(
         return tuple(ordered)
 
     @staticmethod
-    def _sibling_project_roots(project_root: Path) -> tuple[Path, ...]:
-        """Sibling project roots."""
-        parent = project_root.parent
-        if not parent.is_dir():
-            return ()
-        return tuple(
-            child
-            for child in parent.iterdir()
-            if child != project_root
-            and child.is_dir()
-            and (child / c.Infra.DEFAULT_SRC_DIR).is_dir()
-            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
-        )
-
-    @staticmethod
-    def _child_project_roots(workspace_root: Path) -> tuple[Path, ...]:
-        """Child project roots."""
-        if not workspace_root.is_dir():
-            return ()
-        return tuple(
-            child
-            for child in workspace_root.iterdir()
-            if child.is_dir()
-            and not child.name.startswith(".")
-            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
-        )
-
-    @classmethod
-    def rope_workspace_root(cls, workspace_root: Path) -> Path:
-        """Return the canonical root for a shared Rope project."""
-        resolved_root = workspace_root.resolve()
-        has_project_marker = any(
-            candidate.is_file()
-            for candidate in (
-                resolved_root / c.Infra.PYPROJECT_FILENAME,
-                resolved_root / c.Infra.MAKEFILE_FILENAME,
-            )
-        )
-        if not has_project_marker and cls.namespace_scan_dirs(resolved_root):
-            return resolved_root
-        if cls._child_project_roots(resolved_root):
-            return resolved_root
-        project_root = cls.project_root(resolved_root)
-        if project_root is not None:
-            return project_root
-        return resolved_root
+    def rope_workspace_root(workspace_root: Path) -> Path:
+        """Return the repository root explicitly supplied for Rope."""
+        return workspace_root.resolve()
 
     @classmethod
     def find_all_pyproject_files(
@@ -362,10 +300,7 @@ class FlextInfraUtilitiesDiscovery(
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
-            else [
-                workspace_root.resolve(),
-                *cls.discover_external_workspace_roots(workspace_root),
-            ]
+            else [workspace_root.resolve()]
         )
         all_files: list[Path] = []
         for scan_root in scan_roots:

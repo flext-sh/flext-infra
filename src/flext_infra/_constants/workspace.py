@@ -91,13 +91,6 @@ class FlextInfraConstantsWorkspace:
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
 
-    @unique
-    class WorkspaceProjectRole(StrEnum):
-        """Role of one discovered project relative to the uv workspace root."""
-
-        WORKSPACE_MEMBER = "member"
-        ATTACHED = "attached"
-
     EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
         ".ai-hub",
         "algar-*",

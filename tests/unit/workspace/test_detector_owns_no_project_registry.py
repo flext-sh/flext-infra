@@ -3,7 +3,7 @@
 Operator law: flext-infra owns generic conform behaviour only. A repository's
 identity and public-root contract come from its own ``pyproject.toml``. Its
 topology is the independent presence-or-absence fact of its own ``.gitmodules``;
-topology never creates member mappings or generation fanout.
+topology never creates project relationships or execution policy.
 """
 
 from __future__ import annotations
@@ -24,7 +24,10 @@ def _standalone(root: Path, *, name: str) -> Path:
         "requires-python = '>=3.13,<3.14'\n",
         encoding="utf-8",
     )
-    test_u.Tests.initialize_git_repo(root)
+    provider = config.Infra.codegen.providers[0]
+    test_u.Tests.initialize_git_repo(
+        root, f"{provider.base_url.rstrip('/')}/{name}.git"
+    )
     return root
 
 
@@ -45,10 +48,9 @@ class TestsDetectorOwnsNoProjectRegistry:
 
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(spec.name, eq="totally-unknown")
         tm.that(spec.repository.name, eq="totally-unknown")
         tm.that(spec.repository.path, eq=Path())
-        tm.that(spec.members, empty=True)
+        tm.that("members" in type(spec).model_fields, eq=False)
 
     def test_git_submodules_remain_the_topology_ssot(self, tmp_path: Path) -> None:
         """A .gitmodules file changes topology without creating member policy."""
@@ -64,4 +66,4 @@ class TestsDetectorOwnsNoProjectRegistry:
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
-        tm.that(spec.members, empty=True)
+        tm.that("members" in type(spec).model_fields, eq=False)

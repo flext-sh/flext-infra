@@ -226,46 +226,6 @@ class FlextInfraConfigModels:
             ),
         ]
 
-    class CiPrivateSubmoduleDeployKeySpec(_ConfigContract):
-        """One read-only deploy key that unlocks a private workspace member in CI."""
-
-        secret: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="GitHub Actions secret name holding the deploy key PEM"
-            ),
-        ]
-        host_alias: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="SSH Host alias written into ~/.ssh/config"),
-        ]
-        submodule: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="gitmodules submodule name (git config submodule.<name>.url)"
-            ),
-        ]
-        path: Annotated[
-            t.NonEmptyStr, m.Field(description="Checkout-relative submodule path")
-        ]
-        ssh_url: Annotated[
-            t.NonEmptyStr, m.Field(description="SSH clone URL using the Host alias")
-        ]
-
-    class CiPrivateSubmodulesSpec(_ConfigContract):
-        """Per-distribution private submodule init contract for generated CI."""
-
-        paths: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1, description="Submodule paths to init before make setup"
-            ),
-        ]
-        deploy_keys: Annotated[
-            tuple[FlextInfraConfigModels.CiPrivateSubmoduleDeployKeySpec, ...],
-            m.Field(min_length=1, description="Ordered deploy-key materializations"),
-        ]
-
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
@@ -322,22 +282,10 @@ class FlextInfraConfigModels:
                     "actions/checkout submodules mode. Defaults to 'false' "
                     "because the default GITHUB_TOKEN cannot clone sibling "
                     "private repositories: 'recursive' aborts the job at "
-                    "checkout with 'Repository not found'. Projects whose "
-                    "submodules are public, or that provide a PAT, override "
-                    "it per project in codegen.yaml"
+                    "checkout with 'Repository not found'"
                 ),
             ),
         ]
-        private_submodules: Annotated[
-            FlextInfraConfigModels.CiPrivateSubmodulesSpec | None,
-            m.Field(
-                default=None,
-                description=(
-                    "Optional private-member deploy-key init for this "
-                    "distribution; None means the workflow skips the step"
-                ),
-            ),
-        ] = None
         ci_matrix_auto_run: Annotated[
             bool,
             m.Field(
@@ -1043,8 +991,8 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Build-system requirements"),
         ]
 
-    class ScaffoldDependencyProfileSpec(_ConfigContract):
-        """Dependencies selected by the declared upstream FLEXT facade."""
+    class ScaffoldUpstreamSpec(_ConfigContract):
+        """Dependencies selected by one explicit upstream FLEXT facade."""
 
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Supported upstream facade package")
@@ -1080,9 +1028,9 @@ class FlextInfraConfigModels:
                 description="Canonical development and validation requirements",
             ),
         ]
-        dependency_profiles: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec, ...],
-            m.Field(min_length=1, description="Upstream dependency profiles"),
+        upstreams: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldUpstreamSpec, ...],
+            m.Field(min_length=1, description="Explicit upstream dependencies"),
         ]
 
     class ScaffoldPingExampleSpec(_ConfigContract):
@@ -1143,7 +1091,7 @@ class FlextInfraConfigModels:
         ]
 
     class RepositoryRef(_ConfigContract):
-        """One declared repository and its immutable Git origin contract."""
+        """The current repository's immutable identity and Git origin."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
@@ -1158,118 +1106,10 @@ class FlextInfraConfigModels:
         path: Annotated[
             Path, m.Field(description="POSIX path relative to its workspace root")
         ]
-        role: Annotated[
-            FlextInfraConstantsCodegenProject.RepositoryRole,
-            m.Field(description="Repository role in the declared topology"),
-        ]
-        state: Annotated[
-            FlextInfraConstantsCodegenProject.RepositoryState,
-            m.Field(description="Repository lifecycle state"),
-        ] = FlextInfraConstantsCodegenProject.RepositoryState.ACTIVE
         provider: Annotated[
             t.NonEmptyStr,
             m.Field(description="Provider key from the codegen configuration"),
         ]
-        checkout: Annotated[
-            FlextInfraConstantsCodegenProject.CheckoutKind,
-            m.Field(description="Physical checkout topology"),
-        ]
-        codegen: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenKind,
-            m.Field(description="Repository code-generation policy"),
-        ]
-        package: Annotated[
-            bool, m.Field(description="Repository publishes a Python package")
-        ]
-        editable: Annotated[
-            bool, m.Field(description="Overlay repository as an editable dependency")
-        ]
-        read_only: Annotated[
-            bool, m.Field(description="Repository rejects generated mutations")
-        ]
-        uv_link_mode: Annotated[
-            Literal["clone", "copy", "hardlink", "symlink"] | None,
-            m.Field(
-                description=(
-                    "Repository-specific uv installation link mode; absent uses "
-                    "the fleet toolchain default"
-                )
-            ),
-        ] = None
-        extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
-            m.Field(
-                description=(
-                    "Additional public Make verbs this repository dispatches "
-                    "beyond the canonical set (e.g. a script command framework)"
-                )
-            ),
-        ] = ()
-        script_dispatch: Annotated[
-            FlextInfraConfigModels.ScriptDispatchSpec | None,
-            m.Field(
-                description=(
-                    "Opt-in script command-framework routing for non-builtin "
-                    "verbs and WHAT selectors; None keeps builtin-only dispatch"
-                )
-            ),
-        ] = None
-
-    class WorkspaceIntegrationSpec(_ConfigContract):
-        """Workspace overlay adjusting flext-infra provider defaults.
-
-        Declared in ``config/workspace.yaml``. Absent means the fleet
-        ``providers[]`` catalog branch/org/URL apply unchanged. Package
-        version stays on ``project.version``.
-        """
-
-        provider: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider key into flext-infra providers[]"),
-        ]
-        branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Integration line this workspace follows by default"),
-        ]
-        organization: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional GitHub organization override"),
-        ] = None
-        base_url: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional GitHub HTTPS base URL override"),
-        ] = None
-
-    class RepositoryPolicyOverlaySpec(_ConfigContract):
-        """Bounded per-project exceptions to inferred repository policy."""
-
-        project: Annotated[
-            t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
-        ]
-        ci_enabled: Annotated[
-            bool,
-            m.Field(description="Whether conform generates the governed CI surface"),
-        ] = True
-        ci_matrix_auto_run: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Opt a root/standalone project into ci-matrix push-to-main "
-                    "auto-run; default false keeps matrix dispatch-only"
-                )
-            ),
-        ] = False
-        extra_ignored_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Project-local .gitignore patterns appended after the"
-                    " fleet-wide scaffold sections (mro-jnm1.3 seam); never"
-                    " hand-edit the generated .gitignore, declare the pattern"
-                    " here instead"
-                )
-            ),
-        ] = ()
 
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""
@@ -1398,13 +1238,13 @@ class FlextInfraConfigModels:
         ]
 
     class GitignoreRenderSpec(_ConfigContract):
-        """Typed, profile-filtered input for the generated Git ignore file."""
+        """Typed input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,
-                description="Canonical ignore sections applicable to one profile",
+                description="Canonical ignore sections applicable to the repository",
             ),
         ]
 
@@ -1555,10 +1395,6 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Declared relative path to the workspace root"),
-        ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
     class MakeRenderContext(MakeCommandContext):
@@ -1659,9 +1495,9 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
-        dependency_profile: Annotated[
-            FlextInfraConfigModels.ScaffoldDependencyProfileSpec,
-            m.Field(description="Resolved upstream dependency profile"),
+        upstream_dependencies: Annotated[
+            FlextInfraConfigModels.ScaffoldUpstreamSpec,
+            m.Field(description="Dependencies for the selected explicit upstream"),
         ]
         tooling: Annotated[
             FlextInfraModelsDepsToolSettings.ToolConfigDocument,
@@ -1761,115 +1597,17 @@ class FlextInfraConfigModels:
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
 
-    class WorkspaceExclusionSpec(_ConfigContract):
-        """One explicitly rejected workspace path and its reason."""
-
-        path: Annotated[Path, m.Field(description="Workspace-relative path")]
-        reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
-
     class WorkspaceSpec(_ConfigContract):
-        """Declared topology for exactly one orchestrated workspace."""
+        """Repository-local conformance context without topology policy."""
 
-        version: Annotated[
-            int,
-            m.Field(
-                ge=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                le=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                description="Manifest version",
-            ),
-        ]
-        name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
-            m.Field(description="Root repository Git contract"),
+            m.Field(description="Current repository Git contract"),
         ]
         project: Annotated[
             FlextInfraConfigModels.ProjectSpec | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
-        members: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered active member repository contracts"),
-        ] = ()
-        external_dependency_paths: Annotated[
-            tuple[Path, ...],
-            m.Field(description="Observed external or fork Git submodule paths"),
-        ] = ()
-        content_only: Annotated[
-            tuple[Path, ...],
-            m.Field(
-                description=(
-                    "Vendored gitlinks present in the tree but never managed, "
-                    "mutated, or included in conform fan-out"
-                )
-            ),
-        ] = ()
-        exclusions: Annotated[
-            tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
-            m.Field(description="Ordered paths deliberately excluded from inventory"),
-        ] = ()
-        integration: Annotated[
-            FlextInfraConfigModels.WorkspaceIntegrationSpec | None,
-            m.Field(
-                description=(
-                    "Optional workspace overlay adjusting flext-infra provider "
-                    "branch/organization/base_url for this tree"
-                )
-            ),
-        ] = None
-        repository_policy_overlays: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
-            m.Field(description="Repository-local policy exceptions keyed by project"),
-        ] = ()
-
-        @u.model_validator(mode="after")
-        def _validate_repository_policy_overlays(self) -> Self:
-            """Require local overlays to reference one declared repository each."""
-            invalid_external_paths = tuple(
-                path
-                for path in self.external_dependency_paths
-                if path.is_absolute() or not path.parts or ".." in path.parts
-            )
-            if invalid_external_paths:
-                msg = (
-                    "external dependency paths must be workspace-relative: "
-                    f"{', '.join(path.as_posix() for path in invalid_external_paths)}"
-                )
-                raise ValueError(msg)
-            if len(set(self.external_dependency_paths)) != len(
-                self.external_dependency_paths
-            ):
-                msg = "external dependency paths must be unique"
-                raise ValueError(msg)
-            member_paths = {item.path for item in self.members}
-            overlap = member_paths.intersection(self.external_dependency_paths)
-            if overlap:
-                msg = (
-                    "external dependencies cannot also be governed members: "
-                    f"{', '.join(sorted(path.as_posix() for path in overlap))}"
-                )
-                raise ValueError(msg)
-            projects = tuple(item.project for item in self.repository_policy_overlays)
-            duplicates = tuple(
-                project for project in projects if projects.count(project) > 1
-            )
-            if duplicates:
-                msg = (
-                    "repository policy overlays must be unique: "
-                    f"{', '.join(sorted(set(duplicates)))}"
-                )
-                raise ValueError(msg)
-            repository_names = {
-                item.distribution for item in (self.repository, *self.members)
-            }
-            unknown = set(projects) - repository_names
-            if unknown:
-                msg = (
-                    "repository policy overlays reference unknown projects: "
-                    f"{', '.join(sorted(unknown))}"
-                )
-                raise ValueError(msg)
-            return self
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): the artifact list is the SINGLE SSOT for
     # ephemeral/generated resources; VS Code excludes and source_scan ignores
@@ -1933,26 +1671,6 @@ class FlextInfraConfigModels:
                     "whose submodules are private: the default GITHUB_TOKEN "
                     "cannot clone sibling private repositories and "
                     "'recursive' aborts the job at checkout"
-                ),
-            ),
-        ]
-        checkout_submodules_overrides: Annotated[
-            Mapping[str, str],
-            m.Field(
-                default_factory=lambda: MappingProxyType({}),
-                description=(
-                    "Per-distribution override of checkout_submodules, for "
-                    "projects that really do exercise their subprojects in CI"
-                ),
-            ),
-        ]
-        ci_private_submodules: Annotated[
-            Mapping[str, FlextInfraConfigModels.CiPrivateSubmodulesSpec],
-            m.Field(
-                default_factory=lambda: MappingProxyType({}),
-                description=(
-                    "Per-distribution private submodule deploy-key contracts "
-                    "rendered into generated CI before make setup"
                 ),
             ),
         ]

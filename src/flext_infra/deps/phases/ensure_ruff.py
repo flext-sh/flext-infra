@@ -24,21 +24,7 @@ class FlextInfraEnsureRuffConfigPhase:
         """Discover child project packages when generating workspace root settings."""
         if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
             return ()
-        discovered = u.Infra.discover_projects(project_dir)
-        if discovered.failure:
-            return ()
-        return sorted({
-            project.package_name
-            for project in discovered.value
-            if (
-                project.package_name
-                and project.package_name.isidentifier()
-                and (
-                    project.workspace_role
-                    == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
-                )
-            )
-        })
+        return ()
 
     @staticmethod
     def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:

@@ -13,15 +13,12 @@ from urllib.parse import urlparse
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraWorkspaceDetector(
-    FlextInfraWorkspaceGovernanceMixin, s[c.Infra.WorkspaceMode]
-):
+class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     """Classify one repository from its own Git topology.
 
     SINGLE RULE: a repository declaring ``.gitmodules`` is a workspace;
@@ -81,9 +78,8 @@ class FlextInfraWorkspaceDetector(
         Operator law: flext-infra owns generic conform behaviour and must not
         carry a catalog of the projects it serves. Identity comes from the
         repository's ``pyproject.toml``. ``.gitmodules`` is deliberately not
-        parsed here: its presence classifies topology but cannot create member
-        mappings, generation fanout, or policy. Nothing is looked up in a
-        workspace registry.
+        parsed here: its presence classifies topology but cannot create
+        relationships or policy. Nothing is looked up in a registry.
         """
         resolved_metadata = project_metadata
         if resolved_metadata is None:
@@ -103,25 +99,17 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.WorkspaceSpec].fail(
                 origin.error or f"unable to read Git origin: {repository_root}"
             )
-        provider = cls._provider_for_url(origin.value)
-        # A checkout with no declared origin (fresh scaffold, transaction
-        # worktree) still has a canonical identity: the provider contract plus
-        # its own project name. That is derived, not looked up in a registry.
-        repository_url = origin.value or (
-            f"{provider.base_url.rstrip('/')}/{project_name}.git"
-        )
+        provider = cls._declared_provider_for_url(origin.value)
+        if provider is None:
+            return r[m.Infra.WorkspaceSpec].fail(
+                f"repository origin has no declared provider: {origin.value}"
+            )
         local_repository = m.Infra.RepositoryRef(
             name=project_name,
             distribution=project_name,
-            url=repository_url,
+            url=origin.value,
             path=Path(),
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
             provider=provider.name,
-            checkout=c.Infra.CheckoutKind.ROOT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=False,
-            read_only=False,
         )
         # Derive canonical ProjectSpec from PEP 621 metadata (SSOT)
         package_name = resolved_metadata.package_name or project_name.replace("-", "_")
@@ -171,30 +159,27 @@ class FlextInfraWorkspaceDetector(
             or f"https://github.com/{provider.organization}/{project_name}",
             documentation=documentation
             or f"https://github.com/{provider.organization}/{project_name}",
-            workspace_root_rel=".",
             year=2026,
         )
 
         return r[m.Infra.WorkspaceSpec].ok(
-            m.Infra.WorkspaceSpec(
-                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                name=project_name,
-                repository=local_repository,
-                project=project_spec,
-            )
+            m.Infra.WorkspaceSpec(repository=local_repository, project=project_spec)
         )
 
     @staticmethod
     def _git_origin_url(repository_root: Path) -> p.Result[str]:
-        """Read the repository's own declared origin, or an empty remote."""
+        """Read the repository's own declared origin without substitution."""
         result = u.Infra.git_remote_url(
             m.Infra.GitRemoteUrlRequest(repo_root=repository_root, remote="origin")
         )
         if result.failure:
-            # A repository with no origin is still a valid standalone checkout;
-            # it simply has no provider-governed identity to match.
-            return r[str].ok("")
-        return r[str].ok(result.value.text.strip())
+            return r[str].fail(
+                result.error or f"unable to read Git origin: {repository_root}"
+            )
+        origin = result.value.text.strip()
+        if not origin:
+            return r[str].fail(f"repository has no Git origin: {repository_root}")
+        return r[str].ok(origin)
 
     @staticmethod
     def _declared_provider_for_url(url: str) -> m.Infra.ProviderSpec | None:
@@ -215,11 +200,6 @@ class FlextInfraWorkspaceDetector(
             ):
                 return provider
         return None
-
-    @classmethod
-    def _provider_for_url(cls, url: str) -> m.Infra.ProviderSpec:
-        """Resolve the declared provider owning ``url``, else the default one."""
-        return cls._declared_provider_for_url(url) or config.Infra.codegen.providers[0]
 
     @staticmethod
     def resolve_topology_roots(
@@ -248,41 +228,13 @@ class FlextInfraWorkspaceDetector(
             )
         return r[Path].ok(topology.value[2])
 
-    @staticmethod
-    def workspace_analysis_exclusion_paths(
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> tuple[Path, ...]:
-        """Return repository-local analysis exclusions.
-
-        Topology never supplies cross-repository analyzer policy.
-        """
-        del workspace
-        return ()
-
     @classmethod
     def analysis_exclusion_paths(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
-        """Derive workspace-scoped analysis exclusions from live Git.
-
-        Projects whose origin resolves to no declared provider are unmanaged:
-        they carry no workspace-scoped exclusions. This keeps Ruff/Pyright
-        discovery usable for ad-hoc or third-party trees without weakening
-        validation for governed FLEXT checkouts.
-        """
-        origin = cls._git_origin_url(repository_root)
-        if origin.failure or not origin.value:
-            return r[tuple[Path, ...]].ok(())
-        if cls._declared_provider_for_url(origin.value) is None:
-            return r[tuple[Path, ...]].ok(())
-        spec = cls.load_workspace_spec(repository_root)
-        if spec.failure:
-            return r[tuple[Path, ...]].fail(
-                spec.error or f"unable to load workspace spec: {repository_root}"
-            )
-        return r[tuple[Path, ...]].ok(
-            cls.workspace_analysis_exclusion_paths(spec.value)
-        )
+        """Return the repository-local analyzer policy projection."""
+        del cls, repository_root
+        return r[tuple[Path, ...]].ok(())
 
     @classmethod
     def _unattached_mode(cls, repository_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
@@ -304,17 +256,15 @@ class FlextInfraWorkspaceDetector(
                 topology_result.error or "unable to resolve governing root"
             )
         resolved_root, _identity_root, _governing_root = topology_result.value
-        workspace_result = cls.load_workspace_spec(resolved_root)
+        workspace_result = cls.load_workspace_spec(
+            resolved_root, project_metadata=project_metadata
+        )
         if workspace_result.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
                 workspace_result.error or "unable to load governing workspace"
             )
         resolved_workspace = workspace_result.value
         repository = resolved_workspace.repository
-        if repository.read_only:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                f"repository is an external read-only dependency: {repository.name}"
-            )
         resolved_metadata = project_metadata
         if resolved_metadata is None:
             metadata = u.read_project_metadata(resolved_root)
@@ -329,16 +279,6 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 "project metadata and repository identity differ: "
                 f"{canonical_project_name} != {repository.distribution}"
-            )
-        # Gate (PC): flext-core dependency requires make gen conformance
-        declared_deps = tuple(resolved_metadata.project.dependencies)
-        has_flext_core = any(
-            dep.startswith(("flext-core", "flext_core")) for dep in declared_deps
-        )
-        if has_flext_core and repository.codegen is c.Infra.CodegenKind.NONE:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                "projects declaring flext-core must be generated by make gen: "
-                f"{canonical_project_name}"
             )
         providers = tuple(
             item

@@ -32,7 +32,7 @@ class FlextInfraUtilitiesRopeCore(
         resolved_root = workspace_root.resolve()
         discovered_roots = (
             FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
-                resolved_root, include_attached=False
+                resolved_root
             )
         )
         project_roots = tuple(

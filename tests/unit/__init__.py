@@ -86,10 +86,6 @@ if TYPE_CHECKING:
     from .test_infra_version_core import TestsFlextInfraInfraVersionCore
     from .test_infra_version_extra import TestsFlextInfraInfraVersionExtra
     from .test_infra_versioning import TestsFlextInfraInfraVersioning
-    from .test_infra_workspace_orchestrator import (
-        TestsFlextInfraInfraWorkspaceOrchestrator,
-        orchestrator,
-    )
     from .test_lockfile_is_tracked_at_the_resolution_root import (
         TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot,
     )
@@ -105,13 +101,9 @@ if TYPE_CHECKING:
     from .test_pyproject_conform_preserves_lint_scope import (
         TestsFlextInfraPyprojectConformPreservesLintScope,
     )
-    from .test_pyproject_conform_topology_sources import (
-        TestsFlextInfraPyprojectConformTopologySources,
-    )
     from .test_python_selector_render import TestsFlextInfraPythonSelectorRender
     from .test_version_diag import test_version_diag
     from .test_version_diag2 import test_version_full_import
-    from .test_workspace_check_scope import TestsFlextInfraWorkspaceCheckScope
     from .workspace.worktree_fixture import WorktreeFixture
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
 __all__: tuple[str, ...] = (
@@ -142,17 +134,14 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraInfraVersionCore",
     "TestsFlextInfraInfraVersionExtra",
     "TestsFlextInfraInfraVersioning",
-    "TestsFlextInfraInfraWorkspaceOrchestrator",
     "TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot",
     "TestsFlextInfraMakeParseIsSideEffectFree",
     "TestsFlextInfraMakeSurfaceNeverSilencesFailures",
     "TestsFlextInfraPublicApi",
     "TestsFlextInfraPyprojectConformPreservesLintScope",
-    "TestsFlextInfraPyprojectConformTopologySources",
     "TestsFlextInfraPythonSelectorRender",
     "TestsFlextInfraRootExportContract",
     "TestsFlextInfraRopeImports",
-    "TestsFlextInfraWorkspaceCheckScope",
     "TestsFlextInfraWorkspaceFactory",
     "WorktreeFixture",
     "_utilities",
@@ -171,7 +160,6 @@ __all__: tuple[str, ...] = (
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
-    "orchestrator",
     "owned_provider",
     "real_docs_project",
     "real_git_repo",
@@ -269,10 +257,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_version_core": ("TestsFlextInfraInfraVersionCore",),
             ".test_infra_version_extra": ("TestsFlextInfraInfraVersionExtra",),
             ".test_infra_versioning": ("TestsFlextInfraInfraVersioning",),
-            ".test_infra_workspace_orchestrator": (
-                "TestsFlextInfraInfraWorkspaceOrchestrator",
-                "orchestrator",
-            ),
             ".test_lockfile_is_tracked_at_the_resolution_root": (
                 "TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot",
             ),
@@ -288,13 +272,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_pyproject_conform_preserves_lint_scope": (
                 "TestsFlextInfraPyprojectConformPreservesLintScope",
             ),
-            ".test_pyproject_conform_topology_sources": (
-                "TestsFlextInfraPyprojectConformTopologySources",
-            ),
             ".test_python_selector_render": ("TestsFlextInfraPythonSelectorRender",),
             ".test_version_diag": ("test_version_diag",),
             ".test_version_diag2": ("test_version_full_import",),
-            ".test_workspace_check_scope": ("TestsFlextInfraWorkspaceCheckScope",),
             ".transformers": ("transformers",),
             ".validate": ("validate",),
             ".workspace": ("workspace",),

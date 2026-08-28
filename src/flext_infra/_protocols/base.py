@@ -78,7 +78,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class RepositoryRef(Protocol):
-        """Repository fields consumed by codegen path and profile selection."""
+        """Repository identity consumed by local code generation."""
 
         @property
         def name(self) -> str:
@@ -101,46 +101,10 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def role(self) -> str:
-            """Repository role in the declared topology."""
-            ...
-
-        @property
-        def state(self) -> str:
-            """Repository lifecycle state."""
-            ...
-
-        @property
         def provider(self) -> str:
             """Provider catalog key owning Git policy for this repository."""
             ...
 
-        @property
-        def checkout(self) -> str:
-            """Physical checkout topology."""
-            ...
-
-        @property
-        def codegen(self) -> str:
-            """Repository code-generation policy."""
-            ...
-
-        @property
-        def package(self) -> bool:
-            """Whether the repository publishes a Python package."""
-            ...
-
-        @property
-        def editable(self) -> bool:
-            """Whether the repository is overlaid as editable."""
-            ...
-
-        @property
-        def read_only(self) -> bool:
-            """Whether generated mutations are forbidden."""
-            ...
-
-    @runtime_checkable
     @runtime_checkable
     class ProjectSpec(Protocol):
         """Manifest-declared project metadata consumed by conformance."""
@@ -167,16 +131,6 @@ class FlextInfraProtocolsBase(Protocol):
             carries -- otherwise the only consumer reads through a contract that
             does not admit it.
             """
-            ...
-
-        @property
-        def members(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
-            """Attached workspace member repositories."""
-            ...
-
-        @property
-        def external_dependency_paths(self) -> t.SequenceOf[Path]:
-            """Observed external or fork Git submodule paths."""
             ...
 
     @runtime_checkable
@@ -269,15 +223,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def draft(self) -> bool:
             """Whether creation requests a draft PR."""
-            ...
-
-    @runtime_checkable
-    class WorkspaceEnvironmentRequest(Protocol):
-        """Read-only workspace environment validation request."""
-
-        @property
-        def workspace_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
             ...
 
     @runtime_checkable

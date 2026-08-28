@@ -21,9 +21,6 @@ class TestsFlextInfraCodegenConformProgress:
     ) -> None:
         """A check-mode conform must report stage and per-repository progress."""
         root = infra_git_repo
-        u.Tests.write_standalone_workspace_manifest(
-            root, "flext-demo", upstream="flext_cli"
-        )
         package_root = root / "src" / "flext_demo"
         tm.ok(u.Cli.ensure_dir(package_root))
         tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))

@@ -10,7 +10,6 @@ from flext_infra._utilities._docs_scope_selection import (
 )
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -59,15 +58,11 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         discovered = FlextInfraUtilitiesDocsScopeBuildMixin._discover_projects(
             resolved_root
         )
-        has_declared_members = bool(
-            FlextInfraUtilitiesPyproject.workspace_member_names(resolved_root)
-        )
         has_child_projects = any(
             project.path.resolve() != resolved_root for project in discovered
         )
         if (
             (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
-            and not has_declared_members
             and not has_child_projects
             and is_enabled
         ):

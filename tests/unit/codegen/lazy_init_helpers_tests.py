@@ -519,13 +519,12 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
-    def test_legacy_workspace_manifest_cannot_narrow_base_aliases(
+    def test_project_constants_preserve_inherited_base_aliases(
         self, tmp_path: Path
     ) -> None:
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
-        u.Tests.write_standalone_workspace_manifest(workspace_root, "flext-demo")
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "from flext_cli import c\n\n"

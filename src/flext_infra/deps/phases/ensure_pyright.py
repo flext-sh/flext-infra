@@ -151,22 +151,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     rules=rules,
                 )
             )
-        discovered = u.Infra.discover_projects(workspace_root)
-        child_projects = (
-            sorted(
-                (
-                    project.path
-                    for project in discovered.value
-                    if (
-                        project.workspace_role
-                        == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
-                    )
-                ),
-                key=lambda project_path: project_path.name,
-            )
-            if discovered.success
-            else []
-        )
+        child_projects: list[Path] = []
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)
             relative_project_root = relative_root.as_posix()
@@ -366,20 +351,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in rules.env_dirs
             if (workspace_root / env_dir).is_dir() or env_dir in generated_roots
         ]
-        discovered = u.Infra.discover_projects(workspace_root)
-        if discovered.failure:
-            return includes
-        child_projects = sorted(
-            (
-                project.path
-                for project in discovered.value
-                if (
-                    project.workspace_role
-                    == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
-                )
-            ),
-            key=lambda project_path: project_path.name,
-        )
+        child_projects: list[Path] = []
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)
             for env_dir in u.Infra.discover_python_dirs(child_project):

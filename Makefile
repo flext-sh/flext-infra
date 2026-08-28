@@ -211,10 +211,6 @@ FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJ
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 
-# Workspace-root gate verbs fan out across declared members through the generic
-# `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
-# from the constants SSOT, never hardcoded here). Members and standalone projects
-# run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 # Provisioning is declared once. The project manifests are copied under the
 # declared runtime before export so uv cannot discover an ancestor workspace or
 # substitute its lock and local sources.

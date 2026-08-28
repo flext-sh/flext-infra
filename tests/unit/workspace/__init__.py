@@ -20,27 +20,19 @@ if TYPE_CHECKING:
     from .test_docs_scope_worktree import (
         test_project_scope_uses_declared_name_inside_worktree_lane,
     )
-    from .test_environment_provenance import (
-        TestsFlextInfraWorkspaceEnvironmentProvenance,
-    )
     from .test_facade_environment_sync import (
         TestsFlextInfraFacadeBaseMk,
         TestsFlextInfraFacadeEnvironmentSync,
     )
     from .test_main import TestsFlextInfraWorkspaceMain, workspace_main
-    from .test_manifest_v2_contract import TestsWorkspaceManifestV2Contract
     from .test_vscode import TestsFlextInfraCodegenVscode
-    from .test_workspace_root_make_contract import TestsWorkspaceRootMakeContract
     from .worktree_fixture import WorktreeFixture
 __all__: tuple[str, ...] = (
     "TestsDetectorOwnsNoProjectRegistry",
     "TestsFlextInfraCodegenVscode",
     "TestsFlextInfraFacadeBaseMk",
     "TestsFlextInfraFacadeEnvironmentSync",
-    "TestsFlextInfraWorkspaceEnvironmentProvenance",
     "TestsFlextInfraWorkspaceMain",
-    "TestsWorkspaceManifestV2Contract",
-    "TestsWorkspaceRootMakeContract",
     "WorktreeFixture",
     "test_project_scope_uses_declared_name_inside_worktree_lane",
     "test_toc_is_inserted_after_h1_preceded_by_html_comment",
@@ -61,17 +53,12 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_docs_scope_worktree": (
                 "test_project_scope_uses_declared_name_inside_worktree_lane",
             ),
-            ".test_environment_provenance": (
-                "TestsFlextInfraWorkspaceEnvironmentProvenance",
-            ),
             ".test_facade_environment_sync": (
                 "TestsFlextInfraFacadeBaseMk",
                 "TestsFlextInfraFacadeEnvironmentSync",
             ),
             ".test_main": ("TestsFlextInfraWorkspaceMain", "workspace_main"),
-            ".test_manifest_v2_contract": ("TestsWorkspaceManifestV2Contract",),
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),
-            ".test_workspace_root_make_contract": ("TestsWorkspaceRootMakeContract",),
             ".worktree_fixture": ("WorktreeFixture",),
         }),
         alias_groups=MappingProxyType({}),

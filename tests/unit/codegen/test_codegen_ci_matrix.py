@@ -130,57 +130,6 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="group: ${{ github.workflow }}-${{ github.ref }}")
         tm.that(workflow, has="cancel-in-progress: true")
 
-    def test_ci_workflow_stable_blank_line_without_private_submodules(
-        self, tmp_path: Path
-    ) -> None:
-        """Empty private_submodules include must not accumulate blank lines."""
-        root = self._render_project(tmp_path / "member")
-        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8"
-        )
-        marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
-        tm.that(workflow, has=marker)
-        tm.that(
-            workflow, lacks="fetch-depth: 0\n\n\n      - name: Install mise toolchain"
-        )
-        root2 = self._render_project(tmp_path / "member-again")
-        workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8"
-        )
-        tm.that(workflow2, eq=workflow)
-
-    def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
-        """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        from flext_infra import config, m
-        from flext_cli import u as cli_u
-
-        codegen = config.Infra.codegen
-        private = codegen.ci_private_submodules.get("cosmos-main")
-        tm.that(private is not None, eq=True)
-        assert private is not None
-        tpl = (
-            Path(__file__).resolve().parents[3]
-            / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
-        )
-        spec = m.Infra.GithubWorkflowRenderSpec(
-            dist="cosmos-main",
-            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
-            repository_branch="develop",
-            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
-            python_version=codegen.toolchain.python_version,
-            dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-            github_actions=codegen.github_actions,
-            make=codegen.make,
-            workspace_repositories=(),
-            checkout_submodules=codegen.checkout_submodules,
-            private_submodules=private,
-        )
-        rendered = cli_u.Cli.template_render(tpl, spec)
-        tm.ok(rendered)
-        rendered_text: str = rendered.value
-        tm.that(rendered_text, has="Init private workspace members")
-        tm.that(rendered_text.count("Init private workspace members"), eq=2)
-
     def test_ci_uses_typed_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")
@@ -359,7 +308,7 @@ class TestCodegenCiMatrix:
         tm.that(content, lacks="{% if make_profile")
 
     def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
-        """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
+        """The explicit workflow flag enables push to main."""
         from flext_infra import m
         from flext_cli import u as cli_u
 
@@ -370,7 +319,6 @@ class TestCodegenCiMatrix:
         )
         disabled = m.Infra.GithubWorkflowRenderSpec(
             dist="flext-demo",
-            make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,

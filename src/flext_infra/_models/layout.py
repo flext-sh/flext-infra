@@ -112,14 +112,6 @@ class FlextInfraModelsLayout:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Directories allowed at the project root"),
         ]
-        profile_extra_root_files: Annotated[
-            Mapping[str, tuple[t.NonEmptyStr, ...]],
-            m.Field(description="Extra canonical root files per project profile"),
-        ]
-        profile_project_patterns: Annotated[
-            Mapping[str, tuple[t.NonEmptyStr, ...]],
-            m.Field(description="Project-name globs resolving each profile"),
-        ]
         move_docs_dirs: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Root docs directories moved under docs_target"),

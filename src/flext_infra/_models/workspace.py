@@ -7,7 +7,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -18,30 +18,6 @@ class FlextInfraModelsWorkspace:
     - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
-
-    class WorkspaceEnvironmentRequest(m.ContractModel):
-        """Read-only request for validating the active workspace environment."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        workspace_root: Annotated[
-            Path, m.Field(alias="workspace", description="Workspace root path")
-        ]
-
-    class FlextBindingRequest(m.ContractModel):
-        """Session request binding one consumer onto a flext worktree."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        workspace_root: Annotated[
-            Path, m.Field(alias="workspace", description="Consumer project root")
-        ]
-        flext_root: Annotated[
-            Path, m.Field(description="Flext worktree supplying the packages")
-        ]
-        python: Annotated[
-            Path, m.Field(description="Interpreter of the environment to rebind")
-        ]
 
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""
@@ -80,10 +56,6 @@ class FlextInfraModelsWorkspace:
         package_name: Annotated[
             str, m.Field(description="Primary Python package name")
         ] = ""
-        workspace_role: Annotated[
-            c.Infra.WorkspaceProjectRole,
-            m.Field(description="Operational role relative to the uv workspace root"),
-        ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.

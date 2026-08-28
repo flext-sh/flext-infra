@@ -16,11 +16,7 @@ class FlextInfraUtilitiesRepository:
 
     @staticmethod
     def derived_repository_ref(
-        distribution: str,
-        *,
-        provider: m.Infra.ProviderSpec,
-        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.SUBMODULE,
+        distribution: str, *, provider: m.Infra.ProviderSpec
     ) -> m.Infra.RepositoryRef:
         """Derive one repository reference from generic provider policy.
 
@@ -34,13 +30,7 @@ class FlextInfraUtilitiesRepository:
             distribution=distribution,
             url=f"{provider.base_url.rstrip('/')}/{distribution}.git",
             path=Path(distribution),
-            role=role,
             provider=provider.name,
-            checkout=checkout,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
         )
 
     @staticmethod
@@ -61,10 +51,8 @@ class FlextInfraUtilitiesRepository:
     def resolve_integration_branch(
         workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
     ) -> str:
-        """Return the workspace overlay branch, else the provider catalog branch."""
-        if workspace.integration is not None:
-            integration_branch: str = workspace.integration.branch
-            return integration_branch
+        """Return the provider-owned integration branch."""
+        del workspace
         provider_branch: str = provider.branch
         return provider_branch
 

@@ -118,17 +118,8 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             provider=self.provider,
             url=repository_url,
             path=Path(),
-            role=c.Infra.RepositoryRole.STANDALONE,
-            state=c.Infra.RepositoryState.ACTIVE,
-            checkout=c.Infra.CheckoutKind.INDEPENDENT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=False,
-            read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=self.name,
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,
@@ -149,7 +140,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 upstream=self.upstream,
                 homepage=repository_page,
                 documentation=repository_page,
-                workspace_root_rel=".",
                 year=self.year,
             ),
         )

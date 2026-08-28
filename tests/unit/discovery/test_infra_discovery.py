@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_tests import tm
-from tests import c, m, u
+from tests import m, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -34,8 +34,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         proj1.mkdir()
         (proj1 / "pyproject.toml").write_text(
             "[project]\nname='project1'\nversion='0.1.0'\n"
-            "dependencies=['flext-core>=0.1.0']\n\n"
-            "[tool.flext.workspace]\nattached = true\n",
+            "dependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
         (proj1 / "src").mkdir()
@@ -61,26 +60,13 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     def test_discover_projects_happy_path(
         self, service: u.Infra, workspace_with_projects: Path
     ) -> None:
-        result = service.discover_projects(
-            workspace_with_projects, include_attached=True
-        )
+        result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
         projects = result.value
-        tm.that(len(projects), eq=2)
-        tm.that(projects[0].name, eq="project1")
-        tm.that(projects[1].name, eq="project2")
-        tm.that(projects[0].has_tests, eq=True)
+        tm.that(len(projects), eq=1)
+        tm.that(projects[0].name, eq="workspace")
+        tm.that(projects[0].has_tests, eq=False)
         tm.that(projects[0].has_src, eq=True)
-        tm.that(projects[1].has_src, eq=False)
-        tm.that(projects[1].has_tests, eq=False)
-        tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.ATTACHED)
-        tm.that(
-            (
-                projects[1].workspace_role
-                == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
-            ),
-            eq=True,
-        )
 
     def test_discover_projects_empty_workspace(
         self, service: u.Infra, tmp_path: Path
@@ -158,38 +144,10 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.ok(result)
         tm.that(result.value, eq=[])
 
-    def test_discover_projects_prefers_workspace_children_over_root_project(
-        self, service: u.Infra, tmp_path: Path
-    ) -> None:
-        (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace-root'\ndependencies=['flext-core>=0.1.0']\n\n"
-            "[tool.uv.workspace]\n"
-            "members = ['project2']\n",
-            encoding="utf-8",
-        )
-        project1 = tmp_path / "project1"
-        project1.mkdir()
-        (project1 / "pyproject.toml").write_text(
-            "[project]\nname='project1'\nversion='0.1.0'\n"
-            "dependencies=['flext-core>=0.1.0']\n\n"
-            "[tool.flext.workspace]\nattached = true\n",
-            encoding="utf-8",
-        )
-        project2 = tmp_path / "project2"
-        project2.mkdir()
-        (project2 / "pyproject.toml").write_text(
-            "[project]\nname='project2'\n", encoding="utf-8"
-        )
-
-        result = service.discover_projects(tmp_path, include_attached=True)
-
-        tm.ok(result)
-        tm.that([project.name for project in result.value], eq=["project1", "project2"])
-
     def test_discover_projects_derives_package_name_from_hatch_packages(
         self, service: u.Infra, tmp_path: Path
     ) -> None:
-        project = tmp_path / "project1"
+        project = tmp_path
         package_dir = project / "src" / "custom_pkg"
         package_dir.mkdir(parents=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
@@ -226,45 +184,6 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(result.value[0].path, eq=tmp_path.resolve())
         tm.that(result.value[0].name, eq="demo-project")
         tm.that(result.value[0].package_name, eq="demo_pkg")
-
-    def test_discover_python_dirs_skips_workspace_excluded_dirs(
-        self, service: u.Infra, tmp_path: Path
-    ) -> None:
-        """Manifest-excluded vendored trees are never Python source roots."""
-        config_dir = tmp_path / "config"
-        config_dir.mkdir()
-        (config_dir / "workspace.yaml").write_text(
-            "version: 3\n"
-            "name: demo\n"
-            "repository:\n"
-            "  name: demo\n"
-            "  distribution: demo\n"
-            "  provider: acme-hosting\n"
-            "  url: https://github.com/acme-hosting/demo.git\n"
-            "  path: .\n"
-            "  role: standalone\n"
-            "  state: active\n"
-            "  checkout: independent\n"
-            "  codegen: conform\n"
-            "  package: true\n"
-            "  editable: false\n"
-            "  read_only: false\n"
-            "members: []\n"
-            "exclusions:\n"
-            "  - path: data\n"
-            "    reason: vendored document submodules\n",
-            encoding="utf-8",
-        )
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        (src_dir / "module.py").write_text("X = 1\n", encoding="utf-8")
-        data_dir = tmp_path / "data"
-        data_dir.mkdir()
-        (data_dir / "vendored.py").write_text("Y = 2\n", encoding="utf-8")
-
-        discovered = service.discover_python_dirs(tmp_path)
-
-        tm.that(discovered, eq=["src"])
 
 
 __all__: t.StrSequence = []

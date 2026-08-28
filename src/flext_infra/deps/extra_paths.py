@@ -40,20 +40,6 @@ class FlextInfraExtraPathsManager(
         ),
     ] = ()
 
-    _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
-
-    @override
-    def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
-        """Initialize workspace metadata after validation."""
-        self._workspace_project_names = set(
-            u.Infra.workspace_member_names(self.workspace_root)
-        )
-
-    @property
-    def workspace_project_names(self) -> t.StrSequence:
-        """Managed workspace member names backing dependency resolution."""
-        return tuple(sorted(self._workspace_project_names))
-
     @override
     def execute(self) -> p.Result[bool]:
         """Synchronize extra paths for the configured project slice."""

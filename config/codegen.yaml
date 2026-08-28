@@ -74,32 +74,8 @@ Infra:
     # actions/checkout submodules mode for every generated workflow.
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
-    # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through the override map.
+    # with "Repository not found" before any code runs.
     checkout_submodules: "false"
-    checkout_submodules_overrides: {}
-
-    # Per-distribution private workspace-member auth for CI. The default
-    # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
-    # read-only deploy-key secrets that the generated workflow materializes
-    # before `make setup` (which otherwise fails on HTTPS submodule clone).
-    ci_private_submodules:
-      cosmos-main:
-        paths:
-          - apps/cosmos-charts
-          - apps/cosmos-gitops
-        deploy_keys:
-          - secret: CHARTS_DEPLOY_KEY
-            host_alias: github-charts
-            submodule: cosmos-charts
-            path: apps/cosmos-charts
-            ssh_url: git@github-charts:datacosmos-br/cosmos-charts.git
-          - secret: GITOPS_DEPLOY_KEY
-            host_alias: github.com
-            submodule: cosmos-gitops
-            path: apps/cosmos-gitops
-            ssh_url: git@github.com:datacosmos-br/cosmos-gitops.git
-
     github_actions:
       checkout:
         repository: actions/checkout
@@ -674,24 +650,6 @@ Infra:
         - docker
         - dbt_packages
         - ast-grep-rules
-      # Per-project-type extra canonical root files; the profile of a project
-      # is resolved by matching its name against profile_project_patterns.
-      profile_extra_root_files:
-        dbt:
-          - dbt_project.yml
-          - packages.yml
-          - profiles.yml
-          - package-lock.yml
-        meltano:
-          - meltano.yml
-          - docker-compose.test.yml
-          - dbt_project.yml
-      profile_project_patterns:
-        dbt:
-          - flext-dbt-*
-        meltano:
-          - flext-meltano
-          - flext-tap-*
       # Root documentation directories moved under <docs_target>/<name>/.
       move_docs_dirs:
         - api-reference
@@ -930,7 +888,6 @@ Infra:
         neptor:
           keep_root_files:
             - Taskfile.yml
-            - workspace_custom.mk
           ignore_globs:
             - typings
         vectorbt.pro:
@@ -943,7 +900,6 @@ Infra:
             - activate_workspace.sh
             - poetry.toml
             - workspace_config.py
-            - workspace_custom.mk
           ignore_globs:
             - neptor
             - mt5linux
@@ -1127,7 +1083,7 @@ Infra:
           - rumdl>=0.2.45
           - vulture>=2.16
           - yamlfix>=1.19.1
-        dependency_profiles:
+        upstreams:
           # NOTE: a workspace manifest may declare an upstream distribution;
           # conformance must model that upstream relationship generically.
           - upstream: flext_core
@@ -1574,8 +1530,7 @@ Infra:
         - source: base/.github/workflows/docs.yml.j2
           destination: .github/workflows/docs.yml
           # O workflow chama `uv sync`; e esta projecao que instala o uv antes.
-          # Restringir a workspace-root deixava os membros com uma copia stale
-          # sem o passo Install uv, e o job morria em "uv: command not found".
+          # Every repository receives the same self-contained uv bootstrap.
           delegate: render
           overwrite: true
         - source: base/.github/workflows/release.yml.j2

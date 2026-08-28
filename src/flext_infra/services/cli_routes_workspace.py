@@ -9,11 +9,6 @@ from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.environment_provenance import (
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
-from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 
 class WorkspaceRoutes(RefactorRoutes):
@@ -34,46 +29,10 @@ class WorkspaceRoutes(RefactorRoutes):
         ),
         c.Infra.CLI_GROUP_WORKSPACE: (
             m.Cli.ResultCommandRoute(
-                name="verify-environment",
-                help_text="Verify live workspace editable provenance",
-                model_cls=m.Infra.WorkspaceEnvironmentRequest,
-                handler=lambda params: (
-                    FlextInfraWorkspaceEnvironmentProvenance.execute_request(
-                        params
-                    ).map(CliRouteBase.as_route_value)
-                ),
-                success_message="workspace editable provenance verified",
-            ),
-            m.Cli.ResultCommandRoute(
-                name="flext-binding",
-                help_text="Bind this project onto a flext worktree for the session",
-                model_cls=m.Infra.FlextBindingRequest,
-                handler=lambda params: FlextInfraFlextBindingService.apply(
-                    consumer_root=params.workspace_root,
-                    flext_root=params.flext_root,
-                    python=params.python,
-                ).map(CliRouteBase.as_route_value),
-                success_message="flext worktree binding applied",
-            ),
-            *(
-                m.Cli.ResultCommandRoute(
-                    name=route_name,
-                    help_text=help_text,
-                    model_cls=model_cls,
-                    handler=lambda params, mc=model_cls: mc.execute_command(params),
-                )
-                for route_name, help_text, model_cls in (
-                    (
-                        "detect",
-                        "Detect workspace or standalone mode",
-                        FlextInfraWorkspaceDetector,
-                    ),
-                    (
-                        "orchestrate",
-                        "Run make verb across projects",
-                        FlextInfraOrchestratorService,
-                    ),
-                )
+                name="detect",
+                help_text="Detect workspace or standalone mode",
+                model_cls=FlextInfraWorkspaceDetector,
+                handler=FlextInfraWorkspaceDetector.execute_command,
             ),
         ),
     }

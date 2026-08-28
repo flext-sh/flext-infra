@@ -19,47 +19,18 @@ class TestsCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
     @staticmethod
-    def _render_makefile(
-        tmp_path: Path,
-        profile: c.Infra.MakeProfile,
-        *,
-        attached: bool = False,
-        local_infra: bool = False,
-    ) -> tuple[Path, Path]:
+    def _render_makefile(tmp_path: Path) -> tuple[Path, Path]:
         provider = config.Infra.codegen.providers[0]
-        role = (
-            c.Infra.RepositoryRole.WORKSPACE_MEMBER
-            if attached
-            else c.Infra.RepositoryRole(profile.value)
-        )
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
             distribution="fixture-project",
             url=f"{provider.base_url}/fixture-project.git",
             path=Path(),
-            role=role,
             provider=provider.name,
-            checkout=(
-                c.Infra.CheckoutKind.SUBMODULE
-                if attached
-                else c.Infra.CheckoutKind.ROOT
-            ),
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
         )
-        project_root = tmp_path / profile.value / "fixture-project"
-        workspace_root = project_root.parent if attached else project_root
-        infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_members = (
-            (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
-            if local_infra
-            else ()
-        )
+        project_root = tmp_path / "fixture-project"
+        workspace_root = project_root
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name="fixture-project",
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name="fixture_project",
@@ -77,10 +48,8 @@ class TestsCodegenMakeEnvironment:
                 upstream="flext_cli",
                 homepage="https://github.com/flext-sh/fixture-project",
                 documentation="https://github.com/flext-sh/fixture-project",
-                workspace_root_rel=".",
                 year=2026,
             ),
-            members=local_members,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -97,55 +66,17 @@ class TestsCodegenMakeEnvironment:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        if attached:
-            member_source = tmp_path / "member-source"
-            member_source.mkdir()
-            (member_source / "README.md").write_text(
-                "fixture member\n", encoding="utf-8"
-            )
-            test_u.Tests.initialize_git_repo(member_source)
-            workspace_root.mkdir(parents=True)
-            (workspace_root / "README.md").write_text(
-                "fixture workspace\n", encoding="utf-8"
-            )
-            test_u.Tests.initialize_git_repo(workspace_root)
-            tm.ok(
-                u.Cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "-c",
-                        "protocol.file.allow=always",
-                        "submodule",
-                        "add",
-                        "-q",
-                        str(member_source),
-                        project_root.name,
-                    ],
-                    cwd=workspace_root,
-                )
-            )
-        else:
-            project_root.mkdir(parents=True)
+        project_root.mkdir(parents=True)
         tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
         return project_root, workspace_root
 
-    @pytest.mark.parametrize(
-        ("profile", "attached"),
-        [
-            (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
-            (c.Infra.MakeProfile.STANDALONE, True),
-            (c.Infra.MakeProfile.STANDALONE, False),
-        ],
-    )
     def test_generated_make_uses_project_runtime_venv_under_hostile_env(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
+        self, tmp_path: Path
     ) -> None:
         """Every generated shell receives the project-owned runtime venv."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, profile, attached=attached
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         runtime_root = project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
@@ -158,17 +89,19 @@ class TestsCodegenMakeEnvironment:
         hostile_python = hostile_bin / "python"
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
-        (project_root / "custom.mk").write_text(
-            ".PHONY: _custom_status_probe\n"
-            "_custom_status_probe:\n"
-            "\t@printf '%s\\n' "
-            "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
-            "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
-            "'VIRTUAL_ENV=$(VIRTUAL_ENV)' "
-            "'PATH=$(PATH)'\n"
-            "\t@command -v python\n",
+        handler = project_root / "scripts" / "status" / "probe.sh"
+        handler.parent.mkdir(parents=True)
+        handler.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' "
+            '"FLEXT_INFRA_PYTHON=$FLEXT_INFRA_PYTHON" '
+            '"UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT" '
+            '"VIRTUAL_ENV=$VIRTUAL_ENV" '
+            '"PATH=$PATH"\n'
+            "command -v python\n",
             encoding="utf-8",
         )
+        handler.chmod(0o755)
         active_env = {
             "FLEXT_INFRA_PYTHON": str(hostile_python),
             "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
@@ -200,14 +133,11 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
         tm.that(output[4], eq=str(runtime_python))
 
-    @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
-    )
     def test_setup_provisions_environment_before_project_runtime(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile
+        self, tmp_path: Path
     ) -> None:
         """Setup creates the venv and syncs dependencies before any runtime use."""
-        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -271,9 +201,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Keep managed tools reachable while removing the hostile active venv."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -317,9 +245,7 @@ class TestsCodegenMakeEnvironment:
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the project-owned environment."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         makefile = (project_root / "Makefile").read_text()
 
         tm.that(
@@ -346,9 +272,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Refresh one Git dependency without globally upgrading the lock."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         runtime_python = project_root / ".venv" / "bin" / "python"
         test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
         (project_root / "pyproject.toml").write_text(
@@ -392,9 +316,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Fail before uv when the dependency selector is not one package name."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         runtime_python = project_root / ".venv" / "bin" / "python"
         test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
         uv_log = tmp_path / "uv.log"
@@ -429,9 +351,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """A public gate preserves the canonical setup-required diagnostic."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
 
         process = tm.ok(
             u.Cli.run_raw(
@@ -448,9 +368,7 @@ class TestsCodegenMakeEnvironment:
         )
 
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
         for required in (
@@ -459,10 +377,8 @@ class TestsCodegenMakeEnvironment:
             '$(UV) export --quiet --project "$(SETUP_MANIFEST_ROOT)"',
             '$(UV) pip install --python "$(RUNTIME_VENV)"',
             '--exact --no-deps --requirements "$(SETUP_REQUIREMENTS)"',
-            '--no-deps --editable "$(PROJECT_ROOT)"',
+            '--editable "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$$superproject" submodule update --init -- "$$child_path"',
-            "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (
@@ -479,9 +395,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Make owns lock upgrade, open-floor projection, and final resolution."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
+        project_root, _workspace_root = self._render_makefile(tmp_path)
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
         tm.that(makefile, has="deps modernize")

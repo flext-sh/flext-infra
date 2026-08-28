@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u as cli_u
-from flext_infra import c, config, m
+from flext_infra import config, m
 from flext_tests import tm
 
 
@@ -20,7 +20,6 @@ def _render_ci(*, repository_branch: str) -> str:
     codegen = config.Infra.codegen
     spec = m.Infra.GithubWorkflowRenderSpec(
         dist="mcb",
-        make_profile=c.Infra.MakeProfile.STANDALONE,
         repository_branch=repository_branch,
         ci_trigger_branches=tuple(
             dict.fromkeys((*_BASELINE_BRANCHES[:-1], repository_branch, "main"))

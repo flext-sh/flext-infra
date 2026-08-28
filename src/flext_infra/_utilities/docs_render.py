@@ -479,8 +479,8 @@ class FlextInfraUtilitiesDocsRender:
         """Return the managed mkdocs.yml for a project scope.
 
         Renders the canonical ``mkdocs_project.yml.j2`` template through the
-        flext-cli facade shared with the workspace-root variant; theme, plugins,
-        and validation macros live in the template, not Python.
+        flext-cli facade; theme, plugins, and validation macros live in the
+        template, not Python.
         """
         _ = modules
         data = contract

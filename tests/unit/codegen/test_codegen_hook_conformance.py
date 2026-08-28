@@ -10,7 +10,6 @@ from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import u as test_u
 
 pytestmark = pytest.mark.slow
 
@@ -33,10 +32,7 @@ class TestGitHookConformance:
 
     @staticmethod
     def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
-        """Load the smallest owner-written manifest needed by conform."""
-        test_u.Tests.write_standalone_workspace_manifest(
-            root, "flext-demo", upstream="flext_cli"
-        )
+        """Load repository identity directly from its canonical metadata."""
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
     @staticmethod

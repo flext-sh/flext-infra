@@ -31,11 +31,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
     @staticmethod
-    def _link_mode(
-        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> str:
-        """Resolve the repository override through one codegen authority."""
-        link_mode = repository.uv_link_mode or toolchain.uv_link_mode
+    def _link_mode(toolchain: m.Infra.ToolchainSpec) -> str:
+        """Read link mode from its sole tooling owner."""
+        link_mode = toolchain.uv_link_mode
         if not isinstance(link_mode, str):
             msg = "resolved uv link mode must be a string"
             raise TypeError(msg)
@@ -563,13 +561,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         project = workspace.project
         if project is None:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                f"scaffold workspace has no project metadata: {workspace.name}"
+                "scaffold repository has no project metadata: "
+                f"{workspace.repository.name}"
             )
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         # mro-j47u (codex): new and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
-        # NOTE(mro-p68a.5, agent codex): a declared member consumes its parent
-        # tooling profile even before the atomic scaffold creates files on disk.
+        # The selected repository consumes its own tooling contract before the
+        # atomic scaffold creates files on disk.
         tooling_root = target.root
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=tooling_root, skip_check=True
@@ -748,10 +747,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             initial_tooling.value,
             providers=codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
-            uv_link_mode=repository.uv_link_mode,
+            uv_link_mode=None,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -820,10 +818,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
-                pyproject_read.value,
-                providers=codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                pyproject_read.value, providers=codegen.providers, workspace=workspace
             )
             if dependency_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -868,10 +863,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_read.value,
             providers=codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
-            uv_link_mode=repository.uv_link_mode,
+            uv_link_mode=None,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1152,10 +1146,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # checkout rather than declared: a stale flag would silently
                     # disable Dependabot for the repository.
                     has_devcontainer=(repository_root / ".devcontainer").is_dir(),
-                    checkout_submodules=codegen.checkout_submodules_overrides.get(
-                        dist, codegen.checkout_submodules
-                    ),
-                    private_submodules=codegen.ci_private_submodules.get(dist),
+                    checkout_submodules=codegen.checkout_submodules,
                     ci_matrix_auto_run=target.ci_matrix_auto_run,
                 )
             )
@@ -1190,9 +1181,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     infra_cli=config.Infra.name,
                     infra_repository=infra_repository.value,
                     infra_repository_branch=infra_provider.value.branch,
-                    uv_link_mode=FlextInfraCodegenConform._link_mode(
-                        repository, codegen.toolchain
-                    ),
+                    uv_link_mode=FlextInfraCodegenConform._link_mode(codegen.toolchain),
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                     dependency_cooldown_exclusions=(
                         codegen.toolchain.dependency_cooldown_exclusions
@@ -1270,9 +1259,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 infra_repository=infra_repository.value,
                 infra_repository_branch=infra_provider.value.branch,
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=FlextInfraCodegenConform._link_mode(
-                    repository, codegen.toolchain
-                ),
+                uv_link_mode=FlextInfraCodegenConform._link_mode(codegen.toolchain),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=(
                     codegen.toolchain.dependency_cooldown_exclusions
@@ -1300,18 +1287,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Build the complete typed context consumed by project templates."""
         if workspace.project is None:
             return r[m.Infra.ProjectRenderContext].fail(
-                f"workspace has no project metadata: {workspace.name}"
+                f"repository has no project metadata: {workspace.repository.name}"
             )
         project = workspace.project
-        dependency_profile = next(
+        upstream_dependencies = next(
             (
                 item
-                for item in codegen.scaffold.project.dependency_profiles
+                for item in codegen.scaffold.project.upstreams
                 if item.upstream == project.upstream
             ),
             None,
         )
-        if dependency_profile is None:
+        if upstream_dependencies is None:
             return r[m.Infra.ProjectRenderContext].fail(
                 f"unsupported scaffold upstream: {project.upstream}"
             )
@@ -1354,7 +1341,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 scaffold=codegen.scaffold,
                 gitignore_sections=tuple(codegen.gitignore_sections),
-                dependency_profile=dependency_profile,
+                upstream_dependencies=upstream_dependencies,
                 tooling=config.Infra.tooling,
                 # Why: the fleet policy alone is not the effective Ruff contract.
                 # A repository may carry an operator-authorized exemption in its

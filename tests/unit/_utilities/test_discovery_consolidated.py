@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_tests import tm
 from tests import c, m, u
 
@@ -21,189 +19,16 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             tm.ok(result)
             tm.that(result.value.exit_code, eq=0)
 
-    def test_discover_project_roots_from_tmp_workspace(self, tmp_path: Path) -> None:
+    def test_discover_project_roots_returns_supplied_repository(
+        self, tmp_path: Path
+    ) -> None:
         (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='workspace'\n"
-            "[tool.flext.workspace]\nmembers=['demo-project']\n",
-            encoding="utf-8",
-        )
-        project = tmp_path / "demo-project"
-        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (project / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[tool.poetry]\nname='demo'\n", encoding="utf-8"
+            "[project]\nname='repository'\n", encoding="utf-8"
         )
 
         roots = u.Infra.discover_project_roots(tmp_path)
 
-        tm.that(roots, eq=[project])
-
-    def test_discover_project_roots_includes_attached_project(
-        self, tmp_path: Path
-    ) -> None:
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="workspace"\nversion="0.1.0"\n'
-            "[tool.flext.workspace]\nmembers=['attached-project']\n",
-            encoding="utf-8",
-        )
-        attached = tmp_path / "attached-project"
-        (attached / c.Infra.DEFAULT_SRC_DIR / "attached_project").mkdir(parents=True)
-        (attached / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="attached-project"\nversion="0.1.0"\n'
-            "[tool.flext.workspace]\nattached=true\n",
-            encoding="utf-8",
-        )
-
-        roots = u.Infra.discover_project_roots(tmp_path)
-
-        tm.that(roots, has=attached.resolve())
-
-    def test_discover_project_roots_includes_attached_external_sibling(
-        self, tmp_path: Path
-    ) -> None:
-        """A sibling joins discovery by declaring itself attached."""
-        # mro-4gbp: selection is declarative and name-agnostic - the sibling
-        # opts in through its own pyproject, never through a name the engine
-        # knows. No patching: the real public surface is exercised.
-        sibling_name = "neighbour-workspace"
-        workspace = tmp_path / "root-workspace"
-        workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="root-workspace"\nversion="0.1.0"\n'
-            "\n[tool.flext.workspace]\n"
-            f'members = ["../{sibling_name}"]\n',
-            encoding="utf-8",
-        )
-        external = tmp_path / sibling_name
-        (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_workspace").mkdir(parents=True)
-        (external / c.Infra.PYPROJECT_FILENAME).write_text(
-            f'[project]\nname="{sibling_name}"\nversion="0.1.0"\n'
-            'dependencies=["flext-core"]\n'
-            "\n[tool.flext.workspace]\nattached = true\n",
-            encoding="utf-8",
-        )
-
-        roots = u.Infra.discover_project_roots(workspace, include_attached=True)
-
-        tm.that(roots, has=external.resolve())
-
-    def test_discover_project_roots_isolates_inaccessible_external_sibling(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """An inaccessible sibling cannot hide another valid attached project."""
-        workspace = tmp_path / "root-workspace"
-        workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="root-workspace"\nversion="0.1.0"\n'
-            "\n[tool.flext.workspace]\n"
-            'members = ["../accessible-neighbour", "../inaccessible-neighbour"]\n',
-            encoding="utf-8",
-        )
-        accessible = tmp_path / "accessible-neighbour"
-        (accessible / c.Infra.DEFAULT_SRC_DIR / "accessible_neighbour").mkdir(
-            parents=True
-        )
-        (accessible / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="accessible-neighbour"\nversion="0.1.0"\n'
-            'dependencies=["flext-core"]\n'
-            "\n[tool.flext.workspace]\nattached = true\n",
-            encoding="utf-8",
-        )
-        inaccessible = tmp_path / "inaccessible-neighbour"
-        inaccessible.mkdir()
-        inaccessible_pyproject = inaccessible / c.Infra.PYPROJECT_FILENAME
-        original_is_file = Path.is_file
-
-        def _is_file(path: Path) -> bool:
-            if path == inaccessible_pyproject:
-                raise PermissionError(path)
-            return original_is_file(path)
-
-        monkeypatch.setattr(Path, "is_file", _is_file)
-
-        with pytest.raises(PermissionError, match="inaccessible-neighbour"):
-            u.Infra.discover_project_roots(workspace, include_attached=True)
-
-    def test_discover_project_roots_prefers_tool_flext_workspace_members(
-        self, tmp_path: Path
-    ) -> None:
-        workspace_src = tmp_path / c.Infra.DEFAULT_SRC_DIR
-        workspace_src.mkdir(parents=True)
-        (tmp_path / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='workspace'\n\n"
-            "[tool.flext.workspace]\n"
-            "members = ['beta', 'alpha']\n",
-            encoding="utf-8",
-        )
-        for project_name in ("alpha", "beta"):
-            project_root = tmp_path / project_name
-            (project_root / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-            (project_root / c.Infra.MAKEFILE_FILENAME).write_text(
-                "all:\n", encoding="utf-8"
-            )
-            (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
-                f"[project]\nname='{project_name}'\n", encoding="utf-8"
-            )
-
-        roots = u.Infra.discover_project_roots(tmp_path)
-
-        tm.that(roots, eq=[tmp_path / "beta", tmp_path / "alpha"])
-
-    def test_discover_project_roots_selects_only_configured_projects(
-        self, tmp_path: Path
-    ) -> None:
-        self._init_git_repo(tmp_path)
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='workspace'\n"
-            "[tool.flext.workspace]\nmembers=['tracked']\n",
-            encoding="utf-8",
-        )
-        tracked_project = tmp_path / "tracked"
-        (tracked_project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (tracked_project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='tracked'\n", encoding="utf-8"
-        )
-        untracked_project = tmp_path / "untracked"
-        (untracked_project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (untracked_project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='untracked'\n", encoding="utf-8"
-        )
-        add_result = u.Cli.run_raw(
-            ["git", "add", "tracked/pyproject.toml"], cwd=tmp_path
-        )
-        tm.ok(add_result)
-        tm.that(add_result.value.exit_code, eq=0)
-
-        roots = u.Infra.discover_project_roots(tmp_path)
-
-        tm.that(roots, eq=[tracked_project])
-
-    def test_gitmodules_only_third_party_project_is_not_discovered(
-        self, tmp_path: Path
-    ) -> None:
-        managed = tmp_path / "managed"
-        third_party = tmp_path / "vendor-fork"
-        for project in (managed, third_party):
-            (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-            (project / c.Infra.PYPROJECT_FILENAME).write_text(
-                f"[project]\nname='{project.name}'\n", encoding="utf-8"
-            )
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='workspace'\n"
-            "[tool.flext.workspace]\nmembers=['managed']\n",
-            encoding="utf-8",
-        )
-        (tmp_path / ".gitmodules").write_text(
-            '[submodule "vendor-fork"]\n'
-            "\tpath = vendor-fork\n"
-            "\turl = https://example.invalid/vendor-fork.git\n",
-            encoding="utf-8",
-        )
-
-        roots = u.Infra.discover_project_roots(tmp_path)
-
-        tm.that(roots, eq=[managed])
+        tm.that(roots, eq=(tmp_path.resolve(),))
 
     def test_iter_python_files_returns_result_with_paths(self, tmp_path: Path) -> None:
         project = tmp_path / "pkg"
@@ -348,36 +173,6 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         tm.that(result.value, has=included_file)
         tm.that(result.value, lacks=hidden_file)
 
-    def test_find_all_pyproject_files_includes_attached_workspace_siblings(
-        self, tmp_path: Path
-    ) -> None:
-        """Sibling pyprojects are found when the sibling declares itself attached."""
-        # mro-4gbp: declarative, name-agnostic opt-in through the sibling's own
-        # pyproject. No patching: the real public surface is exercised.
-        sibling_name = "neighbour-data"
-        workspace = tmp_path / "root-workspace"
-        workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='root-workspace'\n"
-            "\n[tool.flext.workspace]\n"
-            f"members = ['../{sibling_name}']\n",
-            encoding="utf-8",
-        )
-        external = tmp_path / sibling_name
-        (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_data").mkdir(parents=True)
-        external_pyproject = external / c.Infra.PYPROJECT_FILENAME
-        external_pyproject.write_text(
-            f"[project]\nname='{sibling_name}'\nversion='0.1.0'\n"
-            "dependencies=['flext-core']\n"
-            "\n[tool.flext.workspace]\nattached = true\n",
-            encoding="utf-8",
-        )
-
-        result = u.Infra.find_all_pyproject_files(workspace)
-
-        tm.ok(result)
-        tm.that(result.value, has=external_pyproject)
-
     def test_find_all_pyproject_files_returns_empty_for_non_directory_root(
         self, tmp_path: Path
     ) -> None:
@@ -387,55 +182,6 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         tm.ok(result)
         tm.that(result.value, eq=[])
-
-    def test_discover_projects_returns_project_info(self, tmp_path: Path) -> None:
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='workspace'\n[tool.flext.workspace]\nmembers=['alpha']\n",
-            encoding="utf-8",
-        )
-        project = tmp_path / "alpha"
-        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (project / c.Infra.DIR_TESTS).mkdir(parents=True)
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='alpha'\ndependencies=['flext-core>=0.1.0']\n",
-            encoding="utf-8",
-        )
-
-        result = u.Infra.discover_projects(tmp_path)
-
-        tm.ok(result)
-        tm.that(len(result.value), eq=1)
-        info = result.value[0]
-        tm.that(info, is_=m.Infra.ProjectInfo)
-        tm.that(info.name, eq="alpha")
-        tm.that(info.has_src, eq=True)
-        tm.that(info.has_tests, eq=True)
-        tm.that(info.workspace_role, eq=c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER)
-
-    def test_discover_projects_includes_workspace_members_without_core_dep(
-        self, tmp_path: Path
-    ) -> None:
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers = ['alpha']\n",
-            encoding="utf-8",
-        )
-        project = tmp_path / "alpha"
-        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='alpha'\n", encoding="utf-8"
-        )
-
-        result = u.Infra.discover_projects(tmp_path)
-
-        tm.ok(result)
-        tm.that(len(result.value), eq=1)
-        tm.that(
-            (
-                result.value[0].workspace_role
-                == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
-            ),
-            eq=True,
-        )
 
     def test_discover_projects_accepts_project_root_as_workspace(
         self, tmp_path: Path

@@ -71,7 +71,7 @@ class FlextInfraCodegenLayoutPlanMixin:
         project_name: str,
         override: m.Infra.LayoutProjectOverrideSpec | None,
     ) -> frozenset[str]:
-        """Canonical root names for one project, profile extras included."""
+        """Canonical root names from the generic layout contract."""
         allowed = {
             *spec.canonical_root_files,
             *spec.canonical_root_dotfiles,
@@ -79,9 +79,7 @@ class FlextInfraCodegenLayoutPlanMixin:
             *spec.special_root_dirs,
             *spec.reference_root_dirs,
         }
-        for profile, patterns in spec.profile_project_patterns.items():
-            if any(fnmatchcase(project_name, pattern) for pattern in patterns):
-                allowed.update(spec.profile_extra_root_files.get(profile, ()))
+        del project_name
         if override is not None:
             allowed.update(override.keep_root_files)
         return frozenset(allowed)

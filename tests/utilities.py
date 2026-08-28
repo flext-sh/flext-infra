@@ -43,14 +43,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._result = result
 
             def resolve_projects(
-                self,
-                workspace_root: Path,
-                names: t.StrSequence,
-                *,
-                include_attached: bool = False,
+                self, workspace_root: Path, names: t.StrSequence
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
-                del workspace_root, names, include_attached
+                del workspace_root, names
                 return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
@@ -355,42 +351,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def repository_ref(
-            name: str,
-            *,
-            role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            path: Path | None = None,
+            name: str, *, path: Path | None = None
         ) -> m.Infra.RepositoryRef:
-            """Build a repository reference from the provider contract.
-
-            flext-infra owns no catalog of projects, so a test that needs a
-            repository declares the one it means instead of borrowing a row
-            from a registry. Only the provider contract (generic policy) is
-            read from config, which keeps the fixture valid for any provider.
-
-            The role decides the rest: a workspace root is its own checkout at
-            ``.`` and is never editable, while a member is a submodule at its
-            own directory and is overlaid editable. Letting callers set those
-            independently is how fixtures ended up declaring members at ``.``,
-            which is not a valid submodule pathspec.
-            """
+            """Build a repository reference from the declared provider contract."""
             provider = config.Infra.codegen.providers[0]
-            is_member = role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
             return m.Infra.RepositoryRef(
                 name=name,
                 distribution=name,
                 url=f"{provider.base_url.rstrip('/')}/{name}.git",
-                path=path if path is not None else Path(name) if is_member else Path(),
-                role=role,
+                path=path if path is not None else Path(),
                 provider=provider.name,
-                checkout=(
-                    c.Infra.CheckoutKind.SUBMODULE
-                    if is_member
-                    else c.Infra.CheckoutKind.ROOT
-                ),
-                codegen=c.Infra.CodegenKind.CONFORM,
-                package=True,
-                editable=is_member,
-                read_only=False,
             )
 
         @staticmethod
@@ -516,60 +486,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             if with_git:
                 (project_dir / ".git").mkdir(exist_ok=True)
             return project_dir
-
-        @staticmethod
-        def write_standalone_workspace_manifest(
-            project_dir: Path, name: str, *, upstream: str = "flext_core"
-        ) -> Path:
-            """Write a local standalone workspace manifest for codegen conform."""
-            config_dir = project_dir / "config"
-            config_dir.mkdir(parents=True, exist_ok=True)
-            package_name = name.replace("-", "_")
-            class_stem = "".join(part.capitalize() for part in name.split("-"))
-            namespace = class_stem
-            env_prefix = f"{name.upper().replace('-', '_')}_"
-            manifest_path = config_dir / "workspace.yaml"
-            manifest_path.write_text(
-                (
-                    "version: 3\n"
-                    f"name: {name}\n"
-                    "repository:\n"
-                    f"  name: {name}\n"
-                    f"  distribution: {name}\n"
-                    "  provider: flext-sh\n"
-                    f"  url: https://github.com/flext-sh/{name}.git\n"
-                    "  path: .\n"
-                    "  role: standalone\n"
-                    "  state: active\n"
-                    "  checkout: independent\n"
-                    "  codegen: conform\n"
-                    "  package: true\n"
-                    "  editable: true\n"
-                    "  read_only: false\n"
-                    "project:\n"
-                    f"  package_name: {package_name}\n"
-                    f"  class_stem: {class_stem}\n"
-                    f"  namespace: {namespace}\n"
-                    f"  constant_name: {name}\n"
-                    f"  namespace_attribute: {package_name}\n"
-                    f"  alias: {package_name}\n"
-                    f"  environment_prefix: {env_prefix}\n"
-                    f'  description: "Demo {name}"\n'
-                    '  version: "0.1.0"\n'
-                    "  license: MIT\n"
-                    "  author_name: FLEXT Team\n"
-                    "  author_email: team@flext.sh\n"
-                    f"  upstream: {upstream}\n"
-                    f"  homepage: https://github.com/flext-sh/{name}\n"
-                    f"  documentation: https://github.com/flext-sh/{name}\n"
-                    "  workspace_root_rel: .\n"
-                    "  year: 2026\n"
-                    "members: []\n"
-                    "exclusions: []\n"
-                ),
-                encoding="utf-8",
-            )
-            return manifest_path
 
         @staticmethod
         def create_docs_workspace(
@@ -852,29 +768,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return bare_remote
 
         @staticmethod
-        def create_path_sync_pyproject(
-            *,
-            name: str,
-            dependency_path: str = "",
-            workspace_members: t.StrSequence = (),
-        ) -> str:
-            """Render a pyproject fixture for dependency-path tests."""
-            lines = ["[project]", f'name = "{name}"']
-            if dependency_path:
-                lines.append(
-                    f'dependencies = ["flext-core @ file://{dependency_path}"]'
-                )
-                lines.extend((
-                    "",
-                    "[tool.poetry.dependencies]",
-                    f'flext-core = {{ path = "{dependency_path}" }}',
-                ))
-            if workspace_members:
-                members = ", ".join(f'"{member}"' for member in workspace_members)
-                lines.extend(("", "[tool.uv.workspace]", f"members = [{members}]"))
-            return "\n".join(lines) + "\n"
-
-        @staticmethod
         def configure_git_identity(repository_root: Path) -> None:
             """Set deterministic repository-local identity for real Git fixtures."""
             bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
@@ -1072,9 +965,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             has_src: bool = True,
             project_class: str = "FlextTestProject",
             package_name: str = "test_project",
-            workspace_role: c.Infra.WorkspaceProjectRole = (
-                c.Infra.WorkspaceProjectRole.ATTACHED
-            ),
         ) -> m.Infra.ProjectInfo:
             """Provide the typed test helper `create_project_info`."""
             return m.Infra.ProjectInfo(
@@ -1085,7 +975,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 has_src=has_src,
                 project_class=project_class,
                 package_name=package_name,
-                workspace_role=workspace_role,
             )
 
         @staticmethod

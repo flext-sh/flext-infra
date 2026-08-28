@@ -22,7 +22,6 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
@@ -34,27 +33,6 @@ pytestmark = [pytest.mark.integration]
 
 class TestsFlextInfraIntegrationInfraIntegration:
     """Integration tests for the public FlextInfra surface."""
-
-    @pytest.mark.integration
-    def test_workspace_detector_and_orchestrator_share_state(
-        self, tmp_path: Path
-    ) -> None:
-        """Test that FlextInfraWorkspaceDetector and orchestrator share state.
-
-        Validates:
-        - Detector can be created
-        - Orchestrator can be created
-        - Both can access shared workspace information
-        """
-        workspace_root = tmp_path / "workspace"
-        workspace_root.mkdir()
-        (workspace_root / ".git").mkdir()
-        detector = FlextInfraWorkspaceDetector()
-        orchestrator = FlextInfraOrchestratorService(verb="test")
-        tm.that(detector, none=False)
-        tm.that(orchestrator, none=False)
-        tm.that(detector, is_=FlextInfraWorkspaceDetector)
-        tm.that(orchestrator, is_=FlextInfraOrchestratorService)
 
     @pytest.mark.integration
     def test_workspace_detector_returns_flext_result(self) -> None:

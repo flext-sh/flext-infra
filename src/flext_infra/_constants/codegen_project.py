@@ -54,61 +54,12 @@ class FlextInfraConstantsCodegenProject:
         APPLY = "apply"
 
     @unique
-    class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository."""
-
-        WORKSPACE_ROOT = "workspace-root"
-        WORKSPACE_MEMBER = "workspace-member"
-        STANDALONE = "standalone"
-
-    @unique
-    class RepositoryRole(StrEnum):
-        """Repository role in a declared workspace topology."""
-
-        WORKSPACE_ROOT = "workspace-root"
-        WORKSPACE_MEMBER = "workspace-member"
-        STANDALONE = "standalone"
-        EXCLUDED = "excluded"
-
-    @unique
-    class RepositoryState(StrEnum):
-        """Lifecycle state used by repository selection."""
-
-        ACTIVE = "active"
-        EXCLUDED = "excluded"
-
-    @unique
-    class CheckoutKind(StrEnum):
-        """Physical checkout topology for one repository."""
-
-        ROOT = "root"
-        SUBMODULE = "submodule"
-        INDEPENDENT = "independent"
-
-    @unique
-    class CodegenKind(StrEnum):
-        """Code-generation policy applied to one repository."""
-
-        CONFORM = "conform"
-        PYTHON = "python"
-        NONE = "none"
-
-    @unique
-    class RepositoryClassification(StrEnum):
-        """Governance ownership classification for one repository."""
-
-        MANAGED = "managed"
-        EXTERNAL_FORK = "external-fork"
-        EXTERNAL_VENDOR_REFERENCE = "external-vendor-reference"
-
-    @unique
     class ProjectKind(StrEnum):
         """New-project kind; drives deps, Makefile mode, and registration."""
 
         INTERNAL = "internal"
         EXTERNAL = "external"
 
-    WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
@@ -116,8 +67,7 @@ class FlextInfraConstantsCodegenProject:
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
     # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
-    # NOTE (multi-agent, mro-wkii.17): one base catalog serves both profiles;
-    # workspace topology is owned only by config/workspace.yaml.
+    # One base catalog serves every repository; topology never selects policy.
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenProject"]
