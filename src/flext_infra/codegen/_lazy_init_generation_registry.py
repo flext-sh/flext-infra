@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
+from flext_infra._utilities._sort_keys import path_depth
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +24,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     ) -> int:
         """Remove generated files outside the canonical package artifact set."""
         try:
-            # mro-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
+            # flext-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
             self._remove_obsolete_generated_files(plan, check_only=check_only)
             self._remove_obsolete_root_support(plan, check_only=check_only)
             self._remove_generated_export_sidecars(plan, check_only=check_only)
@@ -94,7 +95,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 for child in stale_dir.rglob("*")
                 if child.is_dir()
             ),
-            key=lambda child: len(child.parts),
+            key=path_depth,
             reverse=True,
         ):
             path.rmdir()

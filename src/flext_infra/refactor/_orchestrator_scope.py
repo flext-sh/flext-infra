@@ -140,7 +140,6 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         u.Cli.info(f"Found {len(collected)} files to process")
         results: t.MutableSequenceOf[m.Infra.Result] = []
         results.extend(self.refactor_files(collected, dry_run=dry_run, gates=gates))
-        results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and not dry_run:
             self._finalize_safety(
                 target=project_path,
@@ -192,7 +191,6 @@ class FlextInfraRefactorOrchestratorScopeMixin:
             )
             if apply_safety and not dry_run:
                 processed.append(str(project))
-        results.extend(u.Infra.run_rope_post_hooks(root, dry_run=dry_run))
         if apply_safety and not dry_run:
             self._finalize_safety(
                 target=root,

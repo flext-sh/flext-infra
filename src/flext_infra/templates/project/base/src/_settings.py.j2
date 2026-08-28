@@ -1,4 +1,4 @@
-{# NOTE (codex, mro-j47u): precompute exact compact/multiline source with zero render whitespace. -#}
+{# NOTE (codex, flext-j47u): precompute exact compact/multiline source with zero render whitespace. -#}
 {%- set settings_constants_line = "from " ~ package_name ~ "._constants.settings import " ~ class_stem ~ "ConstantsSettings" -%}
 {%- set settings_constants_import = settings_constants_line if settings_constants_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._constants.settings import (\n    " ~ class_stem ~ "ConstantsSettings,\n)" -%}
 {%- set settings_model_line = "from " ~ package_name ~ "._models.settings import " ~ class_stem ~ "SettingsModels" -%}
@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_settings import SettingsConfigDict
 
-# NOTE (codex, mro-j47u): measure rendered lines so every project is Ruff-native.
+# NOTE (codex, flext-j47u): measure rendered lines so every project is Ruff-native.
 from flext_core import FlextSettings
 {{ settings_constants_import }}
 {{ settings_model_import }}

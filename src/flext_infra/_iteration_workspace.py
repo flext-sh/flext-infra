@@ -42,7 +42,7 @@ class FlextInfraUtilitiesIterationWorkspace:
                 f"python file iteration failed: project root is not a directory: {invalid_root}"
             )
         try:
-            # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): the scanner
+            # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): the scanner
             # consumes one exact request and the validated config singleton;
             # it never discovers projects or enables alternate source trees.
             files = {

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    # NOTE (multi-agent, mro-j47u): all public objects stay lazy at runtime.
+    # NOTE (multi-agent, flext-j47u): all public objects stay lazy at runtime.
 {% for facet in inherited_facets %}
     from {{ upstream }} import {{ facet }} as {{ facet }}
 {% endfor %}

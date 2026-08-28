@@ -39,7 +39,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     """Read, classify, and process one parsed pyproject document state."""
 
     if TYPE_CHECKING:
-        # Members provided by sibling mixins / the facade at runtime via MRO.
+        # Members provided by the composed dependency modernizer.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
 
         @property
@@ -114,59 +114,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
 
-    def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
-        """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
-
-        A workspace *root* owns the canonical virtualenv locally
-        (``<project>/.venv``); a *child* (any flext-based consumer repo)
-        references the parent workspace venv (``../.venv``). This keeps the
-        pyright ``venvPath`` / pyrefly interpreter classification correct even
-        when ``deps modernize`` is invoked from inside the child itself (so
-        ``workspace_root`` defaults to the child dir). The committed
-        ``Makefile`` ``MAKE_PROFILE`` assignment is the durable backstop when
-        no virtualenv exists at modernize time.
-        """
-        rules = config.Infra.tooling.tools.pyright.path_rules
-        venv_name = rules.venv_name
-        superproject = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
-            cwd=project_dir,
-        )
-        if superproject.success:
-            # Git topology is authoritative inside a work tree: a nested
-            # repository names its superproject, an independent checkout or
-            # linked worktree names nothing. A local .venv (including a
-            # borrowed symlink to the parent runtime) must not outrank this.
-            return r[bool].ok(bool(superproject.value.strip()))
-        local_venv = project_dir / venv_name
-        if local_venv.is_symlink():
-            target = local_venv.resolve()
-            if not target.is_relative_to(project_dir.resolve()):
-                return r[bool].ok(True)
-        if local_venv.is_dir():
-            return r[bool].ok(False)
-        if (project_dir.parent / venv_name).is_dir():
-            return r[bool].ok(True)
-        makefile = project_dir / "Makefile"
-        if not makefile.exists():
-            return r[bool].ok(False)
-        if not makefile.is_file():
-            return r[bool].fail(f"project Makefile is not a regular file: {makefile}")
-        read = u.Cli.files_read_text(makefile)
-        if read.failure:
-            return r[bool].fail(
-                read.error or f"project Makefile read failed: {makefile}"
-            )
-        for raw_line in read.value.splitlines():
-            stripped = raw_line.strip()
-            key, separator, value = stripped.partition(":=")
-            if separator != ":=" or key.strip() != "MAKE_PROFILE":
-                continue
-            return r[bool].ok(
-                value.strip() == c.Infra.MakeProfile.WORKSPACE_MEMBER.value
-            )
-        return r[bool].ok(False)
-
     def _process_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
@@ -188,13 +135,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        child_result = self._project_is_flext_child(path.parent)
-        if child_result.failure:
-            return [child_result.error or "failed to resolve project Git topology"]
-        is_root = (
-            path.parent.resolve() == self.root.resolve() and not child_result.value
-        )
-        # mro-j47u (codex): scaffold (pre-write) contexts have no on-disk project
+        is_root = path.parent.resolve() == self.root.resolve()
+        # Scaffold (pre-write) contexts have no on-disk project
         # root yet. Derive pyright/pyrefly configuration from declared roots only;
         # disk discovery converges on the first post-write conformance pass.
         project_root_exists = path.is_file()
@@ -209,7 +151,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
                 resolved_project_kind = kind_result.value
-        # mro-j47u (codex): declared roots are topology facts only during atomic
+        # Declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
         # Why (flext-6itas.4): restored after merge 0d4d07b33 dropped this gate
         # while ensure_pyrefly.py kept requiring it (declared_python_dirs_are_complete
@@ -237,7 +179,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload
             )
         )
-        # mro-j47u (codex): Pyrefly derives its include globs from the canonical
+        # Pyrefly derives its include globs from the canonical
         # Pyright roots, so resolve Pyright first and converge in one pass.
         changes.extend(
             FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
@@ -288,7 +230,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload, path=path, is_root=is_root
             )
         )
-        # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
+        # Existing projects consume the same Vulture SSOT as scaffolds.
         changes.extend(
             FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
                 payload

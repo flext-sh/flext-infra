@@ -30,7 +30,7 @@ class FlextInfraEnsureMypyConfigPhase:
             .Builder("mypy")
             .table(c.Infra.MYPY)
             .deprecated("strict_concatenate")
-            # mro-j47u (codex): tool Python derives from the codegen toolchain SSOT.
+            # flext-j47u (codex): tool Python derives from the codegen toolchain SSOT.
             .value(
                 c.Infra.PYTHON_VERSION_UNDERSCORE,
                 config.Infra.codegen.toolchain.python_version,

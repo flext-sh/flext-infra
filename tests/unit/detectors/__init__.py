@@ -10,7 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import test_cyclic_import_detector as test_cyclic_import_detector
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .test_deferred_self_reference_ast import (
@@ -42,7 +41,6 @@ __all__: tuple[str, ...] = (
     "s",
     "t",
     "td",
-    "test_cyclic_import_detector",
     "tf",
     "tk",
     "tm",
@@ -54,7 +52,6 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".test_cyclic_import_detector": ("test_cyclic_import_detector",),
             ".test_deferred_self_reference_ast": (
                 "TestsFlextInfraDeferredSelfReferenceDetector",
             ),

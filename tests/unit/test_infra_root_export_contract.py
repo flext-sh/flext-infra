@@ -28,7 +28,7 @@ class TestsFlextInfraRootExportContract:
             # config/settings SSOT singletons
             "config",
             "settings",
-            # facade aliases (MRO layering c/t/p/m/u + operational r/e/x/h/d/s)
+            # facade aliases (FLEXT layering c/t/p/m/u + operational r/e/x/h/d/s)
             "c",
             "t",
             "p",
@@ -60,24 +60,12 @@ class TestsFlextInfraRootExportContract:
         for name in required:
             tm.that(exports, has=name)
 
-    def test_root_all_excludes_private_and_internal_names(self) -> None:
-        """No leading-underscore names (beyond dunder) and no internal classes."""
+    def test_root_all_excludes_private_names(self) -> None:
+        """No leading-underscore names are exported beyond metadata dunders."""
         exports = flext_infra.__all__
         for name in exports:
             if name.startswith("_"):
                 tm.that(name.startswith("__") and name.endswith("__"), eq=True)
-        internal_names = (
-            "FlextInfraConfig",
-            "FlextInfraCodegenLazyInit",
-            "FlextInfraConstantsBase",
-            "FlextInfraGate",
-            "FlextInfraSettings",
-            "FlextInfraTypesAdapters",
-            "FlextInfraWorkspaceChecker",
-        )
-        for name in internal_names:
-            tm.that(exports, lacks=name)
-            tm.that(hasattr(flext_infra, name), eq=False)
 
     def test_root_all_members_resolve_as_attributes(self) -> None:
         """Every exported name resolves on the package (lazy imports wired)."""

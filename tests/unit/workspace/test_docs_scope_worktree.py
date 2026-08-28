@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 def test_project_scope_uses_declared_name_inside_worktree_lane(tmp_path: Path) -> None:
     """Classify a project from metadata, not the worktree directory basename."""
-    lane = tmp_path / ".worktrees" / "bd-example"
+    lane = tmp_path / ".worktrees" / "lane-example"
     package = lane / "src" / "flext_demo"
     package.mkdir(parents=True)
     (package / "__init__.py").write_text("", encoding="utf-8")

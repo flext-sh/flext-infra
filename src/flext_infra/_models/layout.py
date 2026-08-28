@@ -1,6 +1,6 @@
 """Layout engine config contracts and planning/apply result models.
 
-mro-0wuz (epic mro-hzox): every layout decision is declarative data validated
+flext-0wuz (epic flext-hzox): every layout decision is declarative data validated
 from ``config/codegen.yaml`` — the engine carries zero hardcoded knowledge.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -192,7 +192,7 @@ class FlextInfraModelsLayout:
             m.Field(description="All layout decisions for the project"),
         ] = ()
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def actionable(self) -> tuple[FlextInfraModelsLayout.LayoutFinding, ...]:
             """Findings the engine acts on in apply mode (never review)."""
@@ -200,7 +200,7 @@ class FlextInfraModelsLayout:
                 finding for finding in self.findings if finding.rule != "review"
             )
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def applied_count(self) -> int:
             """Number of findings executed by an apply run."""

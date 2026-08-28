@@ -10,7 +10,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import WorktreeFixture, u as test_u
 
 pytestmark = pytest.mark.slow
 
@@ -20,67 +20,54 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path,
-        profile: c.Infra.MakeProfile,
-        *,
-        attached: bool = False,
-        local_infra: bool = False,
+        tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
     ) -> tuple[Path, Path]:
-        provider = config.Infra.codegen.providers[0]
-        role = (
-            c.Infra.RepositoryRole.WORKSPACE_MEMBER
-            if attached
-            else c.Infra.RepositoryRole(profile.value)
-        )
-        repository = m.Infra.RepositoryRef(
-            name="fixture-project",
-            distribution="fixture-project",
-            url=f"{provider.base_url}/fixture-project.git",
-            path=Path(),
-            role=role,
-            provider=provider.name,
-            checkout=(
-                c.Infra.CheckoutKind.SUBMODULE
-                if attached
-                else c.Infra.CheckoutKind.ROOT
-            ),
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
-        )
+        role = c.Infra.RepositoryRole(profile.value)
+        repository = test_u.Tests.repository_ref(
+            "fixture-project", role=role
+        ).model_copy(update={"editable": True})
         project_root = tmp_path / profile.value / "fixture-project"
-        workspace_root = project_root.parent if attached else project_root
+        WorktreeFixture.write_python_project(project_root, repository.distribution)
+        beads = test_u.Tests.beads_project(repository.distribution)
+        test_u.Tests.write_beads_project(
+            project_root,
+            workspace=beads.workspace,
+            database=beads.database,
+            issue_prefix=beads.issue_prefix,
+        )
+        test_u.Tests.initialize_git_repo(project_root, origin_url=repository.url)
+        provider = test_u.Tests.provider(repository.provider)
+        baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=project_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "remote.origin.skipDefaultUpdate", "true"],
+                cwd=project_root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "update-ref",
+                    f"refs/remotes/origin/{provider.branch}",
+                    baseline,
+                ],
+                cwd=project_root,
+            )
+        )
+        workspace_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_members = (
+        local_subprojects = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="fixture-project",
+            beads=beads,
             repository=repository,
-            project=m.Infra.ProjectSpec(
-                package_name="fixture_project",
-                class_stem="FixtureProject",
-                namespace="FixtureProject",
-                constant_name="fixture-project",
-                namespace_attribute="fixture_project",
-                alias="fixture_project",
-                environment_prefix="FIXTURE_PROJECT_",
-                description="Fixture project",
-                version="0.12.0",
-                license="MIT",
-                author_name="FLEXT Team",
-                author_email="team@flext.dev",
-                upstream="flext_cli",
-                homepage="https://github.com/flext-sh/fixture-project",
-                documentation="https://github.com/flext-sh/fixture-project",
-                workspace_root_rel=".",
-                year=2026,
-            ),
-            members=local_members,
+            project=test_u.Tests.project_spec("fixture-project"),
+            subprojects=local_subprojects,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -97,56 +84,40 @@ class TestsCodegenMakeEnvironment:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        if attached:
-            member_source = tmp_path / "member-source"
-            member_source.mkdir()
-            (member_source / "README.md").write_text(
-                "fixture member\n", encoding="utf-8"
-            )
-            test_u.Tests.initialize_git_repo(member_source)
-            workspace_root.mkdir(parents=True)
-            (workspace_root / "README.md").write_text(
-                "fixture workspace\n", encoding="utf-8"
-            )
-            test_u.Tests.initialize_git_repo(workspace_root)
-            tm.ok(
-                u.Cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "-c",
-                        "protocol.file.allow=always",
-                        "submodule",
-                        "add",
-                        "-q",
-                        str(member_source),
-                        project_root.name,
-                    ],
-                    cwd=workspace_root,
-                )
-            )
-        else:
-            project_root.mkdir(parents=True)
         tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
         return project_root, workspace_root
 
+    @staticmethod
+    def _write_mise_setup_fixture(project_root: Path) -> None:
+        toolchain = config.Infra.codegen.toolchain
+        test_u.Tests.write_executable(
+            project_root / "bin" / "mise",
+            (
+                "#!/bin/sh\n"
+                'if [ "$1" = "--version" ]; then\n'
+                f"  printf '%s\\n' '{toolchain.mise_version}'\n"
+                "  exit 0\n"
+                "fi\n"
+                'case "$*" in\n'
+                f"  *'exec -- uv --version'*) printf '%s\\n' 'uv {toolchain.uv_version}.0'; exit 0 ;;\n"
+                "esac\n"
+                'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
+                'if [ "$#" -gt 0 ]; then shift; exec "$@"; fi\n'
+                "exit 0\n"
+            ),
+        )
+        (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
+
     @pytest.mark.parametrize(
-        ("profile", "attached"),
-        [
-            (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
-            (c.Infra.MakeProfile.STANDALONE, True),
-            (c.Infra.MakeProfile.STANDALONE, False),
-        ],
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, workspace_root = self._render_makefile(
-            tmp_path, profile, attached=attached
-        )
-        runtime_root = workspace_root if attached else project_root
+        project_root, runtime_root = self._render_makefile(tmp_path, profile)
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -201,13 +172,14 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE]
     )
     def test_setup_provisions_environment_before_project_runtime(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
         """Setup creates the venv and syncs dependencies before any runtime use."""
         project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        self._write_mise_setup_fixture(project_root)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -230,6 +202,8 @@ class TestsCodegenMakeEnvironment:
             encoding="utf-8",
         )
         provisioned_uv.chmod(0o755)
+        mise = test_u.Tests.write_mise_stub(tmp_path / "mise")
+        (project_root / "mise.lock").touch()
 
         clean_env = {
             **{
@@ -241,7 +215,7 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
         result = u.Cli.run_raw(
-            [c.Infra.MAKE, "--no-print-directory", "setup"],
+            [c.Infra.MAKE, "--no-print-directory", "setup", f"SETUP_MISE={mise}"],
             cwd=project_root,
             env=clean_env,
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
@@ -252,7 +226,7 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --project")
-        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
@@ -268,13 +242,17 @@ class TestsCodegenMakeEnvironment:
         provisioned_bin = tmp_path / "provisioned" / "bin"
         provisioned_bin.mkdir(parents=True)
         fixture_tool = "managed-tool"
-        for bin_root in (hostile_bin, provisioned_bin):
-            for tool in (fixture_tool, "uv"):
-                test_u.Tests.write_executable(
-                    bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
-                )
         runtime_python = project_root / ".venv" / "bin" / "python"
         tool_log = tmp_path / "tools.log"
+        for bin_root in (hostile_bin, provisioned_bin):
+            test_u.Tests.write_executable(
+                bin_root / fixture_tool,
+                f"#!/bin/sh\nprintf '%s\\n' '{bin_root / fixture_tool}'\n",
+            )
+        test_u.Tests.write_executable(hostile_bin / "uv", "#!/bin/sh\nexit 99\n")
+        test_u.Tests.write_executable(
+            provisioned_bin / "uv", f"#!/bin/sh\nexec '{runtime_python}'\n"
+        )
         test_u.Tests.write_executable(
             runtime_python,
             (
@@ -282,6 +260,9 @@ class TestsCodegenMakeEnvironment:
                 f"command -v uv > '{tool_log}'\n"
                 f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),
+        )
+        test_u.Tests.write_executable(
+            provisioned_bin / "uv", f"#!/bin/sh\nexec '{runtime_python}'\n"
         )
         active_env = {
             "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
@@ -359,7 +340,7 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
-                env={"UV": str(uv), "PATH": str(bin_dir)},
+                env={"UV": str(uv), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )
@@ -442,7 +423,8 @@ class TestsCodegenMakeEnvironment:
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$superproject" submodule update --init -- "$$child_path"',
-            "refs/heads/$$branch",
+            'git -C "$$child_root" branch --show-current',
+            'merge-base --is-ancestor "$$gitlink" HEAD',
         ):
             tm.that(makefile, has=required)
         for forbidden in (
@@ -453,6 +435,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "pip install",
+            "git checkout",
         ):
             tm.that(makefile, lacks=forbidden)
 

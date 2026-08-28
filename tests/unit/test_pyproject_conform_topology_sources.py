@@ -1,7 +1,7 @@
 """Tests for canonical dependency source selection by topology role.
 
-The attached root owns the local ``workspace = true`` overlay. Publishable
-members retain their catalog Git provenance so the same package metadata works
+The workspace root owns the local ``workspace = true`` overlay. Publishable
+projects retain their catalog Git provenance so the same package metadata works
 outside the workspace; uv applies the root overlay when resolving them locally.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -17,9 +17,13 @@ from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
 _ROLE = c.Infra.RepositoryRole
-# mro-o26p: provider identity, branch and base URL come from the config SSOT,
+# Provider identity, branch and base URL come from the config SSOT,
 # never from literals repeated in the test.
-_PROVIDER_SPEC = config.Infra.codegen.providers[0]
+_PROVIDER_SPEC = tm.ok(
+    u.Infra.repository_provider(
+        tu.Tests.repository_ref("provider-fixture"), config.Infra.codegen.providers
+    )
+)
 _PROVIDER = _PROVIDER_SPEC.name
 
 
@@ -47,23 +51,22 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-        name="workspace-root",
+        beads=tu.Tests.beads_project("flext"),
+        name="workspace",
         repository=_repository(
-            "workspace-root",
-            role=_ROLE.WORKSPACE_ROOT,
+            "workspace",
+            role=_ROLE.WORKSPACE,
             path=".",
             checkout=c.Infra.CheckoutKind.ROOT,
         ),
-        members=(
+        subprojects=(
             _repository(
                 "flext-core",
-                role=_ROLE.WORKSPACE_MEMBER,
+                role=_ROLE.STANDALONE,
                 path="flext-core",
                 checkout=c.Infra.CheckoutKind.SUBMODULE,
             ),
         ),
-        exclusions=(),
     )
 
 
@@ -71,15 +74,17 @@ def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
     workspace = _workspace()
     consumer = _repository(
         "flext-api",
-        role=_ROLE.WORKSPACE_MEMBER,
+        role=_ROLE.STANDALONE,
         path="flext-api",
         checkout=c.Infra.CheckoutKind.SUBMODULE,
     )
-    return workspace.model_copy(update={"members": (*workspace.members, consumer)})
+    return workspace.model_copy(
+        update={"subprojects": (*workspace.subprojects, consumer)}
+    )
 
 
 _PYPROJECT = """[project]
-name = "workspace-root"
+name = "workspace"
 version = "0.1.0"
 dependencies = ["flext-core"]
 
@@ -95,12 +100,12 @@ workspace = true
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
-    def test_attached_root_never_gets_git_specifier(self) -> None:
+    def test_workspace_root_never_gets_git_specifier(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -121,7 +126,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             external,
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
@@ -131,24 +136,24 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         # The expected specifier is derived from the same declared repository
         # contract the generator reads - never a hardcoded URL or branch.
-        member = workspace.members[0]
+        project = workspace.subprojects[0]
         tm.that(
             dependencies,
-            eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
+            eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
 
-    def test_publishable_member_keeps_catalog_git_provenance(self) -> None:
+    def test_publishable_project_keeps_catalog_git_provenance(self) -> None:
         workspace = _workspace_with_consumer()
-        provider = workspace.members[0]
-        publishable_member = (
-            f'[project]\nname = "{workspace.members[1].distribution}"\n'
+        provider = workspace.subprojects[0]
+        publishable_project = (
+            f'[project]\nname = "{workspace.subprojects[1].distribution}"\n'
             'version = "0.1.0"\n'
             'dependencies = ["flext-core"]\n'
         )
 
         result = u.Infra.pyproject_dependencies_conform(
-            publishable_member,
-            providers=config.Infra.codegen.providers,
+            publishable_project,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -167,7 +172,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
     def test_attached_root_rejects_explicit_member_source(self) -> None:
         workspace = _workspace()
-        member = workspace.members[0]
+        member = workspace.subprojects[0]
         attached_root = _PYPROJECT.replace(
             'dependencies = ["flext-core"]',
             (
@@ -179,7 +184,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             attached_root,
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -187,15 +192,15 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(result.failure, eq=True)
         tm.that(
             result.error or "",
-            has="attached workspace dependency declares direct source",
+            has="workspace dependency declares a conflicting direct source",
         )
 
         local_result = u.Infra.pyproject_dependencies_conform(
             attached_root.replace(
                 f"git+{member.url}@{_PROVIDER_SPEC.branch}",
-                "file:///home/marlonsc/flext/flext-core",
+                "file:///outside/flext-core",
             ),
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -203,13 +208,13 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(local_result.failure, eq=True)
         tm.that(
             local_result.error or "",
-            has="attached workspace dependency declares direct source",
+            has="workspace dependency declares a conflicting direct source",
         )
 
     def test_publishable_member_pins_unmapped_provider_source_to_branch(self) -> None:
         """Derive the declared branch for a provider source absent from members."""
         workspace = _workspace_with_consumer()
-        consumer = workspace.members[1]
+        consumer = workspace.subprojects[1]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 f'[project]\nname = "{consumer.distribution}"\n'
@@ -217,7 +222,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 'dependencies = ["flext-unmapped @ '
                 'git+https://github.com/flext-sh/flext-unmapped.git@main"]\n'
             ),
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -234,13 +239,13 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
         )
 
-    def test_root_workspace_overlay_resolves_publishable_member_with_uv(
+    def test_root_workspace_overlay_resolves_publishable_project_with_uv(
         self, tmp_path: Path
     ) -> None:
-        """Prove uv resolves member Git metadata through the root workspace overlay."""
+        """Prove uv resolves project Git metadata through the root overlay."""
         workspace = _workspace_with_consumer()
-        provider, consumer = workspace.members
-        root = tmp_path / "workspace-root"
+        provider, consumer = workspace.subprojects
+        root = tmp_path / "workspace"
         provider_root = root / provider.path
         consumer_root = root / consumer.path
         provider_root.mkdir(parents=True)
@@ -265,7 +270,7 @@ workspace = true
         root_rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 root_source,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
@@ -277,7 +282,7 @@ workspace = true
                     'version = "0.1.0"\n'
                     f'dependencies = ["{provider.distribution}"]\n'
                 ),
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
@@ -323,17 +328,17 @@ workspace = true
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-        member = workspace.members[0]
+        project = workspace.subprojects[0]
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(
             dependencies,
-            eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
+            eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
         document = tu.Tests.toml_table_at(rendered)
         tm.that("tool" in document, eq=False)

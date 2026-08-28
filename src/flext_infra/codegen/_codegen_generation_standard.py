@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-# mro-wkii.17.26 (codex): Keep lazy loading only at the public package root and
+# flext-wkii.17.26 (codex): Keep lazy loading only at the public package root and
 # bind Ruff validation to each target project's real initializer path.
 class FlextInfraCodegenGenerationStandardMixin(
     FlextInfraCodegenGenerationRenderersMixin
@@ -26,7 +26,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         source = plan.type_checking_map or plan.lazy_map
         public_names = frozenset(plan.exports)
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
-        # mro-pulj (codex): direct imports outside __all__ remain statically
+        # flext-pulj (codex): direct imports outside __all__ remain statically
         # declared because they are part of the established root interface.
         filtered: dict[str, t.StrPair] = {
             name: target

@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
+import re as _re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Final
 
@@ -72,6 +72,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "RUFF_ARGS",
             "UV",
             "VALIDATE_GATES",
+            "WHAT",
             "WORKSPACE_ROOT",
             *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
@@ -111,7 +112,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             ("warning: ignoring duplicate", 0),
             ("Success: 5 passed", 0),
         )
-        LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
+        LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = _re.compile(
             r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)"
         )
         LOG_MIXED_SCENARIO_LINES: Final[t.StrSequence] = (
@@ -121,10 +122,10 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "FAIL: test broken",
             "Total: 2 failed",
         )
-        SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = re.compile(
-            r"hello", re.MULTILINE
+        SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = _re.compile(
+            r"hello", _re.MULTILINE
         )
-        LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = re.compile(
+        LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = _re.compile(
             r'["\']([^"\']+)["\']'
         )
         INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (

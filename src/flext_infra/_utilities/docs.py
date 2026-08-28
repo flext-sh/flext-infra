@@ -1,4 +1,4 @@
-"""Documentation shared utilities for the u.Infra MRO chain."""
+"""Documentation shared utilities for the u.Infra FLEXT chain."""
 
 from __future__ import annotations
 

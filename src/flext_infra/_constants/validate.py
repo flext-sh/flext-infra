@@ -138,7 +138,6 @@ class FlextInfraConstantsSharedInfra:
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
     MAKEFILE_FILENAME: Final[str] = "Makefile"
-    BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
     # Why: conform .gitmodules merge classifies sections via these patterns;
     # they belong beside GITMODULES on c.Infra, not as leaf re.compile copies.
@@ -154,15 +153,10 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
-    BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
-    "Ledger-resolution marker bd reads to bind a checkout to its Dolt database."
-    BEADS_LEDGER_RELPATHS: Final[frozenset[str]] = frozenset({
-        BEADS_CONFIG_RELPATH,
-        BEADS_METADATA_RELPATH,
-    })
-    "Generated ledger surfaces emitted only for a ledger owner or router."
+    BEADS_OVERRIDE_RELPATH: Final[str] = "config/beads.yaml"
+    "Generated project-owned Beads configuration paths."
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
@@ -187,6 +181,7 @@ class FlextInfraConstantsSharedInfra:
     GIT_ORIGIN: Final[str] = "origin"
     GIT_MAIN: Final[str] = "main"
     GIT_HEAD: Final[str] = "HEAD"
+    GIT_MERGE_HEAD: Final[str] = "MERGE_HEAD"
 
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: Final[str] = "flext-core"

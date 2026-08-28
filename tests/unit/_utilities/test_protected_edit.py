@@ -109,7 +109,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     ) -> None:
         """No lint gate is serialized ahead of the others.
 
-        mro-38p39: a lint snapshot runs one subprocess per gate. Running any of
+        flext-38p39: a lint snapshot runs one subprocess per gate. Running any of
         them before the pool makes the snapshot cost that gate's full wall clock
         plus the slowest of the rest, instead of just the slowest. Measured on
         the two slowest tests in the suite: 8 snapshots x 4 gates, 0.297s per

@@ -15,12 +15,13 @@ from typing import TYPE_CHECKING, override
 from flext_infra import main as infra_main
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_tests import tm
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def main(argv: list[str] | None = None) -> int:
+def _maintenance_main(argv: list[str] | None = None) -> int:
     args = ["maintenance"]
     if argv is not None:
         args.extend(argv)
@@ -53,10 +54,10 @@ class TestsFlextInfraInfraMaintenanceMain:
     """Tests for the maintenance main entry point."""
 
     def test_main_with_help_flag(self) -> None:
-        tm.that(main(["--help"]), eq=0)
+        tm.that(_maintenance_main(["--help"]), eq=0)
 
     def test_main_calls_sys_exit_on_help(self) -> None:
-        tm.that(main(["--help"]), eq=0)
+        tm.that(_maintenance_main(["--help"]), eq=0)
 
     def test_enforcer_check_only_success(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -143,6 +144,7 @@ class TestsFlextInfraInfraMaintenanceMain:
             ),
             encoding="utf-8",
         )
+        u.Tests.declare_workspace_projects(workspace, ("project-a",))
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=False)
         tm.fail(result)

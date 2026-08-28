@@ -6,7 +6,7 @@ class — that name is still unbound. The previous code hid this with a
 ``default_factory=lambda: Outer.Sibling()`` deferral, which turned a
 structural defect into a runtime one.
 
-The fix is the workspace's diamond-MRO composition: each layer declares the
+The fix is the workspace's diamond-FLEXT composition: each layer declares the
 model it owns and inherits the layer below, so every referenced model is a
 resolved base-class attribute at definition time. Defaults stay direct
 callables; no deferred-resolution lambda, no self-referential model.
@@ -20,6 +20,7 @@ from typing import Annotated
 
 from flext_cli import m
 from flext_infra import t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigProjectRuff:
@@ -33,7 +34,7 @@ class FlextInfraModelsDepsToolConfigProjectRuff:
             m.Field(
                 description="Project-local per-file rules merged with global policy."
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
 
 
 class FlextInfraModelsDepsToolConfigProjectMise(

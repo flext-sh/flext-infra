@@ -6,7 +6,6 @@ from typing import ClassVar
 
 from flext_infra import m
 from flext_infra.services.cli_route_base import CliRouteBase
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
@@ -38,121 +37,91 @@ class ValidationCommandRoutes(CliRouteBase):
                 "cprofile-report",
                 "Render a bounded cProfile report",
                 FlextInfraCProfileReport,
-                lambda params, mc=FlextInfraCProfileReport: mc.execute_command(params),
-            ),
-            (
-                "basemk-validate",
-                "Validate base.mk sync",
-                FlextInfraBaseMkValidator,
-                lambda params, mc=FlextInfraBaseMkValidator: mc.execute_command(params),
+                FlextInfraCProfileReport.execute_command,
             ),
             (
                 "inventory",
                 "Generate scripts inventory",
                 FlextInfraInventoryService,
-                lambda params, mc=FlextInfraInventoryService: mc.execute_command(
-                    params
-                ),
+                FlextInfraInventoryService.execute_command,
             ),
             (
                 "runtime-census",
                 "Post-import Beartype enforcement census for flext_* modules",
                 FlextInfraRuntimeCensusValidator,
-                lambda params, mc=FlextInfraRuntimeCensusValidator: mc.execute_command(
-                    params
-                ),
+                FlextInfraRuntimeCensusValidator.execute_command,
             ),
             (
                 "pytest-diag",
                 "Extract pytest diagnostics",
                 FlextInfraPytestDiagExtractor,
-                lambda params, mc=FlextInfraPytestDiagExtractor: mc.execute_command(
-                    params
-                ),
+                FlextInfraPytestDiagExtractor.execute_command,
             ),
             (
                 "scan",
                 "Scan text files for patterns",
                 FlextInfraTextPatternScanner,
-                lambda params, mc=FlextInfraTextPatternScanner: mc.execute_command(
-                    params
-                ),
+                FlextInfraTextPatternScanner.execute_command,
             ),
             (
                 "skill-validate",
                 "Validate a skill",
                 FlextInfraSkillValidator,
-                lambda params, mc=FlextInfraSkillValidator: mc.execute_command(params),
+                FlextInfraSkillValidator.execute_command,
             ),
             (
                 "silent-failure",
                 "Validate silent failure sentinel returns",
                 FlextInfraSilentFailureValidator,
-                lambda params, mc=FlextInfraSilentFailureValidator: mc.execute_command(
-                    params
-                ),
+                FlextInfraSilentFailureValidator.execute_command,
             ),
             (
                 "stub-validate",
                 "Validate stub supply chain",
                 FlextInfraStubSupplyChain,
-                lambda params, mc=FlextInfraStubSupplyChain: mc.execute_command(params),
+                FlextInfraStubSupplyChain.execute_command,
             ),
             (
                 "fresh-import",
                 "Guard 7: fresh-process import smoke test",
                 FlextInfraValidateFreshImport,
-                lambda params, mc=FlextInfraValidateFreshImport: mc.execute_command(
-                    params
-                ),
+                FlextInfraValidateFreshImport.execute_command,
             ),
             (
                 "import-cycles",
                 "Guard 1: ROPE-backed import cycle detector",
                 FlextInfraValidateImportCycles,
-                lambda params, mc=FlextInfraValidateImportCycles: mc.execute_command(
-                    params
-                ),
+                FlextInfraValidateImportCycles.execute_command,
             ),
             (
                 "lazy-map-freshness",
                 "Guard 2/3: lazy-map freshness validator",
                 FlextInfraValidateLazyMapFreshness,
-                lambda params, mc=FlextInfraValidateLazyMapFreshness: (
-                    mc.execute_command(params)
-                ),
+                FlextInfraValidateLazyMapFreshness.execute_command,
             ),
             (
                 "namespace",
                 "Guard: static namespace rules (NS-000..003) via rope",
                 FlextInfraNamespaceValidator,
-                lambda params, mc=FlextInfraNamespaceValidator: mc.execute_command(
-                    params
-                ),
+                FlextInfraNamespaceValidator.execute_command,
             ),
             (
                 "tier-whitelist",
                 "Guard 5: tier-whitelist/abstraction-boundary enforcer",
                 FlextInfraValidateTierWhitelist,
-                lambda params, mc=FlextInfraValidateTierWhitelist: mc.execute_command(
-                    params
-                ),
+                FlextInfraValidateTierWhitelist.execute_command,
             ),
             (
                 "metadata-discipline",
                 "Guard 8: centralized metadata parser discipline",
                 FlextInfraValidateMetadataDiscipline,
-                lambda params, mc=FlextInfraValidateMetadataDiscipline: (
-                    mc.execute_command(params)
-                ),
+                FlextInfraValidateMetadataDiscipline.execute_command,
             ),
             (
                 "manual-cmd",
                 "Manual-command blocker (§5): pre-commit config drift gate",
                 FlextInfraManualCommandValidator,
-                lambda params, mc=FlextInfraManualCommandValidator: mc.execute_command(
-                    params
-                ),
+                FlextInfraManualCommandValidator.execute_command,
             ),
         )
     )

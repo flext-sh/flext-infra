@@ -261,7 +261,7 @@ class TestFlextInfraNamespaceValidator:
                     "    pass\n"
                 ),
                 "models.py",
-                "must use namespaced MRO aliases (c/m/p/t/u)",
+                "must use namespaced FLEXT aliases (c/m/p/t/u)",
             ),
             (
                 (

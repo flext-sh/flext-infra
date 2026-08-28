@@ -1,16 +1,14 @@
-"""Repository-local workspace manifests are the sole consumer authority."""
+"""Repository-local codegen extension contracts."""
 
 from __future__ import annotations
 
 import tomllib
 from pathlib import Path
 
-import pytest
-
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u
+from tests import WorktreeFixture, u
 
 
 def _repository(
@@ -20,28 +18,31 @@ def _repository(
     role: c.Infra.RepositoryRole,
     state: c.Infra.RepositoryState = c.Infra.RepositoryState.ACTIVE,
 ) -> m.Infra.RepositoryRef:
-    provider = config.Infra.codegen.providers[0]
-    return m.Infra.RepositoryRef(
-        name=name,
-        distribution=name,
-        provider=provider.name,
-        url=f"{provider.base_url}/{name}.git",
-        path=Path(path),
-        role=role,
-        state=state,
-        checkout=(
-            c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-            else c.Infra.CheckoutKind.SUBMODULE
-        ),
-        codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        read_only=False,
+    reference = u.Tests.repository_ref(name, path=Path(path), role=role)
+    return reference.model_copy(
+        update={
+            "state": state,
+            "package": role is c.Infra.RepositoryRole.STANDALONE,
+            "editable": role is c.Infra.RepositoryRole.STANDALONE,
+        }
     )
 
 
 class TestsCodegenCatalogExtensions:
+    """Prove generic extensions without a repository registry or second manifest."""
+
+    def test_infra_repository_identity_is_owned_by_codegen_config(self) -> None:
+        source = config.Infra.codegen.infra_repository
+        providers = tuple(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name == source.provider
+        )
+
+        tm.that(source.distribution, eq=config.Infra.name)
+        tm.that(source.internal_distribution_prefix, eq="flext-")
+        tm.that(providers, len=1)
+
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
         selector = config.Infra.codegen.toolchain.beads.version
 
@@ -57,10 +58,6 @@ class TestsCodegenCatalogExtensions:
     def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
         toolchain = config.Infra.codegen.toolchain
 
-        # uv is supplied by the caller environment and is deliberately not pinned;
-        # only the mise binary and the Beads CLI installed through mise declare
-        # immutable selectors: a semver release for mise, and either a semver
-        # release or a full commit for the Beads go-module pin.
         mise_parts = toolchain.mise_version.split(".")
         tm.that(len(mise_parts), eq=3)
         tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
@@ -74,127 +71,8 @@ class TestsCodegenCatalogExtensions:
         )
         tm.that(beads_is_semver or beads_is_commit, eq=True)
 
-    def test_beads_gate_compares_the_binary_reported_version(self) -> None:
-        """The conform preflight gate uses the binary's self-reported version.
-
-        The pinned Beads build is a go-module commit (schema v61-capable) whose
-        ``bd version`` output does NOT echo the pin. The toolchain therefore
-        declares ``reported_version`` — what the binary actually prints — and
-        the gate consumes that value directly so preflight compares like with
-        like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
-        """
-        beads = config.Infra.codegen.toolchain.beads
-        tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
-        is_commit = len(beads.version) == 40 and all(
-            char in "0123456789abcdef" for char in beads.version
-        )
-        tm.that(is_commit, eq=True)
-        # ONE declared field, no optional/computed pair: the model states what
-        # the binary prints and the gate reads exactly that.
-        tm.that(beads.reported_version, eq="1.1.0")
-        tm.that(hasattr(beads, "gate_version"), eq=False)
-
-    def test_mise_tool_spec_requires_the_reported_version(self) -> None:
-        """``reported_version`` is a required field validated by Pydantic.
-
-        It was previously declared ``str | None`` with a fallback inside the
-        model. Every mise tool knows what its binary prints, so the value is
-        declared, required, and validated at construction instead.
-        """
-        spec = m.Infra.MiseToolSpec(
-            selector="go:example.com/tool/cmd/x",
-            version="0123456789abcdef0123456789abcdef01234567",
-            reported_version="1.2.3",
-        )
-        tm.that(spec.reported_version, eq="1.2.3")
-        with pytest.raises(c.ValidationError):
-            m.Infra.MiseToolSpec.model_validate({
-                "selector": "go:example.com/tool/cmd/x",
-                "version": "0123456789abcdef0123456789abcdef01234567",
-            })
-        with pytest.raises(c.ValidationError):
-            m.Infra.MiseToolSpec(
-                selector="go:example.com/tool/cmd/x",
-                version="0123456789abcdef0123456789abcdef01234567",
-                reported_version="",
-            )
-
-    def test_beads_plan_declares_the_ledger_root_it_owns(self, tmp_path: Path) -> None:
-        """``BeadsPlan.ledger_root`` is always the tree that owns the ledger.
-
-        It was ``Path | None``, where ``None`` encoded "same as
-        repository_root" — so three separate call sites re-derived the real
-        value with ``plan.ledger_root or plan.repository_root`` and a fourth
-        compared against ``None`` to detect routing. The plan now declares the
-        owning root outright: consumers read one validated field and routing is
-        the honest comparison between two paths.
-        """
-        repo = tmp_path / "member"
-        principal = tmp_path / "principal"
-        own = m.Infra.BeadsPlan(
-            repository_root=repo,
-            enabled=True,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-            ledger_root=repo,
-            ledger_id="mro",
-        )
-        tm.that(own.ledger_root, eq=repo)
-        tm.that(own.routes_to_principal_ledger, eq=False)
-        routed = own.model_copy(update={"ledger_root": principal})
-        tm.that(routed.routes_to_principal_ledger, eq=True)
-        # The field is required: "no ledger root" is not a representable state.
-        with pytest.raises(c.ValidationError):
-            m.Infra.BeadsPlan.model_validate({
-                "repository_root": repo,
-                "enabled": True,
-                "canonical_prefix": "mro",
-                "expected_version": "1.1.0",
-                "ledger_id": "mro",
-            })
-
-    def test_beads_tracker_declaration_is_a_validated_model(
-        self, tmp_path: Path
-    ) -> None:
-        """The committed tracker config parses once into a typed model.
-
-        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
-        ledger) is the tracker declaration for that repository. Reading it
-        returned a bare ``str`` chosen by runtime isinstance checks against an
-        untyped mapping, with a ``fallback`` argument deciding the outcome.
-        Parsing happens once, at the boundary, into ``BeadsTrackerDeclaration``;
-        absence is the model's absence, never a substituted string.
-        """
-        root = tmp_path / "flext-demo"
-        beads_dir = root / ".beads"
-        beads_dir.mkdir(parents=True)
-        (beads_dir / "config.yaml").write_text(
-            'issue-prefix: "mro"\ndolt:\n  database: mro\n', encoding="utf-8"
-        )
-        declared = tm.ok(FlextInfraCodegenConform.beads_declaration(root))
-        tm.that(isinstance(declared, m.Infra.BeadsTrackerDeclaration), eq=True)
-        tm.that(declared.issue_prefix, eq="mro")
-        # A repository without a committed tracker declares nothing; the
-        # caller — not the reader — decides what that means.
-        bare = tmp_path / "bare-demo"
-        bare.mkdir()
-        tm.fail(FlextInfraCodegenConform.beads_declaration(bare))
-        # An empty prefix is rejected by the model, not silently replaced.
-        broken = tmp_path / "broken-demo"
-        (broken / ".beads").mkdir(parents=True)
-        (broken / ".beads" / "config.yaml").write_text(
-            'issue-prefix: ""\n', encoding="utf-8"
-        )
-        tm.fail(FlextInfraCodegenConform.beads_declaration(broken))
-
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
-        """``make setup`` provisions tooling; ``make gen`` owns conformance.
-
-        Operator contract (mro-e9j0.6 C7 final): setup installs mise, the
-        venv, and dependencies — it never generates, conforms, or mutates
-        project code. gen/gen APPLY=Y is the single public conformance and
-        generation surface, and no public ``conform`` verb exists.
-        """
+        """``make setup`` provisions tooling; ``make gen`` owns conformance."""
         template = (
             Path(__file__).parents[3]
             / "src"
@@ -212,69 +90,6 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_gen_apply:" in content, eq=True)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
-
-    def test_transaction_worktrees_skip_the_beads_lifecycle(
-        self, tmp_path: Path
-    ) -> None:
-        """Inside a worktree transaction the Beads lifecycle is fully skipped.
-
-        A transaction checkout routes its ledger to the principal worktree, so
-        the repository_root never owns the tracker lifecycle.  The principal
-        ledger is verified separately at the real tree on apply.
-        """
-        principal = tmp_path / "principal"
-        principal.mkdir()
-        tx = tmp_path / "tx-checkout"
-        (tx / ".beads").mkdir(parents=True)
-        (tx / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
-        )
-        plan = m.Infra.BeadsPlan(
-            repository_root=tx,
-            ledger_root=principal,
-            enabled=False,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-        )
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan, allow_missing=False))
-        # Outside a transaction, routing-only files remain valid.
-        plan_at_root = m.Infra.BeadsPlan(
-            repository_root=tx,
-            enabled=False,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-            ledger_root=tx,
-        )
-        tm.ok(verify(plan_at_root, allow_missing=False))
-        (tx / ".beads" / "issues.jsonl").write_text("{}\n", encoding="utf-8")
-        tm.fail(verify(plan_at_root, allow_missing=False))
-
-    def test_github_actions_ci_skips_the_beads_lifecycle(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Inside GitHub Actions CI the Beads lifecycle is fully skipped.
-
-        CI runners are ephemeral and do not carry a live Dolt tracker; the
-        committed ``.beads`` tree is present but the tracker database is not.
-        Attempting to verify a missing tracker in CI used to fail with
-        'Beads tracker inspection failed'. CI is not a tracker owner.
-        """
-        root = tmp_path / "ci-checkout"
-        (root / ".beads").mkdir(parents=True)
-        (root / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
-        )
-        plan = m.Infra.BeadsPlan(
-            repository_root=root,
-            enabled=False,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-            ledger_root=root,
-        )
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan, allow_missing=False))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
@@ -303,7 +118,7 @@ class TestsCodegenCatalogExtensions:
         self, tmp_path: Path
     ) -> None:
         root = _repository(
-            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE
         ).model_copy(
             update={
                 "extra_verbs": (
@@ -339,15 +154,15 @@ class TestsCodegenCatalogExtensions:
             year=2026,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=root.name,
+            beads=u.Tests.beads_project(root.name),
             repository=root,
             project=project,
-            members=(
+            subprojects=(
                 _repository(
                     "acme-charts",
                     path="acme-charts",
-                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                    role=c.Infra.RepositoryRole.STANDALONE,
                 ),
             ),
         )
@@ -357,6 +172,12 @@ class TestsCodegenCatalogExtensions:
             '[project]\nname = "acme-charts"\nversion = "0.1.0"\n'
             'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
             encoding="utf-8",
+        )
+        WorktreeFixture.write_beads_project(
+            member_root,
+            workspace="acme-charts",
+            database="acme-charts",
+            issue_prefix="acme-charts",
         )
         tm.ok(
             u.Cli.run_checked(
@@ -375,7 +196,8 @@ class TestsCodegenCatalogExtensions:
         )
         tm.ok(
             u.Cli.run_checked(
-                ["git", "add", c.Infra.PYPROJECT_FILENAME], cwd=member_root
+                ["git", "add", c.Infra.PYPROJECT_FILENAME, "config/beads.yaml"],
+                cwd=member_root,
             )
         )
         tm.ok(
@@ -387,6 +209,10 @@ class TestsCodegenCatalogExtensions:
         # resolution and analysis exclusion discovery observe the attached
         # topology. A local bare repo is used because Git file transport is
         # disabled by default in current releases.
+        provider = u.Tests.provider()
+        member_baseline = tm.ok(
+            u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=member_root)
+        )
         bare_repo = tmp_path.parent / "acme-charts-bare.git"
         tm.ok(
             u.Cli.run_checked([
@@ -395,6 +221,16 @@ class TestsCodegenCatalogExtensions:
                 "--bare",
                 member_root.as_posix(),
                 bare_repo.as_posix(),
+            ])
+        )
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "--git-dir",
+                bare_repo.as_posix(),
+                "update-ref",
+                f"refs/heads/{provider.branch}",
+                member_baseline,
             ])
         )
         tm.ok(u.Cli.run_checked(["rm", "-rf", member_root.as_posix()]))
@@ -413,7 +249,6 @@ class TestsCodegenCatalogExtensions:
                 cwd=tmp_path,
             )
         )
-        provider = config.Infra.codegen.providers[0]
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -426,11 +261,32 @@ class TestsCodegenCatalogExtensions:
             )
         )
         tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "remote.origin.skipDefaultUpdate", "true"],
+                cwd=member_root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "update-ref",
+                    f"refs/remotes/origin/{provider.branch}",
+                    member_baseline,
+                ],
+                cwd=member_root,
+            )
+        )
+        tm.ok(u.Cli.run_checked(["rm", "-rf", bare_repo.as_posix()]))
+        tm.ok(
             u.Cli.atomic_write_text_file(
                 tmp_path / c.Infra.PYPROJECT_FILENAME,
                 '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
                 'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
             )
+        )
+        WorktreeFixture.write_beads_project(
+            tmp_path, workspace=root.name, database=root.name, issue_prefix=root.name
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -453,7 +309,13 @@ class TestsCodegenCatalogExtensions:
         )
         tm.ok(
             u.Cli.run_checked(
-                ["git", "add", c.Infra.PYPROJECT_FILENAME, c.Infra.GITMODULES],
+                [
+                    "git",
+                    "add",
+                    c.Infra.PYPROJECT_FILENAME,
+                    c.Infra.GITMODULES,
+                    "config/beads.yaml",
+                ],
                 cwd=tmp_path,
             )
         )
@@ -462,12 +324,16 @@ class TestsCodegenCatalogExtensions:
                 ["git", "commit", "-q", "-m", "Workspace fixture"], cwd=tmp_path
             )
         )
-        tm.ok(u.Cli.run_checked(["rm", "-rf", bare_repo.as_posix()]))
-        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        manifest_path.parent.mkdir(parents=True)
+        root_baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=tmp_path))
         tm.ok(
-            u.Cli.yaml_dump(
-                manifest_path, workspace.model_dump(mode="json", exclude_none=True)
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "update-ref",
+                    f"refs/remotes/origin/{provider.branch}",
+                    root_baseline,
+                ],
+                cwd=tmp_path,
             )
         )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
@@ -498,7 +364,7 @@ class TestsCodegenCatalogExtensions:
             for file in plan.files
             if file.path == tmp_path.resolve() / c.Infra.MAKEFILE_FILENAME
         )
-        tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
+        tm.that(root_makefile.rendered, has="WORKSPACE_SUBPROJECTS := acme-charts")
         tm.that("acme-content" in root_makefile.rendered, eq=False)
         workflows = tuple(
             file for file in plan.files if ".github/workflows" in file.path.as_posix()
@@ -524,16 +390,17 @@ class TestsCodegenCatalogExtensions:
             )
         for workflow in workflows:
             tm.that("acme-content" in workflow.rendered, eq=False)
-        gitmodules = next(
-            file.rendered for file in plan.files if file.path.name == ".gitmodules"
+        tm.that(
+            any(file.path.name == c.Infra.GITMODULES for file in plan.files), eq=False
         )
+        gitmodules = (tmp_path / c.Infra.GITMODULES).read_text(encoding="utf-8")
         tm.that(gitmodules, has='[submodule "acme-charts"]')
         tm.that("acme-content" in gitmodules, eq=False)
         mise = tomllib.loads(
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
         tm.that(
-            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+            mise["tools"][config.Infra.codegen.toolchain.beads.selector]["version"],
             eq=config.Infra.codegen.toolchain.beads.version,
         )
         pyproject = tomllib.loads(

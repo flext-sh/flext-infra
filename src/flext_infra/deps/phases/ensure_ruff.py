@@ -33,10 +33,7 @@ class FlextInfraEnsureRuffConfigPhase:
             if (
                 project.package_name
                 and project.package_name.isidentifier()
-                and (
-                    project.workspace_role
-                    == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
-                )
+                and (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
             )
         })
 
@@ -133,7 +130,7 @@ class FlextInfraEnsureRuffConfigPhase:
             *self._workspace_exclusion_globs(path.parent),
             *analysis_exclusions,
         })
-        # NOTE(mro-p68a.5, agent codex): models stay declaration-only; the
+        # Models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
         effective_ignore = tuple(
             sorted({*ruff_cfg.lint.ignore, *ruff_cfg.lint.ignored_rule_rationales})
@@ -239,7 +236,7 @@ class FlextInfraEnsureRuffConfigPhase:
             doc,
             self._phase(
                 path=path,
-                # mro-j47u (codex): installed and workspace FLEXT dependencies
+                # Installed and workspace FLEXT dependencies
                 # share the same first-party import contract.
                 workspace_namespaces=u.Infra.flext_dependency_namespaces(doc),
                 stale_patterns=stale_patterns,

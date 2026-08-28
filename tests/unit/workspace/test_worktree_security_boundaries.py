@@ -41,11 +41,13 @@ def test_false_branch_format_report_fails_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repository = _repository(tmp_path)
-    monkeypatch.setattr(
-        u.Infra,
-        "git_check_branch_format",
-        lambda _request: r.ok(m.Infra.GitBoolReport(value=False)),
-    )
+
+    def reject_branch(
+        _request: m.Infra.GitBranchRequest,
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        return r.ok(m.Infra.GitBoolReport(value=False))
+
+    monkeypatch.setattr(u.Infra, "git_check_branch_format", reject_branch)
 
     result = _add(repository, "feature/rejected")
 
@@ -83,7 +85,7 @@ def test_unresolved_base_fails_before_lane_mutation(tmp_path: Path) -> None:
     )
 
 
-@pytest.mark.parametrize("entry", ["epic", "container", "beads"])
+@pytest.mark.parametrize("entry", ["epic", "container"])
 def test_symlinked_epic_topology_fails_closed(tmp_path: Path, entry: str) -> None:
     repository = _repository(tmp_path)
     epic = Path(tm.ok(_add(repository, "feature/secure-epic")))
@@ -92,9 +94,6 @@ def test_symlinked_epic_topology_fails_closed(tmp_path: Path, entry: str) -> Non
     target = epic
     if entry == "container":
         target = epic / c.Infra.WORKTREES_DIRNAME
-        target.symlink_to(outside, target_is_directory=True)
-    elif entry == "beads":
-        target = epic / ".beads"
         target.symlink_to(outside, target_is_directory=True)
     else:
         tm.ok(u.Infra.git_remove_clean_worktree(repository, epic))

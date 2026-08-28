@@ -145,7 +145,7 @@ class FlextInfraRefactorCensusObjectsMixin:
                 modified=True,
                 changes=tuple(changes_by_file[file_path]),
             )
-            for file_path in sorted(changes_by_file, key=lambda item: item.as_posix())
+            for file_path in sorted(changes_by_file, key=Path.as_posix)
         )
 
     @staticmethod

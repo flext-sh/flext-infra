@@ -1,7 +1,7 @@
 {%- if private_submodules %}
           persist-credentials: false
 
-      - name: Init private workspace members
+      - name: Init private workspace projects
         env:
 {% for key in private_submodules.deploy_keys %}
           {{ key.secret }}: {% raw %}${{ secrets.{% endraw %}{{ key.secret }}{% raw %} }}{% endraw %}

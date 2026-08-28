@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import operator
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar, Final
@@ -48,8 +49,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         return False
 
     @classmethod
-    def matches_root_namespace_file(cls, file_name: str) -> bool:
-        """Return whether *file_name* is a governed root-namespace facade file."""
+    def is_public_python_module_file(cls, file_name: str) -> bool:
+        """Return whether *file_name* names a public Python module."""
         return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
 
     @staticmethod
@@ -503,7 +504,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             source = resource.read()
             class_infos = sorted(
                 FlextInfraUtilitiesRopeAnalysis.get_class_info(rope_project, resource),
-                key=lambda item: item.line,
+                key=operator.attrgetter("line"),
             )
             if not class_infos:
                 return

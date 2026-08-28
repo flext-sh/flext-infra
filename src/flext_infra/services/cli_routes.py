@@ -21,11 +21,6 @@ if TYPE_CHECKING:
 # dispatched per invocation. Only the owning module for the RESOLVED group is
 # imported now, cutting startup to that one module's cost.
 _GROUP_OWNERS: Final[dict[str, tuple[str, str, str]]] = {
-    c.Infra.CLI_GROUP_BASEMK: (
-        "flext_infra.services.cli_routes_codegen",
-        "CodegenRoutes",
-        "codegen_routes",
-    ),
     c.Infra.CLI_GROUP_CHECK: (
         "flext_infra.services.cli_routes_codegen",
         "CodegenRoutes",

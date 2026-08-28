@@ -26,7 +26,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         "runtime_alias",
         "manual_typing_alias",
         "compatibility_alias",
-        "mro_completeness",
     })
     _PYI_GLOB: ClassVar[str] = "*.pyi"
     _PYI_SUFFIX: ClassVar[str] = ".pyi"
@@ -116,16 +115,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return ""
 
     @staticmethod
-    def _mro_facade_module_names(selected_families: frozenset[str]) -> frozenset[str]:
-        """Mro facade module names."""
-        families = selected_families or c.Infra.MRO_FAMILIES
-        return frozenset(
-            Path(module_path).name
-            for family, module_path in c.Infra.MRO_FAMILY_FACADE_MODULES.items()
-            if family in families
-        )
-
-    @staticmethod
     def _is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
         """Return whether a module belongs to one configured production root."""
         project_root = module.project_root
@@ -146,7 +135,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         project_names: t.StrSequence | None,
-        selected_families: frozenset[str],
         rule_names: t.StrSequence | None,
     ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
         """Modules for rules."""
@@ -158,16 +146,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         declarative_rules = self._declarative_rules_for_selection(rule_names)
         if any(self._rule_requires_stub_file(rule) for rule in declarative_rules):
             modules = (*modules, *self._stub_modules(rope, modules, project_names))
-        if rule_names is None or set(rule_names) != {"mro_completeness"}:
-            return modules
-        facade_module_names = self._mro_facade_module_names(selected_families)
-        return tuple(
-            module
-            for module in modules
-            if module.module_name
-            and module.module_name.count(".") == 1
-            and module.file_path.name in facade_module_names
-        )
+        return modules
 
     @classmethod
     def _stub_modules(
@@ -264,10 +243,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
         report_projects: set[str] = set()
         for module in self._modules_for_rules(
-            rope,
-            project_names=project_names,
-            selected_families=selected_families,
-            rule_names=rule_names,
+            rope, project_names=project_names, rule_names=rule_names
         ):
             self._scan_module(
                 rope,

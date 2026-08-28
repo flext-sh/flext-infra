@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import cProfile
 import sys
 from pathlib import Path
 
@@ -20,11 +19,20 @@ class TestsCProfileEntry:
         """Render a real profile with the same typed policy production consumes."""
         report_root = tmp_path / ".reports" / "cprofile"
         report_root.mkdir(parents=True)
-        profiler = cProfile.Profile()
-        profiler.enable()
-        _ = sum(range(10))
-        profiler.disable()
-        profiler.dump_stats(report_root / "pytest.pstats")
+        profile_target = tmp_path / "profile_target.py"
+        profile_target.write_text("_ = sum(range(10))\n", encoding="utf-8")
+        profiled = u.Cli.run_checked(
+            [
+                sys.executable,
+                "-m",
+                "cProfile",
+                "-o",
+                str(report_root / "pytest.pstats"),
+                str(profile_target),
+            ],
+            cwd=tmp_path,
+        )
+        tm.ok(profiled)
 
         rendered = u.Cli.run_checked(
             [sys.executable, "-m", "flext_infra._cprofile_entry"], cwd=tmp_path

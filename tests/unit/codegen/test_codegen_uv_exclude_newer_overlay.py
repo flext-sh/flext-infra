@@ -28,33 +28,28 @@ class TestCodegenUvExcludeNewerOverlay:
     )
 
     @staticmethod
-    def _workspace(*, overlay_window: str | None) -> m.Infra.WorkspaceSpec:
-        """Build a standalone workspace, optionally carrying the overlay."""
+    def _workspace() -> m.Infra.WorkspaceSpec:
+        """Build the local repository context consumed by pyproject conform."""
         repository = test_u.Tests.repository_ref(config.Infra.name)
-        overlays = (
-            (
-                m.Infra.RepositoryPolicyOverlaySpec(
-                    project=repository.distribution, uv_exclude_newer=overlay_window
-                ),
-            )
-            if overlay_window is not None
-            else ()
-        )
         return m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=repository.distribution,
+            beads=m.Infra.BeadsProjectSpec(
+                version=1,
+                workspace=repository.distribution,
+                database=repository.distribution,
+                issue_prefix=repository.distribution,
+            ),
             repository=repository,
-            repository_policy_overlays=overlays,
         )
 
     @classmethod
     def _render(cls, *, overlay_window: str | None) -> str:
         """Conform a minimal pyproject the way codegen does for a repository."""
-        workspace = cls._workspace(overlay_window=overlay_window)
+        workspace = cls._workspace()
         return tm.ok(
             u.Infra.pyproject_conform(
                 cls.SOURCE,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,

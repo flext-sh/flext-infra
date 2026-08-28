@@ -1,0 +1,7 @@
+id: rewrite-workspace-profile
+language: Yaml
+severity: error
+message: the .gitmodules topology uses the workspace profile
+rule:
+  pattern: '[workspace]'
+fix: '[workspace]'

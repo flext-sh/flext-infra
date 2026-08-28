@@ -24,7 +24,6 @@ class TestCodegenManifestlessExisting:
     ) -> None:
         root = infra_git_repo
         repository = u.Tests.repository_ref(config.Infra.name)
-        local_repository = repository.model_copy(update={"path": Path()})
         preserved = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
@@ -44,6 +43,7 @@ class TestCodegenManifestlessExisting:
         )
         for relative, content in preserved.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
+        u.Tests.write_project_beads_config(root, config.Infra.name)
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -53,7 +53,9 @@ class TestCodegenManifestlessExisting:
         )
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.that(derived.repository, eq=local_repository)
+        tm.that(derived.repository.name, eq=repository.name)
+        tm.that(derived.repository.distribution, eq=repository.distribution)
+        tm.that(derived.repository.path, eq=Path())
         tm.that(derived.project, eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
@@ -112,6 +114,7 @@ class TestCodegenManifestlessExisting:
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        u.Tests.write_project_beads_config(root, config.Infra.name)
         (root / ".env.example").mkdir()
 
         planned = FlextInfraCodegenConform(workspace_root=root).plan(

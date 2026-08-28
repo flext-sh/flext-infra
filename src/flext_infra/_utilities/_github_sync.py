@@ -18,7 +18,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
     """Render the canonical workflow template and sync/prune it per project.
 
     Composed into FlextInfraUtilitiesGithub via inheritance; the public
-    ``sync_github_workflows`` resolves these helpers through ``cls`` MRO.
+    ``sync_github_workflows`` resolves these helpers through ``cls`` FLEXT.
     """
 
     @classmethod

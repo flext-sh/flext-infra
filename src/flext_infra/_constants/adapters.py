@@ -17,7 +17,7 @@ from flext_core import m
 class FlextInfraConstantsAdapters:
     """SSOT TypeAdapter singletons for infrastructure validation."""
 
-    # NOTE (multi-agent): mro-i6nq.10 removes the constants-to-typings cycle.
+    # NOTE (multi-agent): flext-i6nq.10 removes the constants-to-typings cycle.
     INFRA_MAPPING_ADAPTER: Final[m.TypeAdapter[t.JsonMapping]] = (
         t.Cli.JSON_MAPPING_ADAPTER
     )

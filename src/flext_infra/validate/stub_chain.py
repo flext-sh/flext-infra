@@ -32,7 +32,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     all_projects: Annotated[
         bool, m.Field(alias="all", description="Validate all projects")
     ] = False
-    _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default_factory=lambda: None)
+    _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default=None)
 
     def __init__(
         self,
@@ -71,7 +71,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             "output_dir": output_dir,
             "selected_projects": selected_projects,
             "all_projects": all_projects,
-            # NOTE (multi-agent): mro-i6nq.12 — FlextMixins bootstrap inputs are now
+            # NOTE (multi-agent): flext-i6nq.12 — FlextMixins bootstrap inputs are now
             # native Pydantic fields validated with the rest of model_data.
             "settings_type": settings_type,
             "runtime_settings": runtime_settings,
@@ -198,7 +198,12 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
                 mypy_result.error or "bounded Mypy analysis failed"
             )
         mypy_hints = mypy_result.value
-        missing_imports = self._run_pyrefly_missing(proj)
+        pyrefly_result = self._run_pyrefly_missing(proj)
+        if pyrefly_result.failure:
+            return r[m.Infra.StubAnalysisReport].fail(
+                pyrefly_result.error or "Pyrefly analysis failed"
+            )
+        missing_imports = pyrefly_result.value
         internal, unresolved = self._classify_missing_imports(
             missing_imports, proj.name
         )
@@ -249,6 +254,10 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     ) -> p.Result[m.Infra.ValidationReport]:
         """Build the workspace typed-dependency validation report."""
         root = workspace_root.resolve()
+        if not root.is_dir():
+            return r[m.Infra.ValidationReport].fail(
+                f"typed dependency workspace does not exist: {root}"
+            )
         projects = project_dirs or self._discover_typed_projects(root)
         violations = self._typed_dependency_violations(projects, root)
         return r[m.Infra.ValidationReport].ok(
@@ -307,7 +316,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             })
         )
 
-    def _run_pyrefly_missing(self, project_dir: Path) -> t.StrSequence:
+    def _run_pyrefly_missing(self, project_dir: Path) -> p.Result[t.StrSequence]:
         """Run pyrefly check and extract missing imports."""
         runner = self.runner or u.Cli()
         result = runner.run(
@@ -322,10 +331,12 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             ],
             cwd=project_dir,
         )
-        output = ""
-        if result.success:
-            cmd_output: p.Cli.CommandOutput = result.value
-            output = cmd_output.stdout
+        if result.failure:
+            return r[t.StrSequence].fail(
+                result.error or f"Pyrefly process launch failed for {project_dir.name}"
+            )
+        cmd_output: p.Cli.CommandOutput = result.value
+        output = cmd_output.stdout
         seen: t.Infra.StrSet = set()
         ordered: t.MutableSequenceOf[str] = []
         for match in c.Infra.MISSING_IMPORT_RE.finditer(output):
@@ -333,7 +344,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             if name and name not in seen:
                 seen.add(name)
                 ordered.append(name)
-        return ordered
+        return r[t.StrSequence].ok(ordered)
 
 
 __all__: list[str] = ["FlextInfraStubSupplyChain"]

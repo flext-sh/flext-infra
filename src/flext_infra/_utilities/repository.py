@@ -19,7 +19,7 @@ class FlextInfraUtilitiesRepository:
         distribution: str,
         *,
         provider: m.Infra.ProviderSpec,
-        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.STANDALONE,
         checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.SUBMODULE,
     ) -> m.Infra.RepositoryRef:
         """Derive one repository reference from generic provider policy.
@@ -43,6 +43,27 @@ class FlextInfraUtilitiesRepository:
             read_only=False,
         )
 
+    @classmethod
+    def configured_repository_ref(
+        cls, distribution: str, *, codegen: m.Infra.CodegenConfigSpec
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Derive one repository from the unique provider selected by config."""
+        source = codegen.infra_repository
+        matches = tuple(
+            provider
+            for provider in codegen.providers
+            if provider.name == source.provider
+        )
+        if len(matches) != 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "configured repository provider must resolve exactly once: "
+                f"{source.provider}"
+            )
+        (provider,) = matches
+        return r[m.Infra.RepositoryRef].ok(
+            cls.derived_repository_ref(distribution, provider=provider)
+        )
+
     @staticmethod
     def repository_provider(
         repository: p.Infra.RepositoryRef, providers: t.SequenceOf[m.Infra.ProviderSpec]
@@ -58,13 +79,71 @@ class FlextInfraUtilitiesRepository:
         return r[m.Infra.ProviderSpec].ok(matches[0])
 
     @staticmethod
+    def remote_provider(
+        url: str, providers: t.SequenceOf[m.Infra.ProviderSpec]
+    ) -> p.Result[m.Infra.ProviderSpec]:
+        """Resolve one remote identity to exactly one configured provider."""
+        from flext_infra.utilities import u
+
+        identity = u.Infra.git_remote_identity(url)
+        parts = tuple(part for part in identity.split("/") if part)
+        match parts:
+            case (owner, _repository):
+                pass
+            case _:
+                return r[m.Infra.ProviderSpec].fail(
+                    "repository remote has no valid owner identity"
+                )
+        matches = tuple(
+            provider
+            for provider in providers
+            if provider.organization.casefold() == owner.casefold()
+        )
+        if len(matches) != 1:
+            return r[m.Infra.ProviderSpec].fail(
+                f"repository owner must resolve exactly once: {owner}"
+            )
+        return r[m.Infra.ProviderSpec].ok(matches[0])
+
+    @classmethod
+    def remote_repository_ref(
+        cls,
+        distribution: str,
+        *,
+        url: str,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve an explicit remote to one canonical repository reference."""
+        from flext_infra.utilities import u
+
+        identity = u.Infra.git_remote_identity(url)
+        parts = tuple(part for part in identity.split("/") if part)
+        match parts:
+            case (_owner, repository):
+                pass
+            case _:
+                return r[m.Infra.RepositoryRef].fail(
+                    "repository remote has no valid project identity"
+                )
+        if repository.casefold() != distribution.casefold():
+            return r[m.Infra.RepositoryRef].fail(
+                f"repository identity does not match distribution: {distribution}"
+            )
+        provider = cls.remote_provider(url, providers)
+        if provider.failure:
+            return r[m.Infra.RepositoryRef].fail(
+                provider.error or "repository provider resolution failed"
+            )
+        return r[m.Infra.RepositoryRef].ok(
+            cls.derived_repository_ref(distribution, provider=provider.value)
+        )
+
+    @staticmethod
     def resolve_integration_branch(
         workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
     ) -> str:
-        """Return the workspace overlay branch, else the provider catalog branch."""
-        if workspace.integration is not None:
-            integration_branch: str = workspace.integration.branch
-            return integration_branch
+        """Return the provider-owned integration branch."""
+        del workspace
         provider_branch: str = provider.branch
         return provider_branch
 
@@ -132,7 +211,7 @@ class FlextInfraUtilitiesRepository:
             loaded = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
             if loaded.failure:
                 return r[m.Infra.RepositoryConformTarget].fail(
-                    loaded.error or "workspace manifest load failed"
+                    loaded.error or "workspace topology load failed"
                 )
             resolved_workspace = loaded.value
         return FlextInfraWorkspaceDetector.conform_target(

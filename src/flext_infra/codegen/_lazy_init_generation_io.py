@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from flext_infra import m, t
 
 
-# mro-wkii.17.26 (codex): IO owns one initializer and removes obsolete sidecars.
+# flext-wkii.17.26 (codex): IO owns one initializer and removes obsolete sidecars.
 class FlextInfraCodegenLazyInitGenerationIOMixin:
     """Compare, write, and remove generated package initializers."""
 

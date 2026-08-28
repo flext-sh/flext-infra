@@ -8,7 +8,6 @@ import pytest
 
 from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u
 
@@ -21,25 +20,7 @@ class TestsFlextInfraCodegenConformProgress:
     ) -> None:
         """A check-mode conform must report stage and per-repository progress."""
         root = infra_git_repo
-        u.Tests.write_standalone_workspace_manifest(
-            root, "flext-demo", upstream="flext_cli"
-        )
-        package_root = root / "src" / "flext_demo"
-        tm.ok(u.Cli.ensure_dir(package_root))
-        tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                (
-                    "[project]\n"
-                    'name = "flext-demo"\n'
-                    'version = "0.1.0"\n'
-                    'requires-python = ">=3.13,<3.14"\n'
-                    "dependencies = []\n"
-                ),
-            )
-        )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        workspace = u.Tests.standalone_workspace(root)
         request = m.Infra.CodegenConformRequest(
             root=root,
             scope=c.Infra.CodegenConformScope.SELF,

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, u
+from flext_infra._utilities._sort_keys import path_depth
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -46,7 +47,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     @override
     def execute(self) -> p.Result[bool]:
         """Execute lazy-init directly from the validated CLI service model."""
-        # NOTE (multi-agent, mro-wkii.17.15): one normalized mode controls every write.
+        # NOTE (multi-agent, flext-wkii.17.15): one normalized mode controls every write.
         effective_dry_run = self.effective_dry_run
         errors = self.generate_inits(check_only=effective_dry_run)
         if self._duplicate_class_names > 0:
@@ -87,7 +88,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         if package_dir.is_relative_to(resolved_workspace_root)
                         and package_dir.name != c.Infra.ROOT_EXPORTS_DIR
                     ),
-                    key=lambda path: len(path.parts),
+                    key=path_depth,
                     reverse=True,
                 )
             )
@@ -149,7 +150,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                             : len(scope_prefix)
                         ]
                         == scope_prefix
-                        # mro-pulj (codex): wrapper aliases depend on the same
+                        # flext-pulj (codex): wrapper aliases depend on the same
                         # project's production plans, consumed read-only.
                         or package_dir.relative_to(resolved_workspace_root).parts[
                             : len(production_prefix)
@@ -184,7 +185,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 planner=planner,
                 target_package_dir=target_package_dir,
             )
-        # mro-96j2.4 (agent: claude): Ruff check runs once over the changed
+        # flext-96j2.4 (agent: claude): Ruff check runs once over the changed
         # artifact set instead of per rendered template. Apply mode only:
         # check mode never writes, so the on-disk files still hold the OLD
         # content and linting them would report drift as false lint errors.
@@ -200,7 +201,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     def batch_lint_generated(self, generated_files: t.StrSequence) -> int:
         """Ruff-check every changed initializer in one invocation.
 
-        mro-96j2.4 (agent: claude): the renderer emits byte-canonical output via
+        flext-96j2.4 (agent: claude): the renderer emits byte-canonical output via
         ``ruff format`` per template; validation (``ruff check``) is deferred to
         this single batched stage over the changed artifact set so generation
         spawns one Ruff check subprocess instead of one per generated file.

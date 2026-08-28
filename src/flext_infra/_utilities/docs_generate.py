@@ -9,6 +9,7 @@ from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
+from flext_infra import config
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -18,15 +19,10 @@ class FlextInfraUtilitiesDocsGenerate:
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod
-    def _module_names(contract: t.JsonMapping) -> list[str]:
-        """Extract normalized module names from one docs contract payload."""
-        try:
-            items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
-                contract.get("modules", [])
-            )
-        except c.ValidationError:
-            return []
-        return [str(item) for item in items]
+    def _module_names(scope: m.Infra.DocScope) -> list[str]:
+        """Return config-owned public API module names for one distribution."""
+        declared = config.Infra.codegen.make.docs.api_modules.get(scope.name, ())
+        return [f"{scope.package_name}.{module}" for module in declared]
 
     @staticmethod
     def _prune_generated_tree(
@@ -55,7 +51,7 @@ class FlextInfraUtilitiesDocsGenerate:
         contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
-        module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
+        module_names = FlextInfraUtilitiesDocsGenerate._module_names(scope)
         expected_generated: t.MutableSequenceOf[Path] = [
             scope.path / "docs/api-reference/generated/overview.md",
             scope.path / "docs/api-reference/generated/public-api.md",
@@ -158,7 +154,7 @@ class FlextInfraUtilitiesDocsGenerate:
         contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
-        module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
+        module_names = FlextInfraUtilitiesDocsGenerate._module_names(scope)
         return [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 path,
@@ -179,7 +175,7 @@ class FlextInfraUtilitiesDocsGenerate:
         The root site is an AGGREGATE of every workspace project, so scope
         discovery always enumerates all projects: honoring a ``projects``
         filter here would produce a partial aggregate whose prune step
-        deletes the pages of every filtered-out project (mro-o6h5 incident).
+        deletes the pages of every filtered-out project (flext-o6h5 incident).
         """
         _ = projects
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
@@ -198,7 +194,7 @@ class FlextInfraUtilitiesDocsGenerate:
         )
         catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
         class_counts: dict[str, int] = {}
-        # mro-o6h5 (agent: kimi) — root site aggregates per-project module
+        # flext-o6h5 (agent: kimi) — root site aggregates per-project module
         # pages: module names come from the already-loaded public contract
         # and src paths feed the mkdocstrings resolution block.
         scope_modules: dict[str, list[str]] = {}
@@ -211,7 +207,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope.path, scope.package_name
             )
             scope_modules[scope.name] = FlextInfraUtilitiesDocsGenerate._module_names(
-                project_contract
+                scope
             )
             src_dir = scope.path / "src"
             if src_dir.is_dir():
@@ -270,7 +266,7 @@ class FlextInfraUtilitiesDocsGenerate:
                     apply=apply,
                 )
             )
-            # mro-o6h5 (agent: kimi) — per-project module pages reuse the
+            # flext-o6h5 (agent: kimi) — per-project module pages reuse the
             # exact project-scope renderers (docs_modules_index +
             # docs_directive_page); index lives inside modules/ so relative
             # links resolve identically to the project-scope layout.
@@ -454,14 +450,18 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_sanitize_internal_anchor_links(content: str) -> str:
         """Replace local markdown links with plain text while preserving externals."""
-        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(
-            lambda match: (
-                match.group(0)
-                if match.group(2).startswith(("http://", "https://", "#", "mailto:"))
-                else match.group(1)
-            ),
-            content,
-        )
+
+        def sanitize_link(match: t.Infra.RegexMatch) -> str:
+            whole_match: str = match.group(0)
+            label: str = match.group(1)
+            target: str = match.group(2)
+            return (
+                whole_match
+                if target.startswith(("http://", "https://", "#", "mailto:"))
+                else label
+            )
+
+        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(sanitize_link, content)
         return sanitized
 
 

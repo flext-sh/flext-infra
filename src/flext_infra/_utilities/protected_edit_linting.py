@@ -34,12 +34,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """Normalize lint line."""
         if c.Infra.CODE_FRAME_RE.match(line) or c.Infra.CODE_FRAME_BODY_RE.match(line):
             return ""
+
+        def normalize_unused_import(match: t.Infra.RegexMatch) -> str:
+            imported_name = match.group(1).rsplit(".", maxsplit=1)[-1]
+            return f"`{imported_name}` imported but unused"
+
         normalized_line: str = c.Infra.LINE_COL_RE.sub("", line)
         normalized_without_unused_imports: str = c.Infra.UNUSED_IMPORT_RE.sub(
-            lambda match: (
-                f"`{match.group(1).rsplit('.', maxsplit=1)[-1]}` imported but unused"
-            ),
-            normalized_line,
+            normalize_unused_import, normalized_line
         )
         if c.Infra.LINT_SUMMARY_RE.match(normalized_without_unused_imports):
             return ""
@@ -172,7 +174,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_env = cls._command_env()
         gate_timeout = max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
-        # mro-38p39: every gate is an independent subprocess -- _run_lint_gate
+        # flext-38p39: every gate is an independent subprocess -- _run_lint_gate
         # builds its own command and returns a value, touching no shared state.
         # Running any one of them ahead of the pool made a snapshot cost that
         # gate's full wall clock PLUS the slowest of the rest, instead of just

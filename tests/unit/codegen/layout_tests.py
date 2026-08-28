@@ -1,4 +1,4 @@
-"""Tests for the declarative project-layout engine (mro-0wuz, epic mro-hzox)."""
+"""Tests for the declarative project-layout engine (flext-0wuz, epic flext-hzox)."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ def _build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
     (project / "index.md").write_text("index\n", encoding="utf-8")
     (project / "output.log").write_text("log-line\n", encoding="utf-8")
     (project / "loose.txt").write_text("unknown\n", encoding="utf-8")
+    u.Tests.declare_workspace_projects(tmp_path, (name,))
     return project
 
 
@@ -166,6 +167,7 @@ def test_apply_override_move_then_archives_emptied_dir(tmp_path: Path) -> None:
         "[project]\nname='flext-dbt-ldif'\nversion='0.1.0'\n", encoding="utf-8"
     )
     (profiles / "profiles.yml").write_text("profile: 1\n", encoding="utf-8")
+    u.Tests.declare_workspace_projects(tmp_path, (project.name,))
     engine = _engine(tmp_path, apply_changes=True)
 
     result = engine.execute()

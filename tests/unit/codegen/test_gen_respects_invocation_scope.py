@@ -100,28 +100,26 @@ def test_recipe_bodies_are_actually_parsed() -> None:
 
 
 def test_gen_has_one_codegen_owner() -> None:
-    """The gen recipe delegates every projection to codegen conform once."""
+    """The gen recipe delegates apply and fixed-point check to one owner."""
     text = _template_text()
     assert "CODEGEN_PROJECT_ARGS" not in text
 
     bodies = _recipe_bodies()
-    for target in ("_builtin_gen_check", "_builtin_gen_all"):
+    expected_modes = {
+        "_builtin_gen_check": ("check",),
+        "_builtin_gen_all": ("apply", "check"),
+    }
+    for target, modes in expected_modes.items():
         conform_lines = [line for line in bodies[target] if "codegen conform" in line]
-        assert len(conform_lines) == 1
+        assert len(conform_lines) == len(modes)
+        assert all(
+            f"--mode {mode}" in line
+            for line, mode in zip(conform_lines, modes, strict=True)
+        )
         assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
         assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
         assert all("deps modernize" not in line for line in bodies[target])
         assert all("deps extra-paths" not in line for line in bodies[target])
-
-
-def test_gen_routes_through_project_root() -> None:
-    bodies = _recipe_bodies()
-    for target in ("_builtin_gen_check", "_builtin_gen_all"):
-        generation_lines = [
-            line for line in bodies[target] if "$(PROJECT_FLEXT_INFRA)" in line
-        ]
-        assert len(generation_lines) == 1
-        assert all('--root "$(PROJECT_ROOT)"' in line for line in generation_lines)
 
 
 def test_gen_init_is_a_direct_hermetic_owner_route() -> None:

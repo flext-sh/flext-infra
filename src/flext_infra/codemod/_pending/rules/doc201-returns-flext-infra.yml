@@ -1834,42 +1834,6 @@ fix: |-
       The number of markers created or obsolete markers removed.
   """
 ---
-id: doc201-052-project-is-flext-child
-language: Python
-severity: warning
-message: Add the semantic Returns section for _project_is_flext_child.
-metadata:
-  source: "src/flext_infra/deps/_modernizer_document.py#_project_is_flext_child"
-rule:
-  all:
-    - pattern: '"""$DOC"""'
-    - not:
-        regex: 'Returns:'
-    - inside:
-        stopBy: end
-        kind: expression_statement
-    - inside:
-        stopBy: end
-        kind: function_definition
-        has:
-          field: name
-          regex: "^_project_is_flext_child$"
-constraints:
-  DOC:
-    regex: "^Detect a FLEXT consumer that shares a parent workspace ``\\.venv``\\.(?:\\n|$)"
-transform:
-  CLEAN_DOC:
-    replace:
-      source: $DOC
-      replace: '\\s+$'
-      by: ''
-fix: |-
-  """$CLEAN_DOC
-
-  Returns:
-      Whether the project is a FLEXT child sharing the workspace environment.
-  """
----
 id: doc201-053-discover-project-paths
 language: Python
 severity: warning
@@ -2302,7 +2266,7 @@ fix: |-
       Issues extracted from SARIF results for the project.
   """
 ---
-id: doc201-065-workspace-root-from-file
+id: doc201-065-workspace-from-file
 language: Python
 severity: warning
 message: Add the semantic Returns section for _workspace_root_from_file.
@@ -2912,78 +2876,6 @@ fix: |-
 
   Returns:
       A result indicating whether silent-failure validation passed.
-  """
----
-id: doc201-082-migrate-basemk
-language: Python
-severity: warning
-message: Add the semantic Returns section for _migrate_basemk.
-metadata:
-  source: "src/flext_infra/workspace/_migrator_artifacts.py#_migrate_basemk"
-rule:
-  all:
-    - pattern: '"""$DOC"""'
-    - not:
-        regex: 'Returns:'
-    - inside:
-        stopBy: end
-        kind: expression_statement
-    - inside:
-        stopBy: end
-        kind: function_definition
-        has:
-          field: name
-          regex: "^_migrate_basemk$"
-constraints:
-  DOC:
-    regex: "^Migrate basemk\\.(?:\\n|$)"
-transform:
-  CLEAN_DOC:
-    replace:
-      source: $DOC
-      replace: '\\s+$'
-      by: ''
-fix: |-
-  """$CLEAN_DOC
-
-  Returns:
-      A result describing the ``base.mk`` migration action.
-  """
----
-id: doc201-083-sync-basemk
-language: Python
-severity: warning
-message: Add the semantic Returns section for _sync_basemk.
-metadata:
-  source: "src/flext_infra/workspace/_sync_artifacts.py#_sync_basemk"
-rule:
-  all:
-    - pattern: '"""$DOC"""'
-    - not:
-        regex: 'Returns:'
-    - inside:
-        stopBy: end
-        kind: expression_statement
-    - inside:
-        stopBy: end
-        kind: function_definition
-        has:
-          field: name
-          regex: "^_sync_basemk$"
-constraints:
-  DOC:
-    regex: "^Sync base\\.mk for workspace root and subprojects\\.(?:\\n|$)"
-transform:
-  CLEAN_DOC:
-    replace:
-      source: $DOC
-      replace: '\\s+$'
-      by: ''
-fix: |-
-  """$CLEAN_DOC
-
-  Returns:
-      A result indicating whether ``base.mk`` changed successfully.
   """
 ---
 id: doc201-084-refresh

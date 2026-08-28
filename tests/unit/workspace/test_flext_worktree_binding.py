@@ -15,13 +15,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import p as core_p
-from flext_infra import u
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_tests import tm
+from tests import u
+
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 def _consumer(tmp_path: Path) -> Path:
     """Return an external consumer declaring flext packages by pinned git URL."""
+    provider = u.Tests.provider()
     consumer = tmp_path / "consumer"
     consumer.mkdir()
     (consumer / "pyproject.toml").write_text(
@@ -30,8 +33,10 @@ def _consumer(tmp_path: Path) -> Path:
         'version = "0.1.0"\n'
         'requires-python = ">=3.13"\n'
         "dependencies = [\n"
-        '  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",\n'
-        '  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",\n'
+        f'  "flext-core @ git+{provider.base_url.rstrip("/")}/flext-core.git@'
+        f'{provider.branch}",\n'
+        f'  "flext-cli @ git+{provider.base_url.rstrip("/")}/flext-cli.git@'
+        f'{provider.branch}",\n'
         '  "httpx>=0.27",\n'
         "]\n",
         encoding="utf-8",
@@ -48,54 +53,14 @@ def _flext_workspace(tmp_path: Path) -> Path:
     prove the intersection rather than inherit it from one machine's disk.
     """
     flext_root = tmp_path / "flext"
-    (flext_root / "config").mkdir(parents=True)
-    members = "\n".join(
-        f'  - {{name: "{name}", distribution: "{name}", provider: "flext-sh", '
-        f'url: "https://github.com/flext-sh/{name}.git", path: "{name}", '
-        'role: "workspace-member", state: "active", checkout: submodule, '
-        "codegen: conform, package: true, editable: true, read_only: false}"
-        for name in ("flext-core", "flext-cli")
+    WorktreeFixture.initialize_governed_project(
+        flext_root, "flext", workspace="flext", database="flext", issue_prefix="flext"
     )
-    (flext_root / "config" / "workspace.yaml").write_text(
-        "version: 3\n"
-        "name: flext\n"
-        "repository:\n"
-        '  name: flext\n  distribution: flext\n  provider: "flext-sh"\n'
-        '  url: "https://github.com/flext-sh/flext.git"\n  path: "."\n'
-        '  role: "workspace-root"\n  state: "active"\n  checkout: root\n'
-        "  codegen: conform\n  package: false\n  editable: false\n"
-        "  read_only: false\n"
-        # Every key the workspace schema requires of `project`; a partial block
-        # fails validation, and validation is what proves the fixture is a real
-        # workspace rather than a shape that merely looks like one.
-        "project:\n"
-        '  package_name: "flext"\n'
-        '  class_stem: "Flext"\n'
-        '  namespace: "Flext"\n'
-        '  constant_name: "flext"\n'
-        '  namespace_attribute: "flext"\n'
-        '  alias: "flext"\n'
-        '  environment_prefix: "FLEXT_"\n'
-        '  description: "Test workspace fixture"\n'
-        '  version: "0.12.0"\n'
-        '  license: "MIT"\n'
-        '  author_name: "FLEXT Team"\n'
-        '  author_email: "team@flext.sh"\n'
-        '  upstream: "flext_core"\n'
-        '  homepage: "https://github.com/flext-sh/flext"\n'
-        '  documentation: "https://docs.flext.sh"\n'
-        '  workspace_root_rel: "."\n'
-        "  year: 2026\n"
-        f"members:\n{members}\n",
-        encoding="utf-8",
-    )
-    # A governed member must be a real Git checkout: the detector rejects a
-    # member that is neither in .gitmodules nor a live repository, which is
-    # exactly the guard that keeps a half-provisioned tree from validating.
     for name in ("flext-core", "flext-cli"):
-        member = flext_root / name
-        member.mkdir()
-        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=member))
+        WorktreeFixture.initialize_governed_project(
+            flext_root / name, name, workspace=name, database=name, issue_prefix=name
+        )
+    WorktreeFixture.write_gitmodules(flext_root, ("flext-core", "flext-cli"))
     return flext_root
 
 

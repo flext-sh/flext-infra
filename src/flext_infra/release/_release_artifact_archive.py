@@ -60,7 +60,6 @@ class FlextInfraReleaseArtifactArchiveMixin:
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe archive member path: {name}"
         blocked_parts = frozenset({
-            ".beads",
             ".env",
             ".git",
             ".github",

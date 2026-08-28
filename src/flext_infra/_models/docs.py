@@ -43,7 +43,7 @@ class _FlextInfraDocsContracts:
         count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
 
 
-# NOTE (multi-agent, mro-wkii.17.23 / agent: uv_overlay_owner): docs transport
+# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
 # retains the exact metadata/config models and declares only analysis deltas.
 class FlextInfraModelsDocs(_FlextInfraDocsContracts):
     """Models for documentation services."""

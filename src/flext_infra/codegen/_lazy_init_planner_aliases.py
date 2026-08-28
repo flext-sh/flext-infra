@@ -142,7 +142,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 use_test_runtime_aliases=is_test_runtime_alias_surface,
             )
             if package_name and package_name != current_pkg:
-                # mro-pulj (codex): the generated root TYPE_CHECKING contract
+                # flext-pulj (codex): the generated root TYPE_CHECKING contract
                 # makes the public package itself the single inherited owner.
                 lazy_map[alias_name] = (package_name, alias_name)
         for alias_name, package_name in local_import_alias_targets:
@@ -189,6 +189,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         return tuple(
             (alias, package_name)
             for alias, target in state.declared_imports.items()
+            if alias != target
             if (
                 package_name := (
                     self._package_name_from_target(target)

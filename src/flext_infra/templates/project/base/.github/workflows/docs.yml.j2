@@ -37,59 +37,74 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
+      - name: Install mise toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
-          python-version: "{{ python_version }}"
-
-      - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
-        with:
-          enable-cache: true
+          version: {{ mise_version }}
 
       - name: Sync workspace toolchain
         run: make setup
 
-      # mro-o6h5 (agent: kimi) — failure diagnostics: per-project logs live under
+      # flext-o6h5 (agent: kimi) — failure diagnostics: per-project logs live under
       # .reports/workspace/docs/*.log and were invisible in CI ("0 errors" FAILs);
       # dump them inline + per-project audit-report.md for non-zero issue counts +
       # upload as artifact so the real error is always reachable.
       - name: Docs audit (blocking)
         run: |
-          .venv/bin/python -m flext_infra docs audit --workspace . --output-dir .reports/docs || {
-            while IFS= read -r -d '' f; do
-              echo "::group::$f"
-              tail -n 80 "$f"
-              echo "::endgroup::"
-            done < <(
-              find .reports apps \
+          set -euo pipefail
+          if .venv/bin/python -m flext_infra docs audit --workspace . --output-dir .reports/docs; then
+            :
+          else
+            command_status="$?"
+            report_roots=()
+            for candidate in .reports apps; do
+              if [ -e "$candidate" ]; then report_roots+=("$candidate"); fi
+            done
+            {% raw %}if [ "${#report_roots[@]}" -gt 0 ]; then{% endraw %}
+              report_list="$(mktemp "${RUNNER_TEMP:?}/flext-docs-audit.XXXXXX")"
+              find "${report_roots[@]}" \
                 \( -path '*/audit-summary.json' -o -path '*/audit-report.md' \
                    -o -path '*/validate-summary.json' -o -path '*/validate-report.md' \) \
-                -type f -print0 2>/dev/null || true
-            )
-            exit 1
-          }
+                -type f -print0 >"$report_list"
+              while IFS= read -r -d '' f; do
+                echo "::group::$f"
+                tail -n 80 "$f"
+                echo "::endgroup::"
+              done <"$report_list"
+            fi
+            exit "$command_status"
+          fi
 
       - name: Docs generate (materialize contract artifacts)
         run: .venv/bin/python -m flext_infra docs generate --workspace . --output-dir .reports/docs --apply
 
       - name: Docs validate (blocking)
         run: |
-          .venv/bin/python -m flext_infra docs validate --workspace . --output-dir .reports/docs || {
-            while IFS= read -r -d '' f; do
-              echo "::group::$f"
-              tail -n 80 "$f"
-              echo "::endgroup::"
-            done < <(
-              find .reports apps \
+          set -euo pipefail
+          if .venv/bin/python -m flext_infra docs validate --workspace . --output-dir .reports/docs; then
+            :
+          else
+            command_status="$?"
+            report_roots=()
+            for candidate in .reports apps; do
+              if [ -e "$candidate" ]; then report_roots+=("$candidate"); fi
+            done
+            {% raw %}if [ "${#report_roots[@]}" -gt 0 ]; then{% endraw %}
+              report_list="$(mktemp "${RUNNER_TEMP:?}/flext-docs-validate.XXXXXX")"
+              find "${report_roots[@]}" \
                 \( -path '*/validate-summary.json' -o -path '*/validate-report.md' \
                    -o -path '*/audit-summary.json' -o -path '*/audit-report.md' \) \
-                -type f -print0 2>/dev/null || true
-            )
-            exit 1
-          }
+                -type f -print0 >"$report_list"
+              while IFS= read -r -d '' f; do
+                echo "::group::$f"
+                tail -n 80 "$f"
+                echo "::endgroup::"
+              done <"$report_list"
+            fi
+            exit "$command_status"
+          fi
 
-      # mro-o6h5 (agent: kimi) — include-hidden-files: .reports/ is a dot-dir and
+      # flext-o6h5 (agent: kimi) — include-hidden-files: .reports/ is a dot-dir and
       # upload-artifact skips hidden paths by default (artifact silently empty).
       - name: Upload docs reports on failure
         if: failure()
@@ -125,15 +140,10 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
+      - name: Install mise toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
-          python-version: "{{ python_version }}"
-
-      - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
-        with:
-          enable-cache: true
+          version: {{ mise_version }}
 
       - name: Sync workspace toolchain
         run: make setup

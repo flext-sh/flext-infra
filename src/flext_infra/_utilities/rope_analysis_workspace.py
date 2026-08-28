@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from pathlib import Path
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -73,7 +74,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             if not set(path.relative_to(resolved_root).parts)
             & c.Infra.ITERATION_EXCLUDED_PARTS
         }
-        # mro-pulj (codex): Rope's source roots omit tests/examples/scripts;
+        # flext-pulj (codex): Rope's source roots omit tests/examples/scripts;
         # index those declared wrapper surfaces so explicitly targeted codegen
         # can update their generated initializers without textual fallbacks.
         wrapper_paths = {
@@ -94,10 +95,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             & c.Infra.ITERATION_EXCLUDED_PARTS
         }
         return tuple(
-            sorted(
-                python_paths | wrapper_paths | stub_paths,
-                key=lambda path: path.as_posix(),
-            )
+            sorted(python_paths | wrapper_paths | stub_paths, key=Path.as_posix)
         )
 
     @classmethod
@@ -207,7 +205,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             dir_modules = tuple(
                 sorted(
                     modules_by_dir.get(package_dir, ()),
-                    key=lambda entry: entry.file_path.name,
+                    key=operator.attrgetter("file_path.name"),
                 )
             )
             init_path = (package_dir / c.Infra.INIT_PY).resolve()

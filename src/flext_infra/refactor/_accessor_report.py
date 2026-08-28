@@ -18,7 +18,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
     Composed into FlextInfraAccessorMigrationOrchestrator via inheritance; the
     facade provides ``dry_run`` / ``workspace_root`` / the gate-name properties
-    through MRO (declared below for static resolution).
+    through FLEXT (declared below for static resolution).
     """
 
     if TYPE_CHECKING:
