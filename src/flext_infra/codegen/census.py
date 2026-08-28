@@ -91,10 +91,12 @@ class FlextInfraCodegenCensus(s[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(workspace)
-            selected_projects = (
-                tuple(projects_result.unwrap()) if projects_result.success else ()
+            projects_result = u.Infra.projects(
+                workspace, names=u.Infra.normalize_cli_values(self.project_filter)
             )
+            if projects_result.failure:
+                raise ValueError(projects_result.error or "project resolution failed")
+            selected_projects = tuple(projects_result.value)
         return [self._census_project(project) for project in selected_projects]
 
     def _census_project(self, project: p.Infra.ProjectInfo) -> m.Infra.CensusReport:

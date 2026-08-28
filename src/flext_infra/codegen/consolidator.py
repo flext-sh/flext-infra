@@ -145,17 +145,13 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
     ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         """Return the selected projects."""
         _ = rope_workspace
-        discovered = u.Infra.projects(self.workspace_root)
+        names = (self.project_name,) if self.project_name is not None else ()
+        discovered = u.Infra.projects(self.workspace_root, names=names)
         if discovered.failure:
             return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
-                discovered.error or "project discovery failed"
+                discovered.error or "project resolution failed"
             )
-        selected = tuple(
-            project
-            for project in discovered.unwrap()
-            if self.project_name is None or project.name == self.project_name
-        )
-        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(selected)
+        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(tuple(discovered.value))
 
 
 __all__: list[str] = ["FlextInfraCodegenConsolidator"]

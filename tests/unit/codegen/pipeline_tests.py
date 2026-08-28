@@ -123,7 +123,11 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     external_package = external_project / "src" / "external_project"
     tm.that(not external_package.joinpath("constants.py").exists(), eq=True)
     payload = infra.model_copy(
-        update={"workspace_root": tmp_path, "apply_changes": True}
+        update={
+            "workspace_root": tmp_path,
+            "apply_changes": True,
+            "project_filter": "project-a,project-b",
+        }
     ).command_payload()
     census_before = FlextInfraCodegenCensus.model_validate(payload).run()
     scaffold_results_first = FlextInfraCodegenScaffolder.model_validate(payload).run(

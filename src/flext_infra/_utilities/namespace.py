@@ -402,26 +402,19 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def projects(
-        cls,
-        workspace_root: Path,
-        *,
-        projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
+        cls, workspace_root: Path, *, names: t.StrSequence = ()
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-        """Discover only projects that participate in codegen automation."""
-        if projects is None:
-            projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
-                workspace_root
+        """Resolve projects participating in codegen through the scope SSOT."""
+        projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
+            workspace_root, names
+        )
+        if projects_result.failure:
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
+                projects_result.error or "project resolution failed"
             )
-            if not projects_result.success:
-                return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
-                    projects_result.error or "project discovery failed"
-                )
-            discovered = projects_result.unwrap()
-        else:
-            discovered = projects
         selected = tuple(
             project
-            for project in discovered
+            for project in projects_result.value
             if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
         )
         return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(selected)

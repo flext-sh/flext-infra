@@ -62,10 +62,13 @@ class FlextInfraCodegenScaffolder(s[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(self.workspace_root)
-            selected_projects = (
-                tuple(projects_result.unwrap()) if projects_result.success else ()
+            projects_result = u.Infra.projects(
+                self.workspace_root,
+                names=u.Infra.normalize_cli_values(self.project_filter),
             )
+            if projects_result.failure:
+                raise ValueError(projects_result.error or "project resolution failed")
+            selected_projects = tuple(projects_result.value)
         return [
             self._scaffold_project(project, dry_run=dry_run)
             for project in selected_projects

@@ -30,6 +30,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         # Provided by the composed facade (FlextInfraCodegenPipeline); declared
         # here so the handlers type-resolve against the facade state + harness.
         _state: m.Infra.CodegenPipelineState
+        project_filter: str | None
 
         def _run_stage[V](
             self,
@@ -49,7 +50,10 @@ class FlextInfraCodegenPipelineStagesMixin:
         """
 
         def _action() -> tuple[m.Infra.ProjectInfo, ...]:
-            projects_result = u.Infra.projects(ctx.workspace_root)
+            projects_result = u.Infra.projects(
+                ctx.workspace_root,
+                names=u.Infra.normalize_cli_values(self.project_filter),
+            )
             if projects_result.failure:
                 msg = projects_result.error or "project discovery failed"
                 raise RuntimeError(msg)

@@ -52,7 +52,9 @@ def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
             '__all__: list[str] = ["TestProjBase", "T"]\n'
         },
     )
-    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
+    fixer = FlextInfraCodegenFixer(
+        workspace_root=tmp_path, selected_projects=("test-proj",)
+    )
     results = fixer.fix_workspace()
     project_names = [res.project for res in results]
     tm.that("external-project" not in project_names, eq=True)

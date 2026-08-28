@@ -21,6 +21,7 @@ class FlextInfraProjectSelectionMixin:
 
     if TYPE_CHECKING:
         selected_projects: t.StrSequence | None
+        project_filter: str | None
 
     @property
     def root(self) -> Path:
@@ -30,7 +31,10 @@ class FlextInfraProjectSelectionMixin:
     @property
     def project_names(self) -> t.StrSequence | None:
         """Normalized selected project names."""
-        return ub.normalize_sequence_values(self.selected_projects)
+        selectors = self.selected_projects
+        if selectors is None and self.project_filter is not None:
+            selectors = (self.project_filter,)
+        return ub.normalize_sequence_values(selectors)
 
     @property
     def project_dirs(self) -> t.SequenceOf[Path] | None:

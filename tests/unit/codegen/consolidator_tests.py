@@ -45,9 +45,6 @@ def _consolidator_payload(value: str) -> _ConsolidatorJsonPayload:
 def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir(parents=True)
-    (workspace_root / "pyproject.toml").write_text(
-        '[tool.uv.workspace]\nmembers = ["flext-demo"]\n', encoding="utf-8"
-    )
     project_root = workspace_root / "flext-demo"
     package_dir = project_root / "src" / "flext_demo"
     package_dir.mkdir(parents=True)
@@ -65,7 +62,9 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
     )
     (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
 
-    result = u.Tests.consolidate_codegen(workspace_root=workspace_root, dry_run=True)
+    result = u.Tests.consolidate_codegen(
+        workspace_root=workspace_root, project="flext-demo", dry_run=True
+    )
 
     tm.ok(result)
     tm.that(result.value, has="Found")
@@ -75,9 +74,6 @@ def _build_consolidator_workspace(tmp_path: Path) -> Path:
     """Create a workspace with one project whose constants define a demo value."""
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir(parents=True)
-    (workspace_root / "pyproject.toml").write_text(
-        '[tool.uv.workspace]\nmembers = ["flext-demo"]\n', encoding="utf-8"
-    )
     project_root = workspace_root / "flext-demo"
     package_dir = project_root / "src" / "flext_demo"
     package_dir.mkdir(parents=True)
@@ -125,7 +121,9 @@ def test_execute_apply_mode_replaces_literal_with_canonical_reference(
     workspace_root = _build_consolidator_workspace(tmp_path)
     consumer_path = workspace_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
 
-    result = u.Tests.consolidate_codegen(workspace_root=workspace_root, dry_run=False)
+    result = u.Tests.consolidate_codegen(
+        workspace_root=workspace_root, project="flext-demo", dry_run=False
+    )
 
     tm.ok(result)
     tm.that(result.value, has="Applied 1 replacements")
@@ -162,7 +160,10 @@ def test_execute_apply_mode_scans_wrapper_surfaces(
         'from __future__ import annotations\n\nVALUE = "demo"\n', encoding="utf-8"
     )
     service = FlextInfraCodegenConsolidator(
-        workspace_root=workspace_root, dry_run=False, output_format="json"
+        workspace_root=workspace_root,
+        project_name="flext-demo",
+        dry_run=False,
+        output_format="json",
     )
 
     result = service.execute()
@@ -189,7 +190,10 @@ def test_execute_apply_mode_scans_wrapper_surfaces(
 def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
     workspace_root = _build_consolidator_workspace(tmp_path)
     service = FlextInfraCodegenConsolidator(
-        workspace_root=workspace_root, dry_run=False, output_format="json"
+        workspace_root=workspace_root,
+        project_name="flext-demo",
+        dry_run=False,
+        output_format="json",
     )
 
     result = service.execute()
@@ -206,7 +210,10 @@ def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
 def test_execute_dry_run_json_output(tmp_path: Path) -> None:
     workspace_root = _build_consolidator_workspace(tmp_path)
     service = FlextInfraCodegenConsolidator(
-        workspace_root=workspace_root, dry_run=True, output_format="json"
+        workspace_root=workspace_root,
+        project_name="flext-demo",
+        dry_run=True,
+        output_format="json",
     )
 
     result = service.execute()

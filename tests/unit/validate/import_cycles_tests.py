@@ -168,9 +168,7 @@ class TestImportCyclesPerProjectScope:
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="scanned 6 modules")
 
-    def test_cycle_is_attributed_to_owning_project_only(
-        self, tmp_path: Path
-    ) -> None:
+    def test_cycle_is_attributed_to_owning_project_only(self, tmp_path: Path) -> None:
         """A real cycle inside one project is reported with that project's label."""
         self._seed_project(
             tmp_path,
