@@ -33,6 +33,12 @@ class TestGitHookConformance:
     @staticmethod
     def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
         """Load repository identity directly from its canonical metadata."""
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.PYPROJECT_FILENAME,
+                '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
+            )
+        )
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
     @staticmethod

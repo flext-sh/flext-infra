@@ -203,19 +203,6 @@ Infra:
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
         branch: develop
-    branch_policy:
-      technical_branch_patterns:
-        - __dolt_remote_info__
-        - dolt/*
-        - gh-readonly-queue/*
-      # FLEXT branch model: main is the produced release (tagged + published to
-      # PyPI) and 0.20.0-dev is the future line on hold. Both must carry the
-      # current development line, so both are gated. Parked releases (0.10.0-dev,
-      # 0.11.0-dev), snapshots and lane branches are inventoried but never gated.
-      governed_branch_patterns:
-        - main
-        - 0.12.0-dev
-        - 0.20.0-dev
     make:
       selector: WHAT
       work_in_progress:
@@ -1016,6 +1003,12 @@ Infra:
       - path: .mise.toml
         owner: codegen
         policy: full
+      - path: .markdownlint.json
+        owner: markdown
+        policy: full
+      - path: .markdownlintignore
+        owner: markdown
+        policy: full
       - path: .pre-commit-config.yaml
         owner: pre-commit
         policy: full
@@ -1526,6 +1519,14 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          delegate: render
+          overwrite: false
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          delegate: render
+          overwrite: false
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
           delegate: render
           overwrite: false
         # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a

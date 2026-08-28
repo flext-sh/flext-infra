@@ -238,164 +238,6 @@ class TestCodegenConform:
             has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
         )
 
-    @pytest.mark.slow
-    def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
-        root = tmp_path / "repository"
-        root.mkdir()
-        u.Tests.initialize_git_repo(root)
-        baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", baseline],
-                cwd=root,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
-                cwd=root,
-            )
-        )
-        empty_tree = tm.ok(u.Cli.capture(["git", "mktree"], cwd=root))
-        divergent = tm.ok(
-            u.Cli.capture(
-                ["git", "commit-tree", empty_tree, "-m", "Create divergent local line"],
-                cwd=root,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "checkout", "-B", "0.12.0-dev", divergent], cwd=root
-            )
-        )
-        divergent_check = tm.ok(
-            u.Cli.run_raw(
-                ["git", "merge-base", "--is-ancestor", baseline, divergent], cwd=root
-            )
-        )
-        tm.that(divergent_check.exit_code, eq=1)
-        repository = u.Tests.repository_ref("flext-infra")
-        (root / "pyproject.toml").write_text(
-            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
-            encoding="utf-8",
-        )
-        package = root / "src" / repository.distribution.replace("-", "_")
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        request = m.Infra.CodegenConformRequest(
-            root=root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        service = FlextInfraCodegenConform(workspace_root=root, request=request)
-
-        before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
-        divergent_current = next(
-            reference
-            for reference in before_merge.references
-            if reference.reference == "refs/heads/0.12.0-dev"
-        )
-        tm.that(divergent_current.ancestor, eq=False)
-
-        merge_head = tm.ok(
-            u.Cli.capture(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=root)
-        )
-        (root / merge_head).write_text(f"{baseline}\n", encoding="utf-8")
-        during_merge = tm.ok(service.plan(request)).branch_ancestry[0]
-        merging_current = next(
-            reference
-            for reference in during_merge.references
-            if reference.reference == "refs/heads/0.12.0-dev"
-        )
-
-        tm.that(merging_current.ancestor, eq=True)
-
-    def test_branch_ancestry_skips_bare_main_worktree_entry(
-        self, tmp_path: Path
-    ) -> None:
-        """A bare main worktree (Gas Town rig .repo.git) must not fail the plan.
-
-        `git worktree list --porcelain` lists the bare repository itself as a
-        worktree entry carrying only the `bare` attribute — no HEAD line. The
-        ancestry parser used to reject that block with "worktree has no HEAD";
-        it must skip it and keep planning.
-        """
-        bare = tmp_path / "repo.git"
-        tm.ok(u.Cli.run_checked(["git", "init", "-b", "dev", "--bare", str(bare)]))
-        tm.ok(
-            u.Cli.run_checked([
-                "git",
-                "-C",
-                str(bare),
-                "config",
-                "user.email",
-                "tests@flext.local",
-            ])
-        )
-        tm.ok(
-            u.Cli.run_checked([
-                "git",
-                "-C",
-                str(bare),
-                "config",
-                "user.name",
-                "Flext Tests",
-            ])
-        )
-        empty_tree = tm.ok(u.Cli.capture(["git", "-C", str(bare), "mktree"]))
-        seed = tm.ok(
-            u.Cli.capture([
-                "git",
-                "-C",
-                str(bare),
-                "commit-tree",
-                empty_tree,
-                "-m",
-                "seed",
-            ])
-        )
-        checkout = tmp_path / "checkout"
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "-C", str(bare), "worktree", "add", str(checkout), seed],
-                cwd=tmp_path,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked([
-                "git",
-                "-C",
-                str(checkout),
-                "update-ref",
-                "refs/remotes/origin/0.12.0-dev",
-                seed,
-            ])
-        )
-        repository = u.Tests.repository_ref("flext-infra")
-        (checkout / "pyproject.toml").write_text(
-            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
-            encoding="utf-8",
-        )
-        package = checkout / "src" / repository.distribution.replace("-", "_")
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        request = m.Infra.CodegenConformRequest(
-            root=checkout,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        service = FlextInfraCodegenConform(workspace_root=checkout, request=request)
-
-        plan = tm.ok(service.plan(request))
-
-        tm.that(
-            any(
-                entry.reference == "refs/remotes/origin/0.12.0-dev"
-                for entry in plan.branch_ancestry[0].references
-            ),
-            eq=True,
-        )
-
     # This end-to-end scenario scaffolds a project and runs its console entry
     # point in a fresh interpreter. The slow marker opts into the single
     # config-owned slow-item budget; tests must not restate that policy locally.
@@ -578,7 +420,7 @@ class TestCodegenConform:
         tm.that(fixed_point.value.written_files, eq=())
 
     @pytest.mark.slow
-    def test_empty_rendered_directory_is_not_a_python_root(
+    def test_declared_root_namespace_is_analyzed_before_content(
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
@@ -595,15 +437,13 @@ class TestCodegenConform:
 
         tm.ok(result)
         payload = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-        tm.that(
-            payload["tool"]["pyrefly"]["project-includes"], lacks="scripts/**/*.py*"
-        )
-        tm.that(payload["tool"]["pyright"]["include"], lacks="scripts")
+        tm.that(payload["tool"]["pyrefly"]["project-includes"], has="scripts/**/*.py*")
+        tm.that(payload["tool"]["pyright"]["include"], has="scripts")
 
     # Why (suite budget): two conform apply cycles plus a check over a full
     # managed tree on a real git repo; the per-case wall only holds idle.
     @pytest.mark.slow
-    def test_manifestless_existing_root_plans_artifacts_without_project_spec(
+    def test_existing_root_derives_project_spec_from_pep621(
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
@@ -627,7 +467,9 @@ class TestCodegenConform:
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(derived.repository, eq=local_repository)
-        tm.that(derived.project, eq=None)
+        tm.that(
+            derived.project.package_name, eq=repository.distribution.replace("-", "_")
+        )
 
         request = m.Infra.CodegenConformRequest(
             root=root,
@@ -711,6 +553,7 @@ class TestCodegenConform:
         """Execute one public mode without changing an already conform tree."""
         root = infra_git_repo
         workspace = _standalone_workspace(root)
+        _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.PYPROJECT)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(

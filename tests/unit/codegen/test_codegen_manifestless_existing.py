@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 from pathlib import Path
 
 import pytest
@@ -104,7 +105,24 @@ class TestCodegenManifestlessExisting:
             )
         )
         verified = tm.ok(fixed_point)
-        tm.that(tuple(file.path for file in verified.files if file.changed), eq=())
+        changed = tuple(file for file in verified.files if file.changed)
+        current_pyproject = tm.ok(u.Cli.files_read_text(root / "pyproject.toml"))
+        pyproject_plan = next(
+            (file for file in changed if file.path == root / "pyproject.toml"), None
+        )
+        pyproject_diff = (
+            "".join(
+                difflib.unified_diff(
+                    current_pyproject.splitlines(keepends=True),
+                    pyproject_plan.rendered.splitlines(keepends=True),
+                    fromfile="current/pyproject.toml",
+                    tofile="planned/pyproject.toml",
+                )
+            )
+            if pyproject_plan is not None
+            else ""
+        )
+        tm.that(tuple(file.path for file in changed), eq=(), msg=pyproject_diff)
 
     def test_existing_root_rejects_non_regular_create_only_destination(
         self, infra_git_repo: Path

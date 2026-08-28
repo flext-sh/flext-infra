@@ -61,6 +61,11 @@ class FlextInfraConstantsCodegenProject:
         EXTERNAL = "external"
 
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
+    MERGE_CONFLICT_MARKER_PREFIXES: Final[tuple[str, ...]] = (
+        "<<<<<<< ",
+        "||||||| ",
+        ">>>>>>> ",
+    )
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
 

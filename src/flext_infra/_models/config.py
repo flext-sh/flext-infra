@@ -359,45 +359,6 @@ class FlextInfraConfigModels:
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
-    class BranchPolicySpec(_ConfigContract):
-        """Global ancestry policy shared by every governed provider."""
-
-        REQUIRED_TECHNICAL_PATTERNS: ClassVar[tuple[str, ...]] = (
-            "__dolt_remote_info__",
-            "dolt/*",
-            "gh-readonly-queue/*",
-        )
-        technical_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "GitHub/Dolt technical branches excluded from ancestry validation"
-                )
-            ),
-        ]
-        governed_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Development lines whose descent from the baseline is enforced. "
-                    "Refs outside this allowlist are inventoried but never gated: "
-                    "parked releases, snapshots and lane branches must not block."
-                ),
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_technical_patterns(self) -> Self:
-            """Keep the global exclusion set exact and non-extensible."""
-            if self.technical_branch_patterns != self.REQUIRED_TECHNICAL_PATTERNS:
-                msg = (
-                    "technical branch patterns must equal the canonical GitHub/Dolt "
-                    f"set: {', '.join(self.REQUIRED_TECHNICAL_PATTERNS)}"
-                )
-                raise ValueError(msg)
-            return self
-
     class GithubActionPinSpec(_ConfigContract):
         """One immutable GitHub Action reference from the codegen catalog."""
 
@@ -1345,27 +1306,8 @@ class FlextInfraConfigModels:
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
-        baseline_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider-owned integration ancestry baseline"),
-        ]
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
-        ]
-        technical_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Technical branches excluded from ancestry policy"),
-        ] = ()
-        governed_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Development lines gated by ancestry policy; required because "
-                    "an empty tuple would match no ref and silently disable the "
-                    "gate instead of failing closed"
-                ),
-            ),
         ]
 
     class MakeCommandContext(_ConfigContract):
@@ -1897,10 +1839,6 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
         ]
-        branch_policy: Annotated[
-            FlextInfraConfigModels.BranchPolicySpec,
-            m.Field(description="Global governed branch ancestry policy"),
-        ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical Make contract"),
@@ -2270,40 +2208,6 @@ class FlextInfraConfigModels:
             m.Field(description="Local repositories overlaid after locked sync"),
         ] = ()
 
-    class BranchAncestryRef(_ConfigContract):
-        """One exact branch or registered worktree ancestry observation."""
-
-        reference: Annotated[
-            t.NonEmptyStr, m.Field(description="Git ref or worktree identity")
-        ]
-        sha: Annotated[
-            t.NonEmptyStr, m.Field(description="Observed commit object identifier")
-        ]
-        excluded: Annotated[
-            bool, m.Field(description="Whether typed technical policy excludes the ref")
-        ]
-        ancestor: Annotated[
-            bool | None,
-            m.Field(description="Baseline ancestry verdict; None when excluded"),
-        ]
-
-    class BranchAncestryPlan(_ConfigContract):
-        """Bounded ancestry inventory for one governed repository."""
-
-        repository_root: Annotated[
-            Path, m.Field(description="Governed repository root")
-        ]
-        baseline_reference: Annotated[
-            t.NonEmptyStr, m.Field(description="Provider-owned remote baseline ref")
-        ]
-        baseline_sha: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved baseline commit")
-        ]
-        references: Annotated[
-            tuple[FlextInfraConfigModels.BranchAncestryRef, ...],
-            m.Field(description="Local, remote, and worktree ancestry inventory"),
-        ]
-
     class WorkspaceEnvironmentSyncRequest(_ConfigContract):
         """Validated public request for one workspace environment sync."""
 
@@ -2427,10 +2331,6 @@ class FlextInfraConfigModels:
         uv_environments: Annotated[
             tuple[FlextInfraConfigModels.UvEnvironmentPlan, ...],
             m.Field(description="uv plans paired with selected repositories"),
-        ]
-        branch_ancestry: Annotated[
-            tuple[FlextInfraConfigModels.BranchAncestryPlan, ...],
-            m.Field(description="Governed branch ancestry observations"),
         ]
         files: Annotated[
             tuple[FlextInfraConfigModels.CodegenFilePlan, ...],

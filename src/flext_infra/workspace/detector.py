@@ -290,14 +290,6 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 f"repository provider must resolve exactly once: {repository.provider}"
             )
         provider = providers[0]
-        baseline_branch_result = u.Infra.repository_baseline_branch(
-            resolved_root, fallback=provider.branch
-        )
-        if baseline_branch_result.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                baseline_branch_result.error
-                or f"integration baseline resolution failed: {resolved_root}"
-            )
         if not cls.repository_is_governed(repository, provider):
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external or fork URL: {repository.url}"
@@ -320,14 +312,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 topology=mode_result.value,
                 managed=managed_result.value,
                 canonical_project_name=canonical_project_name,
-                baseline_branch=baseline_branch_result.value,
                 ci_enabled=True,
-                technical_branch_patterns=(
-                    config.Infra.codegen.branch_policy.technical_branch_patterns
-                ),
-                governed_branch_patterns=(
-                    config.Infra.codegen.branch_policy.governed_branch_patterns
-                ),
             )
         )
 

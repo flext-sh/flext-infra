@@ -311,3 +311,36 @@ class TestsFlextInfraDepsModernizerPyright:
             ),
             eq=[rules.source_dir],
         )
+
+    def test_declared_roots_preserve_existing_diagnostic_overrides(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Explicit roots and config-owned path overrides compose identically."""
+        rules = tool_config_document.tools.pyright.path_rules
+        override = rules.diagnostic_path_overrides[0]
+        (tmp_path / override.root).mkdir(parents=True)
+        doc = u.Cli.toml_document()
+
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
+            doc,
+            is_root=True,
+            workspace_root=tmp_path,
+            declared_python_dirs=(rules.source_dir,),
+            declared_python_dirs_are_complete=True,
+        )
+
+        tool = u.Cli.toml_unwrap_item(doc["tool"])
+        tm.that(tool, is_=MutableMapping)
+        if not isinstance(tool, MutableMapping):
+            return
+        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
+        tm.that(pyright, is_=MutableMapping)
+        if not isinstance(pyright, MutableMapping):
+            return
+        environments = u.Cli.json_as_sequence(
+            u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
+        )
+        tm.that(
+            tuple(u.Cli.json_as_mapping(item).get("root") for item in environments),
+            eq=(override.root, rules.source_dir),
+        )

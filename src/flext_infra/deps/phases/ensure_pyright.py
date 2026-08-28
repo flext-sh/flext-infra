@@ -127,6 +127,13 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in rules.env_dirs
             if project_dir is None or (project_dir / env_dir).is_dir()
         )
+        return self._expected_envs_for_dirs(env_dirs, project_dir=project_dir)
+
+    def _expected_envs_for_dirs(
+        self, env_dirs: t.StrSequence, *, project_dir: Path | None
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        """Compose path overrides and declared analyzer environments once."""
+        rules = self._tool_config.tools.pyright.path_rules
         source_path = self._project_source_path()
         return (
             *self._diagnostic_override_envs(
@@ -141,15 +148,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
     def environment_payloads_for_dirs(
-        self, env_dirs: t.StrSequence
+        self, env_dirs: t.StrSequence, *, project_dir: Path | None
     ) -> t.SequenceOf[t.JsonDict]:
         """Render configured environments for Python roots declared before writes."""
-        rules = self._tool_config.tools.pyright.path_rules
-        environments = self._envs_for_dirs(
-            env_dirs=self._declared_environment_dirs(env_dirs),
-            source_path=self._project_source_path(),
-            project_root=rules.project_root,
-            rules=rules,
+        environments = self._expected_envs_for_dirs(
+            self._declared_environment_dirs(env_dirs), project_dir=project_dir
         )
         return tuple(self._environment_payload(item) for item in environments)
 
@@ -333,11 +336,9 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
         )
         expected_envs = (
-            self._envs_for_dirs(
-                env_dirs=self._declared_environment_dirs(declared_python_dirs),
-                source_path=self._project_source_path(),
-                project_root=stub_rules.project_root,
-                rules=stub_rules,
+            self._expected_envs_for_dirs(
+                self._declared_environment_dirs(declared_python_dirs),
+                project_dir=project_root,
             )
             if declared_python_dirs or declared_python_dirs_are_complete
             else self._expected_envs_for_project(project_dir=project_root)

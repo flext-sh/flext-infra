@@ -221,7 +221,9 @@ class FlextInfraPyprojectModernizer(
         if declared_python_dirs:
             raw_environments = FlextInfraEnsurePyrightConfigPhase(
                 config.Infra.tooling
-            ).environment_payloads_for_dirs(declared_python_dirs)
+            ).environment_payloads_for_dirs(
+                declared_python_dirs, project_dir=path.parent
+            )
         declared_pyrefly_includes = (
             FlextInfraExtraPathsManager.pyrefly_include_globs(declared_python_dirs)
             if declared_python_dirs

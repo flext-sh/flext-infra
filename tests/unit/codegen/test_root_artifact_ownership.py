@@ -10,7 +10,7 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
-from tests import c, m, p, t, u
+from tests import c, m, u
 
 
 class TestsRootArtifactOwnership:
@@ -193,75 +193,6 @@ class TestsRootArtifactOwnership:
         tm.that(after, eq=before)
         for relative, expected in manual.items():
             tm.that((root / relative).read_bytes(), eq=expected)
-
-
-class TestsAncestryNetworkBoundary:
-    """The ancestry plan must never block indefinitely on a remote."""
-
-    def test_origin_fetch_is_time_boxed(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Refreshing the baseline from origin runs under a declared timeout.
-
-        mro-38p39: the ancestry plan shells `git fetch origin` whenever a remote
-        is configured, and it passed no timeout. A slow or unreachable remote
-        therefore blocked conform for as long as git waited -- measured at 7.44s
-        cumulative in one unit test whose fixture pointed origin at a real
-        GitHub URL, the single largest cost in the suite. Every other bounded
-        subprocess in this codebase states c.Infra.TIMEOUT_SHORT; the network
-        call, the one most able to hang, stated nothing.
-        """
-        root = infra_git_repo
-        dist = u.Tests.repository_ref(config.Infra.name).distribution
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
-                'requires-python = ">=3.13,<3.14"\n',
-            )
-        )
-        package_init = root / "src" / dist.replace("-", "_") / "__init__.py"
-        package_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        tests_init = root / "tests" / "__init__.py"
-        tests_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
-        u.Tests.commit_git_changes(root, "Seed manifest-less topology")
-
-        recorded: list[tuple[tuple[str, ...], int | None]] = []
-        original = u.Cli.run_raw
-
-        def _record(
-            cmd: t.StrSequence,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            capture: bool = True,
-        ) -> p.Result[p.Cli.CommandOutput]:
-            recorded.append((tuple(cmd), timeout))
-            return original(
-                cmd,
-                cwd=cwd,
-                timeout=timeout,
-                env=env,
-                remove_env_keys=remove_env_keys,
-                input_data=input_data,
-                capture=capture,
-            )
-
-        monkeypatch.setattr(u.Cli, "run_raw", _record)
-        request = m.Infra.CodegenConformRequest(root=root)
-        tm.ok(
-            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
-        )
-
-        fetches = [entry for entry in recorded if "fetch" in entry[0]]
-        tm.that(bool(fetches), eq=True)
-        for _command, timeout in fetches:
-            tm.that(timeout, eq=c.Infra.TIMEOUT_SHORT)
 
 
 __all__: list[str] = []
