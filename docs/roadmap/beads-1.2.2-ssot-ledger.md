@@ -39,6 +39,9 @@ this rollout.
 | 2026-08-28T10:22:00-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `97d55739ced18c5a59fa997582de7dc7925b1f11` | Repository-local topology owners, typed `base.mk` validation, static projection convergence, and final active-vocabulary cleanup pushed |
 | 2026-08-28T10:26:09-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `584189ddc4fb61e33deff2c3c9432d63ef9acdc0` | Full static-gate defects repaired at their owners and the green checkpoint pushed |
 | 2026-08-28T10:32:34-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `3e88c4aadf77674ddf93c7e59226a8c59d213d84` | Standalone Rope discovery bounded to a repository owner while execution anywhere below a `.gitmodules` workspace still scans the complete workspace; checkpoint pushed |
+| 2026-08-28T10:48:08-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `e2d595bf4fa862594ca89316ca5992c53e2dcd5e` | Shared typed test authorities replaced copied repository/project/Beads fixtures; 178 lines removed and checkpoint pushed |
+| 2026-08-28T10:51:59-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `5fd68fec2412845d9db48ef475c19402403ad5b2` | Conform preserves dependency policy outside the selected owner surface and accepts a baseline already present in an active non-FF merge; checkpoint pushed |
+| 2026-08-28T11:04:38-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `9f7b006d1bb16995e7455dff0f666f3d204c60e6` | Setup bootstrap preserves the requested UV selector until Mise exposes the installed executable; fixture duplication reduced and checkpoint pushed |
 
 ## Validation log
 
@@ -91,6 +94,9 @@ this rollout.
 | 2026-08-28T10:25:57-03:00 | worktree | Full `make check` after owner repairs | PASS: lint, smells, markdown, Pyrefly, Mypy, security, and Pyright all reported 0 errors; 0 skips | Static gate stage is green and the repair was pushed as `584189ddc4fb61e33deff2c3c9432d63ef9acdc0` |
 | 2026-08-28T10:28:36-03:00 | `098a074d40e27a864f04561e91ed83eda7f79203` | Full `make test` with the canonical testmon selection | FAIL: 68 failed, 721 passed in 72s | Failures group into stale retired-schema/Make expectations plus Rope adopting an unowned ancestor `src` directory for temporary non-repositories; phase remains RED and no PR is opened |
 | 2026-08-28T10:31:09-03:00 | worktree | `make fmt WHAT=apply APPLY=Y`; Rope service, lazy-init, and lazy-map focused gates | PASS: formatter-clean; 21 Rope, 4 lazy-init, and 4 lazy-map tests | A standalone scratch directory no longer inherits an unrelated ancestor `src`; calls at the workspace root, an internal project, or an internal package retain whole-workspace Rope scope, including undeclared internal projects |
+| 2026-08-28T10:51:59-03:00 | worktree | Conform focused gate, including three exact owner-boundary regressions | PASS: all 36 cases covered across the impact-selected file run and exact regressions; 0 failures, warnings, or skips | Shared fixtures derive from typed authorities; upstream facets, pending merge ancestry, and dependency-surface ownership are deterministic |
+| 2026-08-28T11:04:38-03:00 | worktree | Generated Make environment focused gate | PASS: all 11 cases covered across the two setup variants and the 9 impact-selected cases; 0 failures, warnings, or skips | Real recursive Make/Mise setup, hostile-environment isolation, dependency upgrade, and dispatch behavior are green; no prohibited runtime binary was invoked |
+| 2026-08-28T11:04:54-03:00 | `9f7b006d1bb16995e7455dff0f666f3d204c60e6` | `git fetch origin 0.12.0-dev`; integration ancestry | PASS: feature is 0 commits behind and 44 ahead of `origin/0.12.0-dev` | No integration commit is waiting to be merged; explicit non-FF integration remains pending after full green validation and approval |
 
 ## Unresolved boundaries
 
