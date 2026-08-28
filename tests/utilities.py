@@ -370,7 +370,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             subproject still classifies itself as standalone; only its checkout
             relationship is ``submodule``.
             """
-            provider = config.Infra.codegen.providers[0]
+            providers = tuple(
+                provider
+                for provider in config.Infra.codegen.providers
+                if provider.name == "flext-sh"
+            )
+            tm.that(len(providers), eq=1, msg="fixture provider must resolve once")
+            (provider,) = providers
             resolved_path = Path() if path is None else path
             is_subproject = bool(resolved_path.parts)
             resolved_role = role or (
@@ -401,6 +407,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def beads_project(name: str) -> m.Infra.BeadsProjectSpec:
+            """Build portable Beads identity for one repository fixture."""
+            return m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=name,
+                database=name.replace("-", "_"),
+                issue_prefix=name,
+            )
+
+        @staticmethod
         def write_beads_project(
             repository: Path,
             *,
@@ -414,7 +430,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 u.Cli.yaml_dump(
                     path,
                     m.Infra.BeadsProjectSpec(
-                        version=1,
+                        version=c.Infra.BEADS_CONFIG_VERSION,
                         workspace=workspace,
                         database=database,
                         issue_prefix=issue_prefix,

@@ -1,10 +1,9 @@
-"""Generated .gitignore is profile-aware: no workspace-root phantom in members.
+"""Generated .gitignore is profile-aware across repository-local topologies.
 
-A workspace-member or standalone project has no ``flext-*/`` member directories
-and no ``config/workspace.yaml``; emitting those allowlist patterns into their
-``.gitignore`` is a phantom entry. The conform render must filter gitignore
-sections by the repository profile so the workspace-root-only section only
-appears in the workspace-root ``.gitignore``.
+A standalone project has no governed subproject directories; emitting their
+allowlist patterns into its ``.gitignore`` is a phantom entry. The conform
+render filters gitignore sections by the repository profile so topology-only
+entries appear only for a workspace.
 """
 
 from __future__ import annotations
@@ -16,10 +15,7 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
-# Member allowlist patterns are DERIVED from the workspace manifest, so the
-# expectation is built from the fixture's own members instead of freezing the
-# glob the generator happens to emit today.
-_WORKSPACE_ONLY_MARKERS = ("!/config/workspace.yaml",)
+_WORKSPACE_ONLY_MARKERS = ("!/probe-member/", "!/probe-member/**")
 _BEADS_CONFIG = "!.beads/config.yaml"
 # The bd gate lock is per-run runtime state written at the repository root
 # (not inside .beads/), so the .beads/* rules never reach it. Every profile
@@ -38,7 +34,7 @@ class TestsCodegenGitignoreProfileAware:
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
-                profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+                profile=c.Infra.MakeProfile.STANDALONE,
                 project_name="probe-member",
             )
         )
@@ -59,19 +55,19 @@ class TestsCodegenGitignoreProfileAware:
         member = test_u.Tests.repository_ref(
             "probe-member",
             path=Path("probe-member"),
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            role=c.Infra.RepositoryRole.STANDALONE,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="probe-root",
+            beads=test_u.Tests.beads_project("probe-root"),
             repository=test_u.Tests.repository_ref("probe-root"),
-            members=(member,),
+            subprojects=(member,),
         )
 
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
-                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                profile=c.Infra.MakeProfile.WORKSPACE,
                 project_name="probe-root",
                 workspace=workspace,
             )
@@ -129,8 +125,8 @@ def _plan_independent_overlay(
         read_only=False,
     )
     workspace = m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name=name,
+        beads=test_u.Tests.beads_project(name),
         repository=repository,
         project=m.Infra.ProjectSpec(
             package_name=name.replace("-", "_"),

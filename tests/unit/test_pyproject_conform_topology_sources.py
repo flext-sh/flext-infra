@@ -19,7 +19,12 @@ from tests import TestsFlextInfraUtilities as tu
 _ROLE = c.Infra.RepositoryRole
 # mro-o26p: provider identity, branch and base URL come from the config SSOT,
 # never from literals repeated in the test.
-_PROVIDER_SPEC = config.Infra.codegen.providers[0]
+_PROVIDER_SPEC = tm.ok(
+    u.Infra.repository_provider(
+        tu.Tests.repository_ref("provider-fixture"),
+        config.Infra.codegen.providers,
+    )
+)
 _PROVIDER = _PROVIDER_SPEC.name
 
 
@@ -47,23 +52,22 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name="workspace-root",
+        beads=tu.Tests.beads_project("workspace-root"),
         repository=_repository(
             "workspace-root",
-            role=_ROLE.WORKSPACE_ROOT,
+            role=_ROLE.WORKSPACE,
             path=".",
             checkout=c.Infra.CheckoutKind.ROOT,
         ),
-        members=(
+        subprojects=(
             _repository(
                 "flext-core",
-                role=_ROLE.WORKSPACE_MEMBER,
+                role=_ROLE.STANDALONE,
                 path="flext-core",
                 checkout=c.Infra.CheckoutKind.SUBMODULE,
             ),
         ),
-        exclusions=(),
     )
 
 
@@ -71,11 +75,13 @@ def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
     workspace = _workspace()
     consumer = _repository(
         "flext-api",
-        role=_ROLE.WORKSPACE_MEMBER,
+        role=_ROLE.STANDALONE,
         path="flext-api",
         checkout=c.Infra.CheckoutKind.SUBMODULE,
     )
-    return workspace.model_copy(update={"members": (*workspace.members, consumer)})
+    return workspace.model_copy(
+        update={"subprojects": (*workspace.subprojects, consumer)}
+    )
 
 
 _PYPROJECT = """[project]
@@ -131,7 +137,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         # The expected specifier is derived from the same declared repository
         # contract the generator reads - never a hardcoded URL or branch.
-        member = workspace.members[0]
+        member = workspace.subprojects[0]
         tm.that(
             dependencies,
             eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
@@ -139,9 +145,9 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
     def test_publishable_member_keeps_catalog_git_provenance(self) -> None:
         workspace = _workspace_with_consumer()
-        provider = workspace.members[0]
+        provider = workspace.subprojects[0]
         publishable_member = (
-            f'[project]\nname = "{workspace.members[1].distribution}"\n'
+            f'[project]\nname = "{workspace.subprojects[1].distribution}"\n'
             'version = "0.1.0"\n'
             'dependencies = ["flext-core"]\n'
         )
@@ -167,7 +173,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
     def test_attached_root_rejects_explicit_member_source(self) -> None:
         workspace = _workspace()
-        member = workspace.members[0]
+        member = workspace.subprojects[0]
         attached_root = _PYPROJECT.replace(
             'dependencies = ["flext-core"]',
             (
@@ -209,7 +215,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_publishable_member_pins_unmapped_provider_source_to_branch(self) -> None:
         """Derive the declared branch for a provider source absent from members."""
         workspace = _workspace_with_consumer()
-        consumer = workspace.members[1]
+        consumer = workspace.subprojects[1]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 f'[project]\nname = "{consumer.distribution}"\n'
@@ -239,7 +245,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
     ) -> None:
         """Prove uv resolves member Git metadata through the root workspace overlay."""
         workspace = _workspace_with_consumer()
-        provider, consumer = workspace.members
+        provider, consumer = workspace.subprojects
         root = tmp_path / "workspace-root"
         provider_root = root / provider.path
         consumer_root = root / consumer.path
@@ -328,7 +334,7 @@ workspace = true
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-        member = workspace.members[0]
+        member = workspace.subprojects[0]
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(

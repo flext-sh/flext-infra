@@ -189,6 +189,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         return tuple(
             (alias, package_name)
             for alias, target in state.declared_imports.items()
+            if alias != target
             if (
                 package_name := (
                     self._package_name_from_target(target)

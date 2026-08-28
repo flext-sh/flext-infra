@@ -17,11 +17,11 @@ pytestmark = pytest.mark.slow
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
     member = test_u.Tests.repository_ref(
-        "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        "flext-core", role=c.Infra.RepositoryRole.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name="flext",
+        beads=test_u.Tests.beads_project("flext"),
         repository=root_repository,
         project=m.Infra.ProjectSpec(
             package_name="flext",
@@ -42,7 +42,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
             workspace_root_rel=".",
             year=2026,
         ),
-        members=(member,),
+        subprojects=(member,),
     )
     root = tmp_path / "render-root"
     request = m.Infra.CodegenConformRequest(

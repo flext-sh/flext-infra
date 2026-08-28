@@ -214,3 +214,6 @@ class FlextInfraPythonVersionEnforcer(s[int]):
                 return parent
         msg = f"workspace root not found from {file}"
         raise RuntimeError(msg)
+
+
+__all__: list[str] = ["FlextInfraPythonVersionEnforcer"]

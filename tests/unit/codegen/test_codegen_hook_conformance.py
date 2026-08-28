@@ -225,7 +225,7 @@ class TestGitHookConformance:
         )
 
         planned = FlextInfraCodegenConform.retired_projection_plans(
-            root, c.Infra.MakeProfile.WORKSPACE_MEMBER
+            root, c.Infra.MakeProfile.STANDALONE
         )
 
         retired = {plan.path for plan in tm.ok(planned) if plan.absent}

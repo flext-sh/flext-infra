@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from . import refactor as refactor
     from . import unit as unit
     from flext_tests import FlextTestsConstants, d, e, h, r, td, tf, tk, tm, tv, x
-    from re import re
     from typing import ClassVar, Final, TYPE_CHECKING
 
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
@@ -102,7 +101,6 @@ __all__: tuple[str, ...] = (
     "pytest_ignore_collect",
     "pytest_plugins",
     "r",
-    "re",
     "real_docs_project",
     "real_git_repo",
     "real_makefile_project",
@@ -190,7 +188,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tv",
                 "x",
             ),
-            "re": ("re",),
             "types": ("MappingProxyType",),
             "typing": ("ClassVar", "Final", "TYPE_CHECKING"),
         }),

@@ -87,10 +87,14 @@ class TestCodegenLinkedWorktreeTopology:
     @pytest.mark.parametrize(
         ("beads_content", "expected_error"),
         [
-            pytest.param(None, "missing", id="missing"),
+            pytest.param(
+                None,
+                "repository-local Beads configuration is required",
+                id="missing",
+            ),
             pytest.param(
                 "version: [\nworkspace: invalid\n",
-                "Beads",
+                "YAML parse error",
                 id="malformed",
             ),
         ],

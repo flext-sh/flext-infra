@@ -1,4 +1,4 @@
-"""Repository-local workspace manifests are the sole consumer authority."""
+"""Repository-local Git topology is the sole consumer authority."""
 
 from __future__ import annotations
 
@@ -18,24 +18,13 @@ def _repository(
     role: c.Infra.RepositoryRole,
     state: c.Infra.RepositoryState = c.Infra.RepositoryState.ACTIVE,
 ) -> m.Infra.RepositoryRef:
-    provider = config.Infra.codegen.providers[0]
-    return m.Infra.RepositoryRef(
-        name=name,
-        distribution=name,
-        provider=provider.name,
-        url=f"{provider.base_url}/{name}.git",
-        path=Path(path),
-        role=role,
-        state=state,
-        checkout=(
-            c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-            else c.Infra.CheckoutKind.SUBMODULE
-        ),
-        codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        read_only=False,
+    reference = u.Tests.repository_ref(name, path=Path(path), role=role)
+    return reference.model_copy(
+        update={
+            "state": state,
+            "package": role is c.Infra.RepositoryRole.STANDALONE,
+            "editable": role is c.Infra.RepositoryRole.STANDALONE,
+        }
     )
 
 
@@ -125,7 +114,7 @@ class TestsCodegenCatalogExtensions:
         self, tmp_path: Path
     ) -> None:
         root = _repository(
-            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
+            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE
         ).model_copy(
             update={
                 "extra_verbs": (
@@ -161,15 +150,15 @@ class TestsCodegenCatalogExtensions:
             year=2026,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=root.name,
+            beads=u.Tests.beads_project(root.name),
             repository=root,
             project=project,
-            members=(
+            subprojects=(
                 _repository(
                     "acme-charts",
                     path="acme-charts",
-                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                    role=c.Infra.RepositoryRole.STANDALONE,
                 ),
             ),
         )
@@ -285,13 +274,6 @@ class TestsCodegenCatalogExtensions:
             )
         )
         tm.ok(u.Cli.run_checked(["rm", "-rf", bare_repo.as_posix()]))
-        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        manifest_path.parent.mkdir(parents=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                manifest_path, workspace.model_dump(mode="json", exclude_none=True)
-            )
-        )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=tmp_path,

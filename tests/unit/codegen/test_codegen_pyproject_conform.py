@@ -7,14 +7,20 @@ from pathlib import Path
 
 from flext_infra import c, config, m, u
 from flext_tests import tm
+from tests import u as test_u
 
-_PROVIDER_SPEC = config.Infra.codegen.providers[0]
+_PROVIDER_SPEC = tm.ok(
+    u.Infra.repository_provider(
+        test_u.Tests.repository_ref("provider-fixture"),
+        config.Infra.codegen.providers,
+    )
+)
 
 
 def _repository(
     distribution: str, *, role: c.Infra.RepositoryRole, path: str
 ) -> m.Infra.RepositoryRef:
-    provider = config.Infra.codegen.providers[0]
+    provider = _PROVIDER_SPEC
     return m.Infra.RepositoryRef(
         name=distribution,
         distribution=distribution,
@@ -24,12 +30,12 @@ def _repository(
         provider=provider.name,
         checkout=(
             c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+            if role is c.Infra.RepositoryRole.WORKSPACE
             else c.Infra.CheckoutKind.SUBMODULE
         ),
         codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
-        editable=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
+        package=role is not c.Infra.RepositoryRole.WORKSPACE,
+        editable=role is not c.Infra.RepositoryRole.WORKSPACE,
         read_only=False,
     )
 
@@ -60,15 +66,15 @@ def _project_spec(*, version: str) -> m.Infra.ProjectSpec:
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name="workspace-root",
+        beads=test_u.Tests.beads_project("workspace-root"),
         repository=_repository(
-            "workspace-root", role=c.Infra.RepositoryRole.WORKSPACE_ROOT, path="."
+            "workspace-root", role=c.Infra.RepositoryRole.WORKSPACE, path="."
         ),
-        members=(
+        subprojects=(
             _repository(
                 "flext-core",
-                role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                role=c.Infra.RepositoryRole.STANDALONE,
                 path="flext-core",
             ),
         ),
@@ -99,7 +105,7 @@ workspace = true
 
     def test_standalone_uses_catalog_git_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.members[0]
+        member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
@@ -167,10 +173,10 @@ constraint-dependencies = ["uv>=0"]
 
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.members[0].model_copy(
+        member = workspace.subprojects[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
         )
-        invalid_workspace = workspace.model_copy(update={"members": (member,)})
+        invalid_workspace = workspace.model_copy(update={"subprojects": (member,)})
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
@@ -181,7 +187,7 @@ constraint-dependencies = ["uv>=0"]
 
     def test_attached_root_rejects_direct_source(self) -> None:
         workspace = _workspace()
-        member = workspace.members[0]
+        member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 '[project]\nname = "workspace-root"\n'
@@ -280,39 +286,13 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(
             document["project"]["dependencies"][0],
             eq=(
-                f"{workspace.members[0].distribution} @ "
-                f"git+{workspace.members[0].url}@{_PROVIDER_SPEC.branch}"
+                f"{workspace.subprojects[0].distribution} @ "
+                f"git+{workspace.subprojects[0].url}@{_PROVIDER_SPEC.branch}"
             ),
         )
 
-    def test_declared_manifest_version_is_projected_onto_project_table(self) -> None:
-        """The manifest owns the release version; conformance projects it.
-
-        Why (hq-36xk): the scaffold template renders `version = "{{ version }}"`
-        but carries `overwrite: false`, so on an existing repository nothing
-        propagated a manifest bump into `[project].version`. Deriving the
-        expectation from the same spec production reads keeps this test valid
-        when the declared version legitimately changes.
-        """
-        project = config.Infra.codegen.scaffold.project
-        declared = _project_spec(version="9.9.9")
-        workspace = _workspace().model_copy(update={"project": declared})
-        conformed = tm.ok(
-            u.Infra.pyproject_conform(
-                '[project]\nname = "external-consumer"\n'
-                'version = "0.0.1"\ndependencies = []\n',
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
-                toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=project.dev,
-            )
-        )
-        document = tomllib.loads(conformed)
-        tm.that(document["project"]["version"], eq=declared.version)
-
     def test_project_version_conformance_is_idempotent(self) -> None:
-        """A pyproject already matching the manifest is left byte-identical."""
+        """A pyproject already matching the project contract is byte-identical."""
         project = config.Infra.codegen.scaffold.project
         declared = _project_spec(version="9.9.9")
         workspace = _workspace().model_copy(update={"project": declared})
@@ -344,7 +324,7 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(tomllib.loads(first)["project"]["version"], eq=declared.version)
 
     def test_workspace_without_project_metadata_leaves_version_untouched(self) -> None:
-        """A topology-only manifest declares no version, so none is projected."""
+        """Topology without project metadata declares no projected version."""
         workspace = _workspace()
         tm.that(workspace.project is None, eq=True)
         conformed = tm.ok(

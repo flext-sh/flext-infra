@@ -35,7 +35,7 @@ def _conform_target(
         repository=repository,
         root=root,
         make_profile=make_profile,
-        beads_enabled=make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT,
+        beads=u.Tests.beads_project(repository.name),
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
         ci_enabled=True,
@@ -294,18 +294,12 @@ class TestCodegenConform:
         )
         tm.that(divergent_check.exit_code, eq=1)
         repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
+            update={"path": Path()}
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
             repository=repository,
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / "workspace.yaml",
-                workspace.model_dump(mode="json", exclude_none=True),
-            )
         )
         (root / "pyproject.toml").write_text(
             f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
@@ -319,7 +313,9 @@ class TestCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConform(workspace_root=root, request=request)
+        service = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        )
 
         before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
         divergent_current = next(
@@ -404,18 +400,12 @@ class TestCodegenConform:
             ])
         )
         repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
+            update={"path": Path()}
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
             repository=repository,
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                checkout / "config" / "workspace.yaml",
-                workspace.model_dump(mode="json", exclude_none=True),
-            )
         )
         (checkout / "pyproject.toml").write_text(
             f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
@@ -429,7 +419,9 @@ class TestCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConform(workspace_root=checkout, request=request)
+        service = FlextInfraCodegenConform(
+            workspace_root=checkout, request=request, initial_workspace=workspace
+        )
 
         plan = tm.ok(service.plan(request))
 
@@ -461,6 +453,9 @@ class TestCodegenConform:
             kind=kind,
             output_root=root,
             provider="flext-sh",
+            beads_workspace=name,
+            beads_database=name.replace("-", "_"),
+            beads_issue_prefix=name,
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -537,6 +532,9 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.EXTERNAL,
             output_root=existing_root,
             provider="flext-sh",
+            beads_workspace="flext-demo",
+            beads_database="flext_demo",
+            beads_issue_prefix="flext-demo",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -725,11 +723,11 @@ class TestCodegenConform:
         """Keep workspace setup data complete without Make-side re-derivation."""
         root_repository = u.Tests.repository_ref("flext")
         member = u.Tests.repository_ref(
-            "flext-core", role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            "flext-core", role=c.Infra.RepositoryRole.STANDALONE
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="flext",
+            beads=u.Tests.beads_project("flext"),
             repository=root_repository,
             project=m.Infra.ProjectSpec(
                 package_name="flext",
@@ -750,7 +748,7 @@ class TestCodegenConform:
                 workspace_root_rel=".",
                 year=2026,
             ),
-            members=(member,),
+            subprojects=(member,),
         )
         root = tmp_path / "flext"
         request = m.Infra.CodegenConformRequest(
@@ -783,15 +781,14 @@ class TestCodegenConform:
                 "distribution": "arbitrary-root",
                 "url": f"{provider.base_url}/arbitrary-root.git",
                 "path": Path(),
-                "role": c.Infra.RepositoryRole.WORKSPACE_ROOT,
-                "profile": c.Infra.MakeProfile.WORKSPACE_ROOT,
+                "role": c.Infra.RepositoryRole.WORKSPACE,
                 "package": False,
                 "editable": False,
             }
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="arbitrary-root",
+            beads=u.Tests.beads_project("arbitrary-root"),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name="arbitrary_root",
@@ -872,8 +869,8 @@ class TestCodegenConform:
             year=2026,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
+            beads=u.Tests.beads_project("consumer"),
             repository=repository,
             project=project,
         )
@@ -920,8 +917,8 @@ class TestCodegenConform:
         """Build Make context from repository-owned data alone."""
         repository = u.Tests.repository_ref("consumer")
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
+            beads=u.Tests.beads_project("consumer"),
             repository=repository,
         )
         target = _conform_target(
@@ -968,15 +965,15 @@ class TestCodegenConform:
         workspace_repository = u.Tests.repository_ref("workspace-root-fixture")
         infra_repository = u.Tests.repository_ref(config.Infra.name)
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=workspace_repository.name,
+            beads=u.Tests.beads_project(workspace_repository.name),
             repository=workspace_repository,
-            members=(infra_repository,),
+            subprojects=(infra_repository,),
         )
         target = _conform_target(
             tmp_path,
             workspace_repository,
-            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            make_profile=c.Infra.MakeProfile.WORKSPACE,
         )
         tooling_runtime = tm.ok(
             FlextInfraPyprojectModernizer(
@@ -1305,8 +1302,8 @@ class TestScriptDispatchMakefile:
             script_dispatch=script_dispatch,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="demo-root",
+            beads=u.Tests.beads_project("demo-root"),
             repository=root_repository,
             project=m.Infra.ProjectSpec(
                 package_name="demo_root",
@@ -1327,7 +1324,7 @@ class TestScriptDispatchMakefile:
                 workspace_root_rel=".",
                 year=2026,
             ),
-            members=(),
+            subprojects=(),
         )
         root = tmp_path / "demo-root"
         request = m.Infra.CodegenConformRequest(
@@ -1570,7 +1567,7 @@ class TestScriptDispatchMakefile:
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
-    # declares extra_verbs/script_dispatch in its OWN config/workspace.yaml. The
+    # declares extra_verbs/script_dispatch in its own typed repository input. The
     # generic capability stays covered by the fixture-driven cases below.
     def test_script_dispatch_adds_scripts_to_lint_and_type_paths(
         self, tmp_path: Path

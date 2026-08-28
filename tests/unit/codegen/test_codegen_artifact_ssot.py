@@ -99,7 +99,7 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(entries, len=1)
         declared_profiles = {
-            c.Infra.MakeProfile.WORKSPACE_ROOT,
+            c.Infra.MakeProfile.WORKSPACE,
             c.Infra.MakeProfile.STANDALONE,
         }
         tm.that(set(entries[0].profiles), eq=declared_profiles)

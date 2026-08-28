@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m
+from flext_infra import c, config, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
@@ -60,7 +60,7 @@ class TestsRepositoryLocalTopology:
             database="fixture-database",
             issue_prefix="fixture-prefix",
         )
-        payload: dict[str, object] = {
+        payload: dict[str, t.JsonValue] = {
             "version": 1,
             "workspace": "fixture-workspace",
             "database": "fixture-database",
@@ -83,7 +83,7 @@ class TestsRepositoryLocalTopology:
         ],
     )
     def test_beads_identity_rejects_malformed_values(
-        self, tmp_path: Path, field: str, invalid_value: object
+        self, tmp_path: Path, field: str, invalid_value: t.JsonValue
     ) -> None:
         """Fail closed on values outside the typed local contract."""
         root = tmp_path / field
@@ -94,7 +94,7 @@ class TestsRepositoryLocalTopology:
             database="fixture-database",
             issue_prefix="fixture-prefix",
         )
-        payload: dict[str, object] = {
+        payload: dict[str, t.JsonValue] = {
             "version": 1,
             "workspace": "fixture-workspace",
             "database": "fixture-database",

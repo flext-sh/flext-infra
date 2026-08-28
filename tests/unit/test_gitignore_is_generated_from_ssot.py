@@ -68,14 +68,14 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         """
         members = ("probe-member", "nested/probe-member")
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="probe-root",
+            beads=test_u.Tests.beads_project("probe-root"),
             repository=test_u.Tests.repository_ref("probe-root"),
-            members=tuple(
+            subprojects=tuple(
                 test_u.Tests.repository_ref(
                     Path(item).name,
                     path=Path(item),
-                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                    role=c.Infra.RepositoryRole.STANDALONE,
                 )
                 for item in members
             ),
@@ -83,7 +83,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
-                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                profile=c.Infra.MakeProfile.WORKSPACE,
                 project_name="probe-root",
                 workspace=workspace,
             )

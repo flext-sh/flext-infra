@@ -27,6 +27,9 @@ class TestCodegenCiMatrix:
             kind=c.Infra.ProjectKind.EXTERNAL,
             output_root=root,
             provider="flext-sh",
+            beads_workspace="flext-demo",
+            beads_database="flext_demo",
+            beads_issue_prefix="flext-demo",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -38,16 +41,15 @@ class TestCodegenCiMatrix:
         tm.ok(result)
         return root
 
-    def test_ci_matrix_profiles_exclude_workspace_member(self) -> None:
-        """Matrix + distro Dockerfiles are root/standalone only (not members)."""
+    def test_ci_matrix_profiles_cover_both_repository_topologies(self) -> None:
+        """Matrix and distro Dockerfiles cover workspace and standalone."""
         entries = config.Infra.codegen.templates.entries
         matrix = next(
             entry
             for entry in entries
             if entry.destination == ".github/workflows/ci-matrix.yml"
         )
-        tm.that(set(matrix.profiles), eq={"workspace-root", "standalone"})
-        tm.that("workspace-member" in matrix.profiles, eq=False)
+        tm.that(set(matrix.profiles), eq={"workspace", "standalone"})
         docker_dests = {
             f"tests/fixtures/ci/docker/{name}.Dockerfile"
             for name in ("ubuntu", "debian", "fedora", "alpine", "arch")
@@ -55,8 +57,7 @@ class TestCodegenCiMatrix:
         for entry in entries:
             if entry.destination not in docker_dests:
                 continue
-            tm.that(set(entry.profiles), eq={"workspace-root", "standalone"})
-            tm.that("workspace-member" in entry.profiles, eq=False)
+            tm.that(set(entry.profiles), eq={"workspace", "standalone"})
 
     def test_ci_matrix_workflow_emitted(self, tmp_path: Path) -> None:
         """Generated project carries .github/workflows/ci-matrix.yml."""
@@ -186,7 +187,7 @@ class TestCodegenCiMatrix:
         )
         spec = m.Infra.GithubWorkflowRenderSpec(
             dist="cosmos-main",
-            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
@@ -341,12 +342,13 @@ class TestCodegenCiMatrix:
     ) -> None:
         """Blocking CI covers integration; matrix defaults to dispatch-only."""
         root = self._render_project(tmp_path / "external")
-        manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
-        repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
-        provider_name = str(repository["provider"])
-        provider = next(
-            p for p in config.Infra.codegen.providers if p.name == provider_name
+        providers = tuple(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name == "flext-sh"
         )
+        tm.that(len(providers), eq=1)
+        (provider,) = providers
         branch = provider.branch
         blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
@@ -397,7 +399,7 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="0.12.0-dev")
         tm.that(triggers, lacks="develop")
         tm.that(triggers, lacks="branches: [dev]")
-        tm.that(triggers, lacks="workspace-member")
+        tm.that(triggers, lacks="make_profile")
         tm.that(content, lacks="{% if make_profile")
 
     def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
@@ -485,11 +487,11 @@ class TestCodegenCiMatrix:
             encoding="utf-8",
         )
         repository = test_u.Tests.repository_ref(
-            name, role=c.Infra.RepositoryRole.WORKSPACE_MEMBER, path=Path()
+            name, role=c.Infra.RepositoryRole.STANDALONE, path=Path()
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=name,
+            beads=test_u.Tests.beads_project(name),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name="flext_core",

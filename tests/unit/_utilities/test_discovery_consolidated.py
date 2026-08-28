@@ -410,7 +410,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         tm.that(info.name, eq="alpha")
         tm.that(info.has_src, eq=True)
         tm.that(info.has_tests, eq=True)
-        tm.that(info.workspace_role, eq=c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER)
+        tm.that(info.workspace_role, eq=c.Infra.WorkspaceProjectRole.SUBPROJECT)
 
     def test_discover_projects_includes_workspace_members_without_core_dep(
         self, tmp_path: Path
@@ -432,7 +432,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         tm.that(
             (
                 result.value[0].workspace_role
-                == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+                == c.Infra.WorkspaceProjectRole.SUBPROJECT
             ),
             eq=True,
         )

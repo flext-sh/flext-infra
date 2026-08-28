@@ -169,6 +169,7 @@ if TYPE_CHECKING:
     from .git import FlextInfraGitService
     from .iteration import FlextInfraUtilitiesIteration
     from .maintenance.clean import FlextInfraCleanService
+    from .maintenance.python_version import FlextInfraPythonVersionEnforcer
     from .models import FlextInfraModels, FlextInfraModels as m
     from .protocols import (
         FlextInfraProtocols,
@@ -441,6 +442,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPytestRunner",
     "FlextInfraPytestSelectorValidator",
+    "FlextInfraPythonVersionEnforcer",
     "FlextInfraRefactorCastRemover",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
@@ -737,6 +739,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".iteration": ("FlextInfraUtilitiesIteration",),
             ".maintenance": ("maintenance",),
             ".maintenance.clean": ("FlextInfraCleanService",),
+            ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
             ".models": ("FlextInfraModels", "m"),
             ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
             ".refactor": ("refactor",),
