@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
 
@@ -34,8 +33,7 @@ class TestGitHookConformance:
     @staticmethod
     def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
         """Load the smallest repository-local topology needed by conform."""
-        test_u.Tests.write_project_beads_config(root, "flext-demo")
-        return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        return test_u.Tests.standalone_workspace(root)
 
     @staticmethod
     def _render_hooks(root: Path) -> str:

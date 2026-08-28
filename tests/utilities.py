@@ -617,6 +617,32 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def standalone_workspace(
+            project_dir: Path, name: str = "flext-demo"
+        ) -> m.Infra.WorkspaceSpec:
+            """Materialize and load the canonical minimal standalone fixture."""
+            from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+            package_root = project_dir / "src" / name.replace("-", "_")
+            package_root.mkdir(parents=True, exist_ok=True)
+            (package_root / "__init__.py").write_text("", encoding="utf-8")
+            (project_dir / "pyproject.toml").write_text(
+                "[project]\n"
+                f'name = "{name}"\n'
+                'version = "0.1.0"\n'
+                'requires-python = ">=3.13,<3.14"\n'
+                "dependencies = []\n",
+                encoding="utf-8",
+            )
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(project_dir, name)
+            workspace = tm.ok(
+                FlextInfraWorkspaceDetector.load_workspace_spec(project_dir)
+            )
+            return workspace.model_copy(
+                update={"project": TestsFlextInfraUtilities.Tests.project_spec(name)}
+            )
+
+        @staticmethod
         def create_docs_workspace(
             root: Path,
             *,

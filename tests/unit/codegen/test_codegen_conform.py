@@ -50,24 +50,7 @@ def _conform_target(
 
 def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
     """Load the smallest repository-local topology for conform tests."""
-    u.Tests.write_project_beads_config(root, "flext-demo")
-    package_root = root / "src" / "flext_demo"
-    tm.ok(u.Cli.ensure_dir(package_root))
-    tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
-    tm.ok(
-        u.Cli.atomic_write_text_file(
-            root / "pyproject.toml",
-            (
-                "[project]\n"
-                'name = "flext-demo"\n'
-                'version = "0.1.0"\n'
-                'requires-python = ">=3.13,<3.14"\n'
-                "dependencies = []\n"
-            ),
-        )
-    )
-    workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-    return workspace.model_copy(update={"project": u.Tests.project_spec("flext-demo")})
+    return u.Tests.standalone_workspace(root)
 
 
 def _apply_conform_surface(
