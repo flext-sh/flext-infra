@@ -38,6 +38,7 @@ this rollout.
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `f033fc4bd` | Retired-tooling validation evidence recorded and pushed |
 | 2026-08-28T10:22:00-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `97d55739ced18c5a59fa997582de7dc7925b1f11` | Repository-local topology owners, typed `base.mk` validation, static projection convergence, and final active-vocabulary cleanup pushed |
 | 2026-08-28T10:26:09-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `584189ddc4fb61e33deff2c3c9432d63ef9acdc0` | Full static-gate defects repaired at their owners and the green checkpoint pushed |
+| 2026-08-28T10:32:34-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `3e88c4aadf77674ddf93c7e59226a8c59d213d84` | Standalone Rope discovery bounded to a repository owner while execution anywhere below a `.gitmodules` workspace still scans the complete workspace; checkpoint pushed |
 
 ## Validation log
 
@@ -89,6 +90,7 @@ this rollout.
 | 2026-08-28T10:23:35-03:00 | worktree | First full `make check` after the topology checkpoint | FAIL: 5 lint, 1 Pyright, and 2 Mypy errors; smells, markdown, Pyrefly, and security passed | Removed cutover orphans and corrected typed lock-payload/test boundaries before proceeding |
 | 2026-08-28T10:25:57-03:00 | worktree | Full `make check` after owner repairs | PASS: lint, smells, markdown, Pyrefly, Mypy, security, and Pyright all reported 0 errors; 0 skips | Static gate stage is green and the repair was pushed as `584189ddc4fb61e33deff2c3c9432d63ef9acdc0` |
 | 2026-08-28T10:28:36-03:00 | `098a074d40e27a864f04561e91ed83eda7f79203` | Full `make test` with the canonical testmon selection | FAIL: 68 failed, 721 passed in 72s | Failures group into stale retired-schema/Make expectations plus Rope adopting an unowned ancestor `src` directory for temporary non-repositories; phase remains RED and no PR is opened |
+| 2026-08-28T10:31:09-03:00 | worktree | `make fmt WHAT=apply APPLY=Y`; Rope service, lazy-init, and lazy-map focused gates | PASS: formatter-clean; 21 Rope, 4 lazy-init, and 4 lazy-map tests | A standalone scratch directory no longer inherits an unrelated ancestor `src`; calls at the workspace root, an internal project, or an internal package retain whole-workspace Rope scope, including undeclared internal projects |
 
 ## Unresolved boundaries
 
