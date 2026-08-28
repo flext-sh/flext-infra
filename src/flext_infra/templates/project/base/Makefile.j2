@@ -466,9 +466,10 @@ endif
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
 	@"$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
-		$(SELF_MAKE) _builtin_setup_lifecycle
+		$(SELF_MAKE) _setup_lifecycle
 
-_builtin_setup_lifecycle:
+.PHONY: _setup_lifecycle
+_setup_lifecycle:
 	@for hook in "pre-setup"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \

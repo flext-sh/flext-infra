@@ -277,7 +277,7 @@ ifeq ($(strip $(RESOLVED_UV)),)
 $(error Required uv executable not found: $(UV_REQUESTED))
 endif
 endif
-override UV := $(RESOLVED_UV)
+override UV := $(if $(strip $(RESOLVED_UV)),$(RESOLVED_UV),$(UV_REQUESTED))
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
@@ -297,7 +297,7 @@ _bootstrap_setup_tools:
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	}; \
-	current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
+	if ! current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1); then current=; fi; \
 	[ "$$current" = "$$mise_version" ] || { \
 		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
 			"$$mise_version" "$${current:-<missing>}" >&2; \
@@ -495,9 +495,10 @@ endif
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
 	@"$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
-		$(SELF_MAKE) _builtin_setup_lifecycle
+		$(SELF_MAKE) _setup_lifecycle
 
-_builtin_setup_lifecycle:
+.PHONY: _setup_lifecycle
+_setup_lifecycle:
 	@for hook in "pre-setup"; do \
 		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \

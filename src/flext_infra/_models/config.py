@@ -1180,7 +1180,8 @@ class FlextInfraConfigModels:
                     "gate that can never run is not a gate, which is how "
                     "references, agents, census and waza ended up outside the "
                     "gate matrix in consuming repositories. Each id must have a "
-                    "`_custom_check_<id>` handler in the project's custom.mk."
+                    "`_custom_check_<id>` handler in the project's "
+                    f"{FlextInfraConstantsCodegenProject.CUSTOM_MAKE_FILENAME}."
                 ),
             ),
         ] = ()

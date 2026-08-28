@@ -33,8 +33,8 @@ class TestsFlextInfraWorkspaceCheckScope:
         tm.that(
             template,
             has=(
-                "WORKSPACE_SUBPROJECTS :={% for member in workspace_subprojects %} "
-                "{{ member }}{% endfor %}"
+                "WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} "
+                "{{ subproject }}{% endfor %}"
             ),
         )
         tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)")

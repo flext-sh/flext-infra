@@ -11,7 +11,7 @@
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	}; \
-	current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
+	if ! current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1); then current=; fi; \
 	[ "$$current" = "$$mise_version" ] || { \
 		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
 			"$$mise_version" "$${current:-<missing>}" >&2; \
