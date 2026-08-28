@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -28,47 +28,15 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_root_config_sets_expected_execution_environments(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Render configured root and member analyzer environments."""
+        """Render only configured namespaces owned by the root repository."""
         pyright_rules = tool_config_document.tools.pyright
         rules = pyright_rules.path_rules
         _ = (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace'\n\n"
-            "[tool.uv.workspace]\n"
-            "members = ['flext-core', 'flext-api']\n",
-            encoding="utf-8",
+            "[project]\nname='repository'\n", encoding="utf-8"
         )
-        flext_core = tmp_path / "flext-core"
-        flext_api = tmp_path / "flext-api"
-        detached_project = tmp_path / "demo-migration-tool"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
-        flext_core.mkdir(parents=True, exist_ok=True)
-        flext_api.mkdir(parents=True, exist_ok=True)
-        detached_project.mkdir(parents=True, exist_ok=True)
-        _ = (flext_core / "pyproject.toml").write_text(
-            "[project]\nname='flext-core'\n", encoding="utf-8"
-        )
-        _ = (flext_api / "pyproject.toml").write_text(
-            "[project]\nname='flext-api'\n", encoding="utf-8"
-        )
-        _ = (detached_project / "pyproject.toml").write_text(
-            "[project]\nname='demo-migration-tool'\ndependencies=['flext-core>=0.1.0']\n",
-            encoding="utf-8",
-        )
-        (flext_core / "src").mkdir(parents=True, exist_ok=True)
-        (flext_core / "tests").mkdir(parents=True, exist_ok=True)
-        (flext_api / "src").mkdir(parents=True, exist_ok=True)
-        (detached_project / "src").mkdir(parents=True, exist_ok=True)
-        (flext_core / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
-        (flext_core / "src" / "flext_core" / "__init__.py").write_text(
-            "VALUE = 1\n", encoding="utf-8"
-        )
-        (flext_core / "tests" / "test_smoke.py").write_text(
-            "def test_smoke() -> None:\n    assert True\n", encoding="utf-8"
-        )
-        (flext_api / "src" / "flext_api").mkdir(parents=True, exist_ok=True)
-        (flext_api / "src" / "flext_api" / "__init__.py").write_text(
-            "VALUE = 1\n", encoding="utf-8"
-        )
+        for directory in (rules.source_dir, rules.test_like_dirs[0]):
+            (tmp_path / directory).mkdir()
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -99,11 +67,7 @@ class TestsFlextInfraDepsModernizerPyright:
             tm.that(pyright, lacks="ignore")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
-            eq=sorted([
-                f"flext-api/{rules.source_dir}",
-                f"flext-core/{rules.source_dir}",
-                f"flext-core/{rules.test_like_dirs[0]}",
-            ]),
+            eq=sorted([rules.source_dir, rules.test_like_dirs[0]]),
         )
         tm.that(
             u.Cli.toml_unwrap_item(pyright["executionEnvironments"]),
@@ -111,23 +75,16 @@ class TestsFlextInfraDepsModernizerPyright:
                 {
                     **pyright_rules.lazy_import_suppressions,
                     **pyright_rules.source_env_suppressions,
-                    "root": f"flext-api/{rules.source_dir}",
+                    "root": rules.source_dir,
                     "reportPrivateUsage": rules.source_report_private_usage,
-                    "extraPaths": [f"flext-api/{rules.source_dir}"],
-                },
-                {
-                    **pyright_rules.lazy_import_suppressions,
-                    **pyright_rules.source_env_suppressions,
-                    "root": f"flext-core/{rules.source_dir}",
-                    "reportPrivateUsage": rules.source_report_private_usage,
-                    "extraPaths": [f"flext-core/{rules.source_dir}"],
+                    "extraPaths": [rules.source_dir],
                 },
                 {
                     **pyright_rules.lazy_import_suppressions,
                     **pyright_rules.test_like_env_suppressions,
-                    "root": f"flext-core/{rules.test_like_dirs[0]}",
+                    "root": rules.test_like_dirs[0],
                     "reportPrivateUsage": rules.test_like_report_private_usage,
-                    "extraPaths": ["flext-core", f"flext-core/{rules.source_dir}"],
+                    "extraPaths": [rules.project_root, rules.source_dir],
                 },
             ],
         )
@@ -321,45 +278,23 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, lacks="include")
         tm.that(u.Cli.toml_unwrap_item(pyright["executionEnvironments"]), eq=[])
 
-    def test_workspace_root_declared_roots_do_not_override_fleet_discovery(
+    def test_root_declared_roots_are_authoritative(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Render the workspace fleet surface even when roots are declared.
-
-        A workspace root owns a real tree, so its analyzer surface is decided by
-        that tree's topology. Declared roots are the pre-write scaffold seed and
-        must never narrow a real root back to its own local directories, or the
-        root renders one shape from the fleet fan-out and another from inside
-        itself and no content is a fixed point (flext-dph2).
-        """
+        """Pre-write declarations cannot fan out into nested repositories."""
         rules = tool_config_document.tools.pyright.path_rules
         _ = (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace'\n\n"
-            "[tool.uv.workspace]\n"
-            "members = ['flext-core']\n",
-            encoding="utf-8",
+            "[project]\nname='repository'\n", encoding="utf-8"
         )
-        flext_core = tmp_path / "flext-core"
-        (flext_core / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
-        _ = (flext_core / "pyproject.toml").write_text(
-            "[project]\nname='flext-core'\n", encoding="utf-8"
-        )
-        _ = (flext_core / "src" / "flext_core" / "__init__.py").write_text(
-            "VALUE = 1\n", encoding="utf-8"
-        )
-        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
-        fleet_doc = u.Cli.toml_document()
         declared_doc = u.Cli.toml_document()
 
-        _ = phase.apply(fleet_doc, is_root=True, workspace_root=tmp_path)
-        _ = phase.apply(
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
             declared_doc,
             is_root=True,
             workspace_root=tmp_path,
             declared_python_dirs=(rules.source_dir,),
         )
 
-        tm.that(u.Cli.toml_dumps(declared_doc), eq=u.Cli.toml_dumps(fleet_doc))
         declared_tool = u.Cli.toml_unwrap_item(declared_doc["tool"])
         tm.that(declared_tool, is_=MutableMapping)
         if not isinstance(declared_tool, MutableMapping):
@@ -374,60 +309,5 @@ class TestsFlextInfraDepsModernizerPyright:
                     u.Cli.toml_unwrap_item(declared_pyright["include"])
                 )
             ),
-            has=f"flext-core/{rules.source_dir}",
+            eq=[rules.source_dir],
         )
-
-    def test_expected_envs_cover_every_analyzer_python_root(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
-    ) -> None:
-        """The phase emits an environment for every root the analyzer owner selects.
-
-        ``analyzer_python_roots`` is the declared single owner of "which
-        directories are productive Python roots" (conform._existing_python_dirs).
-        When this phase derives its roots from a different list, conform renders an
-        executionEnvironment that apply can never write, so `gen check` reports
-        drift forever and `gen apply` cannot clear it.
-
-        A Python file under a directory outside ``env_dirs`` (docs/ here) is the
-        case that separates the two owners.
-        """
-        from flext_infra import u as infra_u
-
-        rules = tool_config_document.tools.pyright.path_rules
-        source = tmp_path / rules.source_dir
-        source.mkdir(parents=True)
-        (source / "mod.py").write_text("x = 1\n", encoding="utf-8")
-        # A productive root the env_dirs SSOT does not list.
-        outside = tmp_path / "docs" / "tools"
-        outside.mkdir(parents=True)
-        (outside / "validate_docs.py").write_text("y = 2\n", encoding="utf-8")
-
-        discovered = frozenset(infra_u.Infra.discover_python_dirs(tmp_path))
-        declared = tuple(d for d in rules.env_dirs if d in discovered)
-        owner_roots = set(infra_u.Infra.analyzer_python_roots(tmp_path, declared))
-
-        doc = u.Cli.toml_document()
-        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
-            doc, is_root=False, project_dir=tmp_path
-        )
-
-        tool = u.Cli.toml_unwrap_item(doc["tool"])
-        tm.that(tool, is_=MutableMapping)
-        if not isinstance(tool, MutableMapping):
-            return
-        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
-        tm.that(pyright, is_=MutableMapping)
-        if not isinstance(pyright, MutableMapping):
-            return
-        environments = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
-        tm.that(environments, is_=Sequence)
-        if not isinstance(environments, Sequence):
-            return
-        emitted: set[str] = set()
-        for entry in environments:
-            environment = u.Cli.toml_unwrap_item(entry)
-            tm.that(environment, is_=MutableMapping)
-            if not isinstance(environment, MutableMapping):
-                return
-            emitted.add(str(u.Cli.toml_unwrap_item(environment["root"])))
-        tm.that(sorted(emitted), eq=sorted(owner_roots))

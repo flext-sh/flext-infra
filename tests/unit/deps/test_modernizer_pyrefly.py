@@ -305,10 +305,10 @@ class TestsFlextInfraModernizerPyrefly:
         )
         tm.that(u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]), eq=[])
 
-    def test_ensure_pyrefly_config_uses_pyright_include_when_available(
+    def test_ensure_pyrefly_config_uses_existing_canonical_namespaces(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Verify Pyright include paths feed project-scoped Pyrefly config."""
+        """Stale Pyright includes cannot hide a configured root namespace."""
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
         for directory in ("src", "tests"):
@@ -334,7 +334,7 @@ class TestsFlextInfraModernizerPyrefly:
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         project_includes = u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES])
-        tm.that(project_includes, eq=["src/**/*.py*"])
+        tm.that(project_includes, eq=["src/**/*.py*", "tests/**/*.py*"])
 
     def test_pyright_include_globs_derive_existing_python_roots(
         self, tmp_path: Path
@@ -358,7 +358,7 @@ class TestsFlextInfraModernizerPyrefly:
 
         includes = FlextInfraExtraPathsManager(
             workspace_root=tmp_path
-        ).pyrefly_project_includes(project_dir=project_dir, is_root=False)
+        ).pyrefly_project_includes(project_dir=project_dir)
 
         tm.that(includes, eq=["scripts/**/*.py*", "src/**/*.py*", "tests/**/*.py*"])
 

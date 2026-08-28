@@ -507,8 +507,6 @@ Infra:
           project-root: .
           root-typings-paths: []
           project-typings-paths: []
-          workspace-include-children: false
-          workspace-include-child-env-dirs: []
           project-shared-search-paths: ["."]
       pytest:
         # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.

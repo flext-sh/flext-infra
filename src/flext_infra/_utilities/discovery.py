@@ -213,36 +213,6 @@ class FlextInfraUtilitiesDiscovery(
             and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
         ]
 
-    @classmethod
-    def analyzer_python_roots(
-        cls, project_dir: Path, declared: t.StrSequence
-    ) -> t.StrSequence:
-        """Return the Python roots every analyzer surface must agree on.
-
-        Conform, the deps modernizer and the extra-paths sync each described
-        the same concept on their own: some filtered the declared ``env_dirs``
-        by existence, others discovered roots on disk. A project owning a
-        Python directory outside ``env_dirs`` therefore had that root written
-        by one surface and erased by the next, so apply never reached a fixed
-        point and check reported permanent drift. This is the single owner:
-        declared roots keep their configured order, because a pre-write
-        scaffold can only offer those, and discovery appends the remaining
-        roots that actually exist, which is the only set an analyzer accepts.
-
-        A directory owning a ``pyproject.toml`` is a project in its own right
-        and is analyzed under its own manifest.
-        """
-        discovered = cls.discover_python_dirs(project_dir)
-        return (
-            *declared,
-            *(
-                root
-                for root in discovered
-                if root not in declared
-                and not (project_dir / root / c.Infra.PYPROJECT_FILENAME).is_file()
-            ),
-        )
-
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
         """Resolve the public package ``__init__.py`` within a project or workspace."""

@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_infra import config, m, p, t
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
@@ -113,9 +113,7 @@ class FlextInfraExtraPathsManager(
             return (source_root, *ordered)
         return tuple(ordered)
 
-    def pyrefly_project_includes(
-        self, *, project_dir: Path, is_root: bool
-    ) -> t.StrSequence:
+    def pyrefly_project_includes(self, *, project_dir: Path) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         # mro-j47u (codex): never reread an on-disk Pyright table while its
@@ -130,15 +128,6 @@ class FlextInfraExtraPathsManager(
                 )
             )
         )
-        if not is_root or (not rules.workspace_include_children):
-            return sorted(includes)
-        for child in sorted(project_dir.iterdir()):
-            if not child.is_dir() or not (child / c.Infra.PYPROJECT_FILENAME).exists():
-                continue
-            child_dirs = u.Infra.discover_python_dirs(child)
-            includes.update(
-                f"{child.name}/{directory}/**/*.py*" for directory in child_dirs
-            )
         return sorted(includes)
 
     @staticmethod

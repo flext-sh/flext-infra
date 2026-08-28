@@ -84,9 +84,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         if search_result.failure:
             return search_result
         all_fixes.extend(search_result.value)
-        includes_result = self._sync_project_includes(
-            pyrefly, project_dir, is_root=is_root
-        )
+        includes_result = self._sync_project_includes(pyrefly, project_dir)
         if includes_result.failure:
             return includes_result
         all_fixes.extend(includes_result.value)

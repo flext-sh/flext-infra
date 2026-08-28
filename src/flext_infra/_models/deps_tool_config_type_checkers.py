@@ -249,20 +249,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="Canonical directories used to build project-includes.",
                 ),
             ]
-            workspace_include_children: Annotated[
-                bool,
-                m.Field(
-                    alias="workspace-include-children",
-                    description="Whether root pyrefly should include child projects.",
-                ),
-            ]
-            workspace_include_child_env_dirs: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="workspace-include-child-env-dirs",
-                    description="Child env dirs included by root pyrefly when enabled.",
-                ),
-            ]
             project_shared_search_paths: Annotated[
                 t.StrSequence,
                 m.Field(

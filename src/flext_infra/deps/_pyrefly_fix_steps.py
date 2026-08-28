@@ -53,11 +53,7 @@ class FlextInfraConfigFixerSteps:
         return r[t.StrSequence].ok(())
 
     def _sync_project_includes(
-        self,
-        pyrefly: MutableMapping[str, t.Infra.InfraValue],
-        project_dir: Path,
-        *,
-        is_root: bool,
+        self, pyrefly: MutableMapping[str, t.Infra.InfraValue], project_dir: Path
     ) -> p.Result[t.StrSequence]:
         """Synchronize tool.pyrefly.project-includes from canonical path rules."""
         includes_raw = pyrefly.get(c.Infra.PROJECT_INCLUDES)
@@ -74,7 +70,7 @@ class FlextInfraConfigFixerSteps:
         ]
         expected_includes = FlextInfraExtraPathsManager(
             workspace_root=self._workspace_root
-        ).pyrefly_project_includes(project_dir=project_dir, is_root=is_root)
+        ).pyrefly_project_includes(project_dir=project_dir)
         if current_includes != expected_includes:
             pyrefly[c.Infra.PROJECT_INCLUDES] = u.Cli.toml_array(expected_includes)
             return r[t.StrSequence].ok([

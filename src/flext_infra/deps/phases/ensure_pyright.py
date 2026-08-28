@@ -111,73 +111,10 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
         return tuple(environments)
 
-    def _project_source_path(self, *, prefix: str = "") -> str:
+    def _project_source_path(self) -> str:
         """Project source path."""
         rules = self._tool_config.tools.pyright.path_rules
-        return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
-
-    def _expected_envs(
-        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        """Return the expected execution environments."""
-        if not is_root or workspace_root is None:
-            return self._expected_envs_for_project(project_dir=project_dir)
-        rules = self._tool_config.tools.pyright.path_rules
-        expected_envs: t.MutableSequenceOf[
-            m.Infra.PyrightConfig.ExecutionEnvironment
-        ] = []
-        root_source_path = self._project_source_path()
-        # mro-j47u (codex): specific roots precede the broad source environment.
-        expected_envs.extend(
-            self._diagnostic_override_envs(
-                project_dir=workspace_root,
-                root_prefix=None,
-                source_path=root_source_path,
-            )
-        )
-        for env_dir in u.Infra.discover_python_dirs(workspace_root):
-            if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
-                continue
-            expected_envs.append(
-                self._env_entry(
-                    env_dir=env_dir,
-                    root=env_dir,
-                    extra_paths=self._extra_paths_for_env(
-                        env_dir=env_dir,
-                        source_path=root_source_path,
-                        project_root=rules.project_root,
-                        source_dir=rules.source_dir,
-                    ),
-                    rules=rules,
-                )
-            )
-        child_projects: list[Path] = []
-        for child_project in child_projects:
-            relative_root = child_project.relative_to(workspace_root)
-            relative_project_root = relative_root.as_posix()
-            child_source_path = self._project_source_path(prefix=relative_project_root)
-            expected_envs.extend(
-                self._diagnostic_override_envs(
-                    project_dir=child_project,
-                    root_prefix=relative_root,
-                    source_path=child_source_path,
-                )
-            )
-            for env_dir in u.Infra.discover_python_dirs(child_project):
-                expected_envs.append(
-                    self._env_entry(
-                        env_dir=env_dir,
-                        root=(relative_root / env_dir).as_posix(),
-                        extra_paths=self._extra_paths_for_env(
-                            env_dir=env_dir,
-                            source_path=child_source_path,
-                            project_root=relative_project_root,
-                            source_dir=rules.source_dir,
-                        ),
-                        rules=rules,
-                    )
-                )
-        return expected_envs
+        return rules.source_dir
 
     def _expected_envs_for_project(
         self, *, project_dir: Path | None
@@ -336,27 +273,14 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         # Why (fixed point): a root the active codegen plan materializes counts
         # before it exists on disk, so plan and post-apply verification agree.
-        if not is_root:
-            return [
-                env_dir
-                for env_dir in rules.env_dirs
-                if project_dir is None
-                or (project_dir / env_dir).is_dir()
-                or env_dir in generated_roots
-            ]
-        if workspace_root is None:
-            return ()
-        includes: t.MutableSequenceOf[str] = [
+        repository_root = workspace_root if is_root else project_dir
+        if repository_root is None:
+            return () if is_root else tuple(rules.env_dirs)
+        return [
             env_dir
             for env_dir in rules.env_dirs
-            if (workspace_root / env_dir).is_dir() or env_dir in generated_roots
+            if (repository_root / env_dir).is_dir() or env_dir in generated_roots
         ]
-        child_projects: list[Path] = []
-        for child_project in child_projects:
-            relative_root = child_project.relative_to(workspace_root)
-            for env_dir in u.Infra.discover_python_dirs(child_project):
-                includes.append((relative_root / env_dir).as_posix())
-        return includes
 
     def _phase(
         self,
@@ -415,10 +339,8 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_root=stub_rules.project_root,
                 rules=stub_rules,
             )
-            if declared_python_dirs
-            else self._expected_envs(
-                is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
-            )
+            if declared_python_dirs or declared_python_dirs_are_complete
+            else self._expected_envs_for_project(project_dir=project_root)
         )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
             c.Infra.PYRIGHT

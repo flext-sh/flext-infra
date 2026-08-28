@@ -36,7 +36,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 project_dir=project_dir, is_root=is_root
             )
             expected_includes = paths_manager.pyrefly_project_includes(
-                project_dir=project_dir, is_root=is_root
+                project_dir=project_dir
             )
         else:
             expected_search = [c.Infra.DEFAULT_SRC_DIR]

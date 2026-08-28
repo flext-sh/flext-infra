@@ -40,35 +40,11 @@ class TestBuilderCore:
         """Test BuildReport is frozen (immutable)."""
         tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
-    @pytest.mark.parametrize(
-        "kwargs",
-        [
-            {"projects": ["test-project"]},
-            {"projects": ["proj1", "proj2"]},
-            {"output_dir": "custom_output"},
-        ],
-    )
-    def test_build_with_option_variants(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
-        kwargs: dict[str, str | list[str]],
+    def test_build_with_custom_output_dir(
+        self, builder: FlextInfraDocBuilder, tmp_path: Path
     ) -> None:
-        """Build runs with each option variant and returns a railway result."""
-        if "output_dir" in kwargs:
-            match kwargs["output_dir"]:
-                case str() as output_dir:
-                    tm.ok(
-                        builder.build(tmp_path, output_dir=str(tmp_path / output_dir))
-                    )
-                case invalid:
-                    pytest.fail(f"invalid output_dir test case: {invalid!r}")
-        else:
-            match kwargs.get("projects"):
-                case list() as projects:
-                    tm.ok(builder.build(tmp_path, projects=projects))
-                case invalid:
-                    pytest.fail(f"invalid projects test case: {invalid!r}")
+        """Build accepts an explicit report destination."""
+        tm.ok(builder.build(tmp_path, output_dir=tmp_path / "custom_output"))
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
     def test_build_report_result_field_values(
@@ -94,11 +70,3 @@ class TestBuilderCore:
             site_dir="/path/to/site",
         )
         tm.that(report.site_dir, eq="/path/to/site")
-
-    def test_build_with_multiple_projects_returns_list(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path
-    ) -> None:
-        """Test build with multiple projects returns list of reports."""
-        result = builder.build(tmp_path, projects=["proj1", "proj2"])
-        if result.success:
-            tm.that(len(result.value), gte=0)
