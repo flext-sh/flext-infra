@@ -88,6 +88,7 @@ this rollout.
 | 2026-08-28T10:22:00-03:00 | worktree | Tracked-source zero-residue audit plus `git diff --check` | PASS: no retired vocabulary, tracked backups, positive parent inference, or Beads runtime/fallback prose; diff hygiene clean | Removed an orphan codemod rule and retained negative topology tests as behavioral evidence |
 | 2026-08-28T10:23:35-03:00 | worktree | First full `make check` after the topology checkpoint | FAIL: 5 lint, 1 Pyright, and 2 Mypy errors; smells, markdown, Pyrefly, and security passed | Removed cutover orphans and corrected typed lock-payload/test boundaries before proceeding |
 | 2026-08-28T10:25:57-03:00 | worktree | Full `make check` after owner repairs | PASS: lint, smells, markdown, Pyrefly, Mypy, security, and Pyright all reported 0 errors; 0 skips | Static gate stage is green and the repair was pushed as `584189ddc4fb61e33deff2c3c9432d63ef9acdc0` |
+| 2026-08-28T10:28:36-03:00 | `098a074d40e27a864f04561e91ed83eda7f79203` | Full `make test` with the canonical testmon selection | FAIL: 68 failed, 721 passed in 72s | Failures group into stale retired-schema/Make expectations plus Rope adopting an unowned ancestor `src` directory for temporary non-repositories; phase remains RED and no PR is opened |
 
 ## Unresolved boundaries
 
