@@ -34,6 +34,7 @@ this rollout.
 | 2026-08-28T09:12:58-03:00 | `flext-infra` | `fix/mise-beads-canonical` | `e47da1189e01c432f9ce2154c60c42381a6f9792` | Dirty canonical lane checkpointed in full and pushed before consolidation |
 | 2026-08-28T09:16:22-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `8398a4c409e9024e3b94d555135cf48766e61049` | Canonical Mise lane consolidated by a two-parent merge; conflicts resolved to the final repository-local contract and pushed |
 | 2026-08-28T09:41:16-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `7d535be725af122fae5c76afb8146957fd9644c3` | Required static endpoint restored from the typed codegen SSOT; obsolete override/workspace fixtures, runtime-hook projection, and tracked backup removed; checkpoint pushed |
+| 2026-08-28T09:58:21-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `a9f4b8f2e7b6475797b244163cea932e8e844a00` | Retired facade-inheritance scanners, migrators, transformers, hidden Rope post-hook, models, routes, and obsolete tests removed; generated public exports converged and checkpoint pushed |
 
 ## Validation log
 
@@ -74,6 +75,10 @@ this rollout.
 | 2026-08-28T09:41:16-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_workspace_root_setup_submodules.py` | PASS: 2 tests | Generated workspace Make syntax is valid and initializes only the declared gitlink before environment provisioning |
 | 2026-08-28T09:41:16-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_root_artifact_ownership.py` | PASS: 7 tests | Existing-repository fixed point, GitHub ownership bijection, and bounded ancestry fetch are green |
 | 2026-08-28T09:41:16-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 1 file reformatted, 889 unchanged | Current checkpoint is formatter-clean |
+| 2026-08-28T09:53:59-03:00 | worktree | `make gen WHAT=init APPLY=Y` from `flext-infra` | PASS: apply and check each scanned 51 package directories with 0 errors and 0 warnings | Generated lazy public exports removed every retired module and reached a byte-stable point while Rope indexed the containing workspace from the subproject call |
+| 2026-08-28T09:57:32-03:00 | worktree | Focused retired-tooling regression gates through typed `FILE=` selectors | PASS: 3 refactor service, 27 census CLI, and 36 namespace-enforcer tests | Surviving composition-based refactor paths remain green after removing hidden migration and inheritance-shape behavior |
+| 2026-08-28T09:57:32-03:00 | worktree | Focused Beads/topology gates through typed `FILE=` selectors | PASS: 2 selected static-projection and 14 repository-local topology tests | Static Beads projection and repository-local generic topology remain unchanged by the refactor-tooling cut |
+| 2026-08-28T09:58:21-03:00 | worktree | `make fmt` | PASS: 869 files already formatted | Published structural checkpoint is formatter-clean |
 
 ## Unresolved boundaries
 
