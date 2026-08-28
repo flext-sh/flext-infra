@@ -643,6 +643,24 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def write_mise_stub(path: Path) -> Path:
+            """Write the one hermetic Mise contract used by Make setup fixtures."""
+            TestsFlextInfraUtilities.Tests.write_executable(
+                path,
+                "#!/bin/sh\n"
+                'if [ "$1" = "--version" ]; then '
+                f"printf '%s\\n' '{config.Infra.codegen.toolchain.mise_version}'; exit; fi\n"
+                f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
+                f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
+                'if [ "$1" = "trust" ]; then exit; fi\n'
+                'case "$*" in *" install "*) exit ;; esac\n'
+                'while [ "$1" != "--" ]; do shift; done\n'
+                "shift\n"
+                'exec "$@"\n',
+            )
+            return path
+
+        @staticmethod
         def create_docs_workspace(
             root: Path,
             *,

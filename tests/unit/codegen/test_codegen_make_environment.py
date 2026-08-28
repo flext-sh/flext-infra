@@ -153,20 +153,7 @@ class TestsCodegenMakeEnvironment:
             encoding="utf-8",
         )
         provisioned_uv.chmod(0o755)
-        mise = tmp_path / "mise"
-        test_u.Tests.write_executable(
-            mise,
-            "#!/bin/sh\n"
-            'if [ "$1" = "--version" ]; then '
-            f"printf '%s\\n' '{config.Infra.codegen.toolchain.mise_version}'; exit; fi\n"
-            f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
-            f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
-            'if [ "$1" = "trust" ]; then exit; fi\n'
-            'case "$*" in *" install "*) exit ;; esac\n'
-            'while [ "$1" != "--" ]; do shift; done\n'
-            "shift\n"
-            'exec "$@"\n',
-        )
+        mise = test_u.Tests.write_mise_stub(tmp_path / "mise")
         (project_root / "mise.lock").touch()
 
         clean_env = {

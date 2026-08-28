@@ -11,6 +11,7 @@ import pytest
 from flext_infra import c, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+from tests import u as test_u
 
 # Why (suite budget): every scenario provisions a real scaffolded project
 # template plus live git submodule topologies; the per-case wall only holds
@@ -58,9 +59,11 @@ class TestsCodegenSetupSubmodules:
             encoding="utf-8",
         )
         (bin_dir / "uv").chmod(0o755)
+        mise = test_u.Tests.write_mise_stub(bin_dir / "mise")
         environment = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "SETUP_MISE": str(mise),
             "UV": str(bin_dir / "uv"),
             "UV_LOG": str(root / "uv.log"),
             "GIT_ALLOW_PROTOCOL": "file",
@@ -487,6 +490,7 @@ def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path
             apply_changes=True,
         ).execute()
     )
+    (root / "mise.lock").touch()
     return root
 
 
