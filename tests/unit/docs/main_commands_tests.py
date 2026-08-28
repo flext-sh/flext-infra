@@ -47,43 +47,32 @@ def test_fixer_execute_fails_on_unapplied_drift(tmp_path: Path) -> None:
     tm.fail(result)
 
 
-def test_generator_execute_writes_reports_for_root_and_selected_project(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
-    )
+def test_generator_execute_writes_repository_report(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"], apply_changes=True
+        workspace_root=workspace, apply_changes=True
     ).execute()
 
     tm.ok(result)
     tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=True)
-    tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
-    tm.that(
-        not (workspace / "flext-b/.reports/docs/generate-report.md").exists(), eq=True
-    )
 
 
 def test_validator_execute_fails_before_generation_and_succeeds_after(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+    workspace = u.Tests.create_docs_workspace(tmp_path)
 
-    before = FlextInfraDocValidator(
-        workspace_root=workspace, selected_projects=["flext-a"]
-    ).execute()
+    before = FlextInfraDocValidator(workspace_root=workspace).execute()
     tm.fail(before)
     generated = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"], apply_changes=True
+        workspace_root=workspace, apply_changes=True
     ).execute()
     tm.ok(generated)
     after = FlextInfraDocValidator(
-        workspace_root=workspace, selected_projects=["flext-a"], apply_changes=True
+        workspace_root=workspace, apply_changes=True
     ).execute()
     tm.ok(after)
-    tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
 
 
 def test_builder_execute_fails_when_mkdocs_is_missing(tmp_path: Path) -> None:

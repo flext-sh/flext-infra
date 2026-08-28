@@ -31,7 +31,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
     def run_github_workspace_pull_requests(
         cls, request: m.Infra.GithubPullRequestWorkspaceRequest
     ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
-        """Run pull-request commands across workspace repositories."""
+        """Run a pull-request command for the repository explicitly supplied."""
         workspace_root = request.workspace_path
         projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
             workspace_root, list(request.project_names or [])
@@ -40,16 +40,14 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             return r[m.Infra.GithubPullRequestWorkspaceReport].fail(
                 projects_result.error or "project resolution failed"
             )
-        repos = [project.path for project in projects_result.value]
-        if request.include_root:
-            repos.append(workspace_root)
         outcomes: t.MutableSequenceOf[m.Infra.GithubPullRequestOutcome] = []
         context = m.Infra.GithubPullRequestWorkspaceContext(
             workspace_root=workspace_root, request=request, outcomes=outcomes
         )
         failures = 0
         processed = 0
-        for repo_root in repos:
+        for project in projects_result.value:
+            repo_root = project.path
             outcome_result = cls._github_pr_process_repo(repo_root, context)
             processed += 1
             failed = outcome_result.failure or outcome_result.unwrap().exit_code != 0

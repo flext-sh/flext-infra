@@ -17,9 +17,8 @@ if TYPE_CHECKING:
         test_pr_workspace_accepts_repeated_project_options,
     )
     from .main_dispatch_tests import (
-        test_run_github_workspace_pull_requests_aggregates_results,
-        test_run_github_workspace_pull_requests_honors_fail_fast,
-        test_run_github_workspace_pull_requests_respects_project_selection,
+        test_pull_request_dispatch_accepts_only_repository_alias,
+        test_pull_request_dispatch_processes_only_supplied_repository,
     )
     from .main_integration_tests import (
         test_lint_subcommand_writes_report,
@@ -37,9 +36,8 @@ __all__: tuple[str, ...] = (
     "test_pr_subcommand_rejects_removed_lifecycle_action",
     "test_pr_subcommand_returns_nonzero_for_minimal_repo",
     "test_pr_workspace_accepts_repeated_project_options",
-    "test_run_github_workspace_pull_requests_aggregates_results",
-    "test_run_github_workspace_pull_requests_honors_fail_fast",
-    "test_run_github_workspace_pull_requests_respects_project_selection",
+    "test_pull_request_dispatch_accepts_only_repository_alias",
+    "test_pull_request_dispatch_processes_only_supplied_repository",
     "test_workflows_subcommand_applies_templates",
 )
 
@@ -53,9 +51,8 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_pr_workspace_accepts_repeated_project_options",
             ),
             ".main_dispatch_tests": (
-                "test_run_github_workspace_pull_requests_aggregates_results",
-                "test_run_github_workspace_pull_requests_honors_fail_fast",
-                "test_run_github_workspace_pull_requests_respects_project_selection",
+                "test_pull_request_dispatch_accepts_only_repository_alias",
+                "test_pull_request_dispatch_processes_only_supplied_repository",
             ),
             ".main_integration_tests": (
                 "test_lint_subcommand_writes_report",

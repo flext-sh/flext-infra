@@ -176,9 +176,6 @@ class FlextInfraModelsMixins:
         need the legacy ``False`` declare it locally.
         """
 
-        include_root: Annotated[bool, m.Field(description="Include root project")] = (
-            False
-        )
         branch: Annotated[str, m.Field(description="Branch name filter")] = ""
         checkpoint: Annotated[bool, m.Field(description="Enable checkpoints")] = True
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True

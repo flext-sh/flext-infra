@@ -41,9 +41,7 @@ scripts/maintenance/
 !.taplo.toml
 !pyrefly.toml
 !poetry.lock
-!uv.lock
 !ruff-shared.toml
-!uv.lock
 
 # mise toolchain pinning
 !.mise.toml
@@ -96,9 +94,6 @@ scripts/maintenance/
 
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
-
-# BLOCK: member-local lockfile (the workspace root owns uv.lock)
-uv.lock
 
 # BLOCK: Agent surface outside the workspace root
 .agents/

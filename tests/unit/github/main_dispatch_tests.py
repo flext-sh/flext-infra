@@ -1,4 +1,4 @@
-"""Workspace github PR service tests using real repositories."""
+"""Repository-local GitHub PR dispatch contracts."""
 
 from __future__ import annotations
 
@@ -12,65 +12,51 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
+def _repository(tmp_path: Path) -> Path:
+    repository = u.Tests.create_github_workspace(tmp_path)
+    (repository / "pyproject.toml").write_text(
+        '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
     )
-
-    result = u.Infra.run_github_workspace_pull_requests(
-        m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace),
-            action=c.Infra.PullRequestAction.STATUS,
-            fail_fast=False,
-        )
-    )
-
-    tm.ok(result)
-    report = result.unwrap()
-    tm.that(report.total, eq=2)
-    tm.that(report.success, eq=0)
-    tm.that(report.fail, eq=2)
+    package = repository / "src" / "demo_project"
+    package.mkdir(parents=True)
+    (package / "__init__.py").touch()
+    return repository
 
 
-def test_run_github_workspace_pull_requests_respects_project_selection(
+def test_pull_request_dispatch_processes_only_supplied_repository(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path, project_names=("flext-a", "flext-b", "flext-c")
-    )
+    repository = _repository(tmp_path)
 
-    result = u.Infra.run_github_workspace_pull_requests(
-        m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace), projects=["flext-a", "flext-b"], fail_fast=False
+    report = tm.ok(
+        u.Infra.run_github_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
+                workspace=str(repository),
+                action=c.Infra.PullRequestAction.STATUS,
+                fail_fast=False,
+            )
         )
     )
 
-    tm.ok(result)
-    report = result.unwrap()
-    report_dir = workspace / ".reports/workspace/pr"
-    tm.that(report.total, eq=2)
-    tm.that(report.fail, eq=2)
-    tm.that((report_dir / "flext-a.log").is_file(), eq=True)
-    tm.that((report_dir / "flext-b.log").is_file(), eq=True)
-    tm.that((report_dir / "flext-c.log").exists(), eq=False)
-
-
-def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
-    )
-
-    result = u.Infra.run_github_workspace_pull_requests(
-        m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace), fail_fast=True
-        )
-    )
-
-    tm.ok(result)
-    report = result.unwrap()
-    report_dir = workspace / ".reports/workspace/pr"
     tm.that(report.total, eq=1)
-    tm.that(report.success, eq=0)
-    tm.that(report.fail, eq=1)
-    tm.that((report_dir / "flext-a.log").is_file(), eq=True)
-    tm.that((report_dir / "flext-b.log").exists(), eq=False)
+    tm.that(report.success + report.fail, eq=1)
+
+
+def test_pull_request_dispatch_accepts_only_repository_alias(tmp_path: Path) -> None:
+    repository = _repository(tmp_path)
+
+    tm.ok(
+        u.Infra.run_github_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
+                workspace=str(repository), projects=["."], fail_fast=True
+            )
+        )
+    )
+    tm.fail(
+        u.Infra.run_github_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
+                workspace=str(repository), projects=["another-project"]
+            )
+        ),
+        has="unknown projects",
+    )

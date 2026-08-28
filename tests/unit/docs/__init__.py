@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     )
     from .builder_scope_tests import (
         test_build_missing_settings_failure_has_empty_site_dir,
-        test_build_returns_root_and_selected_project_reports,
+        test_build_returns_repository_report,
         test_build_uses_custom_output_dir,
     )
     from .builder_tests import TestBuilderCore, builder
@@ -97,7 +97,7 @@ if TYPE_CHECKING:
         test_fixer_execute_applies_link_and_toc_updates,
         test_fixer_execute_fails_on_unapplied_drift,
         test_generate_fix_cycle_is_byte_identical_on_second_run,
-        test_generator_execute_writes_reports_for_root_and_selected_project,
+        test_generator_execute_writes_repository_report,
         test_validator_execute_fails_before_generation_and_succeeds_after,
     )
     from .main_entry_tests import TestsDocsCli
@@ -176,7 +176,7 @@ __all__: tuple[str, ...] = (
     "test_auditor_main_strict_failure_returns_one",
     "test_auditor_main_writes_reports_for_selected_project",
     "test_build_missing_settings_failure_has_empty_site_dir",
-    "test_build_returns_root_and_selected_project_reports",
+    "test_build_returns_repository_report",
     "test_build_scopes_preserves_declared_workspace_root_and_members",
     "test_build_scopes_preserves_declared_workspace_without_materialized_members",
     "test_build_scopes_preserves_disabled_root_policy",
@@ -231,7 +231,7 @@ __all__: tuple[str, ...] = (
     "test_generated_mkdocstrings_directive_preserves_indented_options",
     "test_generated_non_markdown_preserves_exact_content",
     "test_generated_prose_wraps_without_reformatting_directive_blocks",
-    "test_generator_execute_writes_reports_for_root_and_selected_project",
+    "test_generator_execute_writes_repository_report",
     "test_governed_api_survives_generation_and_curated_paths_are_unowned",
     "test_guides_index_links_only_guides_that_exist",
     "test_guides_index_omits_links_when_no_guide_exists",
@@ -295,7 +295,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".builder_scope_tests": (
                 "test_build_missing_settings_failure_has_empty_site_dir",
-                "test_build_returns_root_and_selected_project_reports",
+                "test_build_returns_repository_report",
                 "test_build_uses_custom_output_dir",
             ),
             ".builder_tests": ("TestBuilderCore", "builder"),
@@ -345,7 +345,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_fixer_execute_applies_link_and_toc_updates",
                 "test_fixer_execute_fails_on_unapplied_drift",
                 "test_generate_fix_cycle_is_byte_identical_on_second_run",
-                "test_generator_execute_writes_reports_for_root_and_selected_project",
+                "test_generator_execute_writes_repository_report",
                 "test_validator_execute_fails_before_generation_and_succeeds_after",
             ),
             ".main_entry_tests": ("TestsDocsCli",),
