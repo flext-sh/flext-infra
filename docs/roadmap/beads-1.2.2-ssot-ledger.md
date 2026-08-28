@@ -25,6 +25,7 @@ this rollout.
 | 2026-08-28T08:05:17-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `5f318098edf144639cb56255b0ed86ce9f2ee790` | Manual rollout ledger checkpoint pushed to `origin` |
 | 2026-08-28T08:07:38-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `15cec463e514ec50af9b1813c2716ca224d3cc84` | Residual canonical distribution pin lane preserved by a two-parent merge and pushed to `origin` |
 | 2026-08-28T08:19:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `a06217d0885d68d29134f972b017fce8834d92d7` | Topology-local, one-pass-idempotent generation fixes pushed to `origin` |
+| 2026-08-28T08:27:37-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `b08c6ffb3c52ae77d9c1a77ea5b69a7646cf1eb7` | Static projections, launchers, 75-entry Mise lock, and owner-driven report/cache cleanup pushed to `origin` |
 
 ## Validation log
 
@@ -44,6 +45,10 @@ this rollout.
 | 2026-08-28 | worktree | Second codegen apply | PASS: 0 conformance changes | Confirmed byte-stable codegen before lock resolution |
 | 2026-08-28T08:25:59-03:00 | worktree | Authenticated official generation and static Mise lock | PASS: 12 tools, 75 platform entries | Resolved `github:gastownhall/beads@1.2.2` as static metadata only; no Beads executable or runtime command invoked |
 | 2026-08-28T08:26:52-03:00 | worktree | `make gen WHAT=check` with isolated launcher and lock scratch | PASS | Fresh independent resolution matched generated projections and `mise.lock` byte-for-byte |
+| 2026-08-28 | worktree | Full repository test gate after static-generation checkpoint | FAIL: 2,417 collected; 194 failures and 15 errors observed before hard timeout | Pytest reached the official 600-second wall at 99%; converge mandatory local-identity and retired-topology fixtures, then investigate the non-terminating codegen entry-point worker |
+| 2026-08-28 | worktree | Real `.gitmodules` test fixture consumer | PASS: 2 tests | Test topology helper declares only repository-local Git entries |
+| 2026-08-28 | worktree | Manifestless existing-repository contract | PASS: 2 tests | Required typed `config/beads.yaml` replaces the removed standalone helper |
+| 2026-08-28 | worktree | Documentation scope with repository-local topology | PASS: 5 selected tests | Shared fixtures now carry local identities and own `.gitmodules`; root/child scope selection converges |
 
 ## GitHub lifecycle
 

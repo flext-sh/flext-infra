@@ -415,9 +415,28 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return path
 
         @staticmethod
+        def declare_workspace_projects(
+            repository: Path, projects: t.StrSequence
+        ) -> Path:
+            """Declare the exact governed projects in this root's ``.gitmodules``."""
+            provider = config.Infra.codegen.providers[0]
+            path = repository / c.Infra.GITMODULES
+            path.write_text(
+                "".join(
+                    f'[submodule "{project}"]\n'
+                    f"\tpath = {project}\n"
+                    f"\turl = {provider.base_url.rstrip('/')}/{Path(project).name}.git\n"
+                    f"\tbranch = {provider.branch}\n"
+                    for project in projects
+                ),
+                encoding="utf-8",
+            )
+            return path
+
+        @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
-            # mro-wkii.17 (codex): tests consume the validated config singleton;
-            # the removed utility loader must not survive as a hidden test path.
+            # Tests consume the validated config singleton; the removed utility
+            # loader must not survive as a hidden test path.
             """Provide the typed test helper `tool_config_document`."""
             return config.Infra.tooling
 
@@ -536,6 +555,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (package_dir / "__init__.py").write_text("", encoding="utf-8")
             if with_git:
                 (project_dir / ".git").mkdir(exist_ok=True)
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(project_dir, name)
             return project_dir
 
         @staticmethod
@@ -544,7 +564,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return TestsFlextInfraUtilities.Tests.write_beads_project(
                 project_dir, workspace=name, database=name, issue_prefix=name
             )
-            return manifest_path
 
         @staticmethod
         def create_docs_workspace(
@@ -556,6 +575,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Create a documentation workspace fixture."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(
+                workspace, "workspace"
+            )
 
             def _write(path: Path, content: str) -> None:
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -604,6 +626,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 _write(project / "docs/architecture.md", "# Architecture\n")
                 _write(project / "docs/dev.md", "# Development\n")
                 _write(project / "docs/api.md", "# API\n")
+                TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
+
+            if project_names:
+                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
+                    workspace, project_names
+                )
 
             return workspace
 
@@ -617,6 +645,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Create a GitHub workflow workspace fixture."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(
+                workspace, "workspace"
+            )
             workflow_dir = workspace / ".github/workflows"
             workflow_dir.mkdir(parents=True, exist_ok=True)
             (workflow_dir / "ci.yml").write_text(source_workflow, encoding="utf-8")
@@ -635,6 +666,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir = project / "src" / name.replace("-", "_")
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
+                TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
+            if project_names:
+                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
+                    workspace, project_names
+                )
             return workspace
 
         @staticmethod
@@ -655,6 +691,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Create a release workflow workspace fixture."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(
+                workspace, "workspace-root"
+            )
             (workspace / "pyproject.toml").write_text(
                 (
                     "[project]\n"
@@ -724,6 +763,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 validate_exit_code = validate_exit_codes.get(name, "0")
                 (project / "Makefile").write_text(
                     f"val:\n\t@exit {validate_exit_code}\n", encoding="utf-8"
+                )
+                TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
+            if project_names:
+                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
+                    workspace, project_names
                 )
             if initialize_root_git:
                 TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace)
@@ -968,6 +1012,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 encoding="utf-8",
             )
             (project / ".git").mkdir()
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
             pkg = project / "src" / pkg_name
             pkg.mkdir(parents=True)
             (pkg / "__init__.py").touch()
@@ -1008,6 +1053,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 encoding="utf-8",
             )
             (project / ".git").mkdir()
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(
+                project, "test-project"
+            )
             pkg = project / "src" / "test_project"
             pkg.mkdir(parents=True)
             (pkg / "__init__.py").touch()
@@ -1151,6 +1199,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             (package_root / c.Infra.INIT_PY).write_text(
                 "", encoding=c.Infra.ENCODING_DEFAULT
+            )
+            TestsFlextInfraUtilities.Tests.write_project_beads_config(
+                workspace_root, project_name
             )
             return (workspace_root, package_root)
 

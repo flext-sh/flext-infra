@@ -43,7 +43,7 @@ class TestCodegenManifestlessExisting:
         )
         for relative, content in preserved.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
-        u.Tests.write_standalone_beads_override(root)
+        u.Tests.write_project_beads_config(root, config.Infra.name)
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -114,7 +114,7 @@ class TestCodegenManifestlessExisting:
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        u.Tests.write_standalone_beads_override(root)
+        u.Tests.write_project_beads_config(root, config.Infra.name)
         (root / ".env.example").mkdir()
 
         planned = FlextInfraCodegenConform(workspace_root=root).plan(
