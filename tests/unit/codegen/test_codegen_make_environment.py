@@ -22,25 +22,10 @@ class TestsCodegenMakeEnvironment:
     def _render_makefile(
         tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
     ) -> tuple[Path, Path]:
-        provider = test_u.Tests.provider()
         role = c.Infra.RepositoryRole(profile.value)
-        repository = m.Infra.RepositoryRef(
-            name="fixture-project",
-            distribution="fixture-project",
-            url=f"{provider.base_url}/fixture-project.git",
-            path=Path(),
-            role=role,
-            provider=provider.name,
-            checkout=(
-                c.Infra.CheckoutKind.ROOT
-                if profile is c.Infra.MakeProfile.WORKSPACE
-                else c.Infra.CheckoutKind.INDEPENDENT
-            ),
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
-        )
+        repository = test_u.Tests.repository_ref(
+            "fixture-project", role=role
+        ).model_copy(update={"editable": True})
         project_root = tmp_path / profile.value / "fixture-project"
         workspace_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
@@ -51,12 +36,7 @@ class TestsCodegenMakeEnvironment:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="fixture-project",
-            beads=m.Infra.BeadsProjectSpec(
-                version=1,
-                workspace="fixture-project",
-                database="fixture-project",
-                issue_prefix="fixture-project",
-            ),
+            beads=test_u.Tests.beads_project("fixture-project"),
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
             subprojects=local_subprojects,
@@ -173,6 +153,21 @@ class TestsCodegenMakeEnvironment:
             encoding="utf-8",
         )
         provisioned_uv.chmod(0o755)
+        mise = tmp_path / "mise"
+        test_u.Tests.write_executable(
+            mise,
+            "#!/bin/sh\n"
+            'if [ "$1" = "--version" ]; then '
+            f"printf '%s\\n' '{config.Infra.codegen.toolchain.mise_version}'; exit; fi\n"
+            f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
+            f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
+            'if [ "$1" = "trust" ]; then exit; fi\n'
+            'case "$*" in *" install "*) exit ;; esac\n'
+            'while [ "$1" != "--" ]; do shift; done\n'
+            "shift\n"
+            'exec "$@"\n',
+        )
+        (project_root / "mise.lock").touch()
 
         clean_env = {
             **{
@@ -184,7 +179,7 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
         result = u.Cli.run_raw(
-            [c.Infra.MAKE, "--no-print-directory", "setup"],
+            [c.Infra.MAKE, "--no-print-directory", "setup", f"SETUP_MISE={mise}"],
             cwd=project_root,
             env=clean_env,
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
@@ -211,13 +206,17 @@ class TestsCodegenMakeEnvironment:
         provisioned_bin = tmp_path / "provisioned" / "bin"
         provisioned_bin.mkdir(parents=True)
         fixture_tool = "managed-tool"
-        for bin_root in (hostile_bin, provisioned_bin):
-            for tool in (fixture_tool, "uv"):
-                test_u.Tests.write_executable(
-                    bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
-                )
         runtime_python = project_root / ".venv" / "bin" / "python"
         tool_log = tmp_path / "tools.log"
+        for bin_root in (hostile_bin, provisioned_bin):
+            test_u.Tests.write_executable(
+                bin_root / fixture_tool,
+                f"#!/bin/sh\nprintf '%s\\n' '{bin_root / fixture_tool}'\n",
+            )
+        test_u.Tests.write_executable(hostile_bin / "uv", "#!/bin/sh\nexit 99\n")
+        test_u.Tests.write_executable(
+            provisioned_bin / "uv", f"#!/bin/sh\nexec '{runtime_python}'\n"
+        )
         test_u.Tests.write_executable(
             runtime_python,
             (
@@ -302,7 +301,7 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
-                env={"UV": str(uv), "PATH": str(bin_dir)},
+                env={"UV": str(uv), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )

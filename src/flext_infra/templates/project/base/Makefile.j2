@@ -249,7 +249,7 @@ ifeq ($(strip $(RESOLVED_UV)),)
 $(error Required uv executable not found: $(UV_REQUESTED))
 endif
 endif
-override UV := $(RESOLVED_UV)
+override UV := $(if $(strip $(RESOLVED_UV)),$(RESOLVED_UV),$(UV_REQUESTED))
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
