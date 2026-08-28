@@ -1,9 +1,0 @@
-0.850000s | tests.unit.workspace.test_worktree_security_boundaries::test_same_child_branch_cannot_be_reused_under_another_epic
-0.508000s | tests.unit.workspace.test_worktree_security_boundaries::test_symlinked_epic_topology_fails_closed[epic]
-0.504000s | tests.unit.workspace.test_worktree_security_boundaries::test_epic_path_must_match_git_registry
-0.387000s | tests.unit.workspace.test_worktree_security_boundaries::test_symlinked_epic_topology_fails_closed[container]
-0.375000s | tests.unit.workspace.test_worktree_security_boundaries::test_option_like_base_fails_before_lane_mutation[--help]
-0.223000s | tests.unit.workspace.test_worktree_security_boundaries::test_option_like_base_fails_before_lane_mutation[--upload-pack=payload]
-0.206000s | tests.unit.workspace.test_worktree_security_boundaries::test_unresolved_base_fails_before_lane_mutation
-0.198000s | tests.unit.workspace.test_worktree_security_boundaries::test_option_like_base_fails_before_lane_mutation[-C]
-0.157000s | tests.unit.workspace.test_worktree_security_boundaries::test_false_branch_format_report_fails_closed

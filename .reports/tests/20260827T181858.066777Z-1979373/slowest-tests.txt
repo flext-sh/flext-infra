@@ -1,1 +1,0 @@
-4.778000s | tests.unit.codegen.test_codegen_beads_ledger.TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration

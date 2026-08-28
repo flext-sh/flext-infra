@@ -22,7 +22,9 @@ this rollout.
 | 2026-08-28T07:46:32-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `4b6a6e1be11fc55027304b9a93868f91691a4b3e` | WIP preserved and pushed to `origin` |
 | 2026-08-28T07:48:14-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `713d99d8d7d2f352d04335b4a40c76ce62a5bfa8` | Useful lane content consolidated by a two-parent merge and pushed to `origin` |
 | 2026-08-28T08:04:46-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `88425ac9eeae9a649b0a335564359ba79951c87b` | Repository-local topology and deterministic public alias gate checkpoint pushed to `origin` |
+| 2026-08-28T08:05:17-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `5f318098edf144639cb56255b0ed86ce9f2ee790` | Manual rollout ledger checkpoint pushed to `origin` |
 | 2026-08-28T08:07:38-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `15cec463e514ec50af9b1813c2716ca224d3cc84` | Residual canonical distribution pin lane preserved by a two-parent merge and pushed to `origin` |
+| 2026-08-28T08:19:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `a06217d0885d68d29134f972b017fce8834d92d7` | Topology-local, one-pass-idempotent generation fixes pushed to `origin` |
 
 ## Validation log
 
@@ -37,6 +39,11 @@ this rollout.
 | 2026-08-28 | worktree | Linked-worktree/static generation contract | PASS: 5 tests | Invalid input fails before writes; lane inputs are preserved; first apply reaches a fixed point |
 | 2026-08-28 | worktree | Canonical alias public fix | PASS: 1 focused test | Deterministic rewrite and byte-stable clean file verified without lazy-facade instrumentation |
 | 2026-08-28 | worktree | VS Code owner | PASS: 4 tests | Root and standalone render byte-equivalent documents; second render is stable |
+| 2026-08-28 | worktree | `make gen WHAT=apply APPLY=Y` | PASS: 12 projections changed; conformance self-check reached a fixed point | Generated static projections and launchers; first lock attempt remained open because unauthenticated GitHub API quota was exhausted |
+| 2026-08-28 | worktree | Official clean owner | PASS | Removed tracked `.reports/**`, `.testmondata`, and tool caches without touching substantive or unknown WIP |
+| 2026-08-28 | worktree | Second codegen apply | PASS: 0 conformance changes | Confirmed byte-stable codegen before lock resolution |
+| 2026-08-28T08:25:59-03:00 | worktree | Authenticated official generation and static Mise lock | PASS: 12 tools, 75 platform entries | Resolved `github:gastownhall/beads@1.2.2` as static metadata only; no Beads executable or runtime command invoked |
+| 2026-08-28T08:26:52-03:00 | worktree | `make gen WHAT=check` with isolated launcher and lock scratch | PASS | Fresh independent resolution matched generated projections and `mise.lock` byte-for-byte |
 
 ## GitHub lifecycle
 

@@ -1,1 +1,0 @@
-tests.unit.workspace.test_workspace_root_make_contract.TestsWorkspaceRootMakeContract::test_generated_make_does_not_reintroduce_docs_verb

@@ -176,7 +176,7 @@ ifeq ($(strip $(FLEXT_INFRA_BOOTSTRAP_REF)),)
 FLEXT_INFRA_BOOTSTRAP_REF := {{ infra_repository_branch }}
 endif
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@$(FLEXT_INFRA_BOOTSTRAP_REF)
-FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
+FLEXT_INFRA_SOURCE_ROOT_REL :={% if infra_source_root_rel %} {{ infra_source_root_rel }}{% endif %}
 UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dependency_groups }}-groups --{{ make.bootstrap.extras }}-extras
 endif
 # End SECTION: infra bootstrap
@@ -737,11 +737,22 @@ _builtin_docs_{{ action }}:
 
 _builtin_clean_generated:
 	$(call _require_apply)
+{% if make.clean.cache_dirs %}
 	@find "$(PROJECT_ROOT)" -type d \
-		\( -name __pycache__ -o -name .mypy_cache -o -name .pytest_cache -o -name .ruff_cache \) \
+		\( {% for directory in make.clean.cache_dirs %}-name {{ directory }}{% if not loop.last %} -o {% endif %}{% endfor %} \) \
 		-prune -exec rm -rf {} +
-	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
-	@rm -f "$(PROJECT_ROOT)/.coverage"
+{% endif %}
+{% if make.clean.root_dirs %}
+	@rm -rf{% for directory in make.clean.root_dirs %} "$(PROJECT_ROOT)/{{ directory }}"{% endfor %}
+{% endif %}
+{% if make.clean.root_files %}
+	@rm -f{% for filename in make.clean.root_files %} "$(PROJECT_ROOT)/{{ filename }}"{% endfor %}
+{% endif %}
+{% if make.clean.trace_globs %}
+	@find "$(PROJECT_ROOT)" -type f \
+		\( {% for pattern in make.clean.trace_globs %}-name '{{ pattern }}'{% if not loop.last %} -o {% endif %}{% endfor %} \) \
+		-delete
+{% endif %}
 
 _builtin_release_status: _builtin_require_environment
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check

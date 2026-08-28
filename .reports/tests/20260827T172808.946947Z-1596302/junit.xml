@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="10.641" timestamp="2026-08-27T14:28:23.474955-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions" name="test_local_manifest_conforms_without_global_repository_rows" time="8.058"><failure message="KeyError: 'go:github.com/steveyegge/beads/cmd/bd'">tests/unit/codegen/test_codegen_catalog_extensions.py:522: in test_local_manifest_conforms_without_global_repository_rows
-    mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   KeyError: 'go:github.com/steveyegge/beads/cmd/bd'</failure></testcase></testsuite></testsuites>

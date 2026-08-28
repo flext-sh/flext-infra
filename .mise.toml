@@ -4,7 +4,14 @@
 # Free: no
 # End SECTION: header
 # NOTE: mise carries the Python runtime and native tools from the config SSOT.
-# Python dependencies and uv are resolved by the caller-provided environment.
+# Python dependencies remain owned by uv.lock.
+
+[settings]
+# The lockfile is a generated, committed projection of immutable tool metadata.
+lockfile = true
+
+[tool_config]
+locked = true
 
 # === SECTION: tools (managed) ===
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
@@ -12,12 +19,7 @@
 #          gitleaks_version, tokei_version, qlty_version, beads.selector, beads.version)
 [tools]
 python = "3.13"
-# uv is deliberately absent: codegen.yaml declares it "supplied by the caller
-# environment and deliberately not pinned", and no `uv_version` exists on the
-# toolchain SSOT to render. Emitting one made every conform run fail with
-# "'uv_version' is undefined". The minimum version is enforced where it is
-# actually observable instead — tool_bootstrap_recipe.j2 compares the running
-# `uv --version` against its floor during `make setup`.
+uv = "0.12"
 # Native toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
 kubectl = "1.32"
 helm = "3.19"

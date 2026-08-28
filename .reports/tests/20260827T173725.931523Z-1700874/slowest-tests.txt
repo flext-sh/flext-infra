@@ -1,1 +1,0 @@
-0.361000s | tests.unit.codegen.test_codegen_catalog_extensions.TestsCodegenCatalogExtensions::test_codegen_composes_project_mise_tools_through_toml

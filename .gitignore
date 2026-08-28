@@ -1,5 +1,14 @@
+# TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local.
+!.beads/
+.beads/*
+!.beads/config.yaml
+!.beads/metadata.json
+
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
+
+# BLOCK: member-local lockfile (the workspace root owns uv.lock)
+uv.lock
 
 # BLOCK: Agent surface outside the workspace root
 .agents/
@@ -201,10 +210,21 @@ secrets.yml
 # --- codegen conform: tracked owner inputs ---
 !base.mk
 
-# Local runtime and workspace state
+# FINAL BEADS TRACKING POLICY
+!.beads/
+.beads/*
+.beads/.*
+!.beads/config.yaml
+.beads/proxieddb/
+.beads.gate.lock
+.dolt/
 *.db
+.beads-credential-key
 .worktrees/
 legado/
+
+# Beads ledger identity (workspace and standalone; see mro-9wv8)
+!.beads/metadata.json
 
 # codegen module-standardizer reject artifacts (ADR-005 §9)
 *.tpl.rej
@@ -226,7 +246,6 @@ __pyrefly_virtual__/
 .bkp/
 .cache/
 .codegraph/
-.dolt/
 .dolt_dropped_databases/
 .doltcfg/
 .hypothesis/
@@ -273,6 +292,7 @@ CLAUDE.local.md
 !.github/prompts/flext-aggressive-scale-refactor.prompt.md
 !.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
 !.github/scripts/
+!.github/scripts/check-beads-policy.sh
 !.github/scripts/check-cqrs-compliance.sh
 !.github/scripts/flext-law-loop.sh
 !.github/scripts/install-git-hooks.sh
@@ -289,12 +309,9 @@ CLAUDE.local.md
 !.github/workflows/ci.yml
 !.github/workflows/docs.yml
 !.github/workflows/release.yml
-!.beads/
-!.beads/config.yaml
-!.beads/metadata.json
+!config/
+!config/beads.yaml
 !sgconfig.yml
 !.vscode/settings.json
 !LICENSE
-!config/
-!config/beads.yaml
 !custom.mk

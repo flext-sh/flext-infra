@@ -1,5 +1,0 @@
-=== FAILURE: tests.unit.codegen.test_codegen_beads_ledger.TestCodegenBeadsLedger::test_workspace_manifest_can_disable_beads_integration ===
-TypeError: TestCodegenBeadsLedger._standalone_workspace() got an unexpected keyword argument 'beads_enabled'
-tests/unit/codegen/test_codegen_beads_ledger.py:670: in test_workspace_manifest_can_disable_beads_integration
-    root = self._standalone_workspace(
-E   TypeError: TestCodegenBeadsLedger._standalone_workspace() got an unexpected keyword argument 'beads_enabled'
