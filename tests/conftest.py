@@ -198,6 +198,7 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     repo.mkdir(parents=True, exist_ok=True)
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
+    u.Tests.write_project_beads_config(repo, config.Infra.name)
     provider = u.Tests.provider()
     upstream = u.Tests.repository_ref(config.Infra.name).url
     origin = infra_test_workspace / "origin.git"

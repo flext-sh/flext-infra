@@ -50,25 +50,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
             issue_prefix=repository.name,
         ),
         repository=repository,
-        project=m.Infra.ProjectSpec(
-            package_name=repository.distribution.replace("-", "_"),
-            class_stem="FixtureWorkspace",
-            namespace="FixtureWorkspace",
-            constant_name=repository.name,
-            namespace_attribute="fixture_workspace",
-            alias="fixture_workspace",
-            environment_prefix="FIXTURE_WORKSPACE_",
-            description="Fixture workspace",
-            version="0.12.0.dev0",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            homepage=repository.url.removesuffix(".git"),
-            documentation=repository.url.removesuffix(".git"),
-            workspace_root_rel=".",
-            year=2026,
-        ),
+        project=test_u.Tests.project_spec(repository.name),
     )
     workspace_root = tmp_path / "workspace"
     request = m.Infra.CodegenConformRequest(

@@ -366,21 +366,16 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         # Why (fixed point): a root the active codegen plan materializes counts
         # before it exists on disk, so plan and post-apply verification agree.
-        if not is_root:
-            return [
-                env_dir
-                for env_dir in rules.env_dirs
-                if project_dir is None
-                or (project_dir / env_dir).is_dir()
-                or env_dir in generated_roots
-            ]
-        if workspace_root is None:
-            return ()
+        owner_root = workspace_root if is_root else project_dir
+        discovered_roots = (
+            u.Infra.discover_python_dirs(owner_root) if owner_root is not None else ()
+        )
+        available_roots = {*discovered_roots, *generated_roots}
         includes: t.MutableSequenceOf[str] = [
-            env_dir
-            for env_dir in rules.env_dirs
-            if (workspace_root / env_dir).is_dir() or env_dir in generated_roots
+            env_dir for env_dir in rules.env_dirs if env_dir in available_roots
         ]
+        if not is_root or workspace_root is None:
+            return includes
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
             return includes

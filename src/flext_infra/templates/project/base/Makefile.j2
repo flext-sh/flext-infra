@@ -100,8 +100,13 @@ MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
 SETUP_MISE_VERSION := {{ mise_version }}
+ifeq ($(GEN_INIT_ONLY),Y)
+SYSTEM_MISE :=
+SYSTEM_MISE_VERSION :=
+else
 SYSTEM_MISE := $(shell command -v mise 2>/dev/null)
 SYSTEM_MISE_VERSION := $(if $(strip $(SYSTEM_MISE)),$(shell "$(SYSTEM_MISE)" --version 2>/dev/null | cut -d ' ' -f 1),)
+endif
 ifeq ($(OS),Windows_NT)
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else

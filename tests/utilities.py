@@ -395,11 +395,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 checkout=(
                     c.Infra.CheckoutKind.SUBMODULE
                     if is_subproject
-                    else (
-                        c.Infra.CheckoutKind.ROOT
-                        if resolved_role is c.Infra.RepositoryRole.WORKSPACE
-                        else c.Infra.CheckoutKind.INDEPENDENT
-                    )
+                    else c.Infra.CheckoutKind.ROOT
                 ),
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=True,
@@ -415,6 +411,39 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 workspace=name,
                 database=name.replace("-", "_"),
                 issue_prefix=name,
+            )
+
+        @staticmethod
+        def project_spec(name: str) -> m.Infra.ProjectSpec:
+            """Build deterministic scaffold metadata for one project fixture."""
+            package_name = name.replace("-", "_")
+            class_stem = u.derive_class_stem(name)
+            homepage = (
+                f"{TestsFlextInfraUtilities.Tests.provider().base_url.rstrip('/')}/"
+                f"{name}"
+            )
+            return m.Infra.ProjectSpec(
+                package_name=package_name,
+                class_stem=class_stem,
+                namespace=class_stem.removeprefix("Flext") or class_stem,
+                constant_name=name,
+                namespace_attribute=package_name,
+                alias=u.Infra.package_alias(package_name=package_name),
+                environment_prefix=f"{package_name.upper()}_",
+                description=f"{class_stem} test project",
+                version="0.1.0",
+                license=config.Infra.codegen.scaffold.project.supported_licenses[0],
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream=(
+                    config.Infra.codegen.scaffold.project.dependency_profiles[
+                        0
+                    ].upstream
+                ),
+                homepage=homepage,
+                documentation=homepage,
+                workspace_root_rel=".",
+                year=2026,
             )
 
         @staticmethod

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, u
 from flext_tests import tm
+from tests import u as test_u
 
 _PROVIDER_SPEC = config.Infra.codegen.providers[0]
 
@@ -36,25 +37,8 @@ def _repository(
 
 def _project_spec(*, version: str) -> m.Infra.ProjectSpec:
     """Build project metadata whose non-version fields come from the SSOT."""
-    scaffold = config.Infra.codegen.scaffold.project
-    return m.Infra.ProjectSpec(
-        package_name="external_consumer",
-        class_stem="ExternalConsumer",
-        namespace="ExternalConsumer",
-        constant_name="external-consumer",
-        namespace_attribute="external_consumer",
-        alias="external_consumer",
-        environment_prefix="EXTERNAL_CONSUMER_",
-        description="Conformance fixture project",
-        version=version,
-        license=scaffold.supported_licenses[0],
-        author_name="Test Author",
-        author_email="test@example.com",
-        upstream=scaffold.dependency_profiles[0].upstream,
-        homepage="https://example.com/external-consumer",
-        documentation="https://example.com/external-consumer/docs",
-        workspace_root_rel=".",
-        year=2026,
+    return test_u.Tests.project_spec("external-consumer").model_copy(
+        update={"version": version}
     )
 
 

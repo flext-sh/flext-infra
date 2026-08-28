@@ -389,7 +389,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            if self.initial_workspace is None:
+            if self.initial_workspace is None or (repository_root / ".git").exists():
                 ancestry_result = self._branch_ancestry_plan(target)
                 if ancestry_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
@@ -1278,6 +1278,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"managed artifact composition failed: {entry.destination}"
                 )
             rendered_content = composed.value
+            conflict_marker = next(
+                (
+                    line
+                    for line in rendered_content.splitlines()
+                    if line.startswith(("<<<<<<< ", "||||||| ", ">>>>>>> "))
+                ),
+                None,
+            )
+            if conflict_marker is not None:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    "rendered template contains a merge conflict marker: "
+                    f"source={entry.source}; target={path}; root={root}; "
+                    f"marker={conflict_marker}"
+                )
             file_plan = self._file_plan(root, entry.destination, rendered_content)
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1801,6 +1815,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
+                inherited_facets=project.inherited_facets,
                 description=project.description,
                 version=project.version,
                 license=project.license,
