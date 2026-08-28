@@ -124,29 +124,6 @@ class TestsFlextInfraInfraMaintenanceMain:
         result = enforcer.execute(check_only=True)
         tm.ok(result, eq=0)
 
-    def test_enforcer_project_mismatch(self, tmp_path: Path) -> None:
-        workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
-        )
-        project = workspace / "project-a"
-        project.mkdir()
-        (project / ".git").mkdir()
-        (project / "Makefile").touch()
-        (project / "src").mkdir()
-        mismatched = sys.version_info.minor + 1
-        (project / "pyproject.toml").write_text(
-            (
-                "[project]\n"
-                "name = 'project-a'\n"
-                "dependencies = ['flext-core>=0.1.0']\n"
-                f'requires-python = ">=3.{mismatched}"\n'
-            ),
-            encoding="utf-8",
-        )
-        enforcer = _make_enforcer(workspace)
-        result = enforcer.execute(check_only=True, verbose=False)
-        tm.fail(result)
-
     def test_enforcer_creates_instance(self) -> None:
         enforcer = FlextInfraPythonVersionEnforcer()
         tm.that(type(enforcer).__name__, eq="FlextInfraPythonVersionEnforcer")

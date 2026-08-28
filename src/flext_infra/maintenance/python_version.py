@@ -1,8 +1,7 @@
-"""Python version enforcement service for FLEXT workspace.
+"""Python version enforcement service for one FLEXT repository.
 
-Ensures Python version constraints are consistent across all workspace projects.
-Creates ``.python-version`` files and verifies ``requires-python`` in each
-project's ``pyproject.toml``.
+Creates ``.python-version`` and verifies ``requires-python`` in the repository's
+``pyproject.toml``.
 
 Runtime version checking is handled automatically by
 ``flext_core_guard`` (imported on ``from flext_core import …``).
@@ -30,10 +29,9 @@ logger = u.fetch_logger(__name__)
 
 
 class FlextInfraPythonVersionEnforcer(s[int]):
-    """Service for enforcing Python version constraints across workspace.
+    """Service for enforcing Python version constraints in one repository.
 
-    Validates that all projects have consistent Python version requirements
-    and that the runtime matches the workspace requirement.
+    Validates that the runtime matches the repository requirement.
 
     Attributes:
         check_only: If True, only verify without making changes.
@@ -59,21 +57,12 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             self.verbose = verbose
         root = self._resolve_workspace_root()
         required_minor = self._read_required_minor(root)
-        discovered_projects = u.Infra.discover_projects(root)
-        if discovered_projects.failure:
-            projects: tuple[Path, ...] = ()
-        else:
-            projects = tuple(
-                project.path
-                for project in discovered_projects.unwrap()
-                if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
-            )
         mode = "Checking" if self.check_only else "Enforcing"
         logger.info(
             "python_version_enforcement_started",
             mode=mode,
             required_minor=required_minor,
-            project_count=len(projects),
+            project_count=1,
         )
         if not self._ensure_python_version_file(root, required_minor):
             logger.error(
@@ -82,18 +71,9 @@ class FlextInfraPythonVersionEnforcer(s[int]):
                 required_minor=required_minor,
             )
             return r[int].fail("enforcement failed")
-        for project in projects:
-            if not self._ensure_python_version_file(project, required_minor):
-                logger.error(
-                    "python_version_enforcement_failed",
-                    reason="missing_enforcement",
-                    required_minor=required_minor,
-                    project=project.name,
-                )
-                return r[int].fail("enforcement failed")
         logger.info(
             "python_version_enforcement_completed",
-            project_count=len(projects),
+            project_count=1,
             required_minor=required_minor,
         )
         return r[int].ok(0)

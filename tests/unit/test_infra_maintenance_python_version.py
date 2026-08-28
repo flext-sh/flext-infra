@@ -40,26 +40,6 @@ def _ws(root: Path, *, minor: int = _MINOR) -> Path:
     return root
 
 
-def _proj(root: Path, name: str, *, minor: int = _MINOR) -> Path:
-    proj = root / name
-    proj.mkdir(exist_ok=True)
-    (proj / ".git").mkdir(exist_ok=True)
-    (proj / "Makefile").touch()
-    (proj / "src").mkdir(exist_ok=True)
-    (proj / "pyproject.toml").write_text(
-        (
-            "[project]\n"
-            f'name = "{name}"\n'
-            'version = "0.1.0"\n'
-            f'requires-python = ">=3.{minor}"\n'
-            'dependencies = ["flext-core>=0"]\n'
-        ),
-        encoding="utf-8",
-    )
-    (proj / ".python-version").write_text(f"3.{minor}\n", encoding="utf-8")
-    return proj
-
-
 def _svc(ws: Path) -> FlextInfraPythonVersionEnforcer:
 
     class _TestEnforcer(FlextInfraPythonVersionEnforcer):
@@ -87,11 +67,6 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
 
     def test_failure_on_workspace_mismatch(self, tmp_path: Path) -> None:
         tm.fail(_svc(_ws(tmp_path / "ws", minor=_BAD)).execute(check_only=True))
-
-    def test_failure_on_project_mismatch(self, tmp_path: Path) -> None:
-        ws = _ws(tmp_path / "ws")
-        _proj(ws, "project-a", minor=_BAD)
-        tm.fail(_svc(ws).execute(check_only=True, verbose=False))
 
     def test_empty_workspace(self, tmp_path: Path) -> None:
         tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True))
