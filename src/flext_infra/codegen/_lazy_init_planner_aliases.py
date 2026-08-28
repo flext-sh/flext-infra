@@ -107,20 +107,12 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             name
             for package_name in inherited_packages
             for name in self._declared_parent_aliases(package_name)
-            if (
-                name.isidentifier()
-                and name.islower()
-                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-            )
+            if self._is_public_root_alias(name)
         )
         local_declared_alias_names = tuple(
             name
             for name in self._declared_parent_aliases_for_directory(pkg_dir)
-            if (
-                name.isidentifier()
-                and name.islower()
-                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-            )
+            if self._is_public_root_alias(name)
         )
         alias_names = tuple(
             dict.fromkeys((
@@ -175,7 +167,8 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         state = self.rope_workspace.semantic(constants_path)
         return tuple(
             package_name
-            for target in state.declared_imports.values()
+            for alias, target in state.declared_imports.items()
+            if self._is_public_root_alias(alias)
             if (package_name := self._package_name_from_target(target))
             and package_name != current_name
         )
@@ -188,6 +181,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         return tuple(
             (alias, package_name)
             for alias, target in state.declared_imports.items()
+            if self._is_public_root_alias(alias)
             if (
                 package_name := (
                     self._package_name_from_target(target)
@@ -195,6 +189,14 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 )
             )
             if alias != "annotations" and not target.startswith("__future__")
+        )
+
+    @staticmethod
+    def _is_public_root_alias(alias: str) -> bool:
+        """Return whether an import name belongs to the root facade ABI."""
+        return (
+            alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER
+            or alias in c.Infra.TEST_RUNTIME_ALIAS_TARGETS
         )
 
     def _resolve_transitive_parent_packages(

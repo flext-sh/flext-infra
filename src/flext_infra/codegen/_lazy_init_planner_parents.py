@@ -50,7 +50,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         )
         declared_packages = tuple(
             package_name
-            for target in state.declared_imports.values()
+            for alias_name, target in state.declared_imports.items()
+            if alias_name in c.Infra.PUBLIC_ROOT_ALIAS_ORDER
             if (package_name := self._package_name_from_target(target))
             and package_name != current_pkg
         )
@@ -74,6 +75,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             if (
                 package_name
                 and package_name != current_pkg
+                and not package_name.startswith(f"{current_pkg}.")
                 and package_name not in parents
             ):
                 parents.append(package_name)

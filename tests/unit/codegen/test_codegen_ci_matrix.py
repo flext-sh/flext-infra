@@ -439,7 +439,7 @@ class TestCodegenCiMatrix:
         ],
     )
     def test_existing_workflow_requires_managed_provenance_for_replacement(
-        self, tmp_path: Path, content: str, expected_changed: bool
+        self, tmp_path: Path, content: str, *, expected_changed: bool
     ) -> None:
         """Replace only workflows carrying explicit [MANAGED] provenance."""
         from flext_infra import m

@@ -5,8 +5,6 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-
 if TYPE_CHECKING:
     from flext_infra import t
 

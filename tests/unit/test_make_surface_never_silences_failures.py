@@ -40,7 +40,7 @@ def _make_surfaces() -> tuple[Path, ...]:
     templates are therefore in scope: they are where the defect must not exist.
     """
     root = _workspace_root()
-    names = (c.Infra.MAKEFILE_FILENAME, c.Infra.CUSTOM_MAKE_FILENAME, c.Infra.BASE_MK)
+    names = (c.Infra.MAKEFILE_FILENAME, c.Infra.BASE_MK)
     templates = Path(flext_infra.__file__).resolve().parent / "templates"
     return (
         *(path for name in names if (path := root / name).is_file()),

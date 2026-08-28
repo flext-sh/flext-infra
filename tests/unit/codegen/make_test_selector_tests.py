@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, config, u
+from flext_infra import config, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -240,20 +240,12 @@ class TestsMakeTestSelector:
         tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
 
-    def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
-        """Gen (conform) stays on the Makefile; custom.mk is hooks-only.
-
-        The generated Makefile owns ``gen``. custom.mk must not declare a
-        private basemk-generate WHAT — base.mk generation is not a custom
-        handler on this surface.
-        """
+    def test_generated_owner_uses_the_canonical_gen_verb(self) -> None:
+        """Keep generation on the Makefile with no second custom owner."""
         template = _makefile_template().read_text(encoding="utf-8")
-        custom = (
-            Path(flext_infra.__file__).resolve().parents[2]
-            / c.Infra.CUSTOM_MAKE_FILENAME
-        ).read_text(encoding="utf-8")
 
         tm.that(template, has="_builtin_gen_apply")
         tm.that(template, lacks="_builtin_build_gen")
-        tm.that(custom, lacks="_custom_basemk_generate:")
-        tm.that(custom, lacks="basemk generate")
+        tm.that(
+            Path(flext_infra.__file__).resolve().parents[2] / "custom.mk", exists=False
+        )

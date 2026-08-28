@@ -1420,53 +1420,20 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
-        def repository_profile(root: Path) -> c.Infra.MakeProfile:
-            """Return the Make profile *root* declares in its own manifest.
-
-            Only that manifest is read. The full detector also walks the parent
-            superproject on the live filesystem, which breaks the isolation law
-            and races other tests' temp fixtures under xdist.
-
-            Returns:
-                Profile from ``repository.role`` when declared; otherwise
-                ``WORKSPACE_ROOT`` when the manifest declares members, else
-                ``STANDALONE``.
-
-            """
-            from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-
-            workspace: m.Infra.WorkspaceSpec = tm.ok(
-                FlextInfraWorkspaceDetector.load_workspace_spec(root)
-            )
-            role = workspace.repository.role.value
-            if role == c.Infra.MakeProfile.WORKSPACE_ROOT.value:
-                return c.Infra.MakeProfile.WORKSPACE_ROOT
-            if role == c.Infra.MakeProfile.WORKSPACE_MEMBER.value:
-                return c.Infra.MakeProfile.WORKSPACE_MEMBER
-            if role == c.Infra.MakeProfile.STANDALONE.value:
-                return c.Infra.MakeProfile.STANDALONE
-            return (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if workspace.members
-                else c.Infra.MakeProfile.STANDALONE
-            )
-
-        @staticmethod
         def ignore_patterns_for(root: Path) -> tuple[str, ...]:
-            """Return the ignore patterns that apply to *root*'s declared profile.
+            """Return all profile-free ignore patterns from the SSOT.
 
             Returns:
-                Every SSOT pattern whose section targets that profile.
+                Every SSOT pattern in declaration order.
 
             """
-            profile = TestsFlextInfraUtilities.Tests.repository_profile(root)
+            _ = root
             gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
                 config.Infra.codegen.gitignore_sections
             )
             return tuple(
                 pattern
                 for section in gitignore_sections
-                if not section.profiles or profile in section.profiles
                 for pattern in section.patterns
             )
 

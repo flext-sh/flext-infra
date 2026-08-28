@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from . import unit as unit
     from flext_infra import d, e, h, r, x
     from flext_tests import td, tf, tk, tm, tv
-    from re import re
 
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
     from .conftest import (
@@ -69,7 +68,6 @@ __all__: tuple[str, ...] = (
     "pytest_ignore_collect",
     "pytest_plugins",
     "r",
-    "re",
     "refactor",
     "rope_project",
     "s",
@@ -115,7 +113,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".utilities": ("TestsFlextInfraUtilities", "u"),
             "flext_infra": ("d", "e", "h", "r", "x"),
             "flext_tests": ("td", "tf", "tk", "tm", "tv"),
-            "re": ("re",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

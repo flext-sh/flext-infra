@@ -19,8 +19,8 @@ from flext_tests import tm
 
 
 class TestsFlextInfraRootMakefileSingleOwner:
-    def test_single_makefile_entry_owns_every_profile(self) -> None:
-        """One render entry owns the Makefile for both effective profiles."""
+    def test_single_makefile_entry_owns_the_surface_without_profiles(self) -> None:
+        """One profile-free render entry owns the Makefile."""
         entries = tuple(
             entry
             for entry in config.Infra.codegen.templates.entries
@@ -28,8 +28,7 @@ class TestsFlextInfraRootMakefileSingleOwner:
         )
 
         tm.that(entries, len=1)
-        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
-        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.STANDALONE)
+        tm.that("profiles" in type(entries[0]).model_fields, eq=False)
 
     def test_no_divergent_workspace_makefile_template_remains(self) -> None:
         """The retired dedicated workspace Makefile template no longer exists."""
