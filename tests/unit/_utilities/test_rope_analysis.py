@@ -94,6 +94,8 @@ class TestsFlextInfraRopeAnalysis:
         self, tmp_path: Path
     ) -> None:
         workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        _ = (workspace / ".gitmodules").write_text("", encoding="utf-8")
         grandparent_pkg = workspace / "demo-grandparent" / "src" / "demo_grandparent"
         parent_pkg = workspace / "demo-parent" / "src" / "demo_parent"
         child_project = workspace / "demo-child"

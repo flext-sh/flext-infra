@@ -1306,16 +1306,14 @@ Infra:
             # workspace root and standalone project.
             - "!.beads/metadata.json"
         - name: "Python configuration"
-          profiles: [workspace]
+          profiles: [workspace, standalone]
           patterns:
             - "!pyproject.toml"
             - "!uv.lock"
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
-            - "!uv.lock"
             - "!ruff-shared.toml"
-            - "!uv.lock"
         - name: "mise toolchain pinning"
           profiles: [workspace]
           patterns:
@@ -1379,17 +1377,6 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
-        # `uv sync` inside a subproject checkout writes a local
-        # uv.lock. Only the workspace root resolves and tracks a lockfile
-        # (whitelisted in "Python configuration" above); for a subproject the
-        # file is a local build artifact of that shared resolution. Left
-        # undeclared it surfaced as untracked in every freshly created lane
-        # and made the retired Make lane lifecycle refuse a committed increment
-        # with "requires a clean lane worktree".
-        - name: "BLOCK: subproject-local lockfile (the workspace root owns uv.lock)"
-          profiles: [standalone]
-          patterns:
-            - "uv.lock"
         # Only the workspace root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config

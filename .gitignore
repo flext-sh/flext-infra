@@ -4,11 +4,16 @@
 !.beads/config.yaml
 !.beads/metadata.json
 
+# Python configuration
+!pyproject.toml
+!uv.lock
+!.taplo.toml
+!pyrefly.toml
+!poetry.lock
+!ruff-shared.toml
+
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
-
-# BLOCK: subproject-local lockfile (the workspace root owns uv.lock)
-uv.lock
 
 # BLOCK: Agent surface outside the workspace root
 .agents/
