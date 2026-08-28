@@ -60,7 +60,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         if file_path.name != c.Infra.INIT_PYI:
             return False
         return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).startswith(
-            c.Infra.AUTOGEN_HEADER
+            c.Infra.AUTOGEN_HEADERS
         )
 
     @staticmethod

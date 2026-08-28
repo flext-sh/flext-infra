@@ -19,6 +19,11 @@ class FlextInfraConstantsCodegenLazy:
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."
+    AUTOGEN_HEADERS: Final[tuple[str, str]] = (
+        AUTOGEN_HEADER,
+        "# @generated AUTO-GENERATED FILE — Regenerate with: make gen",
+    )
+    "Current and former generated initializer headers accepted during migration."
     ROOT_EXPORTS_FILENAME: Final[str] = "_exports.py"
     "Root public ABI contract module consumed by lazy-init planning."
     ROOT_EXPORTS_DIR: Final[str] = "_constants"

@@ -134,7 +134,51 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @staticmethod
-    def _declared_exports(file_path: Path) -> t.StrSequence:
+    def _literal_exports(
+        tree: ast.Module, value: ast.expr, file_path: Path
+    ) -> t.StrSequence:
+        """Resolve a literal ``__all__`` or the former generated tuple alias."""
+        assignments: dict[str, ast.expr] = {}
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                assignments.update(
+                    (target.id, node.value)
+                    for target in node.targets
+                    if isinstance(target, ast.Name)
+                )
+            elif (
+                isinstance(node, ast.AnnAssign)
+                and isinstance(node.target, ast.Name)
+                and node.value is not None
+            ):
+                assignments[node.target.id] = node.value
+        resolved = value
+        match value:
+            case ast.Call(
+                func=ast.Name(id="tuple"),
+                args=[ast.Name(id=source_name)],
+                keywords=[],
+            ):
+                if source_name not in assignments:
+                    msg = f"{file_path}: __all__ references missing {source_name}"
+                    raise ValueError(msg)
+                resolved = assignments[source_name]
+            case _:
+                pass
+        try:
+            literal = ast.literal_eval(resolved)
+        except (ValueError, SyntaxError) as exc:
+            msg = f"{file_path}: invalid __all__: {exc}"
+            raise ValueError(msg) from exc
+        if not isinstance(literal, (list, tuple)) or not all(
+            isinstance(item, str) for item in literal
+        ):
+            msg = f"{file_path}: __all__ must contain only strings"
+            raise ValueError(msg)
+        return tuple(literal)
+
+    @classmethod
+    def _declared_exports(cls, file_path: Path) -> t.StrSequence:
         if not file_path.is_file():
             return ()
         tree = ast.parse(file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
@@ -144,17 +188,13 @@ class FlextInfraUtilitiesCodegenNamespace:
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
                     for target in targets
                 ):
-                    literal = ast.literal_eval(value)
+                    return cls._literal_exports(tree, value, file_path)
                 case ast.AnnAssign(target=ast.Name(id=name), value=value) if (
                     name == c.Infra.DUNDER_ALL and value is not None
                 ):
-                    literal = ast.literal_eval(value)
+                    return cls._literal_exports(tree, value, file_path)
                 case _:
                     continue
-            if isinstance(literal, (list, tuple)) and all(
-                isinstance(item, str) for item in literal
-            ):
-                return tuple(literal)
         return ()
 
     @classmethod

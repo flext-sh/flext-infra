@@ -48,7 +48,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         if self.rope_workspace.resource(init_path) is None:
             return frozenset()
         if init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).startswith(
-            c.Infra.AUTOGEN_HEADER
+            c.Infra.AUTOGEN_HEADERS
         ):
             return frozenset()
         return frozenset(
