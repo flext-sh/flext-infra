@@ -158,6 +158,19 @@ class TestsFlextInfraInfraRopeService:
             tm.that(rope.module(sibling_module_path), none=True)
             tm.that(sibling_root in rope.rope_workspace_root.parents, eq=False)
 
+    def test_unowned_ancestor_src_does_not_expand_rope_scope(
+        self, tmp_path: Path
+    ) -> None:
+        """Ignore an ancestor source directory that owns no repository."""
+        unowned_parent = tmp_path / "unowned"
+        scratch = unowned_parent / "scratch"
+        (unowned_parent / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        scratch.mkdir()
+
+        with flext_infra.infra.rope_workspace(scratch) as rope:
+            tm.that(rope.rope_workspace_root, eq=scratch.resolve())
+            tm.that(rope.modules(), eq=())
+
     def test_workspace_exports_fixture_functions_when_requested(
         self, tmp_path: Path
     ) -> None:

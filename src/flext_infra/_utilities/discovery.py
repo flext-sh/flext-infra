@@ -306,7 +306,10 @@ class FlextInfraUtilitiesDiscovery(
             if (candidate / c.Infra.GITMODULES).is_file():
                 return candidate.resolve()
         project_root = cls.project_root(resolved_root)
-        if project_root is not None:
+        if project_root is not None and (
+            (project_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            or (project_root / c.Infra.GIT_DIR).exists()
+        ):
             return project_root
         return resolved_root
 
