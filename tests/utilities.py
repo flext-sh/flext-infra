@@ -353,6 +353,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def provider(name: str = "flext-sh") -> m.Infra.ProviderSpec:
+            """Resolve one explicitly named provider for repository fixtures."""
+            providers = tuple(
+                provider
+                for provider in config.Infra.codegen.providers
+                if provider.name == name
+            )
+            tm.that(len(providers), eq=1, msg="fixture provider must resolve once")
+            (provider,) = providers
+            return provider
+
+        @staticmethod
         def repository_ref(
             name: str,
             *,
@@ -370,13 +382,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             subproject still classifies itself as standalone; only its checkout
             relationship is ``submodule``.
             """
-            providers = tuple(
-                provider
-                for provider in config.Infra.codegen.providers
-                if provider.name == "flext-sh"
-            )
-            tm.that(len(providers), eq=1, msg="fixture provider must resolve once")
-            (provider,) = providers
+            provider = TestsFlextInfraUtilities.Tests.provider()
             resolved_path = Path() if path is None else path
             is_subproject = bool(resolved_path.parts)
             resolved_role = role or (
@@ -949,7 +955,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             repository itself; fixtures that must be recognised as
             provider-governed pass their declared provider URL instead.
             """
-            baseline_branch = config.Infra.codegen.providers[0].branch
+            baseline_branch = TestsFlextInfraUtilities.Tests.provider().branch
             bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
             bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
             bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))

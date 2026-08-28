@@ -198,7 +198,7 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     repo.mkdir(parents=True, exist_ok=True)
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
-    provider = config.Infra.codegen.providers[0]
+    provider = u.Tests.provider()
     upstream = u.Tests.repository_ref(config.Infra.name).url
     origin = infra_test_workspace / "origin.git"
     origin.mkdir(parents=True, exist_ok=True)

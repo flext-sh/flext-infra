@@ -202,7 +202,7 @@ class TestsRepositoryLocalTopology:
 
     def test_governed_remote_identity_normalizes_the_git_suffix(self) -> None:
         """Accept equivalent provider URLs with or without the clone suffix."""
-        provider = config.Infra.codegen.providers[0]
+        provider = u.Tests.provider()
         repository = u.Tests.repository_ref("fixture-project").model_copy(
             update={
                 "url": u.Tests.repository_ref("fixture-project").url.removesuffix(

@@ -108,7 +108,7 @@ class TestsCodegenGitignoreProfileAware:
 def _plan_independent_overlay(
     tmp_path: Path,
 ) -> tuple[m.Infra.RepositoryRef, m.Infra.CodegenPlan]:
-    provider = config.Infra.codegen.providers[0]
+    provider = test_u.Tests.provider()
     name = "sample-project"
     repository = m.Infra.RepositoryRef(
         name=name,

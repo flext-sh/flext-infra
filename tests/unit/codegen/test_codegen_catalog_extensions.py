@@ -224,7 +224,7 @@ class TestsCodegenCatalogExtensions:
                 cwd=tmp_path,
             )
         )
-        provider = config.Infra.codegen.providers[0]
+        provider = u.Tests.provider()
         tm.ok(
             u.Cli.run_checked(
                 [

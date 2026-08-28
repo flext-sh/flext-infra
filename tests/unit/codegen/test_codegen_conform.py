@@ -774,7 +774,7 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
-        provider = config.Infra.codegen.providers[0]
+        provider = u.Tests.provider()
         repository = u.Tests.repository_ref("arbitrary-root").model_copy(
             update={
                 "name": "arbitrary-root",
@@ -953,7 +953,7 @@ class TestCodegenConform:
         tm.that(rendered.infra_repository.distribution, eq=config.Infra.name)
         tm.that(
             rendered.infra_repository.url,
-            eq=f"{config.Infra.codegen.providers[0].base_url.rstrip('/')}"
+            eq=f"{u.Tests.provider().base_url.rstrip('/')}"
             f"/{config.Infra.name}.git",
         )
         tm.that(rendered.infra_source_root_rel, eq=None)
@@ -1284,7 +1284,7 @@ class TestScriptDispatchMakefile:
         # mro-4gbp: the engine is consumer-agnostic, so this fixture models a
         # neutral downstream root and takes its provider from the engine's own
         # configured provider catalog instead of naming a real consumer.
-        provider = config.Infra.codegen.providers[0]
+        provider = u.Tests.provider()
         root_repository = m.Infra.RepositoryRef(
             name="demo-root",
             distribution="demo-root",

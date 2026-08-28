@@ -25,7 +25,7 @@ class TestsCodegenMakeEnvironment:
         *,
         local_infra: bool = False,
     ) -> tuple[Path, Path]:
-        provider = config.Infra.codegen.providers[0]
+        provider = test_u.Tests.provider()
         role = c.Infra.RepositoryRole(profile.value)
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
