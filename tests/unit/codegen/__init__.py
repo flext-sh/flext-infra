@@ -44,8 +44,10 @@ if TYPE_CHECKING:
     from .test_codegen_beads_projection import TestsCodegenBeadsProjection
     from .test_codegen_conform_progress import TestsFlextInfraCodegenConformProgress
     from .test_codegen_hook_conformance import TestGitHookConformance
+    from .test_codegen_linked_worktree_manifest import TestCodegenLinkedWorktreeTopology
     from .test_codegen_make_environment import TestsCodegenMakeEnvironment
     from .test_codegen_pyproject_conform import TestsFlextInfraCodegenPyprojectConform
+    from .test_codegen_uv_exclude_newer_overlay import TestCodegenUvExcludeNewerOverlay
     from .test_managed_conflicts import TestsFlextInfraCodegenManagedConflicts
     from .test_managed_maintenance_headers import (
         TestsFlextInfraManagedMaintenanceHeaders,
@@ -56,6 +58,8 @@ __all__: tuple[str, ...] = (
     "CodegenSpec",
     "TestAllDirectoriesScanned",
     "TestCheckOnlyMode",
+    "TestCodegenLinkedWorktreeTopology",
+    "TestCodegenUvExcludeNewerOverlay",
     "TestEdgeCases",
     "TestExcludedDirectories",
     "TestGeneratedClassNamingConvention",
@@ -136,9 +140,15 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenConformProgress",
             ),
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
+            ".test_codegen_linked_worktree_manifest": (
+                "TestCodegenLinkedWorktreeTopology",
+            ),
             ".test_codegen_make_environment": ("TestsCodegenMakeEnvironment",),
             ".test_codegen_pyproject_conform": (
                 "TestsFlextInfraCodegenPyprojectConform",
+            ),
+            ".test_codegen_uv_exclude_newer_overlay": (
+                "TestCodegenUvExcludeNewerOverlay",
             ),
             ".test_managed_conflicts": ("TestsFlextInfraCodegenManagedConflicts",),
             ".test_managed_maintenance_headers": (

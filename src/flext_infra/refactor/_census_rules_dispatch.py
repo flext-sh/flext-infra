@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorCensusRulesDispatchMixin:
-    """Run every selected alias/FLEXT rule for one module and collect outcomes.
+    """Run every selected structural rule for one module and collect outcomes.
 
     Parent of FlextInfraRefactorCensusCollectMixin (its ``_scan_module`` calls
     ``_module_rules``); borrows the symbol-index, rule-selection filter, and
@@ -93,30 +93,6 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
         ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
-        def _rule_flext_completeness(
-            self,
-            rope: p.Infra.RopeWorkspaceDsl,
-            file_path: Path,
-            *,
-            project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
-            applied: frozenset[str],
-            selected_kinds: frozenset[str],
-            symbol_index: dict[str, tuple[str, int]],
-            convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
-        def _rule_flext_shape(
-            self,
-            rope: p.Infra.RopeWorkspaceDsl,
-            file_path: Path,
-            *,
-            project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
-            applied: frozenset[str],
-            selected_kinds: frozenset[str],
-            symbol_index: dict[str, tuple[str, int]],
-            convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
         def _rule_inline_import(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -180,7 +156,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
         selected_rules: frozenset[str] | None = None,
         convention: m.Infra.RopeModuleConvention | None = None,
     ) -> tuple[tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]]:
-        """Run every selected alias/FLEXT rule for one module and collect outcomes."""
+        """Run every selected structural rule for one module and collect outcomes."""
         resolved_convention = convention or rope.convention(file_path)
         resolved_kinds = (
             selected_kinds
@@ -249,32 +225,6 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             fixes.extend(f)
         if selected("compatibility_alias"):
             v, f = self._rule_compatibility_alias(
-                rope,
-                file_path,
-                project_name=project_name,
-                objects=objects,
-                applied=applied,
-                selected_kinds=resolved_kinds,
-                symbol_index=symbol_index,
-                convention=resolved_convention,
-            )
-            violations.extend(v)
-            fixes.extend(f)
-        if selected("flext_completeness"):
-            v, f = self._rule_flext_completeness(
-                rope,
-                file_path,
-                project_name=project_name,
-                objects=objects,
-                applied=applied,
-                selected_kinds=resolved_kinds,
-                symbol_index=symbol_index,
-                convention=resolved_convention,
-            )
-            violations.extend(v)
-            fixes.extend(f)
-        if selected("flext_shape"):
-            v, f = self._rule_flext_shape(
                 rope,
                 file_path,
                 project_name=project_name,

@@ -20,9 +20,6 @@ from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportD
 from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
 )
-from flext_infra.detectors.flext_completeness_detector import (
-    FlextInfraFLEXTCompletenessDetector,
-)
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -161,22 +158,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     parse_failures=parse_failures,
                 )
                 changed = True
-            elif action == "rewrite_flext_completeness":
-                flext_violations: tuple[m.Infra.FLEXTCompletenessViolation, ...] = (
-                    tuple(
-                        violation
-                        for violation in FlextInfraFLEXTCompletenessDetector.detect_file(
-                            ctx
-                        )
-                        if violation.facade_class in object_names
-                    )
-                )
-                if not flext_violations:
-                    continue
-                u.Infra.rewrite_flext_completeness_violations(
-                    violations=flext_violations, parse_failures=parse_failures
-                )
-                changed = True
             elif action in {"hoist_inline_import", "rewrite_library_abstraction"}:
                 changed = self._apply_hoist_inline_imports(
                     rope=rope,
@@ -230,7 +211,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     kinds=frozenset(object_names) if object_names else None,
                 )
                 changed = len(changes) > 0
-            elif action in {"deep_namespace_refactor", "rewrite_flext_shape", "manual"}:
+            elif action in {"deep_namespace_refactor", "manual"}:
                 # Manual-only actions: reported in dry-run, no-op during apply.
                 pass
             if not changed:

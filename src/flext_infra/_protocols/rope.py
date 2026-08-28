@@ -149,16 +149,6 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.StrSequence: ...
 
     @runtime_checkable
-    class RopePostHook(Protocol):
-        """Contract for post-processing hooks invoked after Rope refactoring."""
-
-        def __call__(
-            self, path: Path, *, dry_run: bool
-        ) -> t.SequenceOf[m.Infra.Result]:
-            """Execute the hook and return results."""
-            ...
-
-    @runtime_checkable
     class PatchingASTWalker(Protocol):
         """Structural contract for rope's internal ``_PatchingASTWalker``.
 

@@ -25,7 +25,7 @@ class FlextInfraUtilitiesDiscovery(
 ):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
-    _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
+    _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
     @cache
@@ -366,7 +366,7 @@ class FlextInfraUtilitiesDiscovery(
         return r[t.SequenceOf[Path]].ok(all_files)
 
     @classmethod
-    def resolve_parent_constants_mro(
+    def resolve_parent_constants_flext(
         cls, pkg_dir_or_file: Path, *, return_module: bool = False
     ) -> t.StrSequence:
         """Resolve imported parent ``Constants`` targets through Rope semantics."""
@@ -381,7 +381,7 @@ class FlextInfraUtilitiesDiscovery(
         if project_root is None:
             return ()
         cache_key = (str(constants_file.resolve()), return_module)
-        if (cached := cls._PARENT_CONSTANTS_MRO_CACHE.get(cache_key)) is not None:
+        if (cached := cls._PARENT_CONSTANTS_FLEXT_CACHE.get(cache_key)) is not None:
             return cached
         current_module = cls.package_name(constants_file)
         result = cls.parent_constants_targets(
@@ -392,7 +392,7 @@ class FlextInfraUtilitiesDiscovery(
             if current_module
             else "",
         )
-        cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
+        cls._PARENT_CONSTANTS_FLEXT_CACHE[cache_key] = result
         return result
 
     @classmethod
@@ -410,7 +410,7 @@ class FlextInfraUtilitiesDiscovery(
             visited.add(package_name)
             init_path = cls.package_init_path(workspace_root, package_name)
             if init_path is not None:
-                for parent_package in cls.resolve_parent_constants_mro(
+                for parent_package in cls.resolve_parent_constants_flext(
                     init_path.parent, return_module=True
                 ):
                     visit(parent_package)
@@ -434,7 +434,7 @@ class FlextInfraUtilitiesDiscovery(
         )
         if not (package_dir / c.Infra.INIT_PY).is_file():
             return {}
-        parent_packages = cls.resolve_parent_constants_mro(
+        parent_packages = cls.resolve_parent_constants_flext(
             package_dir, return_module=True
         )
         if not parent_packages:
@@ -448,11 +448,11 @@ class FlextInfraUtilitiesDiscovery(
         )
         for family_dir in c.Infra.FAMILY_DIRECTORIES.values():
             if file_path.is_relative_to(package_dir / family_dir):
-                return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
+                return dict.fromkeys(c.Infra.FLEXT_FAMILIES, allowed_sources)
         if file_path.name in {"base.py", c.Infra.NAMESPACE_PRIVATE_BASE_MODULE}:
             return dict.fromkeys(c.Infra.ENFORCEMENT_CANONICAL_ALIASES, allowed_sources)
         if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
-            return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
+            return dict.fromkeys(c.Infra.FLEXT_FAMILIES, allowed_sources)
         return {}
 
 

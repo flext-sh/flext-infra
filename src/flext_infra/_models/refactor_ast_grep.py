@@ -2,122 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra._models.flext_scan import FlextInfraModelsFlextScan
 
 
-class FlextInfraModelsRefactorGrep(FlextInfraModelsFlextScan):
+class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
-
-    class RewriteFilesInput(m.Value):
-        """Typed input envelope for workspace rewrite execution."""
-
-        workspace_root: Annotated[Path, m.Field(description="Workspace root path")]
-        file_moves: Annotated[
-            t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]],
-            m.Field(description="Per-file symbol move map for rewrite"),
-        ]
-        pending_sources: Annotated[
-            t.MappingKV[Path, str],
-            m.Field(description="In-memory pending sources keyed by file path"),
-        ]
-        apply: Annotated[
-            bool, m.Field(description="Whether to write rewritten sources")
-        ]
-        gates: Annotated[
-            t.StrSequence | None,
-            m.Field(description="Optional protected-write gate selectors"),
-        ] = None
-
-    class FLEXTImportRewrite(m.ArbitraryTypesModel):
-        """Unified import rewrite payload for FLEXT reference updates."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        facade_name: Annotated[str, m.Field(description="Facade alias/import name")] = (
-            ""
-        )
-        module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
-        import_name: Annotated[str, m.Field(description="Imported symbol name")]
-        as_name: Annotated[str | None, m.Field(description="Optional alias")] = None
-        symbol: Annotated[str, m.Field(description="Resolved symbol in facade")] = ""
-
-    class FLEXTFileMigration(m.ArbitraryTypesModel):
-        """Migration summary for one transformed file."""
-
-        file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
-        module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
-        moved_symbols: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Symbols moved to facade class"
-        )
-        created_classes: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Facade classes created during migration"
-        )
-
-    class FLEXTRewriteResult(m.ArbitraryTypesModel):
-        """Reference rewrite summary for one file."""
-
-        file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
-        replacements: Annotated[
-            int, m.Field(description="Reference replacements applied")
-        ]
-
-    class FLEXTMigrationReport(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
-        """End-to-end report for migrate-to-flext command execution."""
-
-        workspace: Annotated[str, m.Field(description="Workspace root path")]
-        target: Annotated[t.NonEmptyStr, m.Field(description="constants|typings|all")]
-        selected_projects: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple,
-            description="Project scope used for the run; empty means whole workspace",
-        )
-        dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]
-        validation_mode: Annotated[
-            str,
-            m.Field(
-                description="Validation strategy used for remaining violation counts"
-            ),
-        ] = "post-apply-rescan"
-        files_scanned: Annotated[int, m.Field(description="Total scanned Python files")]
-        files_with_candidates: Annotated[
-            int, m.Field(ge=0, description="Files containing movable declarations")
-        ]
-        migrations: t.VariadicTuple[FlextInfraModelsRefactorGrep.FLEXTFileMigration] = (
-            m.Field(default_factory=tuple, description="File migration summaries")
-        )
-        rewrites: t.VariadicTuple[FlextInfraModelsRefactorGrep.FLEXTRewriteResult] = (
-            m.Field(default_factory=tuple, description="Reference rewrite summaries")
-        )
-        remaining_violations: Annotated[
-            int, m.Field(ge=0, description="Loose declarations remaining after run")
-        ]
-        flext_failures: Annotated[
-            t.NonNegativeInt, m.Field(description="FLEXT validation failures")
-        ]
-        scan_duration_seconds: Annotated[
-            float, m.Field(ge=0.0, description="Scan phase duration in seconds")
-        ] = 0.0
-        rewrite_duration_seconds: Annotated[
-            float, m.Field(ge=0.0, description="Rewrite phase duration in seconds")
-        ] = 0.0
-        validation_duration_seconds: Annotated[
-            float, m.Field(ge=0.0, description="Validation phase duration in seconds")
-        ] = 0.0
-        total_duration_seconds: Annotated[
-            float, m.Field(ge=0.0, description="Total run duration in seconds")
-        ] = 0.0
-        warnings: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Warnings"
-        )
-        errors: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Errors"
-        )
 
     class RefactorConfig(m.ContractModel):
         """Refactor file-selection config."""

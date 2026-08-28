@@ -30,7 +30,6 @@ from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-from flext_infra._utilities.flext_scan import FlextInfraUtilitiesRefactorFlextScan
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_analysis import (
     FlextInfraUtilitiesRefactorNamespaceFlext,
@@ -66,9 +65,6 @@ from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
-from flext_infra._utilities.rope_flext_transform import (
-    FlextInfraUtilitiesRopeFlextTransform,
-)
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
@@ -132,7 +128,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRefactorCensus,
         FlextInfraUtilitiesRefactorDiscovery,
-        FlextInfraUtilitiesRefactorFlextScan,
         FlextInfraUtilitiesRefactorNamespaceFlext,
         FlextInfraUtilitiesRefactorNamespaceCommon,
         FlextInfraUtilitiesRefactorNamespaceFacades,
@@ -140,7 +135,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
-        FlextInfraUtilitiesRopeFlextTransform,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,

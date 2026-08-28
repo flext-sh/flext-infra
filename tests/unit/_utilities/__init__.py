@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from .test_protected_edit import TestsFlextInfraUtilitiesProtectedEdit
     from .test_resource_limits import TestsFlextInfraUtilitiesResourceLimits
     from .test_rope_analysis import TestsFlextInfraRopeAnalysis
-    from .test_rope_hooks import TestsFlextInfraUtilitiesRopeHooks
     from .test_rope_structure import TestsFlextInfraRopeStructure
     from .test_safety import TestsFlextInfraUtilitiessafety
     from .test_scanning import TestsFlextInfraUtilitiesscanning
@@ -27,7 +26,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRopeStructure",
     "TestsFlextInfraUtilitiesProtectedEdit",
     "TestsFlextInfraUtilitiesResourceLimits",
-    "TestsFlextInfraUtilitiesRopeHooks",
     "TestsFlextInfraUtilitiesformatting",
     "TestsFlextInfraUtilitiessafety",
     "TestsFlextInfraUtilitiesscanning",
@@ -57,7 +55,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_protected_edit": ("TestsFlextInfraUtilitiesProtectedEdit",),
             ".test_resource_limits": ("TestsFlextInfraUtilitiesResourceLimits",),
             ".test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
-            ".test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
             ".test_rope_structure": ("TestsFlextInfraRopeStructure",),
             ".test_safety": ("TestsFlextInfraUtilitiessafety",),
             ".test_scanning": ("TestsFlextInfraUtilitiesscanning",),

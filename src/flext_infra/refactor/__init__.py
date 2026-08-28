@@ -18,12 +18,8 @@ if TYPE_CHECKING:
         FlextInfraClassNestingPostCheckGate,
         FlextInfraRefactorFileExecutor,
     )
-    from .flext_import_rewriter import FlextInfraRefactorFLEXTImportRewriter
-    from .flext_migration_validator import FlextInfraRefactorFLEXTMigrationValidator
-    from .flext_resolver import FlextInfraRefactorFLEXTResolver
     from .legacy_text_ops import FlextInfraRefactorLegacyTextOps
     from .loader import FlextInfraRefactorRuleLoader
-    from .migrate_to_class_flext import FlextInfraRefactorMigrateToClassFLEXT
     from .modernize_orchestrator import FlextInfraModernizeOrchestrator
     from .namespace_enforcer import FlextInfraNamespaceEnforcer
     from .namespace_enforcer_phases import FlextInfraNamespaceEnforcerPhasesMixin
@@ -45,13 +41,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassvarConstantAutofix",
-    "FlextInfraRefactorFLEXTImportRewriter",
-    "FlextInfraRefactorFLEXTMigrationValidator",
-    "FlextInfraRefactorFLEXTResolver",
     "FlextInfraRefactorFileExecutor",
     "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLooseClassScanner",
-    "FlextInfraRefactorMigrateToClassFLEXT",
     "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
@@ -74,14 +66,8 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraClassNestingPostCheckGate",
                 "FlextInfraRefactorFileExecutor",
             ),
-            ".flext_import_rewriter": ("FlextInfraRefactorFLEXTImportRewriter",),
-            ".flext_migration_validator": (
-                "FlextInfraRefactorFLEXTMigrationValidator",
-            ),
-            ".flext_resolver": ("FlextInfraRefactorFLEXTResolver",),
             ".legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
             ".loader": ("FlextInfraRefactorRuleLoader",),
-            ".migrate_to_class_flext": ("FlextInfraRefactorMigrateToClassFLEXT",),
             ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),

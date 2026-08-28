@@ -83,37 +83,6 @@ class FlextInfraModelsNamespaceEnforcer:
             str, m.Field(description="Canonical family letter (c/m/p/t/u)")
         ] = ""
 
-    class FLEXTCompletenessViolation(FileLineViolation):
-        """M r o completeness violation."""
-
-        family: Annotated[t.NonEmptyStr, m.Field(description="Facade family")]
-        facade_class: Annotated[t.NonEmptyStr, m.Field(description="Facade class name")]
-        missing_base: Annotated[
-            t.NonEmptyStr, m.Field(description="Missing base class")
-        ]
-        suggestion: Annotated[str, m.Field(description="Fix suggestion")]
-
-    class FLEXTShapeViolation(FileLineViolation):
-        """FLEXT shape violation (ENFORCE-046/047/049/051)."""
-
-        class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
-        rule_id: Annotated[
-            t.NonEmptyStr, m.Field(description="Rule identifier (046/047/049/051)")
-        ]
-        detail: Annotated[str, m.Field(description="Human-readable description")]
-        first_base: Annotated[
-            t.NonEmptyStr, m.Field(description="First base class name")
-        ]
-        expected_base: Annotated[
-            str, m.Field(description="Expected base class name or pattern")
-        ] = ""
-        fix_action: Annotated[
-            str, m.Field(description="Recommended fix action identifier")
-        ] = "manual"
-        fixable: Annotated[
-            bool, m.Field(description="Whether the violation can be auto-fixed")
-        ] = False
-
     class InternalImportViolation(mm.ViolationDetailMixin, ImportViolationBase):
         """Internal import violation."""
 
@@ -332,13 +301,6 @@ class FlextInfraModelsNamespaceEnforcer:
                 description="Class placement violations collected for the project.",
             ),
         ]
-        flext_completeness_violations: Annotated[
-            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.FLEXTCompletenessViolation],
-            m.Field(
-                default_factory=tuple,
-                description="FLEXT completeness violations collected for the project.",
-            ),
-        ]
         bare_except_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
@@ -449,7 +411,6 @@ class FlextInfraModelsNamespaceEnforcer:
                 self.compatibility_alias_violations,
                 self.foreign_canonical_alias_violations,
                 self.class_placement_violations,
-                self.flext_completeness_violations,
                 self.bare_except_violations,
                 self.print_violations,
                 self.breakpoint_violations,
@@ -521,9 +482,6 @@ class FlextInfraModelsNamespaceEnforcer:
         ] = 0
         total_class_placement_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Total class placement violations")
-        ] = 0
-        total_flext_completeness_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total FLEXT completeness violations")
         ] = 0
         total_bare_except_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Total bare `except:` violations")
@@ -619,9 +577,6 @@ class FlextInfraModelsNamespaceEnforcer:
                 ),
                 total_class_placement_violations=sum(
                     len(p.class_placement_violations) for p in projects
-                ),
-                total_flext_completeness_violations=sum(
-                    len(p.flext_completeness_violations) for p in projects
                 ),
                 total_bare_except_violations=sum(
                     len(p.bare_except_violations) for p in projects

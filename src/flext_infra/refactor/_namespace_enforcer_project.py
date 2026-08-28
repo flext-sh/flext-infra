@@ -26,9 +26,6 @@ from flext_infra.detectors.manual_protocol_detector import (
 from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
 )
-from flext_infra.detectors.flext_completeness_detector import (
-    FlextInfraFLEXTCompletenessDetector,
-)
 from flext_infra.detectors.namespace_source_detector import (
     FlextInfraNamespaceSourceDetector,
 )
@@ -310,21 +307,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             rewrite_fn=None,
             apply=apply,
         )
-        flext_completeness_violations = self._detect_and_apply(
-            py_files=py_files,
-            detect_fn=lambda f: FlextInfraFLEXTCompletenessDetector.detect_file(
-                self._detector_context(
-                    file_path=f,
-                    rope_project=rope_project,
-                    parse_failures=parse_failures,
-                    project_root=project_root,
-                )
-            ),
-            rewrite_fn=lambda vs: u.Infra.rewrite_flext_completeness_violations(
-                violations=vs, parse_failures=parse_failures
-            ),
-            apply=apply,
-        )
         pattern_smells = self._detect_and_apply(
             py_files=py_files,
             # flext-j47u (codex): config data + u.Infra are the only static-policy path.
@@ -374,7 +356,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             compatibility_alias_violations=list(compatibility_alias_violations),
             foreign_canonical_alias_violations=list(foreign_canonical_alias_violations),
             class_placement_violations=list(class_placement_violations),
-            flext_completeness_violations=list(flext_completeness_violations),
             bare_except_violations=smell_buckets["bare_except"],
             print_violations=smell_buckets["print"],
             breakpoint_violations=smell_buckets["breakpoint"],

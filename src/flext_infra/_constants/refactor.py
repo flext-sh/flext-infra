@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Final
 from flext_core import c
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
-from flext_infra._models.flext_scan import FlextInfraModelsFlextScan
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -105,7 +104,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         """Canonical executable text-rule kinds."""
 
         FUTURE_ANNOTATIONS = "future_annotations"
-        FLEXT_CLASS_MIGRATION = "flext_class_migration"
         LEGACY_REMOVAL = "legacy_removal"
         IMPORT_MODERNIZER = "import_modernizer"
         CLASS_RECONSTRUCTOR = "class_reconstructor"
@@ -115,7 +113,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         TIER0_IMPORT_FIX = "tier0_import_fix"
         SYMBOL_PROPAGATION = "symbol_propagation"
         SIGNATURE_PROPAGATION = "signature_propagation"
-        FLEXT_REDUNDANCY = "flext_redundancy"
 
     @unique
     class RefactorFileRuleKind(StrEnum):
@@ -136,14 +133,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
             (
                 frozenset({"ensure_future_annotations"}),
                 frozenset({"missing_future_import"}),
-                frozenset(),
-                frozenset(),
-            ),
-        ),
-        RefactorRuleKind.FLEXT_CLASS_MIGRATION: (
-            (
-                frozenset({"migrate_to_class_flext"}),
-                frozenset(),
                 frozenset(),
                 frozenset(),
             ),
@@ -225,14 +214,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
                 frozenset({RK_SIGNATURE_MIGRATIONS}),
             ),
         ),
-        RefactorRuleKind.FLEXT_REDUNDANCY: (
-            (
-                frozenset({"remove_inheritance_keep_class", "fix_flext_redeclaration"}),
-                frozenset(),
-                frozenset(),
-                frozenset(),
-            ),
-        ),
     })
     FILE_RULE_MATCHERS_BY_KIND: Final[
         t.MappingKV[
@@ -254,15 +235,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         cb.RK_ENABLED,
         cb.RK_SEVERITY,
     )
-    FLEXT_TARGETS: Final[frozenset[str]] = frozenset({
-        "constants",
-        "typings",
-        "protocols",
-        "models",
-        "utilities",
-        "all",
-    })
-    "Accepted target arguments for FLEXT migration runs."
     FLEXT_CONSTANTS_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "constants.py",
         "_constants.py",
@@ -305,44 +277,8 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Canonical utilities module file names."
     FLEXT_UTILITIES_DIRECTORY: Final[str] = "utilities"
     "Canonical utilities package directory name."
-    DEFAULT_CONSTANTS_CLASS: Final[str] = "FlextConstants"
-    "Fallback constants class name when none exists in module."
     CONSTANTS_CLASS_SUFFIX: Final[str] = "Constants"
     "Class-name suffix used to identify constants facades."
-    FLEXT_TARGET_SPECS: Final[tuple[FlextInfraModelsFlextScan.FLEXTTargetSpec, ...]] = (
-        FlextInfraModelsFlextScan.FLEXTTargetSpec(
-            family_alias="c",
-            file_names=FLEXT_CONSTANTS_FILE_NAMES,
-            package_directory=FLEXT_CONSTANTS_DIRECTORY,
-            class_suffix=CONSTANTS_CLASS_SUFFIX,
-        ),
-        FlextInfraModelsFlextScan.FLEXTTargetSpec(
-            family_alias="t",
-            file_names=FLEXT_TYPINGS_FILE_NAMES,
-            package_directory=FLEXT_TYPINGS_DIRECTORY,
-            class_suffix="Types",
-        ),
-        FlextInfraModelsFlextScan.FLEXTTargetSpec(
-            family_alias="p",
-            file_names=FLEXT_PROTOCOLS_FILE_NAMES,
-            package_directory=FLEXT_PROTOCOLS_DIRECTORY,
-            class_suffix="Protocols",
-        ),
-        FlextInfraModelsFlextScan.FLEXTTargetSpec(
-            family_alias="m",
-            file_names=FLEXT_MODELS_FILE_NAMES,
-            package_directory=FLEXT_MODELS_DIRECTORY,
-            class_suffix="Models",
-        ),
-        FlextInfraModelsFlextScan.FLEXTTargetSpec(
-            family_alias="u",
-            file_names=FLEXT_UTILITIES_FILE_NAMES,
-            package_directory=FLEXT_UTILITIES_DIRECTORY,
-            class_suffix="Utilities",
-        ),
-    )
-    "Canonical FLEXT target specs shared by scan and migration code."
-
     CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
     "Compiled naming pattern for module-level constant candidates."
     FAMILY_SUFFIXES: Final[t.StrMapping] = MappingProxyType({

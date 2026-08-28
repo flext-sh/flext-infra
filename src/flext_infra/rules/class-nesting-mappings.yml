@@ -929,12 +929,6 @@ class_nesting:
   target_name: FlextInfraRefactorLazyImportFixer
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraRefactorFLEXTRemover
-  current_file: flext-core/src/flext_infra/refactor/transformers/flext_remover.py
-  target_namespace: FlextRefactorTransformersFlextRemover
-  target_name: FlextInfraRefactorFLEXTRemover
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraRefactorSymbolPropagator
   current_file: flext-core/src/flext_infra/refactor/transformers/symbol_propagator.py
   target_namespace: FlextRefactorTransformersSymbolPropagator

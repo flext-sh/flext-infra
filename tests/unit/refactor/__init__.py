@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .test_declarative_enforcement import (
         TestsFlextInfraRefactorDeclarativeEnforcement,
         TestsFlextInfraRefactorDeclarativeEnforcementInCensus,
+        constants_module,
     )
     from .test_infra_refactor_class_and_propagation import (
         TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
@@ -26,20 +27,11 @@ if TYPE_CHECKING:
     from .test_infra_refactor_cli_models_workflow import (
         TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
     )
-    from .test_infra_refactor_flext_completeness import (
-        TestsFlextInfraRefactorInfraRefactorFlextCompleteness,
-    )
-    from .test_infra_refactor_flext_shape import (
-        TestsFlextInfraRefactorInfraRefactorFlextShape,
-    )
     from .test_infra_refactor_import_modernizer import (
         TestsFlextInfraRefactorInfraRefactorImportModernizer,
     )
     from .test_infra_refactor_legacy_and_annotations import (
         TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations,
-    )
-    from .test_infra_refactor_migrate_to_class_flext import (
-        TestsFlextInfraRefactorInfraRefactorMigrateToClassFlext,
     )
     from .test_infra_refactor_namespace_aliases import (
         TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
@@ -78,11 +70,8 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
     "TestsFlextInfraRefactorInfraRefactorClassPlacement",
     "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
-    "TestsFlextInfraRefactorInfraRefactorFlextCompleteness",
-    "TestsFlextInfraRefactorInfraRefactorFlextShape",
     "TestsFlextInfraRefactorInfraRefactorImportModernizer",
     "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
-    "TestsFlextInfraRefactorInfraRefactorMigrateToClassFlext",
     "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
     "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
     "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
@@ -94,6 +83,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
     "TestsFlextInfraRefactorMainCli",
     "c",
+    "constants_module",
     "d",
     "e",
     "h",
@@ -118,6 +108,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_declarative_enforcement": (
                 "TestsFlextInfraRefactorDeclarativeEnforcement",
                 "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
+                "constants_module",
             ),
             ".test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
@@ -128,20 +119,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_refactor_cli_models_workflow": (
                 "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
             ),
-            ".test_infra_refactor_flext_completeness": (
-                "TestsFlextInfraRefactorInfraRefactorFlextCompleteness",
-            ),
-            ".test_infra_refactor_flext_shape": (
-                "TestsFlextInfraRefactorInfraRefactorFlextShape",
-            ),
             ".test_infra_refactor_import_modernizer": (
                 "TestsFlextInfraRefactorInfraRefactorImportModernizer",
             ),
             ".test_infra_refactor_legacy_and_annotations": (
                 "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
-            ),
-            ".test_infra_refactor_migrate_to_class_flext": (
-                "TestsFlextInfraRefactorInfraRefactorMigrateToClassFlext",
             ),
             ".test_infra_refactor_namespace_aliases": (
                 "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",

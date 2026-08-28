@@ -34,16 +34,6 @@ class FlextInfraModelsRefactor(
     - ``ArbitraryTypesModel`` for mutable report/result payloads.
     """
 
-    class RefactorMigrateFlextInput(mm.WriteMixin, m.ContractModel):
-        """CLI/service request for FLEXT migration."""
-
-        target: Annotated[
-            str,
-            m.Field(
-                description="Migration target scope (constants/typings/protocols/models/utilities/all)"
-            ),
-        ] = "all"
-
     class RefactorNamespaceEnforceInput(mm.WriteMixin, m.ContractModel):
         """CLI/service request for namespace enforcement."""
 
@@ -168,24 +158,6 @@ class FlextInfraModelsRefactor(
         reason: Annotated[str, m.Field(description="Human-readable reason")]
         confidence: Annotated[str, m.Field(description="Confidence level")]
         score: Annotated[t.DecimalFraction, m.Field(description="Confidence score")]
-
-    class FamilyFLEXTResolution(m.ArbitraryTypesModel):
-        """Resolution payload for one facade family FLEXT."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        family: Annotated[t.NonEmptyStr, m.Field(description="Facade family letter")]
-        expected_bases: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Expected base class names in order"),
-        ]
-        resolved_flext: Annotated[
-            t.VariadicTuple[str], m.Field(description="Resolved FLEXT class names")
-        ]
-        accessible_namespaces: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Namespaces accessible through the FLEXT"),
-        ]
 
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""

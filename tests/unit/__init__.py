@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from .test_infra_constants_extra import TestsFlextInfraInfraConstantsExtra
     from .test_infra_git_identity_submodules import TestInfraGitIdentitySubmodules
     from .test_infra_main import TestsFlextInfraInfraMain
-    from .test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli, main
+    from .test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli
     from .test_infra_maintenance_init import TestsFlextInfraInfraMaintenanceInit
     from .test_infra_maintenance_main import TestsFlextInfraInfraMaintenanceMain
     from .test_infra_maintenance_python_version import (
@@ -182,7 +182,6 @@ __all__: tuple[str, ...] = (
     "h",
     "io",
     "m",
-    "main",
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
@@ -277,10 +276,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
             ".test_infra_git_identity_submodules": ("TestInfraGitIdentitySubmodules",),
             ".test_infra_main": ("TestsFlextInfraInfraMain",),
-            ".test_infra_maintenance_cli": (
-                "TestsFlextInfraInfraMaintenanceCli",
-                "main",
-            ),
+            ".test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
             ".test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
             ".test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
             ".test_infra_maintenance_python_version": (

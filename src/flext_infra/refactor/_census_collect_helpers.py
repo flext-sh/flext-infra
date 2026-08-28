@@ -26,7 +26,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         "runtime_alias",
         "manual_typing_alias",
         "compatibility_alias",
-        "flext_completeness",
     })
     _PYI_GLOB: ClassVar[str] = "*.pyi"
     _PYI_SUFFIX: ClassVar[str] = ".pyi"
@@ -116,16 +115,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return ""
 
     @staticmethod
-    def _flext_facade_module_names(selected_families: frozenset[str]) -> frozenset[str]:
-        """Flext facade module names."""
-        families = selected_families or c.Infra.FLEXT_FAMILIES
-        return frozenset(
-            Path(module_path).name
-            for family, module_path in c.Infra.FLEXT_FAMILY_FACADE_MODULES.items()
-            if family in families
-        )
-
-    @staticmethod
     def _is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
         """Return whether a module belongs to one configured production root."""
         project_root = module.project_root
@@ -158,16 +147,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         declarative_rules = self._declarative_rules_for_selection(rule_names)
         if any(self._rule_requires_stub_file(rule) for rule in declarative_rules):
             modules = (*modules, *self._stub_modules(rope, modules, project_names))
-        if rule_names is None or set(rule_names) != {"flext_completeness"}:
-            return modules
-        facade_module_names = self._flext_facade_module_names(selected_families)
-        return tuple(
-            module
-            for module in modules
-            if module.module_name
-            and module.module_name.count(".") == 1
-            and module.file_path.name in facade_module_names
-        )
+        return modules
 
     @classmethod
     def _stub_modules(

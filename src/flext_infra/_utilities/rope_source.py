@@ -246,34 +246,6 @@ class FlextInfraUtilitiesRopeSource:
         return shadowed
 
     @staticmethod
-    def find_final_candidates(
-        source: str,
-    ) -> t.SequenceOf[m.Infra.FLEXTSymbolCandidate]:
-        """Find module-level ``Final``-annotated constants via regex."""
-        candidates: t.MutableSequenceOf[m.Infra.FLEXTSymbolCandidate] = []
-        for line_number, line in enumerate(source.splitlines(), start=1):
-            stripped = line.lstrip()
-            if line != stripped and stripped:
-                continue
-            match = c.Infra.FINAL_ASSIGN_RE.match(stripped)
-            if match and c.Infra.CONSTANT_NAME_RE.match(match.group(1)) is not None:
-                candidates.append(
-                    m.Infra.FLEXTSymbolCandidate(
-                        symbol=match.group(1), line=line_number
-                    )
-                )
-        return candidates
-
-    @staticmethod
-    def first_constants_class_name(source: str) -> str:
-        """Find the first class ending with the constants suffix."""
-        for match in c.Infra.CLASS_NAME_RE.finditer(source):
-            name = str(match.group(1))
-            if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
-                return name
-        return ""
-
-    @staticmethod
     def parse_class_bases(source: str, class_name: str) -> t.StrSequence:
         """Extract terminal base-class names from one class definition."""
         for match in c.Infra.CLASS_WITH_BASES_RE.finditer(source):

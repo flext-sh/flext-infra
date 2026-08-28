@@ -22,8 +22,6 @@ if TYPE_CHECKING:
     from .cli_modernizer import FlextInfraRefactorCliModernizer
     from .compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .deprecated_remover import FlextInfraRefactorDeprecatedRemover
-    from .flext_remover import FlextInfraRefactorFLEXTRemover
-    from .flext_symbol_propagator import FlextInfraRefactorFLEXTSymbolPropagator
     from .future_import import FlextInfraRefactorFutureImport
     from .hardcoded_version import FlextInfraRefactorHardcodedVersion
     from .helper_consolidation import FlextInfraHelperConsolidationTransformer
@@ -65,8 +63,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCliModernizer",
     "FlextInfraRefactorCompatibilityAlias",
     "FlextInfraRefactorDeprecatedRemover",
-    "FlextInfraRefactorFLEXTRemover",
-    "FlextInfraRefactorFLEXTSymbolPropagator",
     "FlextInfraRefactorFutureImport",
     "FlextInfraRefactorHardcodedVersion",
     "FlextInfraRefactorImportBypassRemover",
@@ -111,8 +107,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".cli_modernizer": ("FlextInfraRefactorCliModernizer",),
             ".compatibility_alias": ("FlextInfraRefactorCompatibilityAlias",),
             ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
-            ".flext_remover": ("FlextInfraRefactorFLEXTRemover",),
-            ".flext_symbol_propagator": ("FlextInfraRefactorFLEXTSymbolPropagator",),
             ".future_import": ("FlextInfraRefactorFutureImport",),
             ".hardcoded_version": ("FlextInfraRefactorHardcodedVersion",),
             ".helper_consolidation": ("FlextInfraHelperConsolidationTransformer",),

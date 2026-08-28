@@ -74,9 +74,6 @@ if TYPE_CHECKING:
     from .docs_render import FlextInfraUtilitiesDocsRender
     from .docs_scope import FlextInfraUtilitiesDocsScope
     from .docs_validate import FlextInfraUtilitiesDocsValidate
-    from .flext_scan import FlextInfraUtilitiesRefactorFlextScan
-    from .flext_scan_catalog import FlextInfraUtilitiesFlextScanCatalog
-    from .flext_scan_source import FlextInfraUtilitiesFlextScanSource
     from .git import FlextInfraUtilitiesGit
     from .github import FlextInfraUtilitiesGithub
     from .github_pr import FlextInfraUtilitiesGithubPr
@@ -109,7 +106,6 @@ if TYPE_CHECKING:
     )
     from .rope_analysis_workspace import FlextInfraUtilitiesRopeAnalysisWorkspace
     from .rope_core import FlextInfraUtilitiesRopeCore
-    from .rope_flext_transform import FlextInfraUtilitiesRopeFlextTransform
     from .rope_helpers import FlextInfraUtilitiesRopeHelpers
     from .rope_imports import FlextInfraUtilitiesRopeImports
     from .rope_inventory import FlextInfraUtilitiesRopeInventory
@@ -152,8 +148,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeBuildMixin",
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
     "FlextInfraUtilitiesDocsValidate",
-    "FlextInfraUtilitiesFlextScanCatalog",
-    "FlextInfraUtilitiesFlextScanSource",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitRepo",
     "FlextInfraUtilitiesGitScopeMixin",
@@ -195,7 +189,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorDiscovery",
-    "FlextInfraUtilitiesRefactorFlextScan",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceFlext",
@@ -211,7 +204,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeCore",
     "FlextInfraUtilitiesRopeCorePyModuleMixin",
     "FlextInfraUtilitiesRopeCoreResourcesMixin",
-    "FlextInfraUtilitiesRopeFlextTransform",
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
@@ -318,9 +310,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_render": ("FlextInfraUtilitiesDocsRender",),
             ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
-            ".flext_scan": ("FlextInfraUtilitiesRefactorFlextScan",),
-            ".flext_scan_catalog": ("FlextInfraUtilitiesFlextScanCatalog",),
-            ".flext_scan_source": ("FlextInfraUtilitiesFlextScanSource",),
             ".git": ("FlextInfraUtilitiesGit",),
             ".github": ("FlextInfraUtilitiesGithub",),
             ".github_pr": ("FlextInfraUtilitiesGithubPr",),
@@ -355,7 +344,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".rope_analysis_workspace": ("FlextInfraUtilitiesRopeAnalysisWorkspace",),
             ".rope_core": ("FlextInfraUtilitiesRopeCore",),
-            ".rope_flext_transform": ("FlextInfraUtilitiesRopeFlextTransform",),
             ".rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
             ".rope_imports": ("FlextInfraUtilitiesRopeImports",),
             ".rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
