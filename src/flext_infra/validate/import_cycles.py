@@ -46,12 +46,8 @@ class FlextInfraValidateImportCycles(s[bool]):
     def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Scan ``workspace_root`` for runtime import cycles via rope.
 
-        Detection is scoped per project root: each governed project is an
-        independent import unit with its own ``sys.path`` at test/runtime, so
-        same-named top-level packages (for example ``tests``) from different
-        projects are never merged into a single graph. When no governed project
-        roots are discoverable (for example a bare synthetic tree), the whole
-        root is scanned as one unit.
+        The supplied root is one import unit. Explicit project locators create
+        independent graphs so same-named top-level packages are never merged.
 
         Args:
             workspace_root: Path under which to discover and scan projects.
@@ -94,16 +90,17 @@ class FlextInfraValidateImportCycles(s[bool]):
     def _build_graphs(
         self, workspace_root: Path
     ) -> list[tuple[str, MutableMapping[str, set[str]]]]:
-        """Build one import graph per governed project root (one import unit).
-
-        Falls back to a single graph over ``workspace_root`` when no governed
-        project roots are discoverable, preserving behaviour for bare synthetic
-        trees used by unit tests.
-        """
-        roots = u.Infra.discover_project_roots(workspace_root)
-        if not roots:
+        """Build one graph for the root or each explicitly selected project."""
+        project_names = u.Infra.normalize_cli_values(self.project_filter)
+        if not project_names:
             return [("", self._build_graph(workspace_root))]
-        return [(root.name, self._build_graph(root)) for root in roots]
+        resolved = u.Infra.resolve_projects(workspace_root, project_names)
+        if resolved.failure:
+            raise ValueError(resolved.error or "project resolution failed")
+        return [
+            (project.name, self._build_graph(project.path))
+            for project in resolved.value
+        ]
 
     def _build_graph(self, workspace_root: Path) -> MutableMapping[str, set[str]]:
         """Build ``{module_name: {imported_modules}}`` via rope."""

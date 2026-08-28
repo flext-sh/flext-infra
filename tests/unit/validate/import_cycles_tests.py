@@ -146,7 +146,7 @@ class TestImportCyclesPerProjectScope:
         return project
 
     def test_same_named_packages_across_projects_do_not_form_cycle(
-        self, tmp_path: Path, v: FlextInfraValidateImportCycles
+        self, tmp_path: Path
     ) -> None:
         """Opposite one-way edges in two projects must not merge into a cycle."""
         self._seed_project(
@@ -161,12 +161,15 @@ class TestImportCyclesPerProjectScope:
             {"b.py": "from examples.a import X\n", "a.py": "X = 1\n"},
             pkg="examples",
         )
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        validator = FlextInfraValidateImportCycles(
+            workspace_root=tmp_path, project_filter="alpha,beta"
+        )
+        report: m.Infra.ValidationReport = tm.ok(validator.build_report(tmp_path))
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="scanned 6 modules")
 
     def test_cycle_is_attributed_to_owning_project_only(
-        self, tmp_path: Path, v: FlextInfraValidateImportCycles
+        self, tmp_path: Path
     ) -> None:
         """A real cycle inside one project is reported with that project's label."""
         self._seed_project(
@@ -177,7 +180,10 @@ class TestImportCyclesPerProjectScope:
         self._seed_project(
             tmp_path, "beta", {"a.py": "X = 1\n", "b.py": "from tests.a import X\n"}
         )
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        validator = FlextInfraValidateImportCycles(
+            workspace_root=tmp_path, project_filter="alpha,beta"
+        )
+        report: m.Infra.ValidationReport = tm.ok(validator.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
         tm.that(joined, has="[alpha]")

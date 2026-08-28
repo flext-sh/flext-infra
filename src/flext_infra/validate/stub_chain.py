@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import importlib.util as importlib_util
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
@@ -29,9 +29,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     typing-package validation.
     """
 
-    all_projects: Annotated[
-        bool, m.Field(alias="all", description="Validate all projects")
-    ] = False
     _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default=None)
 
     def __init__(
@@ -49,7 +46,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         report_path: Path | None = None,
         output_dir: Path | None = None,
         selected_projects: t.StrSequence | None = None,
-        all_projects: bool = False,
         runner: p.Cli.CommandRunner | None = None,
         settings_type: t.SettingsClass | None = None,
         runtime_settings: p.Settings | None = None,
@@ -70,7 +66,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             "report_path": report_path,
             "output_dir": output_dir,
             "selected_projects": selected_projects,
-            "all_projects": all_projects,
             # NOTE (multi-agent): flext-i6nq.12 — FlextMixins bootstrap inputs are now
             # native Pydantic fields validated with the rest of model_data.
             "settings_type": settings_type,
@@ -86,23 +81,16 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         """Optional command runner dependency for tests and command execution."""
         return self._runner
 
-    @override
-    @property
-    def project_dirs(self) -> t.SequenceOf[Path] | None:
-        """Resolved project directories for targeted validation."""
-        names: t.StrSequence | None = self.project_names
-        if self.all_projects or names is None:
-            return None
-        return [self.workspace_root / name for name in names]
-
     def _discover_typed_projects(self, workspace_root: Path) -> t.SequenceOf[Path]:
-        """Discover projects that should participate in typed dependency checks."""
-        _ = self
-        return [
-            project_root
-            for project_root in u.Infra.discover_project_roots(workspace_root)
-            if (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
-        ]
+        """Resolve only the explicitly supplied local repository."""
+        resolved = u.Infra.resolve_projects(workspace_root, ())
+        if resolved.failure:
+            raise ValueError(resolved.error or "project resolution failed")
+        return tuple(
+            project.path
+            for project in resolved.value
+            if (project.path / c.Infra.DEFAULT_SRC_DIR).is_dir()
+        )
 
     def _is_internal(self, module_name: str, project_name: str) -> bool:
         """Check if a module is an internal project module."""
@@ -258,7 +246,11 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return r[m.Infra.ValidationReport].fail(
                 f"typed dependency workspace does not exist: {root}"
             )
-        projects = project_dirs or self._discover_typed_projects(root)
+        projects = (
+            self._discover_typed_projects(root)
+            if project_dirs is None
+            else tuple(project.resolve() for project in project_dirs)
+        )
         violations = self._typed_dependency_violations(projects, root)
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
