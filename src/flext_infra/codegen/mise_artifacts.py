@@ -62,7 +62,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         raw_tools = payload.get("tools")
         if not isinstance(raw_tools, Mapping):
             return r[t.JsonMapping].fail("mise.lock must declare [tools]")
-        normalized_tools: t.MutableJsonMapping = {}
+        normalized_tools: dict[str, t.JsonValue] = {}
         for raw_selector, raw_entries in raw_tools.items():
             if (
                 not isinstance(raw_selector, str)
@@ -76,8 +76,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                     return r[t.JsonMapping].fail(
                         f"mise.lock contains an invalid entry for {raw_selector}"
                     )
-                normalized_entry: t.MutableJsonMapping = {}
-                normalized_platforms: t.MutableJsonMapping = {}
+                normalized_entry: dict[str, t.JsonValue] = {}
+                normalized_platforms: dict[str, t.JsonValue] = {}
                 for raw_key, raw_value in raw_entry.items():
                     if not isinstance(raw_key, str):
                         return r[t.JsonMapping].fail(
