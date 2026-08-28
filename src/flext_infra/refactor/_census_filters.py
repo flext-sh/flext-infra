@@ -25,6 +25,10 @@ class FlextInfraRefactorCensusFiltersMixin:
         project_objects: tuple[list[m.Infra.Census.Object], ...],
     ) -> tuple[m.Infra.Census.DuplicateGroup, ...]:
         """Duplicate groups."""
+
+        def object_location(item: m.Infra.Census.Object) -> tuple[str, str, int]:
+            return item.project, item.file_path, item.line
+
         groups: dict[tuple[str, str, str], list[m.Infra.Census.Object]] = defaultdict(
             list
         )
@@ -39,9 +43,7 @@ class FlextInfraRefactorCensusFiltersMixin:
                 < FlextInfraRefactorCensusFiltersMixin._MIN_DUPLICATE_DEFINITIONS
             ):
                 continue
-            canonical = min(
-                definitions, key=lambda item: (item.project, item.file_path, item.line)
-            )
+            canonical = min(definitions, key=object_location)
             duplicates.append(
                 m.Infra.Census.DuplicateGroup(
                     name=definitions[0].name,

@@ -32,7 +32,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     all_projects: Annotated[
         bool, m.Field(alias="all", description="Validate all projects")
     ] = False
-    _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default_factory=lambda: None)
+    _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default=None)
 
     def __init__(
         self,

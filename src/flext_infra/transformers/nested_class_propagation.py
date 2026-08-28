@@ -149,14 +149,14 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         namespace = rename_parts[0]
         alias_names = set(aliases)
         suffix = ".".join(rename_parts)
-        new_source: str = attr_pattern.sub(
-            lambda match: (
-                match.group(0)
-                if match.group(1) == namespace or match.group(1) in alias_names
-                else f"{match.group(1)}.{suffix}"
-            ),
-            source,
-        )
+
+        def qualify_reference(match: t.Infra.RegexMatch) -> str:
+            qualifier = match.group(1)
+            if qualifier == namespace or qualifier in alias_names:
+                return match.group(0)
+            return f"{qualifier}.{suffix}"
+
+        new_source: str = attr_pattern.sub(qualify_reference, source)
         if new_source != source:
             self._record_change(
                 f"Qualified attribute reference: .{old_name} -> .{suffix}"

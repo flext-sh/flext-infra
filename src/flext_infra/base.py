@@ -107,13 +107,13 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         path: Path = u.Cli.resolve_optional_path(value, default=Path())
         return path.resolve() if path.is_absolute() else path
 
-    @m.computed_field()
+    @m.computed_field
     @property
     def root(self) -> Path:
         """Canonical normalized workspace root."""
         return self.workspace_root
 
-    @m.computed_field()
+    @m.computed_field
     @property
     def effective_dry_run(self) -> bool:
         """Normalized write-mode decision for CLI services."""

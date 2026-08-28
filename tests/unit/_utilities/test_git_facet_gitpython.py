@@ -150,8 +150,12 @@ class TestsFlextInfraGitFacet:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Missing git on PATH must Result.fail without raising."""
+
+        def missing_git(_name: str) -> None:
+            return None
+
         monkeypatch.setattr(
-            "flext_infra._utilities._git.repo.shutil.which", lambda _name: None
+            "flext_infra._utilities._git.repo.shutil.which", missing_git
         )
         result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure

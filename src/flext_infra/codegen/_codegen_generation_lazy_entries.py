@@ -66,16 +66,12 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
             else:
                 alias_groups[mod].append((export_name, attr_name))
         module_items = tuple(
-            (mod, tuple(sorted(names)))
-            for mod, names in sorted(
-                module_groups.items(), key=lambda item: item[0].lower()
-            )
+            (mod, tuple(sorted(module_groups[mod])))
+            for mod in sorted(module_groups, key=str.lower)
         )
         alias_items = tuple(
-            (mod, tuple(sorted(pairs)))
-            for mod, pairs in sorted(
-                alias_groups.items(), key=lambda item: item[0].lower()
-            )
+            (mod, tuple(sorted(alias_groups[mod])))
+            for mod in sorted(alias_groups, key=str.lower)
         )
         return module_items, alias_items
 

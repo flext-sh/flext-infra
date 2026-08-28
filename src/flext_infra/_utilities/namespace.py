@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import operator
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar, Final
@@ -503,7 +504,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             source = resource.read()
             class_infos = sorted(
                 FlextInfraUtilitiesRopeAnalysis.get_class_info(rope_project, resource),
-                key=lambda item: item.line,
+                key=operator.attrgetter("line"),
             )
             if not class_infos:
                 return

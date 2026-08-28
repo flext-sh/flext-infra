@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
+from flext_infra._utilities._sort_keys import path_depth
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,7 +95,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 for child in stale_dir.rglob("*")
                 if child.is_dir()
             ),
-            key=lambda child: len(child.parts),
+            key=path_depth,
             reverse=True,
         ):
             path.rmdir()

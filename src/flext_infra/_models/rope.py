@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated
 
 from flext_core import m
 from flext_infra import c, p, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -159,17 +159,17 @@ class FlextInfraModelsRope:
         declared_imports: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Declared import targets by name",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         semantic_imports: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Resolved import targets by name",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
 
     class RopeModuleIndexEntry(m.ContractModel):
         """Generic Rope-backed index entry for one Python module resource."""
@@ -261,31 +261,31 @@ class FlextInfraModelsRope:
         packages_by_dir: Annotated[
             t.MappingKV[str, FlextInfraModelsRope.RopePackageIndexEntry],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Package entries keyed by absolute directory path",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         modules_by_path: Annotated[
             t.MappingKV[str, FlextInfraModelsRope.RopeModuleIndexEntry],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Module entries keyed by absolute file path",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         package_dir_by_name: Annotated[
             t.MappingKV[str, Path],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Importable package directory keyed by package name",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         project_package_by_root: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Canonical source package name keyed by project root path",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
 
     class RopeProjectLayout(m.ContractModel):
         """Canonical project layout derived once for Rope-backed codegen flows."""

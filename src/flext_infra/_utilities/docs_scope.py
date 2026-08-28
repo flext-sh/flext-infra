@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
@@ -101,7 +102,7 @@ class FlextInfraUtilitiesDocsScope:
                 projects.append(root_project)
         if not names:
             return r[t.SequenceOf[mw.ProjectInfo]].ok(
-                sorted(projects, key=lambda proj: proj.name)
+                sorted(projects, key=operator.attrgetter("name"))
             )
         by_name: dict[str, mw.ProjectInfo] = {}
         for project in projects:
@@ -122,7 +123,7 @@ class FlextInfraUtilitiesDocsScope:
                 f"unknown projects: {missing_text}"
             )
         return r[t.SequenceOf[mw.ProjectInfo]].ok(
-            sorted((by_name[name] for name in names), key=lambda proj: proj.name)
+            sorted((by_name[name] for name in names), key=operator.attrgetter("name"))
         )
 
     @staticmethod

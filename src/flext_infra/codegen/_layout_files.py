@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config, m, p, r, t, u
+from flext_infra._utilities._sort_keys import path_depth
 
 
 class FlextInfraCodegenLayoutFilesMixin:
@@ -151,7 +152,7 @@ class FlextInfraCodegenLayoutFilesMixin:
         """Remove directories left empty by a merge, deepest first."""
         dirs = sorted(
             (path for path in root.rglob("*") if path.is_dir()),
-            key=lambda path: len(path.parts),
+            key=path_depth,
             reverse=True,
         )
         for path in (*dirs, root):

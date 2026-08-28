@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigTypeCheckers:
@@ -172,35 +172,35 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 alias="extended-settings",
                 description="Pyright extended settings options.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         lazy_import_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="lazy-import-suppressions",
                 description="Pyright rules suppressed in ALL envs due to lazy import pattern.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         global_suppression_rationales: Annotated[
             t.StrMapping,
             m.Field(
                 alias="global-suppression-rationales",
                 description="Global Pyright exclusions mapped to verified facade-FLEXT rationales.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         source_env_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="source-env-suppressions",
                 description="Additional pyright rules suppressed in source env only.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         test_like_env_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="test-like-env-suppressions",
                 description="Additional pyright rules suppressed in test-like envs.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
             m.Field(

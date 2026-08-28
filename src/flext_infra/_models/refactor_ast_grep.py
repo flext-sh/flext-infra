@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsRefactorGrep:
@@ -84,7 +84,7 @@ class FlextInfraModelsRefactorGrep:
             description="Simple symbol names targeted by the migration",
         )
         keyword_renames: t.StrMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=ImmutableEmptyMapping,
             description="Keyword rename mapping",
         )
         remove_keywords: t.StrSequence = m.Field(
@@ -92,7 +92,7 @@ class FlextInfraModelsRefactorGrep:
             description="Keywords removed from matching callsites",
         )
         add_keywords: t.StrMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}), description="Keywords to add"
+            default_factory=ImmutableEmptyMapping, description="Keywords to add"
         )
 
     class ImportModernizerRuleConfig(m.ContractModel):
@@ -104,7 +104,7 @@ class FlextInfraModelsRefactorGrep:
 
         module: Annotated[str, m.Field(description="Module path to modernize")] = ""
         symbol_mapping: t.StrMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=ImmutableEmptyMapping,
             description="Symbol-to-alias mapping",
         )
 
@@ -183,15 +183,15 @@ class FlextInfraModelsRefactorGrep:
         lint_before: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint output before the proposed rewrite"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         lint_after: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint output after the proposed rewrite"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         new_lint_errors: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint errors introduced by the proposed rewrite"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
 
     class AccessorMigrationReport(m.ArbitraryTypesModel):
         """Workspace-scale report for accessor migration orchestration.
@@ -224,15 +224,15 @@ class FlextInfraModelsRefactorGrep:
         lint_before_totals: Annotated[
             t.IntMapping,
             m.Field(description="Per-tool count of lint lines before rewrites"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         lint_after_totals: Annotated[
             t.IntMapping,
             m.Field(description="Per-tool count of lint lines after rewrites"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         new_lint_error_totals: Annotated[
             t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         files: t.VariadicTuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile] = (
             m.Field(
                 default_factory=tuple,

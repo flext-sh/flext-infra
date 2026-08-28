@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -180,7 +181,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         == c.Infra.WorkspaceProjectRole.SUBPROJECT
                     )
                 ),
-                key=lambda project_path: project_path.name,
+                key=operator.attrgetter("name"),
             )
             if discovered.success
             else []
@@ -353,7 +354,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 for project in discovered.value
                 if (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
             ),
-            key=lambda project_path: project_path.name,
+            key=operator.attrgetter("name"),
         )
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)

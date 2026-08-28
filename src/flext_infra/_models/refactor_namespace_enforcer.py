@@ -392,7 +392,7 @@ class FlextInfraModelsNamespaceEnforcer:
             t.NonNegativeInt, m.Field(description="Files scanned")
         ] = 0
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def has_violations(self) -> bool:
             """Whether this project has any violations."""
@@ -614,7 +614,7 @@ class FlextInfraModelsNamespaceEnforcer:
                 total_files_scanned=sum(p.files_scanned for p in projects),
             )
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def has_violations(self) -> bool:
             """Has violations."""

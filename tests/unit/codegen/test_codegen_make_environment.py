@@ -435,6 +435,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "pip install",
+            "git checkout",
         ):
             tm.that(makefile, lacks=forbidden)
 

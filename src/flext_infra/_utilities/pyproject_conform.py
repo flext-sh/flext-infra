@@ -279,15 +279,12 @@ class FlextInfraUtilitiesPyprojectConform:
             normalized_items.append(normalized.value)
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
-            canonical = tuple(
-                sorted(
-                    canonical,
-                    key=lambda requirement: (
-                        FlextInfraUtilitiesDependencies.dep_name(requirement) or "",
-                        requirement,
-                    ),
-                )
-            )
+
+            def requirement_key(requirement: str) -> tuple[str, str]:
+                name = FlextInfraUtilitiesDependencies.dep_name(requirement) or ""
+                return name, requirement
+
+            canonical = tuple(sorted(canonical, key=requirement_key))
         u.Cli.toml_sync_string_list(container, key, canonical)
         return r[bool].ok(True)
 
@@ -809,13 +806,13 @@ class FlextInfraUtilitiesPyprojectConform:
         if resolved_result.failure:
             return r[bool].fail(resolved_result.error or "repository resolution failed")
         expected_sources = resolved_result.value
-        if tuple(str(name) for name in sources) != tuple(expected_sources):
+        if tuple(sources) != tuple(expected_sources):
             return r[bool].fail("root uv workspace sources differ from workspace SSOT")
         for source_name, expected_source in expected_sources.items():
             source = sources.get(source_name)
             if (
                 not isinstance(source, Mapping)
-                or tuple(str(key) for key in source) != tuple(expected_source)
+                or tuple(source) != tuple(expected_source)
                 or dict(source) != expected_source
             ):
                 return r[bool].fail(

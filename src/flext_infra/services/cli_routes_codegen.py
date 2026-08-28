@@ -36,27 +36,19 @@ class CodegenRoutes(CliRouteBase):
                 name=c.Infra.VERB_RUN,
                 help_text="Run workspace quality gates",
                 model_cls=m.Infra.RunCommand,
-                handler=lambda params: FlextInfraWorkspaceChecker.execute_payload(
-                    params
-                ).map(CliRouteBase.as_route_value),
+                handler=FlextInfraWorkspaceChecker.execute_payload,
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-pyrefly-settings",
                 help_text="Repair [tool.pyrefly] blocks",
                 model_cls=m.Infra.FixPyreflyConfigCommand,
-                handler=lambda params: FlextInfraConfigFixer.execute_payload(
-                    params
-                ).map(CliRouteBase.as_route_value),
+                handler=FlextInfraConfigFixer.execute_payload,
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-enforcement",
                 help_text="Auto-fix enforcement-catalog violations",
                 model_cls=m.Infra.FixEnforcementCommand,
-                handler=lambda params: (
-                    FlextInfraEnforcementFixerOrchestrator.execute_payload(params).map(
-                        CliRouteBase.as_route_value
-                    )
-                ),
+                handler=FlextInfraEnforcementFixerOrchestrator.execute_payload,
             ),
         ),
         c.Infra.CLI_GROUP_CODEGEN: (
@@ -72,7 +64,7 @@ class CodegenRoutes(CliRouteBase):
                     name=route_name,
                     help_text=help_text,
                     model_cls=model_cls,
-                    handler=lambda params, mc=model_cls: mc.execute_command(params),
+                    handler=model_cls.execute_command,
                     success_message=success_message,
                 )
                 for route_name, help_text, model_cls, success_message in (
@@ -156,7 +148,7 @@ class CodegenRoutes(CliRouteBase):
                 name=route_name,
                 help_text=help_text,
                 model_cls=model_cls,
-                handler=lambda params, mc=model_cls: mc.execute_command(params),
+                handler=model_cls.execute_command,
             )
             for route_name, help_text, model_cls in (
                 (

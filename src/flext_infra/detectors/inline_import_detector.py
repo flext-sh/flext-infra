@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import operator
 import sys
 from typing import TYPE_CHECKING
 
@@ -169,7 +170,7 @@ class FlextInfraInlineImportDetector:
                             is_importlib=True,
                         )
                     )
-        return tuple(sorted(violations, key=lambda violation: violation.line))
+        return tuple(sorted(violations, key=operator.attrgetter("line")))
 
     @staticmethod
     def _binding_offset(

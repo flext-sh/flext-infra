@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from typing import ClassVar
 
 from flext_infra import m
@@ -46,27 +47,19 @@ class RefactorRoutes(CliRouteBase):
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
-            handler=lambda params: FlextInfraNamespaceEnforcer.execute_command(
-                params
-            ).map(CliRouteBase.as_route_value),
+            handler=FlextInfraNamespaceEnforcer.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="census",
             help_text="Run a Rope-only workspace census for Python objects",
             model_cls=FlextInfraRefactorCensus,
-            handler=lambda params: FlextInfraRefactorCensus.execute_command(params).map(
-                CliRouteBase.as_route_value
-            ),
+            handler=FlextInfraRefactorCensus.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
-            handler=lambda params: (
-                FlextInfraAccessorMigrationOrchestrator.execute_payload(params).map(
-                    CliRouteBase.as_route_value
-                )
-            ),
+            handler=FlextInfraAccessorMigrationOrchestrator.execute_payload,
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",
@@ -75,7 +68,7 @@ class RefactorRoutes(CliRouteBase):
                 "flatten *.Core.Tests paths"
             ),
             model_cls=FlextInfraWrapperRootNamespaceRefactor,
-            handler=lambda params: params.execute(),
+            handler=FlextInfraWrapperRootNamespaceRefactor.execute,
         ),
         m.Cli.ResultCommandRoute(
             name="modernize-patterns",
@@ -83,8 +76,8 @@ class RefactorRoutes(CliRouteBase):
                 "Fix u.Cli.print(), pdb, bare except and open() encoding in library code"
             ),
             model_cls=m.Infra.ModernizeInput,
-            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
-                params,
+            handler=functools.partial(
+                FlextInfraModernizeOrchestrator.execute_command,
                 transformer_factory=FlextInfraRefactorPatternModernizer,
                 description="pattern modernizer",
             ),
@@ -93,8 +86,8 @@ class RefactorRoutes(CliRouteBase):
             name="modernize-pydantic",
             help_text="Migrate Pydantic v1/legacy patterns to Pydantic v2",
             model_cls=m.Infra.ModernizeInput,
-            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
-                params,
+            handler=functools.partial(
+                FlextInfraModernizeOrchestrator.execute_command,
                 transformer_factory=FlextInfraRefactorPydanticModernizer,
                 description="pydantic modernizer",
             ),
@@ -103,8 +96,8 @@ class RefactorRoutes(CliRouteBase):
             name="modernize-logging",
             help_text="Migrate logging usage to u.fetch_logger",
             model_cls=m.Infra.ModernizeInput,
-            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
-                params,
+            handler=functools.partial(
+                FlextInfraModernizeOrchestrator.execute_command,
                 transformer_factory=FlextInfraRefactorLoggingModernizer,
                 description="logging modernizer",
             ),
@@ -116,8 +109,8 @@ class RefactorRoutes(CliRouteBase):
                 "to FLEXT canonical forms"
             ),
             model_cls=m.Infra.ModernizeInput,
-            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
-                params,
+            handler=functools.partial(
+                FlextInfraModernizeOrchestrator.execute_command,
                 transformer_factory=FlextInfraRefactorResultDiModernizer,
                 description="result/DI modernizer",
             ),
@@ -129,8 +122,8 @@ class RefactorRoutes(CliRouteBase):
                 "to cli.display_text()"
             ),
             model_cls=m.Infra.ModernizeInput,
-            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
-                params,
+            handler=functools.partial(
+                FlextInfraModernizeOrchestrator.execute_command,
                 transformer_factory=FlextInfraRefactorCliModernizer,
                 description="cli modernizer",
             ),
