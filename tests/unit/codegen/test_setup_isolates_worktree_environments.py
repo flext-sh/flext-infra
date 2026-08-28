@@ -28,10 +28,11 @@ def _recipe(name: str) -> str:
     return body[1].split("\n\n", 1)[0]
 
 
-def test_provisioning_replaces_only_a_foreign_environment_symlink() -> None:
+def test_provisioning_rejects_a_foreign_environment_symlink() -> None:
     recipe = _recipe("SETUP_ENVIRONMENT_RECIPE")
     assert '[ -L "$(RUNTIME_VENV)" ]' in recipe
-    assert 'rm "$(RUNTIME_VENV)"' in recipe
+    assert "runtime environment must not be a symlink" in recipe
+    assert 'rm "$(RUNTIME_VENV)"' not in recipe
     assert '[ ! -x "$(RUNTIME_PYTHON)" ]' in recipe
 
 
