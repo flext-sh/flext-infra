@@ -559,17 +559,10 @@ Infra:
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
-        # Direct pytest completed 76% with four workers and 90% with eight
-        # before the immutable 120s wall. Fourteen and sixteen workers
-        # oversubscribed the subprocess-heavy cases and breached their 10s item
-        # budgets. Twelve leaves eight of the host's 20 CPUs for child work.
-        # BUMP 2026-08-20: the 12-worker xdist pool crashes under loaded
-        # multi-lane hosts (12 subprocesses importing the full module graph +
-        # fixtures exhaust memory/cgroup limits → "Unexpectedly no active
-        # workers available"). The lifecycle cutover removed 34 subprocess-heavy
-        # modules and their fixtures. Four workers remains the stable full-suite
-        # pool for CI; pre-push uses impact selection instead of repeating full.
-        parallel-workers: 4
+        # Subprocess-heavy generation tests exhausted memory repeatedly with
+        # four workers on a loaded multi-lane host. Two keeps parallel coverage
+        # while bounding concurrent imports and nested interpreters.
+        parallel-workers: 2
         # Work stealing drains uneven codegen/subprocess tails without the
         # serialized 99% tail measured under loadscope.
         parallel-distribution: worksteal
