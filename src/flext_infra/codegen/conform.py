@@ -1498,18 +1498,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
-            # Why: ci.yml.j2 iterates this to build its push/pull_request branch
-            # filters, so an unsupplied value fails the render outright. The
-            # repository's own integration branch is the only branch this layer
-            # can name from resolved data; a fleet-wide list hardcoded here would
-            # make every repository trigger on branches it does not have.
+            # CI and docs share the merge-lock branch authority. Keeping the
+            # provider-resolved baseline in the same deduplicated sequence also
+            # covers custom integration lanes without allowing their workflows
+            # to drift apart.
             branch = target.baseline_branch
+            ci_trigger_branches = tuple(
+                dict.fromkeys((
+                    *codegen.make.work_in_progress.merge_lock_target_branches,
+                    branch,
+                    "main",
+                ))
+            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=branch,
-                    ci_trigger_branches=(branch, "main"),
+                    ci_trigger_branches=ci_trigger_branches,
                     python_version=codegen.toolchain.python_version,
                     mise_version=codegen.toolchain.mise_version,
                     dependency_cooldown_days=(

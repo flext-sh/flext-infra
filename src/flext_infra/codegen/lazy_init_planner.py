@@ -94,11 +94,7 @@ class FlextInfraCodegenLazyInitPlanner(
         if (
             is_test_child_package
             and package_entry is not None
-            and not any(not module.is_package_init for module in package_entry.modules)
-            and not any(
-                child.joinpath(c.Infra.INIT_PY).is_file()
-                for child in package_entry.direct_child_dirs
-            )
+            and not self._has_live_package_content(package_entry)
         ):
             return m.Infra.LazyInitPlan(
                 context=context,

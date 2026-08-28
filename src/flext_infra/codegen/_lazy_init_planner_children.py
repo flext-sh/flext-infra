@@ -27,6 +27,23 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         @staticmethod
         def _publish(name: str, *, allow_main: bool) -> bool: ...
 
+    def _has_live_package_content(
+        self, package_entry: m.Infra.RopePackageIndexEntry
+    ) -> bool:
+        """Return whether a package owns a module or a manual initializer."""
+        candidates = (package_entry.package_dir, *package_entry.descendant_child_dirs)
+        for candidate in candidates:
+            entry = self._package_entry(candidate)
+            if entry is None:
+                continue
+            if any(not module.is_package_init for module in entry.modules):
+                return True
+            if entry.init_path.is_file():
+                source = entry.init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                if source.strip() and not source.startswith(c.Infra.AUTOGEN_HEADER):
+                    return True
+        return False
+
     def _merge_children(
         self,
         pkg_dir: Path,
@@ -52,6 +69,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             is_fixture_child = self._is_fixture_package(child_dir)
             child_exports = dir_exports.get(str(resolved_child_dir), {})
             if child_entry is None or not child_entry.package_name:
+                continue
+            if not child_exports and not self._has_live_package_content(child_entry):
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
                 continue

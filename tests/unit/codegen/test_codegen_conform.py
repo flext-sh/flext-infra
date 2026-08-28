@@ -1442,23 +1442,28 @@ class TestScriptDispatchMakefile:
         tm.that("--mode check" in gen_check_body, eq=True)
         tm.that(
             gen_check_body,
-            has=["_builtin_require_environment", "$(PROJECT_FLEXT_INFRA)"],
+            has="$(FLEXT_INFRA_BOOTSTRAP)",
         )
         tm.that(
             gen_check_body,
-            lacks=["$(FLEXT_INFRA_BOOTSTRAP)", "codegen init", "deps modernize"],
+            lacks=[
+                "_builtin_require_environment",
+                "$(PROJECT_FLEXT_INFRA)",
+                "codegen init",
+                "deps modernize",
+            ],
         )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
         tm.that("--mode apply" in gen_all_body, eq=True)
         tm.that("--mode check" in gen_all_body, eq=False)
-        tm.that(gen_all_body, has="$(PROJECT_FLEXT_INFRA)")
+        tm.that(gen_all_body, has="$(FLEXT_INFRA_BOOTSTRAP)")
         tm.that(
             gen_all_body,
             lacks=[
                 "_builtin_require_environment",
-                "$(FLEXT_INFRA_BOOTSTRAP)",
+                "$(PROJECT_FLEXT_INFRA)",
                 "codegen init",
                 "deps modernize",
             ],

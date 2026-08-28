@@ -116,7 +116,6 @@ class TestsMakeTestSelector:
             tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
         )
         uv_log = engine_root / "uv-args.log"
-        runtime_log = engine_root / "runtime-args.log"
         test_u.Tests.write_executable(
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
         )
@@ -133,7 +132,6 @@ class TestsMakeTestSelector:
                 '  mkdir -p "$2/bin"\n'
                 "  cat > \"$2/bin/python\" <<'PYTHON'\n"
                 "#!/bin/sh\n"
-                f'printf \'%s\\n\' "$*" >> "{runtime_log}"\n'
                 "exit 0\n"
                 "PYTHON\n"
                 '  chmod +x "$2/bin/python"\n'
@@ -192,8 +190,9 @@ class TestsMakeTestSelector:
             has=[f"venv {engine_root / '.venv'}", f"sync --project {engine_root}"],
         )
         tm.that(
-            runtime_log.read_text(encoding="utf-8"),
+            uv_log.read_text(encoding="utf-8"),
             has=[
+                "run --no-project --with",
                 "-m flext_infra codegen conform",
                 f"--root {engine_root}",
                 "--scope self",

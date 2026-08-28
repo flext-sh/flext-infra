@@ -707,17 +707,27 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        # A standalone checkout is an empty uv workspace root. Without this
-        # marker, uv walks upward and may mutate an unrelated parent lockfile.
+        # A physical root checkout is an empty uv workspace root. A declared
+        # submodule must not own an empty nested workspace: uv rejects the
+        # parent workspace before it can resolve that member. Submodules join
+        # the parent when present and remain ordinary projects when cloned
+        # independently.
         members = (
             tuple(member.path.as_posix() for member in workspace.subprojects)
             if workspace_root
             else ()
         )
         workspace_table = u.Cli.toml_table_child(uv, "workspace")
-        if workspace_table is None:
-            workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
-        u.Cli.toml_sync_string_list(workspace_table, "members", members)
+        owns_workspace = workspace_root or (
+            not workspace.subprojects
+            and workspace.repository.checkout is not c.Infra.CheckoutKind.SUBMODULE
+        )
+        if owns_workspace:
+            if workspace_table is None:
+                workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
+            u.Cli.toml_sync_string_list(workspace_table, "members", members)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None and workspace_root:
             sources = u.Cli.toml_ensure_table(uv, "sources")

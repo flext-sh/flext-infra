@@ -112,6 +112,50 @@ workspace = true
             eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
         )
 
+    def test_submodule_checkout_removes_empty_uv_workspace_owner(self) -> None:
+        repository = _repository(
+            "workspace-member", role=c.Infra.RepositoryRole.STANDALONE, path="."
+        )
+        workspace = _workspace().model_copy(
+            update={"repository": repository, "subprojects": ()}
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            """[project]
+name = "workspace-member"
+
+[tool.uv.workspace]
+""",
+            codegen=config.Infra.codegen,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        uv = document.get("tool", {}).get("uv", {})
+        tm.that("workspace" not in uv, eq=True)
+
+    def test_root_checkout_keeps_empty_uv_workspace_owner(self) -> None:
+        repository = _repository(
+            "standalone-root", role=c.Infra.RepositoryRole.STANDALONE, path="."
+        ).model_copy(update={"checkout": c.Infra.CheckoutKind.ROOT})
+        workspace = _workspace().model_copy(
+            update={"repository": repository, "subprojects": ()}
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            """[project]
+name = "standalone-root"
+
+[tool.uv]
+link-mode = "copy"
+""",
+            codegen=config.Infra.codegen,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        tm.that(document["tool"]["uv"]["workspace"], eq={})
+
     def test_standalone_derives_bare_internal_dependency_from_config_authority(
         self,
     ) -> None:
