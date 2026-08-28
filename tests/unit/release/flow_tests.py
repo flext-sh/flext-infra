@@ -140,6 +140,8 @@ class TestsFlextInfraReleaseFlow:
                 c.Infra.RELEASE_PHASE_ALL,
                 "--interactive",
                 "0",
+                "--projects",
+                c.Tests.RELEASE_PROJECTS[0],
                 "--dry-run",
             )
 

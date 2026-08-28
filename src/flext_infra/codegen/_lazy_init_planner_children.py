@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenLazyInitPlannerChildrenMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
+        _planned_actions: dict[str, c.Infra.LazyInitAction]
 
         def _package_entry(
             self, pkg_dir: Path
@@ -45,6 +46,11 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             if child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES:
                 continue
             resolved_child_dir = child_dir.resolve()
+            if (
+                self._planned_actions.get(str(resolved_child_dir))
+                == c.Infra.LazyInitAction.REMOVE
+            ):
+                continue
             child_init = child_dir / c.Infra.INIT_PY
             if not child_init.is_file():
                 continue

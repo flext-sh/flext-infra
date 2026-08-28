@@ -14,18 +14,12 @@ if TYPE_CHECKING:
 class TestValidateCli:
     """Exercise the public validate CLI entrypoints."""
 
-    def test_stub_validate_accepts_all_flag(self, tmp_path: Path) -> None:
+    def test_stub_validate_uses_canonical_surface(self, tmp_path: Path) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
 
         tm.that(
-            infra_main([
-                "validate",
-                "stub-validate",
-                "--workspace",
-                str(workspace),
-                "--all",
-            ]),
+            infra_main(["validate", "stub-validate", "--workspace", str(workspace)]),
             eq=0,
         )
 

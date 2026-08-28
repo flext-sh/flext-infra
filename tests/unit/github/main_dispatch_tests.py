@@ -58,5 +58,5 @@ def test_pull_request_dispatch_accepts_only_repository_alias(tmp_path: Path) -> 
                 workspace=str(repository), projects=["another-project"]
             )
         ),
-        has="unknown projects",
+        has="unknown project locators",
     )

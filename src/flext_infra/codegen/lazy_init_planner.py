@@ -57,6 +57,9 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
     _collision_count: int = u.PrivateAttr(default_factory=int)
+    _planned_actions: dict[str, c.Infra.LazyInitAction] = u.PrivateAttr(
+        default_factory=dict
+    )
 
     @property
     def collision_count(self) -> int:
@@ -82,21 +85,15 @@ class FlextInfraCodegenLazyInitPlanner(
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
-        is_test_child_package = (
-            context.surface == c.Infra.DIR_TESTS
-            and context.current_pkg != c.Infra.DIR_TESTS
-        )
         empty_action: c.Infra.LazyInitAction = (
-            c.Infra.LazyInitAction.WRITE
-            if is_test_child_package
-            else (
-                c.Infra.LazyInitAction.REMOVE
-                if context.generated_init
-                else c.Infra.LazyInitAction.SKIP
-            )
+            c.Infra.LazyInitAction.REMOVE
+            if context.generated_init
+            else c.Infra.LazyInitAction.SKIP
         )
         if not context.importable:
-            return m.Infra.LazyInitPlan(context=context, action=empty_action)
+            return self._remember_plan(
+                m.Infra.LazyInitPlan(context=context, action=empty_action)
+            )
         lazy_map = self._package_exports(context)
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,
@@ -123,7 +120,9 @@ class FlextInfraCodegenLazyInitPlanner(
             lazy_map.pop(name, None)
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
-            return m.Infra.LazyInitPlan(context=context, action=empty_action)
+            return self._remember_plan(
+                m.Infra.LazyInitPlan(context=context, action=empty_action)
+            )
         excluded_lazy_names: t.StrSequence = ()
         is_public_project_root = (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
@@ -205,6 +204,11 @@ class FlextInfraCodegenLazyInitPlanner(
         # later alias resolution never rebuilds this package without children.
         self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
+        return self._remember_plan(plan)
+
+    def _remember_plan(self, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitPlan:
+        """Record a package's final action for bottom-up parent planning."""
+        self._planned_actions[str(plan.context.pkg_dir.resolve())] = plan.action
         return plan
 
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
