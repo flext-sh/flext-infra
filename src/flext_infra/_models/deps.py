@@ -230,8 +230,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
         projects: t.MappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
-            default_factory=immutable_empty_mapping,
-            description="Per-project reports",
+            default_factory=immutable_empty_mapping, description="Per-project reports"
         )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None, description="Pip check report", validate_default=True

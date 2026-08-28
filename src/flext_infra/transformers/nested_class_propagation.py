@@ -156,10 +156,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
                 return match.group(0)
             return f"{qualifier}.{suffix}"
 
-        new_source: str = attr_pattern.sub(
-            qualify_reference,
-            source,
-        )
+        new_source: str = attr_pattern.sub(qualify_reference, source)
         if new_source != source:
             self._record_change(
                 f"Qualified attribute reference: .{old_name} -> .{suffix}"

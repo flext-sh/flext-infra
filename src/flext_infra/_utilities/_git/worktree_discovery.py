@@ -180,9 +180,7 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
             relative_path = Path(relative_path_text)
             if (workspace_root / relative_path / ".git").exists():
                 paths.append(relative_path)
-        return r[t.SequenceOf[Path]].ok(
-            tuple(sorted(paths, key=path_depth_then_text))
-        )
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(paths, key=path_depth_then_text)))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitWorktreeDiscoveryMixin"]

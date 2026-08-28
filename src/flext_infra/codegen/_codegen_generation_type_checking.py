@@ -172,17 +172,16 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             lines.append("    from flext_core import FlextTypes")
 
         def type_checking_module_key(mod: str) -> t.StrPair:
-            owner = FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
-                mod, collapsed[mod]
+            owner = (
+                FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
+                    mod, collapsed[mod]
+                )
             )
             return FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
                 owner
             )
 
-        sorted_mods = sorted(
-            collapsed,
-            key=type_checking_module_key,
-        )
+        sorted_mods = sorted(collapsed, key=type_checking_module_key)
         previous_is_relative: bool | None = False if include_flext_types else None
         for mod in sorted_mods:
             is_relative = mod.startswith(".")

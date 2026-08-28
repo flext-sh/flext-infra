@@ -200,10 +200,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             return entry.file_path.as_posix()
 
         modules = tuple(
-            sorted(
-                self.workspace_index.modules_by_path.values(),
-                key=module_path,
-            )
+            sorted(self.workspace_index.modules_by_path.values(), key=module_path)
         )
         if not project_names:
             return modules

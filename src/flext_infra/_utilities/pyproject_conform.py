@@ -282,9 +282,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 name = FlextInfraUtilitiesDependencies.dep_name(requirement) or ""
                 return name, requirement
 
-            canonical = tuple(
-                sorted(canonical, key=requirement_key)
-            )
+            canonical = tuple(sorted(canonical, key=requirement_key))
         u.Cli.toml_sync_string_list(container, key, canonical)
         return r[bool].ok(True)
 

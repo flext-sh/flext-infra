@@ -155,8 +155,7 @@ class FlextInfraModelsRefactorViolations:
             t.NonNegativeInt, m.Field(description="Total violations")
         ]
         confidence_counts: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping,
-            description="Confidence histogram",
+            default_factory=immutable_empty_mapping, description="Confidence histogram"
         )
         violations: tuple[
             FlextInfraModelsRefactorViolations.ClassNestingViolation, ...
@@ -225,8 +224,7 @@ class FlextInfraModelsRefactorViolations:
             t.NonNegativeInt, m.Field(description="Total violations in file")
         ]
         counts: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping,
-            description="Per-pattern counts",
+            default_factory=immutable_empty_mapping, description="Per-pattern counts"
         )
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):

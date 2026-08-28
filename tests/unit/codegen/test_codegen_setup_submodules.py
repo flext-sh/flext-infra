@@ -59,11 +59,10 @@ class TestsCodegenSetupSubmodules:
             encoding="utf-8",
         )
         (bin_dir / "uv").chmod(0o755)
-        mise = test_u.Tests.write_mise_stub(bin_dir / "mise")
+        test_u.Tests.write_mise_stub(root / "bin" / "mise")
         environment = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
-            "SETUP_MISE": str(mise),
             "UV": str(bin_dir / "uv"),
             "UV_LOG": str(root / "uv.log"),
             "GIT_ALLOW_PROTOCOL": "file",
@@ -129,7 +128,7 @@ class TestsCodegenSetupSubmodules:
             cls._git(project / "vendor/source", "switch", "-q", "-c", member_branch)
         return project, cls._fake_uv(project)
 
-    def test_virgin_recursive_submodules_initialize_before_environment(
+    def test_virgin_submodule_initializes_only_direct_owner_before_environment(
         self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         nested = tmp_path / "nested"
@@ -146,26 +145,24 @@ class TestsCodegenSetupSubmodules:
         self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "source-dev")
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
+        direct_marker = project / "vendor/source/marker.txt"
         nested_marker = project / "vendor/source/child/nested/marker.txt"
 
         tm.ok(
             u.Cli.capture(
                 ["make", "setup"],
                 cwd=project,
-                env=self._fake_uv(project, nested_marker),
+                env=self._fake_uv(project, direct_marker),
             )
         )
 
+        checkout = project / "vendor/source"
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="")
         tm.that(
-            self._git(project / "vendor/source", "branch", "--show-current"),
-            eq="source-dev",
+            self._git(checkout, "rev-parse", "HEAD"),
+            eq=self._git(project, "rev-parse", "HEAD:vendor/source"),
         )
-        tm.that(
-            self._git(
-                project / "vendor/source/child/nested", "branch", "--show-current"
-            ),
-            eq="nested-dev",
-        )
+        tm.that(nested_marker.exists(), eq=False)
 
     def test_setup_is_repeatable_with_managed_submodule(
         self, tmp_path: Path, generated_project_template: Path
@@ -350,7 +347,9 @@ class TestsCodegenSetupSubmodules:
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
         tm.that(result.exit_code, eq=2)
-        tm.that(result.stderr, has="diverges from recorded gitlink")
+        tm.that(
+            result.stderr, has="branch feature/lane does not contain recorded gitlink"
+        )
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that((project / "uv.log").exists(), eq=False)
@@ -416,7 +415,7 @@ class TestsCodegenSetupSubmodules:
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
         tm.that(marker.read_text(encoding="utf-8"), eq="third-party wip")
 
-    def test_same_branch_declaration_uses_superproject_branch(
+    def test_same_branch_declaration_initializes_recorded_gitlink(
         self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         source = tmp_path / "source"
@@ -438,8 +437,11 @@ class TestsCodegenSetupSubmodules:
 
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
 
+        checkout = project / "vendor/source"
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="")
         tm.that(
-            self._git(project / "vendor/source", "branch", "--show-current"), eq="main"
+            self._git(checkout, "rev-parse", "HEAD"),
+            eq=self._git(project, "rev-parse", "HEAD:vendor/source"),
         )
 
     def test_setup_succeeds_when_gitlink_is_ahead_of_origin(

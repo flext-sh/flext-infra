@@ -129,7 +129,7 @@ class TestsMakeTestSelector:
                 'if [ "$1" = "--version" ]; then printf \'uv 0.12.0\\n\'; exit 0; fi\n'
                 'if [ "$1" = "venv" ]; then\n'
                 '  mkdir -p "$2/bin"\n'
-                '  cat > "$2/bin/python" <<\'PYTHON\'\n'
+                "  cat > \"$2/bin/python\" <<'PYTHON'\n"
                 "#!/bin/sh\n"
                 f'printf \'%s\\n\' "$*" >> "{runtime_log}"\n'
                 "exit 0\n"
@@ -186,10 +186,7 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             uv_log.read_text(encoding="utf-8"),
-            has=[
-                f"venv {engine_root / '.venv'}",
-                f"sync --project {engine_root}",
-            ],
+            has=[f"venv {engine_root / '.venv'}", f"sync --project {engine_root}"],
         )
         tm.that(
             runtime_log.read_text(encoding="utf-8"),

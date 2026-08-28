@@ -47,11 +47,7 @@ def test_false_branch_format_report_fails_closed(
     ) -> p.Result[m.Infra.GitBoolReport]:
         return r.ok(m.Infra.GitBoolReport(value=False))
 
-    monkeypatch.setattr(
-        u.Infra,
-        "git_check_branch_format",
-        reject_branch,
-    )
+    monkeypatch.setattr(u.Infra, "git_check_branch_format", reject_branch)
 
     result = _add(repository, "feature/rejected")
 

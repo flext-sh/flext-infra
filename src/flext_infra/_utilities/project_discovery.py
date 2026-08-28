@@ -57,11 +57,12 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         def configured_key(candidate: Path) -> tuple[int, str]:
             relative = candidate.relative_to(resolved_workspace_root).as_posix()
-            return configured_order.get(relative, len(configured_projects)), candidate.name
+            return configured_order.get(
+                relative, len(configured_projects)
+            ), candidate.name
 
         non_root_candidates = sorted(
-            (c for c in candidates if c != resolved_workspace_root),
-            key=configured_key,
+            (c for c in candidates if c != resolved_workspace_root), key=configured_key
         )
         ordered.extend(non_root_candidates)
         return ordered

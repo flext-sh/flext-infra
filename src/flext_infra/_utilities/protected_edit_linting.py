@@ -41,8 +41,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         normalized_line: str = c.Infra.LINE_COL_RE.sub("", line)
         normalized_without_unused_imports: str = c.Infra.UNUSED_IMPORT_RE.sub(
-            normalize_unused_import,
-            normalized_line,
+            normalize_unused_import, normalized_line
         )
         if c.Infra.LINT_SUMMARY_RE.match(normalized_without_unused_imports):
             return ""

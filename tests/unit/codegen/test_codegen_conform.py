@@ -1419,11 +1419,7 @@ class TestScriptDispatchMakefile:
         )
         tm.that(
             gen_check_body,
-            lacks=[
-                "$(FLEXT_INFRA_BOOTSTRAP)",
-                "codegen init",
-                "deps modernize",
-            ],
+            lacks=["$(FLEXT_INFRA_BOOTSTRAP)", "codegen init", "deps modernize"],
         )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]

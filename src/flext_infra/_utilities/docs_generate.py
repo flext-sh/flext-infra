@@ -463,10 +463,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 else match.group(1)
             )
 
-        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(
-            sanitize_link,
-            content,
-        )
+        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(sanitize_link, content)
         return sanitized
 
 

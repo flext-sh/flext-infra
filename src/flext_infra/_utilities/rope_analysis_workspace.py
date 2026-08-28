@@ -95,10 +95,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             & c.Infra.ITERATION_EXCLUDED_PARTS
         }
         return tuple(
-            sorted(
-                python_paths | wrapper_paths | stub_paths,
-                key=Path.as_posix,
-            )
+            sorted(python_paths | wrapper_paths | stub_paths, key=Path.as_posix)
         )
 
     @classmethod
