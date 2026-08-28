@@ -190,20 +190,14 @@ UV ?= uv
 UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
-# Prefer the recorded flext-infra gitlink OID (immutable) when the workspace
-# root can resolve it. Lazy-init uses the installed CLI and has no bootstrap
-# contract at all.
+# Bootstrap uses the configured integration branch. An attached workspace uses
+# its declared editable source below; lazy-init uses the installed CLI only.
 ifeq ($(GEN_INIT_ONLY),Y)
-FLEXT_INFRA_BOOTSTRAP_REF :=
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT :=
 FLEXT_INFRA_SOURCE_ROOT_REL :=
 UV_BOOTSTRAP_FLAGS :=
 else
-FLEXT_INFRA_BOOTSTRAP_REF := $(shell git -C "$(WORKSPACE_ROOT)" rev-parse "HEAD:." 2>/dev/null)
-ifeq ($(strip $(FLEXT_INFRA_BOOTSTRAP_REF)),)
-FLEXT_INFRA_BOOTSTRAP_REF := 0.12.0-dev
-endif
-FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@$(FLEXT_INFRA_BOOTSTRAP_REF)
+FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
 FLEXT_INFRA_SOURCE_ROOT_REL := 
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 endif

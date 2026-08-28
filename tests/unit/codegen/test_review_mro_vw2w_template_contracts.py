@@ -23,12 +23,17 @@ _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
 class TestsReviewTemplateContracts:
     """Lock the SSOT fixes for bootstrap pin, PROJECT selection, TestPyPI order."""
 
-    def test_makefile_bootstrap_prefers_gitlink_oid(self) -> None:
+    def test_makefile_bootstrap_uses_configured_branch_without_git_probe(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
-        tm.that(text, has="FLEXT_INFRA_BOOTSTRAP_REF")
-        tm.that(text, has='rev-parse "HEAD:{{ infra_repository.path }}"')
-        tm.that(text, has="@$(FLEXT_INFRA_BOOTSTRAP_REF)")
-        tm.that(text, lacks="@{{ infra_repository_branch }}")
+        tm.that(text, lacks="FLEXT_INFRA_BOOTSTRAP_REF")
+        tm.that(text, lacks='rev-parse "HEAD:{{ infra_repository.path }}"')
+        tm.that(
+            text,
+            has=(
+                "{{ infra_repository.distribution }} @ git+"
+                "{{ infra_repository.url }}@{{ infra_repository_branch }}"
+            ),
+        )
 
     def test_makefile_deps_modernize_uses_selected_projects(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
@@ -53,7 +58,7 @@ class TestsReviewTemplateContracts:
             text,
             has=(
                 "SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),"
-                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_MEMBERS),$(REQUESTED_PROJECTS)),"
+                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),"
                 "$(DEFAULT_PROJECTS))"
             ),
         )
@@ -62,16 +67,6 @@ class TestsReviewTemplateContracts:
         """Gas Town is the sole lane lifecycle owner."""
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(text, lacks=["_builtin_work_", "make work", "work start"])
-
-    def test_makefile_defines_attached_member_for_status(self) -> None:
-        text = _MAKEFILE.read_text(encoding="utf-8")
-        tm.that(
-            text,
-            has=(
-                "ATTACHED_MEMBER := $(if $(filter workspace-member,"
-                "$(MAKE_PROFILE)),$(PROJECT_ROOT),)"
-            ),
-        )
 
     def test_release_verifies_core_gitlink_after_setup(self) -> None:
         text = _RELEASE.read_text(encoding="utf-8")
