@@ -35,15 +35,14 @@ ENV HOME=/home/runner \
     MISE_CACHE_DIR=/home/runner/.cache/mise \
     MISE_STATE_DIR=/home/runner/.local/state/mise \
     MISE_TRUSTED_CONFIG_PATHS=/workspace
-RUN mkdir -p /workspace && chown runner:runner /workspace
 WORKDIR /workspace
-COPY --chown=runner:runner .mise.toml mise.lock ./
-COPY --chown=runner:runner bin/mise bin/mise.cmd ./bin/
+RUN --mount=type=bind,source=.,target=/source,ro \
+    cp -R /source/. /workspace/ \
+    && chown -R runner:runner /workspace
 USER runner
-RUN mkdir -p /workspace/.test-tmp
-RUN ./bin/mise trust .mise.toml \
+RUN mkdir -p /workspace/.test-tmp \
+    && ./bin/mise trust .mise.toml \
     && ./bin/mise install --locked --yes
-COPY --chown=runner:runner . .
 ENV PATH="/home/runner/.local/share/mise/shims:${PATH}"
 # End SECTION: managed tool bootstrap
 

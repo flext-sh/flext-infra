@@ -23,12 +23,6 @@ name: CI
     types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
-# === SECTION: permissions (managed) ===
-# Source: template (minimal read-only permissions)
-permissions:
-  contents: read
-# End SECTION: permissions
-
 # Why: one active run per workflow and branch prevents obsolete CI from consuming runners.
 concurrency:
   group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
@@ -39,6 +33,9 @@ jobs:
   # Source: template + config:github_actions.*
   ci:
     name: ci
+    # Only the checkout job needs repository contents.
+    permissions:
+      contents: read
     if: {% raw %}${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}{% endraw %}
     runs-on: ubuntu-latest
     timeout-minutes: 60

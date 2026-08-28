@@ -113,6 +113,10 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: CI=Y make gen WHAT=apply APPLY=Y")
         tm.that(workflow, has="run: CI=Y make fmt WHAT=apply APPLY=Y")
         tm.that(workflow, has="run: CI=Y make fix WHAT=apply APPLY=Y")
+        header, jobs = workflow.split("\njobs:\n", maxsplit=1)
+        tm.that(header, lacks="permissions:")
+        ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
+        tm.that(ci_job, has="permissions:\n      contents: read")
 
     def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
         """The generated staged hooks render the configured workflow partitions."""
@@ -280,6 +284,9 @@ class TestCodegenCiMatrix:
                 tm.that(content, has="build-base")
             tm.that(content, has="USER runner")
             tm.that(content, has="./bin/mise install --locked --yes")
+            tm.that(content, has="RUN --mount=type=bind,source=.,target=/source,ro")
+            tm.that(content, has="cp -R /source/. /workspace/")
+            tm.that(content, lacks="COPY")
             tm.that(content, lacks="chmod -R a+rwX")
             tm.that(content, lacks="GITHUB_TOKEN")
 
