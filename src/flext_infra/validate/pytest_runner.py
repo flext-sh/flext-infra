@@ -17,7 +17,10 @@ from flext_infra.base import s
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidator
-from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+from flext_infra.validate.testmon_db import (
+    FlextInfraTestmonDbInspector,
+    FlextInfraTestmonDbInvalidator,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -129,11 +132,7 @@ class FlextInfraPytestRunner(s[int]):
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 
-    _CACHE_WHATS: frozenset[str] = frozenset({
-        "cache-status",
-        "cache-clear",
-        "cache-checkpoint",
-    })
+    _CACHE_WHATS: frozenset[str] = frozenset({"cache-status", "cache-checkpoint"})
 
     def _ci_disables_coverage(self) -> bool:
         """True when Make CI token is exact make.ci.value (CI=Y)."""
@@ -212,8 +211,23 @@ class FlextInfraPytestRunner(s[int]):
                 "--no-cov-on-fail",
             )
         if focused:
-            return ("--no-cov",)
+            return ("--testmon", "--testmon-forceselect", "--no-cov")
         return ("--testmon", "--no-cov")
+
+    def _invalidate_focused_cache(self) -> p.Result[tuple[str, ...]]:
+        """Invalidate only rows selected by one bounded FILE/MATCH request."""
+        if self.file is None and self.match is None:
+            return r[tuple[str, ...]].ok(())
+        db = self._testmon_db_path()
+        if not db.exists() and not db.is_symlink():
+            return r[tuple[str, ...]].ok(())
+        return FlextInfraTestmonDbInvalidator(
+            workspace_root=self.root,
+            db_path=db,
+            file=self.file,
+            match=self.match,
+            max_tests=config.Infra.tooling.tools.pytest.testmon_focused_max_tests,
+        ).execute()
 
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
         """Build the exact child argv from the typed tooling policy."""
@@ -302,24 +316,6 @@ class FlextInfraPytestRunner(s[int]):
     def _execute_cache_maintenance(self) -> p.Result[int]:
         """Run one typed testmon DB maintenance WHAT without invoking pytest."""
         db = self._testmon_db_path()
-        if self.what == "cache-clear":
-            apply = (
-                u.Cli
-                .env_read(config.Infra.codegen.make.apply_variable)
-                .unwrap()
-                .strip()
-            )
-            if apply != config.Infra.codegen.make.apply_value:
-                return r[int].fail(
-                    "make test WHAT=cache-clear requires "
-                    f"{config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                )
-            for path in (db, Path(f"{db}-wal"), Path(f"{db}-shm")):
-                if path.exists() or path.is_symlink():
-                    path.unlink()
-            sys.stderr.write(f"testmon cache cleared under {self.root}\n")
-            return r[int].ok(0)
         if self.what == "cache-status":
             digest = FlextInfraTestmonDbInspector.digest_file(db)
             exists = db.is_file() and not db.is_symlink()
@@ -362,10 +358,20 @@ class FlextInfraPytestRunner(s[int]):
             )
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
+        command = self.build_command(report_dir)
+        invalidated_result = self._invalidate_focused_cache()
+        if invalidated_result.failure:
+            return r[int].fail(
+                invalidated_result.error or "focused testmon invalidation failed"
+            )
+        invalidated = invalidated_result.value
+        if invalidated:
+            sys.stderr.write(
+                "testmon focused invalidation: " + ", ".join(invalidated) + "\n"
+            )
         pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
             self._testmon_db_path()
         )
-        command = self.build_command(report_dir)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
         ).unwrap()

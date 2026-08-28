@@ -76,14 +76,14 @@ class TestsFlextInfraPytestRunner:
         test_file.parent.mkdir(parents=True)
         test_file.write_text("", encoding="utf-8")
         nodeid = "tests/sample % test.py::TestsSample::test exact"
-        runner = self._runner(tmp_path, file=nodeid, match="exact and not slow")
+        runner = self._runner(tmp_path, file=nodeid, match="exact")
         report_dir = tmp_path / ".reports" / "tests" / "run"
 
         command = runner.build_command(report_dir)
 
-        tm.that(command, has=[nodeid, "-k", "exact and not slow", "-n", "0"])
+        tm.that(command, has=[nodeid, "-k", "exact", "-n", "0"])
         tm.that(command, has="--no-cov")
-        tm.that(command, lacks="--testmon")
+        tm.that(command, has=["--testmon", "--testmon-forceselect"])
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
@@ -576,29 +576,3 @@ class TestsFlextInfraPytestRunner:
         exit_code: int = tm.ok(runner.execute())
         tm.that(exit_code, eq=0)
         tm.that(called, eq=[])
-
-    def test_cache_clear_requires_apply(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.delenv(config.Infra.codegen.make.apply_variable, raising=False)
-        runner = self._runner(tmp_path, what="cache-clear")
-        result = runner.execute()
-        tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="cache-clear requires")
-
-    def test_cache_clear_removes_db(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        db = tmp_path / ".testmondata"
-        wal = tmp_path / ".testmondata-wal"
-        db.write_bytes(b"db")
-        wal.write_bytes(b"wal")
-        monkeypatch.setenv(
-            config.Infra.codegen.make.apply_variable,
-            config.Infra.codegen.make.apply_value,
-        )
-        runner = self._runner(tmp_path, what="cache-clear")
-        exit_code: int = tm.ok(runner.execute())
-        tm.that(exit_code, eq=0)
-        tm.that(db.exists(), eq=False)
-        tm.that(wal.exists(), eq=False)
