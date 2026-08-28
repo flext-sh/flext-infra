@@ -16,6 +16,7 @@ from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from flext_infra._models.layout import FlextInfraModelsLayout
 
@@ -269,16 +270,6 @@ class FlextInfraConfigModels:
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
-        make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
-            m.Field(
-                description=(
-                    "Make/codegen profile; ci-matrix projected only for "
-                    "workspace-root/standalone; workspace-member excluded "
-                    "and orphan copies pruned"
-                )
-            ),
-        ]
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
@@ -298,16 +289,6 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
-        ]
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(
-                default=(),
-                description=(
-                    "Governed member repositories consumed by workspace-scoped "
-                    "workflow templates (docs paths, dependabot directories)"
-                ),
-            ),
         ]
         ci_trigger_branches: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -628,36 +609,6 @@ class FlextInfraConfigModels:
             ),
         ]
 
-    class CustomHandlerPolicy(_ConfigContract):
-        """Strict schema for the only handwritten Make extension file."""
-
-        filename: Annotated[
-            t.NonEmptyStr, m.Field(description="Versioned custom handler filename")
-        ]
-        target_pattern: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Required private target regular expression"),
-        ]
-        allow_public_targets: bool = m.Field(description="Permit public targets")
-        allow_toolchain_declarations: bool = m.Field(
-            description="Permit toolchain declarations"
-        )
-
-    class CustomHandlerPolicyOverride(_ConfigContract):
-        """Per-profile relaxation of the strict custom-handler contract.
-
-        Every field is optional: a profile declares ONLY what it relaxes, so a
-        new permission added to the base policy propagates automatically
-        instead of having to be repeated in each profile.
-        """
-
-        allow_public_targets: bool | None = m.Field(
-            default=None, description="Permit public targets"
-        )
-        allow_toolchain_declarations: bool | None = m.Field(
-            default=None, description="Permit toolchain declarations"
-        )
-
     class MakeBootstrapSpec(_ConfigContract):
         """Hermetic project dependency surface used before conform."""
 
@@ -908,51 +859,6 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeDocsSpec,
             m.Field(description="Public documentation lifecycle policy"),
         ]
-        custom_handler_policy: Annotated[
-            FlextInfraConfigModels.CustomHandlerPolicy,
-            m.Field(description="Private custom target policy"),
-        ]
-        custom_handler_profile_overrides: Annotated[
-            Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
-            m.Field(
-                default_factory=lambda: MappingProxyType({}),
-                description="Per-profile overrides of the custom handler policy",
-            ),
-        ]
-        project_check_gates: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                default=(),
-                description=(
-                    "Check gates this project implements itself, unioned into "
-                    "the built-in vocabulary. Without this seam the vocabulary "
-                    "is a closed Final tuple, so a project that ships a working "
-                    "`_custom_check_<gate>` handler still cannot reach it "
-                    "through `make check`: the gate is rejected as unknown. A "
-                    "gate that can never run is not a gate, which is how "
-                    "references, agents, census and waza ended up outside the "
-                    "gate matrix in consuming repositories. Each id must have a "
-                    "`_custom_check_<id>` handler in the project's custom.mk."
-                ),
-            ),
-        ] = ()
-
-        @u.model_validator(mode="after")
-        def _validate_project_check_gates(self) -> Self:
-            """Project gates must be unique and must not shadow a built-in."""
-            if len(set(self.project_check_gates)) != len(self.project_check_gates):
-                msg = "make project_check_gates must be unique"
-                raise ValueError(msg)
-            builtin = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
-            shadowed = sorted(set(self.project_check_gates) & builtin)
-            if shadowed:
-                msg = (
-                    "make project_check_gates shadow built-in gates: "
-                    f"{', '.join(shadowed)}"
-                )
-                raise ValueError(msg)
-            return self
-
         @u.model_validator(mode="after")
         def _validate_verbs(self) -> Self:
             """Validate declared public verbs against workflow and contract.
@@ -1038,13 +944,6 @@ class FlextInfraConfigModels:
             whats: dict[str, tuple[str, ...]] = {
                 verb.name: verb.whats for verb in self.verbs
             }
-            # Why (flext-7b5x9): a project declaring its own gates via
-            # project_check_gates (and every built-in gate) must be reachable
-            # through the dispatch validator. Without this augmentation the
-            # check verb's `whats` stays `[all]`, so `make check WHAT=lint`
-            # is rejected as "unsupported" even though CHECK_GATES_ALLOWED
-            # would accept the gate value itself -- the dispatch gate is
-            # strictly narrower than the runtime gate set it claims.
             if "check" in whats:
                 whats["check"] = tuple(
                     dict.fromkeys((*whats["check"], *self.check_gates_allowed))
@@ -1056,29 +955,19 @@ class FlextInfraConfigModels:
         def check_gates_allowed(self) -> tuple[str, ...]:
             """Canonical generated Make check-gate vocabulary.
 
-            The built-in gates this package implements, plus the gates the
-            project declares for itself. The built-in tuple is the BASE, never
-            the whole vocabulary: a consuming repository owns gates this
-            package knows nothing about, and rejecting them as unknown is what
-            kept working handlers unreachable from `make check`.
+            Project-owned gates are discovered from ``scripts/check`` by Make;
+            this model owns only gates implemented by flext-infra.
             """
-            return (
-                *FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES,
-                *self.project_check_gates,
-            )
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
 
         @m.computed_field()
         @property
         def check_gates_default(self) -> tuple[str, ...]:
             """Canonical generated Make default check gates.
 
-            A declared project gate runs by default, exactly like a built-in:
-            a gate that must be asked for by name is a gate nobody runs.
+            Repository scripts remain explicit and do not mutate defaults.
             """
-            return (
-                *FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES,
-                *self.project_check_gates,
-            )
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
 
         @m.computed_field()
         @property
@@ -1090,37 +979,6 @@ class FlextInfraConfigModels:
             exactly that.
             """
             return FlextInfraConstantsMake.PROJECT_CHECK_GATES_FIXABLE_VALUES
-
-        @m.computed_field()
-        @property
-        def custom_handler_policies(
-            self,
-        ) -> Mapping[str, FlextInfraConfigModels.CustomHandlerPolicy]:
-            """Effective custom-handler policy for every Make profile.
-
-            The base policy states the strictest contract (private handlers
-            only). A profile whose custom surface legitimately owns more --
-            a workspace root orchestrating its members -- declares only the
-            fields it relaxes, so the engine never has to know which project
-            it is conforming.
-            """
-            base = self.custom_handler_policy
-            overrides = self.custom_handler_profile_overrides
-            # Keys are normalised to the profile's string value: MakeProfile is a
-            # StrEnum, so a raw YAML key and its enum member must land on the SAME
-            # entry. Mixing both would make a lookup silently miss and fall back to
-            # the strict base policy.
-            return {
-                str(profile): (
-                    base.model_copy(update=override.model_dump(exclude_none=True))
-                    if (override := overrides.get(str(profile)))
-                    else base
-                )
-                for profile in (
-                    *overrides,
-                    *FlextInfraConstantsCodegenProject.MakeProfile,
-                )
-            }
 
     class ManagedFileSpec(_ConfigContract):
         """One versioned file governed by codegen lifecycle policy."""
@@ -1424,9 +1282,12 @@ class FlextInfraConfigModels:
         root: Annotated[
             Path, m.Field(description="Resolved repository root receiving conformance")
         ]
-        make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
-            m.Field(description="Make profile inferred from live Git topology"),
+        topology: Annotated[
+            FlextInfraConstantsWorkspace.WorkspaceMode,
+            m.Field(description="Independent .gitmodules presence fact"),
+        ]
+        managed: Annotated[
+            bool, m.Field(description="Whether pyproject declares [tool.flext]")
         ]
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
@@ -1447,10 +1308,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = False
-        external_dependency_paths: Annotated[
-            tuple[Path, ...],
-            m.Field(description="Observed external or fork Git submodule paths"),
-        ] = ()
         technical_branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Technical branches excluded from ancestry policy"),
@@ -1465,18 +1322,6 @@ class FlextInfraConfigModels:
                     "gate instead of failing closed"
                 ),
             ),
-        ]
-
-    class ManagedGitlinkSpec(_ConfigContract):
-        """One governed submodule with its provider-owned baseline branch."""
-
-        repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(description="Governed repository identity"),
-        ]
-        branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Declared gitlink branch (. follows the superproject)"),
         ]
 
     class MakeCommandContext(_ConfigContract):
@@ -1504,33 +1349,6 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Provider-owned infrastructure baseline branch"),
         ]
-        infra_source_root_rel: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Repository-relative local infrastructure source, or None "
-                    "when bootstrap must use the configured Git source"
-                )
-            ),
-        ] = None
-        make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
-            m.Field(description="Selected repository Make profile"),
-        ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr, m.Field(description="Relative workspace root path")
-        ]
-        workspace_members: Annotated[
-            tuple[str, ...], m.Field(description="Declared workspace member paths")
-        ] = ()
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Repositories editable from the selected workspace"),
-        ] = ()
-        workspace_gitlinks: Annotated[
-            tuple[FlextInfraConfigModels.ManagedGitlinkSpec, ...],
-            m.Field(description="Provider-resolved governed Git submodules"),
-        ] = ()
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
@@ -1549,33 +1367,6 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
-        ]
-        extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
-            m.Field(description="Repository-specific public Make verbs"),
-        ] = ()
-        script_dispatch: Annotated[
-            FlextInfraConfigModels.ScriptDispatchSpec | None,
-            m.Field(description="Optional script command dispatch contract"),
-        ] = None
-
-        makefile_custom_include: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Generated custom Make policy include directive"),
-        ]
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
-            ),
-        ] = ()
-        workspace_cli_group: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="CLI group used for workspace orchestration"),
-        ]
-        project_selection_conflict_error: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mutually exclusive project selector error"),
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
@@ -1797,15 +1588,6 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Provider-owned infrastructure baseline branch"),
         ]
-        infra_source_root_rel: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Repository-relative local infrastructure source, or None "
-                    "when bootstrap must use the configured Git source"
-                )
-            ),
-        ] = None
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -1868,61 +1650,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = MappingProxyType({})
-        make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
-            m.Field(description="Generated Make execution profile"),
-        ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Relative path to the declared workspace root"),
-        ]
-        makefile_custom_include: Annotated[
-            str,
-            m.Field(
-                min_length=1,
-                description=("Make directive that includes the custom Make surface"),
-            ),
-        ]
-        workspace_members: Annotated[
-            tuple[str, ...], m.Field(description="Ordered workspace member paths")
-        ] = ()
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered workspace member records"),
-        ] = ()
-        workspace_gitlinks: Annotated[
-            tuple[FlextInfraConfigModels.ManagedGitlinkSpec, ...],
-            m.Field(description="Provider-resolved governed Git submodules"),
-        ] = ()
-        extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
-            m.Field(description="Repository-specific additional public Make verbs"),
-        ] = ()
-        script_dispatch: Annotated[
-            FlextInfraConfigModels.ScriptDispatchSpec | None,
-            m.Field(description="Opt-in script command-framework routing contract"),
-        ] = None
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description=(
-                    "Gate verbs a workspace-root Makefile fans out across members "
-                    "through the generic workspace orchestrate primitive"
-                )
-            ),
-        ] = ()
-        workspace_cli_group: Annotated[
-            str,
-            m.Field(
-                description=(
-                    "CLI group name for the flext-infra workspace orchestrate route"
-                )
-            ),
-        ] = ""
-        project_selection_conflict_error: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mutually exclusive project selector error"),
-        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
@@ -2056,31 +1783,7 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
-        workspace_manifest_version: Annotated[
-            int,
-            m.Field(
-                ge=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                le=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
-                description="Workspace manifest schema version",
-            ),
-        ]
-        workspace_repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(description="Repository rendered into the workspace manifest"),
-        ]
         year: Annotated[int, m.Field(description="Copyright year")]
-        workspace_exclusions: Annotated[
-            tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
-            m.Field(description="Ordered excluded workspace paths"),
-        ] = ()
-        workspace_policy_overlays: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
-            m.Field(description="Repository-local policy overlays"),
-        ] = ()
-        workspace_integration: Annotated[
-            FlextInfraConfigModels.WorkspaceIntegrationSpec | None,
-            m.Field(description="Optional workspace provider-default overlay"),
-        ] = None
 
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""
@@ -2767,9 +2470,6 @@ class FlextInfraConfigModels:
         ] = True
         templates: Annotated[
             bool, m.Field(description="Whether managed templates are planned")
-        ] = True
-        custom: Annotated[
-            bool, m.Field(description="Whether custom Make policy is planned")
         ] = True
 
     class CodegenConformRequest(_ConfigContract):

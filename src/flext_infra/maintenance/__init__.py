@@ -11,15 +11,11 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .clean import FlextInfraCleanService
-    from .python_version import FlextInfraPythonVersionEnforcer
-__all__: tuple[str, ...] = ("FlextInfraCleanService", "FlextInfraPythonVersionEnforcer")
+__all__: tuple[str, ...] = ("FlextInfraCleanService",)
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
-        MappingProxyType({
-            ".clean": ("FlextInfraCleanService",),
-            ".python_version": ("FlextInfraPythonVersionEnforcer",),
-        }),
+        MappingProxyType({".clean": ("FlextInfraCleanService",)}),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
     )

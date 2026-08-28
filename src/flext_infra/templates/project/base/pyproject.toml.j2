@@ -53,12 +53,6 @@ dev = [
   {{ item | tojson }},
 {% endfor %}
 ]
-workspace = [
-{% for repository in workspace_repositories %}
-  "{{ repository.distribution }}",
-{% endfor %}
-]
-
 [project.scripts]
 {{ dist }} = "{{ package_name }}.cli:main"
 {% if repository %}
@@ -113,8 +107,6 @@ package_name = {{ package_name | tojson }}
 
 [tool.hatch.metadata]
 allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower }}
-{% if make_profile != "workspace-root" %}
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/{{ package_name }}"]
 {% if packaged_data_dirs %}
@@ -132,7 +124,6 @@ only-include = [
   {{ data_dir | tojson }},
 {% endfor %}
 ]
-{% endif %}
 
 [tool.mypy]
 # FLEXT mypy suppression rationale (validated at the facade-MRO boundary):

@@ -397,9 +397,6 @@ Infra:
         default_what: default
         whats: [default]
         apply_guarded: false
-        # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-        # entering the serialized mutation set (daemon/mcp must not take the
-        # checkout lock). accepts_apply unlocks the APPLY token only.
         accepts_apply: true
         apply_what: default
       - name: status
@@ -446,21 +443,6 @@ Infra:
         # the read-only dry-run fixed-point after mutation.
         apply_guarded: true
         apply_what: apply
-      custom_handler_policy:
-        filename: custom.mk
-        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
-        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
-        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
-        # The validator must accept both shapes the runtime itself dispatches to, or
-        # every project that defines a custom WHAT handler fails `codegen conform`.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
-        allow_public_targets: false
-        allow_toolchain_declarations: false
-      custom_handler_profile_overrides:
-        workspace-root:
-          allow_public_targets: true
-          allow_toolchain_declarations: true
-
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
@@ -657,7 +639,6 @@ Infra:
         - pyproject.toml
         - Makefile
         - base.mk
-        - custom.mk
         - README.md
         - LICENSE
         - CHANGELOG.md
@@ -990,12 +971,6 @@ Infra:
       - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
         owner: codegen
         policy: full
-      - path: .github/scripts/check-cqrs-compliance.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/flext-law-loop.sh
-        owner: codegen
-        policy: full
       - path: tests/fixtures/ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
@@ -1061,9 +1036,6 @@ Infra:
       - path: base.mk
         owner: make
         policy: delegated
-      - path: custom.mk
-        owner: custom
-        policy: create-only
       - path: pyproject.toml
         owner: codegen
         policy: merge
@@ -1547,14 +1519,6 @@ Infra:
           destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
           delegate: render
           overwrite: false
-        - source: base/.github/scripts/check-cqrs-compliance.sh.j2
-          destination: .github/scripts/check-cqrs-compliance.sh
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/flext-law-loop.sh.j2
-          destination: .github/scripts/flext-law-loop.sh
-          delegate: render
-          overwrite: false
         # Multi-environment CI base: reusable ci-matrix workflow + per-distro
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
@@ -1640,19 +1604,10 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
-          # The generic conform engine is the single Makefile owner for every
-          # profile; workspace-root fan-out is selected inside this template.
-          # Fully generated (overwrite: true): a project never owns a verb.
-          # `overwrite: false` froze every existing Makefile at the shape it
-          # had when first written, so new builtin verbs never reached the
-          # fleet. Customisation lives exclusively in custom.mk, through
-          # pre-/post-verb hooks, and may not redefine a verb.
+          # The generic conform engine is the single Makefile owner. Fully
+          # generated: repository commands live under scripts/<verb>/<what>.
           delegate: render
           overwrite: true
-        - source: base/custom.mk.j2
-          destination: custom.mk
-          delegate: render
-          overwrite: false
         - source: base/pyproject.toml.j2
           destination: pyproject.toml
           delegate: render

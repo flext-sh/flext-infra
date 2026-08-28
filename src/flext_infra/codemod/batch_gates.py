@@ -7,7 +7,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, ClassVar, Final
 
-from flext_infra import c, m, p, r, t, u
+from flext_core import r
+from flext_infra import c, m, p, t, u
 
 _TOOL_TIMEOUT_SECONDS: Final[int] = 900
 

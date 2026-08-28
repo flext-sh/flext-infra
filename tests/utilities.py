@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_cli import cli as cli_facade
-from flext_infra import config, main, r, u
+from flext_core import r
+from flext_infra import config, main, u
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit

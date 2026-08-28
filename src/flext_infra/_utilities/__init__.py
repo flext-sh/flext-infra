@@ -17,7 +17,12 @@ if TYPE_CHECKING:
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._git.remote import redact_origin_remote
-    from ._git.repo import FlextInfraUtilitiesGitRepo
+    from ._git.repo import (
+        FlextInfraUtilitiesGitRepo,
+        git_open_repo,
+        git_refresh_binary,
+        git_repo,
+    )
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
     from ._git.semantic import FlextInfraUtilitiesGitSemanticMixin
     from ._git.semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
@@ -85,6 +90,7 @@ if TYPE_CHECKING:
     from .policy import FlextInfraUtilitiesRefactorPolicy
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
+    from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
     from .protected_edit_apply import FlextInfraUtilitiesProtectedEditApply
     from .protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
@@ -178,6 +184,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProjectDiscovery",
     "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
     "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
+    "FlextInfraUtilitiesProjectManagedArtifacts",
     "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesProtectedEditApply",
     "FlextInfraUtilitiesProtectedEditLinting",
@@ -229,6 +236,9 @@ __all__: tuple[str, ...] = (
     "collect_deferred_self_reference_findings",
     "collect_silent_failure_findings",
     "collect_silent_failure_fixes",
+    "git_open_repo",
+    "git_refresh_binary",
+    "git_repo",
     "git_stdin",
     "redact_origin_remote",
 )
@@ -242,7 +252,12 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._git": ("_git",),
             "._git.remote": ("redact_origin_remote",),
-            "._git.repo": ("FlextInfraUtilitiesGitRepo",),
+            "._git.repo": (
+                "FlextInfraUtilitiesGitRepo",
+                "git_open_repo",
+                "git_refresh_binary",
+                "git_repo",
+            ),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
             "._git.semantic": ("FlextInfraUtilitiesGitSemanticMixin",),
             "._git.semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),
@@ -319,6 +334,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
             ".process": ("FlextInfraUtilitiesProcess",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
+            ".project_managed_artifacts": (
+                "FlextInfraUtilitiesProjectManagedArtifacts",
+            ),
             ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
             ".protected_edit_apply": ("FlextInfraUtilitiesProtectedEditApply",),
             ".protected_edit_linting": ("FlextInfraUtilitiesProtectedEditLinting",),

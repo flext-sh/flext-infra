@@ -12,39 +12,6 @@ class FlextInfraConstantsBasemk:
     """Basemk infrastructure constants."""
 
     MAKEFILE_BOOTSTRAP_TEMPLATE: Final[str] = "makefile_bootstrap.mk.j2"
-    CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
-    "Prefix naming a custom.mk handler dispatched for a project-specific WHAT."
-    CUSTOM_LIFECYCLE_HOOK_PREFIXES: Final[t.StrSequence] = ("pre-", "post-")
-    "Prefixes naming custom.mk lifecycle hooks running before/after a verb."
-    # Why (mro-ga9q): custom.mk policy is a BLACKLIST, not a whitelist. A member
-    # project may define ANY custom verb/WHAT through _custom_<verb>_<what>
-    # handlers and (pre|post)-<verb>[-<what>] lifecycle hooks EXCEPT the
-    # reserved surface, which stays a flext-infra monopoly.
-    #
-    # Why (mro-x0rau.3): this list adds ONLY the project-surface verbs that are
-    # reserved but not declared in config/codegen.yaml. R12 reorganized the verb
-    # surface into verb+WHAT pairs, and 14 of the 22 names this list carried no
-    # longer resolve to any recipe -- `make --dry-run <verb>` reported NO RULE
-    # for boot, pr, scan, val, fix-enforcement and all ten daemon-* targets.
-    # Reserving a name the generator never ships is not harmless: it forbids a
-    # member from defining a verb that flext-infra does not provide either.
-    # Their behaviour lives on in the living surface (val/scan -> `check`,
-    # boot -> `setup WHAT=environment`, fix-enforcement -> `fix WHAT=apply`),
-    # so the dead names are removed with their recipes, never reserved-but-absent.
-    CUSTOM_MK_RESERVED_PROJECT_VERBS: Final[t.StrSequence] = (
-        "build",
-        "check",
-        "clean",
-        "fmt",
-        "help",
-        "run",
-        "test",
-    )
-    CUSTOM_MK_BLACKLIST_ERROR: Final[str] = (
-        "reserved verbs/WHATs are a flext-infra monopoly; use "
-        "_custom_<verb>_<what> with a non-reserved WHAT or "
-        "(pre|post)-<verb>[-<what>] hooks"
-    )
     # Git refnames legitimately allow characters the shell parses ($ ; ` space),
     # so the generated bootstrap must validate SETUP_BRANCH against a strict
     # allowlist before any recipe interpolates it into a command.

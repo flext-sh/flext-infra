@@ -13,18 +13,8 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
-WORKSPACE_ROOT_REL := .
-# === SECTION: workspace members (managed) ===
-# Source: config:workspace_members (list), config:workspace_repositories (list)
-# Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for workspace-root gitlink
-# governance; standalone projects discover managed submodules at runtime from
-# .gitmodules (flext-managed=true).
-WORKSPACE_MEMBERS :=
-MANAGED_GITLINKS :=
-WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
 # End SECTION: project identity
 
@@ -42,8 +32,6 @@ FAIL_FAST ?= 0
 FILE ?=
 MATCH ?=
 COV ?=
-PROJECT ?=
-PROJECTS ?=
 BASE ?=
 BRANCH ?=
 PYTEST_ARGS ?=
@@ -97,49 +85,12 @@ SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 override export FLEXT_PYTEST_TARGET_RAW := tests
-WORKSPACE ?= $(PROJECT_ROOT)
-# The member-selection block used to appear TWICE: once here against
-# PROJECT_ROOT and again below against WORKSPACE_ROOT. Both guarded on the same
-# `origin WORKSPACE` condition, so the second `override` always won and the
-# first was dead -- while still contributing its `endif`s, which is how the
-# generated Makefile ended up with one more `endif` than it had conditionals
-# ("extraneous 'endif'"). The surviving block is the correct one:
-# WORKSPACE_ROOT is derived from the superproject below, whereas PROJECT_ROOT
-# is this checkout, so only the former resolves a member of the governing
-# workspace.
-# === SECTION: WORKSPACE_ROOT isolation (managed) ===
-# Source: computed (rule: derive from current checkout unless caller overrides)
-# Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
-# caller passed it on the command line or via an override origin. An inherited
-# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
-# must never redirect verbs to another working tree. The git queries therefore
-# run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
-# checkout's topology and redirect the verb to the wrong tree.
-ifeq ($(GEN_INIT_ONLY),Y)
-WORKSPACE_ROOT := $(PROJECT_ROOT)
-else ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
-WORKSPACE_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
-endif
-# End SECTION: WORKSPACE_ROOT isolation
-# A workspace lane is always registered at the workspace root. Other verbs may
-# select a member through PROJECT while workspace orchestration keeps the root
-# so one Git worktree owns the complete project matrix.
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
-override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
-endif
-endif
-endif
 
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default
 PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
 BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
-SCRIPT_VERBS :=
-
-ifeq ($(GEN_INIT_ONLY),Y)
 _ALLOWED_WHATS_help := usage
 _ALLOWED_WHATS_setup := environment
 _ALLOWED_WHATS_deps := check lock upgrade
@@ -155,55 +106,32 @@ _ALLOWED_WHATS_clean := status generated
 _ALLOWED_WHATS_release := status
 _ALLOWED_WHATS_gen := check all apply init
 _ALLOWED_WHATS_mod := check all apply
-else
-_ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_setup := environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_deps := check lock upgrade $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_build := artifacts $(shell sed -n 's/^_custom_build_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_test := all full cache-status cache-checkpoint $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_fmt := check all apply $(shell sed -n 's/^_custom_fmt_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_fix := check all apply $(shell sed -n 's/^_custom_fix_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_run := default $(shell sed -n 's/^_custom_run_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_status := diagnostics $(shell sed -n 's/^_custom_status_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_docs := all generate fix audit build validate $(shell sed -n 's/^_custom_docs_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_clean := status generated $(shell sed -n 's/^_custom_clean_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_release := status $(shell sed -n 's/^_custom_release_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_gen := check all apply init $(shell sed -n 's/^_custom_gen_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-endif
+
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
-# Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
-MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
+# Source: repository roots; scripts is included only when it exists.
+RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(wildcard $(PROJECT_ROOT)/scripts)
+MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(wildcard $(PROJECT_ROOT)/scripts)
 # End SECTION: lint/type paths
 
 # === SECTION: infra bootstrap (managed) ===
-# Source: config:infra_repository.*, config:infra_source_root_rel, template (UV default)
+# Source: config:infra_repository.*, template (UV default)
 UV ?= uv
 UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
-# Prefer the recorded flext-infra gitlink OID (immutable) when the workspace
-# root can resolve it. Lazy-init uses the installed CLI and has no bootstrap
-# contract at all.
+# Bootstrap never consults a parent checkout or local path.
 ifeq ($(GEN_INIT_ONLY),Y)
 FLEXT_INFRA_BOOTSTRAP_REF :=
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT :=
-FLEXT_INFRA_SOURCE_ROOT_REL :=
 UV_BOOTSTRAP_FLAGS :=
 else
-FLEXT_INFRA_BOOTSTRAP_REF := $(shell git -C "$(WORKSPACE_ROOT)" rev-parse "HEAD:." 2>/dev/null)
-ifeq ($(strip $(FLEXT_INFRA_BOOTSTRAP_REF)),)
 FLEXT_INFRA_BOOTSTRAP_REF := 0.12.0-dev
-endif
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@$(FLEXT_INFRA_BOOTSTRAP_REF)
-FLEXT_INFRA_SOURCE_ROOT_REL := 
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 endif
 # End SECTION: infra bootstrap
@@ -232,16 +160,8 @@ _APPLY_WHAT_docs := generate
 _APPLY_WHAT_clean := generated
 _APPLY_WHAT_gen := apply
 _APPLY_WHAT_mod := apply
-
-
 # === SECTION: runtime ownership (managed) ===
-# Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
-# Runtime ownership is local to the generated project. Repository topology does
-# not select an environment or grant another checkout permission to mutate it.
-ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
-$(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
-endif
-
+# Runtime ownership is always local to the generated project.
 RUNTIME_ROOT := $(PROJECT_ROOT)
 # End SECTION: runtime ownership
 
@@ -286,21 +206,10 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
-ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
-FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
-else
-FLEXT_INFRA_SOURCE_ROOT :=
 FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
-endif
 
-ifeq ($(MAKE_PROFILE),workspace-root)
-CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
-else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
-endif
 
 # Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
@@ -329,20 +238,8 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi
 
-WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
-REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-# A workspace root owns no local gate implementation: its verbs fan out to the
-# declared members. Selecting the root (PROJECT=.) would make it orchestrate
-# itself forever; map `.` to WORKSPACE_MEMBERS instead of failing closed mid-CI.
-DEFAULT_PROJECTS := $(WORKSPACE_MEMBERS) .
-
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
-
-WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
-WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
-DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
+SELECTED_PROJECTS := .
+DOCS_PROJECT_ARGS :=
 
 # Execute gates directly from the declared runtime. Asking uv to rediscover a
 # project here can select a parent workspace and create its .venv even when the
@@ -354,16 +251,6 @@ PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT
 SETUP_MANIFEST_ROOT := $(RUNTIME_VENV).flext-setup
 SETUP_REQUIREMENTS := $(SETUP_MANIFEST_ROOT)/requirements.txt
 
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(strip $(PROJECTS)),)
-$(error ERROR: Cannot use PROJECT and PROJECTS together)
-endif
-endif
-
-
-ifneq ($(GEN_INIT_ONLY),Y)
--include custom.mk
-endif
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
@@ -372,38 +259,40 @@ define _dispatch
 	if [ -n "$$applying" ] && [ "$$applying" != "Y" ]; then \
 		printf 'ERROR: APPLY must be Y when set\n' >&2; exit 2; \
 	fi; \
-	if [ -n "$$applying" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
+	if [ -n "$$applying" ] && [ -n "$(_DEFAULT_$(1))" ] && [ -z "$(_APPLY_WHAT_$(1))" ]; then \
 		printf 'ERROR: verb %s is read-only and does not accept APPLY\n' "$(1)" >&2; exit 2; \
 	fi; \
 	if [ -z "$$what" ] && [ -n "$$applying" ] && [ -n "$(_APPLY_WHAT_$(1))" ]; then \
 		what="$(_APPLY_WHAT_$(1))"; \
 	fi; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
+	if [ -z "$$what" ]; then what="all"; fi; \
 	case "$$what" in \
-		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
+		*[!a-z0-9-]*|'') printf 'ERROR: WHAT must be canonical kebab-case: %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
-	custom="_custom_$(1)_$$what"; \
-	$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
-	if [ "$$custom_rc" -eq 2 ]; then \
-		case " $(_ALLOWED_WHATS_$(1)) " in \
-			*" $$what "*) ;; \
-			*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
-		esac; \
+	what_norm=$$(printf '%s' "$$what" | tr '-' '_'); \
+	py_script="$(PROJECT_ROOT)/scripts/$(1)/$$what_norm.py"; \
+	sh_script="$(PROJECT_ROOT)/scripts/$(1)/$$what_norm.sh"; \
+	py_exists=0; sh_exists=0; \
+	if [ -f "$$py_script" ]; then py_exists=1; fi; \
+	if [ -f "$$sh_script" ]; then sh_exists=1; fi; \
+	if [ "$$py_exists" -eq 1 ] && [ "$$sh_exists" -eq 1 ]; then \
+		printf 'ERROR: handler collision for %s WHAT=%s: both .py and .sh exist\n' "$(1)" "$$what" >&2; exit 2; \
+	fi; \
+	case " $(_ALLOWED_WHATS_$(1)) " in *" $$what "*) builtin_exists=1 ;; *) builtin_exists=0 ;; esac; \
+	if [ "$$builtin_exists" -eq 1 ] && { [ "$$py_exists" -eq 1 ] || [ "$$sh_exists" -eq 1 ]; }; then \
+		printf 'ERROR: handler collision for %s WHAT=%s: builtin and script both exist\n' "$(1)" "$$what" >&2; exit 2; \
 	fi; \
 	builtin="_builtin_$(1)_$$what"; \
-	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done; \
-	if [ "$$custom_rc" -ne 2 ]; then \
-		$(SELF_MAKE) "$$custom" || exit $$?; \
+	if [ "$$builtin_exists" -eq 1 ]; then \
+		$(SELF_MAKE) "$$builtin"; \
+	elif [ "$$py_exists" -eq 1 ]; then \
+		WHAT="$$what" APPLY="$(APPLY)" FILE="$(FILE)" MATCH="$(MATCH)" PROJECT_ROOT="$(PROJECT_ROOT)" RUNTIME_PYTHON="$(RUNTIME_PYTHON)" $(UV_RUN) python "$$py_script"; \
+	elif [ "$$sh_exists" -eq 1 ]; then \
+		WHAT="$$what" APPLY="$(APPLY)" FILE="$(FILE)" MATCH="$(MATCH)" PROJECT_ROOT="$(PROJECT_ROOT)" RUNTIME_PYTHON="$(RUNTIME_PYTHON)" sh "$$sh_script"; \
 	else \
-		$(SELF_MAKE) "$$builtin" || exit $$?; \
-	fi; \
-	for hook in "post-$(1)-$$what" "post-$(1)"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
+		printf 'ERROR: unsupported %s WHAT=%s; expected scripts/%s/%s.{py,sh}\n' "$(1)" "$$what" "$(1)" "$$what_norm" >&2; exit 2; \
+	fi
 endef
 
 define _require_apply
@@ -415,8 +304,7 @@ endef
 
 define _run_for_selected_projects
 	@set -eu; \
-	selected="$(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))"; \
-	if [ -z "$$selected" ]; then selected="."; fi; \
+	selected="."; \
 	for project in $$selected; do \
 		case " $(ALLOWED_PROJECTS) " in \
 			*" $$project "*) ;; \
@@ -442,6 +330,9 @@ endef
 $(filter-out setup gen,$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
+%:
+	$(call _dispatch,$@)
+
 # `gen init` deliberately bypasses generic lifecycle hooks. Hooks are allowed
 # to discover workspaces and operational state, which would violate the narrow
 # initializer contract before the canonical owner even starts.
@@ -451,22 +342,11 @@ gen: _builtin_gen_init
 else
 	$(call _dispatch,$@)
 endif
-# `setup` keeps its own recipe (it must not require the environment it is about
-# to build), but it still runs the pre-/post-setup lifecycle hooks so a project
-# declaring them in the custom handler surface is actually honoured.
 setup:
-	@for hook in "pre-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
 	@$(SELF_MAKE) _builtin_setup_environment
-	@for hook in "post-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
-	done
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [standalone]' '';
+	@printf '%s\n' 'flext-infra' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' "$$(printf '%s' '$(_ALLOWED_WHATS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
@@ -528,203 +408,17 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'mod' "$$(printf '%s' '$(_ALLOWED_WHATS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
-	@printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
-	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
-	@printf '  %-10s %s\n' 'RUNTIME_VENV' 'isolated environment path override (command line only)';
-	@printf '\n%s\n' 'Custom hooks (custom.mk):';
-	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
-	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
-	@printf '  %s\n' 'Add _custom_<verb>_<what> to define a new WHAT.';
-	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
-		if [ -n "$$hooks" ]; then \
-			printf '  %s\n' 'Defined in this project:'; \
-			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
-		fi; \
+	@if [ -d "$(PROJECT_ROOT)/scripts" ]; then \
+		files=$$(find "$(PROJECT_ROOT)/scripts" -mindepth 2 -maxdepth 2 -type f \( -name '*.py' -o -name '*.sh' \) ! -name '__init__.py' -print | LC_ALL=C sort) || exit $$?; \
+		seen=' '; \
+		for file in $$files; do \
+			rel=$${file#"$(PROJECT_ROOT)/scripts/"}; verb=$${rel%%/*}; internal=$${rel#*/}; internal=$${internal%.*}; key="$$verb/$$internal"; \
+			case "$$seen" in *" $$key "*) printf 'ERROR: handler collision for scripts/%s.{py,sh}\n' "$$key" >&2; exit 2 ;; esac; \
+			seen="$$seen$$key "; what=$$(printf '%s' "$$internal" | tr '_' '-'); \
+			printf '  %-10s WHAT=%s\n' "$$verb" "$$what"; \
+		done; \
 	fi
-
-# A project owns the sources declared by its manifest. The generated setup
-# reconciler validates every initialized checkout before mutation, initializes
-# only missing modules, and preserves declared branches that fix forward beyond
-# the recorded gitlink.
-.PHONY: _builtin_setup_submodules
-
-# === SECTION: submodule setup (managed) ===
-# Source: template (submodule_setup_recipe.j2)
-# Computed: workspace-root uses WORKSPACE_MEMBERS from config; standalone discovers
-#           submodules with flext-managed=true from .gitmodules at runtime.
-# Rule: setup PROVISIONS an absent governed gitlink and VERIFIES a present one.
-#       An absent checkout holds no work, so setup initializes it at the recorded
-#       gitlink. A present checkout is never destroyed: git checkout and git reset
-#       are forbidden. Detached HEAD is attached via branch + symbolic-ref so dirty
-#       work is carried. Pin validity is HEAD contains gitlink — origin may lag the
-#       pin without failing verify. Declared branch is the named integration line;
-#       legacy branch=. still resolves to the superproject named branch if present.
-#       A checkout is also accepted on the superproject current branch (workspace
-#       lane): that lane branch then becomes the verified branch, and its fetch is
-#       skipped when origin carries no counterpart. Any third branch still fails.
-#       Fetch skips when local already contains pin and origin tip.
-# Free: no
-# End SECTION: submodule setup
-_builtin_setup_submodules:
-	@set -eu; \
-	root="$(PROJECT_ROOT)"; \
-	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
-	profile="$(MAKE_PROFILE)"; \
-	if [ "$$profile" = "workspace-root" ]; then \
-		managed="$(MANAGED_GITLINKS)"; \
-	else \
-		managed=""; \
-		keys=$$(git -C "$$root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.flext-managed$$' || :); \
-		for key in $$keys; do \
-			value=$$(git -C "$$root" config -f .gitmodules --get "$$key"); \
-			if [ "$$value" = "true" ]; then \
-				section=$${key%.flext-managed}; \
-				path=$$(git -C "$$root" config -f .gitmodules --get --default "" "$$section.path"); \
-				if [ -n "$$path" ]; then \
-					managed="$$managed $$path"; \
-				fi; \
-			fi; \
-		done; \
-	fi; \
-	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
-	if [ -z "$$managed" ]; then exit 0; fi; \
-	attach_branch_at_head() { \
-		child_root="$$1"; \
-		branch="$$2"; \
-		git -C "$$child_root" branch --quiet -f "$$branch" HEAD || { \
-			printf 'ERROR: %s: could not create branch %s at HEAD\n' "$$child_root" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		git -C "$$child_root" symbolic-ref HEAD "refs/heads/$$branch" || { \
-			printf 'ERROR: %s: could not attach HEAD to %s without moving the tree\n' "$$child_root" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch" >/dev/null 2>&1 || :; \
-	}; \
-	validate_submodule() { \
-		superproject="$$1"; \
-		child_path="$$2"; \
-		child_root="$$superproject/$$child_path"; \
-		keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
-		section=""; \
-		for key in $$keys; do \
-			declared=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
-			if [ "$$declared" = "$$child_path" ]; then \
-				if [ -n "$$section" ]; then \
-					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$$child_path" >&2; \
-					exit 2; \
-				fi; \
-				section=$${key%.path}; \
-			fi; \
-		done; \
-		if [ -z "$$section" ]; then \
-			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$$child_path" >&2; \
-			exit 2; \
-		fi; \
-		branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$section.branch"); \
-		if [ -z "$$branch" ]; then \
-			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
-			exit 2; \
-		fi; \
-		super_branch=$$(git -C "$$superproject" branch --show-current); \
-		if [ "$$branch" = "." ]; then \
-			branch="$$super_branch"; \
-			if [ -z "$$branch" ]; then \
-				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$$child_path" >&2; \
-				exit 1; \
-			fi; \
-		fi; \
-		declared_branch="$$branch"; \
-		accepted_branches="$$declared_branch"; \
-		if [ -n "$$super_branch" ] && [ "$$super_branch" != "$$declared_branch" ]; then \
-			accepted_branches="$$declared_branch or $$super_branch"; \
-		fi; \
-		git check-ref-format --branch "$$branch" >/dev/null || { \
-			printf 'ERROR: %s: invalid declared branch %s\n' "$$child_path" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		gitlink=$$(git -C "$$superproject" ls-files --stage -- "$$child_path" | awk '$$1 == "160000" {print $$2}'); \
-		if [ -z "$$gitlink" ]; then \
-			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
-			exit 2; \
-		fi; \
-		if [ ! -e "$$child_root/.git" ]; then \
-			git -C "$$superproject" submodule update --init -- "$$child_path" || { \
-				printf 'ERROR: %s: could not initialize the governed gitlink\n' "$$child_path" >&2; \
-				exit 1; \
-			}; \
-			attach_branch_at_head "$$child_root" "$$branch"; \
-		fi; \
-		current=$$(git -C "$$child_root" branch --show-current); \
-		if [ -n "$$current" ] && [ "$$current" != "$$declared_branch" ] && \
-		   [ -n "$$super_branch" ] && [ "$$current" = "$$super_branch" ]; then \
-			branch="$$super_branch"; \
-		fi; \
-		remote_ref="refs/remotes/origin/$$branch"; \
-		head=$$(git -C "$$child_root" rev-parse HEAD); \
-		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
-			printf 'ERROR: %s: conflicting branch %s; expected %s (setup never runs checkout/reset; switch it yourself while keeping dirty)\n' "$$child_path" "$$current" "$$accepted_branches" >&2; \
-			exit 1; \
-		fi; \
-		need_fetch=1; \
-		if git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-			if git -C "$$child_root" rev-parse --verify "$$remote_ref" >/dev/null 2>&1; then \
-				if git -C "$$child_root" merge-base --is-ancestor "$$remote_ref" HEAD; then \
-					need_fetch=0; \
-				fi; \
-			else \
-				# Pin is already present; origin tip may be absent on a shallow CI \
-				# clone. Origin lag must not fail verify (setup never destroys). \
-				need_fetch=0; \
-			fi; \
-		fi; \
-		if [ "$$need_fetch" -eq 1 ]; then \
-			fetch_allowed=1; \
-			if [ "$$branch" != "$$declared_branch" ] && \
-			   ! git -C "$$child_root" ls-remote --exit-code --heads origin "$$branch" >/dev/null 2>&1; then \
-				fetch_allowed=0; \
-			fi; \
-			if [ "$$fetch_allowed" -eq 1 ]; then \
-				git -C "$$child_root" fetch --quiet origin "$$branch" || { \
-					printf 'ERROR: %s: fetch origin %s failed\n' "$$child_path" "$$branch" >&2; \
-					exit 1; \
-				}; \
-			fi; \
-		fi; \
-		current=$$(git -C "$$child_root" branch --show-current); \
-		head=$$(git -C "$$child_root" rev-parse HEAD); \
-		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
-			printf 'ERROR: %s: conflicting branch %s; expected %s (setup never runs checkout/reset; switch it yourself while keeping dirty)\n' "$$child_path" "$$current" "$$accepted_branches" >&2; \
-			exit 1; \
-		fi; \
-		if [ -z "$$current" ]; then \
-			if git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-				attach_branch_at_head "$$child_root" "$$branch"; \
-			elif git -C "$$child_root" rev-parse --verify "$$remote_ref" >/dev/null 2>&1 && \
-			     git -C "$$child_root" merge-base --is-ancestor "$$head" "$$remote_ref"; then \
-				attach_branch_at_head "$$child_root" "$$branch"; \
-			else \
-				printf 'ERROR: %s: detached HEAD %s is not on the recorded gitlink and not contained in origin/%s; reconcile it yourself (setup never discards commits)\n' "$$child_path" "$$head" "$$branch" >&2; \
-				exit 1; \
-			fi; \
-			current="$$branch"; \
-		fi; \
-		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-			printf 'ERROR: %s: branch %s diverges from recorded gitlink %s (setup never runs checkout/reset; advance or switch it yourself while keeping dirty)\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
-			exit 1; \
-		fi; \
-		if [ -f "$$child_root/.gitmodules" ]; then \
-			nested_keys=$$(git -C "$$child_root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
-			for nested_key in $$nested_keys; do \
-				nested_path=$$(git -C "$$child_root" config -f .gitmodules --get "$$nested_key"); \
-				validate_submodule "$$child_root" "$$nested_path"; \
-				done; \
-		fi; \
-	}; \
-	for child_path in $$managed; do \
-		validate_submodule "$$root" "$$child_path"; \
-	done
+	@printf '  %-10s %s\n' 'RUNTIME_VENV' 'isolated environment path override (command line only)';
 
 _builtin_require_environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
@@ -739,7 +433,7 @@ _builtin_require_environment:
 # is the single public conformance/generation surface.
 # The venv is created when missing and repaired in place; a symlink fails before
 # dependency mutation because environments are never borrowed across checkouts.
-_builtin_setup_environment: _builtin_setup_submodules
+_builtin_setup_environment:
 	@$(SETUP_ENVIRONMENT_RECIPE)
 # End SECTION: setup environment
 
@@ -769,7 +463,6 @@ _builtin_deps_upgrade: _builtin_require_environment
 	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
 		--apply $(if $(strip $(DEPENDENCY)),,--rewrite-constraints) --skip-check "$$@"
 	$(call _run_for_selected_projects,)
-
 
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -877,16 +570,11 @@ _builtin_fix_all: _builtin_require_environment
 
 _builtin_fix_apply: _builtin_fix_all
 
-
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
-# workspace-member Make files attach to the governing workspace root; report
-# the member path so status diagnostics stay meaningful after profile routing.
-ATTACHED_MEMBER := $(if $(filter workspace-member,$(MAKE_PROFILE)),$(PROJECT_ROOT),)
 _builtin_status_diagnostics: _builtin_require_environment
-	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
+	@printf 'project=%s\nruntime=%s\n' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \

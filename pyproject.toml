@@ -202,7 +202,7 @@ project-excludes = [
   "typings/**",
   "vendor/**",
 ]
-project-includes = ["src/**/*.py*", "tests/**/*.py*"]
+project-includes = ["scripts/**/*.py*", "src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
 search-path = ["src", "."]
 use-ignore-files = false
@@ -322,7 +322,7 @@ exclude = [
   "vendor",
 ]
 extraPaths = ["src", "."]
-include = ["src", "tests"]
+include = ["scripts", "src", "tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportArgumentType = "none"
@@ -405,6 +405,24 @@ reportUnknownParameterType = "none"
 reportUnknownVariableType = "none"
 reportUnusedImport = "none"
 root = "tests"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = [".", "src"]
+reportArgumentType = "none"
+reportAssignmentType = "none"
+reportAttributeAccessIssue = "none"
+reportGeneralTypeIssues = "none"
+reportInvalidTypeForm = "none"
+reportPrivateImportUsage = "none"
+reportPrivateUsage = "none"
+reportReturnType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnusedImport = "none"
+root = "scripts"
 
 # [MANAGED] pytest
 [tool.pytest.ini_options]

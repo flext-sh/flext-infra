@@ -10,19 +10,18 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import (
-        test_builtin_handlers_derive_from_ssot as test_builtin_handlers_derive_from_ssot,
-    )
-    from . import test_uv_invocation_is_hermetic as test_uv_invocation_is_hermetic
-    from . import test_worktree_uv_contract as test_worktree_uv_contract
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .test_bootstrap_refname_safety import TestsBootstrapRefnameSafety
-    from .test_custom_mk_policy import TestsFlextInfraCustomMkPolicy
+    from .test_builtin_handlers_derive_from_ssot import (
+        test_every_invoked_handler_is_declared_in_the_ssot,
+        test_every_routed_handler_is_defined,
+        test_routing_declares_one_allowed_whats_per_verb,
+    )
     from .test_generator import TestsFlextInfraBasemkGenerator
     from .test_generator_edge_cases import TestsFlextInfraBasemkGeneratorEdgeCases
     from .test_init import TestsFlextInfraBasemkInit
-    from .test_main import TestsFlextInfraBasemkMain
+    from .test_main import TestsFlextInfraBasemkMain, basemk_main
     from .test_make_contract import TestsFlextInfraBasemkMakeContract
     from .test_renderer import TestsFlextInfraBasemkRenderer
 __all__: tuple[str, ...] = (
@@ -33,7 +32,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraBasemkMain",
     "TestsFlextInfraBasemkMakeContract",
     "TestsFlextInfraBasemkRenderer",
-    "TestsFlextInfraCustomMkPolicy",
+    "basemk_main",
     "c",
     "d",
     "e",
@@ -44,9 +43,9 @@ __all__: tuple[str, ...] = (
     "s",
     "t",
     "td",
-    "test_builtin_handlers_derive_from_ssot",
-    "test_uv_invocation_is_hermetic",
-    "test_worktree_uv_contract",
+    "test_every_invoked_handler_is_declared_in_the_ssot",
+    "test_every_routed_handler_is_defined",
+    "test_routing_declares_one_allowed_whats_per_verb",
     "tf",
     "tk",
     "tm",
@@ -60,17 +59,16 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".test_bootstrap_refname_safety": ("TestsBootstrapRefnameSafety",),
             ".test_builtin_handlers_derive_from_ssot": (
-                "test_builtin_handlers_derive_from_ssot",
+                "test_every_invoked_handler_is_declared_in_the_ssot",
+                "test_every_routed_handler_is_defined",
+                "test_routing_declares_one_allowed_whats_per_verb",
             ),
-            ".test_custom_mk_policy": ("TestsFlextInfraCustomMkPolicy",),
             ".test_generator": ("TestsFlextInfraBasemkGenerator",),
             ".test_generator_edge_cases": ("TestsFlextInfraBasemkGeneratorEdgeCases",),
             ".test_init": ("TestsFlextInfraBasemkInit",),
-            ".test_main": ("TestsFlextInfraBasemkMain",),
+            ".test_main": ("TestsFlextInfraBasemkMain", "basemk_main"),
             ".test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
             ".test_renderer": ("TestsFlextInfraBasemkRenderer",),
-            ".test_uv_invocation_is_hermetic": ("test_uv_invocation_is_hermetic",),
-            ".test_worktree_uv_contract": ("test_worktree_uv_contract",),
             "flext_tests": (
                 "c",
                 "d",

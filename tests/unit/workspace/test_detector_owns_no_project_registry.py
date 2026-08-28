@@ -1,20 +1,16 @@
 """Topology comes from the project, never from a registry inside flext-infra.
 
-Operator law: flext-infra owns generic conform behaviour only. It must not
-carry a registry of the projects it serves, so a repository's identity and its
-governed members are derived from that repository's own
-``config/workspace.yaml`` plus live Git, and from nothing else.
-
-A standalone repository that ships no manifest is still derivable: its identity
-comes from its own ``pyproject.toml`` metadata and its members from the Git
-submodule contract it actually declares.
+Operator law: flext-infra owns generic conform behaviour only. A repository's
+identity and public-root contract come from its own ``pyproject.toml``. Its
+topology is the independent presence-or-absence fact of its own ``.gitmodules``;
+topology never creates member mappings or generation fanout.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import c, config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u as test_u
@@ -55,7 +51,7 @@ class TestsDetectorOwnsNoProjectRegistry:
         tm.that(spec.members, empty=True)
 
     def test_git_submodules_remain_the_topology_ssot(self, tmp_path: Path) -> None:
-        """When the project declares submodules in .gitmodules, Git topology wins."""
+        """A .gitmodules file changes topology without creating member policy."""
         root = _standalone(tmp_path / "workspace-repo", name="workspace-repo")
         provider = config.Infra.codegen.providers[0]
         (root / ".gitmodules").write_text(
@@ -64,8 +60,8 @@ class TestsDetectorOwnsNoProjectRegistry:
         )
         _standalone(root / "member-pkg", name="member-pkg")
 
+        mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(spec.name, eq="workspace-repo")
-        tm.that(len(spec.members), eq=1)
-        tm.that(spec.members[0].name, eq="member-pkg")
+        tm.that(mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
+        tm.that(spec.members, empty=True)

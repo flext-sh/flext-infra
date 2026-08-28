@@ -35,7 +35,11 @@ if TYPE_CHECKING:
     from .silent_failure import FlextInfraSilentFailureValidator
     from .skill_validator import FlextInfraSkillValidator
     from .stub_chain import FlextInfraStubSupplyChain
-    from .testmon_db import FlextInfraTestmonCacheState, FlextInfraTestmonDbInspector
+    from .testmon_db import (
+        FlextInfraTestmonCacheState,
+        FlextInfraTestmonDbInspector,
+        FlextInfraTestmonDbInvalidator,
+    )
     from .tier_whitelist import FlextInfraValidateTierWhitelist
 __all__: tuple[str, ...] = (
     "FlextInfraBaseMkValidator",
@@ -59,6 +63,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraStubSupplyChain",
     "FlextInfraTestmonCacheState",
     "FlextInfraTestmonDbInspector",
+    "FlextInfraTestmonDbInvalidator",
     "FlextInfraTextPatternScanner",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
@@ -103,6 +108,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".testmon_db": (
                 "FlextInfraTestmonCacheState",
                 "FlextInfraTestmonDbInspector",
+                "FlextInfraTestmonDbInvalidator",
             ),
             ".tier_whitelist": ("FlextInfraValidateTierWhitelist",),
         }),

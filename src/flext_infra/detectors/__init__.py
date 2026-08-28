@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from .deferred_self_reference_detector import (
         FlextInfraDeferredSelfReferenceDetector,
     )
-    from .facade_scanner import FlextInfraScanner
     from .future_annotations_detector import FlextInfraFutureAnnotationsDetector
     from .import_alias_detector import FlextInfraImportAliasDetector
     from .inline_import_detector import FlextInfraInlineImportDetector
@@ -49,7 +48,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraNamespaceSourceDetector",
     "FlextInfraPrivateImportBypassDetector",
     "FlextInfraRuntimeAliasDetector",
-    "FlextInfraScanner",
     "FlextInfraSilentFailureDetector",
 )
 
@@ -62,7 +60,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".deferred_self_reference_detector": (
                 "FlextInfraDeferredSelfReferenceDetector",
             ),
-            ".facade_scanner": ("FlextInfraScanner",),
             ".future_annotations_detector": ("FlextInfraFutureAnnotationsDetector",),
             ".import_alias_detector": ("FlextInfraImportAliasDetector",),
             ".inline_import_detector": ("FlextInfraInlineImportDetector",),

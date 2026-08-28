@@ -22,13 +22,11 @@ if TYPE_CHECKING:
 class FlextInfraWorkspaceDetector(
     FlextInfraWorkspaceGovernanceMixin, s[c.Infra.WorkspaceMode]
 ):
-    """Classify workspace roots and members from Git topology alone.
+    """Classify one repository from its own Git topology.
 
     SINGLE RULE: a repository declaring ``.gitmodules`` is a workspace;
-    a repository without it is standalone. A submodule member is a
-    ``WORKSPACE_MEMBER``; a member that itself declares ``.gitmodules``
-    is a workspace root for its own subtree (recursion is implicit in
-    the rule). No registry, no manifest file, no attachment markers.
+    a repository without it is standalone. No registry, member mapping,
+    parent lookup, manifest file, or attachment marker participates.
     """
 
     @staticmethod
@@ -75,37 +73,6 @@ class FlextInfraWorkspaceDetector(
         )
 
     @classmethod
-    def _derive_governed_member(
-        cls, repository_root: Path, path: Path
-    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
-        """Derive zero or one governed member from a declared Git submodule."""
-        contract = cls._gitmodule_contract(repository_root, path.as_posix())
-        if contract.failure:
-            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
-                contract.error or f"invalid Git submodule: {path.as_posix()}"
-            )
-        member_url, member_branch = contract.value
-        member_provider = cls._provider_for_url(member_url)
-        if not u.Infra.gitmodule_branch_is_governed(
-            member_branch, provider_branch=member_provider.branch
-        ):
-            return r[tuple[m.Infra.RepositoryRef, ...]].ok(())
-        member = m.Infra.RepositoryRef(
-            name=path.name,
-            distribution=path.name,
-            url=member_url,
-            path=path,
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            provider=member_provider.name,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
-        )
-        return r[tuple[m.Infra.RepositoryRef, ...]].ok((member,))
-
-    @classmethod
     def _derive_workspace_spec(
         cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.WorkspaceSpec]:
@@ -113,10 +80,10 @@ class FlextInfraWorkspaceDetector(
 
         Operator law: flext-infra owns generic conform behaviour and must not
         carry a catalog of the projects it serves. Identity comes from the
-        repository's ``pyproject.toml``; members from its live Git submodule
-        contract; ledger identity is derived from the project name with
-        per-project ``[tool.flext.project]`` overrides. Nothing is fabricated
-        and nothing is looked up in flext-infra.
+        repository's ``pyproject.toml``. ``.gitmodules`` is deliberately not
+        parsed here: its presence classifies topology but cannot create member
+        mappings, generation fanout, or policy. Nothing is looked up in a
+        workspace registry.
         """
         resolved_metadata = project_metadata
         if resolved_metadata is None:
@@ -155,24 +122,6 @@ class FlextInfraWorkspaceDetector(
             package=True,
             editable=False,
             read_only=False,
-        )
-        declared_paths = u.Infra.git_declared_submodule_paths(repository_root)
-        if declared_paths.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                declared_paths.error or "unable to derive Git submodule topology"
-            )
-        members: list[m.Infra.RepositoryRef] = []
-        governed_paths: set[Path] = set()
-        for path in declared_paths.value:
-            derived = cls._derive_governed_member(repository_root, path)
-            if derived.failure:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    derived.error or f"invalid Git submodule: {path.as_posix()}"
-                )
-            members.extend(derived.value)
-            governed_paths.update(member.path for member in derived.value)
-        external_dependency_paths = tuple(
-            path for path in declared_paths.value if path not in governed_paths
         )
         # Derive canonical ProjectSpec from PEP 621 metadata (SSOT)
         package_name = resolved_metadata.package_name or project_name.replace("-", "_")
@@ -232,8 +181,6 @@ class FlextInfraWorkspaceDetector(
                 name=project_name,
                 repository=local_repository,
                 project=project_spec,
-                members=tuple(members),
-                external_dependency_paths=external_dependency_paths,
             )
         )
 
@@ -305,12 +252,12 @@ class FlextInfraWorkspaceDetector(
     def workspace_analysis_exclusion_paths(
         workspace: m.Infra.WorkspaceSpec,
     ) -> tuple[Path, ...]:
-        """Return all workspace paths excluded from static analysis scopes.
+        """Return repository-local analysis exclusions.
 
-        External dependency submodules are foreign trees and therefore never
-        enter Ruff or type-checkers.
+        Topology never supplies cross-repository analyzer policy.
         """
-        return tuple(workspace.external_dependency_paths)
+        del workspace
+        return ()
 
     @classmethod
     def analysis_exclusion_paths(
@@ -415,41 +362,25 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"repository is an external or fork URL: {repository.url}"
             )
-        overlays = tuple(
-            item
-            for item in resolved_workspace.repository_policy_overlays
-            if item.project == canonical_project_name
-        )
-        if len(overlays) > 1:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                f"repository policy overlay is duplicated: {canonical_project_name}"
-            )
-        overlay = (
-            overlays[0]
-            if overlays
-            else m.Infra.RepositoryPolicyOverlaySpec(project=canonical_project_name)
-        )
         mode_result = cls().detect(resolved_root)
         if mode_result.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
                 mode_result.error or "unable to infer repository topology"
             )
-        make_profile = {
-            c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE_ROOT,
-            c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
-        }[mode_result.value]
+        managed = bool(u.Infra.tool_flext_meta(resolved_root))
+        if not managed:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                f"managed repository must declare [tool.flext]: {resolved_root}"
+            )
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
                 root=resolved_root,
-                make_profile=make_profile,
+                topology=mode_result.value,
+                managed=managed,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_branch_result.value,
-                ci_enabled=overlay.ci_enabled,
-                ci_matrix_auto_run=overlay.ci_matrix_auto_run,
-                external_dependency_paths=(
-                    resolved_workspace.external_dependency_paths
-                ),
+                ci_enabled=True,
                 technical_branch_patterns=(
                     config.Infra.codegen.branch_policy.technical_branch_patterns
                 ),
@@ -459,36 +390,12 @@ class FlextInfraWorkspaceDetector(
             )
         )
 
-    @staticmethod
-    def _gitmodule_contract(
-        superproject_root: Path, member_path: str
-    ) -> p.Result[tuple[str, str]]:
-        """Read the exact URL and branch for one declared Git submodule path."""
-        gitmodules_path = superproject_root / c.Infra.GITMODULES
-        if not gitmodules_path.is_file():
-            return r[tuple[str, str]].fail(
-                f"Git superproject has no {c.Infra.GITMODULES}: {superproject_root}"
-            )
-        contract = u.Infra.gitmodule_contract(
-            m.Infra.GitSubmoduleContractRequest(
-                repo_root=superproject_root, member_path=member_path
-            )
-        )
-        if contract.failure:
-            return r[tuple[str, str]].fail(contract.error)
-        return r[tuple[str, str]].ok((contract.value.url, contract.value.branch))
-
     def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
         """Detect mode from this repository's `.gitmodules` presence alone."""
         try:
             resolved_project_root = project_root.resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[c.Infra.WorkspaceMode].fail_op("Workspace detection", exc)
-        if not resolved_project_root.is_dir():
-            return r[c.Infra.WorkspaceMode].fail(
-                f"project root is not a directory: {resolved_project_root}"
-            )
-
         return self._unattached_mode(resolved_project_root)
 
     @override

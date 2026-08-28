@@ -579,8 +579,8 @@ class TestsFlextInfraLazyInitHelpers:
         self, tmp_path: Path
     ) -> None:
         """Derive the root ABI from facade owners, never the prior projection."""
-        # Why (mro-27a9e.1, multi-agent): ai_hub's stale __all__ omitted r and
-        # became a second SSOT; regeneration must follow the declared MRO parent.
+        # The stale projection is not an authority: regeneration follows the
+        # actual public contract of the imported parent package.
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="ai-hub", package_name="ai_hub"
         )
@@ -605,9 +605,10 @@ class TestsFlextInfraLazyInitHelpers:
         has_all, public_exports = u.Tests.extract_lazy_init_exports(generated)
 
         tm.that(has_all, eq=True)
-        for alias_name in ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
+        for alias_name in ("c", "m", "p", "s", "t", "u"):
             tm.that(public_exports, has=alias_name)
-        tm.that(generated, has="from flext_infra import d, e, h, p, r, s, t, u, x")
+        for upstream_alias in ("d", "e", "h", "r", "x"):
+            tm.that(public_exports, lacks=upstream_alias)
 
     def test_root_keeps_declared_public_git_and_work_services(
         self, tmp_path: Path

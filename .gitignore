@@ -367,9 +367,6 @@ CLAUDE.local.md
 !.github/prompts/
 !.github/prompts/flext-aggressive-scale-refactor.prompt.md
 !.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-!.github/scripts/
-!.github/scripts/check-cqrs-compliance.sh
-!.github/scripts/flext-law-loop.sh
 !tests/fixtures/
 !tests/fixtures/ci/
 !tests/fixtures/ci/docker/
@@ -386,4 +383,3 @@ CLAUDE.local.md
 !sgconfig.yml
 !.vscode/settings.json
 !LICENSE
-!custom.mk

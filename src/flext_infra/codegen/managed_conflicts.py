@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from flext_infra import p, r, t
+from flext_core import r
+from flext_infra import p, t
 from flext_infra.codegen.managed_conflicts_core import (
     ManagedConflictError,
     recover_managed_toml,

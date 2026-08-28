@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Final, override
 
 from flext_cli import cli
-from flext_infra import config, m, p, r, t, u
+from flext_core import r
+from flext_infra import config, m, p, t, u
 from flext_infra.base import FlextInfraServiceBase
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.discovery import discover_rules

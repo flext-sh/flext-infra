@@ -18,7 +18,8 @@ from __future__ import annotations
 import sys
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_core import r
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraValidateFreshImport(s[bool]):
