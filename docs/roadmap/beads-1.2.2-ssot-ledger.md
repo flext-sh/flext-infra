@@ -37,6 +37,7 @@ this rollout.
 | 2026-08-28T09:58:21-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `a9f4b8f2e7b6475797b244163cea932e8e844a00` | Retired facade-inheritance scanners, migrators, transformers, hidden Rope post-hook, models, routes, and obsolete tests removed; generated public exports converged and checkpoint pushed |
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `f033fc4bd` | Retired-tooling validation evidence recorded and pushed |
 | 2026-08-28T10:22:00-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `97d55739ced18c5a59fa997582de7dc7925b1f11` | Repository-local topology owners, typed `base.mk` validation, static projection convergence, and final active-vocabulary cleanup pushed |
+| 2026-08-28T10:26:09-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `584189ddc4fb61e33deff2c3c9432d63ef9acdc0` | Full static-gate defects repaired at their owners and the green checkpoint pushed |
 
 ## Validation log
 
@@ -85,6 +86,8 @@ this rollout.
 | 2026-08-28T10:22:00-03:00 | worktree | `make test FILE=tests/unit/validate/basemk_validator_tests.py` and real `validate basemk-validate --workspace .` | PASS: 11 tests; real CLI exit 0 | Freshness validation reads `[project].name` from the canonical pyproject owner and accepts the generated `flext-infra` projection |
 | 2026-08-28T10:22:00-03:00 | worktree | `make fmt WHAT=apply APPLY=Y`; two `make gen WHAT=apply APPLY=Y`; `make gen WHAT=check` | PASS: 869 files formatter-clean; both applies changed 0 files; all fixed-point and static Mise checks passed with 12 tools/75 entries | Static projections are byte-stable; the Beads distribution was resolved only as lock metadata and no runtime command was invoked |
 | 2026-08-28T10:22:00-03:00 | worktree | Tracked-source zero-residue audit plus `git diff --check` | PASS: no retired vocabulary, tracked backups, positive parent inference, or Beads runtime/fallback prose; diff hygiene clean | Removed an orphan codemod rule and retained negative topology tests as behavioral evidence |
+| 2026-08-28T10:23:35-03:00 | worktree | First full `make check` after the topology checkpoint | FAIL: 5 lint, 1 Pyright, and 2 Mypy errors; smells, markdown, Pyrefly, and security passed | Removed cutover orphans and corrected typed lock-payload/test boundaries before proceeding |
+| 2026-08-28T10:25:57-03:00 | worktree | Full `make check` after owner repairs | PASS: lint, smells, markdown, Pyrefly, Mypy, security, and Pyright all reported 0 errors; 0 skips | Static gate stage is green and the repair was pushed as `584189ddc4fb61e33deff2c3c9432d63ef9acdc0` |
 
 ## Unresolved boundaries
 
