@@ -244,8 +244,8 @@ class TestsCodegenMakeEnvironment:
         test_u.Tests.write_executable(
             mise,
             "#!/bin/sh\n"
-            f"printf '%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
-            f"\"$MISE_CONFIG_DIR\" >> '{mise_env_log}'\n"
+            f"printf '%s|%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
+            f"\"$MISE_CONFIG_DIR\" \"$MISE_CEILING_PATHS\" >> '{mise_env_log}'\n"
             f"exec '{real_mise}' \"$@\"\n",
         )
         uv = tool_bin / "uv"
@@ -285,10 +285,17 @@ class TestsCodegenMakeEnvironment:
         tm.that(
             any(
                 "/.test-tmp/mise-setup." in value and value.endswith("/config")
-                for value in mise_env_log.read_text(encoding="utf-8").splitlines()
+                for line in mise_env_log.read_text(encoding="utf-8").splitlines()
+                for value in (line.split("|", 2)[1],)
             ),
             eq=True,
         )
+        setup_ceilings = {
+            line.split("|", 2)[2]
+            for line in mise_env_log.read_text(encoding="utf-8").splitlines()
+            if "/.test-tmp/mise-setup." in line
+        }
+        assert setup_ceilings == {str(project_root.parent)}
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
