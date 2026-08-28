@@ -155,9 +155,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         resolved = value
         match value:
             case ast.Call(
-                func=ast.Name(id="tuple"),
-                args=[ast.Name(id=source_name)],
-                keywords=[],
+                func=ast.Name(id="tuple"), args=[ast.Name(id=source_name)], keywords=[]
             ):
                 if source_name not in assignments:
                     msg = f"{file_path}: __all__ references missing {source_name}"
