@@ -353,9 +353,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         init_path = resolved_dir / c.Infra.INIT_PY
         current_pkg = package_entry.package_name if package_entry is not None else ""
         generated_init = init_path.is_file() and (
-            u.Cli.files_read_text(init_path).unwrap().startswith(
-                c.Infra.AUTOGEN_HEADERS
-            )
+            u.Cli
+            .files_read_text(init_path)
+            .unwrap()
+            .startswith(c.Infra.AUTOGEN_HEADERS)
         )
         context = m.Infra.LazyInitPackageContext(
             pkg_dir=resolved_dir,

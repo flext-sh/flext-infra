@@ -930,21 +930,6 @@ class FlextInfraConfigModels:
             default=None, description="Permit toolchain declarations"
         )
 
-    class MakeBootstrapSpec(_ConfigContract):
-        """Hermetic project dependency surface used before conform."""
-
-        environment: Annotated[
-            Literal["isolated"], m.Field(description="uv environment isolation policy")
-        ]
-        dependency_groups: Annotated[
-            Literal["all"],
-            m.Field(description="Project dependency-group selection policy"),
-        ]
-        extras: Annotated[
-            Literal["all"],
-            m.Field(description="Project optional-dependency selection policy"),
-        ]
-
     class DocsGithubRepoSpec(_ConfigContract):
         """One governed GitHub repository used for cross-repo doc links."""
 
@@ -1166,10 +1151,6 @@ class FlextInfraConfigModels:
                     "as an invalid write-enable token"
                 ),
             ),
-        ]
-        bootstrap: Annotated[
-            FlextInfraConfigModels.MakeBootstrapSpec,
-            m.Field(description="Pre-conform project environment contract"),
         ]
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps

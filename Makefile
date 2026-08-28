@@ -203,11 +203,9 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 ifeq ($(GEN_INIT_ONLY),Y)
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT :=
 FLEXT_INFRA_SOURCE_ROOT_REL :=
-UV_BOOTSTRAP_FLAGS :=
 else
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
 FLEXT_INFRA_SOURCE_ROOT_REL := .
-UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 endif
 # End SECTION: infra bootstrap
 
@@ -333,10 +331,10 @@ _bootstrap_setup_tools:
 
 ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
 FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
 else
 FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
 endif
 
 ifeq ($(MAKE_PROFILE),workspace)
@@ -1014,7 +1012,7 @@ define _mise_lock_apply
 		if grep -F 'mise WARN' "$$scratch/lock.log" >/dev/null; then \
 			printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
 		fi; \
-		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+		$(FLEXT_INFRA_BOOTSTRAP) codegen mise-artifacts \
 			--workspace "$$scratch" --apply; \
 		lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
 		cp "$$scratch/mise.lock" "$$lock_tmp"; \
@@ -1028,7 +1026,7 @@ define _mise_artifacts_check
 	for project in $(MISE_LOCK_PROJECTS); do \
 		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
 		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+		$(FLEXT_INFRA_BOOTSTRAP) codegen mise-artifacts \
 			--workspace "$$project_root" --check; \
 		if [ "$$project" != . ]; then \
 			cmp -s "$(PROJECT_ROOT)/bin/mise" "$$project_root/bin/mise" || { \
@@ -1042,11 +1040,11 @@ define _mise_artifacts_check
 endef
 
 define _generated_docs
-	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(1) $(DOCS_PROJECT_ARGS)
+	@$(FLEXT_INFRA_BOOTSTRAP) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(1) $(DOCS_PROJECT_ARGS)
 endef
 
-_builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+_builtin_gen_check:
+	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
 
@@ -1057,7 +1055,7 @@ _builtin_gen_init:
 
 _builtin_gen_all:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	$(call _generated_docs,--apply)
 	$(call _mise_launcher_apply)
 	$(call _mise_lock_apply)
