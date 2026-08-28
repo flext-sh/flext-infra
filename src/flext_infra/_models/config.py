@@ -980,6 +980,16 @@ class FlextInfraConfigModels:
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
+        api_modules: Annotated[
+            Mapping[t.NonEmptyStr, tuple[t.NonEmptyStr, ...]],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Public API modules generated per distribution; absent "
+                    "distributions own no module pages"
+                ),
+            ),
+        ]
         mutable_actions: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
@@ -1007,6 +1017,29 @@ class FlextInfraConfigModels:
                 description="Governed org/repo/branch map for cross-repo doc URLs",
             ),
         ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_api_modules(self) -> Self:
+            """Reject duplicate or non-importable API module declarations."""
+            for distribution, modules in self.api_modules.items():
+                if not modules:
+                    msg = f"docs api_modules must not be empty: {distribution}"
+                    raise ValueError(msg)
+                if len(set(modules)) != len(modules):
+                    msg = f"docs api_modules must be unique: {distribution}"
+                    raise ValueError(msg)
+                invalid = next(
+                    (
+                        module
+                        for module in modules
+                        if not all(part.isidentifier() for part in module.split("."))
+                    ),
+                    None,
+                )
+                if invalid is not None:
+                    msg = f"docs api module is not importable: {invalid}"
+                    raise ValueError(msg)
+            return self
 
     class TestmonCacheSpec(_ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy (mro-dipb)."""
@@ -2998,20 +3031,6 @@ class FlextInfraConfigModels:
         def changed(self) -> bool:
             """Whether the sync altered any environment file."""
             return bool(self.changed_files)
-
-    class BaseMkRenderRequest(_ConfigContract):
-        """Validated public request for one base.mk render."""
-
-        project_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
-        ]
-
-    class BaseMkRenderResult(_ConfigContract):
-        """Rendered base.mk content for one project."""
-
-        content: Annotated[
-            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
-        ]
 
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""

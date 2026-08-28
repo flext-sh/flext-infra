@@ -19,7 +19,6 @@ from .__version__ import __version__ as __version__
 from .__version__ import __version_info__ as __version_info__
 
 if TYPE_CHECKING:
-    from . import basemk as basemk
     from . import check as check
     from . import codegen as codegen
     from . import codemod as codemod
@@ -42,9 +41,6 @@ if TYPE_CHECKING:
     from .api import FlextInfra, infra
     from .base import FlextInfraServiceBase, FlextInfraServiceBase as s
     from .base_selection import FlextInfraProjectSelectionServiceBase
-    from .basemk.custom_policy import FlextInfraCustomMkPolicy
-    from .basemk.generator import FlextInfraBaseMkGenerator
-    from .basemk.renderer import FlextInfraBaseMkTemplateRenderer
     from .check.workspace_check import FlextInfraWorkspaceChecker
     from .check.workspace_check_gates import (
         FlextInfraGateRegistry,
@@ -274,7 +270,6 @@ if TYPE_CHECKING:
     from .transformers.violation_census_visitor import FlextInfraViolationCensusVisitor
     from .typings import FlextInfraTypes, FlextInfraTypes as t
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
-    from .validate.basemk_validator import FlextInfraBaseMkValidator
     from .validate.cprofile_report import FlextInfraCProfileReport
     from .validate.fresh_import import FlextInfraValidateFreshImport
     from .validate.gate_contract import FlextInfraGateContractValidator
@@ -325,9 +320,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraAbstractionBoundaryGate",
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
-    "FlextInfraBaseMkGenerator",
-    "FlextInfraBaseMkTemplateRenderer",
-    "FlextInfraBaseMkValidator",
     "FlextInfraBooleanLogicFixer",
     "FlextInfraCProfileReport",
     "FlextInfraCanonicalAliasGate",
@@ -360,7 +352,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
-    "FlextInfraCustomMkPolicy",
     "FlextInfraCyclicImportDetector",
     "FlextInfraDeferredSelfReferenceDetector",
     "FlextInfraDeferredSelfReferenceGate",
@@ -542,7 +533,6 @@ __all__: tuple[str, ...] = (
     "__version__",
     "__version_info__",
     "auto_fixable_smell_tags",
-    "basemk",
     "c",
     "check",
     "codegen",
@@ -590,10 +580,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".api": ("FlextInfra", "infra"),
             ".base": ("FlextInfraServiceBase", "s"),
             ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-            ".basemk": ("basemk",),
-            ".basemk.custom_policy": ("FlextInfraCustomMkPolicy",),
-            ".basemk.generator": ("FlextInfraBaseMkGenerator",),
-            ".basemk.renderer": ("FlextInfraBaseMkTemplateRenderer",),
             ".check": ("check",),
             ".check.workspace_check": ("FlextInfraWorkspaceChecker",),
             ".check.workspace_check_gates": (
@@ -873,7 +859,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".typings": ("FlextInfraTypes", "t"),
             ".utilities": ("FlextInfraUtilities", "u"),
             ".validate": ("validate",),
-            ".validate.basemk_validator": ("FlextInfraBaseMkValidator",),
             ".validate.cprofile_report": ("FlextInfraCProfileReport",),
             ".validate.fresh_import": ("FlextInfraValidateFreshImport",),
             ".validate.gate_contract": ("FlextInfraGateContractValidator",),

@@ -215,6 +215,43 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     tm.that((project / "README.md").read_text(encoding="utf-8"), eq=first_readme)
 
 
+def test_configured_api_modules_own_generated_module_pages(tmp_path: Path) -> None:
+    """Generate only config-owned API modules, never modules inferred from exports."""
+    project_name = config.Infra.name
+    declared = config.Infra.codegen.make.docs.api_modules[project_name]
+    workspace = u.Tests.create_docs_workspace(
+        tmp_path, project_names=(project_name,)
+    )
+    project = workspace / project_name
+    package = project / "src" / project_name.replace("-", "_")
+    (package / "exported_but_undocumented.py").write_text(
+        '"""Module intentionally absent from the docs declaration."""\n',
+        encoding="utf-8",
+    )
+    (package / "__init__.py").write_text(
+        "from flext_infra import exported_but_undocumented\n\n"
+        '__all__ = ["exported_but_undocumented"]\n',
+        encoding="utf-8",
+    )
+
+    result = FlextInfraDocGenerator().generate(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace, projects=[project_name], apply=True
+        )
+    )
+
+    tm.ok(result)
+    modules_root = project / "docs/api-reference/generated/modules"
+    generated = {
+        path.relative_to(modules_root).as_posix()
+        for path in modules_root.rglob("*.md")
+        if path.name != "index.md"
+    }
+    expected = {f"{module.replace('.', '/')}" + ".md" for module in declared}
+    tm.that(generated, eq=expected)
+    tm.that("exported_but_undocumented.md" in generated, eq=False)
+
+
 def test_generated_markdown_starts_with_level_one_heading(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     request = m.Infra.DocsGenerateRequest(

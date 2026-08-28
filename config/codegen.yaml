@@ -369,7 +369,20 @@ Infra:
         trace_globs:
           - "*.pstats"
       docs:
-        mutable_actions: [generate, fix]
+        api_modules:
+          flext-infra:
+            - api
+            - base
+            - base_selection
+            - cli
+            - constants
+            - git
+            - models
+            - protocols
+            - typings
+            - utilities
+            - worktree
+        mutable_actions: [fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
@@ -462,17 +475,13 @@ Infra:
         whats: [diagnostics]
         apply_guarded: false
       - name: docs
-        # `validate` is the read-only fixed-point after mutation (must differ
-        # from apply_what so the fixed-point re-checks without APPLY=Y).
-        # `WHAT=all` remains the explicit full pipeline meta-selector.
+        # Generated documentation is owned exclusively by `make gen`; this
+        # verb retains curated-doc repair and read-only audit/build/validate.
+        # `validate` is the read-only fixed point after mutation.
         default_what: validate
-        whats: [all, generate, fix, audit, build, validate]
-        # generate/fix materialize artifacts: the generated handler picks
-        # --apply or --check from APPLY, and the docs workflow calls
-        # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-        # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
+        whats: [all, fix, audit, build, validate]
         apply_guarded: true
-        apply_what: generate
+        apply_what: fix
       - name: clean
         default_what: status
         whats: [status, generated]
@@ -715,14 +724,12 @@ Infra:
       canonical_root_files:
         - pyproject.toml
         - Makefile
-        - base.mk
         - custom.mk
         - README.md
         - LICENSE
         - CHANGELOG.md
         - CONTRIBUTING.md
         - AGENTS.md
-        - CLAUDE.md
         - conftest.py
         - mkdocs.yml
         - uv.lock
@@ -1123,9 +1130,6 @@ Infra:
       - path: README.md
         owner: codegen
         policy: create-only
-      - path: base.mk
-        owner: make
-        policy: delegated
       - path: custom.mk
         owner: custom
         policy: create-only
@@ -1616,9 +1620,6 @@ Infra:
             - ".devcontainer/.host-gitsettings"
             - ".devcontainer/.env"
             - ".github/*.rej"
-        - name: "--- codegen conform: tracked owner inputs ---"
-          patterns:
-            - "!base.mk"
         # This final policy re-ignores .beads/* for every profile, so the
         # workspace exception for metadata.json is re-stated in a
         # workspace-scoped section immediately after it (last rule wins).
@@ -1660,7 +1661,6 @@ Infra:
             - ".bin/"
             - ".tools/"
             - "__pycache__/"
-            - "base.mk"
             - "!.pre-commit-config.yaml"
     templates:
       root: project

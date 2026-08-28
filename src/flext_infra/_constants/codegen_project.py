@@ -115,7 +115,7 @@ class FlextInfraConstantsCodegenProject:
 
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
-    # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
+    # delegate: "render" (CLI engine) today; specialized generators may follow.
     # NOTE (multi-agent, mro-wkii.17): one base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.
 

@@ -11,7 +11,6 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import _utilities as _utilities
-    from . import basemk as basemk
     from . import check as check
     from . import codegen as codegen
     from . import codemod as codemod
@@ -170,7 +169,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceFactory",
     "WorktreeFixture",
     "_utilities",
-    "basemk",
     "c",
     "check",
     "codegen",
@@ -227,7 +225,6 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._utilities": ("_utilities",),
-            ".basemk": ("basemk",),
             ".check": ("check",),
             ".check.tests_workspace_check": (
                 "test_workspace_check_main_returns_error_without_projects",

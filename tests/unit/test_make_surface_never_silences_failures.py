@@ -36,12 +36,12 @@ def _workspace_root() -> Path:
 def _executable_surfaces() -> tuple[Path, ...]:
     """Return active Make/workflow surfaces and their executable templates.
 
-    Generated surfaces (``base.mk``) are gitignored projections, so fixing one
-    on disk is undone by the next regeneration. The shipped ``.mk.j2``
-    templates are therefore in scope: they are where the defect must not exist.
+    Generated surfaces are projections, so fixing one on disk is undone by the
+    next regeneration. The shipped templates are therefore in scope: they are
+    where the defect must not exist.
     """
     root = _workspace_root()
-    names = (c.Infra.MAKEFILE_FILENAME, c.Infra.CUSTOM_MAKE_FILENAME, c.Infra.BASE_MK)
+    names = (c.Infra.MAKEFILE_FILENAME, c.Infra.CUSTOM_MAKE_FILENAME)
     templates = Path(flext_infra.__file__).resolve().parent / "templates"
     workflows = root / ".github" / "workflows"
     return (

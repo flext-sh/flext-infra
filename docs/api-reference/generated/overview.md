@@ -16,17 +16,20 @@
   :: OS Independent`, `Programming Language :: Python :: 3 :: Only` (+4 more)
 - Project class: `infra`
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
-- Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
-  `FlextInfraGitService`, `FlextInfraModels`,
-  `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols`,
-  `FlextInfraServiceBase` (+4 more)
+- Main facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
+  `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
+  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+192
+  more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
-  `FlextInfraGitService`, `FlextInfraModels`,
-  `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols`,
-  `FlextInfraServiceBase`, `FlextInfraTypes`, `FlextInfraUtilities` (+7 more)
-- Exported module shortcuts: `basemk`
-- Generated module pages: `13`
+- Public symbol exports: `CliDispatchService`, `CliRouteBase`,
+  `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
+  `FlextInfraAbstractionBoundaryGate`,
+  `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+214 more)
+- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
+  `docs`, `fixers`, `gates` (+7 more)
+- Generated module pages: `219`
 
 ## Next Pages
 

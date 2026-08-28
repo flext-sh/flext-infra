@@ -9,6 +9,7 @@ from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
+from flext_infra import config
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -18,15 +19,10 @@ class FlextInfraUtilitiesDocsGenerate:
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod
-    def _module_names(contract: t.JsonMapping) -> list[str]:
-        """Extract normalized module names from one docs contract payload."""
-        try:
-            items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
-                contract.get("modules", [])
-            )
-        except c.ValidationError:
-            return []
-        return [str(item) for item in items]
+    def _module_names(scope: m.Infra.DocScope) -> list[str]:
+        """Return config-owned public API module names for one distribution."""
+        declared = config.Infra.codegen.make.docs.api_modules.get(scope.name, ())
+        return [f"{scope.package_name}.{module}" for module in declared]
 
     @staticmethod
     def _prune_generated_tree(
@@ -55,7 +51,7 @@ class FlextInfraUtilitiesDocsGenerate:
         contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
-        module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
+        module_names = FlextInfraUtilitiesDocsGenerate._module_names(scope)
         expected_generated: t.MutableSequenceOf[Path] = [
             scope.path / "docs/api-reference/generated/overview.md",
             scope.path / "docs/api-reference/generated/public-api.md",
@@ -158,7 +154,7 @@ class FlextInfraUtilitiesDocsGenerate:
         contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
-        module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
+        module_names = FlextInfraUtilitiesDocsGenerate._module_names(scope)
         return [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 path,
@@ -211,7 +207,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope.path, scope.package_name
             )
             scope_modules[scope.name] = FlextInfraUtilitiesDocsGenerate._module_names(
-                project_contract
+                scope
             )
             src_dir = scope.path / "src"
             if src_dir.is_dir():
