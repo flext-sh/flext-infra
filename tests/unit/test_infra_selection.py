@@ -56,7 +56,7 @@ class TestsFlextInfraInfraSelection:
     def test_nested_or_unknown_selector_fails(self, repository: Path) -> None:
         tm.fail(
             u.Infra.resolve_projects(repository, ("nested-project",)),
-            has="unknown projects",
+            has="unknown project locators: nested-project",
         )
 
     def test_invalid_repository_fails(self, tmp_path: Path) -> None:

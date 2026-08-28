@@ -91,10 +91,10 @@ class TestsFlextInfraInfraRopeService:
                 eq=True,
             )
 
-    def test_open_workspace_indexes_every_project_from_any_internal_call(
+    def test_open_workspace_does_not_expand_to_sibling_projects(
         self, tmp_path: Path
     ) -> None:
-        """A workspace-context Rope call indexes declared and undeclared projects."""
+        """One explicit repository root cannot fan out into sibling projects."""
         monorepo_root = tmp_path / "repo"
         monorepo_root.mkdir()
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -115,15 +115,15 @@ class TestsFlextInfraInfraRopeService:
             docstring="Models.",
         )
 
-        for call_root in (monorepo_root, workspace_root, package_root):
-            with flext_infra.infra.rope_workspace(call_root) as rope:
-                tm.that(rope.rope_workspace_root, eq=monorepo_root.resolve())
-                tm.that(
-                    {entry.project_root for entry in rope.modules()},
-                    eq={workspace_root.resolve(), sibling_root.resolve()},
-                )
-                tm.that(rope.module(module_path), none=False)
-                tm.that(rope.module(sibling_module_path), none=False)
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            tm.that(rope.rope_workspace_root, eq=workspace_root.resolve())
+            tm.that(
+                {entry.project_root for entry in rope.modules()},
+                eq={workspace_root.resolve()},
+            )
+            tm.that(rope.module(module_path), none=False)
+            tm.that(rope.module(sibling_module_path), none=True)
+            tm.that(sibling_root in rope.rope_workspace_root.parents, eq=False)
 
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""
@@ -147,7 +147,7 @@ class TestsFlextInfraInfraRopeService:
             docstring="Models.",
         )
 
-        with flext_infra.infra.rope_workspace(package_root) as rope:
+        with flext_infra.infra.rope_workspace(project_root) as rope:
             tm.that(rope.rope_workspace_root, eq=project_root.resolve())
             tm.that(
                 {entry.project_root for entry in rope.modules()},

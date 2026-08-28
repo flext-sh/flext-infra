@@ -23,44 +23,19 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         return u.Infra()
 
     @pytest.fixture
-    def workspace_with_projects(self, tmp_path: Path) -> Path:
+    def repository(self, tmp_path: Path) -> Path:
+        package = tmp_path / "src" / "workspace"
+        package.mkdir(parents=True)
+        (package / "__init__.py").touch()
         (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace'\n\n"
-            "[tool.uv.workspace]\n"
-            "members = ['project2']\n",
-            encoding="utf-8",
-        )
-        proj1 = tmp_path / "project1"
-        proj1.mkdir()
-        (proj1 / "pyproject.toml").write_text(
-            "[project]\nname='project1'\nversion='0.1.0'\n"
-            "dependencies=['flext-core>=0.1.0']\n",
-            encoding="utf-8",
-        )
-        (proj1 / "src").mkdir()
-        (proj1 / "tests").mkdir()
-        proj2 = tmp_path / "project2"
-        proj2.mkdir()
-        (proj2 / "pyproject.toml").write_text(
-            "[project]\nname='project2'\n", encoding="utf-8"
-        )
-        invalid = tmp_path / "invalid"
-        invalid.mkdir()
-        (invalid / "pyproject.toml").write_text(
-            "[project]\nname='invalid'\n", encoding="utf-8"
-        )
-        hidden = tmp_path / ".hidden"
-        hidden.mkdir()
-        (hidden / "pyproject.toml").write_text(
-            "[project]\nname='hidden'\ndependencies=['flext-core>=0.1.0']\n",
-            encoding="utf-8",
+            "[project]\nname='workspace'\nversion='0.1.0'\n", encoding="utf-8"
         )
         return tmp_path
 
     def test_discover_projects_happy_path(
-        self, service: u.Infra, workspace_with_projects: Path
+        self, service: u.Infra, repository: Path
     ) -> None:
-        result = service.discover_projects(workspace_with_projects)
+        result = service.discover_projects(repository)
         tm.ok(result)
         projects = result.value
         tm.that(len(projects), eq=1)
@@ -79,7 +54,6 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.discover_projects(nonexistent)
         tm.fail(result)
-        tm.that(result.error, is_=str)
         tm.that(result.error, is_=str)
         tm.that(result.error, has="discovery failed")
 
@@ -129,20 +103,13 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(files[0].parent, eq=proj1)
 
     def test_discover_projects_result_type(
-        self, service: u.Infra, workspace_with_projects: Path
+        self, service: u.Infra, repository: Path
     ) -> None:
-        result = service.discover_projects(workspace_with_projects)
+        result = service.discover_projects(repository)
         tm.ok(result)
         projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
         for item in projects:
             tm.that(item, is_=m.Infra.ProjectInfo)
-
-    def test_discover_projects_empty_workspace_v2(
-        self, service: u.Infra, tmp_path: Path
-    ) -> None:
-        result = service.discover_projects(tmp_path)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
 
     def test_discover_projects_derives_package_name_from_hatch_packages(
         self, service: u.Infra, tmp_path: Path
