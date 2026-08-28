@@ -58,6 +58,33 @@ class FlextInfraUtilitiesRepository:
         return r[m.Infra.ProviderSpec].ok(matches[0])
 
     @staticmethod
+    def remote_provider(
+        url: str, providers: t.SequenceOf[m.Infra.ProviderSpec]
+    ) -> p.Result[m.Infra.ProviderSpec]:
+        """Resolve one remote identity to exactly one configured provider."""
+        from flext_infra.utilities import u
+
+        identity = u.Infra.git_remote_identity(url)
+        parts = tuple(part for part in identity.split("/") if part)
+        match parts:
+            case (owner, _repository):
+                pass
+            case _:
+                return r[m.Infra.ProviderSpec].fail(
+                    "repository remote has no valid owner identity"
+                )
+        matches = tuple(
+            provider
+            for provider in providers
+            if provider.organization.casefold() == owner.casefold()
+        )
+        if len(matches) != 1:
+            return r[m.Infra.ProviderSpec].fail(
+                f"repository owner must resolve exactly once: {owner}"
+            )
+        return r[m.Infra.ProviderSpec].ok(matches[0])
+
+    @staticmethod
     def resolve_integration_branch(
         workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
     ) -> str:

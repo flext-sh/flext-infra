@@ -148,7 +148,7 @@ class TestsRepositoryLocalTopology:
         resolved = tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(child))
 
         tm.that(mode, eq=c.Infra.WorkspaceMode.STANDALONE)
-        tm.that(workspace.name, eq="child")
+        tm.that(workspace.name, eq="child-workspace")
         tm.that(workspace.beads.workspace, eq="child-workspace")
         tm.that(workspace.subprojects, empty=True)
         tm.that(resolved, eq=child.resolve())
@@ -200,6 +200,228 @@ class TestsRepositoryLocalTopology:
 
         tm.fail(result, has="not a directory")
 
+    def test_repository_without_origin_fails_closed(self, tmp_path: Path) -> None:
+        """Require an explicit origin before classifying provider ownership."""
+        root = tmp_path / "without-origin"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "without-origin",
+            workspace="without-origin",
+            database="without_origin",
+            issue_prefix="without-origin",
+        )
+        tm.ok(u.Cli.run_checked(["git", "remote", "remove", "origin"], cwd=root))
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="No item found with id origin")
+
+    @pytest.mark.parametrize(
+        ("missing_key", "expected_error"),
+        [
+            ("url", "Git submodule URL is missing"),
+            ("branch", "Git submodule branch is missing"),
+        ],
+    )
+    def test_gitmodule_requires_complete_contract(
+        self, tmp_path: Path, missing_key: str, expected_error: str
+    ) -> None:
+        """Reject a subproject entry without its exact URL or branch."""
+        root = tmp_path / missing_key
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        provider = u.Tests.provider()
+        fields = {
+            "url": f"\turl = {provider.base_url}/fixture-child.git\n",
+            "branch": f"\tbranch = {provider.branch}\n",
+        }
+        fields.pop(missing_key)
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "fixture-child"]\n'
+            "\tpath = fixture-child\n"
+            f"{''.join(fields.values())}",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has=expected_error)
+
+    def test_gitmodule_rejects_duplicate_paths(self, tmp_path: Path) -> None:
+        """Reject two declarations that claim the same checkout path."""
+        root = tmp_path / "duplicate"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        provider = u.Tests.provider()
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "first"]\n'
+            "\tpath = fixture-child\n"
+            f"\turl = {provider.base_url}/fixture-child.git\n"
+            f"\tbranch = {provider.branch}\n"
+            '[submodule "second"]\n'
+            "\tpath = fixture-child\n"
+            f"\turl = {provider.base_url}/fixture-child.git\n"
+            f"\tbranch = {provider.branch}\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="duplicate Git submodule path")
+
+    def test_gitmodule_rejects_malformed_configuration(self, tmp_path: Path) -> None:
+        """Reject syntax that cannot define an exact submodule contract."""
+        root = tmp_path / "malformed-gitmodules"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "unterminated"\npath = fixture-child\n',
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="failed to read Git submodule declarations")
+
+    @pytest.mark.parametrize("declared_path", ["../escape", "/absolute/escape"])
+    def test_gitmodule_rejects_escaping_path(
+        self, tmp_path: Path, declared_path: str
+    ) -> None:
+        """Reject relative traversal and absolute checkout destinations."""
+        root = tmp_path / "escaping-path"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        provider = u.Tests.provider()
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "fixture-child"]\n'
+            f"\tpath = {declared_path}\n"
+            f"\turl = {provider.base_url}/fixture-child.git\n"
+            f"\tbranch = {provider.branch}\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="invalid Git submodule path")
+
+    def test_gitmodule_rejects_missing_checkout(self, tmp_path: Path) -> None:
+        """Reject a governed declaration whose checkout is absent."""
+        root = tmp_path / "missing-checkout"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        WorktreeFixture.write_gitmodules(root, ("fixture-child",))
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="governed subproject checkout is missing")
+
+    def test_gitmodule_rejects_provider_branch_divergence(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject a governed checkout declared on another integration line."""
+        root = tmp_path / "branch-divergence"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        WorktreeFixture.write_gitmodules(root, ("fixture-child",))
+        gitmodules = root / c.Infra.GITMODULES
+        gitmodules.write_text(
+            gitmodules.read_text(encoding="utf-8").replace(
+                u.Tests.provider().branch, "unexpected-integration"
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="branch differs from provider policy")
+
+    def test_gitmodule_rejects_origin_url_divergence(self, tmp_path: Path) -> None:
+        """Reject a checkout whose origin identity differs from its declaration."""
+        root = tmp_path / "url-divergence"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        child = root / "fixture-child"
+        WorktreeFixture.initialize_governed_project(
+            child,
+            "fixture-child",
+            workspace="fixture-child",
+            database="fixture_child",
+            issue_prefix="fixture-child",
+        )
+        provider = u.Tests.provider()
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "fixture-child"]\n'
+            "\tpath = fixture-child\n"
+            f"\turl = {provider.base_url}/different-child.git\n"
+            f"\tbranch = {provider.branch}\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="subproject origin differs from its .gitmodules URL")
+
+    def test_gitmodule_rejects_unknown_provider_without_raw_url(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject unknown subproject ownership before inspecting its checkout."""
+        root = tmp_path / "unknown-provider"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        raw_host_marker = "private-submodule-host"
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "fixture-child"]\n'
+            "\tpath = fixture-child\n"
+            f"\turl = git@{raw_host_marker}:unknown-owner/fixture-child.git\n"
+            f"\tbranch = {u.Tests.provider().branch}\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="repository owner must resolve exactly once")
+        tm.that(result.error or "", lacks=raw_host_marker)
+
     def test_governed_remote_identity_normalizes_the_git_suffix(self) -> None:
         """Accept equivalent provider URLs with or without the clone suffix."""
         provider = u.Tests.provider()
@@ -215,3 +437,42 @@ class TestsRepositoryLocalTopology:
             FlextInfraWorkspaceDetector.repository_is_governed(repository, provider),
             eq=True,
         )
+
+    @pytest.mark.parametrize(
+        "remote",
+        [
+            "https://github.com/flext-sh/fixture-project.git",
+            "git@github.com:flext-sh/fixture-project.git",
+            "git@private-github-alias:flext-sh/fixture-project.git",
+        ],
+    )
+    def test_provider_resolution_reuses_semantic_git_identity(self, remote: str) -> None:
+        """Resolve HTTPS, SSH, and SSH aliases through one owner identity."""
+        provider = u.Tests.provider()
+
+        resolved = tm.ok(u.Infra.remote_provider(remote, config.Infra.codegen.providers))
+
+        tm.that(resolved, eq=provider)
+
+    def test_provider_resolution_rejects_unknown_owner_without_raw_url(self) -> None:
+        """Fail unknown ownership without leaking the original remote string."""
+        raw_host_marker = "private-host-marker"
+        result = u.Infra.remote_provider(
+            f"git@{raw_host_marker}:unknown-owner/fixture-project.git",
+            config.Infra.codegen.providers,
+        )
+
+        tm.fail(result, has="repository owner must resolve exactly once")
+        tm.that(result.error or "", lacks=raw_host_marker)
+
+    def test_provider_resolution_rejects_duplicate_owners(self) -> None:
+        """Fail when two configured providers claim the same organization."""
+        provider = u.Tests.provider()
+        duplicate = provider.model_copy(update={"name": "duplicate-provider"})
+
+        result = u.Infra.remote_provider(
+            "git@github-alias:flext-sh/fixture-project.git",
+            (provider, duplicate),
+        )
+
+        tm.fail(result, has="repository owner must resolve exactly once")

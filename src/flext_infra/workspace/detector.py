@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, override
-from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, config, m, u
@@ -33,29 +32,11 @@ class FlextInfraWorkspaceDetector(
     def repository_is_governed(
         repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
     ) -> bool:
-        """Require provider key, host, and organization to agree exactly."""
+        """Require the declared provider and semantic remote owner to agree."""
         if repository.provider != provider.name:
             return False
-        provider_url = urlparse(provider.base_url)
-        repository_url = urlparse(repository.url)
-        provider_path = provider_url.path.strip("/")
-        repository_path = repository_url.path.strip("/")
-        repository_name = repository_path.removeprefix(
-            f"{provider.organization}/"
-        ).removesuffix(".git")
-        canonical_path = f"{provider.organization}/{repository_name}.git"
-        actual_path = (
-            repository_path
-            if repository_path.endswith(".git")
-            else f"{repository_path}.git"
-        )
-        return (
-            provider_url.scheme == repository_url.scheme
-            and provider_url.netloc == repository_url.netloc
-            and provider_path == provider.organization
-            and bool(repository_name)
-            and actual_path == canonical_path
-        )
+        resolved = u.Infra.remote_provider(repository.url, (provider,))
+        return resolved.success and resolved.value.name == provider.name
 
     @classmethod
     def load_beads_spec(
@@ -94,30 +75,9 @@ class FlextInfraWorkspaceDetector(
         return r[str].ok(result.value.text.strip())
 
     @staticmethod
-    def _declared_provider_for_url(url: str) -> m.Infra.ProviderSpec | None:
-        """Return the exact configured provider owning ``url``."""
-        parsed = urlparse(url)
-        for provider in config.Infra.codegen.providers:
-            provider_url = urlparse(provider.base_url)
-            if (
-                provider_url.scheme == parsed.scheme
-                and provider_url.netloc == parsed.netloc
-                and parsed.path.strip("/").startswith(
-                    f"{provider.organization}/"
-                )
-            ):
-                return provider
-        return None
-
-    @classmethod
-    def _provider_for_url(cls, url: str) -> p.Result[m.Infra.ProviderSpec]:
+    def _provider_for_url(url: str) -> p.Result[m.Infra.ProviderSpec]:
         """Resolve one configured provider, failing closed when none owns the URL."""
-        provider = cls._declared_provider_for_url(url)
-        if provider is None:
-            return r[m.Infra.ProviderSpec].fail(
-                f"repository URL has no declared provider: {url}"
-            )
-        return r[m.Infra.ProviderSpec].ok(provider)
+        return u.Infra.remote_provider(url, config.Infra.codegen.providers)
 
     @staticmethod
     def _gitmodule_contract(
@@ -191,7 +151,7 @@ class FlextInfraWorkspaceDetector(
         )
         if not cls.repository_is_governed(repository, provider):
             return r[m.Infra.RepositoryRef].fail(
-                f"repository is not governed by provider {provider.name}: {effective_url}"
+                f"repository identity is not governed by provider {provider.name}"
             )
         return r[m.Infra.RepositoryRef].ok(repository)
 
@@ -209,7 +169,6 @@ class FlextInfraWorkspaceDetector(
                 declared.error or "unable to read local .gitmodules"
             )
         subprojects: list[m.Infra.RepositoryRef] = []
-        external: list[Path] = []
         seen: set[Path] = set()
         for path in declared.value:
             if path in seen:
@@ -225,10 +184,10 @@ class FlextInfraWorkspaceDetector(
             if contract.failure:
                 return result_type.fail(contract.error)
             declared_url, declared_branch = contract.value
-            provider = cls._declared_provider_for_url(declared_url)
-            if provider is None:
-                external.append(path)
-                continue
+            provider_result = cls._provider_for_url(declared_url)
+            if provider_result.failure:
+                return result_type.fail(provider_result.error)
+            provider = provider_result.value
             if not u.Infra.gitmodule_branch_is_governed(
                 declared_branch, provider_branch=provider.branch
             ):
@@ -257,7 +216,7 @@ class FlextInfraWorkspaceDetector(
             if repository.failure:
                 return result_type.fail(repository.error)
             subprojects.append(repository.value)
-        return result_type.ok((tuple(subprojects), tuple(external)))
+        return result_type.ok((tuple(subprojects), ()))
 
     @classmethod
     def load_workspace_spec(
@@ -383,7 +342,7 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[tuple[Path, ...]]:
         """Load exclusions for governed repositories; ignore ungoverned trees."""
         origin = cls._git_origin_url(repository_root)
-        if origin.failure or cls._declared_provider_for_url(origin.value) is None:
+        if origin.failure or cls._provider_for_url(origin.value).failure:
             return r[tuple[Path, ...]].ok(())
         workspace = cls.load_workspace_spec(repository_root)
         if workspace.failure:
