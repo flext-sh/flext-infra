@@ -44,7 +44,9 @@ class FlextInfraUtilitiesDiscovery(
                 wrapper_root = current.parent
                 continue
             if (current / c.Infra.DEFAULT_SRC_DIR).is_dir():
-                return str(current)
+                relative_parts = candidate.relative_to(current).parts
+                if not relative_parts or relative_parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS:
+                    return str(current)
         return str(wrapper_root) if wrapper_root is not None else ""
 
     @staticmethod

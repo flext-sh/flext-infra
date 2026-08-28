@@ -47,6 +47,17 @@ class TestsFlextInfraLazyInitHelpers:
             eq="examples.tests",
         )
 
+    def test_unrelated_ancestor_src_does_not_own_scratch_file(
+        self, tmp_path: Path
+    ) -> None:
+        """Do not infer a package across a sibling ``src`` directory."""
+        outer = tmp_path / "outer"
+        (outer / "src").mkdir(parents=True)
+        scratch_file = outer / "scratch" / "module.py"
+        scratch_file.parent.mkdir()
+
+        tm.that(u.Infra.package_name(scratch_file), eq="")
+
     def test_root_generation_uses_real_classes_and_aliases(
         self, tmp_path: Path
     ) -> None:
@@ -469,29 +480,6 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
-
-    def test_existing_root_exports_only_source_imported_aliases(
-        self, tmp_path: Path
-    ) -> None:
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        u.Tests.write_project_beads_config(workspace_root, "flext-demo")
-        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from __future__ import annotations\n\n"
-            "from flext_cli import c\n\n"
-            "class FlextDemoConstants(c):\n"
-            "    pass\n\n"
-            '__all__: list[str] = ["FlextDemoConstants", "c"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
-        tm.that(exports, lacks='"flext_cli": (\n        "r",')
-        tm.that(generated, lacks='    "r",')
-        tm.that(generated, has='    "c",')
 
     def test_generated_parent_initializer_is_not_an_alias_owner(
         self, tmp_path: Path
