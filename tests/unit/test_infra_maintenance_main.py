@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, override
 from flext_infra import main as infra_main
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_tests import tm
-from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -144,7 +143,6 @@ class TestsFlextInfraInfraMaintenanceMain:
             ),
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(workspace, ("project-a",))
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=False)
         tm.fail(result)

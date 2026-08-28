@@ -21,7 +21,7 @@ from flext_infra.codegen import (
 )
 from flext_tests import tm
 
-from tests import t, u
+from tests import t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -113,7 +113,6 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         with_tests_dir=True,
         with_pyproject=False,
     )
-    u.Tests.declare_workspace_projects(tmp_path, ("project-a", "project-b"))
     package_b = project_b / "src" / "project_b"
     (package_b / "models.py").unlink()
     _ = (package_b / "base.py").write_text(

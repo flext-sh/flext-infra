@@ -123,14 +123,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def project(self) -> FlextInfraProtocolsBase.ProjectSpec | None:
-            """Manifest project metadata; ``None`` outside a materialized tree.
-
-            hq-36xk projects the declared version onto ``[project]`` during
-            conformance, so the protocol must expose the fact the model already
-            carries -- otherwise the only consumer reads through a contract that
-            does not admit it.
-            """
+        def project(self) -> FlextInfraProtocolsBase.ProjectSpec:
+            """Canonical metadata derived from the local project."""
             ...
 
     @runtime_checkable
@@ -332,7 +326,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def mise_lock_platform_exclusions(self) -> t.StrMapping:
+        def mise_lock_platform_exclusions(self) -> t.MappingKV[str, t.StrSequence]:
             """Unsupported platform pairs in the project Mise lockfile."""
             ...
 

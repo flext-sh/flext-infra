@@ -70,7 +70,6 @@ class TestFlextInfraWorkspaceChecker:
         package_dir.mkdir(parents=True, exist_ok=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         (package_dir / "module.py").write_text("value = 1\n", encoding="utf-8")
-        test_u.Tests.declare_workspace_projects(tmp_path, (project_dir.name,))
         init_result = cli_u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         add_result = cli_u.Cli.run_raw(["git", "add", "flext-core"], cwd=tmp_path)
         tm.ok(init_result)

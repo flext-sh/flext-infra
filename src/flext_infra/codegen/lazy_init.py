@@ -78,6 +78,10 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             workspace_index = rope.workspace_index
             resolved_workspace_root = self.workspace_root.resolve()
+
+            def package_depth(path: Path) -> int:
+                return len(path.parts)
+
             indexed_package_dirs = tuple(
                 sorted(
                     (
@@ -86,7 +90,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         if package_dir.is_relative_to(resolved_workspace_root)
                         and package_dir.name != c.Infra.ROOT_EXPORTS_DIR
                     ),
-                    key=lambda path: len(path.parts),
+                    key=package_depth,
                     reverse=True,
                 )
             )

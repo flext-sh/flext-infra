@@ -180,7 +180,6 @@ def test_build_scopes_preserves_discovered_package_name(tmp_path: Path) -> None:
         "packages=['src/demo_pkg']\n",
         encoding="utf-8",
     )
-    u.Tests.declare_workspace_projects(workspace, ("flext-demo",))
 
     result = u.Infra.build_scopes(
         workspace, projects=["flext-demo"], output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR

@@ -281,7 +281,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # catalog. Project creation is the only template-rendering lifecycle.
             if (
                 self.initial_workspace is not None
-                and workspace.project is not None
                 and repository.name == workspace.repository.name
             ):
                 repository_plan = self._plan_scaffold_repository(
@@ -559,11 +558,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only."""
         project = workspace.project
-        if project is None:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                "scaffold repository has no project metadata: "
-                f"{workspace.repository.name}"
-            )
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         # mro-j47u (codex): new and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
@@ -1285,10 +1279,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository_root: Path,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
-        if workspace.project is None:
-            return r[m.Infra.ProjectRenderContext].fail(
-                f"repository has no project metadata: {workspace.repository.name}"
-            )
         project = workspace.project
         upstream_dependencies = next(
             (

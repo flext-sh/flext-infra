@@ -11,7 +11,7 @@ from flext_infra.detectors.manual_protocol_detector import (
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from flext_tests import tm
-from tests import m, u
+from tests import m
 
 if TYPE_CHECKING:
     from tests import t
@@ -32,7 +32,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (pkg / "service.py").write_text(
             "from flext_core import c, m, r, p, t, u, p\nfrom flext_infra import c, m, t, u, p\n\nVALUE = 1",
@@ -71,12 +70,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\nfrom typing import TypeAlias\n\nPayloadMap: TypeAlias = dict[str, str]\nLegacyResult = ModernResult",
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
 
         report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
             apply=False
@@ -99,7 +96,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         models_dir = pkg / "_models"
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         typings_dir = pkg / "_typings"
         models_dir.mkdir()
         typings_dir.mkdir()
@@ -166,7 +162,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\nfrom typing import Protocol\n\nclass ServiceContract(Protocol):\n    def run(self) -> str:\n        ...",
             encoding="utf-8",
@@ -198,7 +193,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\nfrom flext_core import FlextUtilitiesGuards\nfrom sample_pkg.protocols import _InternalContract\n\n_ = FlextUtilitiesGuards\n_ = _InternalContract",
             encoding="utf-8",
@@ -344,7 +338,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = (parts_pkg / "impl.py").write_text(
             "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
             encoding="utf-8",
@@ -735,7 +728,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         service_file = pkg / "service.py"
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = service_file.write_text(
             "from __future__ import annotations\nfrom typing import Protocol\n\nclass ServiceContract(Protocol):\n    def run(self) -> str:\n        ...\n\nclass ServiceImpl:\n    def run(self) -> str:\n        return 'ok'",
             encoding="utf-8",
@@ -767,7 +759,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         service_file = pkg / "service.py"
         _ = service_file.write_text(
             "from __future__ import annotations\n"
@@ -810,7 +801,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = (pkg / "a.py").write_text(
             "from __future__ import annotations\nfrom sample_pkg.b import value_b\nvalue_a = value_b\n",
             encoding="utf-8",
@@ -845,7 +835,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             "from __future__ import annotations\n\nclass DemoConstants:\n    pass\n",
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
 
         report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
             apply=False
@@ -921,7 +910,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         script_file = scripts_dir / "run.py"
         _ = script_file.write_text(
             "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\nu.Cli.print('ok')\n",
@@ -951,7 +939,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         target_file = scripts_dir / "base_improved.py"
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = target_file.write_text(
             '"""Improved test base with high automation and real functionality."""\n'
             "from pathlib import Path\n"

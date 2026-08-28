@@ -103,7 +103,6 @@ class TestsFlextInfraInfraRopeService:
         sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
             monorepo_root, project_name="flext-demo", package_name="flext_demo"
         )
-        u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra",))
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             module_path, class_name="FlextInfraModels", alias="m", docstring="Models."

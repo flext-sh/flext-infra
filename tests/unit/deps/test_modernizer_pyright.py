@@ -69,7 +69,6 @@ class TestsFlextInfraDepsModernizerPyright:
         (flext_api / "src" / "flext_api" / "__init__.py").write_text(
             "VALUE = 1\n", encoding="utf-8"
         )
-        u.Tests.declare_workspace_projects(tmp_path, ("flext-core", "flext-api"))
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -348,7 +347,6 @@ class TestsFlextInfraDepsModernizerPyright:
         _ = (flext_core / "src" / "flext_core" / "__init__.py").write_text(
             "VALUE = 1\n", encoding="utf-8"
         )
-        u.Tests.declare_workspace_projects(tmp_path, ("flext-core",))
         phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
         fleet_doc = u.Cli.toml_document()
         declared_doc = u.Cli.toml_document()

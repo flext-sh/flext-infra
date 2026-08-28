@@ -197,15 +197,14 @@ class FlextInfraUtilitiesPyprojectConform:
             normalized_items.append(normalized.value)
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
-            canonical = tuple(
-                sorted(
-                    canonical,
-                    key=lambda requirement: (
-                        FlextInfraUtilitiesDependencies.dep_name(requirement) or "",
-                        requirement,
-                    ),
+
+            def requirement_key(requirement: str) -> tuple[str, str]:
+                return (
+                    FlextInfraUtilitiesDependencies.dep_name(requirement) or "",
+                    requirement,
                 )
-            )
+
+            canonical = tuple(sorted(canonical, key=requirement_key))
         u.Cli.toml_sync_string_list(container, key, canonical)
         return r[bool].ok(True)
 
@@ -374,8 +373,6 @@ class FlextInfraUtilitiesPyprojectConform:
         install. Two owners for one fact is the defect; the manifest is the SSOT,
         so conformance projects it here.
         """
-        if workspace.project is None:
-            return r[bool].ok(False)
         mutated = u.Cli.toml_sync_value(
             project, c.Infra.VERSION, workspace.project.version
         )

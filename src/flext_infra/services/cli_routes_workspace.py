@@ -4,11 +4,20 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m
+from flext_infra import c, m, p, t
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+
+def _execute_release(
+    params: FlextInfraReleaseOrchestrator,
+) -> p.Result[t.Cli.ResultValue]:
+    """Widen the concrete release result to the public route value."""
+    return FlextInfraReleaseOrchestrator.execute_command(params).map(
+        CliRouteBase.as_route_value
+    )
 
 
 class WorkspaceRoutes(RefactorRoutes):
@@ -21,9 +30,7 @@ class WorkspaceRoutes(RefactorRoutes):
                 name=c.Infra.VERB_RUN,
                 help_text="Run release orchestration CLI flow",
                 model_cls=FlextInfraReleaseOrchestrator,
-                handler=lambda params: FlextInfraReleaseOrchestrator.execute_command(
-                    params
-                ).map(CliRouteBase.as_route_value),
+                handler=_execute_release,
                 success_message="Release completed successfully",
             ),
         ),

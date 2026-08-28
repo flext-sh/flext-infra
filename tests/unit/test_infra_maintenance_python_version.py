@@ -91,7 +91,6 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
     def test_failure_on_project_mismatch(self, tmp_path: Path) -> None:
         ws = _ws(tmp_path / "ws")
         _proj(ws, "project-a", minor=_BAD)
-        u.Tests.declare_workspace_projects(ws, ("project-a",))
         tm.fail(_svc(ws).execute(check_only=True, verbose=False))
 
     def test_empty_workspace(self, tmp_path: Path) -> None:

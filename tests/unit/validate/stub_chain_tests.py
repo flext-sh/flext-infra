@@ -102,10 +102,6 @@ class TestStubChain:
         (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         u.Tests.mk_project(tmp_path, "project-b", with_src=False)
         valid_project = u.Tests.mk_project(tmp_path, "project-c", with_src=True)
-        u.Tests.declare_workspace_projects(
-            tmp_path, ("project-a", "project-b", "project-c")
-        )
-
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
@@ -140,7 +136,6 @@ class TestStubChain:
         tm.that(name_result.value.exit_code, eq=0)
         tracked_project = u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         _untracked_project = u.Tests.mk_project(tmp_path, "project-b", with_src=True)
-        u.Tests.declare_workspace_projects(tmp_path, ("project-a", "project-b"))
         add_result = u.Cli.run_raw(["git", "add", "project-a"], cwd=tmp_path)
         tm.ok(add_result)
         tm.that(add_result.value.exit_code, eq=0)
@@ -159,7 +154,6 @@ class TestStubChain:
 
     def test_execute_fails_when_report_has_violations(self, tmp_path: Path) -> None:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)
-        u.Tests.declare_workspace_projects(tmp_path, ("project-a",))
         chain = self.make_chain(
             workspace_root=tmp_path,
             stdout=self._stub_output(
