@@ -2074,6 +2074,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
+        pending_merge_result = u.Cli.run_raw(
+            (
+                c.Infra.GIT,
+                "merge-base",
+                "--is-ancestor",
+                baseline_sha,
+                c.Infra.GIT_MERGE_HEAD,
+            ),
+            cwd=root,
+        )
+        pending_merge_includes_baseline = (
+            pending_merge_result.success and pending_merge_result.value.exit_code == 0
+        )
         current_branch_result = u.Cli.run_raw(
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
@@ -2223,6 +2236,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
                     )
                 ancestor = ancestry_result.value.exit_code == 0
+                if not ancestor and policy_reference == current_branch_ref:
+                    ancestor = pending_merge_includes_baseline
             references.append(
                 m.Infra.BranchAncestryRef(
                     reference=reference, sha=sha, excluded=excluded, ancestor=ancestor

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
@@ -572,10 +571,10 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
         link_mode: str | None = None,
         exclude_newer: str | None = None,
-        exclude_newer_packages: t.StrSequence = (),
-        exclude_newer_overrides: t.StrMapping = MappingProxyType({}),
+        exclude_newer_packages: t.StrSequence | None = None,
+        exclude_newer_overrides: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
-        exclude_dependencies: t.SequenceOf[p.Model] = (),
+        exclude_dependencies: t.SequenceOf[p.Model] | None = None,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         workspace_root = cls._is_workspace_context_root(
@@ -636,34 +635,40 @@ class FlextInfraUtilitiesPyprojectConform:
         # and names this key as the remedy, so switching the cooldown off is not
         # enough — the cutoff has to move to a specific instant. Overrides win
         # on collision, being the more specific declaration of the two.
-        exclude_newer_payload: t.JsonDict = dict.fromkeys(
-            sorted(exclude_newer_packages), False
-        )
-        exclude_newer_payload.update(sorted(exclude_newer_overrides.items()))
-        if exclude_newer_payload:
-            u.Cli.toml_sync_value(uv, "exclude-newer-package", exclude_newer_payload)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
+        if exclude_newer_packages is not None or exclude_newer_overrides is not None:
+            exclude_newer_payload: t.JsonDict = dict.fromkeys(
+                sorted(exclude_newer_packages or ()), False
+            )
+            exclude_newer_payload.update(
+                sorted((exclude_newer_overrides or {}).items())
+            )
+            if exclude_newer_payload:
+                u.Cli.toml_sync_value(
+                    uv, "exclude-newer-package", exclude_newer_payload
+                )
+            else:
+                u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Project is a flext-infra routing key only; uv scoped form is
         # {package={name, version?}, dependencies=[...]} (uv settings docs).
         # Emit on every owning pyproject so standalone CI clones resolve;
         # do not gate on owns_uv_root_policy (that stripped member excludes).
-        exclude_payload = list(
-            t.Cli.JSON_LIST_ADAPTER.validate_python([
-                {
-                    key: value
-                    for key, value in item.model_dump(
-                        mode="json", exclude_none=True
-                    ).items()
-                    if key != "project"
-                }
-                for item in exclude_dependencies
-            ])
-        )
-        if exclude_payload:
-            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
+        if exclude_dependencies is not None:
+            exclude_payload = list(
+                t.Cli.JSON_LIST_ADAPTER.validate_python([
+                    {
+                        key: value
+                        for key, value in item.model_dump(
+                            mode="json", exclude_none=True
+                        ).items()
+                        if key != "project"
+                    }
+                    for item in exclude_dependencies
+                ])
+            )
+            if exclude_payload:
+                u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
+            else:
+                u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         if workspace_root:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:

@@ -817,7 +817,9 @@ class TestCodegenConform:
         self, tmp_path: Path
     ) -> None:
         repository = u.Tests.repository_ref("consumer")
-        project = u.Tests.project_spec("consumer")
+        project = u.Tests.project_spec("consumer").model_copy(
+            update={"upstream": "flext_cli"}
+        )
         workspace = m.Infra.WorkspaceSpec(
             name="consumer",
             beads=u.Tests.beads_project("consumer"),
