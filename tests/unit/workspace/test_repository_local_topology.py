@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -160,6 +161,67 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.beads.workspace, eq="child-workspace")
         tm.that(workspace.subprojects, empty=True)
         tm.that(resolved, eq=child.resolve())
+
+    def test_submodule_self_load_preserves_its_checkout_relationship(
+        self, tmp_path: Path
+    ) -> None:
+        """A child owns its identity without erasing the physical gitlink fact."""
+        child_source = tmp_path / "child-source"
+        WorktreeFixture.initialize_governed_project(
+            child_source,
+            "fixture-member",
+            workspace="member-workspace",
+            database="member-database",
+            issue_prefix="member-prefix",
+        )
+        parent = tmp_path / "parent"
+        WorktreeFixture.initialize_governed_project(
+            parent,
+            "fixture-parent",
+            workspace="parent-workspace",
+            database="parent-database",
+            issue_prefix="parent-prefix",
+        )
+        member = parent / "apps" / "member"
+        shutil.copytree(child_source, member)
+        provider = u.Tests.provider()
+        (parent / ".gitmodules").write_text(
+            "[submodule 'fixture-member']\n"
+            "\tpath = apps/member\n"
+            f"\turl = {WorktreeFixture.governed_repository_url('fixture-member')}\n"
+            f"\tbranch = {provider.branch}\n",
+            encoding="utf-8",
+        )
+        member_head = tm.ok(
+            u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=member)
+        )
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", ".gitmodules"], cwd=parent))
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    f"160000,{member_head.strip()},apps/member",
+                ],
+                cwd=parent,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "--quiet", "-m", "attach member"],
+                cwd=parent,
+            )
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
+
+        tm.that(workspace.repository.path, eq=Path())
+        tm.that(
+            workspace.repository.checkout,
+            eq=c.Infra.CheckoutKind.SUBMODULE,
+        )
 
     def test_workspace_preserves_distinct_subproject_identities(
         self, tmp_path: Path
