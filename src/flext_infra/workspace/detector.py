@@ -313,16 +313,12 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 managed_result.error
                 or f"managed declaration resolution failed: {resolved_root}"
             )
-        if not managed_result.value:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                f"managed repository must declare [tool.flext]: {resolved_root}"
-            )
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=repository,
                 root=resolved_root,
                 topology=mode_result.value,
-                managed=True,
+                managed=managed_result.value,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_branch_result.value,
                 ci_enabled=True,

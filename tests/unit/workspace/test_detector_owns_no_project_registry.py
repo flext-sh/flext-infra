@@ -48,10 +48,12 @@ class TestsDetectorOwnsNoProjectRegistry:
         root = _standalone(tmp_path / "totally-unknown-project", name="totally-unknown")
 
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
 
         tm.that(spec.repository.name, eq="totally-unknown")
         tm.that(spec.repository.path, eq=Path())
         tm.that("members" in type(spec).model_fields, eq=False)
+        tm.that(target.managed, eq=False)
 
     def test_git_submodules_remain_the_topology_ssot(self, tmp_path: Path) -> None:
         """A .gitmodules file changes topology without creating member policy."""
