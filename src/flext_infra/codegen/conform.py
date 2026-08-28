@@ -243,6 +243,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"{current_repository.provider}"
                 )
             (provider,) = providers
+            baseline = u.Infra.repository_baseline_branch(
+                root, fallback=provider.branch
+            )
+            if baseline.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    baseline.error
+                    or "repository integration baseline resolution failed"
+                )
             current_make_profile = (
                 c.Infra.MakeProfile.WORKSPACE
                 if current_repository.role is c.Infra.RepositoryRole.WORKSPACE
@@ -254,7 +262,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=current_make_profile,
                 beads=workspace.beads,
                 canonical_project_name=current_repository.distribution,
-                baseline_branch=provider.branch,
+                baseline_branch=baseline.value,
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
@@ -1495,15 +1503,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # repository's own integration branch is the only branch this layer
             # can name from resolved data; a fleet-wide list hardcoded here would
             # make every repository trigger on branches it does not have.
-            branch = u.Infra.resolve_integration_branch(workspace, provider.value)
+            branch = target.baseline_branch
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=branch,
-                    ci_trigger_branches=tuple(
-                        dict.fromkeys(("dev", "develop", "0.12.0-dev", branch, "main"))
-                    ),
+                    ci_trigger_branches=(branch, "main"),
                     python_version=codegen.toolchain.python_version,
                     mise_version=codegen.toolchain.mise_version,
                     dependency_cooldown_days=(
@@ -1861,9 +1867,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 flext_git_branch=flext_provider.branch,
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
-                repository_branch=u.Infra.resolve_integration_branch(
-                    workspace, repository_provider.value
-                ),
+                repository_branch=target.baseline_branch,
                 year=project.year,
             )
         )
