@@ -477,7 +477,6 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endfor %}
 	@printf '  %-10s %s\n' 'PROJECT' 'member checkout when WORKSPACE unset';
-	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for lane tracking';
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'RUNTIME_VENV' 'isolated environment path override (command line only)';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';

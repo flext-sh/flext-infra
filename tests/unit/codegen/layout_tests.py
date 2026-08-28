@@ -192,9 +192,7 @@ def test_gate_reports_violations_but_passes_on_warning(tmp_path: Path) -> None:
 def test_managed_gitignore_render_includes_layout_additions() -> None:
     """The canonical gitignore render owns the layout SSOT additions."""
     rendered = FlextInfraCodegenConform.render_project_gitignore(
-        config.Infra.codegen,
-        profile=c.Infra.MakeProfile.STANDALONE,
-        project_name="flext-cli",
+        config.Infra.codegen, project_name="flext-cli"
     )
 
     tm.ok(rendered)

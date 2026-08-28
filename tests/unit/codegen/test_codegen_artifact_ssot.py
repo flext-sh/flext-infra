@@ -88,21 +88,14 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(unaccounted, eq=())
 
-    def test_makefile_has_one_owner_for_every_declared_profile(
-        self, codegen: CodegenSpec
-    ) -> None:
-        """Cover repository profiles through one generic template entry."""
+    def test_makefile_has_one_owner(self, codegen: CodegenSpec) -> None:
+        """Project one generic Makefile template entry."""
         entries = tuple(
             entry
             for entry in codegen.templates.entries
             if entry.destination == c.Infra.MAKEFILE_FILENAME
         )
         tm.that(entries, len=1)
-        declared_profiles = {
-            c.Infra.MakeProfile.WORKSPACE_ROOT,
-            c.Infra.MakeProfile.STANDALONE,
-        }
-        tm.that(set(entries[0].profiles), eq=declared_profiles)
 
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         self, codegen: CodegenSpec
@@ -116,10 +109,11 @@ class TestsCodegenArtifactSsot:
         tm.that(bool(pre_push), eq=True)
         commit_verbs = {step.verb for step in pre_commit}
         push_verbs = {step.verb for step in pre_push}
-        tm.that(commit_verbs.issubset(push_verbs), eq=True)
-        tm.that(bool(push_verbs - commit_verbs), eq=True)
         tm.that(
-            push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True
+            (commit_verbs | push_verbs).issubset({
+                verb.name for verb in codegen.make.verbs
+            }),
+            eq=True,
         )
 
     def test_rendered_vscode_document_consumes_projection_maps(

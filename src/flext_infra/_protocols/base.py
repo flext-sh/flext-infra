@@ -76,27 +76,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Primary Python package name."""
             ...
 
-    # NOTE (multi-agent, mro-wkii.17.16 / agent: codex): these declaration-only
-    # contracts preserve config-model field types across the public p/u facades.
-    @runtime_checkable
-    class MiseToolSpec(Protocol):
-        """One exact mise backend selector and immutable version."""
-
-        @property
-        def selector(self) -> str:
-            """Canonical mise backend selector."""
-            ...
-
-        @property
-        def version(self) -> str:
-            """Exact tool version installed by mise."""
-            ...
-
-        @property
-        def reported_version(self) -> str:
-            """Version string the pinned binary self-reports."""
-            ...
-
     @runtime_checkable
     class RepositoryRef(Protocol):
         """Repository fields consumed by codegen path and profile selection."""
@@ -254,11 +233,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def beads_enabled(self) -> bool:
-            """Whether canonical Beads provisioning is enabled."""
-            ...
-
-        @property
         def repository(self) -> FlextInfraProtocolsBase.RepositoryRef | None:
             """Effective repository identity when a declaration was supplied."""
             ...
@@ -403,18 +377,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def go_version(self) -> str:
-            """Exact Go runtime version backing go: mise selectors."""
-            ...
-
-        @property
         def mise_version(self) -> str:
             """Exact mise binary version."""
-            ...
-
-        @property
-        def beads(self) -> FlextInfraProtocolsBase.MiseToolSpec:
-            """Official Beads CLI installed through mise."""
             ...
 
     @runtime_checkable
@@ -424,11 +388,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def destination(self) -> str:
             """Tokenized repository-relative destination."""
-            ...
-
-        @property
-        def profiles(self) -> t.StrSequence:
-            """Make profiles that consume the template."""
             ...
 
         @property

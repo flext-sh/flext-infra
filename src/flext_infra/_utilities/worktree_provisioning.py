@@ -109,29 +109,11 @@ class FlextInfraWorktreeProvisioning:
                 return validated
         return r.ok(True)
 
-    @staticmethod
-    def _prepare_beads_directory(lane: Path) -> p.Result[bool]:
-        beads_dir = lane / ".beads"
-        if beads_dir.is_symlink():
-            return r.fail(f"lane Beads path must not be a symlink: {beads_dir}")
-        if beads_dir.exists() and not beads_dir.is_dir():
-            return r.fail(f"lane Beads path must be a directory: {beads_dir}")
-        if not beads_dir.exists():
-            return r.ok(True)
-        try:
-            beads_dir.chmod(0o700, follow_symlinks=False)
-        except OSError as exc:
-            return r.fail(f"failed to secure lane Beads directory {beads_dir}: {exc}")
-        return r.ok(True)
-
     @classmethod
     def setup_lane(cls, lane: Path) -> p.Result[bool]:
         gitlinks = cls._prepare_governed_gitlinks(lane)
         if gitlinks.failure:
             return gitlinks
-        secured = cls._prepare_beads_directory(lane)
-        if secured.failure:
-            return secured
         if not (lane / c.Infra.PYPROJECT_FILENAME).is_file():
             return r.ok(True)
         venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name

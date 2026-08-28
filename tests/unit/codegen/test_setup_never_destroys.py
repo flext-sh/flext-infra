@@ -62,17 +62,6 @@ def test_setup_never_clears_the_virtualenv() -> None:
     assert not offenders, f"setup clears the virtualenv: {offenders}"
 
 
-def test_setup_has_no_operational_beads_side_effect() -> None:
-    """Environment provisioning never writes tracker state or Git config."""
-    template = _TEMPLATES.joinpath("project", "base", "Makefile.j2").read_text(
-        encoding="utf-8"
-    )
-    setup = template.split("setup:\n", 1)[1].split("\n_builtin_help_usage:", 1)[0]
-
-    assert "beads.role" not in setup
-    assert " config --local " not in setup
-
-
 def test_submodule_setup_attaches_without_checkout() -> None:
     """Detached HEAD attach uses symbolic-ref, never checkout."""
     content = _SUBMODULES.read_text(encoding="utf-8")

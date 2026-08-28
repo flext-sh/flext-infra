@@ -39,7 +39,6 @@ Infra:
           MD076: false
         exclude:
           - .omo/**
-          - .beads/**
           - .tmp/**
           - .claude/**
           - .vscode/**
@@ -666,6 +665,11 @@ Infra:
 # A path that exists only here belongs in this block, never in the fleet policy:
 # declaring it there writes a dead exemption into every project's pyproject.toml.
 ManagedArtifacts:
+  Mise:
+    tools:
+      # The sole permitted Beads declaration in flext-infra: an immutable
+      # project-owned binary pin. No generated consumer inherits it.
+      github:gastownhall/beads: "1.2.2"
   Ruff:
     per_file_ignores:
       # OPERATOR-AUTHORIZED 2026-08-08 (rope only, private-member-access only).

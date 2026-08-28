@@ -154,15 +154,6 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
-    BEADS_DIRNAME: Final[str] = ".beads"
-    BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
-    BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
-    "Ledger-resolution marker bd reads to bind a checkout to its Dolt database."
-    BEADS_LEDGER_RELPATHS: Final[frozenset[str]] = frozenset({
-        BEADS_CONFIG_RELPATH,
-        BEADS_METADATA_RELPATH,
-    })
-    "Generated ledger surfaces emitted only for a ledger owner or router."
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"

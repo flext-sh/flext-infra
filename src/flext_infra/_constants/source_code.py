@@ -54,7 +54,6 @@ class FlextInfraConstantsSourceCode:
         ".archive",
         "reports",
         ".agents",
-        ".beads",
     }
     "Directories to exclude during quality checks."
     ITERATION_EXCLUDED_PARTS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {

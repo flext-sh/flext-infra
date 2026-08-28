@@ -1479,7 +1479,7 @@ class TestScriptDispatchMakefile:
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_init_body.count("codegen init"), eq=2)
-        tm.that(gen_init_body, lacks=["codegen conform", "WORKSPACE_ROOT", "bd"])
+        tm.that(gen_init_body, lacks=["codegen conform", "WORKSPACE_ROOT"])
         # The regeneration contract published on every projection speaks gen.
         tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
@@ -1509,7 +1509,7 @@ class TestScriptDispatchMakefile:
         calls = root / "init.calls"
         forbidden = root / "forbidden.calls"
         sentinel_bin = root / "sentinel-bin"
-        for command in ("git", "bd", "mise", "uv", "sed", "sort", "tr"):
+        for command in ("git", "mise", "uv", "sed", "sort", "tr"):
             u.Tests.write_executable(
                 sentinel_bin / command,
                 f"#!/bin/sh\nprintf '%s\\n' '{command}' >> '{forbidden}'\nexit 97\n",
@@ -1591,7 +1591,7 @@ class TestScriptDispatchMakefile:
                     apply_what="all",
                 ),
                 m.Infra.MakeVerbSpec(
-                    name="bead", default_what="all", whats=("all",), apply_what="all"
+                    name="audit", default_what="all", whats=("all",), apply_what="all"
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(

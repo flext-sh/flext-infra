@@ -1,9 +1,7 @@
 # AGENTS.md — flext-infra
 
-> **Parent workspace law** lives in [`../AGENTS.md`](../AGENTS.md) — read it first.
-> Universal engineering core: `~/.agents/UNIVERSAL_CORE.md`. Composition: global skills + parent/root `AGENTS.md` + this scope delta. Do not re-embed universal law.
->
-> **Standalone / independent mode:** when `../AGENTS.md` does not resolve, pin the parent raw `AGENTS.md` URL to the same branch/release as this package (never `main`).
+This file is the complete repository-local execution contract. It works in a
+standalone checkout and does not require a parent workspace or a user-home file.
 
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-BEGIN -->
 **Package:** `flext_infra` · ~82k src LOC · deps: `flext-cli`, `flext-core`
@@ -45,11 +43,12 @@ src/flext_infra/
 ## Commands
 
 ```bash
-make check PROJECT=flext-infra
-make test  PROJECT=flext-infra
-make build WHAT=artifacts
-gt sling <bead> flext
-gt hook status
-gt done
+make help
+make setup
+make deps WHAT=check
+make gen WHAT=check
+make fmt WHAT=check
+make check WHAT=all
+make test WHAT=full
 ```
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->

@@ -81,11 +81,8 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             ["git", "commit", "-m", "seed fixture gitmodules"], cwd=workspace_root
         )
     )
-    # These tests assert what the GENERATED Makefile contains, so only the
-    # rendered artifacts are needed. Running the apply path additionally drove
-    # the Beads lifecycle, which inspects a live Dolt tracker: a unit test then
-    # depended on an external service and failed on any machine without it.
-    # Planning renders the same files and touches no tracker.
+    # These tests assert what the GENERATED Makefile contains, so planning the
+    # rendered artifacts is sufficient and avoids unrelated filesystem writes.
     planned = tm.ok(
         FlextInfraCodegenConform().plan(
             m.Infra.CodegenConformRequest(

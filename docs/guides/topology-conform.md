@@ -64,18 +64,11 @@ provider-owned branch and performs `git pull --ff-only` before validating the
 recorded gitlink ancestry. Divergence fails closed with the exact command, exit
 status, and stderr.
 
-Beads is project-local. Root workspaces enable it automatically; standalone
-repositories enable it only through a typed repository-local overlay. The
-generated `.mise.toml` pins the official Beads CLI version, and conform verifies
-that `mise exec -- bd version` equals that pin before inspecting or initializing
-the tracker.
+Conform does not own tracker runtime, ledger routing, hooks, or tracker policy.
+The flext-infra checkout retains only its repository-owned tracker metadata and
+its project-owned Mise binary pin; generated consumers inherit neither.
 
 ## MCP / CRG identity (out of scope for conform)
 
-flext-infra conform owns Beads ledger projections only: `ledger_id` from
-`config/workspace.yaml`, `.beads/config.yaml`, and `.beads/metadata.json`, plus
-worktree checkouts that `routes_to_principal_ledger`. It does **not** own MCP
-gateway routing, CRG graph paths, memory `project_id` stores, or activation
-inventory. Those stay in ai-hub (`docs/worktrees.md` three-axis identity).
-Empty `.mcp.json` at a flext root is not a conform defect when Cursor uses the
-ai-hub gateway.
+Tracker and MCP/CRG identity are outside conform. The generator neither reads
+nor writes those runtime stores.

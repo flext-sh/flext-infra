@@ -16,17 +16,7 @@ from tests import c, m, p, t, u
 class TestsRootArtifactOwnership:
     """Prove codegen config is the sole root-artifact ownership catalog."""
 
-    def test_envrc_template_covers_every_repository_profile(self) -> None:
-        """Every generated repository owns the same direnv activation contract."""
-        entry = next(
-            item
-            for item in config.Infra.codegen.templates.entries
-            if item.destination == c.Infra.ENVRC_FILENAME
-        )
-
-        tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
-
-    def test_markdown_config_templates_cover_every_repository_profile(self) -> None:
+    def test_markdown_config_templates_are_declared_once(self) -> None:
         entries = {
             item.destination: item
             for item in config.Infra.codegen.templates.entries
@@ -34,8 +24,6 @@ class TestsRootArtifactOwnership:
         }
 
         tm.that(set(entries), eq={".markdownlint.json", ".markdownlintignore"})
-        for entry in entries.values():
-            tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
         tm.that(config.Infra.tooling.tools.markdown.exclude, has=".serena/**")
 
     # Why (suite budget): a full standalone conform apply writes the whole

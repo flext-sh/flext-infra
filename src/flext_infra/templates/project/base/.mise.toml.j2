@@ -9,7 +9,7 @@
 # === SECTION: tools (managed) ===
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
-#          gitleaks_version, tokei_version, qlty_version, beads.selector, beads.version)
+#          gitleaks_version, tokei_version, qlty_version)
 [tools]
 python = "{{ python_version }}"
 # uv is deliberately absent: codegen.yaml declares it "supplied by the caller
@@ -29,11 +29,4 @@ tokei = "{{ tokei_version }}"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
 "github:qltysh/qlty" = "{{ qlty_version }}"
-# Go runtime for the Go projects in this workspace.
-go = "{{ go_version }}"
-[tools."{{ beads.selector }}"]
-version = "{{ beads.version }}"
-prerelease = {{ "true" if beads.prerelease else "false" }}
-{% if beads.minimum_release_age %}minimum_release_age = "{{ beads.minimum_release_age }}"
-{% endif %}
 # End SECTION: tools
