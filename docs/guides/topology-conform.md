@@ -1,6 +1,16 @@
 # Repository-local topology and conformance
 
+<<<<<<< HEAD
 ## Authorities
+=======
+<!-- TOC START -->
+- [Effective topology](#effective-topology)
+- [Scoped projection isolation](#scoped-projection-isolation)
+- [Full refactor workflow](#full-refactor-workflow)
+- [Synchronization and setup](#synchronization-and-setup)
+- [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
+<!-- TOC END -->
+>>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
 
 Each governed repository has exactly two local inputs:
 
@@ -19,10 +29,33 @@ loads both files from that lane and every generated write remains in that lane.
 Conformance validates the complete selected topology before planning writes. A
 workspace validates each direct governed path declared by its own `.gitmodules`:
 
+<<<<<<< HEAD
 - the checkout exists and remains below the workspace root;
 - its origin matches the URL declared by `.gitmodules`;
 - its branch follows the configured provider contract;
 - its own `config/beads.yaml` exists and validates.
+=======
+## Scoped projection isolation
+
+`codegen conform --what makefile --scope self` is a declaration-only
+projection. It reads the target repository's `config/workspace.yaml`, PEP 621
+metadata, the packaged codegen configuration and Makefile template, and the
+current destination content needed for the fixed-point comparison. It does not
+inspect Beads state, Git remotes, branch ancestry, registered worktrees, sibling
+checkouts, or environment-manager state.
+
+Apply mode plans the projection twice before publication and requires identical
+destination, content digest, content and removal intent. A planning failure or
+nondeterministic result therefore leaves a pre-existing Makefile byte- and
+inode-identical; the validated candidate is then promoted with one atomic write.
+
+The Makefile projection requires a repository-local workspace declaration and
+rejects broader scopes. `--what all` remains the operational conformance route:
+it validates live topology, Beads, environments, and ancestry in addition to
+planning every governed artifact.
+
+## Full refactor workflow
+>>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
 
 Subprojects keep independent Beads identities. A workspace never copies its
 identity into a subproject and never overwrites a subproject's source config.

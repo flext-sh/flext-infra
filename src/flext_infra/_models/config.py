@@ -457,6 +457,13 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Fleet branches receiving blocking generated CI triggers",
+            ),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
@@ -466,6 +473,9 @@ class FlextInfraConfigModels:
                     "technical branch patterns must equal the canonical GitHub/Dolt "
                     f"set: {', '.join(self.REQUIRED_TECHNICAL_PATTERNS)}"
                 )
+                raise ValueError(msg)
+            if len(set(self.ci_trigger_branches)) != len(self.ci_trigger_branches):
+                msg = "CI trigger branches must be unique"
                 raise ValueError(msg)
             return self
 
@@ -2608,6 +2618,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
         ]
+        infrastructure_provider: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Provider key owning the flext-infra distribution"),
+        ]
         branch_policy: Annotated[
             FlextInfraConfigModels.BranchPolicySpec,
             m.Field(description="Global governed branch ancestry policy"),
@@ -2644,7 +2658,27 @@ class FlextInfraConfigModels:
             ),
         ]
 
+<<<<<<< HEAD
         @m.computed_field
+=======
+        @u.model_validator(mode="after")
+        def _validate_infrastructure_provider(self) -> Self:
+            """Require the tool distribution owner to resolve exactly once."""
+            matches = tuple(
+                provider
+                for provider in self.providers
+                if provider.name == self.infrastructure_provider
+            )
+            if len(matches) != 1:
+                msg = (
+                    "infrastructure_provider must resolve exactly once in providers: "
+                    f"{self.infrastructure_provider}"
+                )
+                raise ValueError(msg)
+            return self
+
+        @m.computed_field()
+>>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
         @property
         def vscode_files_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.exclude`` entries from the artifact SSOT."""

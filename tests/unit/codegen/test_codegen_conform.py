@@ -7,11 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import shutil
+import stat
+import subprocess  # ruff:ignore[suspicious-subprocess-import]  Why: public CLI concurrency and crash recovery require a real child process.
 import sys
+import time
 import tomllib
 from pathlib import Path
 
 import pytest
+from filelock import UnixFileLock
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -115,6 +120,9 @@ class TestCodegenConform:
     ) -> p.Result[m.Infra.CodegenResult]:
         """Apply conform with ``suffix`` appended to the rendered Makefile."""
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
+        u.Tests.write_standalone_workspace_manifest(
+            root, distribution, upstream="flext_cli"
+        )
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n',
@@ -1573,6 +1581,298 @@ class TestScriptDispatchMakefile:
                 f"codegen init --workspace {root} --check",
             ],
         )
+
+    @pytest.mark.parametrize("beads_state", ["absent", "poison"])
+    @pytest.mark.parametrize("workspace_state", ["manifest", "manifestless"])
+    def test_makefile_surface_reads_only_declared_projection_inputs(
+        self, tmp_path: Path, beads_state: str, workspace_state: str
+    ) -> None:
+        """Apply the public Makefile surface without operational discovery."""
+        root = tmp_path / "declared-target"
+        if workspace_state == "manifest":
+            u.Tests.write_standalone_workspace_manifest(root, "flext-demo")
+        package = root / "src" / "flext_demo"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "flext-demo"\n'
+            'version = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "dependencies = []\n"
+            "[project.urls]\n"
+            'Repository = "https://github.com/flext-sh/flext-demo"\n',
+            encoding="utf-8",
+        )
+        if beads_state == "poison":
+            (root / ".beads").write_text(
+                "the Makefile projection must never inspect this path\n",
+                encoding="utf-8",
+            )
+
+        forbidden = root / "forbidden.calls"
+        sentinel_bin = root / "sentinel-bin"
+        git_binary = shutil.which("git")
+        tm.that(git_binary is not None, eq=True)
+        for command in ("git", "bd", "mise", "uv"):
+            version_passthrough = (
+                f'if [ "${{1:-}}" = "version" ]; then exec "{git_binary}" "$@"; fi\n'
+                if command == "git"
+                else ""
+            )
+            u.Tests.write_executable(
+                sentinel_bin / command,
+                "#!/bin/sh\n"
+                f"{version_passthrough}"
+                f"printf '%s\\n' '{command}' >> '{forbidden}'\n"
+                "exit 97\n",
+            )
+        environment = dict(os.environ)
+        environment["PATH"] = f"{sentinel_bin}:{environment['PATH']}"
+
+        invoked = u.Cli.run_raw(
+            [
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "codegen",
+                "conform",
+                "--root",
+                str(root),
+                "--what",
+                c.Infra.CodegenConformSurface.MAKEFILE.value,
+                "--scope",
+                c.Infra.CodegenConformScope.SELF.value,
+                "--mode",
+                c.Infra.CodegenConformMode.APPLY.value,
+            ],
+            cwd=root,
+            env=environment,
+        )
+
+        output = tm.ok(invoked)
+        tm.that(
+            output.exit_code,
+            eq=0,
+            msg=f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
+        )
+        tm.that(forbidden.exists(), eq=False)
+        makefile = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        tm.that(makefile, has="PROJECT_NAME := flext-demo")
+        tm.that(makefile, has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}")
+
+    def test_concurrent_makefile_change_is_preserved_before_promotion(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject real concurrent WIP observed while the public CLI waits for owner."""
+        root = tmp_path / "declared-target"
+        u.Tests.write_standalone_workspace_manifest(root, "flext-demo")
+        package = root / "src" / "flext_demo"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "flext-demo"\n'
+            'version = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "dependencies = []\n",
+            encoding="utf-8",
+        )
+        makefile = root / c.Infra.MAKEFILE_FILENAME
+        original = b"original Makefile bytes\n"
+        makefile.write_bytes(original)
+        lock_path = FlextInfraCodegenConform.conform_transaction_lock_path(root)
+        command = [
+            sys.executable,
+            "-m",
+            "flext_infra",
+            "codegen",
+            "conform",
+            "--root",
+            str(root),
+            "--what",
+            c.Infra.CodegenConformSurface.MAKEFILE.value,
+            "--scope",
+            c.Infra.CodegenConformScope.SELF.value,
+            "--mode",
+            c.Infra.CodegenConformMode.APPLY.value,
+        ]
+        environment = dict(os.environ)
+        environment["PYTHONUNBUFFERED"] = "1"
+        output_path = tmp_path / "conform-output.log"
+        process: subprocess.Popen[str]
+        with (
+            UnixFileLock(lock_path, fallback_to_soft=False),
+            output_path.open("w", encoding="utf-8") as output,
+        ):
+            process = subprocess.Popen(  # ruff:ignore[subprocess-without-shell-equals-true]  Why: fixed argv executes this test environment's public module entry point.
+                command,
+                cwd=root,
+                env=environment,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            deadline = time.monotonic() + c.Infra.TIMEOUT_SHORT
+            waiting = False
+            while time.monotonic() < deadline and process.poll() is None:
+                output.flush()
+                waiting = "stage=wait-transaction-lock" in output_path.read_text(
+                    encoding="utf-8"
+                )
+                if waiting:
+                    break
+                time.sleep(0.02)
+            tm.that(
+                waiting,
+                eq=True,
+                msg=output_path.read_text(encoding="utf-8"),
+            )
+            concurrent = b"concurrent human WIP\n"
+            makefile.write_bytes(concurrent)
+            concurrent_inode = makefile.stat().st_ino
+        return_code = process.wait(timeout=c.Infra.TIMEOUT_SHORT)
+        output_text = output_path.read_text(encoding="utf-8")
+
+        tm.that(return_code, eq=1, msg=output_text)
+        tm.that(output_text, has="Makefile projection changed")
+        tm.that(makefile.read_bytes(), eq=concurrent)
+        tm.that(makefile.stat().st_ino, eq=concurrent_inode)
+
+    def test_makefile_transaction_lock_recovers_after_process_crash(
+        self, tmp_path: Path
+    ) -> None:
+        """Let the kernel release the canonical owner when its process is killed."""
+        root = tmp_path / "declared-target"
+        root.mkdir()
+        lock_path = FlextInfraCodegenConform.conform_transaction_lock_path(root)
+        acquired_marker = tmp_path / "child-acquired"
+        child = u.Cli.run_raw(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import os, signal; "
+                    "from pathlib import Path; "
+                    "from filelock import UnixFileLock; "
+                    f"lock = UnixFileLock({str(lock_path)!r}, fallback_to_soft=False); "
+                    "lock.acquire(); "
+                    f"Path({str(acquired_marker)!r}).write_text('acquired'); "
+                    "os.kill(os.getpid(), signal.SIGKILL)"
+                ),
+            ],
+            cwd=root,
+        )
+        crashed = tm.ok(child)
+
+        tm.that(crashed.exit_code != 0, eq=True)
+        tm.that(acquired_marker.read_text(encoding="utf-8"), eq="acquired")
+        with UnixFileLock(lock_path, timeout=0, fallback_to_soft=False) as recovered:
+            tm.that(recovered.is_locked, eq=True)
+
+    def test_consumer_provider_does_not_reown_infrastructure_source(
+        self, tmp_path: Path
+    ) -> None:
+        """Render the tool bootstrap URL from its explicit provider owner."""
+        infra_provider = next(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name == config.Infra.codegen.infrastructure_provider
+        )
+        consumer_provider = next(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name != infra_provider.name
+        )
+        root = tmp_path / "consumer"
+        manifest = u.Tests.write_standalone_workspace_manifest(root, "consumer")
+        declaration = manifest.read_text(encoding="utf-8")
+        manifest.write_text(
+            declaration.replace(
+                "provider: flext-sh", f"provider: {consumer_provider.name}"
+            ).replace(
+                "url: https://github.com/flext-sh/consumer.git",
+                f"url: {consumer_provider.base_url}/consumer.git",
+            ),
+            encoding="utf-8",
+        )
+        package = root / "src" / "consumer"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "consumer"\n'
+            'version = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "dependencies = []\n",
+            encoding="utf-8",
+        )
+
+        applied = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+        tm.ok(applied)
+        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        tm.that(
+            rendered,
+            has=f"git+{infra_provider.base_url}/{config.Infra.name}.git@",
+        )
+        tm.that(
+            rendered,
+            lacks=f"git+{consumer_provider.base_url}/{config.Infra.name}.git@",
+        )
+
+    @pytest.mark.parametrize("destination_kind", ["symlink", "hardlink", "fifo"])
+    def test_makefile_special_destination_fails_without_mutation(
+        self, tmp_path: Path, destination_kind: str
+    ) -> None:
+        """Reject linked, shared-inode and nonregular destinations by nominal path."""
+        root = tmp_path / "declared-target"
+        u.Tests.write_standalone_workspace_manifest(root, "flext-demo")
+        package = root / "src" / "flext_demo"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "flext-demo"\n'
+            'version = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "dependencies = []\n",
+            encoding="utf-8",
+        )
+        makefile = root / c.Infra.MAKEFILE_FILENAME
+        source = root / "human-source"
+        source.write_bytes(b"human WIP\n")
+        if destination_kind == "symlink":
+            makefile.symlink_to(source.name)
+        elif destination_kind == "hardlink":
+            makefile.hardlink_to(source)
+        else:
+            os.mkfifo(makefile)
+
+        applied = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+
+        tm.fail(applied, has="managed destination")
+        tm.that(source.read_bytes(), eq=b"human WIP\n")
+        if destination_kind == "symlink":
+            tm.that(makefile.is_symlink(), eq=True)
+        elif destination_kind == "hardlink":
+            tm.that(makefile.stat().st_ino, eq=source.stat().st_ino)
+        else:
+            tm.that(stat.S_ISFIFO(os.lstat(makefile).st_mode), eq=True)
 
     def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
         """Gas Town owns lifecycle; generated Make exposes no work command."""
