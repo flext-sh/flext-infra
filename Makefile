@@ -975,10 +975,6 @@ endef
 
 define _mise_lock_apply
 	@set -eu; \
-	credential_command="$${MISE_GITHUB_CREDENTIAL_COMMAND:-}"; \
-	if [ -z "$${MISE_GITHUB_TOKEN:-}$${GITHUB_API_TOKEN:-}$${GITHUB_TOKEN:-}$$credential_command" ]; then \
-		credential_command=$$("$(SETUP_MISE)" settings get github.credential_command); \
-	fi; \
 	for project in $(MISE_LOCK_PROJECTS); do \
 		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
 		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
@@ -997,8 +993,7 @@ define _mise_lock_apply
 		mkdir -p "$$scratch/data" "$$scratch/cache" \
 			"$$scratch/state" "$$scratch/tmp"; \
 		: > "$$scratch/global-config.toml"; \
-		if MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
-			MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+		if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
 			XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
 			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
